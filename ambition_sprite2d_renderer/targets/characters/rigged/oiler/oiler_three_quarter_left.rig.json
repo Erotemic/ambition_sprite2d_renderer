@@ -1,0 +1,2186 @@
+{
+ "name": "oiler_three_quarter_left",
+ "frame": {
+  "width": 128,
+  "height": 128,
+  "center_x": 64.0,
+  "ground_y": 118.0,
+  "ankle_h": 5.5417,
+  "supersample": 2,
+  "render_scale": 2
+ },
+ "svg_source": {
+  "path": "../../../../data/characters/oiler/oiler-multiview.svg",
+  "view": "Oiler - Three Quarter Left",
+  "ref_dpi": 25.4,
+  "scale": 0.29166667
+ },
+ "palette": {},
+ "bones": [
+  {
+   "name": "pelvis",
+   "parent": null,
+   "offset": [
+    0.0,
+    -44.625
+   ],
+   "length": 0.0,
+   "rest_angle": 0.0
+  },
+  {
+   "name": "torso",
+   "parent": "pelvis",
+   "offset": [
+    0.2917,
+    -14.2917
+   ],
+   "length": 0.0,
+   "rest_angle": 0.0
+  },
+  {
+   "name": "head",
+   "parent": "torso",
+   "offset": [
+    0.0,
+    -15.75
+   ],
+   "length": 0.0,
+   "rest_angle": 0.0
+  },
+  {
+   "name": "far_arm_u",
+   "parent": "torso",
+   "offset": [
+    6.4167,
+    -11.0833
+   ],
+   "length": 14.1931,
+   "rest_angle": 80.5377
+  },
+  {
+   "name": "far_arm_l",
+   "parent": "far_arm_u",
+   "offset": [
+    14.1931,
+    -0.0
+   ],
+   "length": 12.2812,
+   "rest_angle": 5.3767
+  },
+  {
+   "name": "far_arm_hand",
+   "parent": "far_arm_l",
+   "offset": [
+    12.2812,
+    -0.0
+   ],
+   "length": 8.635,
+   "rest_angle": -0.7584
+  },
+  {
+   "name": "far_leg_u",
+   "parent": "pelvis",
+   "offset": [
+    3.2083,
+    -0.2917
+   ],
+   "length": 19.2588,
+   "rest_angle": 88.2643
+  },
+  {
+   "name": "far_leg_l",
+   "parent": "far_leg_u",
+   "offset": [
+    19.2588,
+    0.0
+   ],
+   "length": 19.8333,
+   "rest_angle": 1.7357
+  },
+  {
+   "name": "far_leg_foot",
+   "parent": "far_leg_l",
+   "offset": [
+    19.8333,
+    0.0
+   ],
+   "length": 5.3781,
+   "rest_angle": -49.3987
+  },
+  {
+   "name": "near_arm_u",
+   "parent": "torso",
+   "offset": [
+    -9.9167,
+    -10.5
+   ],
+   "length": 14.1481,
+   "rest_angle": 98.2971
+  },
+  {
+   "name": "near_arm_l",
+   "parent": "near_arm_u",
+   "offset": [
+    14.1481,
+    0.0
+   ],
+   "length": 12.8631,
+   "rest_angle": -12.1976
+  },
+  {
+   "name": "near_arm_hand",
+   "parent": "near_arm_l",
+   "offset": [
+    12.8631,
+    -0.0
+   ],
+   "length": 8.6239,
+   "rest_angle": 0.022
+  },
+  {
+   "name": "near_leg_u",
+   "parent": "pelvis",
+   "offset": [
+    -3.2083,
+    0.2917
+   ],
+   "length": 19.2588,
+   "rest_angle": 91.7357
+  },
+  {
+   "name": "near_leg_l",
+   "parent": "near_leg_u",
+   "offset": [
+    19.2588,
+    -0.0
+   ],
+   "length": 19.8676,
+   "rest_angle": 1.6308
+  },
+  {
+   "name": "near_leg_foot",
+   "parent": "near_leg_l",
+   "offset": [
+    19.8676,
+    -0.0
+   ],
+   "length": 5.3781,
+   "rest_angle": -52.7652
+  }
+ ],
+ "parts": [
+  {
+   "name": "wrap_back",
+   "bone": "head",
+   "z": 4.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-wrap-back-1",
+    "tq_left-wrap-back-2",
+    "tq_left-wrap-back-3",
+    "tq_left-wrap-back-4",
+    "tq_left-wrap-back-5",
+    "tq_left-wrap-back-6",
+    "tq_left-wrap-back-7",
+    "tq_left-wrap-back-8"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 0
+  },
+  {
+   "name": "far_arm_l",
+   "bone": "far_arm_l",
+   "z": 6.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-far-arm-lower-1",
+    "tq_left-far-arm-lower-2",
+    "tq_left-far-arm-lower-3",
+    "tq_left-far-arm-lower-4",
+    "tq_left-far-arm-lower-5",
+    "tq_left-far-arm-lower-6",
+    "tq_left-far-arm-lower-7",
+    "tq_left-far-arm-lower-8",
+    "tq_left-far-arm-lower-9",
+    "tq_left-far-arm-lower-10"
+   ],
+   "pivot": [
+    1998.0,
+    310.0
+   ],
+   "rest_angle": 85.9144,
+   "svg_source_order": 1
+  },
+  {
+   "name": "far_arm_u",
+   "bone": "far_arm_u",
+   "z": 7.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-far-arm-upper-1",
+    "tq_left-far-arm-upper-2",
+    "tq_left-far-arm-upper-3",
+    "tq_left-far-arm-upper-4",
+    "tq_left-far-arm-upper-5",
+    "tq_left-far-arm-upper-6",
+    "tq_left-far-arm-upper-7",
+    "tq_left-far-arm-upper-8",
+    "tq_left-far-arm-upper-9",
+    "tq_left-far-arm-upper-10"
+   ],
+   "pivot": [
+    1990.0,
+    262.0
+   ],
+   "rest_angle": 80.5377,
+   "svg_source_order": 2
+  },
+  {
+   "name": "far_hand",
+   "bone": "far_arm_hand",
+   "z": 8.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-far-hand-1",
+    "tq_left-far-hand-2",
+    "tq_left-far-hand-3",
+    "tq_left-far-hand-4",
+    "tq_left-far-hand-5",
+    "tq_left-far-hand-6",
+    "tq_left-far-hand-7",
+    "tq_left-far-hand-8",
+    "tq_left-far-hand-9",
+    "tq_left-far-hand-10",
+    "tq_left-far-hand-11",
+    "tq_left-far-hand-12",
+    "tq_left-far-hand-13",
+    "tq_left-far-hand-14",
+    "tq_left-far-hand-15",
+    "tq_left-far-hand-16",
+    "tq_left-far-hand-17",
+    "tq_left-far-hand-18",
+    "tq_left-far-hand-19",
+    "tq_left-far-hand-20",
+    "tq_left-far-hand-21",
+    "tq_left-far-hand-22",
+    "tq_left-far-hand-23",
+    "tq_left-far-hand-24",
+    "tq_left-far-hand-25",
+    "tq_left-far-hand-26",
+    "tq_left-far-hand-27",
+    "tq_left-far-hand-28",
+    "tq_left-far-hand-29",
+    "tq_left-far-hand-30",
+    "tq_left-far-hand-31",
+    "tq_left-far-hand-32",
+    "tq_left-far-hand-33",
+    "tq_left-far-hand-34",
+    "tq_left-far-hand-35",
+    "tq_left-far-hand-36",
+    "tq_left-far-hand-37"
+   ],
+   "pivot": [
+    2001.0,
+    352.0
+   ],
+   "rest_angle": 85.156,
+   "svg_source_order": 3
+  },
+  {
+   "name": "far_leg_u",
+   "bone": "far_leg_u",
+   "z": 10.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-far-thigh-1",
+    "tq_left-far-thigh-2",
+    "tq_left-far-thigh-3",
+    "tq_left-far-thigh-4",
+    "tq_left-far-thigh-5"
+   ],
+   "pivot": [
+    1978.0,
+    348.0
+   ],
+   "rest_angle": 88.2643,
+   "svg_source_order": 4
+  },
+  {
+   "name": "far_leg_l",
+   "bone": "far_leg_l",
+   "z": 11.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-far-shin-1",
+    "tq_left-far-shin-2",
+    "tq_left-far-shin-3",
+    "tq_left-far-shin-4",
+    "tq_left-far-shin-5",
+    "tq_left-far-shin-6",
+    "tq_left-far-shin-7",
+    "tq_left-far-shin-8",
+    "tq_left-far-shin-9",
+    "tq_left-far-shin-10"
+   ],
+   "pivot": [
+    1980.0,
+    414.0
+   ],
+   "rest_angle": 90.0,
+   "svg_source_order": 5
+  },
+  {
+   "name": "far_leg_foot",
+   "bone": "far_leg_foot",
+   "z": 12.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-far-foot-1",
+    "tq_left-far-foot-2",
+    "tq_left-far-foot-3",
+    "tq_left-far-foot-4",
+    "tq_left-far-foot-5"
+   ],
+   "pivot": [
+    1980.0,
+    482.0
+   ],
+   "rest_angle": 40.6013,
+   "svg_source_order": 6
+  },
+  {
+   "name": "pelvis_yoke",
+   "bone": "pelvis",
+   "z": 19.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-pelvis-1",
+    "tq_left-pelvis-2",
+    "tq_left-pelvis-3",
+    "tq_left-pelvis-4",
+    "tq_left-pelvis-5",
+    "tq_left-pelvis-6"
+   ],
+   "pivot": [
+    1967.0,
+    349.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 7
+  },
+  {
+   "name": "near_leg_u",
+   "bone": "near_leg_u",
+   "z": 20.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-near-thigh-1",
+    "tq_left-near-thigh-2",
+    "tq_left-near-thigh-3",
+    "tq_left-near-thigh-4",
+    "tq_left-near-thigh-5",
+    "tq_left-near-thigh-6"
+   ],
+   "pivot": [
+    1956.0,
+    350.0
+   ],
+   "rest_angle": 91.7357,
+   "svg_source_order": 8
+  },
+  {
+   "name": "near_leg_l",
+   "bone": "near_leg_l",
+   "z": 21.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-near-shin-1",
+    "tq_left-near-shin-2",
+    "tq_left-near-shin-3",
+    "tq_left-near-shin-4",
+    "tq_left-near-shin-5",
+    "tq_left-near-shin-6",
+    "tq_left-near-shin-7",
+    "tq_left-near-shin-8",
+    "tq_left-near-shin-9",
+    "tq_left-near-shin-10",
+    "tq_left-near-shin-11",
+    "tq_left-near-shin-12",
+    "tq_left-near-shin-13"
+   ],
+   "pivot": [
+    1954.0,
+    416.0
+   ],
+   "rest_angle": 93.3665,
+   "svg_source_order": 9
+  },
+  {
+   "name": "near_leg_foot",
+   "bone": "near_leg_foot",
+   "z": 22.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-near-foot-1",
+    "tq_left-near-foot-2",
+    "tq_left-near-foot-3",
+    "tq_left-near-foot-4",
+    "tq_left-near-foot-5",
+    "tq_left-near-foot-6",
+    "tq_left-near-foot-7"
+   ],
+   "pivot": [
+    1950.0,
+    484.0
+   ],
+   "rest_angle": 40.6013,
+   "svg_source_order": 10
+  },
+  {
+   "name": "vest",
+   "bone": "torso",
+   "z": 30.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-vest-1",
+    "tq_left-vest-2",
+    "tq_left-vest-3",
+    "tq_left-vest-4",
+    "tq_left-vest-5",
+    "tq_left-vest-6",
+    "tq_left-vest-7",
+    "tq_left-vest-8",
+    "tq_left-vest-9",
+    "tq_left-vest-10",
+    "tq_left-vest-11",
+    "tq_left-vest-12",
+    "tq_left-vest-13",
+    "tq_left-vest-14",
+    "tq_left-vest-15",
+    "tq_left-vest-16",
+    "tq_left-vest-17",
+    "tq_left-vest-18",
+    "tq_left-vest-19"
+   ],
+   "pivot": [
+    1968.0,
+    300.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 11
+  },
+  {
+   "name": "apron",
+   "bone": "torso",
+   "z": 34.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-apron-1",
+    "tq_left-apron-2",
+    "tq_left-apron-3",
+    "tq_left-apron-4",
+    "tq_left-apron-5",
+    "tq_left-apron-6",
+    "tq_left-apron-7",
+    "tq_left-apron-8",
+    "tq_left-apron-9",
+    "tq_left-apron-10",
+    "tq_left-apron-11",
+    "tq_left-apron-12",
+    "tq_left-apron-13",
+    "tq_left-apron-14",
+    "tq_left-apron-15"
+   ],
+   "pivot": [
+    1968.0,
+    300.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 12
+  },
+  {
+   "name": "gown",
+   "bone": "torso",
+   "z": 36.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-gown-1",
+    "tq_left-gown-2",
+    "tq_left-gown-3",
+    "tq_left-gown-4",
+    "tq_left-gown-5",
+    "tq_left-gown-6",
+    "tq_left-gown-7",
+    "tq_left-gown-8",
+    "tq_left-gown-9",
+    "tq_left-gown-10",
+    "tq_left-gown-11",
+    "tq_left-gown-12",
+    "tq_left-gown-13",
+    "tq_left-gown-14",
+    "tq_left-gown-15",
+    "tq_left-gown-16",
+    "tq_left-gown-17",
+    "tq_left-gown-18",
+    "tq_left-gown-19",
+    "tq_left-gown-20",
+    "tq_left-gown-21",
+    "tq_left-gown-22",
+    "tq_left-gown-23",
+    "tq_left-gown-24",
+    "tq_left-gown-25",
+    "tq_left-gown-26",
+    "tq_left-gown-27",
+    "tq_left-gown-28",
+    "tq_left-gown-29",
+    "tq_left-gown-30",
+    "tq_left-gown-31",
+    "tq_left-gown-32",
+    "tq_left-gown-33",
+    "tq_left-gown-34",
+    "tq_left-gown-35",
+    "tq_left-gown-36",
+    "tq_left-gown-37",
+    "tq_left-gown-38",
+    "tq_left-gown-39",
+    "tq_left-gown-40",
+    "tq_left-gown-41",
+    "tq_left-gown-42",
+    "tq_left-gown-43",
+    "tq_left-gown-44",
+    "tq_left-gown-45",
+    "tq_left-gown-46",
+    "tq_left-gown-47",
+    "tq_left-gown-48",
+    "tq_left-gown-49",
+    "tq_left-gown-50",
+    "tq_left-gown-51",
+    "tq_left-gown-52",
+    "tq_left-gown-53",
+    "tq_left-gown-54",
+    "tq_left-gown-55",
+    "tq_left-gown-56",
+    "tq_left-gown-57",
+    "tq_left-gown-58",
+    "tq_left-gown-59",
+    "tq_left-gown-60",
+    "tq_left-gown-61",
+    "tq_left-gown-62",
+    "tq_left-gown-63",
+    "tq_left-gown-64",
+    "tq_left-gown-65",
+    "tq_left-gown-66",
+    "tq_left-gown-67",
+    "tq_left-gown-68",
+    "tq_left-gown-69",
+    "tq_left-gown-70",
+    "tq_left-gown-71",
+    "tq_left-gown-72",
+    "tq_left-gown-73",
+    "tq_left-gown-74",
+    "tq_left-gown-75",
+    "tq_left-gown-76",
+    "tq_left-gown-77",
+    "tq_left-gown-78",
+    "tq_left-gown-79",
+    "tq_left-gown-80",
+    "tq_left-gown-81",
+    "tq_left-gown-82",
+    "tq_left-gown-83",
+    "tq_left-gown-84",
+    "tq_left-gown-85",
+    "tq_left-gown-86",
+    "tq_left-gown-87",
+    "tq_left-gown-88",
+    "tq_left-gown-89",
+    "tq_left-gown-90",
+    "tq_left-gown-91",
+    "tq_left-gown-92",
+    "tq_left-gown-93",
+    "tq_left-gown-94",
+    "tq_left-gown-95",
+    "tq_left-gown-96",
+    "tq_left-gown-97",
+    "tq_left-gown-98",
+    "tq_left-gown-99",
+    "tq_left-gown-100",
+    "tq_left-gown-101",
+    "tq_left-gown-102",
+    "tq_left-gown-103",
+    "tq_left-gown-104",
+    "tq_left-gown-105",
+    "tq_left-gown-106",
+    "tq_left-gown-107",
+    "tq_left-gown-108",
+    "tq_left-gown-109",
+    "tq_left-gown-110",
+    "tq_left-gown-111",
+    "tq_left-gown-112",
+    "tq_left-gown-113",
+    "tq_left-gown-114",
+    "tq_left-gown-115",
+    "tq_left-gown-116",
+    "tq_left-gown-117",
+    "tq_left-gown-118",
+    "tq_left-gown-119",
+    "tq_left-gown-120",
+    "tq_left-gown-121",
+    "tq_left-gown-122",
+    "tq_left-gown-123",
+    "tq_left-gown-124",
+    "tq_left-gown-125",
+    "tq_left-gown-126",
+    "tq_left-gown-127",
+    "tq_left-gown-128",
+    "tq_left-gown-129",
+    "tq_left-gown-130",
+    "tq_left-gown-131",
+    "tq_left-gown-132",
+    "tq_left-gown-133",
+    "tq_left-gown-134",
+    "tq_left-gown-135",
+    "tq_left-gown-136",
+    "tq_left-gown-137",
+    "tq_left-gown-138",
+    "tq_left-gown-139",
+    "tq_left-gown-140",
+    "tq_left-gown-141",
+    "tq_left-gown-142",
+    "tq_left-gown-143",
+    "tq_left-gown-144",
+    "tq_left-gown-145",
+    "tq_left-gown-146",
+    "tq_left-gown-147",
+    "tq_left-gown-148",
+    "tq_left-gown-149",
+    "tq_left-gown-150",
+    "tq_left-gown-151",
+    "tq_left-gown-152",
+    "tq_left-gown-153",
+    "tq_left-gown-154",
+    "tq_left-gown-155",
+    "tq_left-gown-156",
+    "tq_left-gown-157",
+    "tq_left-gown-158",
+    "tq_left-gown-159",
+    "tq_left-gown-160",
+    "tq_left-gown-161",
+    "tq_left-gown-162",
+    "tq_left-gown-163",
+    "tq_left-gown-164",
+    "tq_left-gown-165",
+    "tq_left-gown-166",
+    "tq_left-gown-167",
+    "tq_left-gown-168",
+    "tq_left-gown-169",
+    "tq_left-gown-170",
+    "tq_left-gown-171",
+    "tq_left-gown-172",
+    "tq_left-gown-173",
+    "tq_left-gown-174",
+    "tq_left-gown-175",
+    "tq_left-gown-176",
+    "tq_left-gown-177",
+    "tq_left-gown-178",
+    "tq_left-gown-179",
+    "tq_left-gown-180",
+    "tq_left-gown-181",
+    "tq_left-gown-182",
+    "tq_left-gown-183",
+    "tq_left-gown-184",
+    "tq_left-gown-185",
+    "tq_left-gown-186",
+    "tq_left-gown-187",
+    "tq_left-gown-188",
+    "tq_left-gown-189",
+    "tq_left-gown-190",
+    "tq_left-gown-191",
+    "tq_left-gown-192",
+    "tq_left-gown-193",
+    "tq_left-gown-194",
+    "tq_left-gown-195",
+    "tq_left-gown-196",
+    "tq_left-gown-197",
+    "tq_left-gown-198",
+    "tq_left-gown-199",
+    "tq_left-gown-200",
+    "tq_left-gown-201",
+    "tq_left-gown-202",
+    "tq_left-gown-203",
+    "tq_left-gown-204",
+    "tq_left-gown-205",
+    "tq_left-gown-206",
+    "tq_left-gown-207",
+    "tq_left-gown-208",
+    "tq_left-gown-209",
+    "tq_left-gown-210",
+    "tq_left-gown-211",
+    "tq_left-gown-212",
+    "tq_left-gown-213",
+    "tq_left-gown-214",
+    "tq_left-gown-215",
+    "tq_left-gown-216",
+    "tq_left-gown-217",
+    "tq_left-gown-218",
+    "tq_left-gown-219",
+    "tq_left-gown-220",
+    "tq_left-gown-221",
+    "tq_left-gown-222",
+    "tq_left-gown-223",
+    "tq_left-gown-224",
+    "tq_left-gown-225",
+    "tq_left-gown-226",
+    "tq_left-gown-227",
+    "tq_left-gown-228",
+    "tq_left-gown-229",
+    "tq_left-gown-230",
+    "tq_left-gown-231",
+    "tq_left-gown-232",
+    "tq_left-gown-233",
+    "tq_left-gown-234",
+    "tq_left-gown-235",
+    "tq_left-gown-236",
+    "tq_left-gown-237",
+    "tq_left-gown-238",
+    "tq_left-gown-239",
+    "tq_left-gown-240",
+    "tq_left-gown-241",
+    "tq_left-gown-242",
+    "tq_left-gown-243",
+    "tq_left-gown-244",
+    "tq_left-gown-245",
+    "tq_left-gown-246",
+    "tq_left-gown-247",
+    "tq_left-gown-248",
+    "tq_left-gown-249",
+    "tq_left-gown-250",
+    "tq_left-gown-251",
+    "tq_left-gown-252",
+    "tq_left-gown-253",
+    "tq_left-gown-254",
+    "tq_left-gown-255",
+    "tq_left-gown-256",
+    "tq_left-gown-257",
+    "tq_left-gown-258",
+    "tq_left-gown-259",
+    "tq_left-gown-260",
+    "tq_left-gown-261",
+    "tq_left-gown-262",
+    "tq_left-gown-263",
+    "tq_left-gown-264",
+    "tq_left-gown-265",
+    "tq_left-gown-266",
+    "tq_left-gown-267",
+    "tq_left-gown-268",
+    "tq_left-gown-269",
+    "tq_left-gown-270",
+    "tq_left-gown-271",
+    "tq_left-gown-272",
+    "tq_left-gown-273",
+    "tq_left-gown-274",
+    "tq_left-gown-275",
+    "tq_left-gown-276",
+    "tq_left-gown-277",
+    "tq_left-gown-278",
+    "tq_left-gown-279",
+    "tq_left-gown-280",
+    "tq_left-gown-281",
+    "tq_left-gown-282",
+    "tq_left-gown-283",
+    "tq_left-gown-284",
+    "tq_left-gown-285",
+    "tq_left-gown-286",
+    "tq_left-gown-287",
+    "tq_left-gown-288",
+    "tq_left-gown-289",
+    "tq_left-gown-290",
+    "tq_left-gown-291",
+    "tq_left-gown-292",
+    "tq_left-gown-293",
+    "tq_left-gown-294",
+    "tq_left-gown-295",
+    "tq_left-gown-296",
+    "tq_left-gown-297",
+    "tq_left-gown-298",
+    "tq_left-gown-299"
+   ],
+   "pivot": [
+    1968.0,
+    300.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 13
+  },
+  {
+   "name": "neck",
+   "bone": "torso",
+   "z": 50.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-neck-1",
+    "tq_left-neck-2",
+    "tq_left-neck-3",
+    "tq_left-neck-4",
+    "tq_left-neck-5",
+    "tq_left-neck-6",
+    "tq_left-neck-7",
+    "tq_left-neck-8",
+    "tq_left-neck-9",
+    "tq_left-neck-10",
+    "tq_left-neck-11",
+    "tq_left-neck-12",
+    "tq_left-neck-13",
+    "tq_left-neck-14",
+    "tq_left-neck-15",
+    "tq_left-neck-16",
+    "tq_left-neck-17",
+    "tq_left-neck-18",
+    "tq_left-neck-19",
+    "tq_left-neck-20",
+    "tq_left-neck-21",
+    "tq_left-neck-22",
+    "tq_left-neck-23",
+    "tq_left-neck-24",
+    "tq_left-neck-25",
+    "tq_left-neck-26"
+   ],
+   "pivot": [
+    1968.0,
+    300.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 14
+  },
+  {
+   "name": "head",
+   "bone": "head",
+   "z": 60.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-head-1",
+    "tq_left-head-2",
+    "tq_left-head-3",
+    "tq_left-head-4",
+    "tq_left-head-5",
+    "tq_left-head-6",
+    "tq_left-head-7",
+    "tq_left-head-8",
+    "tq_left-head-9",
+    "tq_left-head-10",
+    "tq_left-head-11",
+    "tq_left-head-12",
+    "tq_left-head-13",
+    "tq_left-head-14",
+    "tq_left-head-15",
+    "tq_left-head-16",
+    "tq_left-head-17",
+    "tq_left-head-18",
+    "tq_left-head-19",
+    "tq_left-head-20",
+    "tq_left-head-21",
+    "tq_left-head-22",
+    "tq_left-head-23",
+    "tq_left-head-24",
+    "tq_left-head-25",
+    "tq_left-head-26",
+    "tq_left-head-27",
+    "tq_left-head-28",
+    "tq_left-head-29",
+    "tq_left-head-30",
+    "tq_left-head-31",
+    "tq_left-head-32",
+    "tq_left-head-33",
+    "tq_left-head-34",
+    "tq_left-head-35",
+    "tq_left-head-36",
+    "tq_left-head-37",
+    "tq_left-head-38",
+    "tq_left-head-39",
+    "tq_left-head-40",
+    "tq_left-head-41",
+    "tq_left-head-42",
+    "tq_left-head-43",
+    "tq_left-head-44",
+    "tq_left-head-45",
+    "tq_left-head-46",
+    "tq_left-head-47",
+    "tq_left-head-48",
+    "tq_left-head-49",
+    "tq_left-head-50",
+    "tq_left-head-51",
+    "tq_left-head-52",
+    "tq_left-head-53",
+    "tq_left-head-54",
+    "tq_left-head-55",
+    "tq_left-head-56",
+    "tq_left-head-57",
+    "tq_left-head-58",
+    "tq_left-head-59",
+    "tq_left-head-60",
+    "tq_left-head-61",
+    "tq_left-head-62",
+    "tq_left-head-63",
+    "tq_left-head-64",
+    "tq_left-head-65",
+    "tq_left-head-66",
+    "tq_left-head-67",
+    "tq_left-head-68",
+    "tq_left-head-69",
+    "tq_left-head-70",
+    "tq_left-head-71"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 15
+  },
+  {
+   "name": "face_knowing",
+   "bone": "head",
+   "z": 61.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-face-knowing-1",
+    "tq_left-face-knowing-2",
+    "tq_left-face-knowing-3",
+    "tq_left-face-knowing-4",
+    "tq_left-face-knowing-5",
+    "tq_left-face-knowing-6",
+    "tq_left-face-knowing-7",
+    "tq_left-face-knowing-8",
+    "tq_left-face-knowing-9",
+    "tq_left-face-knowing-10",
+    "tq_left-face-knowing-11",
+    "tq_left-face-knowing-12",
+    "tq_left-face-knowing-13",
+    "tq_left-face-knowing-14",
+    "tq_left-face-knowing-15",
+    "tq_left-face-knowing-16",
+    "tq_left-face-knowing-17",
+    "tq_left-face-knowing-18",
+    "tq_left-face-knowing-19",
+    "tq_left-face-knowing-20",
+    "tq_left-face-knowing-21",
+    "tq_left-face-knowing-22",
+    "tq_left-face-knowing-23",
+    "tq_left-face-knowing-24",
+    "tq_left-face-knowing-25"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 16,
+   "opacity_channel": "face_knowing_vis",
+   "opacity_default": 1.0
+  },
+  {
+   "name": "face_pleased",
+   "bone": "head",
+   "z": 61.01,
+   "kind": "sprite",
+   "include": [
+    "tq_left-face-pleased-1",
+    "tq_left-face-pleased-2",
+    "tq_left-face-pleased-3",
+    "tq_left-face-pleased-4",
+    "tq_left-face-pleased-5",
+    "tq_left-face-pleased-6",
+    "tq_left-face-pleased-7",
+    "tq_left-face-pleased-8",
+    "tq_left-face-pleased-9",
+    "tq_left-face-pleased-10",
+    "tq_left-face-pleased-11",
+    "tq_left-face-pleased-12",
+    "tq_left-face-pleased-13",
+    "tq_left-face-pleased-14",
+    "tq_left-face-pleased-15",
+    "tq_left-face-pleased-16",
+    "tq_left-face-pleased-17",
+    "tq_left-face-pleased-18",
+    "tq_left-face-pleased-19",
+    "tq_left-face-pleased-20",
+    "tq_left-face-pleased-21",
+    "tq_left-face-pleased-22",
+    "tq_left-face-pleased-23",
+    "tq_left-face-pleased-24",
+    "tq_left-face-pleased-25",
+    "tq_left-face-pleased-26"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 17,
+   "opacity_channel": "face_pleased_vis"
+  },
+  {
+   "name": "face_delighted",
+   "bone": "head",
+   "z": 61.02,
+   "kind": "sprite",
+   "include": [
+    "tq_left-face-delighted-1",
+    "tq_left-face-delighted-2",
+    "tq_left-face-delighted-3",
+    "tq_left-face-delighted-4",
+    "tq_left-face-delighted-5",
+    "tq_left-face-delighted-6",
+    "tq_left-face-delighted-7",
+    "tq_left-face-delighted-8",
+    "tq_left-face-delighted-9",
+    "tq_left-face-delighted-10",
+    "tq_left-face-delighted-11",
+    "tq_left-face-delighted-12",
+    "tq_left-face-delighted-13",
+    "tq_left-face-delighted-14",
+    "tq_left-face-delighted-15",
+    "tq_left-face-delighted-16",
+    "tq_left-face-delighted-17"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 18,
+   "opacity_channel": "face_delighted_vis"
+  },
+  {
+   "name": "face_surprised",
+   "bone": "head",
+   "z": 61.03,
+   "kind": "sprite",
+   "include": [
+    "tq_left-face-surprised-1",
+    "tq_left-face-surprised-2",
+    "tq_left-face-surprised-3",
+    "tq_left-face-surprised-4",
+    "tq_left-face-surprised-5",
+    "tq_left-face-surprised-6",
+    "tq_left-face-surprised-7",
+    "tq_left-face-surprised-8",
+    "tq_left-face-surprised-9",
+    "tq_left-face-surprised-10",
+    "tq_left-face-surprised-11",
+    "tq_left-face-surprised-12",
+    "tq_left-face-surprised-13",
+    "tq_left-face-surprised-14",
+    "tq_left-face-surprised-15",
+    "tq_left-face-surprised-16",
+    "tq_left-face-surprised-17",
+    "tq_left-face-surprised-18",
+    "tq_left-face-surprised-19",
+    "tq_left-face-surprised-20",
+    "tq_left-face-surprised-21"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 19,
+   "opacity_channel": "face_surprised_vis"
+  },
+  {
+   "name": "face_thinking",
+   "bone": "head",
+   "z": 61.04,
+   "kind": "sprite",
+   "include": [
+    "tq_left-face-thinking-1",
+    "tq_left-face-thinking-2",
+    "tq_left-face-thinking-3",
+    "tq_left-face-thinking-4",
+    "tq_left-face-thinking-5",
+    "tq_left-face-thinking-6",
+    "tq_left-face-thinking-7",
+    "tq_left-face-thinking-8",
+    "tq_left-face-thinking-9",
+    "tq_left-face-thinking-10",
+    "tq_left-face-thinking-11",
+    "tq_left-face-thinking-12",
+    "tq_left-face-thinking-13",
+    "tq_left-face-thinking-14",
+    "tq_left-face-thinking-15",
+    "tq_left-face-thinking-16",
+    "tq_left-face-thinking-17",
+    "tq_left-face-thinking-18",
+    "tq_left-face-thinking-19",
+    "tq_left-face-thinking-20",
+    "tq_left-face-thinking-21",
+    "tq_left-face-thinking-22",
+    "tq_left-face-thinking-23",
+    "tq_left-face-thinking-24",
+    "tq_left-face-thinking-25"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 20,
+   "opacity_channel": "face_thinking_vis"
+  },
+  {
+   "name": "face_stern",
+   "bone": "head",
+   "z": 61.05,
+   "kind": "sprite",
+   "include": [
+    "tq_left-face-stern-1",
+    "tq_left-face-stern-2",
+    "tq_left-face-stern-3",
+    "tq_left-face-stern-4",
+    "tq_left-face-stern-5",
+    "tq_left-face-stern-6",
+    "tq_left-face-stern-7",
+    "tq_left-face-stern-8",
+    "tq_left-face-stern-9",
+    "tq_left-face-stern-10",
+    "tq_left-face-stern-11",
+    "tq_left-face-stern-12",
+    "tq_left-face-stern-13",
+    "tq_left-face-stern-14",
+    "tq_left-face-stern-15",
+    "tq_left-face-stern-16",
+    "tq_left-face-stern-17",
+    "tq_left-face-stern-18",
+    "tq_left-face-stern-19",
+    "tq_left-face-stern-20",
+    "tq_left-face-stern-21",
+    "tq_left-face-stern-22",
+    "tq_left-face-stern-23",
+    "tq_left-face-stern-24",
+    "tq_left-face-stern-25",
+    "tq_left-face-stern-26",
+    "tq_left-face-stern-27",
+    "tq_left-face-stern-28"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 21,
+   "opacity_channel": "face_stern_vis"
+  },
+  {
+   "name": "face_worried",
+   "bone": "head",
+   "z": 61.06,
+   "kind": "sprite",
+   "include": [
+    "tq_left-face-worried-1",
+    "tq_left-face-worried-2",
+    "tq_left-face-worried-3",
+    "tq_left-face-worried-4",
+    "tq_left-face-worried-5",
+    "tq_left-face-worried-6",
+    "tq_left-face-worried-7",
+    "tq_left-face-worried-8",
+    "tq_left-face-worried-9",
+    "tq_left-face-worried-10",
+    "tq_left-face-worried-11",
+    "tq_left-face-worried-12",
+    "tq_left-face-worried-13",
+    "tq_left-face-worried-14",
+    "tq_left-face-worried-15",
+    "tq_left-face-worried-16",
+    "tq_left-face-worried-17",
+    "tq_left-face-worried-18",
+    "tq_left-face-worried-19",
+    "tq_left-face-worried-20",
+    "tq_left-face-worried-21",
+    "tq_left-face-worried-22",
+    "tq_left-face-worried-23",
+    "tq_left-face-worried-24",
+    "tq_left-face-worried-25",
+    "tq_left-face-worried-26"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 22,
+   "opacity_channel": "face_worried_vis"
+  },
+  {
+   "name": "face_hurt",
+   "bone": "head",
+   "z": 61.07,
+   "kind": "sprite",
+   "include": [
+    "tq_left-face-hurt-1",
+    "tq_left-face-hurt-2",
+    "tq_left-face-hurt-3",
+    "tq_left-face-hurt-4",
+    "tq_left-face-hurt-5",
+    "tq_left-face-hurt-6",
+    "tq_left-face-hurt-7",
+    "tq_left-face-hurt-8",
+    "tq_left-face-hurt-9",
+    "tq_left-face-hurt-10",
+    "tq_left-face-hurt-11",
+    "tq_left-face-hurt-12",
+    "tq_left-face-hurt-13",
+    "tq_left-face-hurt-14",
+    "tq_left-face-hurt-15",
+    "tq_left-face-hurt-16",
+    "tq_left-face-hurt-17",
+    "tq_left-face-hurt-18",
+    "tq_left-face-hurt-19",
+    "tq_left-face-hurt-20",
+    "tq_left-face-hurt-21",
+    "tq_left-face-hurt-22",
+    "tq_left-face-hurt-23",
+    "tq_left-face-hurt-24",
+    "tq_left-face-hurt-25",
+    "tq_left-face-hurt-26"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 23,
+   "opacity_channel": "face_hurt_vis"
+  },
+  {
+   "name": "blink",
+   "bone": "head",
+   "z": 61.5,
+   "kind": "sprite",
+   "include": [
+    "tq_left-blink-1",
+    "tq_left-blink-2",
+    "tq_left-blink-3",
+    "tq_left-blink-4"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 24,
+   "opacity_channel": "blink_vis"
+  },
+  {
+   "name": "talk_mouth",
+   "bone": "head",
+   "z": 61.6,
+   "kind": "sprite",
+   "include": [
+    "tq_left-talk-mouth-1",
+    "tq_left-talk-mouth-2",
+    "tq_left-talk-mouth-3",
+    "tq_left-talk-mouth-4"
+   ],
+   "pivot": [
+    1968.0,
+    246.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 25,
+   "opacity_channel": "talk_vis"
+  },
+  {
+   "name": "near_arm_l",
+   "bone": "near_arm_l",
+   "z": 77.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-near-arm-lower-1",
+    "tq_left-near-arm-lower-2",
+    "tq_left-near-arm-lower-3",
+    "tq_left-near-arm-lower-4",
+    "tq_left-near-arm-lower-5",
+    "tq_left-near-arm-lower-6",
+    "tq_left-near-arm-lower-7",
+    "tq_left-near-arm-lower-8",
+    "tq_left-near-arm-lower-9",
+    "tq_left-near-arm-lower-10",
+    "tq_left-near-arm-lower-11",
+    "tq_left-near-arm-lower-12",
+    "tq_left-near-arm-lower-13",
+    "tq_left-near-arm-lower-14"
+   ],
+   "pivot": [
+    1927.0,
+    312.0
+   ],
+   "rest_angle": 86.0995,
+   "svg_source_order": 26
+  },
+  {
+   "name": "near_arm_u",
+   "bone": "near_arm_u",
+   "z": 78.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-near-arm-upper-1",
+    "tq_left-near-arm-upper-2",
+    "tq_left-near-arm-upper-3",
+    "tq_left-near-arm-upper-4",
+    "tq_left-near-arm-upper-5",
+    "tq_left-near-arm-upper-6",
+    "tq_left-near-arm-upper-7",
+    "tq_left-near-arm-upper-8",
+    "tq_left-near-arm-upper-9",
+    "tq_left-near-arm-upper-10",
+    "tq_left-near-arm-upper-11",
+    "tq_left-near-arm-upper-12",
+    "tq_left-near-arm-upper-13",
+    "tq_left-near-arm-upper-14",
+    "tq_left-near-arm-upper-15",
+    "tq_left-near-arm-upper-16",
+    "tq_left-near-arm-upper-17",
+    "tq_left-near-arm-upper-18",
+    "tq_left-near-arm-upper-19",
+    "tq_left-near-arm-upper-20",
+    "tq_left-near-arm-upper-21",
+    "tq_left-near-arm-upper-22",
+    "tq_left-near-arm-upper-23",
+    "tq_left-near-arm-upper-24",
+    "tq_left-near-arm-upper-25",
+    "tq_left-near-arm-upper-26",
+    "tq_left-near-arm-upper-27",
+    "tq_left-near-arm-upper-28",
+    "tq_left-near-arm-upper-29",
+    "tq_left-near-arm-upper-30",
+    "tq_left-near-arm-upper-31",
+    "tq_left-near-arm-upper-32",
+    "tq_left-near-arm-upper-33",
+    "tq_left-near-arm-upper-34",
+    "tq_left-near-arm-upper-35",
+    "tq_left-near-arm-upper-36",
+    "tq_left-near-arm-upper-37",
+    "tq_left-near-arm-upper-38",
+    "tq_left-near-arm-upper-39",
+    "tq_left-near-arm-upper-40",
+    "tq_left-near-arm-upper-41",
+    "tq_left-near-arm-upper-42",
+    "tq_left-near-arm-upper-43",
+    "tq_left-near-arm-upper-44",
+    "tq_left-near-arm-upper-45",
+    "tq_left-near-arm-upper-46",
+    "tq_left-near-arm-upper-47",
+    "tq_left-near-arm-upper-48",
+    "tq_left-near-arm-upper-49",
+    "tq_left-near-arm-upper-50",
+    "tq_left-near-arm-upper-51",
+    "tq_left-near-arm-upper-52",
+    "tq_left-near-arm-upper-53",
+    "tq_left-near-arm-upper-54",
+    "tq_left-near-arm-upper-55",
+    "tq_left-near-arm-upper-56",
+    "tq_left-near-arm-upper-57",
+    "tq_left-near-arm-upper-58",
+    "tq_left-near-arm-upper-59",
+    "tq_left-near-arm-upper-60",
+    "tq_left-near-arm-upper-61",
+    "tq_left-near-arm-upper-62",
+    "tq_left-near-arm-upper-63",
+    "tq_left-near-arm-upper-64",
+    "tq_left-near-arm-upper-65",
+    "tq_left-near-arm-upper-66",
+    "tq_left-near-arm-upper-67"
+   ],
+   "pivot": [
+    1934.0,
+    264.0
+   ],
+   "rest_angle": 98.2971,
+   "svg_source_order": 27
+  },
+  {
+   "name": "near_hand",
+   "bone": "near_arm_hand",
+   "z": 82.0,
+   "kind": "sprite",
+   "include": [
+    "tq_left-near-hand-1",
+    "tq_left-near-hand-2",
+    "tq_left-near-hand-3",
+    "tq_left-near-hand-4",
+    "tq_left-near-hand-5",
+    "tq_left-near-hand-6",
+    "tq_left-near-hand-7",
+    "tq_left-near-hand-8",
+    "tq_left-near-hand-9",
+    "tq_left-near-hand-10",
+    "tq_left-near-hand-11",
+    "tq_left-near-hand-12",
+    "tq_left-near-hand-13",
+    "tq_left-near-hand-14",
+    "tq_left-near-hand-15",
+    "tq_left-near-hand-16",
+    "tq_left-near-hand-17",
+    "tq_left-near-hand-18",
+    "tq_left-near-hand-19",
+    "tq_left-near-hand-20",
+    "tq_left-near-hand-21",
+    "tq_left-near-hand-22",
+    "tq_left-near-hand-23",
+    "tq_left-near-hand-24",
+    "tq_left-near-hand-25",
+    "tq_left-near-hand-26",
+    "tq_left-near-hand-27",
+    "tq_left-near-hand-28",
+    "tq_left-near-hand-29",
+    "tq_left-near-hand-30",
+    "tq_left-near-hand-31",
+    "tq_left-near-hand-32",
+    "tq_left-near-hand-33",
+    "tq_left-near-hand-34",
+    "tq_left-near-hand-35",
+    "tq_left-near-hand-36",
+    "tq_left-near-hand-37",
+    "tq_left-near-hand-38",
+    "tq_left-near-hand-39",
+    "tq_left-near-hand-40"
+   ],
+   "pivot": [
+    1930.0,
+    356.0
+   ],
+   "rest_angle": 86.1215,
+   "svg_source_order": 28
+  }
+ ],
+ "ik_legs": [
+  {
+   "upper": "near_leg_u",
+   "lower": "near_leg_l",
+   "foot": "near_leg_foot",
+   "channel_prefix": "near_foot",
+   "rest_x": -4.9583,
+   "rest_lift": -0.2917,
+   "rest_pitch": 40.6013,
+   "bend": 1.0
+  },
+  {
+   "upper": "far_leg_u",
+   "lower": "far_leg_l",
+   "foot": "far_leg_foot",
+   "channel_prefix": "far_foot",
+   "rest_x": 3.7917,
+   "rest_lift": 0.2917,
+   "rest_pitch": 40.6013,
+   "bend": 1.0
+  }
+ ],
+ "ik_chains": [
+  {
+   "upper": "near_arm_u",
+   "lower": "near_arm_l",
+   "end": "near_arm_hand",
+   "channel_prefix": "near_hand",
+   "rest_x": -10.7917,
+   "rest_y": -42.5833,
+   "rest_pitch": 86.1215,
+   "pitch_mode": "world",
+   "bend": -1.0,
+   "pose_authority": "svg-layout"
+  },
+  {
+   "upper": "far_arm_u",
+   "lower": "far_arm_l",
+   "end": "far_arm_hand",
+   "channel_prefix": "far_hand",
+   "rest_x": 9.9167,
+   "rest_y": -43.75,
+   "rest_pitch": 85.156,
+   "pitch_mode": "world",
+   "bend": 1.0,
+   "pose_authority": "svg-layout"
+  }
+ ],
+ "clips": {
+  "idle": {
+   "loop": true,
+   "frames": 8,
+   "duration_ms": 120,
+   "channels": {
+    "root_y": {
+     "expr": "-0.55*sin(tau*t)"
+    },
+    "torso": {
+     "expr": "0.7*sin(tau*t)"
+    },
+    "head": {
+     "expr": "-0.5*sin(tau*t)"
+    },
+    "near_hand_x": {
+     "expr": "-3.2084 - 0.4*sin(tau*t)"
+    },
+    "near_hand_y": {
+     "expr": "-50.1666 + 0.4*sin(tau*t)"
+    },
+    "near_hand_pitch": {
+     "const": 36.1215
+    },
+    "far_hand_x": {
+     "expr": "9.9167 + 0.5*sin(tau*t)"
+    },
+    "far_hand_y": {
+     "expr": "-43.7500 - 0.35*sin(tau*t)"
+    },
+    "far_hand_pitch": {
+     "const": 85.156
+    },
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 1.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "interact": {
+   "loop": false,
+   "frames": 6,
+   "duration_ms": 105,
+   "channels": {
+    "root_y": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.166667,
+       0.5,
+       "smooth"
+      ],
+      [
+       0.333333,
+       0.9,
+       "smooth"
+      ],
+      [
+       0.5,
+       0.7,
+       "smooth"
+      ],
+      [
+       0.666667,
+       0.3,
+       "smooth"
+      ],
+      [
+       0.833333,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "torso": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.166667,
+       1.0,
+       "smooth"
+      ],
+      [
+       0.333333,
+       2.2,
+       "smooth"
+      ],
+      [
+       0.5,
+       1.3,
+       "smooth"
+      ],
+      [
+       0.666667,
+       2.0,
+       "smooth"
+      ],
+      [
+       0.833333,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.166667,
+       -1.0,
+       "smooth"
+      ],
+      [
+       0.333333,
+       -2.1,
+       "smooth"
+      ],
+      [
+       0.5,
+       -1.5,
+       "smooth"
+      ],
+      [
+       0.666667,
+       -2.0,
+       "smooth"
+      ],
+      [
+       0.833333,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -10.7917,
+       "smooth"
+      ],
+      [
+       0.166667,
+       -8.8229,
+       "smooth"
+      ],
+      [
+       0.333333,
+       -6.4167,
+       "smooth"
+      ],
+      [
+       0.5,
+       -7.2917,
+       "smooth"
+      ],
+      [
+       0.666667,
+       -6.4167,
+       "smooth"
+      ],
+      [
+       0.833333,
+       -10.7917,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -42.5833,
+       "smooth"
+      ],
+      [
+       0.166667,
+       -40.8333,
+       "smooth"
+      ],
+      [
+       0.333333,
+       -38.2083,
+       "smooth"
+      ],
+      [
+       0.5,
+       -39.0833,
+       "smooth"
+      ],
+      [
+       0.666667,
+       -38.2083,
+       "smooth"
+      ],
+      [
+       0.833333,
+       -42.5833,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       86.1215,
+       "smooth"
+      ],
+      [
+       0.166667,
+       90.1215,
+       "smooth"
+      ],
+      [
+       0.333333,
+       99.1215,
+       "smooth"
+      ],
+      [
+       0.5,
+       79.1215,
+       "smooth"
+      ],
+      [
+       0.666667,
+       98.1215,
+       "smooth"
+      ],
+      [
+       0.833333,
+       86.1215,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_x": {
+     "keys": [
+      [
+       0.0,
+       9.9167,
+       "smooth"
+      ],
+      [
+       0.166667,
+       11.9584,
+       "smooth"
+      ],
+      [
+       0.333333,
+       11.9584,
+       "smooth"
+      ],
+      [
+       0.5,
+       11.9584,
+       "smooth"
+      ],
+      [
+       0.666667,
+       9.9167,
+       "smooth"
+      ],
+      [
+       0.833333,
+       9.9167,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -43.75,
+       "smooth"
+      ],
+      [
+       0.166667,
+       -43.4583,
+       "smooth"
+      ],
+      [
+       0.333333,
+       -43.4583,
+       "smooth"
+      ],
+      [
+       0.5,
+       -43.75,
+       "smooth"
+      ],
+      [
+       0.666667,
+       -43.75,
+       "smooth"
+      ],
+      [
+       0.833333,
+       -43.75,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_pitch": {
+     "const": 85.156
+    },
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 1.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_knowing": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 1.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_pleased": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 1.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_delighted": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 1.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_surprised": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 1.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_thinking": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 1.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_stern": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_worried": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 1.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_hurt": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 1.0
+    }
+   }
+  }
+ },
+ "sprite_tuning": {
+  "collision_scale": 1.72,
+  "part_order": "attribute"
+ }
+}

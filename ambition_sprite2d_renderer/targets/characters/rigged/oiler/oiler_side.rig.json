@@ -5,15 +5,15 @@
   "height": 128,
   "center_x": 64.0,
   "ground_y": 118.0,
-  "ankle_h": 7.2188,
-  "supersample": 4,
+  "ankle_h": 5.4942,
+  "supersample": 2,
   "render_scale": 2
  },
  "svg_source": {
   "path": "../../../../data/characters/oiler/oiler-multiview.svg",
   "view": "Oiler - Side Right",
   "ref_dpi": 25.4,
-  "scale": 0.328125
+  "scale": 0.30523256
  },
  "palette": {},
  "bones": [
@@ -22,7 +22,7 @@
    "parent": null,
    "offset": [
     0.0,
-    -48.0703
+    -47.0058
    ],
    "length": 0.0,
    "rest_angle": 0.0
@@ -31,8 +31,8 @@
    "name": "torso",
    "parent": "pelvis",
    "offset": [
-    -0.1641,
-    -5.0859
+    0.0,
+    -14.6512
    ],
    "length": 0.0,
    "rest_angle": 0.0
@@ -41,8 +41,8 @@
    "name": "head",
    "parent": "torso",
    "offset": [
-    -1.9688,
-    -24.6094
+    2.7471,
+    -17.093
    ],
    "length": 0.0,
    "rest_angle": 0.0
@@ -51,219 +51,323 @@
    "name": "far_arm_u",
    "parent": "torso",
    "offset": [
-    -3.6094,
-    -16.7344
+    -2.4419,
+    -11.5988
    ],
-   "length": 13.7068,
-   "rest_angle": 101.0409
+   "length": 15.9774,
+   "rest_angle": 96.5819
   },
   {
    "name": "far_arm_l",
    "parent": "far_arm_u",
    "offset": [
-    13.7068,
-    -0.0
+    15.9774,
+    0.0
    ],
-   "length": 12.6658,
-   "rest_angle": -27.598
+   "length": 13.1781,
+   "rest_angle": -19.9744
   },
   {
    "name": "far_arm_hand",
    "parent": "far_arm_l",
    "offset": [
-    12.6658,
-    -0.0
+    13.1781,
+    0.0
    ],
-   "length": 4.5703,
-   "rest_angle": -4.4804
+   "length": 9.2544,
+   "rest_angle": 0.0438
   },
   {
    "name": "far_leg_u",
    "parent": "pelvis",
    "offset": [
-    -1.1484,
-    -0.1641
+    -2.4419,
+    0.0
    ],
-   "length": 19.9078,
-   "rest_angle": 98.5308
+   "length": 20.7648,
+   "rest_angle": 91.6847
   },
   {
    "name": "far_leg_l",
    "parent": "far_leg_u",
    "offset": [
-    19.9078,
+    20.7648,
     -0.0
    ],
-   "length": 21.4188,
-   "rest_angle": -13.8047
+   "length": 20.899,
+   "rest_angle": 5.0252
   },
   {
    "name": "far_leg_foot",
    "parent": "far_leg_l",
    "offset": [
-    21.4188,
-    0.0
+    20.899,
+    -0.0
    ],
-   "length": 7.9295,
-   "rest_angle": -60.2821
+   "length": 8.1902,
+   "rest_angle": -70.1448
   },
   {
    "name": "near_arm_u",
    "parent": "torso",
    "offset": [
-    -0.9844,
-    -16.7344
+    0.6105,
+    -11.5988
    ],
-   "length": 13.4531,
-   "rest_angle": 102.6804
+   "length": 15.9774,
+   "rest_angle": 96.5819
   },
   {
    "name": "near_arm_l",
    "parent": "near_arm_u",
    "offset": [
-    13.4531,
-    -0.0
+    15.9774,
+    0.0
    ],
-   "length": 13.0757,
-   "rest_angle": -30.206
+   "length": 12.9355,
+   "rest_angle": -25.872
   },
   {
    "name": "near_arm_hand",
    "parent": "near_arm_l",
    "offset": [
-    13.0757,
+    12.9355,
     0.0
    ],
-   "length": 4.5703,
-   "rest_angle": -3.5119
+   "length": 9.1697,
+   "rest_angle": 0.8551
   },
   {
    "name": "near_leg_u",
    "parent": "pelvis",
    "offset": [
-    1.1484,
-    0.1641
+    2.4419,
+    0.0
    ],
-   "length": 19.312,
-   "rest_angle": 80.2176
+   "length": 20.8365,
+   "rest_angle": 84.9575
   },
   {
    "name": "near_leg_l",
    "parent": "near_leg_u",
    "offset": [
-    19.312,
+    20.8365,
     -0.0
    ],
-   "length": 21.7777,
-   "rest_angle": 15.8366
+   "length": 20.8118,
+   "rest_angle": 9.2478
   },
   {
    "name": "near_leg_foot",
    "parent": "near_leg_l",
    "offset": [
-    21.7777,
+    20.8118,
     0.0
    ],
-   "length": 7.9295,
-   "rest_angle": -71.6102
+   "length": 8.1902,
+   "rest_angle": -67.6403
   }
  ],
  "parts": [
   {
-   "name": "far_leg_u",
-   "bone": "far_leg_u",
-   "z": 5.0,
-   "kind": "sprite",
-   "include": [
-    "side-far-thigh-outline",
-    "side-far-thigh"
-   ],
-   "pivot": [
-    797.0,
-    220.0
-   ],
-   "rest_angle": 98.5308,
-   "svg_source_order": 3
-  },
-  {
-   "name": "far_leg_l",
-   "bone": "far_leg_l",
+   "name": "far_arm_l",
+   "bone": "far_arm_l",
    "z": 6.0,
    "kind": "sprite",
    "include": [
-    "side-far-shin-outline",
-    "side-far-shin"
+    "side-far-arm-lower-1",
+    "side-far-arm-lower-2",
+    "side-far-arm-lower-3",
+    "side-far-arm-lower-4",
+    "side-far-arm-lower-5",
+    "side-far-arm-lower-6",
+    "side-far-arm-lower-7",
+    "side-far-arm-lower-8",
+    "side-far-arm-lower-9",
+    "side-far-arm-lower-10"
    ],
    "pivot": [
-    788.0,
-    280.0
+    1376.0,
+    314.0
    ],
-   "rest_angle": 84.7261,
-   "svg_source_order": 4
-  },
-  {
-   "name": "far_leg_foot",
-   "bone": "far_leg_foot",
-   "z": 7.0,
-   "kind": "sprite",
-   "include": [
-    "side-far-boot-outline",
-    "side-far-boot"
-   ],
-   "pivot": [
-    794.0,
-    345.0
-   ],
-   "rest_angle": 24.444,
-   "svg_source_order": 5
+   "rest_angle": 76.6075,
+   "svg_source_order": 0
   },
   {
    "name": "far_arm_u",
    "bone": "far_arm_u",
-   "z": 8.0,
+   "z": 7.0,
    "kind": "sprite",
    "include": [
-    "side-far-upperarm-outline",
-    "side-far-upperarm",
-    "side-far-sleeve-band"
+    "side-far-arm-upper-1",
+    "side-far-arm-upper-2",
+    "side-far-arm-upper-3",
+    "side-far-arm-upper-4",
+    "side-far-arm-upper-5",
+    "side-far-arm-upper-6",
+    "side-far-arm-upper-7",
+    "side-far-arm-upper-8",
+    "side-far-arm-upper-9",
+    "side-far-arm-upper-10"
    ],
    "pivot": [
-    789.0,
-    154.0
+    1382.0,
+    262.0
    ],
-   "rest_angle": 101.0409,
-   "svg_source_order": 0
-  },
-  {
-   "name": "far_arm_l",
-   "bone": "far_arm_l",
-   "z": 9.0,
-   "kind": "sprite",
-   "include": [
-    "side-far-forearm-outline",
-    "side-far-forearm"
-   ],
-   "pivot": [
-    781.0,
-    195.0
-   ],
-   "rest_angle": 73.4429,
+   "rest_angle": 96.5819,
    "svg_source_order": 1
   },
   {
    "name": "far_hand",
    "bone": "far_arm_hand",
+   "z": 8.0,
+   "kind": "sprite",
+   "include": [
+    "side-far-hand-1",
+    "side-far-hand-2",
+    "side-far-hand-3",
+    "side-far-hand-4",
+    "side-far-hand-5",
+    "side-far-hand-6",
+    "side-far-hand-7",
+    "side-far-hand-8",
+    "side-far-hand-9",
+    "side-far-hand-10",
+    "side-far-hand-11",
+    "side-far-hand-12",
+    "side-far-hand-13",
+    "side-far-hand-14",
+    "side-far-hand-15",
+    "side-far-hand-16",
+    "side-far-hand-17",
+    "side-far-hand-18",
+    "side-far-hand-19",
+    "side-far-hand-20",
+    "side-far-hand-21",
+    "side-far-hand-22",
+    "side-far-hand-23",
+    "side-far-hand-24",
+    "side-far-hand-25",
+    "side-far-hand-26",
+    "side-far-hand-27",
+    "side-far-hand-28",
+    "side-far-hand-29",
+    "side-far-hand-30",
+    "side-far-hand-31",
+    "side-far-hand-32",
+    "side-far-hand-33",
+    "side-far-hand-34",
+    "side-far-hand-35",
+    "side-far-hand-36",
+    "side-far-hand-37"
+   ],
+   "pivot": [
+    1386.0,
+    356.0
+   ],
+   "rest_angle": 76.6513,
+   "svg_source_order": 2
+  },
+  {
+   "name": "far_skirt",
+   "bone": "far_leg_u",
+   "z": 9.0,
+   "kind": "sprite",
+   "include": [
+    "side-far-skirt-1",
+    "side-far-skirt-2",
+    "side-far-skirt-3",
+    "side-far-skirt-4",
+    "side-far-skirt-5"
+   ],
+   "pivot": [
+    1382.0,
+    348.0
+   ],
+   "rest_angle": 91.6847,
+   "svg_source_order": 3
+  },
+  {
+   "name": "far_leg_u",
+   "bone": "far_leg_u",
    "z": 10.0,
    "kind": "sprite",
    "include": [
-    "side-far-hand-shape"
+    "side-far-thigh-1",
+    "side-far-thigh-2",
+    "side-far-thigh-3",
+    "side-far-thigh-4",
+    "side-far-thigh-5"
    ],
    "pivot": [
-    792.0,
-    232.0
+    1382.0,
+    348.0
    ],
-   "rest_angle": 68.9625,
-   "svg_source_order": 2
+   "rest_angle": 91.6847,
+   "svg_source_order": 4
+  },
+  {
+   "name": "far_leg_l",
+   "bone": "far_leg_l",
+   "z": 11.0,
+   "kind": "sprite",
+   "include": [
+    "side-far-shin-1",
+    "side-far-shin-2",
+    "side-far-shin-3",
+    "side-far-shin-4",
+    "side-far-shin-5",
+    "side-far-shin-6",
+    "side-far-shin-7",
+    "side-far-shin-8",
+    "side-far-shin-9",
+    "side-far-shin-10"
+   ],
+   "pivot": [
+    1380.0,
+    416.0
+   ],
+   "rest_angle": 96.7098,
+   "svg_source_order": 5
+  },
+  {
+   "name": "far_leg_foot",
+   "bone": "far_leg_foot",
+   "z": 12.0,
+   "kind": "sprite",
+   "include": [
+    "side-far-foot-1",
+    "side-far-foot-2",
+    "side-far-foot-3",
+    "side-far-foot-4",
+    "side-far-foot-5"
+   ],
+   "pivot": [
+    1372.0,
+    484.0
+   ],
+   "rest_angle": 26.5651,
+   "svg_source_order": 6
+  },
+  {
+   "name": "pelvis_yoke",
+   "bone": "pelvis",
+   "z": 19.0,
+   "kind": "sprite",
+   "include": [
+    "side-pelvis-1",
+    "side-pelvis-2",
+    "side-pelvis-3",
+    "side-pelvis-4",
+    "side-pelvis-5",
+    "side-pelvis-6"
+   ],
+   "pivot": [
+    1390.0,
+    348.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 7
   },
   {
    "name": "near_leg_u",
@@ -271,207 +375,959 @@
    "z": 20.0,
    "kind": "sprite",
    "include": [
-    "side-near-thigh-outline",
-    "side-near-thigh"
+    "side-near-thigh-1",
+    "side-near-thigh-2",
+    "side-near-thigh-3",
+    "side-near-thigh-4",
+    "side-near-thigh-5",
+    "side-near-thigh-6"
    ],
    "pivot": [
-    804.0,
-    221.0
+    1398.0,
+    348.0
    ],
-   "rest_angle": 80.2176,
-   "svg_source_order": 6
+   "rest_angle": 84.9575,
+   "svg_source_order": 8
   },
   {
-   "name": "pelvis_yoke",
-   "bone": "pelvis",
+   "name": "near_leg_l",
+   "bone": "near_leg_l",
    "z": 21.0,
    "kind": "sprite",
    "include": [
-    "side-pelvis-yoke",
-    "side-pelvis-fly",
-    "side-pelvis-seam"
+    "side-near-shin-1",
+    "side-near-shin-2",
+    "side-near-shin-3",
+    "side-near-shin-4",
+    "side-near-shin-5",
+    "side-near-shin-6",
+    "side-near-shin-7",
+    "side-near-shin-8",
+    "side-near-shin-9",
+    "side-near-shin-10",
+    "side-near-shin-11",
+    "side-near-shin-12",
+    "side-near-shin-13"
    ],
    "pivot": [
-    800.5,
-    220.5
+    1404.0,
+    416.0
    ],
-   "rest_angle": 0.0,
+   "rest_angle": 94.2054,
    "svg_source_order": 9
   },
   {
-   "name": "torso",
-   "bone": "torso",
+   "name": "near_leg_foot",
+   "bone": "near_leg_foot",
    "z": 22.0,
    "kind": "sprite",
    "include": [
-    "side-coat-body",
-    "side-neckcloth",
-    "side-cravat-knot",
-    "side-cravat-tail",
-    "side-dark-lapel",
-    "side-dark-lapel-far",
-    "side-lapel-edge",
-    "side-coat-band",
-    "side-coat-panel",
-    "side-belt",
-    "side-belt-brass"
+    "side-near-foot-1",
+    "side-near-foot-2",
+    "side-near-foot-3",
+    "side-near-foot-4",
+    "side-near-foot-5",
+    "side-near-foot-6",
+    "side-near-foot-7"
    ],
    "pivot": [
-    800.0,
-    205.0
+    1399.0,
+    484.0
    ],
-   "rest_angle": 0.0,
+   "rest_angle": 26.5651,
    "svg_source_order": 10
   },
   {
-   "name": "apron",
+   "name": "vest",
    "bone": "torso",
-   "z": 24.0,
+   "z": 30.0,
    "kind": "sprite",
    "include": [
-    "side-waist-apron",
-    "side-apron-pocket",
-    "side-apron-pocket-flap",
-    "side-apron-pocket-gusset",
-    "side-apron-belt-loop"
+    "side-vest-1",
+    "side-vest-2",
+    "side-vest-3",
+    "side-vest-4",
+    "side-vest-5",
+    "side-vest-6",
+    "side-vest-7",
+    "side-vest-8",
+    "side-vest-9",
+    "side-vest-10",
+    "side-vest-11",
+    "side-vest-12",
+    "side-vest-13",
+    "side-vest-14",
+    "side-vest-15",
+    "side-vest-16",
+    "side-vest-17"
    ],
    "pivot": [
-    800.0,
-    205.0
+    1390.0,
+    300.0
    ],
    "rest_angle": 0.0,
    "svg_source_order": 11
   },
   {
-   "name": "head",
-   "bone": "head",
-   "z": 30.0,
+   "name": "gown",
+   "bone": "torso",
+   "z": 36.0,
    "kind": "sprite",
    "include": [
-    "side-cap-tail-back",
-    "side-cap-hanging-tail",
-    "side-nape-hair-outline",
-    "side-nape-hair",
-    "side-head",
-    "side-ear",
-    "side-ear-inner",
-    "side-cap-crown",
-    "side-cap-dark-fold",
-    "side-cap-front-fold",
-    "side-cap-fold-line",
-    "side-brow",
-    "side-eye",
-    "side-under-eye",
-    "side-nostril",
-    "side-philtrum",
-    "side-mouth-closed",
-    "side-lower-lip",
-    "side-chin",
-    "side-cheek"
+    "side-gown-1",
+    "side-gown-2",
+    "side-gown-3",
+    "side-gown-4",
+    "side-gown-5",
+    "side-gown-6",
+    "side-gown-7",
+    "side-gown-8",
+    "side-gown-9",
+    "side-gown-10",
+    "side-gown-11",
+    "side-gown-12",
+    "side-gown-13",
+    "side-gown-14",
+    "side-gown-15",
+    "side-gown-16",
+    "side-gown-17",
+    "side-gown-18",
+    "side-gown-19",
+    "side-gown-20",
+    "side-gown-21",
+    "side-gown-22",
+    "side-gown-23",
+    "side-gown-24",
+    "side-gown-25",
+    "side-gown-26",
+    "side-gown-27",
+    "side-gown-28",
+    "side-gown-29",
+    "side-gown-30",
+    "side-gown-31",
+    "side-gown-32",
+    "side-gown-33",
+    "side-gown-34",
+    "side-gown-35",
+    "side-gown-36",
+    "side-gown-37",
+    "side-gown-38",
+    "side-gown-39",
+    "side-gown-40",
+    "side-gown-41",
+    "side-gown-42",
+    "side-gown-43",
+    "side-gown-44",
+    "side-gown-45",
+    "side-gown-46",
+    "side-gown-47",
+    "side-gown-48",
+    "side-gown-49",
+    "side-gown-50",
+    "side-gown-51",
+    "side-gown-52",
+    "side-gown-53",
+    "side-gown-54",
+    "side-gown-55",
+    "side-gown-56",
+    "side-gown-57",
+    "side-gown-58",
+    "side-gown-59",
+    "side-gown-60",
+    "side-gown-61",
+    "side-gown-62",
+    "side-gown-63",
+    "side-gown-64",
+    "side-gown-65",
+    "side-gown-66",
+    "side-gown-67",
+    "side-gown-68",
+    "side-gown-69",
+    "side-gown-70",
+    "side-gown-71",
+    "side-gown-72",
+    "side-gown-73",
+    "side-gown-74",
+    "side-gown-75",
+    "side-gown-76",
+    "side-gown-77",
+    "side-gown-78",
+    "side-gown-79",
+    "side-gown-80",
+    "side-gown-81",
+    "side-gown-82",
+    "side-gown-83",
+    "side-gown-84",
+    "side-gown-85",
+    "side-gown-86",
+    "side-gown-87",
+    "side-gown-88",
+    "side-gown-89",
+    "side-gown-90",
+    "side-gown-91",
+    "side-gown-92",
+    "side-gown-93",
+    "side-gown-94",
+    "side-gown-95",
+    "side-gown-96",
+    "side-gown-97",
+    "side-gown-98",
+    "side-gown-99",
+    "side-gown-100",
+    "side-gown-101",
+    "side-gown-102",
+    "side-gown-103",
+    "side-gown-104",
+    "side-gown-105",
+    "side-gown-106",
+    "side-gown-107",
+    "side-gown-108",
+    "side-gown-109",
+    "side-gown-110",
+    "side-gown-111",
+    "side-gown-112",
+    "side-gown-113",
+    "side-gown-114",
+    "side-gown-115",
+    "side-gown-116"
    ],
    "pivot": [
-    794.0,
-    130.0
+    1390.0,
+    300.0
    ],
    "rest_angle": 0.0,
    "svg_source_order": 12
   },
   {
-   "name": "blink",
-   "bone": "head",
-   "z": 34.0,
+   "name": "near_skirt",
+   "bone": "near_leg_u",
+   "z": 40.0,
    "kind": "sprite",
    "include": [
-    "side-blink"
+    "side-near-skirt-1",
+    "side-near-skirt-2",
+    "side-near-skirt-3",
+    "side-near-skirt-4",
+    "side-near-skirt-5",
+    "side-near-skirt-6",
+    "side-near-skirt-7",
+    "side-near-skirt-8",
+    "side-near-skirt-9",
+    "side-near-skirt-10",
+    "side-near-skirt-11",
+    "side-near-skirt-12",
+    "side-near-skirt-13",
+    "side-near-skirt-14",
+    "side-near-skirt-15",
+    "side-near-skirt-16",
+    "side-near-skirt-17",
+    "side-near-skirt-18",
+    "side-near-skirt-19",
+    "side-near-skirt-20",
+    "side-near-skirt-21",
+    "side-near-skirt-22",
+    "side-near-skirt-23",
+    "side-near-skirt-24",
+    "side-near-skirt-25",
+    "side-near-skirt-26",
+    "side-near-skirt-27",
+    "side-near-skirt-28",
+    "side-near-skirt-29",
+    "side-near-skirt-30",
+    "side-near-skirt-31",
+    "side-near-skirt-32",
+    "side-near-skirt-33",
+    "side-near-skirt-34",
+    "side-near-skirt-35",
+    "side-near-skirt-36",
+    "side-near-skirt-37",
+    "side-near-skirt-38",
+    "side-near-skirt-39",
+    "side-near-skirt-40",
+    "side-near-skirt-41",
+    "side-near-skirt-42",
+    "side-near-skirt-43",
+    "side-near-skirt-44",
+    "side-near-skirt-45",
+    "side-near-skirt-46",
+    "side-near-skirt-47",
+    "side-near-skirt-48",
+    "side-near-skirt-49",
+    "side-near-skirt-50",
+    "side-near-skirt-51",
+    "side-near-skirt-52",
+    "side-near-skirt-53",
+    "side-near-skirt-54",
+    "side-near-skirt-55",
+    "side-near-skirt-56",
+    "side-near-skirt-57",
+    "side-near-skirt-58",
+    "side-near-skirt-59",
+    "side-near-skirt-60",
+    "side-near-skirt-61",
+    "side-near-skirt-62",
+    "side-near-skirt-63",
+    "side-near-skirt-64",
+    "side-near-skirt-65",
+    "side-near-skirt-66",
+    "side-near-skirt-67",
+    "side-near-skirt-68",
+    "side-near-skirt-69",
+    "side-near-skirt-70",
+    "side-near-skirt-71",
+    "side-near-skirt-72",
+    "side-near-skirt-73",
+    "side-near-skirt-74",
+    "side-near-skirt-75",
+    "side-near-skirt-76",
+    "side-near-skirt-77",
+    "side-near-skirt-78",
+    "side-near-skirt-79",
+    "side-near-skirt-80",
+    "side-near-skirt-81",
+    "side-near-skirt-82",
+    "side-near-skirt-83",
+    "side-near-skirt-84",
+    "side-near-skirt-85",
+    "side-near-skirt-86",
+    "side-near-skirt-87",
+    "side-near-skirt-88",
+    "side-near-skirt-89",
+    "side-near-skirt-90",
+    "side-near-skirt-91",
+    "side-near-skirt-92",
+    "side-near-skirt-93",
+    "side-near-skirt-94",
+    "side-near-skirt-95",
+    "side-near-skirt-96",
+    "side-near-skirt-97",
+    "side-near-skirt-98",
+    "side-near-skirt-99",
+    "side-near-skirt-100",
+    "side-near-skirt-101",
+    "side-near-skirt-102",
+    "side-near-skirt-103",
+    "side-near-skirt-104",
+    "side-near-skirt-105",
+    "side-near-skirt-106",
+    "side-near-skirt-107",
+    "side-near-skirt-108",
+    "side-near-skirt-109",
+    "side-near-skirt-110",
+    "side-near-skirt-111",
+    "side-near-skirt-112",
+    "side-near-skirt-113",
+    "side-near-skirt-114",
+    "side-near-skirt-115",
+    "side-near-skirt-116",
+    "side-near-skirt-117",
+    "side-near-skirt-118",
+    "side-near-skirt-119",
+    "side-near-skirt-120",
+    "side-near-skirt-121",
+    "side-near-skirt-122",
+    "side-near-skirt-123",
+    "side-near-skirt-124",
+    "side-near-skirt-125",
+    "side-near-skirt-126",
+    "side-near-skirt-127",
+    "side-near-skirt-128",
+    "side-near-skirt-129",
+    "side-near-skirt-130",
+    "side-near-skirt-131",
+    "side-near-skirt-132",
+    "side-near-skirt-133",
+    "side-near-skirt-134",
+    "side-near-skirt-135",
+    "side-near-skirt-136",
+    "side-near-skirt-137",
+    "side-near-skirt-138",
+    "side-near-skirt-139",
+    "side-near-skirt-140",
+    "side-near-skirt-141",
+    "side-near-skirt-142",
+    "side-near-skirt-143",
+    "side-near-skirt-144",
+    "side-near-skirt-145",
+    "side-near-skirt-146",
+    "side-near-skirt-147",
+    "side-near-skirt-148",
+    "side-near-skirt-149",
+    "side-near-skirt-150",
+    "side-near-skirt-151",
+    "side-near-skirt-152",
+    "side-near-skirt-153"
    ],
    "pivot": [
-    794.0,
-    130.0
+    1398.0,
+    348.0
+   ],
+   "rest_angle": 84.9575,
+   "svg_source_order": 13
+  },
+  {
+   "name": "apron",
+   "bone": "torso",
+   "z": 44.0,
+   "kind": "sprite",
+   "include": [
+    "side-apron-1",
+    "side-apron-2",
+    "side-apron-3",
+    "side-apron-4",
+    "side-apron-5",
+    "side-apron-6",
+    "side-apron-7",
+    "side-apron-8",
+    "side-apron-9",
+    "side-apron-10",
+    "side-apron-11",
+    "side-apron-12",
+    "side-apron-13",
+    "side-apron-14",
+    "side-apron-15"
+   ],
+   "pivot": [
+    1390.0,
+    300.0
    ],
    "rest_angle": 0.0,
-   "svg_source_order": 13,
-   "opacity_channel": "blink_vis"
+   "svg_source_order": 14
   },
   {
-   "name": "near_leg_l",
-   "bone": "near_leg_l",
-   "z": 41.0,
+   "name": "neck",
+   "bone": "torso",
+   "z": 50.0,
    "kind": "sprite",
    "include": [
-    "side-near-shin-outline",
-    "side-near-shin"
+    "side-neck-1",
+    "side-neck-2",
+    "side-neck-3",
+    "side-neck-4",
+    "side-neck-5",
+    "side-neck-6",
+    "side-neck-7",
+    "side-neck-8",
+    "side-neck-9",
+    "side-neck-10",
+    "side-neck-11",
+    "side-neck-12",
+    "side-neck-13",
+    "side-neck-14",
+    "side-neck-15",
+    "side-neck-16",
+    "side-neck-17",
+    "side-neck-18",
+    "side-neck-19",
+    "side-neck-20",
+    "side-neck-21",
+    "side-neck-22",
+    "side-neck-23",
+    "side-neck-24",
+    "side-neck-25",
+    "side-neck-26"
    ],
    "pivot": [
-    814.0,
-    279.0
+    1390.0,
+    300.0
    ],
-   "rest_angle": 96.0542,
-   "svg_source_order": 7
+   "rest_angle": 0.0,
+   "svg_source_order": 15
   },
   {
-   "name": "near_leg_foot",
-   "bone": "near_leg_foot",
-   "z": 42.0,
-   "kind": "sprite",
-   "include": [
-    "side-near-boot-outline",
-    "side-near-boot",
-    "side-near-sole"
-   ],
-   "pivot": [
-    807.0,
-    345.0
-   ],
-   "rest_angle": 24.444,
-   "svg_source_order": 8
-  },
-  {
-   "name": "near_arm_u",
-   "bone": "near_arm_u",
+   "name": "head",
+   "bone": "head",
    "z": 60.0,
    "kind": "sprite",
    "include": [
-    "side-near-upperarm-outline",
-    "side-near-upperarm",
-    "side-near-sleeve-band"
+    "side-head-1",
+    "side-head-2",
+    "side-head-3",
+    "side-head-4",
+    "side-head-5",
+    "side-head-6",
+    "side-head-7",
+    "side-head-8",
+    "side-head-9",
+    "side-head-10",
+    "side-head-11",
+    "side-head-12",
+    "side-head-13",
+    "side-head-14",
+    "side-head-15",
+    "side-head-16",
+    "side-head-17",
+    "side-head-18",
+    "side-head-19",
+    "side-head-20",
+    "side-head-21",
+    "side-head-22",
+    "side-head-23",
+    "side-head-24",
+    "side-head-25",
+    "side-head-26",
+    "side-head-27",
+    "side-head-28",
+    "side-head-29",
+    "side-head-30",
+    "side-head-31",
+    "side-head-32",
+    "side-head-33",
+    "side-head-34",
+    "side-head-35",
+    "side-head-36",
+    "side-head-37",
+    "side-head-38",
+    "side-head-39",
+    "side-head-40",
+    "side-head-41",
+    "side-head-42",
+    "side-head-43",
+    "side-head-44",
+    "side-head-45",
+    "side-head-46",
+    "side-head-47",
+    "side-head-48",
+    "side-head-49",
+    "side-head-50",
+    "side-head-51",
+    "side-head-52",
+    "side-head-53",
+    "side-head-54",
+    "side-head-55",
+    "side-head-56",
+    "side-head-57",
+    "side-head-58",
+    "side-head-59",
+    "side-head-60",
+    "side-head-61"
    ],
    "pivot": [
-    797.0,
-    154.0
+    1399.0,
+    244.0
    ],
-   "rest_angle": 102.6804,
-   "svg_source_order": 14
+   "rest_angle": 0.0,
+   "svg_source_order": 16
+  },
+  {
+   "name": "face_knowing",
+   "bone": "head",
+   "z": 61.0,
+   "kind": "sprite",
+   "include": [
+    "side-face-knowing-1",
+    "side-face-knowing-2",
+    "side-face-knowing-3",
+    "side-face-knowing-4",
+    "side-face-knowing-5",
+    "side-face-knowing-6",
+    "side-face-knowing-7",
+    "side-face-knowing-8",
+    "side-face-knowing-9",
+    "side-face-knowing-10",
+    "side-face-knowing-11",
+    "side-face-knowing-12",
+    "side-face-knowing-13"
+   ],
+   "pivot": [
+    1399.0,
+    244.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 17,
+   "opacity_channel": "face_knowing_vis",
+   "opacity_default": 1.0
+  },
+  {
+   "name": "face_pleased",
+   "bone": "head",
+   "z": 61.01,
+   "kind": "sprite",
+   "include": [
+    "side-face-pleased-1",
+    "side-face-pleased-2",
+    "side-face-pleased-3",
+    "side-face-pleased-4",
+    "side-face-pleased-5",
+    "side-face-pleased-6",
+    "side-face-pleased-7",
+    "side-face-pleased-8",
+    "side-face-pleased-9",
+    "side-face-pleased-10",
+    "side-face-pleased-11",
+    "side-face-pleased-12",
+    "side-face-pleased-13"
+   ],
+   "pivot": [
+    1399.0,
+    244.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 18,
+   "opacity_channel": "face_pleased_vis"
+  },
+  {
+   "name": "face_delighted",
+   "bone": "head",
+   "z": 61.02,
+   "kind": "sprite",
+   "include": [
+    "side-face-delighted-1",
+    "side-face-delighted-2",
+    "side-face-delighted-3",
+    "side-face-delighted-4",
+    "side-face-delighted-5",
+    "side-face-delighted-6",
+    "side-face-delighted-7",
+    "side-face-delighted-8",
+    "side-face-delighted-9",
+    "side-face-delighted-10"
+   ],
+   "pivot": [
+    1399.0,
+    244.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 19,
+   "opacity_channel": "face_delighted_vis"
+  },
+  {
+   "name": "face_surprised",
+   "bone": "head",
+   "z": 61.03,
+   "kind": "sprite",
+   "include": [
+    "side-face-surprised-1",
+    "side-face-surprised-2",
+    "side-face-surprised-3",
+    "side-face-surprised-4",
+    "side-face-surprised-5",
+    "side-face-surprised-6",
+    "side-face-surprised-7",
+    "side-face-surprised-8",
+    "side-face-surprised-9",
+    "side-face-surprised-10",
+    "side-face-surprised-11"
+   ],
+   "pivot": [
+    1399.0,
+    244.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 20,
+   "opacity_channel": "face_surprised_vis"
+  },
+  {
+   "name": "face_thinking",
+   "bone": "head",
+   "z": 61.04,
+   "kind": "sprite",
+   "include": [
+    "side-face-thinking-1",
+    "side-face-thinking-2",
+    "side-face-thinking-3",
+    "side-face-thinking-4",
+    "side-face-thinking-5",
+    "side-face-thinking-6",
+    "side-face-thinking-7",
+    "side-face-thinking-8",
+    "side-face-thinking-9",
+    "side-face-thinking-10",
+    "side-face-thinking-11",
+    "side-face-thinking-12",
+    "side-face-thinking-13"
+   ],
+   "pivot": [
+    1399.0,
+    244.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 21,
+   "opacity_channel": "face_thinking_vis"
+  },
+  {
+   "name": "face_stern",
+   "bone": "head",
+   "z": 61.05,
+   "kind": "sprite",
+   "include": [
+    "side-face-stern-1",
+    "side-face-stern-2",
+    "side-face-stern-3",
+    "side-face-stern-4",
+    "side-face-stern-5",
+    "side-face-stern-6",
+    "side-face-stern-7",
+    "side-face-stern-8",
+    "side-face-stern-9",
+    "side-face-stern-10",
+    "side-face-stern-11",
+    "side-face-stern-12",
+    "side-face-stern-13",
+    "side-face-stern-14"
+   ],
+   "pivot": [
+    1399.0,
+    244.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 22,
+   "opacity_channel": "face_stern_vis"
+  },
+  {
+   "name": "face_worried",
+   "bone": "head",
+   "z": 61.06,
+   "kind": "sprite",
+   "include": [
+    "side-face-worried-1",
+    "side-face-worried-2",
+    "side-face-worried-3",
+    "side-face-worried-4",
+    "side-face-worried-5",
+    "side-face-worried-6",
+    "side-face-worried-7",
+    "side-face-worried-8",
+    "side-face-worried-9",
+    "side-face-worried-10",
+    "side-face-worried-11",
+    "side-face-worried-12",
+    "side-face-worried-13"
+   ],
+   "pivot": [
+    1399.0,
+    244.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 23,
+   "opacity_channel": "face_worried_vis"
+  },
+  {
+   "name": "face_hurt",
+   "bone": "head",
+   "z": 61.07,
+   "kind": "sprite",
+   "include": [
+    "side-face-hurt-1",
+    "side-face-hurt-2",
+    "side-face-hurt-3",
+    "side-face-hurt-4",
+    "side-face-hurt-5",
+    "side-face-hurt-6",
+    "side-face-hurt-7",
+    "side-face-hurt-8",
+    "side-face-hurt-9",
+    "side-face-hurt-10",
+    "side-face-hurt-11",
+    "side-face-hurt-12",
+    "side-face-hurt-13"
+   ],
+   "pivot": [
+    1399.0,
+    244.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 24,
+   "opacity_channel": "face_hurt_vis"
+  },
+  {
+   "name": "blink",
+   "bone": "head",
+   "z": 61.5,
+   "kind": "sprite",
+   "include": [
+    "side-blink-1",
+    "side-blink-2"
+   ],
+   "pivot": [
+    1399.0,
+    244.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 25,
+   "opacity_channel": "blink_vis"
+  },
+  {
+   "name": "talk_mouth",
+   "bone": "head",
+   "z": 61.6,
+   "kind": "sprite",
+   "include": [
+    "side-talk-mouth-1",
+    "side-talk-mouth-2",
+    "side-talk-mouth-3",
+    "side-talk-mouth-4"
+   ],
+   "pivot": [
+    1399.0,
+    244.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 26,
+   "opacity_channel": "talk_vis"
   },
   {
    "name": "near_arm_l",
    "bone": "near_arm_l",
-   "z": 61.0,
+   "z": 77.0,
    "kind": "sprite",
    "include": [
-    "side-near-forearm-outline",
-    "side-near-forearm"
+    "side-near-arm-lower-1",
+    "side-near-arm-lower-2",
+    "side-near-arm-lower-3",
+    "side-near-arm-lower-4",
+    "side-near-arm-lower-5",
+    "side-near-arm-lower-6",
+    "side-near-arm-lower-7",
+    "side-near-arm-lower-8",
+    "side-near-arm-lower-9",
+    "side-near-arm-lower-10",
+    "side-near-arm-lower-11",
+    "side-near-arm-lower-12",
+    "side-near-arm-lower-13",
+    "side-near-arm-lower-14"
    ],
    "pivot": [
-    788.0,
-    194.0
+    1386.0,
+    314.0
    ],
-   "rest_angle": 72.4744,
-   "svg_source_order": 15
+   "rest_angle": 70.71,
+   "svg_source_order": 27
+  },
+  {
+   "name": "near_arm_u",
+   "bone": "near_arm_u",
+   "z": 78.0,
+   "kind": "sprite",
+   "include": [
+    "side-near-arm-upper-1",
+    "side-near-arm-upper-2",
+    "side-near-arm-upper-3",
+    "side-near-arm-upper-4",
+    "side-near-arm-upper-5",
+    "side-near-arm-upper-6",
+    "side-near-arm-upper-7",
+    "side-near-arm-upper-8",
+    "side-near-arm-upper-9",
+    "side-near-arm-upper-10",
+    "side-near-arm-upper-11",
+    "side-near-arm-upper-12",
+    "side-near-arm-upper-13",
+    "side-near-arm-upper-14",
+    "side-near-arm-upper-15",
+    "side-near-arm-upper-16",
+    "side-near-arm-upper-17",
+    "side-near-arm-upper-18",
+    "side-near-arm-upper-19",
+    "side-near-arm-upper-20",
+    "side-near-arm-upper-21",
+    "side-near-arm-upper-22",
+    "side-near-arm-upper-23",
+    "side-near-arm-upper-24",
+    "side-near-arm-upper-25",
+    "side-near-arm-upper-26",
+    "side-near-arm-upper-27",
+    "side-near-arm-upper-28",
+    "side-near-arm-upper-29",
+    "side-near-arm-upper-30",
+    "side-near-arm-upper-31",
+    "side-near-arm-upper-32",
+    "side-near-arm-upper-33",
+    "side-near-arm-upper-34",
+    "side-near-arm-upper-35",
+    "side-near-arm-upper-36",
+    "side-near-arm-upper-37",
+    "side-near-arm-upper-38",
+    "side-near-arm-upper-39",
+    "side-near-arm-upper-40",
+    "side-near-arm-upper-41",
+    "side-near-arm-upper-42",
+    "side-near-arm-upper-43",
+    "side-near-arm-upper-44",
+    "side-near-arm-upper-45",
+    "side-near-arm-upper-46",
+    "side-near-arm-upper-47",
+    "side-near-arm-upper-48",
+    "side-near-arm-upper-49",
+    "side-near-arm-upper-50",
+    "side-near-arm-upper-51",
+    "side-near-arm-upper-52",
+    "side-near-arm-upper-53",
+    "side-near-arm-upper-54",
+    "side-near-arm-upper-55",
+    "side-near-arm-upper-56",
+    "side-near-arm-upper-57",
+    "side-near-arm-upper-58",
+    "side-near-arm-upper-59",
+    "side-near-arm-upper-60",
+    "side-near-arm-upper-61",
+    "side-near-arm-upper-62",
+    "side-near-arm-upper-63",
+    "side-near-arm-upper-64",
+    "side-near-arm-upper-65",
+    "side-near-arm-upper-66",
+    "side-near-arm-upper-67"
+   ],
+   "pivot": [
+    1392.0,
+    262.0
+   ],
+   "rest_angle": 96.5819,
+   "svg_source_order": 28
   },
   {
    "name": "near_hand",
    "bone": "near_arm_hand",
-   "z": 62.0,
+   "z": 82.0,
    "kind": "sprite",
    "include": [
-    "side-near-hand-shape"
+    "side-near-hand-1",
+    "side-near-hand-2",
+    "side-near-hand-3",
+    "side-near-hand-4",
+    "side-near-hand-5",
+    "side-near-hand-6",
+    "side-near-hand-7",
+    "side-near-hand-8",
+    "side-near-hand-9",
+    "side-near-hand-10",
+    "side-near-hand-11",
+    "side-near-hand-12",
+    "side-near-hand-13",
+    "side-near-hand-14",
+    "side-near-hand-15",
+    "side-near-hand-16",
+    "side-near-hand-17",
+    "side-near-hand-18",
+    "side-near-hand-19",
+    "side-near-hand-20",
+    "side-near-hand-21",
+    "side-near-hand-22",
+    "side-near-hand-23",
+    "side-near-hand-24",
+    "side-near-hand-25",
+    "side-near-hand-26",
+    "side-near-hand-27",
+    "side-near-hand-28",
+    "side-near-hand-29",
+    "side-near-hand-30",
+    "side-near-hand-31",
+    "side-near-hand-32",
+    "side-near-hand-33",
+    "side-near-hand-34",
+    "side-near-hand-35",
+    "side-near-hand-36",
+    "side-near-hand-37",
+    "side-near-hand-38",
+    "side-near-hand-39",
+    "side-near-hand-40"
    ],
    "pivot": [
-    800.0,
-    232.0
+    1400.0,
+    354.0
    ],
-   "rest_angle": 68.9625,
-   "svg_source_order": 16
+   "rest_angle": 71.5651,
+   "svg_source_order": 29
   }
  ],
  "ik_legs": [
@@ -480,9 +1336,9 @@
    "lower": "near_leg_l",
    "foot": "near_leg_foot",
    "channel_prefix": "near_foot",
-   "rest_x": 2.1328,
+   "rest_x": 2.7471,
    "rest_lift": 0.0,
-   "rest_pitch": 24.444,
+   "rest_pitch": 26.5651,
    "bend": 1.0
   },
   {
@@ -490,10 +1346,10 @@
    "lower": "far_leg_l",
    "foot": "far_leg_foot",
    "channel_prefix": "far_foot",
-   "rest_x": -2.1328,
+   "rest_x": -5.4942,
    "rest_lift": 0.0,
-   "rest_pitch": 24.444,
-   "bend": -1.0
+   "rest_pitch": 26.5651,
+   "bend": 1.0
   }
  ],
  "ik_chains": [
@@ -502,9 +1358,9 @@
    "lower": "near_arm_l",
    "end": "near_arm_hand",
    "channel_prefix": "near_hand",
-   "rest_x": -0.1641,
-   "rest_y": -44.2969,
-   "rest_pitch": 68.9625,
+   "rest_x": 3.0523,
+   "rest_y": -45.1744,
+   "rest_pitch": 71.5651,
    "pitch_mode": "world",
    "bend": -1.0,
    "pose_authority": "svg-layout"
@@ -514,9 +1370,9 @@
    "lower": "far_arm_l",
    "end": "far_arm_hand",
    "channel_prefix": "far_hand",
-   "rest_x": -2.7891,
-   "rest_y": -44.2969,
-   "rest_pitch": 68.9625,
+   "rest_x": -1.2209,
+   "rest_y": -44.564,
+   "rest_pitch": 76.6513,
    "pitch_mode": "world",
    "bend": -1.0,
    "pose_authority": "svg-layout"
@@ -664,42 +1520,42 @@
      "keys": [
       [
        0.0,
-       12.1328,
+       12.7471,
        "linear"
       ],
       [
        0.125,
-       9.1328,
+       9.7471,
        "linear"
       ],
       [
        0.25,
-       5.1328,
+       5.7471,
        "linear"
       ],
       [
        0.375,
-       0.1328,
+       0.7471,
        "linear"
       ],
       [
        0.5,
-       -7.8672,
+       -7.2529,
        "linear"
       ],
       [
        0.625,
-       -5.8672,
+       -5.2529,
        "linear"
       ],
       [
        0.75,
-       -0.8672,
+       -0.2529,
        "linear"
       ],
       [
        0.875,
-       6.1328,
+       6.7471,
        "linear"
       ]
      ]
@@ -752,42 +1608,42 @@
      "keys": [
       [
        0.0,
-       30.444,
+       32.5651,
        "smooth"
       ],
       [
        0.125,
-       26.444,
+       28.5651,
        "smooth"
       ],
       [
        0.25,
-       22.444,
+       24.5651,
        "smooth"
       ],
       [
        0.375,
-       19.444,
+       21.5651,
        "smooth"
       ],
       [
        0.5,
-       24.444,
+       26.5651,
        "smooth"
       ],
       [
        0.625,
-       27.444,
+       29.5651,
        "smooth"
       ],
       [
        0.75,
-       33.444,
+       35.5651,
        "smooth"
       ],
       [
        0.875,
-       35.444,
+       37.5651,
        "smooth"
       ]
      ]
@@ -796,42 +1652,42 @@
      "keys": [
       [
        0.0,
-       -12.1328,
+       -15.4942,
        "linear"
       ],
       [
        0.125,
-       -10.1328,
+       -13.4942,
        "linear"
       ],
       [
        0.25,
-       -5.1328,
+       -8.4942,
        "linear"
       ],
       [
        0.375,
-       1.8672,
+       -1.4942,
        "linear"
       ],
       [
        0.5,
-       7.8672,
+       4.5058,
        "linear"
       ],
       [
        0.625,
-       4.8672,
+       1.5058,
        "linear"
       ],
       [
        0.75,
-       0.8672,
+       -2.4942,
        "linear"
       ],
       [
        0.875,
-       -4.1328,
+       -7.4942,
        "linear"
       ]
      ]
@@ -884,42 +1740,42 @@
      "keys": [
       [
        0.0,
-       24.444,
+       26.5651,
        "smooth"
       ],
       [
        0.125,
-       27.444,
+       29.5651,
        "smooth"
       ],
       [
        0.25,
-       33.444,
+       35.5651,
        "smooth"
       ],
       [
        0.375,
-       35.444,
+       37.5651,
        "smooth"
       ],
       [
        0.5,
-       30.444,
+       32.5651,
        "smooth"
       ],
       [
        0.625,
-       26.444,
+       28.5651,
        "smooth"
       ],
       [
        0.75,
-       22.444,
+       24.5651,
        "smooth"
       ],
       [
        0.875,
-       19.444,
+       21.5651,
        "smooth"
       ]
      ]
@@ -928,42 +1784,42 @@
      "keys": [
       [
        0.0,
-       -5.6641,
+       -2.4477,
        "smooth"
       ],
       [
        0.125,
-       -4.1641,
+       -0.9477,
        "smooth"
       ],
       [
        0.25,
-       -1.6641,
+       1.5523,
        "smooth"
       ],
       [
        0.375,
-       2.3359,
+       5.5523,
        "smooth"
       ],
       [
        0.5,
-       5.3359,
+       8.5523,
        "smooth"
       ],
       [
        0.625,
-       3.8359,
+       7.0523,
        "smooth"
       ],
       [
        0.75,
-       1.3359,
+       4.5523,
        "smooth"
       ],
       [
        0.875,
-       -2.6641,
+       0.5523,
        "smooth"
       ]
      ]
@@ -972,42 +1828,42 @@
      "keys": [
       [
        0.0,
-       -44.2969,
+       -45.1744,
        "smooth"
       ],
       [
        0.125,
-       -43.7969,
+       -44.6744,
        "smooth"
       ],
       [
        0.25,
-       -43.2969,
+       -44.1744,
        "smooth"
       ],
       [
        0.375,
-       -43.7969,
+       -44.6744,
        "smooth"
       ],
       [
        0.5,
-       -44.2969,
+       -45.1744,
        "smooth"
       ],
       [
        0.625,
-       -44.7969,
+       -45.6744,
        "smooth"
       ],
       [
        0.75,
-       -45.2969,
+       -46.1744,
        "smooth"
       ],
       [
        0.875,
-       -44.7969,
+       -45.6744,
        "smooth"
       ]
      ]
@@ -1016,42 +1872,42 @@
      "keys": [
       [
        0.0,
-       68.9625,
+       71.5651,
        "smooth"
       ],
       [
        0.125,
-       69.9625,
+       72.5651,
        "smooth"
       ],
       [
        0.25,
-       70.9625,
+       73.5651,
        "smooth"
       ],
       [
        0.375,
-       69.9625,
+       72.5651,
        "smooth"
       ],
       [
        0.5,
-       68.9625,
+       71.5651,
        "smooth"
       ],
       [
        0.625,
-       67.9625,
+       70.5651,
        "smooth"
       ],
       [
        0.75,
-       66.9625,
+       69.5651,
        "smooth"
       ],
       [
        0.875,
-       67.9625,
+       70.5651,
        "smooth"
       ]
      ]
@@ -1060,42 +1916,42 @@
      "keys": [
       [
        0.0,
-       2.7109,
+       4.2791,
        "smooth"
       ],
       [
        0.125,
-       1.2109,
+       2.7791,
        "smooth"
       ],
       [
        0.25,
-       -1.2891,
+       0.2791,
        "smooth"
       ],
       [
        0.375,
-       -5.2891,
+       -3.7209,
        "smooth"
       ],
       [
        0.5,
-       -8.2891,
+       -6.7209,
        "smooth"
       ],
       [
        0.625,
-       -6.7891,
+       -5.2209,
        "smooth"
       ],
       [
        0.75,
-       -4.2891,
+       -2.7209,
        "smooth"
       ],
       [
        0.875,
-       -0.2891,
+       1.2791,
        "smooth"
       ]
      ]
@@ -1104,42 +1960,42 @@
      "keys": [
       [
        0.0,
-       -44.2969,
+       -44.564,
        "smooth"
       ],
       [
        0.125,
-       -44.7969,
+       -45.064,
        "smooth"
       ],
       [
        0.25,
-       -45.2969,
+       -45.564,
        "smooth"
       ],
       [
        0.375,
-       -44.7969,
+       -45.064,
        "smooth"
       ],
       [
        0.5,
-       -44.2969,
+       -44.564,
        "smooth"
       ],
       [
        0.625,
-       -43.7969,
+       -44.064,
        "smooth"
       ],
       [
        0.75,
-       -43.2969,
+       -43.564,
        "smooth"
       ],
       [
        0.875,
-       -43.7969,
+       -44.064,
        "smooth"
       ]
      ]
@@ -1148,42 +2004,42 @@
      "keys": [
       [
        0.0,
-       68.9625,
+       76.6513,
        "smooth"
       ],
       [
        0.125,
-       67.9625,
+       75.6513,
        "smooth"
       ],
       [
        0.25,
-       66.9625,
+       74.6513,
        "smooth"
       ],
       [
        0.375,
-       67.9625,
+       75.6513,
        "smooth"
       ],
       [
        0.5,
-       68.9625,
+       76.6513,
        "smooth"
       ],
       [
        0.625,
-       69.9625,
+       77.6513,
        "smooth"
       ],
       [
        0.75,
-       70.9625,
+       78.6513,
        "smooth"
       ],
       [
        0.875,
-       69.9625,
+       77.6513,
        "smooth"
       ]
      ]
@@ -1192,6 +2048,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 1.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -1381,42 +2261,42 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.142857,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.285714,
-       10.1328,
+       10.7471,
        "smooth"
       ],
       [
        0.428571,
-       10.6328,
+       11.2471,
        "smooth"
       ],
       [
        0.571429,
-       11.1328,
+       11.7471,
        "smooth"
       ],
       [
        0.714286,
-       8.7995,
+       9.4138,
        "smooth"
       ],
       [
        0.857143,
-       4.4661,
+       5.0804,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -1425,42 +2305,42 @@
      "keys": [
       [
        0.0,
-       -3.1328,
+       -6.4942,
        "smooth"
       ],
       [
        0.142857,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.285714,
-       -8.1328,
+       -11.4942,
        "smooth"
       ],
       [
        0.428571,
-       -8.1328,
+       -11.4942,
        "smooth"
       ],
       [
        0.571429,
-       -8.1328,
+       -11.4942,
        "smooth"
       ],
       [
        0.714286,
-       -6.5772,
+       -9.9386,
        "smooth"
       ],
       [
        0.857143,
-       -3.6884,
+       -7.0498,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -1557,42 +2437,42 @@
      "keys": [
       [
        0.0,
-       -14.2356,
+       -13.1606,
        "smooth"
       ],
       [
        0.142857,
-       -22.0455,
+       -21.1882,
        "smooth"
       ],
       [
        0.285714,
-       28.7072,
+       31.8653,
        "smooth"
       ],
       [
        0.428571,
-       29.8197,
+       33.1147,
        "smooth"
       ],
       [
        0.571429,
-       30.4376,
+       33.8251,
        "smooth"
       ],
       [
        0.714286,
-       26.0834,
+       29.3955,
        "smooth"
       ],
       [
        0.857143,
-       9.7336,
+       12.1592,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -1601,42 +2481,42 @@
      "keys": [
       [
        0.0,
-       -51.3802,
+       -53.1971,
        "smooth"
       ],
       [
        0.142857,
-       -60.6786,
+       -63.4706,
        "smooth"
       ],
       [
        0.285714,
-       -61.8047,
+       -64.2616,
        "smooth"
       ],
       [
        0.428571,
-       -65.3147,
+       -68.0928,
        "smooth"
       ],
       [
        0.571429,
-       -68.9482,
+       -72.059,
        "smooth"
       ],
       [
        0.714286,
-       -59.1401,
+       -61.4009,
        "smooth"
       ],
       [
        0.857143,
-       -47.3367,
+       -48.6185,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -1645,42 +2525,42 @@
      "keys": [
       [
        0.0,
-       99.9625,
+       102.5651,
        "smooth"
       ],
       [
        0.142857,
-       130.9625,
+       133.5651,
        "smooth"
       ],
       [
        0.285714,
-       -3.0375,
+       -0.4349,
        "smooth"
       ],
       [
        0.428571,
-       -11.0375,
+       -8.4349,
        "smooth"
       ],
       [
        0.571429,
-       -19.0375,
+       -16.4349,
        "smooth"
       ],
       [
        0.714286,
-       3.7773,
+       6.3799,
        "smooth"
       ],
       [
        0.857143,
-       46.1477,
+       48.7503,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -1689,42 +2569,42 @@
      "keys": [
       [
        0.0,
-       -13.0865,
+       -12.2137,
        "smooth"
       ],
       [
        0.142857,
-       -20.4505,
+       -19.8382,
        "smooth"
       ],
       [
        0.285714,
-       14.9564,
+       16.9019,
        "smooth"
       ],
       [
        0.428571,
-       17.255,
+       19.4783,
        "smooth"
       ],
       [
        0.571429,
-       19.4232,
+       21.9105,
        "smooth"
       ],
       [
        0.714286,
-       14.0082,
+       16.2609,
        "smooth"
       ],
       [
        0.857143,
-       2.6544,
+       4.3314,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -1733,42 +2613,42 @@
      "keys": [
       [
        0.0,
-       -48.4436,
+       -49.6531,
        "smooth"
       ],
       [
        0.142857,
-       -53.1161,
+       -54.9514,
        "smooth"
       ],
       [
        0.285714,
-       -50.1344,
+       -51.2577,
        "smooth"
       ],
       [
        0.428571,
-       -51.4519,
+       -52.7183,
        "smooth"
       ],
       [
        0.571429,
-       -53.0093,
+       -54.4448,
        "smooth"
       ],
       [
        0.714286,
-       -49.753,
+       -50.8702,
        "smooth"
       ],
       [
        0.857143,
-       -46.1374,
+       -46.9446,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -1777,42 +2657,42 @@
      "keys": [
       [
        0.0,
-       87.9625,
+       95.6513,
        "smooth"
       ],
       [
        0.142857,
-       106.9625,
+       114.6513,
        "smooth"
       ],
       [
        0.285714,
-       34.9625,
+       42.6513,
        "smooth"
       ],
       [
        0.428571,
-       28.9625,
+       36.6513,
        "smooth"
       ],
       [
        0.571429,
-       22.9625,
+       30.6513,
        "smooth"
       ],
       [
        0.714286,
-       34.8884,
+       42.5772,
        "smooth"
       ],
       [
        0.857143,
-       57.0366,
+       64.7254,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -1821,6 +2701,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -2010,42 +2914,42 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.142857,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.285714,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.428571,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.571429,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.714286,
-       4.355,
+       4.9693,
        "smooth"
       ],
       [
        0.857143,
-       2.9106,
+       3.5249,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -2054,42 +2958,42 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.142857,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.285714,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.428571,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.571429,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.714286,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.857143,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -2186,42 +3090,42 @@
      "keys": [
       [
        0.0,
-       -10.8268,
+       -10.6408,
        "smooth"
       ],
       [
        0.142857,
-       16.0415,
+       20.2529,
        "smooth"
       ],
       [
        0.285714,
-       11.6124,
+       15.5362,
        "smooth"
       ],
       [
        0.428571,
-       6.2579,
+       9.8099,
        "smooth"
       ],
       [
        0.571429,
-       0.2371,
+       3.3566,
        "smooth"
       ],
       [
        0.714286,
-       17.2559,
+       21.5929,
        "smooth"
       ],
       [
        0.857143,
-       15.0585,
+       18.6022,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -2230,42 +3134,42 @@
      "keys": [
       [
        0.0,
-       -53.7683,
+       -55.6799,
        "smooth"
       ],
       [
        0.142857,
-       -87.461,
+       -92.5693,
        "smooth"
       ],
       [
        0.285714,
-       -91.8382,
+       -97.3711,
        "smooth"
       ],
       [
        0.428571,
-       -95.1707,
+       -101.0363,
        "smooth"
       ],
       [
        0.571429,
-       -97.2598,
+       -103.3481,
        "smooth"
       ],
       [
        0.714286,
-       -86.1103,
+       -91.1056,
        "smooth"
       ],
       [
        0.857143,
-       -52.7413,
+       -54.6106,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -2274,42 +3178,42 @@
      "keys": [
       [
        0.0,
-       106.9625,
+       109.5651,
        "smooth"
       ],
       [
        0.142857,
-       -61.0375,
+       -58.4349,
        "smooth"
       ],
       [
        0.285714,
-       -74.3708,
+       -71.7682,
        "smooth"
       ],
       [
        0.428571,
-       -87.7042,
+       -85.1016,
        "smooth"
       ],
       [
        0.571429,
-       -101.0375,
+       -98.4349,
        "smooth"
       ],
       [
        0.714286,
-       -56.9634,
+       -54.3608,
        "smooth"
       ],
       [
        0.857143,
-       24.8884,
+       27.491,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -2318,42 +3222,42 @@
      "keys": [
       [
        0.0,
-       -7.1086,
+       -6.8588,
        "smooth"
       ],
       [
        0.142857,
-       12.7082,
+       16.7244,
        "smooth"
       ],
       [
        0.285714,
-       13.7666,
+       18.0096,
        "smooth"
       ],
       [
        0.428571,
-       14.6693,
+       19.122,
        "smooth"
       ],
       [
        0.571429,
-       15.4037,
+       20.0473,
        "smooth"
       ],
       [
        0.714286,
-       12.6645,
+       16.6932,
        "smooth"
       ],
       [
        0.857143,
-       2.913,
+       5.2917,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -2362,42 +3266,42 @@
      "keys": [
       [
        0.0,
-       -48.2048,
+       -49.3159,
        "smooth"
       ],
       [
        0.142857,
-       -57.0842,
+       -59.2224,
        "smooth"
       ],
       [
        0.285714,
-       -58.8599,
+       -61.2125,
        "smooth"
       ],
       [
        0.428571,
-       -60.7622,
+       -63.3444,
        "smooth"
       ],
       [
        0.571429,
-       -62.7765,
+       -65.6022,
        "smooth"
       ],
       [
        0.714286,
-       -55.9459,
+       -57.9724,
        "smooth"
       ],
       [
        0.857143,
-       -47.2829,
+       -48.2934,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -2406,42 +3310,42 @@
      "keys": [
       [
        0.0,
-       82.9625,
+       90.6513,
        "smooth"
       ],
       [
        0.142857,
-       14.9625,
+       22.6513,
        "smooth"
       ],
       [
        0.285714,
-       9.6292,
+       17.318,
        "smooth"
       ],
       [
        0.428571,
-       4.2958,
+       11.9846,
        "smooth"
       ],
       [
        0.571429,
-       -1.0375,
+       6.6513,
        "smooth"
       ],
       [
        0.714286,
-       17.1106,
+       24.7994,
        "smooth"
       ],
       [
        0.857143,
-       50.8144,
+       58.5032,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -2450,6 +3354,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -2639,42 +3567,42 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.142857,
-       12.1328,
+       12.7471,
        "smooth"
       ],
       [
        0.285714,
-       12.4661,
+       13.0804,
        "smooth"
       ],
       [
        0.428571,
-       12.7995,
+       13.4138,
        "smooth"
       ],
       [
        0.571429,
-       13.1328,
+       13.7471,
        "smooth"
       ],
       [
        0.714286,
-       10.2809,
+       10.8952,
        "smooth"
       ],
       [
        0.857143,
-       4.9847,
+       5.599,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -2683,42 +3611,42 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.142857,
-       -11.1328,
+       -14.4942,
        "smooth"
       ],
       [
        0.285714,
-       -11.1328,
+       -14.4942,
        "smooth"
       ],
       [
        0.428571,
-       -11.1328,
+       -14.4942,
        "smooth"
       ],
       [
        0.571429,
-       -11.1328,
+       -14.4942,
        "smooth"
       ],
       [
        0.714286,
-       -8.7995,
+       -12.1609,
        "smooth"
       ],
       [
        0.857143,
-       -4.4661,
+       -7.8275,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -2815,42 +3743,42 @@
      "keys": [
       [
        0.0,
-       -18.1487,
+       -17.4584,
        "smooth"
       ],
       [
        0.142857,
-       20.701,
+       22.8869,
        "smooth"
       ],
       [
        0.285714,
-       22.1234,
+       24.3973,
        "smooth"
       ],
       [
        0.428571,
-       23.4595,
+       25.8136,
        "smooth"
       ],
       [
        0.571429,
-       24.7026,
+       27.1286,
        "smooth"
       ],
       [
        0.714286,
-       18.8663,
+       21.2013,
        "smooth"
       ],
       [
        0.857143,
-       6.0536,
+       8.0361,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -2859,42 +3787,42 @@
      "keys": [
       [
        0.0,
-       -58.1002,
+       -60.6293,
        "smooth"
       ],
       [
        0.142857,
-       -42.4816,
+       -43.939,
        "smooth"
       ],
       [
        0.285714,
-       -43.5445,
+       -45.1116,
        "smooth"
       ],
       [
        0.428571,
-       -44.7011,
+       -46.3866,
        "smooth"
       ],
       [
        0.571429,
-       -45.9453,
+       -47.7574,
        "smooth"
       ],
       [
        0.714286,
-       -43.9157,
+       -45.3511,
        "smooth"
       ],
       [
        0.857143,
-       -43.8733,
+       -45.0168,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -2903,42 +3831,42 @@
      "keys": [
       [
        0.0,
-       124.9625,
+       127.5651,
        "smooth"
       ],
       [
        0.142857,
-       24.9625,
+       27.5651,
        "smooth"
       ],
       [
        0.285714,
-       20.9625,
+       23.5651,
        "smooth"
       ],
       [
        0.428571,
-       16.9625,
+       19.5651,
        "smooth"
       ],
       [
        0.571429,
-       12.9625,
+       15.5651,
        "smooth"
       ],
       [
        0.714286,
-       27.481,
+       30.0836,
        "smooth"
       ],
       [
        0.857143,
-       54.444,
+       57.0466,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -2947,42 +3875,42 @@
      "keys": [
       [
        0.0,
-       -16.435,
+       -15.9618,
        "smooth"
       ],
       [
        0.142857,
-       1.7391,
+       2.0603,
        "smooth"
       ],
       [
        0.285714,
-       2.6824,
+       3.0619,
        "smooth"
       ],
       [
        0.428571,
-       3.6348,
+       4.0737,
        "smooth"
       ],
       [
        0.571429,
-       4.5953,
+       5.0944,
        "smooth"
       ],
       [
        0.714286,
-       2.4259,
+       3.144,
        "smooth"
       ],
       [
        0.857143,
-       -1.6094,
+       -0.4894,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -2991,42 +3919,42 @@
      "keys": [
       [
        0.0,
-       -51.5442,
+       -53.2038,
        "smooth"
       ],
       [
        0.142857,
-       -38.0961,
+       -38.8318,
        "smooth"
       ],
       [
        0.285714,
-       -37.8251,
+       -38.5501,
        "smooth"
       ],
       [
        0.428571,
-       -37.5837,
+       -38.3015,
        "smooth"
       ],
       [
        0.571429,
-       -37.3725,
+       -38.0865,
        "smooth"
       ],
       [
        0.714286,
-       -39.54,
+       -40.24,
        "smooth"
       ],
       [
        0.857143,
-       -43.5142,
+       -44.2582,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -3035,42 +3963,42 @@
      "keys": [
       [
        0.0,
-       102.9625,
+       110.6513,
        "smooth"
       ],
       [
        0.142857,
-       64.9625,
+       72.6513,
        "smooth"
       ],
       [
        0.285714,
-       62.9625,
+       70.6513,
        "smooth"
       ],
       [
        0.428571,
-       60.9625,
+       68.6513,
        "smooth"
       ],
       [
        0.571429,
-       58.9625,
+       66.6513,
        "smooth"
       ],
       [
        0.714286,
-       61.5551,
+       69.2439,
        "smooth"
       ],
       [
        0.857143,
-       66.3699,
+       74.0587,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -3079,6 +4007,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -3308,52 +4260,52 @@
      "keys": [
       [
        0.0,
-       1.6143,
+       2.2286,
        "smooth"
       ],
       [
        0.111111,
-       0.6513,
+       1.2656,
        "smooth"
       ],
       [
        0.222222,
-       0.1328,
+       0.7471,
        "smooth"
       ],
       [
        0.333333,
-       13.1328,
+       13.7471,
        "smooth"
       ],
       [
        0.444444,
-       13.6328,
+       14.2471,
        "smooth"
       ],
       [
        0.555556,
-       14.1328,
+       14.7471,
        "smooth"
       ],
       [
        0.666667,
-       12.2578,
+       12.8721,
        "smooth"
       ],
       [
        0.777778,
-       8.1328,
+       8.7471,
        "smooth"
       ],
       [
        0.888889,
-       4.0078,
+       4.6221,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -3362,52 +4314,52 @@
      "keys": [
       [
        0.0,
-       -2.6513,
+       -6.0127,
        "smooth"
       ],
       [
        0.111111,
-       -3.6143,
+       -6.9757,
        "smooth"
       ],
       [
        0.222222,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.333333,
-       -11.1328,
+       -14.4942,
        "smooth"
       ],
       [
        0.444444,
-       -11.1328,
+       -14.4942,
        "smooth"
       ],
       [
        0.555556,
-       -11.1328,
+       -14.4942,
        "smooth"
       ],
       [
        0.666667,
-       -9.7265,
+       -13.0879,
        "smooth"
       ],
       [
        0.777778,
-       -6.6328,
+       -9.9942,
        "smooth"
       ],
       [
        0.888889,
-       -3.5391,
+       -6.9005,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -3524,52 +4476,52 @@
      "keys": [
       [
        0.0,
-       -12.1701,
+       -10.8798,
        "smooth"
       ],
       [
        0.111111,
-       -27.1215,
+       -26.2294,
        "smooth"
       ],
       [
        0.222222,
-       -30.839,
+       -29.7876,
        "smooth"
       ],
       [
        0.333333,
-       32.4719,
+       35.4757,
        "smooth"
       ],
       [
        0.444444,
-       33.6774,
+       36.5653,
        "smooth"
       ],
       [
        0.555556,
-       34.4868,
+       37.2232,
        "smooth"
       ],
       [
        0.666667,
-       32.6626,
+       35.5854,
        "smooth"
       ],
       [
        0.777778,
-       22.5647,
+       25.349,
        "smooth"
       ],
       [
        0.888889,
-       6.7326,
+       8.8567,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -3578,52 +4530,52 @@
      "keys": [
       [
        0.0,
-       -47.5625,
+       -49.1109,
        "smooth"
       ],
       [
        0.111111,
-       -57.511,
+       -60.3749,
        "smooth"
       ],
       [
        0.222222,
-       -64.6749,
+       -68.4455,
        "smooth"
       ],
       [
        0.333333,
-       -67.9843,
+       -70.8834,
        "smooth"
       ],
       [
        0.444444,
-       -71.3687,
+       -74.5449,
        "smooth"
       ],
       [
        0.555556,
-       -74.7673,
+       -78.2265,
        "smooth"
       ],
       [
        0.666667,
-       -67.6414,
+       -70.4833,
        "smooth"
       ],
       [
        0.777778,
-       -54.0917,
+       -55.8067,
        "smooth"
       ],
       [
        0.888889,
-       -46.7231,
+       -47.9219,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -3632,52 +4584,52 @@
      "keys": [
       [
        0.0,
-       91.2588,
+       93.8614,
        "smooth"
       ],
       [
        0.111111,
-       132.6662,
+       135.2688,
        "smooth"
       ],
       [
        0.222222,
-       154.9625,
+       157.5651,
        "smooth"
       ],
       [
        0.333333,
-       -15.0375,
+       -12.4349,
        "smooth"
       ],
       [
        0.444444,
-       -22.0375,
+       -19.4349,
        "smooth"
       ],
       [
        0.555556,
-       -29.0375,
+       -26.4349,
        "smooth"
       ],
       [
        0.666667,
-       -13.725,
+       -11.1224,
        "smooth"
       ],
       [
        0.777778,
-       19.9625,
+       22.5651,
        "smooth"
       ],
       [
        0.888889,
-       53.65,
+       56.2526,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -3686,52 +4638,52 @@
      "keys": [
       [
        0.0,
-       -13.294,
+       -12.4101,
        "smooth"
       ],
       [
        0.111111,
-       -27.2974,
+       -26.8793,
        "smooth"
       ],
       [
        0.222222,
-       -32.0404,
+       -31.5931,
        "smooth"
       ],
       [
        0.333333,
-       25.482,
+       28.0099,
        "smooth"
       ],
       [
        0.444444,
-       27.6784,
+       30.2002,
        "smooth"
       ],
       [
        0.555556,
-       29.7193,
+       32.2186,
        "smooth"
       ],
       [
        0.666667,
-       25.9647,
+       28.4394,
        "smooth"
       ],
       [
        0.777778,
-       15.2364,
+       17.3961,
        "smooth"
       ],
       [
        0.888889,
-       2.3378,
+       3.9483,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -3740,52 +4692,52 @@
      "keys": [
       [
        0.0,
-       -46.5746,
+       -47.6734,
        "smooth"
       ],
       [
        0.111111,
-       -53.2063,
+       -55.4368,
        "smooth"
       ],
       [
        0.222222,
-       -58.3044,
+       -61.3431,
        "smooth"
       ],
       [
        0.333333,
-       -58.7484,
+       -60.6612,
        "smooth"
       ],
       [
        0.444444,
-       -60.8211,
+       -62.9266,
        "smooth"
       ],
       [
        0.555556,
-       -63.0052,
+       -65.32,
        "smooth"
       ],
       [
        0.666667,
-       -58.4949,
+       -60.3525,
        "smooth"
       ],
       [
        0.777778,
-       -50.5536,
+       -51.6561,
        "smooth"
       ],
       [
        0.888889,
-       -46.2342,
+       -47.0209,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -3794,52 +4746,52 @@
      "keys": [
       [
        0.0,
-       87.1106,
+       94.7994,
        "smooth"
       ],
       [
        0.111111,
-       120.8144,
+       128.5032,
        "smooth"
       ],
       [
        0.222222,
-       138.9625,
+       146.6513,
        "smooth"
       ],
       [
        0.333333,
-       8.9625,
+       16.6513,
        "smooth"
       ],
       [
        0.444444,
-       3.9625,
+       11.6513,
        "smooth"
       ],
       [
        0.555556,
-       -1.0375,
+       6.6513,
        "smooth"
       ],
       [
        0.666667,
-       9.9,
+       17.5888,
        "smooth"
       ],
       [
        0.777778,
-       33.9625,
+       41.6513,
        "smooth"
       ],
       [
        0.888889,
-       58.025,
+       65.7138,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -3848,6 +4800,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -4037,42 +5013,42 @@
      "keys": [
       [
        0.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ],
       [
        0.142857,
-       4.8843,
+       7.1855,
        "smooth"
       ],
       [
        0.285714,
-       12.769,
+       15.7788,
        "smooth"
       ],
       [
        0.428571,
-       15.1843,
+       18.4111,
        "smooth"
       ],
       [
        0.571429,
-       5.5788,
+       7.9424,
        "smooth"
       ],
       [
        0.714286,
-       21.8025,
+       25.6241,
        "smooth"
       ],
       [
        0.857143,
-       10.3647,
+       13.1583,
        "smooth"
       ],
       [
        1.0,
-       15.5377,
+       18.7962,
        "smooth"
       ]
      ]
@@ -4081,42 +5057,42 @@
      "keys": [
       [
        0.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ],
       [
        0.142857,
-       -45.6943,
+       -46.885,
        "smooth"
       ],
       [
        0.285714,
-       -47.6179,
+       -48.9815,
        "smooth"
       ],
       [
        0.428571,
-       -48.9856,
+       -50.4721,
        "smooth"
       ],
       [
        0.571429,
-       -46.4296,
+       -47.6864,
        "smooth"
       ],
       [
        0.714286,
-       -76.4717,
+       -80.4283,
        "smooth"
       ],
       [
        0.857143,
-       -93.4961,
+       -98.9827,
        "smooth"
       ],
       [
        1.0,
-       -88.4225,
+       -93.4531,
        "smooth"
       ]
      ]
@@ -4125,42 +5101,42 @@
      "keys": [
       [
        0.0,
-       68.9625,
+       71.5651,
        "smooth"
       ],
       [
        0.142857,
-       54.9625,
+       57.5651,
        "smooth"
       ],
       [
        0.285714,
-       36.9625,
+       39.5651,
        "smooth"
       ],
       [
        0.428571,
-       30.9625,
+       33.5651,
        "smooth"
       ],
       [
        0.571429,
-       52.9625,
+       55.5651,
        "smooth"
       ],
       [
        0.714286,
-       -37.0375,
+       -34.4349,
        "smooth"
       ],
       [
        0.857143,
-       -85.0375,
+       -82.4349,
        "smooth"
       ],
       [
        1.0,
-       -69.0375,
+       -66.4349,
        "smooth"
       ]
      ]
@@ -4169,42 +5145,42 @@
      "keys": [
       [
        0.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ],
       [
        0.142857,
-       0.5313,
+       2.3171,
        "smooth"
       ],
       [
        0.285714,
-       7.5563,
+       10.0834,
        "smooth"
       ],
       [
        0.428571,
-       10.0621,
+       12.8537,
        "smooth"
       ],
       [
        0.571429,
-       1.271,
+       3.1349,
        "smooth"
       ],
       [
        0.714286,
-       19.7308,
+       23.5427,
        "smooth"
       ],
       [
        0.857143,
-       10.6789,
+       13.5356,
        "smooth"
       ],
       [
        1.0,
-       15.2169,
+       18.5524,
        "smooth"
       ]
      ]
@@ -4213,42 +5189,42 @@
      "keys": [
       [
        0.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ],
       [
        0.142857,
-       -45.477,
+       -46.266,
        "smooth"
       ],
       [
        0.285714,
-       -46.6611,
+       -47.5751,
        "smooth"
       ],
       [
        0.428571,
-       -47.749,
+       -48.7778,
        "smooth"
       ],
       [
        0.571429,
-       -46.158,
+       -47.0189,
        "smooth"
       ],
       [
        0.714286,
-       -73.1939,
+       -76.9077,
        "smooth"
       ],
       [
        0.857143,
-       -91.3172,
+       -96.9434,
        "smooth"
       ],
       [
        1.0,
-       -85.8255,
+       -90.8721,
        "smooth"
       ]
      ]
@@ -4257,42 +5233,42 @@
      "keys": [
       [
        0.0,
-       68.9625,
+       76.6513,
        "smooth"
       ],
       [
        0.142857,
-       58.9625,
+       66.6513,
        "smooth"
       ],
       [
        0.285714,
-       42.9625,
+       50.6513,
        "smooth"
       ],
       [
        0.428571,
-       36.9625,
+       44.6513,
        "smooth"
       ],
       [
        0.571429,
-       56.9625,
+       64.6513,
        "smooth"
       ],
       [
        0.714286,
-       -29.0375,
+       -21.3487,
        "smooth"
       ],
       [
        0.857143,
-       -77.0375,
+       -69.3487,
        "smooth"
       ],
       [
        1.0,
-       -61.0375,
+       -53.3487,
        "smooth"
       ]
      ]
@@ -4301,42 +5277,42 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.142857,
-       4.1328,
+       4.7471,
        "smooth"
       ],
       [
        0.285714,
-       6.1328,
+       6.7471,
        "smooth"
       ],
       [
        0.428571,
-       6.1328,
+       6.7471,
        "smooth"
       ],
       [
        0.571429,
-       4.1328,
+       4.7471,
        "smooth"
       ],
       [
        0.714286,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.857143,
-       1.1328,
+       1.7471,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -4345,42 +5321,42 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.142857,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.285714,
-       -6.1328,
+       -9.4942,
        "smooth"
       ],
       [
        0.428571,
-       -6.1328,
+       -9.4942,
        "smooth"
       ],
       [
        0.571429,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.714286,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.857143,
-       -1.1328,
+       -4.4942,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -4389,6 +5365,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -4518,27 +5518,27 @@
      "keys": [
       [
        0.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ],
       [
        0.25,
-       -12.3756,
+       -11.6256,
        "smooth"
       ],
       [
        0.5,
-       -8.9,
+       -7.8377,
        "smooth"
       ],
       [
        0.75,
-       -4.3237,
+       -2.8501,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -4547,27 +5547,27 @@
      "keys": [
       [
        0.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ],
       [
        0.25,
-       -54.4378,
+       -56.4143,
        "smooth"
       ],
       [
        0.5,
-       -50.7049,
+       -52.3459,
        "smooth"
       ],
       [
        0.75,
-       -47.2979,
+       -48.6327,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -4576,27 +5576,27 @@
      "keys": [
       [
        0.0,
-       68.9625,
+       71.5651,
        "smooth"
       ],
       [
        0.25,
-       104.9625,
+       107.5651,
        "smooth"
       ],
       [
        0.5,
-       90.9625,
+       93.5651,
        "smooth"
       ],
       [
        0.75,
-       76.9625,
+       79.5651,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -4605,27 +5605,27 @@
      "keys": [
       [
        0.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ],
       [
        0.25,
-       -17.3303,
+       -17.4292,
        "smooth"
       ],
       [
        0.5,
-       -13.6784,
+       -13.392,
        "smooth"
       ],
       [
        0.75,
-       -7.8035,
+       -6.8972,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -4634,27 +5634,27 @@
      "keys": [
       [
        0.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ],
       [
        0.25,
-       -55.8522,
+       -57.736,
        "smooth"
       ],
       [
        0.5,
-       -51.2621,
+       -52.6616,
        "smooth"
       ],
       [
        0.75,
-       -47.0353,
+       -47.9887,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -4663,27 +5663,27 @@
      "keys": [
       [
        0.0,
-       68.9625,
+       76.6513,
        "smooth"
       ],
       [
        0.25,
-       112.9625,
+       120.6513,
        "smooth"
       ],
       [
        0.5,
-       96.9625,
+       104.6513,
        "smooth"
       ],
       [
        0.75,
-       78.9625,
+       86.6513,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -4692,27 +5692,27 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.25,
-       -2.8672,
+       -2.2529,
        "smooth"
       ],
       [
        0.5,
-       -0.8672,
+       -0.2529,
        "smooth"
       ],
       [
        0.75,
-       1.1328,
+       1.7471,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -4721,27 +5721,27 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.25,
-       -5.1328,
+       -8.4942,
        "smooth"
       ],
       [
        0.5,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.75,
-       -3.1328,
+       -6.4942,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -4777,6 +5777,30 @@
     },
     "talk_vis": {
      "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 1.0
     }
    }
   },
@@ -4925,32 +5949,32 @@
      "keys": [
       [
        0.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ],
       [
        0.2,
-       -8.0347,
+       -6.8945,
        "smooth"
       ],
       [
        0.4,
-       -12.9994,
+       -12.3054,
        "smooth"
       ],
       [
        0.6,
-       -15.782,
+       -15.3381,
        "smooth"
       ],
       [
        0.8,
-       -16.608,
+       -16.2384,
        "smooth"
       ],
       [
        1.0,
-       -16.6591,
+       -16.294,
        "smooth"
       ]
      ]
@@ -4959,32 +5983,32 @@
      "keys": [
       [
        0.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ],
       [
        0.2,
-       -48.6971,
+       -50.1576,
        "smooth"
       ],
       [
        0.4,
-       -53.5793,
+       -55.4786,
        "smooth"
       ],
       [
        0.6,
-       -58.4577,
+       -60.7954,
        "smooth"
       ],
       [
        0.8,
-       -61.6706,
+       -64.2971,
        "smooth"
       ],
       [
        1.0,
-       -62.9848,
+       -65.7294,
        "smooth"
       ]
      ]
@@ -4993,32 +6017,32 @@
      "keys": [
       [
        0.0,
-       68.9625,
+       71.5651,
        "smooth"
       ],
       [
        0.2,
-       86.9625,
+       89.5651,
        "smooth"
       ],
       [
        0.4,
-       104.9625,
+       107.5651,
        "smooth"
       ],
       [
        0.6,
-       120.9625,
+       123.5651,
        "smooth"
       ],
       [
        0.8,
-       130.9625,
+       133.5651,
        "smooth"
       ],
       [
        1.0,
-       134.9625,
+       137.5651,
        "smooth"
       ]
      ]
@@ -5027,32 +6051,32 @@
      "keys": [
       [
        0.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ],
       [
        0.2,
-       -9.2604,
+       -8.5078,
        "smooth"
       ],
       [
        0.4,
-       -14.0588,
+       -13.8125,
        "smooth"
       ],
       [
        0.6,
-       -17.4325,
+       -17.5423,
        "smooth"
       ],
       [
        0.8,
-       -18.6409,
+       -18.8782,
        "smooth"
       ],
       [
        1.0,
-       -18.8475,
+       -19.1065,
        "smooth"
       ]
      ]
@@ -5061,32 +6085,32 @@
      "keys": [
       [
        0.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ],
       [
        0.2,
-       -47.8839,
+       -48.9269,
        "smooth"
       ],
       [
        0.4,
-       -52.0759,
+       -53.5613,
        "smooth"
       ],
       [
        0.6,
-       -56.7002,
+       -58.6736,
        "smooth"
       ],
       [
        0.8,
-       -59.8624,
+       -62.1694,
        "smooth"
       ],
       [
        1.0,
-       -61.1876,
+       -63.6345,
        "smooth"
       ]
      ]
@@ -5095,32 +6119,32 @@
      "keys": [
       [
        0.0,
-       68.9625,
+       76.6513,
        "smooth"
       ],
       [
        0.2,
-       82.9625,
+       90.6513,
        "smooth"
       ],
       [
        0.4,
-       98.9625,
+       106.6513,
        "smooth"
       ],
       [
        0.6,
-       114.9625,
+       122.6513,
        "smooth"
       ],
       [
        0.8,
-       124.9625,
+       132.6513,
        "smooth"
       ],
       [
        1.0,
-       128.9625,
+       136.6513,
        "smooth"
       ]
      ]
@@ -5129,32 +6153,32 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.2,
-       4.1328,
+       4.7471,
        "smooth"
       ],
       [
        0.4,
-       7.1328,
+       7.7471,
        "smooth"
       ],
       [
        0.6,
-       10.1328,
+       10.7471,
        "smooth"
       ],
       [
        0.8,
-       12.1328,
+       12.7471,
        "smooth"
       ],
       [
        1.0,
-       13.1328,
+       13.7471,
        "smooth"
       ]
      ]
@@ -5197,32 +6221,32 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.2,
-       -1.1328,
+       -4.4942,
        "smooth"
       ],
       [
        0.4,
-       0.8672,
+       -2.4942,
        "smooth"
       ],
       [
        0.6,
-       2.8672,
+       -0.4942,
        "smooth"
       ],
       [
        0.8,
-       3.8672,
+       0.5058,
        "smooth"
       ],
       [
        1.0,
-       3.8672,
+       0.5058,
        "smooth"
       ]
      ]
@@ -5232,6 +6256,30 @@
     },
     "talk_vis": {
      "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 1.0
     }
    }
   },
@@ -5376,42 +6424,42 @@
      "keys": [
       [
        0.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ],
       [
        0.142857,
-       -3.5853,
+       -2.0453,
        "smooth"
       ],
       [
        0.285714,
-       -4.8709,
+       -3.4464,
        "smooth"
       ],
       [
        0.428571,
-       -3.5853,
+       -2.0453,
        "smooth"
       ],
       [
        0.571429,
-       -1.1485,
+       0.6105,
        "smooth"
       ],
       [
        0.714286,
-       14.7,
+       17.8832,
        "smooth"
       ],
       [
        0.857143,
-       24.9711,
+       29.0775,
        "smooth"
       ],
       [
        1.0,
-       15.1826,
+       18.4093,
        "smooth"
       ]
      ]
@@ -5420,42 +6468,42 @@
      "keys": [
       [
        0.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ],
       [
        0.142857,
-       -52.552,
+       -54.359,
        "smooth"
       ],
       [
        0.285714,
-       -54.9609,
+       -56.9844,
        "smooth"
       ],
       [
        0.428571,
-       -52.552,
+       -54.359,
        "smooth"
       ],
       [
        0.571429,
-       -46.0147,
+       -47.2342,
        "smooth"
       ],
       [
        0.714286,
-       -53.479,
+       -55.3693,
        "smooth"
       ],
       [
        0.857143,
-       -67.1453,
+       -70.2638,
        "smooth"
       ],
       [
        1.0,
-       -51.753,
+       -53.4882,
        "smooth"
       ]
      ]
@@ -5464,42 +6512,42 @@
      "keys": [
       [
        0.0,
-       68.9625,
+       71.5651,
        "smooth"
       ],
       [
        0.142857,
-       76.9625,
+       79.5651,
        "smooth"
       ],
       [
        0.285714,
-       82.9625,
+       85.5651,
        "smooth"
       ],
       [
        0.428571,
-       76.9625,
+       79.5651,
        "smooth"
       ],
       [
        0.571429,
-       68.9625,
+       71.5651,
        "smooth"
       ],
       [
        0.714286,
-       24.9625,
+       27.5651,
        "smooth"
       ],
       [
        0.857143,
-       -15.0375,
+       -12.4349,
        "smooth"
       ],
       [
        1.0,
-       26.9625,
+       29.5651,
        "smooth"
       ]
      ]
@@ -5508,42 +6556,42 @@
      "keys": [
       [
        0.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ],
       [
        0.142857,
-       -5.0245,
+       -3.8249,
        "smooth"
       ],
       [
        0.285714,
-       -6.5212,
+       -5.4796,
        "smooth"
       ],
       [
        0.428571,
-       -5.0245,
+       -3.8249,
        "smooth"
       ],
       [
        0.571429,
-       -3.7735,
+       -2.4419,
        "smooth"
       ],
       [
        0.714286,
-       -6.2545,
+       -5.1847,
        "smooth"
       ],
       [
        0.857143,
-       -7.1502,
+       -6.1749,
        "smooth"
       ],
       [
        1.0,
-       -5.466,
+       -4.313,
        "smooth"
       ]
      ]
@@ -5552,42 +6600,42 @@
      "keys": [
       [
        0.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ],
       [
        0.142857,
-       -52.0009,
+       -53.4784,
        "smooth"
       ],
       [
        0.285714,
-       -54.3074,
+       -56.0283,
        "smooth"
       ],
       [
        0.428571,
-       -52.0009,
+       -53.4784,
        "smooth"
       ],
       [
        0.571429,
-       -45.6278,
+       -46.4327,
        "smooth"
       ],
       [
        0.714286,
-       -46.2853,
+       -47.1596,
        "smooth"
       ],
       [
        0.857143,
-       -45.8639,
+       -46.6938,
        "smooth"
       ],
       [
        1.0,
-       -45.6869,
+       -46.4981,
        "smooth"
       ]
      ]
@@ -5596,42 +6644,42 @@
      "keys": [
       [
        0.0,
-       68.9625,
+       76.6513,
        "smooth"
       ],
       [
        0.142857,
-       72.9625,
+       80.6513,
        "smooth"
       ],
       [
        0.285714,
-       78.9625,
+       86.6513,
        "smooth"
       ],
       [
        0.428571,
-       72.9625,
+       80.6513,
        "smooth"
       ],
       [
        0.571429,
-       68.9625,
+       76.6513,
        "smooth"
       ],
       [
        0.714286,
-       74.9625,
+       82.6513,
        "smooth"
       ],
       [
        0.857143,
-       76.9625,
+       84.6513,
        "smooth"
       ],
       [
        1.0,
-       72.9625,
+       80.6513,
        "smooth"
       ]
      ]
@@ -5681,6 +6729,30 @@
      ]
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 1.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -5870,42 +6942,42 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.142857,
-       6.1328,
+       6.7471,
        "smooth"
       ],
       [
        0.285714,
-       6.6328,
+       7.2471,
        "smooth"
       ],
       [
        0.428571,
-       7.1328,
+       7.7471,
        "smooth"
       ],
       [
        0.571429,
-       6.3515,
+       6.9658,
        "smooth"
       ],
       [
        0.714286,
-       4.6328,
+       5.2471,
        "smooth"
       ],
       [
        0.857143,
-       2.9141,
+       3.5284,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -5914,42 +6986,42 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.142857,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.285714,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.428571,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.571429,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.714286,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.857143,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -6046,42 +7118,42 @@
      "keys": [
       [
        0.0,
-       -14.0007,
+       -12.9616,
        "smooth"
       ],
       [
        0.142857,
-       28.8056,
+       32.3736,
        "smooth"
       ],
       [
        0.285714,
-       29.3823,
+       32.9204,
        "smooth"
       ],
       [
        0.428571,
-       29.927,
+       33.4324,
        "smooth"
       ],
       [
        0.571429,
-       28.0198,
+       31.5184,
        "smooth"
       ],
       [
        0.714286,
-       18.9457,
+       21.9897,
        "smooth"
       ],
       [
        0.857143,
-       5.4638,
+       7.6549,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -6090,42 +7162,42 @@
      "keys": [
       [
        0.0,
-       -53.5411,
+       -55.5341,
        "smooth"
       ],
       [
        0.142857,
-       -68.0698,
+       -71.1318,
        "smooth"
       ],
       [
        0.285714,
-       -68.9733,
+       -72.1081,
        "smooth"
       ],
       [
        0.428571,
-       -69.8858,
+       -73.0949,
        "smooth"
       ],
       [
        0.571429,
-       -63.5578,
+       -66.2159,
        "smooth"
       ],
       [
        0.714286,
-       -52.0987,
+       -53.7746,
        "smooth"
       ],
       [
        0.857143,
-       -46.3439,
+       -47.562,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -6134,42 +7206,42 @@
      "keys": [
       [
        0.0,
-       102.9625,
+       105.5651,
        "smooth"
       ],
       [
        0.142857,
-       -17.0375,
+       -14.4349,
        "smooth"
       ],
       [
        0.285714,
-       -19.0375,
+       -16.4349,
        "smooth"
       ],
       [
        0.428571,
-       -21.0375,
+       -18.4349,
        "smooth"
       ],
       [
        0.571429,
-       -6.975,
+       -4.3724,
        "smooth"
       ],
       [
        0.714286,
-       23.9625,
+       26.5651,
        "smooth"
       ],
       [
        0.857143,
-       54.9,
+       57.5026,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -6178,42 +7250,42 @@
      "keys": [
       [
        0.0,
-       0.898,
+       3.1871,
        "smooth"
       ],
       [
        0.142857,
-       9.6495,
+       11.4566,
        "smooth"
       ],
       [
        0.285714,
-       11.1697,
+       13.0495,
        "smooth"
       ],
       [
        0.428571,
-       12.6605,
+       14.6098,
        "smooth"
       ],
       [
        0.571429,
-       10.2604,
+       12.1319,
        "smooth"
       ],
       [
        0.714286,
-       4.7163,
+       6.3876,
        "smooth"
       ],
       [
        0.857143,
-       -1.0867,
+       0.3551,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -6222,42 +7294,42 @@
      "keys": [
       [
        0.0,
-       -46.8629,
+       -47.8886,
        "smooth"
       ],
       [
        0.142857,
-       -48.4929,
+       -49.4761,
        "smooth"
       ],
       [
        0.285714,
-       -49.0433,
+       -50.0777,
        "smooth"
       ],
       [
        0.428571,
-       -49.6503,
+       -50.7425,
        "smooth"
       ],
       [
        0.571429,
-       -48.6422,
+       -49.6425,
        "smooth"
       ],
       [
        0.714286,
-       -46.8984,
+       -47.7558,
        "smooth"
       ],
       [
        0.857143,
-       -45.8569,
+       -46.6578,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -6266,42 +7338,42 @@
      "keys": [
       [
        0.0,
-       52.9625,
+       60.6513,
        "smooth"
       ],
       [
        0.142857,
-       44.9625,
+       52.6513,
        "smooth"
       ],
       [
        0.285714,
-       41.9625,
+       49.6513,
        "smooth"
       ],
       [
        0.428571,
-       38.9625,
+       46.6513,
        "smooth"
       ],
       [
        0.571429,
-       43.65,
+       51.3388,
        "smooth"
       ],
       [
        0.714286,
-       53.9625,
+       61.6513,
        "smooth"
       ],
       [
        0.857143,
-       64.275,
+       71.9638,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -6310,6 +7382,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -6539,52 +7635,52 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.111111,
-       14.1328,
+       14.7471,
        "smooth"
       ],
       [
        0.222222,
-       14.6328,
+       15.2471,
        "smooth"
       ],
       [
        0.333333,
-       15.1328,
+       15.7471,
        "smooth"
       ],
       [
        0.444444,
-       14.1698,
+       14.7841,
        "smooth"
       ],
       [
        0.555556,
-       11.7624,
+       12.3767,
        "smooth"
       ],
       [
        0.666667,
-       8.6328,
+       9.2471,
        "smooth"
       ],
       [
        0.777778,
-       5.5032,
+       6.1175,
        "smooth"
       ],
       [
        0.888889,
-       3.0958,
+       3.7101,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -6593,52 +7689,52 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.111111,
-       -12.1328,
+       -15.4942,
        "smooth"
       ],
       [
        0.222222,
-       -12.6328,
+       -15.9942,
        "smooth"
       ],
       [
        0.333333,
-       -13.1328,
+       -16.4942,
        "smooth"
       ],
       [
        0.444444,
-       -12.318,
+       -15.6794,
        "smooth"
       ],
       [
        0.555556,
-       -10.2809,
+       -13.6423,
        "smooth"
       ],
       [
        0.666667,
-       -7.6328,
+       -10.9942,
        "smooth"
       ],
       [
        0.777778,
-       -4.9847,
+       -8.3461,
        "smooth"
       ],
       [
        0.888889,
-       -2.9476,
+       -6.309,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -6755,52 +7851,52 @@
      "keys": [
       [
        0.0,
-       -6.0686,
+       -5.6922,
        "smooth"
       ],
       [
        0.111111,
-       32.2602,
+       34.4381,
        "smooth"
       ],
       [
        0.222222,
-       33.8264,
+       36.0405,
        "smooth"
       ],
       [
        0.333333,
-       35.2822,
+       37.5227,
        "smooth"
       ],
       [
        0.444444,
-       33.3401,
+       35.6137,
        "smooth"
       ],
       [
        0.555556,
-       27.7167,
+       30.0053,
        "smooth"
       ],
       [
        0.666667,
-       19.0825,
+       21.2711,
        "smooth"
       ],
       [
        0.777778,
-       9.4986,
+       11.4983,
        "smooth"
       ],
       [
        0.888889,
-       1.8828,
+       3.7107,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -6809,52 +7905,52 @@
      "keys": [
       [
        0.0,
-       -49.9216,
+       -51.3226,
        "smooth"
       ],
       [
        0.111111,
-       -55.0458,
+       -57.0614,
        "smooth"
       ],
       [
        0.222222,
-       -56.3519,
+       -58.5116,
        "smooth"
       ],
       [
        0.333333,
-       -57.726,
+       -60.0363,
        "smooth"
       ],
       [
        0.444444,
-       -55.8851,
+       -58.0014,
        "smooth"
       ],
       [
        0.555556,
-       -51.8139,
+       -53.5109,
        "smooth"
       ],
       [
        0.666667,
-       -47.929,
+       -49.2461,
        "smooth"
       ],
       [
        0.777778,
-       -45.9234,
+       -47.0729,
        "smooth"
       ],
       [
        0.888889,
-       -45.7506,
+       -46.9237,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -6863,52 +7959,52 @@
      "keys": [
       [
        0.0,
-       88.9625,
+       91.5651,
        "smooth"
       ],
       [
        0.111111,
-       6.9625,
+       9.5651,
        "smooth"
       ],
       [
        0.222222,
-       2.9625,
+       5.5651,
        "smooth"
       ],
       [
        0.333333,
-       -1.0375,
+       1.5651,
        "smooth"
       ],
       [
        0.444444,
-       4.1477,
+       6.7503,
        "smooth"
       ],
       [
        0.555556,
-       17.1106,
+       19.7132,
        "smooth"
       ],
       [
        0.666667,
-       33.9625,
+       36.5651,
        "smooth"
       ],
       [
        0.777778,
-       50.8144,
+       53.417,
        "smooth"
       ],
       [
        0.888889,
-       63.7773,
+       66.3799,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -6917,52 +8013,52 @@
      "keys": [
       [
        0.0,
-       -5.302,
+       -5.1073,
        "smooth"
       ],
       [
        0.111111,
-       24.9761,
+       26.6054,
        "smooth"
       ],
       [
        0.222222,
-       26.9204,
+       28.6407,
        "smooth"
       ],
       [
        0.333333,
-       28.7805,
+       30.5829,
        "smooth"
       ],
       [
        0.444444,
-       26.7175,
+       28.522,
        "smooth"
       ],
       [
        0.555556,
-       21.1979,
+       22.9709,
        "smooth"
       ],
       [
        0.666667,
-       13.4122,
+       15.0804,
        "smooth"
       ],
       [
        0.777778,
-       5.2013,
+       6.7174,
        "smooth"
       ],
       [
        0.888889,
-       -1.2163,
+       0.1683,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -6971,52 +8067,52 @@
      "keys": [
       [
        0.0,
-       -48.1539,
+       -49.0771,
        "smooth"
       ],
       [
        0.111111,
-       -50.4166,
+       -51.7972,
        "smooth"
       ],
       [
        0.222222,
-       -51.3929,
+       -52.909,
        "smooth"
       ],
       [
        0.333333,
-       -52.4626,
+       -54.1245,
        "smooth"
       ],
       [
        0.444444,
-       -51.3464,
+       -52.8539,
        "smooth"
       ],
       [
        0.555556,
-       -48.9299,
+       -50.1093,
        "smooth"
       ],
       [
        0.666667,
-       -46.6836,
+       -47.5709,
        "smooth"
       ],
       [
        0.777778,
-       -45.5504,
+       -46.3081,
        "smooth"
       ],
       [
        0.888889,
-       -45.4684,
+       -46.2401,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -7025,52 +8121,52 @@
      "keys": [
       [
        0.0,
-       78.9625,
+       86.6513,
        "smooth"
       ],
       [
        0.111111,
-       22.9625,
+       30.6513,
        "smooth"
       ],
       [
        0.222222,
-       18.9625,
+       26.6513,
        "smooth"
       ],
       [
        0.333333,
-       14.9625,
+       22.6513,
        "smooth"
       ],
       [
        0.444444,
-       18.9625,
+       26.6513,
        "smooth"
       ],
       [
        0.555556,
-       28.9625,
+       36.6513,
        "smooth"
       ],
       [
        0.666667,
-       41.9625,
+       49.6513,
        "smooth"
       ],
       [
        0.777778,
-       54.9625,
+       62.6513,
        "smooth"
       ],
       [
        0.888889,
-       64.9625,
+       72.6513,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -7079,6 +8175,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -7308,52 +8428,52 @@
      "keys": [
       [
        0.0,
-       2.9106,
+       3.5249,
        "smooth"
       ],
       [
        0.111111,
-       4.355,
+       4.9693,
        "smooth"
       ],
       [
        0.222222,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.333333,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.444444,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.555556,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.666667,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.777778,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.888889,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -7362,52 +8482,52 @@
      "keys": [
       [
        0.0,
-       -2.9106,
+       -6.272,
        "smooth"
       ],
       [
        0.111111,
-       -4.355,
+       -7.7164,
        "smooth"
       ],
       [
        0.222222,
-       -5.1328,
+       -8.4942,
        "smooth"
       ],
       [
        0.333333,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.444444,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.555556,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.666667,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.777778,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.888889,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -7524,52 +8644,52 @@
      "keys": [
       [
        0.0,
-       -4.7709,
+       -3.6395,
        "smooth"
       ],
       [
        0.111111,
-       -10.3041,
+       -10.238,
        "smooth"
       ],
       [
        0.222222,
-       -12.4286,
+       -12.8619,
        "smooth"
       ],
       [
        0.333333,
-       7.2144,
+       10.6327,
        "smooth"
       ],
       [
        0.444444,
-       0.9972,
+       4.0764,
        "smooth"
       ],
       [
        0.555556,
-       -5.5321,
+       -2.8234,
        "smooth"
       ],
       [
        0.666667,
-       7.5516,
+       11.2335,
        "smooth"
       ],
       [
        0.777778,
-       22.3062,
+       26.8578,
        "smooth"
       ],
       [
        0.888889,
-       9.8716,
+       12.8373,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -7578,52 +8698,52 @@
      "keys": [
       [
        0.0,
-       -45.3325,
+       -46.5845,
        "smooth"
       ],
       [
        0.111111,
-       -45.9333,
+       -47.4499,
        "smooth"
       ],
       [
        0.222222,
-       -47.0355,
+       -48.7844,
        "smooth"
       ],
       [
        0.333333,
-       -96.5837,
+       -102.377,
        "smooth"
       ],
       [
        0.444444,
-       -99.3766,
+       -105.4254,
        "smooth"
       ],
       [
        0.555556,
-       -100.8329,
+       -107.0246,
        "smooth"
       ],
       [
        0.666667,
-       -97.059,
+       -102.8859,
        "smooth"
       ],
       [
        0.777778,
-       -72.6359,
+       -76.2354,
        "smooth"
       ],
       [
        0.888889,
-       -49.2712,
+       -50.7718,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -7632,52 +8752,52 @@
      "keys": [
       [
        0.0,
-       79.8514,
+       82.454,
        "smooth"
       ],
       [
        0.111111,
-       100.0736,
+       102.6762,
        "smooth"
       ],
       [
        0.222222,
-       110.9625,
+       113.5651,
        "smooth"
       ],
       [
        0.333333,
-       -87.0375,
+       -84.4349,
        "smooth"
       ],
       [
        0.444444,
-       -100.0375,
+       -97.4349,
        "smooth"
       ],
       [
        0.555556,
-       -113.0375,
+       -110.4349,
        "smooth"
       ],
       [
        0.666667,
-       -84.6,
+       -81.9974,
        "smooth"
       ],
       [
        0.777778,
-       -22.0375,
+       -19.4349,
        "smooth"
       ],
       [
        0.888889,
-       40.525,
+       43.1276,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -7686,52 +8806,52 @@
      "keys": [
       [
        0.0,
-       -6.3954,
+       -5.6542,
        "smooth"
       ],
       [
        0.111111,
-       -10.3973,
+       -10.6674,
        "smooth"
       ],
       [
        0.222222,
-       -11.993,
+       -12.7507,
        "smooth"
       ],
       [
        0.333333,
-       9.3574,
+       13.02,
        "smooth"
       ],
       [
        0.444444,
-       3.7267,
+       7.0246,
        "smooth"
       ],
       [
        0.555556,
-       -2.6859,
+       0.1615,
        "smooth"
       ],
       [
        0.666667,
-       8.5895,
+       12.4148,
        "smooth"
       ],
       [
        0.777778,
-       19.4557,
+       23.9514,
        "smooth"
       ],
       [
        0.888889,
-       6.6411,
+       9.2967,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -7740,52 +8860,52 @@
      "keys": [
       [
        0.0,
-       -45.0249,
+       -45.8948,
        "smooth"
       ],
       [
        0.111111,
-       -44.9617,
+       -46.1014,
        "smooth"
       ],
       [
        0.222222,
-       -45.3709,
+       -46.7234,
        "smooth"
       ],
       [
        0.333333,
-       -91.9682,
+       -97.6292,
        "smooth"
       ],
       [
        0.444444,
-       -96.2589,
+       -102.3582,
        "smooth"
       ],
       [
        0.555556,
-       -99.227,
+       -105.633,
        "smooth"
       ],
       [
        0.666667,
-       -93.7746,
+       -99.5947,
        "smooth"
       ],
       [
        0.777778,
-       -69.738,
+       -73.023,
        "smooth"
       ],
       [
        0.888889,
-       -48.6219,
+       -49.7147,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -7794,52 +8914,52 @@
      "keys": [
       [
        0.0,
-       77.2588,
+       84.9476,
        "smooth"
       ],
       [
        0.111111,
-       92.6662,
+       100.355,
        "smooth"
       ],
       [
        0.222222,
-       100.9625,
+       108.6513,
        "smooth"
       ],
       [
        0.333333,
-       -73.0375,
+       -65.3487,
        "smooth"
       ],
       [
        0.444444,
-       -87.0375,
+       -79.3487,
        "smooth"
       ],
       [
        0.555556,
-       -101.0375,
+       -93.3487,
        "smooth"
       ],
       [
        0.666667,
-       -74.475,
+       -66.7862,
        "smooth"
       ],
       [
        0.777778,
-       -16.0375,
+       -8.3487,
        "smooth"
       ],
       [
        0.888889,
-       42.4,
+       50.0888,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -7848,6 +8968,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -8077,52 +9221,52 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.111111,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.222222,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.333333,
-       12.1328,
+       12.7471,
        "smooth"
       ],
       [
        0.444444,
-       13.1328,
+       13.7471,
        "smooth"
       ],
       [
        0.555556,
-       11.9888,
+       12.6031,
        "smooth"
       ],
       [
        0.666667,
-       9.2608,
+       9.8751,
        "smooth"
       ],
       [
        0.777778,
-       6.0048,
+       6.6191,
        "smooth"
       ],
       [
        0.888889,
-       3.2768,
+       3.8911,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -8131,52 +9275,52 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.111111,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.222222,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.333333,
-       -12.1328,
+       -15.4942,
        "smooth"
       ],
       [
        0.444444,
-       -13.1328,
+       -16.4942,
        "smooth"
       ],
       [
        0.555556,
-       -11.9888,
+       -15.3502,
        "smooth"
       ],
       [
        0.666667,
-       -9.2608,
+       -12.6222,
        "smooth"
       ],
       [
        0.777778,
-       -6.0048,
+       -9.3662,
        "smooth"
       ],
       [
        0.888889,
-       -3.2768,
+       -6.6382,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -8293,52 +9437,52 @@
      "keys": [
       [
        0.0,
-       11.6463,
+       14.7348,
        "smooth"
       ],
       [
        0.111111,
-       21.2896,
+       25.5745,
        "smooth"
       ],
       [
        0.222222,
-       15.3977,
+       19.3285,
        "smooth"
       ],
       [
        0.333333,
-       24.7955,
+       27.9457,
        "smooth"
       ],
       [
        0.444444,
-       23.2346,
+       26.0064,
        "smooth"
       ],
       [
        0.555556,
-       21.0968,
+       23.8004,
        "smooth"
       ],
       [
        0.666667,
-       15.4241,
+       17.9124,
        "smooth"
       ],
       [
        0.777778,
-       7.9613,
+       10.1282,
        "smooth"
       ],
       [
        0.888889,
-       1.5189,
+       3.3968,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -8347,52 +9491,52 @@
      "keys": [
       [
        0.0,
-       -50.2542,
+       -51.8795,
        "smooth"
       ],
       [
        0.111111,
-       -73.1232,
+       -76.8628,
        "smooth"
       ],
       [
        0.222222,
-       -86.0432,
+       -90.9824,
        "smooth"
       ],
       [
        0.333333,
-       -49.3516,
+       -51.5101,
        "smooth"
       ],
       [
        0.444444,
-       -44.2141,
+       -45.979,
        "smooth"
       ],
       [
        0.555556,
-       -43.4442,
+       -45.0568,
        "smooth"
       ],
       [
        0.666667,
-       -42.4466,
+       -43.7802,
        "smooth"
       ],
       [
        0.777778,
-       -42.9425,
+       -44.1115,
        "smooth"
       ],
       [
        0.888889,
-       -44.8298,
+       -46.0068,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -8401,52 +9545,52 @@
      "keys": [
       [
        0.0,
-       35.2588,
+       37.8614,
        "smooth"
       ],
       [
        0.111111,
-       -27.3338,
+       -24.7312,
        "smooth"
       ],
       [
        0.222222,
-       -61.0375,
+       -58.4349,
        "smooth"
       ],
       [
        0.333333,
-       4.9625,
+       7.5651,
        "smooth"
       ],
       [
        0.444444,
-       14.9625,
+       17.5651,
        "smooth"
       ],
       [
        0.555556,
-       20.5785,
+       23.1811,
        "smooth"
       ],
       [
        0.666667,
-       33.9705,
+       36.5731,
        "smooth"
       ],
       [
        0.777778,
-       49.9545,
+       52.5571,
        "smooth"
       ],
       [
        0.888889,
-       63.3465,
+       65.9491,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -8455,52 +9599,52 @@
      "keys": [
       [
        0.0,
-       10.2306,
+       13.2267,
        "smooth"
       ],
       [
        0.111111,
-       17.9791,
+       22.1363,
        "smooth"
       ],
       [
        0.222222,
-       9.11,
+       12.514,
        "smooth"
       ],
       [
        0.333333,
-       -24.0203,
+       -25.8008,
        "smooth"
       ],
       [
        0.444444,
-       -21.5947,
+       -23.3655,
        "smooth"
       ],
       [
        0.555556,
-       -20.1229,
+       -21.6103,
        "smooth"
       ],
       [
        0.666667,
-       -16.081,
+       -16.8369,
        "smooth"
       ],
       [
        0.777778,
-       -10.5924,
+       -10.407,
        "smooth"
       ],
       [
        0.888889,
-       -5.7766,
+       -4.7818,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -8509,52 +9653,52 @@
      "keys": [
       [
        0.0,
-       -50.731,
+       -52.0916,
        "smooth"
       ],
       [
        0.111111,
-       -76.5544,
+       -80.6853,
        "smooth"
       ],
       [
        0.222222,
-       -89.1253,
+       -94.6144,
        "smooth"
       ],
       [
        0.333333,
-       -48.1756,
+       -50.0508,
        "smooth"
       ],
       [
        0.444444,
-       -44.0265,
+       -45.5537,
        "smooth"
       ],
       [
        0.555556,
-       -43.3164,
+       -44.6659,
        "smooth"
       ],
       [
        0.666667,
-       -42.3871,
+       -43.4032,
        "smooth"
       ],
       [
        0.777778,
-       -42.8204,
+       -43.6185,
        "smooth"
       ],
       [
        0.888889,
-       -44.5401,
+       -45.3131,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -8563,52 +9707,52 @@
      "keys": [
       [
        0.0,
-       32.1477,
+       39.8365,
        "smooth"
       ],
       [
        0.111111,
-       -36.2227,
+       -28.5339,
        "smooth"
       ],
       [
        0.222222,
-       -73.0375,
+       -65.3487,
        "smooth"
       ],
       [
        0.333333,
-       128.9625,
+       136.6513,
        "smooth"
       ],
       [
        0.444444,
-       120.9625,
+       128.6513,
        "smooth"
       ],
       [
        0.555556,
-       115.5545,
+       123.2433,
        "smooth"
       ],
       [
        0.666667,
-       102.6585,
+       110.3473,
        "smooth"
       ],
       [
        0.777778,
-       87.2665,
+       94.9553,
        "smooth"
       ],
       [
        0.888889,
-       74.3705,
+       82.0593,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -8617,6 +9761,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -8806,42 +9974,42 @@
      "keys": [
       [
        0.0,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.142857,
-       15.1328,
+       15.7471,
        "smooth"
       ],
       [
        0.285714,
-       15.4661,
+       16.0804,
        "smooth"
       ],
       [
        0.428571,
-       15.7995,
+       16.4138,
        "smooth"
       ],
       [
        0.571429,
-       16.1328,
+       16.7471,
        "smooth"
       ],
       [
        0.714286,
-       13.2809,
+       13.8952,
        "smooth"
       ],
       [
        0.857143,
-       7.9847,
+       8.599,
        "smooth"
       ],
       [
        1.0,
-       5.1328,
+       5.7471,
        "smooth"
       ]
      ]
@@ -8850,42 +10018,42 @@
      "keys": [
       [
        0.0,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.142857,
-       -15.1328,
+       -18.4942,
        "smooth"
       ],
       [
        0.285714,
-       -15.4661,
+       -18.8275,
        "smooth"
       ],
       [
        0.428571,
-       -15.7995,
+       -19.1609,
        "smooth"
       ],
       [
        0.571429,
-       -16.1328,
+       -19.4942,
        "smooth"
       ],
       [
        0.714286,
-       -13.0217,
+       -16.3831,
        "smooth"
       ],
       [
        0.857143,
-       -7.2439,
+       -10.6053,
        "smooth"
       ],
       [
        1.0,
-       -4.1328,
+       -7.4942,
        "smooth"
       ]
      ]
@@ -8982,42 +10150,42 @@
      "keys": [
       [
        0.0,
-       10.1262,
+       12.8985,
        "smooth"
       ],
       [
        0.142857,
-       23.1699,
+       27.5734,
        "smooth"
       ],
       [
        0.285714,
-       23.7767,
+       28.1589,
        "smooth"
       ],
       [
        0.428571,
-       24.2981,
+       28.651,
        "smooth"
       ],
       [
        0.571429,
-       24.7323,
+       29.0478,
        "smooth"
       ],
       [
        0.714286,
-       23.3579,
+       27.4904,
        "smooth"
       ],
       [
        0.857143,
-       14.2202,
+       17.4203,
        "smooth"
       ],
       [
        1.0,
-       7.0175,
+       9.5104,
        "smooth"
       ]
      ]
@@ -9026,42 +10194,42 @@
      "keys": [
       [
        0.0,
-       -50.3622,
+       -51.9724,
        "smooth"
       ],
       [
        0.142857,
-       -76.1349,
+       -80.1948,
        "smooth"
       ],
       [
        0.285714,
-       -74.6827,
+       -78.5876,
        "smooth"
       ],
       [
        0.428571,
-       -73.2016,
+       -76.9498,
        "smooth"
       ],
       [
        0.571429,
-       -71.6966,
+       -75.2869,
        "smooth"
       ],
       [
        0.714286,
-       -63.0908,
+       -65.8906,
        "smooth"
       ],
       [
        0.857143,
-       -50.8415,
+       -52.5103,
        "smooth"
       ],
       [
        1.0,
-       -47.4546,
+       -48.8035,
        "smooth"
       ]
      ]
@@ -9070,42 +10238,42 @@
      "keys": [
       [
        0.0,
-       38.9625,
+       41.5651,
        "smooth"
       ],
       [
        0.142857,
-       -35.0375,
+       -32.4349,
        "smooth"
       ],
       [
        0.285714,
-       -31.7042,
+       -29.1016,
        "smooth"
       ],
       [
        0.428571,
-       -28.3708,
+       -25.7682,
        "smooth"
       ],
       [
        0.571429,
-       -25.0375,
+       -22.4349,
        "smooth"
       ],
       [
        0.714286,
-       -5.8523,
+       -3.2497,
        "smooth"
       ],
       [
        0.857143,
-       29.7773,
+       32.3799,
        "smooth"
       ],
       [
        1.0,
-       48.9625,
+       51.5651,
        "smooth"
       ]
      ]
@@ -9114,42 +10282,42 @@
      "keys": [
       [
        0.0,
-       -7.6661,
+       -6.7453,
        "smooth"
       ],
       [
        0.142857,
-       -30.4511,
+       -31.457,
        "smooth"
       ],
       [
        0.285714,
-       -30.408,
+       -31.4883,
        "smooth"
       ],
       [
        0.428571,
-       -30.2775,
+       -31.4233,
        "smooth"
       ],
       [
        0.571429,
-       -30.0589,
+       -31.2611,
        "smooth"
       ],
       [
        0.714286,
-       -27.7458,
+       -28.7659,
        "smooth"
       ],
       [
        0.857143,
-       -11.2191,
+       -10.6108,
        "smooth"
       ],
       [
        1.0,
-       0.3481,
+       2.1146,
        "smooth"
       ]
      ]
@@ -9158,42 +10326,42 @@
      "keys": [
       [
        0.0,
-       -47.8145,
+       -48.8501,
        "smooth"
       ],
       [
        0.142857,
-       -67.8136,
+       -71.0844,
        "smooth"
       ],
       [
        0.285714,
-       -69.3538,
+       -72.764,
        "smooth"
       ],
       [
        0.428571,
-       -70.9029,
+       -74.4544,
        "smooth"
       ],
       [
        0.571429,
-       -72.456,
+       -76.1501,
        "smooth"
       ],
       [
        0.714286,
-       -60.5275,
+       -62.947,
        "smooth"
       ],
       [
        0.857143,
-       -46.6964,
+       -47.6284,
        "smooth"
       ],
       [
        1.0,
-       -46.5159,
+       -47.4145,
        "smooth"
       ]
      ]
@@ -9202,42 +10370,42 @@
      "keys": [
       [
        0.0,
-       78.9625,
+       86.6513,
        "smooth"
       ],
       [
        0.142857,
-       154.9625,
+       162.6513,
        "smooth"
       ],
       [
        0.285714,
-       158.2958,
+       165.9846,
        "smooth"
       ],
       [
        0.428571,
-       161.6292,
+       169.318,
        "smooth"
       ],
       [
        0.571429,
-       164.9625,
+       172.6513,
        "smooth"
       ],
       [
        0.714286,
-       137.481,
+       145.1698,
        "smooth"
       ],
       [
        0.857143,
-       86.444,
+       94.1328,
        "smooth"
       ],
       [
        1.0,
-       58.9625,
+       66.6513,
        "smooth"
       ]
      ]
@@ -9246,6 +10414,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -9435,42 +10627,42 @@
      "keys": [
       [
        0.0,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.142857,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.285714,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.428571,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.571429,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.714286,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.857143,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        1.0,
-       5.1328,
+       5.7471,
        "smooth"
       ]
      ]
@@ -9479,42 +10671,42 @@
      "keys": [
       [
        0.0,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.142857,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.285714,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.428571,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.571429,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.714286,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.857143,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        1.0,
-       -4.1328,
+       -7.4942,
        "smooth"
       ]
      ]
@@ -9611,42 +10803,42 @@
      "keys": [
       [
        0.0,
-       22.4825,
+       26.7104,
        "smooth"
       ],
       [
        0.142857,
-       3.2047,
+       6.0397,
        "smooth"
       ],
       [
        0.285714,
-       27.9719,
+       31.1694,
        "smooth"
       ],
       [
        0.428571,
-       27.0319,
+       29.9062,
        "smooth"
       ],
       [
        0.571429,
-       24.1768,
+       26.5555,
        "smooth"
       ],
       [
        0.714286,
-       20.0719,
+       22.5152,
        "smooth"
       ],
       [
        0.857143,
-       11.7189,
+       14.2106,
        "smooth"
       ],
       [
        1.0,
-       7.0175,
+       9.5104,
        "smooth"
       ]
      ]
@@ -9655,42 +10847,42 @@
      "keys": [
       [
        0.0,
-       -71.1004,
+       -74.6716,
        "smooth"
       ],
       [
        0.142857,
-       -94.1498,
+       -99.9074,
        "smooth"
       ],
       [
        0.285714,
-       -67.9753,
+       -70.9769,
        "smooth"
       ],
       [
        0.428571,
-       -60.7469,
+       -63.0855,
        "smooth"
       ],
       [
        0.571429,
-       -54.1944,
+       -55.9389,
        "smooth"
       ],
       [
        0.714286,
-       -51.7197,
+       -53.2574,
        "smooth"
       ],
       [
        0.857143,
-       -48.4573,
+       -49.8031,
        "smooth"
       ],
       [
        1.0,
-       -47.4546,
+       -48.8035,
        "smooth"
       ]
      ]
@@ -9699,42 +10891,42 @@
      "keys": [
       [
        0.0,
-       -24.0375,
+       -21.4349,
        "smooth"
       ],
       [
        0.142857,
-       -97.0375,
+       -94.4349,
        "smooth"
       ],
       [
        0.285714,
-       -17.0375,
+       -14.4349,
        "smooth"
       ],
       [
        0.428571,
-       -1.0375,
+       1.5651,
        "smooth"
       ],
       [
        0.571429,
-       14.9625,
+       17.5651,
        "smooth"
       ],
       [
        0.714286,
-       23.7773,
+       26.3799,
        "smooth"
       ],
       [
        0.857143,
-       40.1477,
+       42.7503,
        "smooth"
       ],
       [
        1.0,
-       48.9625,
+       51.5651,
        "smooth"
       ]
      ]
@@ -9743,42 +10935,42 @@
      "keys": [
       [
        0.0,
-       18.7988,
+       22.8713,
        "smooth"
       ],
       [
        0.142857,
-       5.6401,
+       8.678,
        "smooth"
       ],
       [
        0.285714,
-       22.4169,
+       25.2902,
        "smooth"
       ],
       [
        0.428571,
-       20.1604,
+       22.5489,
        "smooth"
       ],
       [
        0.571429,
-       16.656,
+       18.4278,
        "smooth"
       ],
       [
        0.714286,
-       12.5786,
+       14.3681,
        "smooth"
       ],
       [
        0.857143,
-       4.6654,
+       6.4475,
        "smooth"
       ],
       [
        1.0,
-       0.3481,
+       2.1146,
        "smooth"
       ]
      ]
@@ -9787,42 +10979,42 @@
      "keys": [
       [
        0.0,
-       -65.9657,
+       -69.0073,
        "smooth"
       ],
       [
        0.142857,
-       -90.3787,
+       -96.1055,
        "smooth"
       ],
       [
        0.285714,
-       -60.8778,
+       -63.1279,
        "smooth"
       ],
       [
        0.428571,
-       -55.4715,
+       -57.144,
        "smooth"
       ],
       [
        0.571429,
-       -50.8722,
+       -52.061,
        "smooth"
       ],
       [
        0.714286,
-       -49.1956,
+       -50.211,
        "smooth"
       ],
       [
        0.857143,
-       -47.093,
+       -47.9683,
        "smooth"
       ],
       [
        1.0,
-       -46.5159,
+       -47.4145,
        "smooth"
       ]
      ]
@@ -9831,42 +11023,42 @@
      "keys": [
       [
        0.0,
-       -12.0375,
+       -4.3487,
        "smooth"
       ],
       [
        0.142857,
-       -83.0375,
+       -75.3487,
        "smooth"
       ],
       [
        0.285714,
-       0.9625,
+       8.6513,
        "smooth"
       ],
       [
        0.428571,
-       14.9625,
+       22.6513,
        "smooth"
       ],
       [
        0.571429,
-       28.9625,
+       36.6513,
        "smooth"
       ],
       [
        0.714286,
-       36.7403,
+       44.4291,
        "smooth"
       ],
       [
        0.857143,
-       51.1847,
+       58.8735,
        "smooth"
       ],
       [
        1.0,
-       58.9625,
+       66.6513,
        "smooth"
       ]
      ]
@@ -9875,6 +11067,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -10064,42 +11280,42 @@
      "keys": [
       [
        0.0,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.142857,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.285714,
-       8.1328,
+       8.7471,
        "smooth"
       ],
       [
        0.428571,
-       8.1328,
+       8.7471,
        "smooth"
       ],
       [
        0.571429,
-       8.1328,
+       8.7471,
        "smooth"
       ],
       [
        0.714286,
-       7.355,
+       7.9693,
        "smooth"
       ],
       [
        0.857143,
-       5.9106,
+       6.5249,
        "smooth"
       ],
       [
        1.0,
-       5.1328,
+       5.7471,
        "smooth"
       ]
      ]
@@ -10108,42 +11324,42 @@
      "keys": [
       [
        0.0,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.142857,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.285714,
-       -32.1328,
+       -35.4942,
        "smooth"
       ],
       [
        0.428571,
-       -33.6328,
+       -36.9942,
        "smooth"
       ],
       [
        0.571429,
-       -35.1328,
+       -38.4942,
        "smooth"
       ],
       [
        0.714286,
-       -27.0958,
+       -30.4572,
        "smooth"
       ],
       [
        0.857143,
-       -12.1698,
+       -15.5312,
        "smooth"
       ],
       [
        1.0,
-       -4.1328,
+       -7.4942,
        "smooth"
       ]
      ]
@@ -10240,42 +11456,42 @@
      "keys": [
       [
        0.0,
-       9.5265,
+       12.0121,
        "smooth"
       ],
       [
        0.142857,
-       11.9592,
+       14.4289,
        "smooth"
       ],
       [
        0.285714,
-       24.755,
+       27.1857,
        "smooth"
       ],
       [
        0.428571,
-       25.4686,
+       27.8438,
        "smooth"
       ],
       [
        0.571429,
-       26.154,
+       28.4713,
        "smooth"
       ],
       [
        0.714286,
-       22.0554,
+       24.5002,
        "smooth"
       ],
       [
        0.857143,
-       12.686,
+       15.2036,
        "smooth"
       ],
       [
        1.0,
-       7.0175,
+       9.5104,
        "smooth"
       ]
      ]
@@ -10284,42 +11500,42 @@
      "keys": [
       [
        0.0,
-       -48.2758,
+       -49.6438,
        "smooth"
       ],
       [
        0.142857,
-       -49.2414,
+       -50.6496,
        "smooth"
       ],
       [
        0.285714,
-       -57.0305,
+       -59.0299,
        "smooth"
       ],
       [
        0.428571,
-       -57.7434,
+       -59.8075,
        "smooth"
       ],
       [
        0.571429,
-       -58.4657,
+       -60.5974,
        "smooth"
       ],
       [
        0.714286,
-       -54.635,
+       -56.4251,
        "smooth"
       ],
       [
        0.857143,
-       -49.2468,
+       -50.6524,
        "smooth"
       ],
       [
        1.0,
-       -47.4546,
+       -48.8035,
        "smooth"
       ]
      ]
@@ -10328,42 +11544,42 @@
      "keys": [
       [
        0.0,
-       43.9625,
+       46.5651,
        "smooth"
       ],
       [
        0.142857,
-       38.9625,
+       41.5651,
        "smooth"
       ],
       [
        0.285714,
-       8.9625,
+       11.5651,
        "smooth"
       ],
       [
        0.428571,
-       6.9625,
+       9.5651,
        "smooth"
       ],
       [
        0.571429,
-       4.9625,
+       7.5651,
        "smooth"
       ],
       [
        0.714286,
-       16.3699,
+       18.9725,
        "smooth"
       ],
       [
        0.857143,
-       37.5551,
+       40.1577,
        "smooth"
       ],
       [
        1.0,
-       48.9625,
+       51.5651,
        "smooth"
       ]
      ]
@@ -10372,42 +11588,42 @@
      "keys": [
       [
        0.0,
-       2.9559,
+       4.7558,
        "smooth"
       ],
       [
        0.142857,
-       5.5206,
+       7.3477,
        "smooth"
       ],
       [
        0.285714,
-       18.5645,
+       20.5376,
        "smooth"
       ],
       [
        0.428571,
-       19.3844,
+       21.3207,
        "smooth"
       ],
       [
        0.571429,
-       20.1812,
+       22.0783,
        "smooth"
       ],
       [
        0.714286,
-       15.804,
+       17.751,
        "smooth"
       ],
       [
        0.857143,
-       6.1098,
+       7.981,
        "smooth"
       ],
       [
        1.0,
-       0.3481,
+       2.1146,
        "smooth"
       ]
      ]
@@ -10416,42 +11632,42 @@
      "keys": [
       [
        0.0,
-       -47.0798,
+       -47.9881,
        "smooth"
       ],
       [
        0.142857,
-       -47.7977,
+       -48.7404,
        "smooth"
       ],
       [
        0.285714,
-       -55.0099,
+       -56.6353,
        "smooth"
       ],
       [
        0.428571,
-       -55.6416,
+       -57.3377,
        "smooth"
       ],
       [
        0.571429,
-       -56.2859,
+       -58.0561,
        "smooth"
       ],
       [
        0.714286,
-       -52.8016,
+       -54.1926,
        "smooth"
       ],
       [
        0.857143,
-       -48.01,
+       -48.9724,
        "smooth"
       ],
       [
        1.0,
-       -46.5159,
+       -47.4145,
        "smooth"
       ]
      ]
@@ -10460,42 +11676,42 @@
      "keys": [
       [
        0.0,
-       53.9625,
+       61.6513,
        "smooth"
       ],
       [
        0.142857,
-       48.9625,
+       56.6513,
        "smooth"
       ],
       [
        0.285714,
-       18.9625,
+       26.6513,
        "smooth"
       ],
       [
        0.428571,
-       16.9625,
+       24.6513,
        "smooth"
       ],
       [
        0.571429,
-       14.9625,
+       22.6513,
        "smooth"
       ],
       [
        0.714286,
-       26.3699,
+       34.0587,
        "smooth"
       ],
       [
        0.857143,
-       47.5551,
+       55.2439,
        "smooth"
       ],
       [
        1.0,
-       58.9625,
+       66.6513,
        "smooth"
       ]
      ]
@@ -10504,6 +11720,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -10693,42 +11933,42 @@
      "keys": [
       [
        0.0,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.142857,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.285714,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.428571,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.571429,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.714286,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.857143,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        1.0,
-       5.1328,
+       5.7471,
        "smooth"
       ]
      ]
@@ -10737,42 +11977,42 @@
      "keys": [
       [
        0.0,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.142857,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.285714,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.428571,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.571429,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.714286,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.857143,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        1.0,
-       -4.1328,
+       -7.4942,
        "smooth"
       ]
      ]
@@ -10869,42 +12109,42 @@
      "keys": [
       [
        0.0,
-       -7.1063,
+       -6.5859,
        "smooth"
       ],
       [
        0.142857,
-       9.6639,
+       13.3022,
        "smooth"
       ],
       [
        0.285714,
-       4.68,
+       7.9808,
        "smooth"
       ],
       [
        0.428571,
-       -0.6646,
+       2.2653,
        "smooth"
       ],
       [
        0.571429,
-       -6.174,
+       -3.6307,
        "smooth"
       ],
       [
        0.714286,
-       12.5826,
+       16.4996,
        "smooth"
       ],
       [
        0.857143,
-       19.8121,
+       23.783,
        "smooth"
       ],
       [
        1.0,
-       7.0175,
+       9.5104,
        "smooth"
       ]
      ]
@@ -10913,42 +12153,42 @@
      "keys": [
       [
        0.0,
-       -48.7122,
+       -50.0346,
        "smooth"
       ],
       [
        0.142857,
-       -92.3356,
+       -98.0168,
        "smooth"
       ],
       [
        0.285714,
-       -94.4963,
+       -100.4179,
        "smooth"
       ],
       [
        0.428571,
-       -95.6895,
+       -101.7664,
        "smooth"
       ],
       [
        0.571429,
-       -95.8595,
+       -102.0017,
        "smooth"
       ],
       [
        0.714286,
-       -89.8003,
+       -95.2604,
        "smooth"
       ],
       [
        0.857143,
-       -58.4857,
+       -60.9179,
        "smooth"
       ],
       [
        1.0,
-       -47.4546,
+       -48.8035,
        "smooth"
       ]
      ]
@@ -10957,42 +12197,42 @@
      "keys": [
       [
        0.0,
-       88.9625,
+       91.5651,
        "smooth"
       ],
       [
        0.142857,
-       -81.0375,
+       -78.4349,
        "smooth"
       ],
       [
        0.285714,
-       -92.3708,
+       -89.7682,
        "smooth"
       ],
       [
        0.428571,
-       -103.7042,
+       -101.1016,
        "smooth"
       ],
       [
        0.571429,
-       -115.0375,
+       -112.4349,
        "smooth"
       ],
       [
        0.714286,
-       -72.519,
+       -69.9164,
        "smooth"
       ],
       [
        0.857143,
-       6.444,
+       9.0466,
        "smooth"
       ],
       [
        1.0,
-       48.9625,
+       51.5651,
        "smooth"
       ]
      ]
@@ -11001,42 +12241,42 @@
      "keys": [
       [
        0.0,
-       -5.8971,
+       -5.5195,
        "smooth"
       ],
       [
        0.142857,
-       11.3366,
+       15.2081,
        "smooth"
       ],
       [
        0.285714,
-       7.3183,
+       10.8809,
        "smooth"
       ],
       [
        0.428571,
-       2.6818,
+       5.8695,
        "smooth"
       ],
       [
        0.571429,
-       -2.4123,
+       0.3514,
        "smooth"
       ],
       [
        0.714286,
-       13.6846,
+       17.8209,
        "smooth"
       ],
       [
        0.857143,
-       14.397,
+       17.9875,
        "smooth"
       ],
       [
        1.0,
-       0.3481,
+       2.1146,
        "smooth"
       ]
      ]
@@ -11045,42 +12285,42 @@
      "keys": [
       [
        0.0,
-       -48.1001,
+       -49.0418,
        "smooth"
       ],
       [
        0.142857,
-       -87.2477,
+       -92.7272,
        "smooth"
       ],
       [
        0.285714,
-       -90.433,
+       -96.2931,
        "smooth"
       ],
       [
        0.428571,
-       -92.8382,
+       -98.9986,
        "smooth"
       ],
       [
        0.571429,
-       -94.3469,
+       -100.7151,
        "smooth"
       ],
       [
        0.714286,
-       -84.965,
+       -90.21,
        "smooth"
       ],
       [
        0.857143,
-       -54.568,
+       -56.402,
        "smooth"
       ],
       [
        1.0,
-       -46.5159,
+       -47.4145,
        "smooth"
       ]
      ]
@@ -11089,42 +12329,42 @@
      "keys": [
       [
        0.0,
-       78.9625,
+       86.6513,
        "smooth"
       ],
       [
        0.142857,
-       -67.0375,
+       -59.3487,
        "smooth"
       ],
       [
        0.285714,
-       -78.3708,
+       -70.682,
        "smooth"
       ],
       [
        0.428571,
-       -89.7042,
+       -82.0154,
        "smooth"
       ],
       [
        0.571429,
-       -101.0375,
+       -93.3487,
        "smooth"
       ],
       [
        0.714286,
-       -59.556,
+       -51.8672,
        "smooth"
       ],
       [
        0.857143,
-       17.481,
+       25.1698,
        "smooth"
       ],
       [
        1.0,
-       58.9625,
+       66.6513,
        "smooth"
       ]
      ]
@@ -11133,6 +12373,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -11322,42 +12586,42 @@
      "keys": [
       [
        0.0,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.142857,
-       5.1328,
+       5.7471,
        "smooth"
       ],
       [
        0.285714,
-       4.1328,
+       4.7471,
        "smooth"
       ],
       [
        0.428571,
-       3.6328,
+       4.2471,
        "smooth"
       ],
       [
        0.571429,
-       3.1328,
+       3.7471,
        "smooth"
       ],
       [
        0.714286,
-       3.6513,
+       4.2656,
        "smooth"
       ],
       [
        0.857143,
-       4.6143,
+       5.2286,
        "smooth"
       ],
       [
        1.0,
-       5.1328,
+       5.7471,
        "smooth"
       ]
      ]
@@ -11366,42 +12630,42 @@
      "keys": [
       [
        0.0,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.142857,
-       -4.1328,
+       -7.4942,
        "smooth"
       ],
       [
        0.285714,
-       -8.1328,
+       -11.4942,
        "smooth"
       ],
       [
        0.428571,
-       -8.1328,
+       -11.4942,
        "smooth"
       ],
       [
        0.571429,
-       -8.1328,
+       -11.4942,
        "smooth"
       ],
       [
        0.714286,
-       -7.0958,
+       -10.4572,
        "smooth"
       ],
       [
        0.857143,
-       -5.1698,
+       -8.5312,
        "smooth"
       ],
       [
        1.0,
-       -4.1328,
+       -7.4942,
        "smooth"
       ]
      ]
@@ -11498,42 +12762,42 @@
      "keys": [
       [
        0.0,
-       8.9419,
+       11.6077,
        "smooth"
       ],
       [
        0.142857,
-       10.7895,
+       13.6213,
        "smooth"
       ],
       [
        0.285714,
-       16.6068,
+       19.4942,
        "smooth"
       ],
       [
        0.428571,
-       16.0056,
+       18.78,
        "smooth"
       ],
       [
        0.571429,
-       15.3399,
+       17.9956,
        "smooth"
       ],
       [
        0.714286,
-       22.6858,
+       26.1543,
        "smooth"
       ],
       [
        0.857143,
-       18.0572,
+       21.3916,
        "smooth"
       ],
       [
        1.0,
-       7.0175,
+       9.5104,
        "smooth"
       ]
      ]
@@ -11542,42 +12806,42 @@
      "keys": [
       [
        0.0,
-       -48.2517,
+       -49.6722,
        "smooth"
       ],
       [
        0.142857,
-       -49.2134,
+       -50.7204,
        "smooth"
       ],
       [
        0.285714,
-       -87.0934,
+       -91.9033,
        "smooth"
       ],
       [
        0.428571,
-       -88.1358,
+       -93.0291,
        "smooth"
       ],
       [
        0.571429,
-       -89.1453,
+       -94.1194,
        "smooth"
       ],
       [
        0.714286,
-       -78.3669,
+       -82.399,
        "smooth"
       ],
       [
        0.857143,
-       -55.0024,
+       -56.9932,
        "smooth"
       ],
       [
        1.0,
-       -47.4546,
+       -48.8035,
        "smooth"
       ]
      ]
@@ -11586,42 +12850,42 @@
      "keys": [
       [
        0.0,
-       43.9625,
+       46.5651,
        "smooth"
       ],
       [
        0.142857,
-       38.9625,
+       41.5651,
        "smooth"
       ],
       [
        0.285714,
-       -67.0375,
+       -64.4349,
        "smooth"
       ],
       [
        0.428571,
-       -70.0375,
+       -67.4349,
        "smooth"
       ],
       [
        0.571429,
-       -73.0375,
+       -70.4349,
        "smooth"
       ],
       [
        0.714286,
-       -41.4079,
+       -38.8053,
        "smooth"
       ],
       [
        0.857143,
-       17.3329,
+       19.9355,
        "smooth"
       ],
       [
        1.0,
-       48.9625,
+       51.5651,
        "smooth"
       ]
      ]
@@ -11630,42 +12894,42 @@
      "keys": [
       [
        0.0,
-       2.3697,
+       4.3495,
        "smooth"
       ],
       [
        0.142857,
-       4.3445,
+       6.5327,
        "smooth"
       ],
       [
        0.285714,
-       7.0567,
+       9.0459,
        "smooth"
       ],
       [
        0.428571,
-       6.0566,
+       7.8792,
        "smooth"
       ],
       [
        0.571429,
-       5.0334,
+       6.6869,
        "smooth"
       ],
       [
        0.714286,
-       17.3126,
+       20.4202,
        "smooth"
       ],
       [
        0.857143,
-       14.6296,
+       17.7466,
        "smooth"
       ],
       [
        1.0,
-       0.3481,
+       2.1146,
        "smooth"
       ]
      ]
@@ -11674,42 +12938,42 @@
      "keys": [
       [
        0.0,
-       -46.964,
+       -47.91,
        "smooth"
       ],
       [
        0.142857,
-       -47.5867,
+       -48.5983,
        "smooth"
       ],
       [
        0.285714,
-       -91.7849,
+       -97.3693,
        "smooth"
       ],
       [
        0.428571,
-       -92.2811,
+       -97.9087,
        "smooth"
       ],
       [
        0.571429,
-       -92.7152,
+       -98.3802,
        "smooth"
       ],
       [
        0.714286,
-       -82.8741,
+       -87.5238,
        "smooth"
       ],
       [
        0.857143,
-       -54.524,
+       -56.2344,
        "smooth"
       ],
       [
        1.0,
-       -46.5159,
+       -47.4145,
        "smooth"
       ]
      ]
@@ -11718,42 +12982,42 @@
      "keys": [
       [
        0.0,
-       53.9625,
+       61.6513,
        "smooth"
       ],
       [
        0.142857,
-       48.9625,
+       56.6513,
        "smooth"
       ],
       [
        0.285714,
-       -87.0375,
+       -79.3487,
        "smooth"
       ],
       [
        0.428571,
-       -90.0375,
+       -82.3487,
        "smooth"
       ],
       [
        0.571429,
-       -93.0375,
+       -85.3487,
        "smooth"
       ],
       [
        0.714286,
-       -53.6301,
+       -45.9413,
        "smooth"
       ],
       [
        0.857143,
-       19.5551,
+       27.2439,
        "smooth"
       ],
       [
        1.0,
-       58.9625,
+       66.6513,
        "smooth"
       ]
      ]
@@ -11762,6 +13026,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -12031,62 +13319,62 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.090909,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.181818,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.272727,
-       6.1328,
+       6.7471,
        "smooth"
       ],
       [
        0.363636,
-       6.1328,
+       6.7471,
        "smooth"
       ],
       [
        0.454545,
-       3.7328,
+       4.3471,
        "smooth"
       ],
       [
        0.545455,
-       7.1328,
+       7.7471,
        "smooth"
       ],
       [
        0.636364,
-       7.1328,
+       7.7471,
        "smooth"
       ],
       [
        0.727273,
-       11.1328,
+       11.7471,
        "smooth"
       ],
       [
        0.818182,
-       11.1328,
+       11.7471,
        "smooth"
       ],
       [
        0.909091,
-       11.1328,
+       11.7471,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -12095,62 +13383,62 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.090909,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.181818,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.272727,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.363636,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.454545,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.545455,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.636364,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.727273,
-       -8.1328,
+       -11.4942,
        "smooth"
       ],
       [
        0.818182,
-       -8.1328,
+       -11.4942,
        "smooth"
       ],
       [
        0.909091,
-       -8.1328,
+       -11.4942,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -12287,62 +13575,62 @@
      "keys": [
       [
        0.0,
-       -4.495,
+       -2.9468,
        "smooth"
       ],
       [
        0.090909,
-       -9.9347,
+       -8.7091,
        "smooth"
       ],
       [
        0.181818,
-       -12.3692,
+       -11.2734,
        "smooth"
       ],
       [
        0.272727,
-       26.8536,
+       30.4259,
        "smooth"
       ],
       [
        0.363636,
-       26.8536,
+       30.4259,
        "smooth"
       ],
       [
        0.454545,
-       5.8047,
+       8.1189,
        "smooth"
       ],
       [
        0.545455,
-       -6.7602,
+       -6.446,
        "smooth"
       ],
       [
        0.636364,
-       -6.7602,
+       -6.446,
        "smooth"
       ],
       [
        0.727273,
-       31.8165,
+       34.8512,
        "smooth"
       ],
       [
        0.818182,
-       31.8165,
+       34.8512,
        "smooth"
       ],
       [
        0.909091,
-       31.8165,
+       34.8512,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -12351,62 +13639,62 @@
      "keys": [
       [
        0.0,
-       -47.0372,
+       -48.372,
        "smooth"
       ],
       [
        0.090909,
-       -49.9203,
+       -51.5611,
        "smooth"
       ],
       [
        0.181818,
-       -51.8959,
+       -53.7412,
        "smooth"
       ],
       [
        0.272727,
-       -68.9852,
+       -72.1295,
        "smooth"
       ],
       [
        0.363636,
-       -68.9852,
+       -72.1295,
        "smooth"
       ],
       [
        0.454545,
-       -48.0042,
+       -49.3852,
        "smooth"
       ],
       [
        0.545455,
-       -50.1871,
+       -51.6119,
        "smooth"
       ],
       [
        0.636364,
-       -50.1871,
+       -51.6119,
        "smooth"
       ],
       [
        0.727273,
-       -71.5801,
+       -74.8923,
        "smooth"
       ],
       [
        0.818182,
-       -71.5801,
+       -74.8923,
        "smooth"
       ],
       [
        0.909091,
-       -71.5801,
+       -74.8923,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -12415,62 +13703,62 @@
      "keys": [
       [
        0.0,
-       76.7403,
+       79.3429,
        "smooth"
       ],
       [
        0.090909,
-       91.1847,
+       93.7873,
        "smooth"
       ],
       [
        0.181818,
-       98.9625,
+       101.5651,
        "smooth"
       ],
       [
        0.272727,
-       -19.0375,
+       -16.4349,
        "smooth"
       ],
       [
        0.363636,
-       -19.0375,
+       -16.4349,
        "smooth"
       ],
       [
        0.454545,
-       51.7625,
+       54.3651,
        "smooth"
       ],
       [
        0.545455,
-       90.9625,
+       93.5651,
        "smooth"
       ],
       [
        0.636364,
-       90.9625,
+       93.5651,
        "smooth"
       ],
       [
        0.727273,
-       -25.0375,
+       -22.4349,
        "smooth"
       ],
       [
        0.818182,
-       -25.0375,
+       -22.4349,
        "smooth"
       ],
       [
        0.909091,
-       -25.0375,
+       -22.4349,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -12479,62 +13767,62 @@
      "keys": [
       [
        0.0,
-       -6.5411,
+       -5.408,
        "smooth"
       ],
       [
        0.090909,
-       -11.112,
+       -10.2883,
        "smooth"
       ],
       [
        0.181818,
-       -13.2257,
+       -12.5325,
        "smooth"
       ],
       [
        0.272727,
-       -4.4855,
+       -3.9589,
        "smooth"
       ],
       [
        0.363636,
-       -4.4855,
+       -3.9589,
        "smooth"
       ],
       [
        0.454545,
-       -10.001,
+       -9.3989,
        "smooth"
       ],
       [
        0.545455,
-       24.6836,
+       28.0425,
        "smooth"
       ],
       [
        0.636364,
-       24.6836,
+       28.0425,
        "smooth"
       ],
       [
        0.727273,
-       28.7505,
+       31.7288,
        "smooth"
       ],
       [
        0.818182,
-       28.7505,
+       31.7288,
        "smooth"
       ],
       [
        0.909091,
-       28.7505,
+       31.7288,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -12543,62 +13831,62 @@
      "keys": [
       [
        0.0,
-       -46.5359,
+       -47.4583,
        "smooth"
       ],
       [
        0.090909,
-       -48.8662,
+       -50.078,
        "smooth"
       ],
       [
        0.181818,
-       -50.4047,
+       -51.8042,
        "smooth"
       ],
       [
        0.272727,
-       -46.5709,
+       -47.3513,
        "smooth"
       ],
       [
        0.363636,
-       -46.5709,
+       -47.3513,
        "smooth"
       ],
       [
        0.454545,
-       -48.72,
+       -49.8354,
        "smooth"
       ],
       [
        0.545455,
-       -69.3189,
+       -72.4754,
        "smooth"
       ],
       [
        0.636364,
-       -69.3189,
+       -72.4754,
        "smooth"
       ],
       [
        0.727273,
-       -67.5462,
+       -70.4929,
        "smooth"
       ],
       [
        0.818182,
-       -67.5462,
+       -70.4929,
        "smooth"
       ],
       [
        0.909091,
-       -67.5462,
+       -70.4929,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -12607,62 +13895,62 @@
      "keys": [
       [
        0.0,
-       75.1847,
+       82.8735,
        "smooth"
       ],
       [
        0.090909,
-       86.7403,
+       94.4291,
        "smooth"
       ],
       [
        0.181818,
-       92.9625,
+       100.6513,
        "smooth"
       ],
       [
        0.272727,
-       74.9625,
+       82.6513,
        "smooth"
       ],
       [
        0.363636,
-       74.9625,
+       82.6513,
        "smooth"
       ],
       [
        0.454545,
-       85.7625,
+       93.4513,
        "smooth"
       ],
       [
        0.545455,
-       -19.0375,
+       -11.3487,
        "smooth"
       ],
       [
        0.636364,
-       -19.0375,
+       -11.3487,
        "smooth"
       ],
       [
        0.727273,
-       -15.0375,
+       -7.3487,
        "smooth"
       ],
       [
        0.818182,
-       -15.0375,
+       -7.3487,
        "smooth"
       ],
       [
        0.909091,
-       -15.0375,
+       -7.3487,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -12671,6 +13959,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -12900,52 +14212,52 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.111111,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.222222,
-       16.1328,
+       16.7471,
        "smooth"
       ],
       [
        0.333333,
-       16.6328,
+       17.2471,
        "smooth"
       ],
       [
        0.444444,
-       17.1328,
+       17.7471,
        "smooth"
       ],
       [
        0.555556,
-       15.5728,
+       16.1871,
        "smooth"
       ],
       [
        0.666667,
-       11.8528,
+       12.4671,
        "smooth"
       ],
       [
        0.777778,
-       7.4128,
+       8.0271,
        "smooth"
       ],
       [
        0.888889,
-       3.6928,
+       4.3071,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -12954,52 +14266,52 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.111111,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.222222,
-       -16.1328,
+       -19.4942,
        "smooth"
       ],
       [
        0.333333,
-       -16.6328,
+       -19.9942,
        "smooth"
       ],
       [
        0.444444,
-       -17.1328,
+       -20.4942,
        "smooth"
       ],
       [
        0.555556,
-       -15.5728,
+       -18.9342,
        "smooth"
       ],
       [
        0.666667,
-       -11.8528,
+       -15.2142,
        "smooth"
       ],
       [
        0.777778,
-       -7.4128,
+       -10.7742,
        "smooth"
       ],
       [
        0.888889,
-       -3.6928,
+       -7.0542,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -13116,52 +14428,52 @@
      "keys": [
       [
        0.0,
-       -11.2617,
+       -10.1809,
        "smooth"
       ],
       [
        0.111111,
-       -18.5712,
+       -17.9189,
        "smooth"
       ],
       [
        0.222222,
-       34.5543,
+       36.9384,
        "smooth"
       ],
       [
        0.333333,
-       35.7645,
+       38.0932,
        "smooth"
       ],
       [
        0.444444,
-       36.905,
+       39.1722,
        "smooth"
       ],
       [
        0.555556,
-       34.5924,
+       36.9557,
        "smooth"
       ],
       [
        0.666667,
-       26.9952,
+       29.4021,
        "smooth"
       ],
       [
        0.777778,
-       14.9984,
+       17.1922,
        "smooth"
       ],
       [
        0.888889,
-       3.6651,
+       5.5585,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -13170,52 +14482,52 @@
      "keys": [
       [
        0.0,
-       -47.9093,
+       -49.4967,
        "smooth"
       ],
       [
        0.111111,
-       -53.1393,
+       -55.4022,
        "smooth"
       ],
       [
        0.222222,
-       -57.022,
+       -59.5747,
        "smooth"
       ],
       [
        0.333333,
-       -57.7628,
+       -60.4359,
        "smooth"
       ],
       [
        0.444444,
-       -58.526,
+       -61.3236,
        "smooth"
       ],
       [
        0.555556,
-       -55.6411,
+       -58.0936,
        "smooth"
       ],
       [
        0.666667,
-       -49.7942,
+       -51.5526,
        "smooth"
       ],
       [
        0.777778,
-       -45.6935,
+       -46.9493,
        "smooth"
       ],
       [
        0.888889,
-       -45.3025,
+       -46.4667,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -13224,52 +14536,52 @@
      "keys": [
       [
        0.0,
-       93.9625,
+       96.5651,
        "smooth"
       ],
       [
        0.111111,
-       118.9625,
+       121.5651,
        "smooth"
       ],
       [
        0.222222,
-       -7.0375,
+       -4.4349,
        "smooth"
       ],
       [
        0.333333,
-       -10.0375,
+       -7.4349,
        "smooth"
       ],
       [
        0.444444,
-       -13.0375,
+       -10.4349,
        "smooth"
       ],
       [
        0.555556,
-       -4.5095,
+       -1.9069,
        "smooth"
       ],
       [
        0.666667,
-       15.8265,
+       18.4291,
        "smooth"
       ],
       [
        0.777778,
-       40.0985,
+       42.7011,
        "smooth"
       ],
       [
        0.888889,
-       60.4345,
+       63.0371,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -13278,52 +14590,52 @@
      "keys": [
       [
        0.0,
-       -10.2937,
+       -9.4102,
        "smooth"
       ],
       [
        0.111111,
-       -15.7448,
+       -15.1988,
        "smooth"
       ],
       [
        0.222222,
-       -17.9321,
+       -20.8306,
        "smooth"
       ],
       [
        0.333333,
-       -17.4319,
+       -20.4532,
        "smooth"
       ],
       [
        0.444444,
-       -16.9036,
+       -20.0445,
        "smooth"
       ],
       [
        0.555556,
-       -17.2398,
+       -20.0951,
        "smooth"
       ],
       [
        0.666667,
-       -15.9992,
+       -17.9551,
        "smooth"
       ],
       [
        0.777778,
-       -11.475,
+       -12.0364,
        "smooth"
       ],
       [
        0.888889,
-       -6.154,
+       -5.391,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -13332,52 +14644,52 @@
      "keys": [
       [
        0.0,
-       -46.0921,
+       -47.1625,
        "smooth"
       ],
       [
        0.111111,
-       -47.8698,
+       -49.3527,
        "smooth"
       ],
       [
        0.222222,
-       -58.9779,
+       -61.684,
        "smooth"
       ],
       [
        0.333333,
-       -59.2805,
+       -62.0839,
        "smooth"
       ],
       [
        0.444444,
-       -59.5923,
+       -62.4961,
        "smooth"
       ],
       [
        0.555556,
-       -56.7461,
+       -59.2445,
        "smooth"
       ],
       [
        0.666667,
-       -50.772,
+       -52.427,
        "smooth"
       ],
       [
        0.777778,
-       -46.169,
+       -47.1534,
        "smooth"
       ],
       [
        0.888889,
-       -45.1795,
+       -45.9623,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -13386,52 +14698,52 @@
      "keys": [
       [
        0.0,
-       83.9625,
+       91.6513,
        "smooth"
       ],
       [
        0.111111,
-       98.9625,
+       106.6513,
        "smooth"
       ],
       [
        0.222222,
-       146.9625,
+       154.6513,
        "smooth"
       ],
       [
        0.333333,
-       148.9625,
+       156.6513,
        "smooth"
       ],
       [
        0.444444,
-       150.9625,
+       158.6513,
        "smooth"
       ],
       [
        0.555556,
-       142.4345,
+       150.1233,
        "smooth"
       ],
       [
        0.666667,
-       122.0985,
+       129.7873,
        "smooth"
       ],
       [
        0.777778,
-       97.8265,
+       105.5153,
        "smooth"
       ],
       [
        0.888889,
-       77.4905,
+       85.1793,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -13440,6 +14752,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -13709,62 +15045,62 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.090909,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.181818,
-       1.1328,
+       1.7471,
        "smooth"
       ],
       [
        0.272727,
-       1.1328,
+       1.7471,
        "smooth"
       ],
       [
        0.363636,
-       1.1328,
+       1.7471,
        "smooth"
       ],
       [
        0.454545,
-       1.1328,
+       1.7471,
        "smooth"
       ],
       [
        0.545455,
-       1.1328,
+       1.7471,
        "smooth"
       ],
       [
        0.636364,
-       1.1328,
+       1.7471,
        "smooth"
       ],
       [
        0.727273,
-       1.2069,
+       1.8212,
        "smooth"
       ],
       [
        0.818182,
-       1.5498,
+       2.1641,
        "smooth"
       ],
       [
        0.909091,
-       1.9442,
+       2.5585,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -13773,62 +15109,62 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.090909,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.181818,
-       -1.1328,
+       -4.4942,
        "smooth"
       ],
       [
        0.272727,
-       -1.1328,
+       -4.4942,
        "smooth"
       ],
       [
        0.363636,
-       -1.1328,
+       -4.4942,
        "smooth"
       ],
       [
        0.454545,
-       -1.1328,
+       -4.4942,
        "smooth"
       ],
       [
        0.545455,
-       -1.1328,
+       -4.4942,
        "smooth"
       ],
       [
        0.636364,
-       -1.1328,
+       -4.4942,
        "smooth"
       ],
       [
        0.727273,
-       -1.2069,
+       -4.5683,
        "smooth"
       ],
       [
        0.818182,
-       -1.5498,
+       -4.9112,
        "smooth"
       ],
       [
        0.909091,
-       -1.9442,
+       -5.3056,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -13965,62 +15301,62 @@
      "keys": [
       [
        0.0,
-       -5.6094,
+       -4.9545,
        "smooth"
       ],
       [
        0.090909,
-       -8.8942,
+       -9.2485,
        "smooth"
       ],
       [
        0.181818,
-       0.7628,
+       3.3784,
        "smooth"
       ],
       [
        0.272727,
-       -3.1806,
+       -0.8076,
        "smooth"
       ],
       [
        0.363636,
-       -3.1806,
+       -0.8076,
        "smooth"
       ],
       [
        0.454545,
-       -3.1806,
+       -0.8076,
        "smooth"
       ],
       [
        0.545455,
-       -3.1806,
+       -0.8076,
        "smooth"
       ],
       [
        0.636364,
-       -3.1806,
+       -0.8076,
        "smooth"
       ],
       [
        0.727273,
-       3.0414,
+       5.9157,
        "smooth"
       ],
       [
        0.818182,
-       22.2264,
+       26.5543,
        "smooth"
       ],
       [
        0.909091,
-       12.0798,
+       15.1801,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -14029,62 +15365,62 @@
      "keys": [
       [
        0.0,
-       -44.7259,
+       -46.0045,
        "smooth"
       ],
       [
        0.090909,
-       -44.7314,
+       -46.2598,
        "smooth"
       ],
       [
        0.181818,
-       -99.7039,
+       -105.6013,
        "smooth"
       ],
       [
        0.272727,
-       -101.1747,
+       -107.1566,
        "smooth"
       ],
       [
        0.363636,
-       -101.1747,
+       -107.1566,
        "smooth"
       ],
       [
        0.454545,
-       -101.1747,
+       -107.1566,
        "smooth"
       ],
       [
        0.545455,
-       -101.1747,
+       -107.1566,
        "smooth"
       ],
       [
        0.636364,
-       -101.1747,
+       -107.1566,
        "smooth"
       ],
       [
        0.727273,
-       -99.9246,
+       -105.8054,
        "smooth"
       ],
       [
        0.818182,
-       -79.2464,
+       -83.3271,
        "smooth"
       ],
       [
        0.909091,
-       -50.5859,
+       -52.1721,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -14093,62 +15429,62 @@
      "keys": [
       [
        0.0,
-       84.9625,
+       87.5651,
        "smooth"
       ],
       [
        0.090909,
-       100.9625,
+       103.5651,
        "smooth"
       ],
       [
        0.181818,
-       -103.0375,
+       -100.4349,
        "smooth"
       ],
       [
        0.272727,
-       -111.0375,
+       -108.4349,
        "smooth"
       ],
       [
        0.363636,
-       -111.0375,
+       -108.4349,
        "smooth"
       ],
       [
        0.454545,
-       -111.0375,
+       -108.4349,
        "smooth"
       ],
       [
        0.545455,
-       -111.0375,
+       -108.4349,
        "smooth"
       ],
       [
        0.636364,
-       -111.0375,
+       -108.4349,
        "smooth"
       ],
       [
        0.727273,
-       -97.7042,
+       -95.1016,
        "smooth"
       ],
       [
        0.818182,
-       -35.9758,
+       -33.3732,
        "smooth"
       ],
       [
        0.909091,
-       35.0119,
+       37.6145,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -14157,62 +15493,62 @@
      "keys": [
       [
        0.0,
-       -7.1065,
+       -6.8565,
        "smooth"
       ],
       [
        0.090909,
-       -9.4641,
+       -10.2018,
        "smooth"
       ],
       [
        0.181818,
-       1.5482,
+       4.1543,
        "smooth"
       ],
       [
        0.272727,
-       -2.1891,
+       0.1393,
        "smooth"
       ],
       [
        0.363636,
-       -2.1891,
+       0.1393,
        "smooth"
       ],
       [
        0.454545,
-       -2.1891,
+       0.1393,
        "smooth"
       ],
       [
        0.545455,
-       -2.1891,
+       0.1393,
        "smooth"
       ],
       [
        0.636364,
-       -2.1891,
+       0.1393,
        "smooth"
       ],
       [
        0.727273,
-       3.4718,
+       6.3371,
        "smooth"
       ],
       [
        0.818182,
-       19.8262,
+       24.1353,
        "smooth"
       ],
       [
        0.909091,
-       9.0175,
+       11.8575,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -14221,62 +15557,62 @@
      "keys": [
       [
        0.0,
-       -44.5771,
+       -45.5164,
        "smooth"
       ],
       [
        0.090909,
-       -44.3125,
+       -45.5462,
        "smooth"
       ],
       [
        0.181818,
-       -98.0121,
+       -104.1223,
        "smooth"
       ],
       [
        0.272727,
-       -99.9196,
+       -106.1661,
        "smooth"
       ],
       [
        0.363636,
-       -99.9196,
+       -106.1661,
        "smooth"
       ],
       [
        0.454545,
-       -99.9196,
+       -106.1661,
        "smooth"
       ],
       [
        0.545455,
-       -99.9196,
+       -106.1661,
        "smooth"
       ],
       [
        0.636364,
-       -99.9196,
+       -106.1661,
        "smooth"
       ],
       [
        0.727273,
-       -98.0664,
+       -104.1351,
        "smooth"
       ],
       [
        0.818182,
-       -76.9983,
+       -80.9337,
        "smooth"
       ],
       [
        0.909091,
-       -50.0179,
+       -51.2241,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -14285,62 +15621,62 @@
      "keys": [
       [
        0.0,
-       81.9625,
+       89.6513,
        "smooth"
       ],
       [
        0.090909,
-       94.9625,
+       102.6513,
        "smooth"
       ],
       [
        0.181818,
-       -95.0375,
+       -87.3487,
        "smooth"
       ],
       [
        0.272727,
-       -103.0375,
+       -95.3487,
        "smooth"
       ],
       [
        0.363636,
-       -103.0375,
+       -95.3487,
        "smooth"
       ],
       [
        0.454545,
-       -103.0375,
+       -95.3487,
        "smooth"
       ],
       [
        0.545455,
-       -103.0375,
+       -95.3487,
        "smooth"
       ],
       [
        0.636364,
-       -103.0375,
+       -95.3487,
        "smooth"
       ],
       [
        0.727273,
-       -90.2968,
+       -82.608,
        "smooth"
       ],
       [
        0.818182,
-       -31.3118,
+       -23.623,
        "smooth"
       ],
       [
        0.909091,
-       36.5208,
+       44.2096,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -14349,6 +15685,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }
@@ -14578,52 +15938,52 @@
      "keys": [
       [
        0.0,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.111111,
-       2.1328,
+       2.7471,
        "smooth"
       ],
       [
        0.222222,
-       11.1328,
+       11.7471,
        "smooth"
       ],
       [
        0.333333,
-       11.6328,
+       12.2471,
        "smooth"
       ],
       [
        0.444444,
-       12.1328,
+       12.7471,
        "smooth"
       ],
       [
        0.555556,
-       11.0928,
+       11.7071,
        "smooth"
       ],
       [
        0.666667,
-       8.6128,
+       9.2271,
        "smooth"
       ],
       [
        0.777778,
-       5.6528,
+       6.2671,
        "smooth"
       ],
       [
        0.888889,
-       3.1728,
+       3.7871,
        "smooth"
       ],
       [
        1.0,
-       2.1328,
+       2.7471,
        "smooth"
       ]
      ]
@@ -14632,52 +15992,52 @@
      "keys": [
       [
        0.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.111111,
-       -2.1328,
+       -5.4942,
        "smooth"
       ],
       [
        0.222222,
-       -11.1328,
+       -14.4942,
        "smooth"
       ],
       [
        0.333333,
-       -11.6328,
+       -14.9942,
        "smooth"
       ],
       [
        0.444444,
-       -12.1328,
+       -15.4942,
        "smooth"
       ],
       [
        0.555556,
-       -11.0928,
+       -14.4542,
        "smooth"
       ],
       [
        0.666667,
-       -8.6128,
+       -11.9742,
        "smooth"
       ],
       [
        0.777778,
-       -5.6528,
+       -9.0142,
        "smooth"
       ],
       [
        0.888889,
-       -3.1728,
+       -6.5342,
        "smooth"
       ],
       [
        1.0,
-       -2.1328,
+       -5.4942,
        "smooth"
       ]
      ]
@@ -14794,52 +16154,52 @@
      "keys": [
       [
        0.0,
-       19.907,
+       23.7889,
        "smooth"
       ],
       [
        0.111111,
-       15.9766,
+       19.7336,
        "smooth"
       ],
       [
        0.222222,
-       16.6274,
+       19.0434,
        "smooth"
       ],
       [
        0.333333,
-       16.242,
+       18.5045,
        "smooth"
       ],
       [
        0.444444,
-       15.8305,
+       17.9368,
        "smooth"
       ],
       [
        0.555556,
-       14.0658,
+       16.1375,
        "smooth"
       ],
       [
        0.666667,
-       9.8086,
+       11.7922,
        "smooth"
       ],
       [
        0.777778,
-       4.7269,
+       6.6031,
        "smooth"
       ],
       [
        0.888889,
-       0.5575,
+       2.349,
        "smooth"
       ],
       [
        1.0,
-       -1.1485,
+       0.6105,
        "smooth"
       ]
      ]
@@ -14848,52 +16208,52 @@
      "keys": [
       [
        0.0,
-       -60.7557,
+       -63.2728,
        "smooth"
       ],
       [
        0.111111,
-       -87.1283,
+       -91.9965,
        "smooth"
       ],
       [
        0.222222,
-       -38.6171,
+       -39.9008,
        "smooth"
       ],
       [
        0.333333,
-       -37.4552,
+       -38.6675,
        "smooth"
       ],
       [
        0.444444,
-       -36.3096,
+       -37.454,
        "smooth"
       ],
       [
        0.555556,
-       -36.9499,
+       -38.0594,
        "smooth"
       ],
       [
        0.666667,
-       -38.8298,
+       -39.8966,
        "smooth"
       ],
       [
        0.777778,
-       -41.7156,
+       -42.8059,
        "smooth"
       ],
       [
        0.888889,
-       -44.6506,
+       -45.8209,
        "smooth"
       ],
       [
        1.0,
-       -46.0147,
+       -47.2342,
        "smooth"
       ]
      ]
@@ -14902,52 +16262,52 @@
      "keys": [
       [
        0.0,
-       3.9625,
+       6.5651,
        "smooth"
       ],
       [
        0.111111,
-       -61.0375,
+       -58.4349,
        "smooth"
       ],
       [
        0.222222,
-       32.9625,
+       35.5651,
        "smooth"
       ],
       [
        0.333333,
-       34.9625,
+       37.5651,
        "smooth"
       ],
       [
        0.444444,
-       36.9625,
+       39.5651,
        "smooth"
       ],
       [
        0.555556,
-       40.2905,
+       42.8931,
        "smooth"
       ],
       [
        0.666667,
-       48.2265,
+       50.8291,
        "smooth"
       ],
       [
        0.777778,
-       57.6985,
+       60.3011,
        "smooth"
       ],
       [
        0.888889,
-       65.6345,
+       68.2371,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       71.5651,
        "smooth"
       ]
      ]
@@ -14956,52 +16316,52 @@
      "keys": [
       [
        0.0,
-       18.1964,
+       22.0863,
        "smooth"
       ],
       [
        0.111111,
-       10.3247,
+       13.6217,
        "smooth"
       ],
       [
        0.222222,
-       -16.7558,
+       -17.7697,
        "smooth"
       ],
       [
        0.333333,
-       -15.7849,
+       -16.8194,
        "smooth"
       ],
       [
        0.444444,
-       -14.7881,
+       -15.8408,
        "smooth"
       ],
       [
        0.555556,
-       -13.6713,
+       -14.4779,
        "smooth"
       ],
       [
        0.666667,
-       -10.9365,
+       -11.1495,
        "smooth"
       ],
       [
        0.777778,
-       -7.6236,
+       -7.1249,
        "smooth"
       ],
       [
        0.888889,
-       -4.8904,
+       -3.8022,
        "smooth"
       ],
       [
        1.0,
-       -3.7735,
+       -2.4419,
        "smooth"
       ]
      ]
@@ -15010,52 +16370,52 @@
      "keys": [
       [
        0.0,
-       -62.5463,
+       -65.0892,
        "smooth"
       ],
       [
        0.111111,
-       -89.7804,
+       -95.1582,
        "smooth"
       ],
       [
        0.222222,
-       -39.1076,
+       -40.1313,
        "smooth"
       ],
       [
        0.333333,
-       -37.9946,
+       -38.9448,
        "smooth"
       ],
       [
        0.444444,
-       -36.8979,
+       -37.7784,
        "smooth"
       ],
       [
        0.555556,
-       -37.4462,
+       -38.2709,
        "smooth"
       ],
       [
        0.666667,
-       -39.0933,
+       -39.8303,
        "smooth"
       ],
       [
        0.777778,
-       -41.6849,
+       -42.4003,
        "smooth"
       ],
       [
        0.888889,
-       -44.3684,
+       -45.1342,
        "smooth"
       ],
       [
        1.0,
-       -45.6278,
+       -46.4327,
        "smooth"
       ]
      ]
@@ -15064,52 +16424,52 @@
      "keys": [
       [
        0.0,
-       -1.0375,
+       6.6513,
        "smooth"
       ],
       [
        0.111111,
-       -71.0375,
+       -63.3487,
        "smooth"
       ],
       [
        0.222222,
-       104.9625,
+       112.6513,
        "smooth"
       ],
       [
        0.333333,
-       102.9625,
+       110.6513,
        "smooth"
       ],
       [
        0.444444,
-       100.9625,
+       108.6513,
        "smooth"
       ],
       [
        0.555556,
-       97.6345,
+       105.3233,
        "smooth"
       ],
       [
        0.666667,
-       89.6985,
+       97.3873,
        "smooth"
       ],
       [
        0.777778,
-       80.2265,
+       87.9153,
        "smooth"
       ],
       [
        0.888889,
-       72.2905,
+       79.9793,
        "smooth"
       ],
       [
        1.0,
-       68.9625,
+       76.6513,
        "smooth"
       ]
      ]
@@ -15118,6 +16478,30 @@
      "const": 0.0
     },
     "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
      "const": 0.0
     }
    }

@@ -1,9 +1,9 @@
-"""Contract tests for Oiler's direct-SVG multiview humanoid rig.
+"""Contract tests for Oiler's multiview humanoid rig.
 
-These tests pin the settled asset/runtime contract rather than generalizing to
-artist files under active structural editing. If the asset becomes actively
-reworked, narrow the gating surface rather than rewriting art to satisfy stale
-structural assumptions."""
+The art is drawn by ``scripts/svg_art/oiler_art.py`` (the 2026-10-20 redesign).
+These pin what the runtime relies on -- the views, the rig they extract to, the
+expression channels and the mirrored rows of an asymmetric character -- not how
+the drawing is authored."""
 
 from __future__ import annotations
 
@@ -13,11 +13,8 @@ from pathlib import Path
 
 import pytest
 
-#  the same guard its three sibling SVG suites carry — test_svg_sprite,
-# test_pirate_svg_fidelity and test_draw_recorder all open with it. Rendering an
-# SVG rig needs native resvg-py; without it these three RAISED rather than
-# skipped, so an environment missing an optional dependency reported a red suite
-# that no change could turn green.
+#  the same guard its sibling SVG suites carry: rendering an SVG rig needs
+# native resvg-py; without it these would RAISE rather than skip.
 pytest.importorskip("resvg_py")
 
 from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (
@@ -31,55 +28,21 @@ ROOT = Path(__file__).resolve().parent.parent
 SVG = ROOT / "ambition_sprite2d_renderer/data/characters/oiler/oiler-multiview.svg"
 RIG_DIR = ROOT / "ambition_sprite2d_renderer/targets/characters/rigged/oiler"
 LABEL = "{http://www.inkscape.org/namespaces/inkscape}label"
-GROUPMODE = "{http://www.inkscape.org/namespaces/inkscape}groupmode"
-ANATOMICAL_TOP_LAYER_NAMES = {
-    "Arm - Left",
-    "Arm - Right",
-    "Leg - Left",
-    "Leg - Right",
-    "Torso",
-    "Head",
-    "Joints",
-}
+VIEWS = ("Oiler - Three Quarter", "Oiler - Front", "Oiler - Side Right", "Oiler - Three Quarter Left", "Oiler - Side Left")
+FACES = ("knowing", "pleased", "delighted", "surprised", "thinking", "stern", "worried", "hurt")
 
 
-def _artist_layer_paths(view: ET.Element) -> set[tuple[str, ...]]:
-    """Return human-facing Inkscape layer paths, independent of z-order."""
-
-    paths: set[tuple[str, ...]] = set()
-
-    def walk(parent: ET.Element, prefix: tuple[str, ...]) -> None:
-        for child in list(parent):
-            if child.get(GROUPMODE) != "layer":
-                continue
-            label = child.get(LABEL)
-            assert label
-            path = (*prefix, label)
-            paths.add(path)
-            walk(child, path)
-
-    walk(view, ())
-    return paths
+def _views():
+    root = ET.parse(SVG).getroot()
+    return {elem.get(LABEL): elem for elem in root if elem.get(LABEL)}
 
 
 def test_oiler_svg_extracts_to_a_complete_humanoid_rig(tmp_path):
-    # One representative view exercises the full label/joint extraction path;
-    # the committed front/side documents are validated separately below.
-    data = build_humanoid_view_document(
-        SVG,
-        tmp_path,
-        HumanoidViewSpec(view="Oiler - Side Right", name="test_side"),
-    )
+    data = build_humanoid_view_document(SVG, tmp_path, HumanoidViewSpec(view="Oiler - Side Right", name="test_side"))
     assert len(data["bones"]) == 15
     assert len(data["ik_legs"]) == 2
     assert len(data["ik_chains"]) == 2
-    assert data["frame"]["supersample"] == 2
-    assert {p["bone"] for p in data["parts"]} >= {
-        "torso",
-        "head",
-        "near_arm_u",
-        "near_leg_u",
-    }
+    assert {p["bone"] for p in data["parts"]} >= {"torso", "head", "near_arm_u", "near_leg_u", "pelvis"}
 
 
 def test_generic_arm_ik_places_the_wrist_on_its_world_target():
@@ -108,305 +71,40 @@ def test_oiler_target_overrides_the_legacy_yaml_generator():
     assert target.module_path == "ambition_sprite2d_renderer.targets.characters.oiler"
 
 
-def test_oiler_svg_uses_pca_style_artist_layers_with_separate_rig_metadata():
-    root = ET.parse(SVG).getroot()
-    assert root.get("data-rig-hierarchy") == "pca-style-v1"
-
-    machine_labels = [
-        elem.get(LABEL, "")
-        for elem in root.iter()
-        if elem.get(LABEL, "").startswith(("part:", "joint:"))
-    ]
-    assert machine_labels == []
-
-    views = [
-        elem for elem in root.iter() if (elem.get(LABEL) or "").startswith("Oiler - ")
-    ]
-    assert len(views) == 3
-    for view in views:
-        layers = [
-            child
-            for child in list(view)
-            if isinstance(child.tag, str) and child.tag.endswith("}g")
-        ]
-        assert {layer.get(LABEL) for layer in layers} == ANATOMICAL_TOP_LAYER_NAMES
-        assert all(layer.get(GROUPMODE) == "layer" for layer in layers)
-
-        parts = [elem for elem in view.iter() if elem.get("data-rig-part")]
-        assert len(parts) in {17, 18}
-        assert len({elem.get("data-rig-part") for elem in parts}) == len(parts)
-        assert all(elem.get("data-rig-bone") for elem in parts)
-        assert all(elem.get("data-rig-z") is not None for elem in parts)
-        assert all(elem.get(GROUPMODE) == "layer" for elem in parts)
-
-        joints = [elem for elem in view.iter() if elem.get("data-rig-joint")]
-        assert len(joints) == 18
-        assert len({elem.get("data-rig-joint") for elem in joints}) == 18
-
-        head = next(layer for layer in layers if layer.get(LABEL) == "Head")
-        head_labels = {elem.get(LABEL) for elem in head.iter()}
-        assert {
-            "Head Base",
-            "Cloth Cap - Back and Tail",
-            "Face Shape and Ears",
-            "Cloth Cap - Crown and Folds",
-            "Hair",
-            "Facial Features and Age Lines",
-        } <= head_labels
+def test_oiler_has_five_views_and_only_his_left_side_is_stored_to_be_mirrored():
+    views = _views()
+    assert set(views) == set(VIEWS)
+    mirrored = {name for name, layer in views.items() if layer.get("data-view-mirror") == "x"}
+    assert mirrored == {"Oiler - Three Quarter Left", "Oiler - Side Left"}
+    assert views["Oiler - Front"].get("data-rig-side-map") == "left=far,right=near"
 
 
-def test_oiler_views_share_one_anatomical_artist_layer_vocabulary():
-    root = ET.parse(SVG).getroot()
-    assert root.get("data-authoring-layer-vocabulary") == (
-        "anatomical-left-right-v1"
-    )
-
-    views = [
-        elem for elem in root.iter() if (elem.get(LABEL) or "").startswith("Oiler - ")
-    ]
-    assert len(views) == 3
-
-    reference_paths = _artist_layer_paths(views[0])
-    for view in views:
-        labels = {path[-1] for path in _artist_layer_paths(view)}
-        assert not any("Near" in label or "Far" in label for label in labels)
-        assert _artist_layer_paths(view) == reference_paths
-
-    assert {
-        ("Arm - Left", "Upper Arm - Left"),
-        ("Arm - Right", "Upper Arm - Right"),
-        ("Leg - Left", "Upper Leg - Left"),
-        ("Leg - Right", "Upper Leg - Right"),
-        ("Torso", "Coat and Torso", "Coat Buttons"),
-        ("Head", "Head Base", "Hair"),
-        ("Head", "Talk Mouth"),
-        ("Joints", "Arm Joints - Left"),
-        ("Joints", "Arm Joints - Right"),
-    } <= reference_paths
+def test_every_view_draws_every_expression_and_shows_knowing_by_default():
+    for name, layer in _views().items():
+        channels = {e.get("data-rig-opacity"): e.get("data-rig-opacity-default") for e in layer.iter() if e.get("data-rig-opacity")}
+        assert set(channels) == {f"face_{face}_vis" for face in FACES} | {"blink_vis", "talk_vis"}, name
+        assert [ch for ch, default in channels.items() if default == "1"] == ["face_knowing_vis"], name
 
 
-def test_human_readable_labels_do_not_change_extracted_part_names(tmp_path):
-    data = build_humanoid_view_document(
-        SVG,
-        tmp_path,
-        HumanoidViewSpec(view="Oiler - Front", name="metadata_probe"),
-    )
-    names = {part["name"] for part in data["parts"]}
-    assert {"pelvis_yoke", "torso", "head", "near_hand", "far_leg_foot"} <= names
+def test_a_left_view_takes_its_right_twins_clips():
+    for right, left in (("oiler_three_quarter", "oiler_three_quarter_left"), ("oiler_side", "oiler_side_left")):
+        r = RigDocument.load(RIG_DIR / f"{right}.rig.json")
+        l_doc = RigDocument.load(RIG_DIR / f"{left}.rig.json")
+        assert set(l_doc.clips) == set(r.clips)
+        assert {b["name"] for b in l_doc.data["bones"]} == {b["name"] for b in r.data["bones"]}
 
 
-def test_oiler_front_source_uses_character_relative_left_and_right():
-    root = ET.parse(SVG).getroot()
-    front = next(elem for elem in root.iter() if elem.get(LABEL) == "Oiler - Front")
-    assert front.get("data-rig-side-map") == "left=far,right=near"
+def test_every_row_has_a_mirrored_twin_of_the_same_length():
+    from ambition_sprite2d_renderer.targets.characters import oiler
 
-    labels = [elem.get(LABEL, "") for elem in front.iter()]
-    assert "Arm - Left" in labels
-    assert "Arm - Right" in labels
-    assert "Leg - Left" in labels
-    assert "Leg - Right" in labels
-
-    source_names = [
-        *(elem.get("data-rig-part", "") for elem in front.iter()),
-        *(elem.get("data-rig-bone", "") for elem in front.iter()),
-        *(elem.get("data-rig-joint", "") for elem in front.iter()),
-    ]
-    assert not any("near" in name or "far" in name for name in source_names)
-    assert {"left_arm_u", "right_arm_u", "left_hip", "right_hip"} <= set(source_names)
+    rows = {name: frames for name, frames, _ms in oiler.ROWS}
+    for name, source in oiler.MIRROR_OF.items():
+        assert rows[name] == rows[source]
+    assert set(oiler.MIRROR_OF.values()) == {name for name, _f, _ms in oiler.BASE_ROWS}
 
 
-def test_oiler_front_is_independently_authored_around_a_frontal_axis():
-    root = ET.parse(SVG).getroot()
-    front = next(elem for elem in root.iter() if elem.get(LABEL) == "Oiler - Front")
-    assert front.get("data-view-construction") == "authored-front-v3"
-    assert front.get("data-front-hip-layout") == "pelvis-sockets-v3"
-    assert front.get("data-front-face-volume") == "full-volume-v3"
-    axis_x = float(front.get("data-front-axis-x"))
-
-    ids = {elem.get("id") for elem in front.iter() if elem.get("id")}
-    assert {
-        "front-nose-bridge",
-        "front-cheek-left",
-        "front-cheek-right",
-        "front-cap-center-pleat",
-        "front-coat-center-seam",
-        "front-coat-button-upper",
-        "front-coat-button-lower",
-    } <= ids
-
-    joints = {
-        elem.get("data-rig-joint"): (float(elem.get("cx")), float(elem.get("cy")))
-        for elem in front.iter()
-        if elem.get("data-rig-joint")
-    }
-    assert joints["waist"][0] == axis_x
-    assert joints["neck"][0] == axis_x
-    for right_name, left_name in (
-        ("right_shoulder", "left_shoulder"),
-        ("right_hip", "left_hip"),
-        ("right_knee", "left_knee"),
-        ("right_ankle", "left_ankle"),
-    ):
-        right_x = joints[right_name][0]
-        left_x = joints[left_name][0]
-        assert right_x < axis_x < left_x, (left_name, right_name)
-        assert left_x - right_x >= 18.0, (left_name, right_name)
-
-    hip_depth = (joints["right_hip"][1] + joints["left_hip"][1]) / 2.0 - joints[
-        "waist"
-    ][1]
-    hip_span = joints["left_hip"][0] - joints["right_hip"][0]
-    assert 21.0 <= hip_depth <= 27.0
-    assert 32.0 <= hip_span <= 40.0
-
-
-def test_oiler_hips_are_inside_an_explicit_pelvis_yoke():
-    root = ET.parse(SVG).getroot()
-    views = {
-        elem.get(LABEL): elem
-        for elem in root.iter()
-        if (elem.get(LABEL) or "").startswith("Oiler - ")
-    }
-    assert set(views) == {
-        "Oiler - Front",
-        "Oiler - Side Right",
-        "Oiler - Three Quarter",
-    }
-
-    for view_name, view in views.items():
-        parts = {
-            elem.get("data-rig-part"): elem
-            for elem in view.iter()
-            if elem.get("data-rig-part")
-        }
-        assert parts["pelvis_yoke"].get("data-rig-bone") == "pelvis"
-
-        joints = {
-            elem.get("data-rig-joint"): (float(elem.get("cx")), float(elem.get("cy")))
-            for elem in view.iter()
-            if elem.get("data-rig-joint")
-        }
-        waist = joints["waist"]
-        if view_name == "Oiler - Front":
-            assert parts["right_leg_u"].get("data-rig-bone") == "right_leg_u"
-            first_hip = joints["right_hip"]
-            second_hip = joints["left_hip"]
-        else:
-            assert parts["near_leg_u"].get("data-rig-bone") == "near_leg_u"
-            first_hip = joints["near_hip"]
-            second_hip = joints["far_hip"]
-        hip_mid = (
-            (first_hip[0] + second_hip[0]) / 2.0,
-            (first_hip[1] + second_hip[1]) / 2.0,
-        )
-
-        # The frontal pelvis deliberately uses lower, wider sockets than the
-        # perspective views. This is the anatomical correction that motivated
-        # the polish pass; it must not be normalized back into the torso.
-        if view_name == "Oiler - Front":
-            assert 21.0 <= hip_mid[1] - waist[1] <= 27.0
-            assert 32.0 <= math.dist(first_hip, second_hip) <= 40.0
-        else:
-            # Perspective views deliberately vary apparent depth and socket
-            # spacing to communicate foreshortening. Preserve only the useful
-            # anatomical invariant: the two sockets remain below the waist and
-            # distinct instead of collapsing into one center point.
-            assert 12.0 <= hip_mid[1] - waist[1] <= 32.0, view_name
-            assert math.dist(first_hip, second_hip) >= 6.0, view_name
-        assert abs(hip_mid[0] - waist[0]) <= 4.0, view_name
-
-
-def test_oiler_side_profile_is_authored_as_a_profile_not_a_flattened_front():
-    """The facing-right source keeps profile anatomy and clothing readable."""
-
-    root = ET.parse(SVG).getroot()
-    side = next(elem for elem in root.iter() if elem.get(LABEL) == "Oiler - Side Right")
-    assert side.get("data-side-profile-construction") == "authored-profile-v3"
-    assert side.get("data-side-arm-hinge") == (
-        "shoulder-back-elbow-back-wrist-forward-v3"
-    )
-    assert side.get("data-side-pouch-construction") == (
-        "narrow-profile-gusset-v2"
-    )
-    assert side.get("data-side-lapel-construction") == "single-profile-lapel-v2"
-    assert side.get("data-side-face-construction") == (
-        "integrated-profile-features-v3"
-    )
-
-    ids = {elem.get("id"): elem for elem in side.iter() if elem.get("id")}
-    assert {
-        "side-ear",
-        "side-ear-inner",
-        "side-philtrum",
-        "side-mouth-closed",
-        "side-lower-lip",
-        "side-lapel-edge",
-        "side-apron-pocket-flap",
-        "side-apron-pocket-gusset",
-        "side-apron-belt-loop",
-    } <= ids.keys()
-    assert ids["side-ear"].get("stroke") == "#17120e"
-    assert ids["side-mouth-closed"].get("fill") == "#7a4039"
-    assert 1.4 <= float(ids["side-mouth-closed"].get("stroke-width")) <= 2.0
-    assert ids["side-apron-pocket-flap"].get("fill") != "none"
-
-    joints = {
-        elem.get("data-rig-joint"): (float(elem.get("cx")), float(elem.get("cy")))
-        for elem in side.iter()
-        if elem.get("data-rig-joint")
-    }
-    # Oiler faces screen-right. Relaxed elbows sit behind their shoulders, while
-    # each wrist returns forward from the elbow rather than reverse-hinging.
-    for side_name in ("far", "near"):
-        shoulder = joints[f"{side_name}_shoulder"]
-        elbow = joints[f"{side_name}_elbow"]
-        wrist = joints[f"{side_name}_wrist"]
-        # Facing screen-right: the shoulder sits back on the ribcage, the elbow
-        # falls behind it, and the wrist returns forward.  Keep the bend modest
-        # rather than letting the arm become a reverse-hinged zig-zag.
-        assert 6.0 <= shoulder[0] - elbow[0] <= 12.0
-        assert 9.0 <= wrist[0] - elbow[0] <= 14.0
-        assert shoulder[1] < elbow[1] < wrist[1]
-
-
-def test_oiler_uses_one_nose_design_across_all_views():
-    """Front, three-quarter, and profile are projections of one nose."""
-
-    root = ET.parse(SVG).getroot()
-    assert root.get("data-nose-design") == "euler-straight-bridge-projections-v2"
-
-    views = [
-        elem for elem in root.iter() if (elem.get(LABEL) or "").startswith("Oiler - ")
-    ]
-    assert len(views) == 3
-    expected_projections = {
-        "Oiler - Three Quarter": "three-quarter-left",
-        "Oiler - Front": "front",
-        "Oiler - Side Right": "profile-right",
-    }
-    for view in views:
-        nose_layers = [
-            elem for elem in view.iter() if elem.get(LABEL) == "Nose"
-        ]
-        assert len(nose_layers) == 1
-        nose = nose_layers[0]
-        assert nose.get("data-oiler-role") == "nose-construction"
-        assert nose.get("data-nose-form") == "straight-bridge-soft-tip"
-        assert nose.get("data-nose-projection") == expected_projections[view.get(LABEL)]
-
-    ids = {elem.get("id") for elem in root.iter() if elem.get("id")}
-    assert {
-        "tq-nose-bridge",
-        "tq-nostril",
-        "front-nose-bridge",
-        "front-nostril-left",
-        "front-nostril-right",
-        "side-nostril",
-    } <= ids
-    assert {
-        "side-nose",
-        "side-nose-crease",
-        "front-face-centerline",
-        "front-nose-base",
-        "tq-nose-base",
-    }.isdisjoint(ids)
+def test_hit_and_death_wear_the_hurt_face():
+    doc = RigDocument.load(RIG_DIR / "oiler_side.rig.json")
+    for clip in ("hit", "death"):
+        assert doc.clips[clip]["channels"]["face_hurt_vis"] == {"const": 1.0}
+        assert doc.clips[clip]["channels"]["face_knowing_vis"] == {"const": 0.0}

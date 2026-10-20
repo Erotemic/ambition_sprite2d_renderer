@@ -1,9 +1,17 @@
 """Oiler's Euler-inspired direct-SVG multiview bone-rig target.
 
-The editable art lives in ``data/characters/oiler/oiler-multiview.svg``.  Three
-small rig documents bind its front, three-quarter and side views to the common
-FK/IK skeleton.  This module only composes those view rigs into Oiler's runtime
-sheet; it contains no character geometry and no per-frame limb placement.
+The art is drawn by ``scripts/svg_art/oiler_art.py`` into
+``data/characters/oiler/oiler-multiview.svg``; five rig documents bind its
+views (front, three-quarter and side, and the three-quarter and side of his
+other side) to the common FK/IK skeleton.  This module only composes those
+view rigs into Oiler's runtime sheet; it contains no character geometry and no
+per-frame limb placement.
+
+Oiler is ASYMMETRIC (his right eye fails), so the game must not flip him to
+face left. Every row has a ``<row>~mirrored`` twin (``SheetRow::mirror_of``),
+drawn unflipped when he faces left: the three-quarter and side rows from his
+left-side views, mirrored here; the front rows as they are, since from the
+front he is the same picture whichever way he faces.
 """
 
 from __future__ import annotations
@@ -19,6 +27,7 @@ from ...authoring.portrait import (
     render_framed_portrait,
     write_portrait_sheet,
 )
+from ...authoring import rigdoc
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet
 
@@ -32,7 +41,7 @@ FRAME_SIZE = (256, 256)
 # do it, which is why it stayed broken.  See
 # ``game/ambition_content/src/oiler_moveset.rs``; a Rust test asserts every move
 # in that table names a row published here.
-ROWS: List[Tuple[str, int, int]] = [
+BASE_ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 120),
     ("walk", 8, 100),
     ("talk", 6, 100),
@@ -61,6 +70,18 @@ ROWS: List[Tuple[str, int, int]] = [
     ("death", 6, 90),
     ("taunt", 8, 100),
 ]
+MIRRORED = "{}~mirrored"
+ROWS: List[Tuple[str, int, int]] = BASE_ROWS + [(MIRRORED.format(name), frames, ms) for name, frames, ms in BASE_ROWS]
+MIRROR_OF: Dict[str, str] = {MIRRORED.format(name): name for name, _frames, _ms in BASE_ROWS}
+#: A right-facing view document -> the document of his left side, drawn facing
+#: right (mirror its frames to face left). The front has none: it is not mirrored.
+LEFT_SIDE_OF: Dict[str, str] = {
+    "oiler_three_quarter.rig.json": "oiler_three_quarter_left.rig.json",
+    "oiler_side.rig.json": "oiler_side_left.rig.json",
+}
+#: The expressions every view draws (``face_<name>`` stills in the
+#: three-quarter document); each is published as a portrait clip of that name.
+FACES = ("knowing", "pleased", "delighted", "surprised", "thinking", "stern", "worried", "hurt")
 
 # Animation -> (view document, clip inside that document).
 CLIP_SOURCE: Dict[str, Tuple[str, str]] = {
@@ -142,7 +163,7 @@ ACTOR_METADATA = {
     "sockets": {
         "head": {
             "source": "explicit.profile.humanoid",
-            "point": {"x": 64.0, "y": 24.0},
+            "point": {"x": 64.0, "y": 28.0},
         },
         "chest": {
             "source": "explicit.profile.humanoid",
@@ -194,7 +215,7 @@ ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
 )
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=5)
 def _load_doc(filename: str) -> RigDocument:
     path = RIG_DIR / filename
     if not path.exists():
@@ -206,7 +227,11 @@ def _load_doc(filename: str) -> RigDocument:
 
 
 def _render_frame(animation: str, frame_idx: int, frame_count: int):
-    filename, clip = CLIP_SOURCE[animation]
+    base = animation.removesuffix("~mirrored")
+    filename, clip = CLIP_SOURCE[base]
+    if base != animation and filename in LEFT_SIDE_OF:
+        frame = _load_doc(LEFT_SIDE_OF[filename]).render_frame(clip, frame_idx, frame_count)
+        return rigdoc.mirrored_canvas(frame)
     return _load_doc(filename).render_frame(clip, frame_idx, frame_count)
 
 
@@ -214,8 +239,8 @@ def render_portraits(out_dir: str | Path, **opts):
     """Publish Oiler's close-up expressions directly from the scalable SVG rig."""
     del opts
 
-    def portrait_frame(animation: str, frame_idx: int, frame_count: int):
-        filename, clip = CLIP_SOURCE[animation]
+    def portrait_frame(animation: str, frame_idx: int, frame_count: int, filename: str | None = None):
+        filename, clip = (filename, animation) if filename else CLIP_SOURCE[animation]
         doc = _load_doc(filename)
         source = doc.render_at(
             clip,
@@ -223,10 +248,10 @@ def render_portraits(out_dir: str | Path, **opts):
             scale=4,
         )
         face = FaceGuide(
-            center_x=64.0,
-            center_y=24.0,
+            center_x=65.0,
+            center_y=28.5,
             width=27.0,
-            height=31.0,
+            height=33.0,
             source_width=float(doc.frame["width"]),
             source_height=float(doc.frame["height"]),
         )
@@ -246,6 +271,12 @@ def render_portraits(out_dir: str | Path, **opts):
             looping=True,
         ),
         "inspecting": PortraitClip.still(portrait_frame("interact", 4, 6)),
+        # His expressions, for `<<portrait_clip "name">>`: knowing (his rest
+        # face), pleased, delighted, surprised, thinking, stern, worried, hurt.
+        **{
+            face: PortraitClip.still(portrait_frame(f"face_{face}", 0, 1, "oiler_three_quarter.rig.json"))
+            for face in FACES
+        },
     }
     return write_portrait_sheet(
         TARGET_NAME, clips, Path(out_dir), still_clip="portrait"
@@ -266,6 +297,7 @@ def render(out_dir: str | Path, **opts):
         crop_margin=4,
         actor_metadata=ACTOR_METADATA,
         sheet_tuning={"collision_scale": 1.72},
+        mirror_of=MIRROR_OF,
     )
     keys = (
         "spritesheet",

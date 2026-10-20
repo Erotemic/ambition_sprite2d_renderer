@@ -1,16 +1,27 @@
 #!/usr/bin/env python3
-"""Rebind Oiler's directly authored Euler-mechanic SVG to three view rigs.
+"""Bind Oiler's multiview SVG to five view rigs and author their clips.
 
-The SVG is the editable source of truth.  This command validates the flat,
-propless Euler-inspired character-art contract, then refreshes only geometry
-and sprite bindings. Hand-tuned clips in the generated ``.rig.json`` files are
-preserved unless ``--fresh`` is requested.
-
-Usage::
-
-    uv run python scripts/build_oiler_rig.py build
+    uv run python scripts/svg_art/oiler_art.py --multiview \
+        ambition_sprite2d_renderer/data/characters/oiler/oiler-multiview.svg
     uv run python scripts/build_oiler_rig.py build --fresh
     uv run python scripts/build_oiler_rig.py validate
+
+The SVG is drawn by ``scripts/svg_art/oiler_art.py`` (the 2026-10-20 redesign:
+Euler after the 1753 pastel, a silk banyan over his workshop clothes). This
+command checks its art contract, then refreshes geometry and seeds the clips.
+A plain ``build`` keeps clips already in the ``.rig.json`` files; ``--fresh``
+reseeds them from this script (their hand targets are absolute, so a redrawn
+body needs ``--fresh``).
+
+Oiler is ASYMMETRIC: his right eye fails. The two left views
+(``three_quarter_left``, ``side_left``) are his left side, drawn facing right
+like their right-facing twins and bound to the same skeleton, so they take the
+same clips; the sprite target mirrors their frames into the ``~mirrored`` rows
+the game draws instead of flipping.
+
+Each view's face is one of ``FACES``, an opacity channel apiece
+(``face_<name>_vis``; ``knowing`` by default), under the ``blink_vis`` and
+``talk_vis`` overlays.
 """
 
 from __future__ import annotations
@@ -34,76 +45,27 @@ ROOT = Path(__file__).resolve().parents[1]
 SVG = ROOT / "ambition_sprite2d_renderer/data/characters/oiler/oiler-multiview.svg"
 RIG_DIR = ROOT / "ambition_sprite2d_renderer/targets/characters/rigged/oiler"
 SCRATCH = ROOT / "agent-scratch/oiler_rig"
-DESIGN_ID = "euler-mechanic-v1"
-RIG_HIERARCHY_ID = "pca-style-v1"
-NOSE_DESIGN_ID = "euler-straight-bridge-projections-v2"
-INKSCAPE_LABEL = "{http://www.inkscape.org/namespaces/inkscape}label"
-INKSCAPE_GROUPMODE = "{http://www.inkscape.org/namespaces/inkscape}groupmode"
-RIG_PART = "data-rig-part"
-RIG_BONE = "data-rig-bone"
-RIG_Z = "data-rig-z"
-RIG_JOINT = "data-rig-joint"
-RIG_SIDE_MAP = "data-rig-side-map"
-NOSE_PROJECTIONS = {
-    "Oiler - Three Quarter": "three-quarter-left",
-    "Oiler - Front": "front",
-    "Oiler - Side Right": "profile-right",
+DESIGN_ID = "euler-banyan-v2"
+#: The expressions every view draws, in the art script's order.
+FACES = ("knowing", "pleased", "delighted", "surprised", "thinking", "stern", "worried", "hurt")
+#: The face each clip wears; any clip not named here keeps ``knowing``.
+FACE_OF = {
+    "interact": "thinking",
+    "hit": "hurt",
+    "death": "hurt",
+    "taunt": "delighted",
+    **{name: "stern" for name in (
+        "attack_side", "attack_up", "attack_down", "smash_forward", "special", "jab", "dash_attack", "smash_up", "smash_down",
+        "air_neutral", "air_forward", "air_back", "air_up", "air_down", "convergence", "special_side", "special_up", "special_down")},
 }
-
-ANATOMICAL_TOP_LAYER_ORDER = (
-    "Arm - Left",
-    "Leg - Left",
-    "Leg - Right",
-    "Torso",
-    "Head",
-    "Arm - Right",
-    "Joints",
-)
-PERSPECTIVE_PART_PARENT = {
-    "far_arm_u": "Arm - Left",
-    "far_arm_l": "Arm - Left",
-    "far_hand": "Arm - Left",
-    "far_leg_u": "Leg - Left",
-    "far_leg_l": "Leg - Left",
-    "far_leg_foot": "Leg - Left",
-    "near_leg_u": "Leg - Right",
-    "near_leg_l": "Leg - Right",
-    "near_leg_foot": "Leg - Right",
-    "pelvis_yoke": "Torso",
-    "torso": "Torso",
-    "apron": "Torso",
-    "head": "Head",
-    "blink": "Head",
-    "talk_mouth": "Head",
-    "near_arm_u": "Arm - Right",
-    "near_arm_l": "Arm - Right",
-    "near_hand": "Arm - Right",
+#: view key -> (layer label, whether it is a left view stored facing right)
+VIEW_LAYERS = {
+    "three_quarter": ("Oiler - Three Quarter", False),
+    "front": ("Oiler - Front", False),
+    "side": ("Oiler - Side Right", False),
+    "three_quarter_left": ("Oiler - Three Quarter Left", True),
+    "side_left": ("Oiler - Side Left", True),
 }
-FRONT_PART_PARENT = {
-    **{
-        name.replace("far_", "left_", 1): parent.replace("Far", "Left")
-        for name, parent in PERSPECTIVE_PART_PARENT.items()
-        if name.startswith("far_")
-    },
-    **{
-        name.replace("near_", "right_", 1): parent.replace("Near", "Right")
-        for name, parent in PERSPECTIVE_PART_PARENT.items()
-        if name.startswith("near_")
-    },
-    **{
-        name: parent
-        for name, parent in PERSPECTIVE_PART_PARENT.items()
-        if not name.startswith(("near_", "far_"))
-    },
-}
-ANATOMICAL_JOINT_LAYER_ORDER = (
-    "Core Joints",
-    "Arm Joints - Left",
-    "Arm Joints - Right",
-    "Leg Joints - Left",
-    "Leg Joints - Right",
-)
-
 VIEWS = {
     "three_quarter": HumanoidViewSpec(
         view="Oiler - Three Quarter",
@@ -123,160 +85,32 @@ VIEWS = {
         target_height=105.0,
         collision_scale=1.72,
     ),
+    "three_quarter_left": HumanoidViewSpec(
+        view="Oiler - Three Quarter Left",
+        name="oiler_three_quarter_left",
+        target_height=105.0,
+        collision_scale=1.72,
+    ),
+    "side_left": HumanoidViewSpec(
+        view="Oiler - Side Left",
+        name="oiler_side_left",
+        target_height=105.0,
+        collision_scale=1.72,
+    ),
 }
 
 
-def _rig_joint_name(elem: ET.Element) -> str | None:
-    explicit = elem.get(RIG_JOINT)
-    if explicit:
-        return explicit
-    label = elem.get(INKSCAPE_LABEL) or ""
-    if label.startswith("joint:"):
-        return label.split(":", 1)[1]
-    return None
-
-
-def _validate_artist_hierarchy(
-    root: ET.Element, view_nodes: dict[str, ET.Element]
-) -> None:
-    """Keep Oiler's layer panel as editable as the manually authored PCA SVG."""
-
-    if root.get("data-rig-hierarchy") != RIG_HIERARCHY_ID:
-        raise ValueError(
-            f"Oiler SVG must declare data-rig-hierarchy={RIG_HIERARCHY_ID!r}"
-        )
-
-    machine_labels = [
-        elem.get(INKSCAPE_LABEL)
-        for elem in root.iter()
-        if (elem.get(INKSCAPE_LABEL) or "").startswith(("part:", "joint:"))
-    ]
-    if machine_labels:
-        raise ValueError(
-            "Oiler's Inkscape labels must stay human-readable; rig metadata "
-            f"belongs in data-rig-* attributes: {machine_labels[:5]}"
-        )
-
-    for view_name, view in view_nodes.items():
-        is_front = view_name == "Oiler - Front"
-        top_layer_order = ANATOMICAL_TOP_LAYER_ORDER
-        part_parent = FRONT_PART_PARENT if is_front else PERSPECTIVE_PART_PARENT
-        joint_layer_order = ANATOMICAL_JOINT_LAYER_ORDER
-        if is_front:
-            if view.get(RIG_SIDE_MAP) != "left=far,right=near":
-                raise ValueError(
-                    "Oiler front must map character-relative left/right anatomy "
-                    "onto the runtime's far/near channels"
-                )
-        elif view.get(RIG_SIDE_MAP):
-            raise ValueError(
-                f"{view_name} uses depth-oriented near/far labels and must not "
-                f"declare {RIG_SIDE_MAP}"
-            )
-
-        direct_layers = [
-            child
-            for child in list(view)
-            if isinstance(child.tag, str)
-            and child.tag.endswith("}g")
-            and child.get(INKSCAPE_LABEL)
-        ]
-        direct_labels = tuple(child.get(INKSCAPE_LABEL) for child in direct_layers)
-        if set(direct_labels) != set(top_layer_order) or len(direct_labels) != len(
-            top_layer_order
-        ):
-            raise ValueError(
-                f"{view_name} top-level layers must be {top_layer_order}, "
-                f"got {direct_labels}"
-            )
-        if any(child.get(INKSCAPE_GROUPMODE) != "layer" for child in direct_layers):
-            raise ValueError(f"{view_name} anatomical groups must be Inkscape layers")
-
-        parents = {child: parent for parent in view.iter() for child in list(parent)}
-        parts = [elem for elem in view.iter() if elem.get(RIG_PART)]
-        names = [elem.get(RIG_PART) for elem in parts]
-        if len(names) != len(set(names)):
-            raise ValueError(f"{view_name} contains duplicate data-rig-part names")
-        expected_parts = set(part_parent)
-        if view_name == "Oiler - Side Right":
-            expected_parts.remove("talk_mouth")
-        if set(names) != expected_parts:
-            raise ValueError(
-                f"{view_name} rig parts differ: expected {sorted(expected_parts)}, "
-                f"got {sorted(names)}"
-            )
-        for part in parts:
-            name = part.get(RIG_PART)
-            parent = parents.get(part)
-            parent_label = parent.get(INKSCAPE_LABEL) if parent is not None else None
-            if parent_label != part_parent[name]:
-                raise ValueError(
-                    f"{view_name} part {name!r} belongs under {part_parent[name]!r}, "
-                    f"not {parent_label!r}"
-                )
-            if not part.get(RIG_BONE) or part.get(RIG_Z) is None:
-                raise ValueError(
-                    f"{view_name} part {name!r} lacks explicit rig metadata"
-                )
-            if part.get(INKSCAPE_GROUPMODE) != "layer":
-                raise ValueError(f"{view_name} part {name!r} must be an Inkscape layer")
-
-        joints_layer = next(
-            child
-            for child in direct_layers
-            if child.get(INKSCAPE_LABEL) == "Joints"
-        )
-        joint_group_labels = tuple(
-            child.get(INKSCAPE_LABEL)
-            for child in list(joints_layer)
-            if isinstance(child.tag, str) and child.tag.endswith("}g")
-        )
-        if set(joint_group_labels) != set(joint_layer_order) or len(
-            joint_group_labels
-        ) != len(joint_layer_order):
-            raise ValueError(
-                f"{view_name} joint groups must be {joint_layer_order}, "
-                f"got {joint_group_labels}"
-            )
-        joint_names = [
-            elem.get(RIG_JOINT) for elem in joints_layer.iter() if elem.get(RIG_JOINT)
-        ]
-        if len(joint_names) != 18 or len(joint_names) != len(set(joint_names)):
-            raise ValueError(
-                f"{view_name} must expose 18 uniquely named data-rig-joint markers"
-            )
-        if is_front:
-            source_terms = [
-                *(elem.get(INKSCAPE_LABEL) or "" for elem in view.iter()),
-                *(elem.get(RIG_PART) or "" for elem in view.iter()),
-                *(elem.get(RIG_BONE) or "" for elem in view.iter()),
-                *(elem.get(RIG_JOINT) or "" for elem in view.iter()),
-            ]
-            leaked = [
-                term
-                for term in source_terms
-                if "near" in term.lower() or "far" in term.lower()
-            ]
-            if leaked:
-                raise ValueError(
-                    "Oiler front SVG must name anatomy from Oiler's own left/right "
-                    f"frame, not camera depth: {leaked[:5]}"
-                )
-
-
 def _validate_svg_source() -> None:
-    """Reject source edits that erase Oiler's distinctive art contract."""
+    """Reject a source that drifted from Oiler's art contract: flat paint and
+    no props, the redesign's marker, all five views, every expression."""
 
     text = SVG.read_text(encoding="utf8").lower()
     forbidden = (
         "<filter",
         "<lineargradient",
         "<radialgradient",
-        "url(#",
         "drop-shadow",
         "dropshadow",
-        "part:machine",
-        "part:wrench",
         'data-rig-part="machine"',
         'data-rig-part="wrench"',
         "oil-flask",
@@ -289,234 +123,25 @@ def _validate_svg_source() -> None:
     root = ET.parse(SVG).getroot()
     if root.get("data-character-design") != DESIGN_ID:
         raise ValueError(f"Oiler SVG must declare data-character-design={DESIGN_ID!r}")
-
-    ids = {elem.get("id") for elem in root.iter() if elem.get("id")}
-
-    retired = sorted(
-        elem_id
-        for elem_id in ids
-        if "beard" in elem_id.lower() or "moustache" in elem_id.lower()
-    )
-    if retired:
-        raise ValueError(f"Oiler's clean-shaven Euler face regressed: {retired}")
-
-    view_nodes = {
-        elem.get(INKSCAPE_LABEL): elem
-        for elem in root.iter()
-        if (elem.get(INKSCAPE_LABEL) or "").startswith("Oiler - ")
-    }
-    expected = {spec.view for spec in VIEWS.values()}
-    if set(view_nodes) != expected:
-        raise ValueError(
-            f"Oiler SVG views differ: expected {expected}, got {set(view_nodes)}"
-        )
-
-    required_design_roles = {
-        "cap-back-and-tail",
-        "cap-crown-and-folds",
-        "neckcloth-and-cravat",
-        "face-shape-and-ears",
-        "lapels-and-upper-coat-trim",
-        "apron-details",
-        "nose-construction",
-    }
-    for view_name, view in view_nodes.items():
-        design_roles = {
-            elem.get("data-oiler-role")
-            for elem in view.iter()
-            if elem.get("data-oiler-role")
-        }
-        missing_roles = sorted(required_design_roles - design_roles)
-        if missing_roles:
-            raise ValueError(
-                f"{view_name} is missing Euler design roles: {missing_roles}"
-            )
-
-    _validate_artist_hierarchy(root, view_nodes)
-
-    if root.get("data-nose-design") != NOSE_DESIGN_ID:
-        raise ValueError(
-            f"Oiler SVG must declare data-nose-design={NOSE_DESIGN_ID!r}"
-        )
-    for view_name, view in view_nodes.items():
-        nose_layers = [
-            elem
-            for elem in view.iter()
-            if elem.get(INKSCAPE_LABEL) == "Nose"
-        ]
-        if len(nose_layers) != 1:
-            raise ValueError(
-                f"{view_name} must expose exactly one artist-facing Nose layer"
-            )
-        nose = nose_layers[0]
-        if nose.get("data-oiler-role") != "nose-construction":
-            raise ValueError(f"{view_name} Nose layer lacks its design role")
-        if nose.get("data-nose-form") != "straight-bridge-soft-tip":
-            raise ValueError(
-                f"{view_name} nose must use Oiler's shared straight-bridge form"
-            )
-        expected_projection = NOSE_PROJECTIONS[view_name]
-        if nose.get("data-nose-projection") != expected_projection:
-            raise ValueError(
-                f"{view_name} nose must declare the {expected_projection!r} projection"
-            )
-
-    nose_ids = {
-        elem.get("id")
-        for view in view_nodes.values()
-        for elem in view.iter()
-        if elem.get("id")
-    }
-    required_nose_ids = {
-        "tq-nose-bridge",
-        "tq-nostril",
-        "front-nose-bridge",
-        "front-nostril-left",
-        "front-nostril-right",
-        "side-nostril",
-    }
-    missing_nose_ids = sorted(required_nose_ids - nose_ids)
-    if missing_nose_ids:
-        raise ValueError(
-            f"Oiler's shared nose construction is incomplete: {missing_nose_ids}"
-        )
-    forbidden_nose_ids = {
-        "side-nose",
-        "side-nose-crease",
-        "front-face-centerline",
-        "front-nose-base",
-        "tq-nose-base",
-    }
-    stale_nose_ids = sorted(forbidden_nose_ids & nose_ids)
-    if stale_nose_ids:
-        raise ValueError(
-            "Oiler's retired nose constructions remain in the SVG: "
-            f"{stale_nose_ids}"
-        )
-
-    # The front view is deliberately authored around a frontal body axis.  It
-    # must not regress to a translated/sheared copy of the three-quarter art.
-    front = view_nodes["Oiler - Front"]
-    if front.get("data-view-construction") != "authored-front-v3":
-        raise ValueError("Oiler front view must declare authored-front-v3")
-    axis_x = float(front.get("data-front-axis-x", "nan"))
-    if front.get("data-front-hip-layout") != "pelvis-sockets-v3":
-        raise ValueError("Oiler front view must declare pelvis-sockets-v3")
-    if front.get("data-front-face-volume") != "full-volume-v3":
-        raise ValueError("Oiler front view must declare full-volume-v3")
-
-    front_required = {
-        "front-nose-bridge",
-        "front-cheek-left",
-        "front-cheek-right",
-        "front-cap-center-pleat",
-        "front-coat-center-seam",
-        "front-coat-button-upper",
-        "front-coat-button-lower",
-    }
-    missing = sorted(front_required - ids)
-    if missing:
-        raise ValueError(f"Oiler front view lacks frontal construction: {missing}")
-
-    joints = {
-        name: (float(elem.get("cx")), float(elem.get("cy")))
-        for elem in front.iter()
-        if (name := _rig_joint_name(elem)) is not None
-    }
-    for name in ("waist", "neck"):
-        if abs(joints[name][0] - axis_x) > 0.01:
-            raise ValueError(f"Oiler front {name} is off the frontal axis")
-    for right_name, left_name in (
-        ("right_shoulder", "left_shoulder"),
-        ("right_hip", "left_hip"),
-        ("right_knee", "left_knee"),
-        ("right_ankle", "left_ankle"),
-    ):
-        right_x = joints[right_name][0]
-        left_x = joints[left_name][0]
-        if not right_x < axis_x < left_x:
-            raise ValueError(
-                f"Oiler front {right_name}/{left_name} must straddle the body axis"
-            )
-        if left_x - right_x < 18.0:
-            raise ValueError(
-                f"Oiler front {right_name}/{left_name} are implausibly compressed"
-            )
-
-    hip_depth = (joints["right_hip"][1] + joints["left_hip"][1]) / 2.0 - joints[
-        "waist"
-    ][1]
-    hip_span = joints["left_hip"][0] - joints["right_hip"][0]
-    if not 21.0 <= hip_depth <= 27.0:
-        raise ValueError(
-            f"Oiler front hip sockets must sit low in the pelvis, got depth {hip_depth}"
-        )
-    if not 32.0 <= hip_span <= 40.0:
-        raise ValueError(
-            f"Oiler front hip sockets must form a stable pelvis span, got {hip_span}"
-        )
-
-    # The side view must remain a genuinely authored profile.  These metadata
-    # flags are intentionally explicit because the most common regression is a
-    # flattened frontal pouch, a two-lapel V, or an arm whose elbow bends the
-    # wrong way after manual SVG edits.
-    side = view_nodes["Oiler - Side Right"]
-    expected_side_contract = {
-        "data-side-profile-construction": "authored-profile-v3",
-        "data-side-arm-hinge": "shoulder-back-elbow-back-wrist-forward-v3",
-        "data-side-pouch-construction": "narrow-profile-gusset-v2",
-        "data-side-lapel-construction": "single-profile-lapel-v2",
-        "data-side-face-construction": "integrated-profile-features-v3",
-    }
-    for attr, expected_value in expected_side_contract.items():
-        if side.get(attr) != expected_value:
-            raise ValueError(
-                f"Oiler side view must declare {attr}={expected_value!r}"
-            )
-
-    side_ids = {elem.get("id"): elem for elem in side.iter() if elem.get("id")}
-    side_required = {
-        "side-ear",
-        "side-ear-inner",
-        "side-philtrum",
-        "side-mouth-closed",
-        "side-lower-lip",
-        "side-lapel-edge",
-        "side-apron-pocket-flap",
-        "side-apron-pocket-gusset",
-        "side-apron-belt-loop",
-    }
-    missing_side = sorted(side_required - side_ids.keys())
-    if missing_side:
-        raise ValueError(
-            f"Oiler side view lacks authored profile details: {missing_side}"
-        )
-
-    side_joints = {
-        name: (float(elem.get("cx")), float(elem.get("cy")))
-        for elem in side.iter()
-        if (name := _rig_joint_name(elem)) is not None
-    }
-    for side_name in ("far", "near"):
-        shoulder = side_joints[f"{side_name}_shoulder"]
-        elbow = side_joints[f"{side_name}_elbow"]
-        wrist = side_joints[f"{side_name}_wrist"]
-        shoulder_to_elbow = shoulder[0] - elbow[0]
-        elbow_to_wrist = wrist[0] - elbow[0]
-        if not 6.0 <= shoulder_to_elbow <= 12.0:
-            raise ValueError(
-                f"Oiler side {side_name} elbow must sit modestly behind the "
-                f"shoulder, got {shoulder_to_elbow}"
-            )
-        if not 9.0 <= elbow_to_wrist <= 14.0:
-            raise ValueError(
-                f"Oiler side {side_name} wrist must return forward from the "
-                f"elbow, got {elbow_to_wrist}"
-            )
-        if not shoulder[1] < elbow[1] < wrist[1]:
-            raise ValueError(
-                f"Oiler side {side_name} arm joints are vertically inverted"
-            )
+    label = "{http://www.inkscape.org/namespaces/inkscape}label"
+    views = {elem.get(label): elem for elem in root if elem.get(label)}
+    for key, (name, stored_facing_right) in VIEW_LAYERS.items():
+        layer = views.get(name)
+        if layer is None:
+            raise ValueError(f"Oiler SVG lacks the {name!r} view")
+        if (layer.get("data-view-mirror") == "x") != stored_facing_right:
+            raise ValueError(f"{name!r}: only the left views carry data-view-mirror=\"x\"")
+        channels = {}
+        for elem in layer.iter():
+            ch = elem.get("data-rig-opacity")
+            if ch:
+                channels[ch] = elem.get("data-rig-opacity-default")
+        wanted = {f"face_{face}_vis" for face in FACES} | {"blink_vis", "talk_vis"}
+        if set(channels) != wanted:
+            raise ValueError(f"{name!r} face channels {sorted(channels)} != {sorted(wanted)}")
+        defaults = sorted(ch for ch, d in channels.items() if d == "1")
+        if defaults != ["face_knowing_vis"]:
+            raise ValueError(f"{name!r}: exactly face_knowing_vis is shown by default, not {defaults}")
 
 
 def _const(value: float) -> dict:
@@ -575,8 +200,26 @@ def _rest_pitch(doc: dict, prefix: str) -> float:
     raise KeyError(prefix)
 
 
+def _set_face(channels: dict, face: str) -> dict:
+    """Show ``face`` and hide every other expression, unless the clip already
+    chooses one."""
+    if any(key.startswith("face_") for key in channels):
+        return channels
+    for name in FACES:
+        channels[f"face_{name}_vis"] = _const(1.0 if name == face else 0.0)
+    return channels
+
+
+def _face_stills() -> dict:
+    """One still per expression, at rest: the portraits are drawn from these."""
+    return {
+        f"face_{face}": {"loop": False, "frames": 1, "duration_ms": 100, "channels": _set_face(_with_visibility({}), face)}
+        for face in FACES
+    }
+
+
 def _with_visibility(channels: dict, *, blink=0.0, talk=0.0):
-    """Set expression channels only.
+    """Set the blink and talk overlays.
 
     Character art deliberately contains no tools, machines, bags, or other
     detachable props. Runtime props should bind to the exported hand sockets.
@@ -591,6 +234,11 @@ def _with_visibility(channels: dict, *, blink=0.0, talk=0.0):
     return channels
 
 
+#: Pose offsets (SVG units, and degrees of hand pitch) from the rest hands.
+IDLE_HAND = (26.0, -26.0, -50.0)
+TALK_HAND = (18.0, -58.0, -80.0)
+
+
 def _three_quarter_clips(doc: dict) -> dict:
     nx = _rest(doc, "near_hand", "x")
     ny = _rest(doc, "near_hand", "y")
@@ -600,14 +248,16 @@ def _three_quarter_clips(doc: dict) -> dict:
     fp = _rest_pitch(doc, "far_hand")
     scale = float(doc["svg_source"]["scale"])
 
+    # At ease, the near hand resting on the apron's pouch, the far one hanging.
+    rest_x, rest_y = nx + IDLE_HAND[0] * scale, ny + IDLE_HAND[1] * scale
     idle = _with_visibility(
         {
             "root_y": _expr("-0.55*sin(tau*t)"),
             "torso": _expr("0.7*sin(tau*t)"),
             "head": _expr("-0.5*sin(tau*t)"),
-            "near_hand_x": _expr(f"{nx:.4f} - 0.7*sin(tau*t)"),
-            "near_hand_y": _expr(f"{ny:.4f} + 0.5*sin(tau*t)"),
-            "near_hand_pitch": _const(np),
+            "near_hand_x": _expr(f"{rest_x:.4f} - 0.4*sin(tau*t)"),
+            "near_hand_y": _expr(f"{rest_y:.4f} + 0.4*sin(tau*t)"),
+            "near_hand_pitch": _const(np + IDLE_HAND[2]),
             "far_hand_x": _expr(f"{fx:.4f} + 0.5*sin(tau*t)"),
             "far_hand_y": _expr(f"{fy:.4f} - 0.35*sin(tau*t)"),
             "far_hand_pitch": _const(fp),
@@ -678,8 +328,10 @@ def _front_clips(doc: dict) -> dict:
     fp = _rest_pitch(doc, "far_hand")
     scale = float(doc["svg_source"]["scale"])
 
-    gesture_x = -18.0 * scale
-    gesture_y = -24.0 * scale
+    # The teacher's gesture: the near hand lifts open to his chest and turns
+    # up, as if setting the point down in front of you.
+    gesture_x = TALK_HAND[0] * scale
+    gesture_y = TALK_HAND[1] * scale
     talk = _with_visibility(
         {
             "root_y": _keys([0.0, -0.4, 0.0, -0.5, 0.0, -0.2]),
@@ -705,7 +357,7 @@ def _front_clips(doc: dict) -> dict:
                     ny,
                 ]
             ),
-            "near_hand_pitch": _keys([np, np - 8, np - 16, np - 7, np, np]),
+            "near_hand_pitch": _keys([np, np + TALK_HAND[2] * 0.5, np + TALK_HAND[2], np + TALK_HAND[2] * 0.8, np + TALK_HAND[2] * 0.2, np]),
             "far_hand_x": _keys([fx, fx + 1.2, fx + 2.0, fx + 1.0, fx, fx]),
             "far_hand_y": _keys([fy, fy - 0.5, fy - 1.0, fy - 0.5, fy, fy]),
             "far_hand_pitch": _const(fp),
@@ -1416,13 +1068,20 @@ def _side_smash_clips(doc: dict) -> dict:
 
 
 def seed_clips(view_name: str, doc: dict) -> dict:
-    if view_name == "three_quarter":
-        return _three_quarter_clips(doc)
-    if view_name == "front":
-        return _front_clips(doc)
-    if view_name == "side":
-        return _side_clips(doc)
-    raise KeyError(view_name)
+    """A view's clips, each wearing its face (``FACE_OF``). A left view takes
+    its right twin's clips: the same skeleton, his other side."""
+    base = view_name.removesuffix("_left")
+    if base == "three_quarter":
+        clips = {**_three_quarter_clips(doc), **_face_stills()}
+    elif base == "front":
+        clips = {**_front_clips(doc), **_face_stills()}
+    elif base == "side":
+        clips = _side_clips(doc)
+    else:
+        raise KeyError(view_name)
+    for name, clip in clips.items():
+        _set_face(clip["channels"], FACE_OF.get(name, "knowing"))
+    return clips
 
 
 def _drop_retired_prop_channels(clips: dict) -> None:

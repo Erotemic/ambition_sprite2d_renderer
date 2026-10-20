@@ -5,15 +5,15 @@
   "height": 128,
   "center_x": 64.0,
   "ground_y": 118.0,
-  "ankle_h": 7.7778,
-  "supersample": 4,
+  "ankle_h": 4.6927,
+  "supersample": 2,
   "render_scale": 2
  },
  "svg_source": {
   "path": "../../../../data/characters/oiler/oiler-multiview.svg",
   "view": "Oiler - Front",
   "ref_dpi": 25.4,
-  "scale": 0.32407407
+  "scale": 0.29329609
  },
  "palette": {},
  "bones": [
@@ -22,7 +22,7 @@
    "parent": null,
    "offset": [
     0.0,
-    -45.3704
+    -43.9944
    ],
    "length": 0.0,
    "rest_angle": 0.0
@@ -32,7 +32,7 @@
    "parent": "pelvis",
    "offset": [
     0.0,
-    -7.7778
+    -14.6648
    ],
    "length": 0.0,
    "rest_angle": 0.0
@@ -42,7 +42,7 @@
    "parent": "torso",
    "offset": [
     0.0,
-    -23.9815
+    -15.2514
    ],
    "length": 0.0,
    "rest_angle": 0.0
@@ -51,220 +51,233 @@
    "name": "far_arm_u",
    "parent": "torso",
    "offset": [
-    11.3426,
-    -17.5
+    9.9721,
+    -10.5587
    ],
-   "length": 18.9659,
-   "rest_angle": 73.1132
+   "length": 14.1878,
+   "rest_angle": 82.875
   },
   {
    "name": "far_arm_l",
    "parent": "far_arm_u",
    "offset": [
-    18.9659,
-    0.0
+    14.1878,
+    -0.0
    ],
-   "length": 15.1901,
-   "rest_angle": 27.957
+   "length": 12.9184,
+   "rest_angle": 4.5225
   },
   {
    "name": "far_arm_hand",
    "parent": "far_arm_l",
    "offset": [
-    15.1901,
+    12.9184,
     -0.0
    ],
-   "length": 4.2161,
-   "rest_angle": -13.2728
+   "length": 8.8099,
+   "rest_angle": -0.2598
   },
   {
    "name": "far_leg_u",
    "parent": "pelvis",
    "offset": [
-    5.5093,
+    3.5196,
     0.0
    ],
-   "length": 18.4978,
-   "rest_angle": 86.9872
+   "length": 19.3598,
+   "rest_angle": 89.1319
   },
   {
    "name": "far_leg_l",
    "parent": "far_leg_u",
    "offset": [
-    18.4978,
-    0.0
+    19.3598,
+    -0.0
    ],
-   "length": 19.1204,
-   "rest_angle": 3.0128
+   "length": 19.9463,
+   "rest_angle": 0.0255
   },
   {
    "name": "far_leg_foot",
    "parent": "far_leg_l",
    "offset": [
-    19.1204,
+    19.9463,
     0.0
    ],
-   "length": 9.2801,
-   "rest_angle": -65.2249
+   "length": 3.5196,
+   "rest_angle": 0.8425
   },
   {
    "name": "near_arm_u",
    "parent": "torso",
    "offset": [
-    -10.3704,
-    -16.8519
+    -9.9721,
+    -10.5587
    ],
-   "length": 18.0938,
-   "rest_angle": 109.8954
+   "length": 14.1878,
+   "rest_angle": 97.125
   },
   {
    "name": "near_arm_l",
    "parent": "near_arm_u",
    "offset": [
-    18.0938,
+    14.1878,
     -0.0
    ],
-   "length": 15.537,
-   "rest_angle": -27.6875
+   "length": 12.9184,
+   "rest_angle": -4.5225
   },
   {
    "name": "near_arm_hand",
    "parent": "near_arm_l",
    "offset": [
-    15.537,
-    -0.0
+    12.9184,
+    0.0
    ],
-   "length": 5.1877,
-   "rest_angle": 9.582
+   "length": 8.8099,
+   "rest_angle": 0.2598
   },
   {
    "name": "near_leg_u",
    "parent": "pelvis",
    "offset": [
-    -5.5093,
+    -3.5196,
     0.0
    ],
-   "length": 18.4978,
-   "rest_angle": 93.0128
+   "length": 19.3598,
+   "rest_angle": 90.8681
   },
   {
    "name": "near_leg_l",
    "parent": "near_leg_u",
    "offset": [
-    18.4978,
-    0.0
+    19.3598,
+    -0.0
    ],
-   "length": 19.1204,
-   "rest_angle": -3.0128
+   "length": 19.9463,
+   "rest_angle": -0.0255
   },
   {
    "name": "near_leg_foot",
    "parent": "near_leg_l",
    "offset": [
-    19.1204,
-    0.0
+    19.9463,
+    -0.0
    ],
-   "length": 9.2801,
-   "rest_angle": 65.2249
+   "length": 3.5196,
+   "rest_angle": -0.8425
   }
  ],
  "parts": [
   {
-   "name": "far_leg_u",
-   "bone": "far_leg_u",
-   "z": 5.0,
+   "name": "wrap_back",
+   "bone": "head",
+   "z": 4.0,
    "kind": "sprite",
    "include": [
-    "front-left-thigh-outline",
-    "front-left-thigh"
+    "front-wrap-back-1",
+    "front-wrap-back-2",
+    "front-wrap-back-3",
+    "front-wrap-back-4",
+    "front-wrap-back-5",
+    "front-wrap-back-6",
+    "front-wrap-back-7",
+    "front-wrap-back-8"
    ],
    "pivot": [
-    497.0,
-    229.0
+    840.0,
+    248.0
    ],
-   "rest_angle": 86.9872,
+   "rest_angle": 0.0,
    "svg_source_order": 0
+  },
+  {
+   "name": "far_leg_u",
+   "bone": "far_leg_u",
+   "z": 10.0,
+   "kind": "sprite",
+   "include": [
+    "front-left-thigh-1",
+    "front-left-thigh-2",
+    "front-left-thigh-3",
+    "front-left-thigh-4",
+    "front-left-thigh-5",
+    "front-left-thigh-6"
+   ],
+   "pivot": [
+    852.0,
+    350.0
+   ],
+   "rest_angle": 89.1319,
+   "svg_source_order": 1
   },
   {
    "name": "far_leg_l",
    "bone": "far_leg_l",
-   "z": 6.0,
+   "z": 11.0,
    "kind": "sprite",
    "include": [
-    "front-left-shin-outline",
-    "front-left-shin"
+    "front-left-shin-1",
+    "front-left-shin-2",
+    "front-left-shin-3",
+    "front-left-shin-4",
+    "front-left-shin-5",
+    "front-left-shin-6",
+    "front-left-shin-7",
+    "front-left-shin-8",
+    "front-left-shin-9",
+    "front-left-shin-10",
+    "front-left-shin-11",
+    "front-left-shin-12",
+    "front-left-shin-13"
    ],
    "pivot": [
-    500.0,
-    286.0
+    853.0,
+    416.0
    ],
-   "rest_angle": 90.0,
-   "svg_source_order": 1
+   "rest_angle": 89.1575,
+   "svg_source_order": 2
   },
   {
    "name": "far_leg_foot",
    "bone": "far_leg_foot",
-   "z": 7.0,
+   "z": 12.0,
    "kind": "sprite",
    "include": [
-    "front-left-boot-outline",
-    "front-left-boot",
-    "front-left-sole"
+    "front-left-foot-1",
+    "front-left-foot-2",
+    "front-left-foot-3",
+    "front-left-foot-4",
+    "front-left-foot-5",
+    "front-left-foot-6",
+    "front-left-foot-7"
    ],
    "pivot": [
-    500.0,
-    345.0
+    854.0,
+    484.0
    ],
-   "rest_angle": 24.7751,
-   "svg_source_order": 2
+   "rest_angle": 90.0,
+   "svg_source_order": 3
   },
   {
-   "name": "far_arm_u",
-   "bone": "far_arm_u",
-   "z": 8.0,
+   "name": "pelvis_yoke",
+   "bone": "pelvis",
+   "z": 19.0,
    "kind": "sprite",
    "include": [
-    "front-left-upperarm-outline",
-    "front-left-upperarm",
-    "front-left-sleeve-band"
+    "front-pelvis-1",
+    "front-pelvis-2",
+    "front-pelvis-3",
+    "front-pelvis-4",
+    "front-pelvis-5",
+    "front-pelvis-6"
    ],
    "pivot": [
-    515.0,
-    151.0
+    840.0,
+    350.0
    ],
-   "rest_angle": 73.1132,
-   "svg_source_order": 9
-  },
-  {
-   "name": "far_arm_l",
-   "bone": "far_arm_l",
-   "z": 9.0,
-   "kind": "sprite",
-   "include": [
-    "front-left-forearm-outline",
-    "front-left-forearm"
-   ],
-   "pivot": [
-    532.0,
-    207.0
-   ],
-   "rest_angle": 101.0702,
-   "svg_source_order": 10
-  },
-  {
-   "name": "far_hand",
-   "bone": "far_arm_hand",
-   "z": 10.0,
-   "kind": "sprite",
-   "include": [
-    "front-left-hand-shape"
-   ],
-   "pivot": [
-    523.0,
-    253.0
-   ],
-   "rest_angle": 87.7974,
-   "svg_source_order": 11
+   "rest_angle": 0.0,
+   "svg_source_order": 4
   },
   {
    "name": "near_leg_u",
@@ -272,232 +285,1287 @@
    "z": 20.0,
    "kind": "sprite",
    "include": [
-    "front-right-thigh-outline",
-    "front-right-thigh"
+    "front-right-thigh-1",
+    "front-right-thigh-2",
+    "front-right-thigh-3",
+    "front-right-thigh-4",
+    "front-right-thigh-5",
+    "front-right-thigh-6"
    ],
    "pivot": [
-    463.0,
-    229.0
+    828.0,
+    350.0
    ],
-   "rest_angle": 93.0128,
-   "svg_source_order": 3
+   "rest_angle": 90.8681,
+   "svg_source_order": 5
   },
   {
-   "name": "pelvis_yoke",
-   "bone": "pelvis",
+   "name": "near_leg_l",
+   "bone": "near_leg_l",
    "z": 21.0,
    "kind": "sprite",
    "include": [
-    "front-pelvis-yoke",
-    "front-pelvis-fly",
-    "front-pelvis-seam"
+    "front-right-shin-1",
+    "front-right-shin-2",
+    "front-right-shin-3",
+    "front-right-shin-4",
+    "front-right-shin-5",
+    "front-right-shin-6",
+    "front-right-shin-7",
+    "front-right-shin-8",
+    "front-right-shin-9",
+    "front-right-shin-10",
+    "front-right-shin-11",
+    "front-right-shin-12",
+    "front-right-shin-13"
    ],
    "pivot": [
-    480.0,
-    229.0
+    827.0,
+    416.0
    ],
-   "rest_angle": 0.0,
+   "rest_angle": 90.8425,
    "svg_source_order": 6
   },
   {
-   "name": "torso",
-   "bone": "torso",
+   "name": "near_leg_foot",
+   "bone": "near_leg_foot",
    "z": 22.0,
    "kind": "sprite",
    "include": [
-    "front-coat-body",
-    "front-neckcloth",
-    "front-cravat-knot",
-    "front-cravat-tail-left",
-    "front-cravat-tail-right",
-    "front-dark-lapel-left",
-    "front-dark-lapel-right",
-    "front-coat-band-left",
-    "front-coat-band-right",
-    "front-coat-center-seam",
-    "front-coat-button-upper",
-    "front-coat-button-lower",
-    "front-coat-panel",
-    "front-belt",
-    "front-belt-brass"
+    "front-right-foot-1",
+    "front-right-foot-2",
+    "front-right-foot-3",
+    "front-right-foot-4",
+    "front-right-foot-5",
+    "front-right-foot-6",
+    "front-right-foot-7"
    ],
    "pivot": [
-    480.0,
-    205.0
+    826.0,
+    484.0
    ],
-   "rest_angle": 0.0,
+   "rest_angle": 90.0,
    "svg_source_order": 7
   },
   {
-   "name": "apron",
+   "name": "vest",
    "bone": "torso",
-   "z": 24.0,
+   "z": 30.0,
    "kind": "sprite",
    "include": [
-    "front-waist-apron",
-    "front-apron-pocket",
-    "front-apron-spiral"
+    "front-vest-1",
+    "front-vest-2",
+    "front-vest-3",
+    "front-vest-4",
+    "front-vest-5",
+    "front-vest-6",
+    "front-vest-7",
+    "front-vest-8",
+    "front-vest-9",
+    "front-vest-10",
+    "front-vest-11",
+    "front-vest-12",
+    "front-vest-13",
+    "front-vest-14",
+    "front-vest-15",
+    "front-vest-16",
+    "front-vest-17",
+    "front-vest-18",
+    "front-vest-19"
    ],
    "pivot": [
-    480.0,
-    205.0
+    840.0,
+    300.0
    ],
    "rest_angle": 0.0,
    "svg_source_order": 8
   },
   {
-   "name": "head",
-   "bone": "head",
-   "z": 30.0,
+   "name": "apron",
+   "bone": "torso",
+   "z": 34.0,
    "kind": "sprite",
    "include": [
-    "front-cap-tail-back",
-    "front-cap-hanging-tail",
-    "front-ear-left",
-    "front-ear-right",
-    "front-head",
-    "front-cap-crown",
-    "front-cap-dark-fold",
-    "front-cap-light-fold",
-    "front-cap-front-fold",
-    "front-cap-center-pleat",
-    "front-cap-fold-line-left",
-    "front-cap-fold-line-right",
-    "front-brow-left",
-    "front-brow-right",
-    "front-eye-left-squint",
-    "front-eye-right",
-    "front-nose-bridge",
-    "front-nostril-left",
-    "front-nostril-right",
-    "front-cheek-left",
-    "front-cheek-right",
-    "front-mouth-closed",
-    "front-chin",
-    "front-age-line-left",
-    "front-age-line-right"
+    "front-apron-1",
+    "front-apron-2",
+    "front-apron-3",
+    "front-apron-4",
+    "front-apron-5",
+    "front-apron-6",
+    "front-apron-7",
+    "front-apron-8",
+    "front-apron-9",
+    "front-apron-10",
+    "front-apron-11",
+    "front-apron-12",
+    "front-apron-13",
+    "front-apron-14",
+    "front-apron-15"
    ],
    "pivot": [
-    480.0,
-    131.0
+    840.0,
+    300.0
    ],
    "rest_angle": 0.0,
-   "svg_source_order": 15
+   "svg_source_order": 9
+  },
+  {
+   "name": "gown",
+   "bone": "torso",
+   "z": 36.0,
+   "kind": "sprite",
+   "include": [
+    "front-gown-1",
+    "front-gown-2",
+    "front-gown-3",
+    "front-gown-4",
+    "front-gown-5",
+    "front-gown-6",
+    "front-gown-7",
+    "front-gown-8",
+    "front-gown-9",
+    "front-gown-10",
+    "front-gown-11",
+    "front-gown-12",
+    "front-gown-13",
+    "front-gown-14",
+    "front-gown-15",
+    "front-gown-16",
+    "front-gown-17",
+    "front-gown-18",
+    "front-gown-19",
+    "front-gown-20",
+    "front-gown-21",
+    "front-gown-22",
+    "front-gown-23",
+    "front-gown-24",
+    "front-gown-25",
+    "front-gown-26",
+    "front-gown-27",
+    "front-gown-28",
+    "front-gown-29",
+    "front-gown-30",
+    "front-gown-31",
+    "front-gown-32",
+    "front-gown-33",
+    "front-gown-34",
+    "front-gown-35",
+    "front-gown-36",
+    "front-gown-37",
+    "front-gown-38",
+    "front-gown-39",
+    "front-gown-40",
+    "front-gown-41",
+    "front-gown-42",
+    "front-gown-43",
+    "front-gown-44",
+    "front-gown-45",
+    "front-gown-46",
+    "front-gown-47",
+    "front-gown-48",
+    "front-gown-49",
+    "front-gown-50",
+    "front-gown-51",
+    "front-gown-52",
+    "front-gown-53",
+    "front-gown-54",
+    "front-gown-55",
+    "front-gown-56",
+    "front-gown-57",
+    "front-gown-58",
+    "front-gown-59",
+    "front-gown-60",
+    "front-gown-61",
+    "front-gown-62",
+    "front-gown-63",
+    "front-gown-64",
+    "front-gown-65",
+    "front-gown-66",
+    "front-gown-67",
+    "front-gown-68",
+    "front-gown-69",
+    "front-gown-70",
+    "front-gown-71",
+    "front-gown-72",
+    "front-gown-73",
+    "front-gown-74",
+    "front-gown-75",
+    "front-gown-76",
+    "front-gown-77",
+    "front-gown-78",
+    "front-gown-79",
+    "front-gown-80",
+    "front-gown-81",
+    "front-gown-82",
+    "front-gown-83",
+    "front-gown-84",
+    "front-gown-85",
+    "front-gown-86",
+    "front-gown-87",
+    "front-gown-88",
+    "front-gown-89",
+    "front-gown-90",
+    "front-gown-91",
+    "front-gown-92",
+    "front-gown-93",
+    "front-gown-94",
+    "front-gown-95",
+    "front-gown-96",
+    "front-gown-97",
+    "front-gown-98",
+    "front-gown-99",
+    "front-gown-100",
+    "front-gown-101",
+    "front-gown-102",
+    "front-gown-103",
+    "front-gown-104",
+    "front-gown-105",
+    "front-gown-106",
+    "front-gown-107",
+    "front-gown-108",
+    "front-gown-109",
+    "front-gown-110",
+    "front-gown-111",
+    "front-gown-112",
+    "front-gown-113",
+    "front-gown-114",
+    "front-gown-115",
+    "front-gown-116",
+    "front-gown-117",
+    "front-gown-118",
+    "front-gown-119",
+    "front-gown-120",
+    "front-gown-121",
+    "front-gown-122",
+    "front-gown-123",
+    "front-gown-124",
+    "front-gown-125",
+    "front-gown-126",
+    "front-gown-127",
+    "front-gown-128",
+    "front-gown-129",
+    "front-gown-130",
+    "front-gown-131",
+    "front-gown-132",
+    "front-gown-133",
+    "front-gown-134",
+    "front-gown-135",
+    "front-gown-136",
+    "front-gown-137",
+    "front-gown-138",
+    "front-gown-139",
+    "front-gown-140",
+    "front-gown-141",
+    "front-gown-142",
+    "front-gown-143",
+    "front-gown-144",
+    "front-gown-145",
+    "front-gown-146",
+    "front-gown-147",
+    "front-gown-148",
+    "front-gown-149",
+    "front-gown-150",
+    "front-gown-151",
+    "front-gown-152",
+    "front-gown-153",
+    "front-gown-154",
+    "front-gown-155",
+    "front-gown-156",
+    "front-gown-157",
+    "front-gown-158",
+    "front-gown-159",
+    "front-gown-160",
+    "front-gown-161",
+    "front-gown-162",
+    "front-gown-163",
+    "front-gown-164",
+    "front-gown-165",
+    "front-gown-166",
+    "front-gown-167",
+    "front-gown-168",
+    "front-gown-169",
+    "front-gown-170",
+    "front-gown-171",
+    "front-gown-172",
+    "front-gown-173",
+    "front-gown-174",
+    "front-gown-175",
+    "front-gown-176",
+    "front-gown-177",
+    "front-gown-178",
+    "front-gown-179",
+    "front-gown-180",
+    "front-gown-181",
+    "front-gown-182",
+    "front-gown-183",
+    "front-gown-184",
+    "front-gown-185",
+    "front-gown-186",
+    "front-gown-187",
+    "front-gown-188",
+    "front-gown-189",
+    "front-gown-190",
+    "front-gown-191",
+    "front-gown-192",
+    "front-gown-193",
+    "front-gown-194",
+    "front-gown-195",
+    "front-gown-196",
+    "front-gown-197",
+    "front-gown-198",
+    "front-gown-199",
+    "front-gown-200",
+    "front-gown-201",
+    "front-gown-202",
+    "front-gown-203",
+    "front-gown-204",
+    "front-gown-205",
+    "front-gown-206",
+    "front-gown-207",
+    "front-gown-208",
+    "front-gown-209",
+    "front-gown-210",
+    "front-gown-211",
+    "front-gown-212",
+    "front-gown-213",
+    "front-gown-214",
+    "front-gown-215",
+    "front-gown-216",
+    "front-gown-217",
+    "front-gown-218",
+    "front-gown-219",
+    "front-gown-220",
+    "front-gown-221",
+    "front-gown-222",
+    "front-gown-223",
+    "front-gown-224",
+    "front-gown-225",
+    "front-gown-226",
+    "front-gown-227",
+    "front-gown-228",
+    "front-gown-229",
+    "front-gown-230",
+    "front-gown-231",
+    "front-gown-232",
+    "front-gown-233",
+    "front-gown-234",
+    "front-gown-235",
+    "front-gown-236",
+    "front-gown-237",
+    "front-gown-238",
+    "front-gown-239",
+    "front-gown-240",
+    "front-gown-241",
+    "front-gown-242",
+    "front-gown-243",
+    "front-gown-244",
+    "front-gown-245",
+    "front-gown-246",
+    "front-gown-247",
+    "front-gown-248",
+    "front-gown-249",
+    "front-gown-250",
+    "front-gown-251",
+    "front-gown-252",
+    "front-gown-253",
+    "front-gown-254",
+    "front-gown-255",
+    "front-gown-256",
+    "front-gown-257",
+    "front-gown-258",
+    "front-gown-259",
+    "front-gown-260",
+    "front-gown-261",
+    "front-gown-262",
+    "front-gown-263",
+    "front-gown-264",
+    "front-gown-265",
+    "front-gown-266",
+    "front-gown-267",
+    "front-gown-268",
+    "front-gown-269",
+    "front-gown-270",
+    "front-gown-271",
+    "front-gown-272",
+    "front-gown-273",
+    "front-gown-274",
+    "front-gown-275",
+    "front-gown-276",
+    "front-gown-277",
+    "front-gown-278",
+    "front-gown-279",
+    "front-gown-280",
+    "front-gown-281",
+    "front-gown-282",
+    "front-gown-283",
+    "front-gown-284",
+    "front-gown-285",
+    "front-gown-286",
+    "front-gown-287",
+    "front-gown-288",
+    "front-gown-289",
+    "front-gown-290",
+    "front-gown-291",
+    "front-gown-292",
+    "front-gown-293",
+    "front-gown-294",
+    "front-gown-295",
+    "front-gown-296",
+    "front-gown-297",
+    "front-gown-298",
+    "front-gown-299",
+    "front-gown-300",
+    "front-gown-301",
+    "front-gown-302",
+    "front-gown-303",
+    "front-gown-304",
+    "front-gown-305",
+    "front-gown-306",
+    "front-gown-307",
+    "front-gown-308",
+    "front-gown-309",
+    "front-gown-310",
+    "front-gown-311",
+    "front-gown-312",
+    "front-gown-313",
+    "front-gown-314",
+    "front-gown-315",
+    "front-gown-316",
+    "front-gown-317",
+    "front-gown-318",
+    "front-gown-319",
+    "front-gown-320",
+    "front-gown-321",
+    "front-gown-322",
+    "front-gown-323",
+    "front-gown-324",
+    "front-gown-325",
+    "front-gown-326",
+    "front-gown-327",
+    "front-gown-328",
+    "front-gown-329",
+    "front-gown-330",
+    "front-gown-331",
+    "front-gown-332",
+    "front-gown-333",
+    "front-gown-334",
+    "front-gown-335",
+    "front-gown-336",
+    "front-gown-337",
+    "front-gown-338",
+    "front-gown-339",
+    "front-gown-340",
+    "front-gown-341",
+    "front-gown-342",
+    "front-gown-343",
+    "front-gown-344",
+    "front-gown-345",
+    "front-gown-346",
+    "front-gown-347"
+   ],
+   "pivot": [
+    840.0,
+    300.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 10
+  },
+  {
+   "name": "neck",
+   "bone": "torso",
+   "z": 50.0,
+   "kind": "sprite",
+   "include": [
+    "front-neck-1",
+    "front-neck-2",
+    "front-neck-3",
+    "front-neck-4",
+    "front-neck-5",
+    "front-neck-6",
+    "front-neck-7",
+    "front-neck-8",
+    "front-neck-9",
+    "front-neck-10",
+    "front-neck-11",
+    "front-neck-12",
+    "front-neck-13",
+    "front-neck-14",
+    "front-neck-15",
+    "front-neck-16",
+    "front-neck-17",
+    "front-neck-18",
+    "front-neck-19",
+    "front-neck-20",
+    "front-neck-21",
+    "front-neck-22",
+    "front-neck-23",
+    "front-neck-24",
+    "front-neck-25",
+    "front-neck-26"
+   ],
+   "pivot": [
+    840.0,
+    300.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 11
+  },
+  {
+   "name": "head",
+   "bone": "head",
+   "z": 60.0,
+   "kind": "sprite",
+   "include": [
+    "front-head-1",
+    "front-head-2",
+    "front-head-3",
+    "front-head-4",
+    "front-head-5",
+    "front-head-6",
+    "front-head-7",
+    "front-head-8",
+    "front-head-9",
+    "front-head-10",
+    "front-head-11",
+    "front-head-12",
+    "front-head-13",
+    "front-head-14",
+    "front-head-15",
+    "front-head-16",
+    "front-head-17",
+    "front-head-18",
+    "front-head-19",
+    "front-head-20",
+    "front-head-21",
+    "front-head-22",
+    "front-head-23",
+    "front-head-24",
+    "front-head-25",
+    "front-head-26",
+    "front-head-27",
+    "front-head-28",
+    "front-head-29",
+    "front-head-30",
+    "front-head-31",
+    "front-head-32",
+    "front-head-33",
+    "front-head-34",
+    "front-head-35",
+    "front-head-36",
+    "front-head-37",
+    "front-head-38",
+    "front-head-39",
+    "front-head-40",
+    "front-head-41",
+    "front-head-42",
+    "front-head-43",
+    "front-head-44",
+    "front-head-45",
+    "front-head-46",
+    "front-head-47",
+    "front-head-48",
+    "front-head-49",
+    "front-head-50",
+    "front-head-51",
+    "front-head-52",
+    "front-head-53",
+    "front-head-54",
+    "front-head-55",
+    "front-head-56",
+    "front-head-57",
+    "front-head-58",
+    "front-head-59",
+    "front-head-60",
+    "front-head-61",
+    "front-head-62",
+    "front-head-63",
+    "front-head-64",
+    "front-head-65",
+    "front-head-66",
+    "front-head-67",
+    "front-head-68",
+    "front-head-69",
+    "front-head-70",
+    "front-head-71",
+    "front-head-72",
+    "front-head-73",
+    "front-head-74",
+    "front-head-75",
+    "front-head-76",
+    "front-head-77",
+    "front-head-78",
+    "front-head-79",
+    "front-head-80",
+    "front-head-81",
+    "front-head-82",
+    "front-head-83",
+    "front-head-84"
+   ],
+   "pivot": [
+    840.0,
+    248.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 12
+  },
+  {
+   "name": "face_knowing",
+   "bone": "head",
+   "z": 61.0,
+   "kind": "sprite",
+   "include": [
+    "front-face-knowing-1",
+    "front-face-knowing-2",
+    "front-face-knowing-3",
+    "front-face-knowing-4",
+    "front-face-knowing-5",
+    "front-face-knowing-6",
+    "front-face-knowing-7",
+    "front-face-knowing-8",
+    "front-face-knowing-9",
+    "front-face-knowing-10",
+    "front-face-knowing-11",
+    "front-face-knowing-12",
+    "front-face-knowing-13",
+    "front-face-knowing-14",
+    "front-face-knowing-15",
+    "front-face-knowing-16",
+    "front-face-knowing-17",
+    "front-face-knowing-18",
+    "front-face-knowing-19",
+    "front-face-knowing-20",
+    "front-face-knowing-21",
+    "front-face-knowing-22",
+    "front-face-knowing-23",
+    "front-face-knowing-24",
+    "front-face-knowing-25"
+   ],
+   "pivot": [
+    840.0,
+    248.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 13,
+   "opacity_channel": "face_knowing_vis",
+   "opacity_default": 1.0
+  },
+  {
+   "name": "face_pleased",
+   "bone": "head",
+   "z": 61.01,
+   "kind": "sprite",
+   "include": [
+    "front-face-pleased-1",
+    "front-face-pleased-2",
+    "front-face-pleased-3",
+    "front-face-pleased-4",
+    "front-face-pleased-5",
+    "front-face-pleased-6",
+    "front-face-pleased-7",
+    "front-face-pleased-8",
+    "front-face-pleased-9",
+    "front-face-pleased-10",
+    "front-face-pleased-11",
+    "front-face-pleased-12",
+    "front-face-pleased-13",
+    "front-face-pleased-14",
+    "front-face-pleased-15",
+    "front-face-pleased-16",
+    "front-face-pleased-17",
+    "front-face-pleased-18",
+    "front-face-pleased-19",
+    "front-face-pleased-20",
+    "front-face-pleased-21",
+    "front-face-pleased-22",
+    "front-face-pleased-23",
+    "front-face-pleased-24",
+    "front-face-pleased-25",
+    "front-face-pleased-26"
+   ],
+   "pivot": [
+    840.0,
+    248.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 14,
+   "opacity_channel": "face_pleased_vis"
+  },
+  {
+   "name": "face_delighted",
+   "bone": "head",
+   "z": 61.02,
+   "kind": "sprite",
+   "include": [
+    "front-face-delighted-1",
+    "front-face-delighted-2",
+    "front-face-delighted-3",
+    "front-face-delighted-4",
+    "front-face-delighted-5",
+    "front-face-delighted-6",
+    "front-face-delighted-7",
+    "front-face-delighted-8",
+    "front-face-delighted-9",
+    "front-face-delighted-10",
+    "front-face-delighted-11",
+    "front-face-delighted-12",
+    "front-face-delighted-13",
+    "front-face-delighted-14",
+    "front-face-delighted-15",
+    "front-face-delighted-16",
+    "front-face-delighted-17"
+   ],
+   "pivot": [
+    840.0,
+    248.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 15,
+   "opacity_channel": "face_delighted_vis"
+  },
+  {
+   "name": "face_surprised",
+   "bone": "head",
+   "z": 61.03,
+   "kind": "sprite",
+   "include": [
+    "front-face-surprised-1",
+    "front-face-surprised-2",
+    "front-face-surprised-3",
+    "front-face-surprised-4",
+    "front-face-surprised-5",
+    "front-face-surprised-6",
+    "front-face-surprised-7",
+    "front-face-surprised-8",
+    "front-face-surprised-9",
+    "front-face-surprised-10",
+    "front-face-surprised-11",
+    "front-face-surprised-12",
+    "front-face-surprised-13",
+    "front-face-surprised-14",
+    "front-face-surprised-15",
+    "front-face-surprised-16",
+    "front-face-surprised-17",
+    "front-face-surprised-18",
+    "front-face-surprised-19",
+    "front-face-surprised-20",
+    "front-face-surprised-21"
+   ],
+   "pivot": [
+    840.0,
+    248.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 16,
+   "opacity_channel": "face_surprised_vis"
+  },
+  {
+   "name": "face_thinking",
+   "bone": "head",
+   "z": 61.04,
+   "kind": "sprite",
+   "include": [
+    "front-face-thinking-1",
+    "front-face-thinking-2",
+    "front-face-thinking-3",
+    "front-face-thinking-4",
+    "front-face-thinking-5",
+    "front-face-thinking-6",
+    "front-face-thinking-7",
+    "front-face-thinking-8",
+    "front-face-thinking-9",
+    "front-face-thinking-10",
+    "front-face-thinking-11",
+    "front-face-thinking-12",
+    "front-face-thinking-13",
+    "front-face-thinking-14",
+    "front-face-thinking-15",
+    "front-face-thinking-16",
+    "front-face-thinking-17",
+    "front-face-thinking-18",
+    "front-face-thinking-19",
+    "front-face-thinking-20",
+    "front-face-thinking-21",
+    "front-face-thinking-22",
+    "front-face-thinking-23",
+    "front-face-thinking-24",
+    "front-face-thinking-25"
+   ],
+   "pivot": [
+    840.0,
+    248.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 17,
+   "opacity_channel": "face_thinking_vis"
+  },
+  {
+   "name": "face_stern",
+   "bone": "head",
+   "z": 61.05,
+   "kind": "sprite",
+   "include": [
+    "front-face-stern-1",
+    "front-face-stern-2",
+    "front-face-stern-3",
+    "front-face-stern-4",
+    "front-face-stern-5",
+    "front-face-stern-6",
+    "front-face-stern-7",
+    "front-face-stern-8",
+    "front-face-stern-9",
+    "front-face-stern-10",
+    "front-face-stern-11",
+    "front-face-stern-12",
+    "front-face-stern-13",
+    "front-face-stern-14",
+    "front-face-stern-15",
+    "front-face-stern-16",
+    "front-face-stern-17",
+    "front-face-stern-18",
+    "front-face-stern-19",
+    "front-face-stern-20",
+    "front-face-stern-21",
+    "front-face-stern-22",
+    "front-face-stern-23",
+    "front-face-stern-24",
+    "front-face-stern-25",
+    "front-face-stern-26",
+    "front-face-stern-27",
+    "front-face-stern-28"
+   ],
+   "pivot": [
+    840.0,
+    248.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 18,
+   "opacity_channel": "face_stern_vis"
+  },
+  {
+   "name": "face_worried",
+   "bone": "head",
+   "z": 61.06,
+   "kind": "sprite",
+   "include": [
+    "front-face-worried-1",
+    "front-face-worried-2",
+    "front-face-worried-3",
+    "front-face-worried-4",
+    "front-face-worried-5",
+    "front-face-worried-6",
+    "front-face-worried-7",
+    "front-face-worried-8",
+    "front-face-worried-9",
+    "front-face-worried-10",
+    "front-face-worried-11",
+    "front-face-worried-12",
+    "front-face-worried-13",
+    "front-face-worried-14",
+    "front-face-worried-15",
+    "front-face-worried-16",
+    "front-face-worried-17",
+    "front-face-worried-18",
+    "front-face-worried-19",
+    "front-face-worried-20",
+    "front-face-worried-21",
+    "front-face-worried-22",
+    "front-face-worried-23",
+    "front-face-worried-24",
+    "front-face-worried-25",
+    "front-face-worried-26"
+   ],
+   "pivot": [
+    840.0,
+    248.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 19,
+   "opacity_channel": "face_worried_vis"
+  },
+  {
+   "name": "face_hurt",
+   "bone": "head",
+   "z": 61.07,
+   "kind": "sprite",
+   "include": [
+    "front-face-hurt-1",
+    "front-face-hurt-2",
+    "front-face-hurt-3",
+    "front-face-hurt-4",
+    "front-face-hurt-5",
+    "front-face-hurt-6",
+    "front-face-hurt-7",
+    "front-face-hurt-8",
+    "front-face-hurt-9",
+    "front-face-hurt-10",
+    "front-face-hurt-11",
+    "front-face-hurt-12",
+    "front-face-hurt-13",
+    "front-face-hurt-14",
+    "front-face-hurt-15",
+    "front-face-hurt-16",
+    "front-face-hurt-17",
+    "front-face-hurt-18",
+    "front-face-hurt-19",
+    "front-face-hurt-20",
+    "front-face-hurt-21",
+    "front-face-hurt-22",
+    "front-face-hurt-23",
+    "front-face-hurt-24",
+    "front-face-hurt-25",
+    "front-face-hurt-26"
+   ],
+   "pivot": [
+    840.0,
+    248.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 20,
+   "opacity_channel": "face_hurt_vis"
   },
   {
    "name": "blink",
    "bone": "head",
-   "z": 34.0,
+   "z": 61.5,
    "kind": "sprite",
    "include": [
-    "front-blink-left",
-    "front-blink-right"
+    "front-blink-1",
+    "front-blink-2",
+    "front-blink-3",
+    "front-blink-4"
    ],
    "pivot": [
-    480.0,
-    131.0
+    840.0,
+    248.0
    ],
    "rest_angle": 0.0,
-   "svg_source_order": 16,
+   "svg_source_order": 21,
    "opacity_channel": "blink_vis"
   },
   {
    "name": "talk_mouth",
    "bone": "head",
-   "z": 35.0,
+   "z": 61.6,
    "kind": "sprite",
    "include": [
-    "front-open-mouth",
-    "front-open-mouth-teeth"
+    "front-talk-mouth-1",
+    "front-talk-mouth-2",
+    "front-talk-mouth-3",
+    "front-talk-mouth-4"
    ],
    "pivot": [
-    480.0,
-    131.0
+    840.0,
+    248.0
    ],
    "rest_angle": 0.0,
-   "svg_source_order": 17,
+   "svg_source_order": 22,
    "opacity_channel": "talk_vis"
   },
   {
-   "name": "near_leg_l",
-   "bone": "near_leg_l",
-   "z": 41.0,
+   "name": "far_arm_l",
+   "bone": "far_arm_l",
+   "z": 70.0,
    "kind": "sprite",
    "include": [
-    "front-right-shin-outline",
-    "front-right-shin"
+    "front-left-arm-lower-1",
+    "front-left-arm-lower-2",
+    "front-left-arm-lower-3",
+    "front-left-arm-lower-4",
+    "front-left-arm-lower-5",
+    "front-left-arm-lower-6",
+    "front-left-arm-lower-7",
+    "front-left-arm-lower-8",
+    "front-left-arm-lower-9",
+    "front-left-arm-lower-10",
+    "front-left-arm-lower-11",
+    "front-left-arm-lower-12",
+    "front-left-arm-lower-13",
+    "front-left-arm-lower-14"
    ],
    "pivot": [
-    460.0,
-    286.0
+    880.0,
+    312.0
    ],
-   "rest_angle": 90.0,
-   "svg_source_order": 4
+   "rest_angle": 87.3974,
+   "svg_source_order": 23
   },
   {
-   "name": "near_leg_foot",
-   "bone": "near_leg_foot",
-   "z": 42.0,
+   "name": "far_arm_u",
+   "bone": "far_arm_u",
+   "z": 71.0,
    "kind": "sprite",
    "include": [
-    "front-right-boot-outline",
-    "front-right-boot",
-    "front-right-sole"
+    "front-left-arm-upper-1",
+    "front-left-arm-upper-2",
+    "front-left-arm-upper-3",
+    "front-left-arm-upper-4",
+    "front-left-arm-upper-5",
+    "front-left-arm-upper-6",
+    "front-left-arm-upper-7",
+    "front-left-arm-upper-8",
+    "front-left-arm-upper-9",
+    "front-left-arm-upper-10",
+    "front-left-arm-upper-11",
+    "front-left-arm-upper-12",
+    "front-left-arm-upper-13",
+    "front-left-arm-upper-14",
+    "front-left-arm-upper-15",
+    "front-left-arm-upper-16",
+    "front-left-arm-upper-17",
+    "front-left-arm-upper-18",
+    "front-left-arm-upper-19",
+    "front-left-arm-upper-20",
+    "front-left-arm-upper-21",
+    "front-left-arm-upper-22",
+    "front-left-arm-upper-23",
+    "front-left-arm-upper-24",
+    "front-left-arm-upper-25",
+    "front-left-arm-upper-26",
+    "front-left-arm-upper-27",
+    "front-left-arm-upper-28",
+    "front-left-arm-upper-29",
+    "front-left-arm-upper-30",
+    "front-left-arm-upper-31",
+    "front-left-arm-upper-32",
+    "front-left-arm-upper-33",
+    "front-left-arm-upper-34",
+    "front-left-arm-upper-35",
+    "front-left-arm-upper-36",
+    "front-left-arm-upper-37",
+    "front-left-arm-upper-38",
+    "front-left-arm-upper-39",
+    "front-left-arm-upper-40",
+    "front-left-arm-upper-41",
+    "front-left-arm-upper-42",
+    "front-left-arm-upper-43",
+    "front-left-arm-upper-44",
+    "front-left-arm-upper-45",
+    "front-left-arm-upper-46",
+    "front-left-arm-upper-47",
+    "front-left-arm-upper-48",
+    "front-left-arm-upper-49",
+    "front-left-arm-upper-50",
+    "front-left-arm-upper-51",
+    "front-left-arm-upper-52",
+    "front-left-arm-upper-53",
+    "front-left-arm-upper-54",
+    "front-left-arm-upper-55",
+    "front-left-arm-upper-56",
+    "front-left-arm-upper-57",
+    "front-left-arm-upper-58",
+    "front-left-arm-upper-59",
+    "front-left-arm-upper-60",
+    "front-left-arm-upper-61",
+    "front-left-arm-upper-62",
+    "front-left-arm-upper-63",
+    "front-left-arm-upper-64",
+    "front-left-arm-upper-65",
+    "front-left-arm-upper-66",
+    "front-left-arm-upper-67"
    ],
    "pivot": [
-    460.0,
-    345.0
+    874.0,
+    264.0
    ],
-   "rest_angle": 155.2249,
-   "svg_source_order": 5
+   "rest_angle": 82.875,
+   "svg_source_order": 24
   },
   {
-   "name": "near_arm_u",
-   "bone": "near_arm_u",
-   "z": 60.0,
+   "name": "far_hand",
+   "bone": "far_arm_hand",
+   "z": 72.0,
    "kind": "sprite",
    "include": [
-    "front-right-upperarm-outline",
-    "front-right-upperarm",
-    "front-right-sleeve-band"
+    "front-left-hand-1",
+    "front-left-hand-2",
+    "front-left-hand-3",
+    "front-left-hand-4",
+    "front-left-hand-5",
+    "front-left-hand-6",
+    "front-left-hand-7",
+    "front-left-hand-8",
+    "front-left-hand-9",
+    "front-left-hand-10",
+    "front-left-hand-11",
+    "front-left-hand-12",
+    "front-left-hand-13",
+    "front-left-hand-14",
+    "front-left-hand-15",
+    "front-left-hand-16",
+    "front-left-hand-17",
+    "front-left-hand-18",
+    "front-left-hand-19",
+    "front-left-hand-20",
+    "front-left-hand-21",
+    "front-left-hand-22",
+    "front-left-hand-23",
+    "front-left-hand-24",
+    "front-left-hand-25",
+    "front-left-hand-26",
+    "front-left-hand-27",
+    "front-left-hand-28",
+    "front-left-hand-29",
+    "front-left-hand-30"
    ],
    "pivot": [
-    448.0,
-    153.0
+    882.0,
+    356.0
    ],
-   "rest_angle": 109.8954,
-   "svg_source_order": 12
+   "rest_angle": 87.1376,
+   "svg_source_order": 25
   },
   {
    "name": "near_arm_l",
    "bone": "near_arm_l",
-   "z": 61.0,
+   "z": 75.0,
    "kind": "sprite",
    "include": [
-    "front-right-forearm-outline",
-    "front-right-forearm"
+    "front-right-arm-lower-1",
+    "front-right-arm-lower-2",
+    "front-right-arm-lower-3",
+    "front-right-arm-lower-4",
+    "front-right-arm-lower-5",
+    "front-right-arm-lower-6",
+    "front-right-arm-lower-7",
+    "front-right-arm-lower-8",
+    "front-right-arm-lower-9",
+    "front-right-arm-lower-10",
+    "front-right-arm-lower-11",
+    "front-right-arm-lower-12",
+    "front-right-arm-lower-13",
+    "front-right-arm-lower-14"
    ],
    "pivot": [
-    429.0,
-    205.5
+    800.0,
+    312.0
    ],
-   "rest_angle": 82.2079,
-   "svg_source_order": 13
+   "rest_angle": 92.6026,
+   "svg_source_order": 26
+  },
+  {
+   "name": "near_arm_u",
+   "bone": "near_arm_u",
+   "z": 76.0,
+   "kind": "sprite",
+   "include": [
+    "front-right-arm-upper-1",
+    "front-right-arm-upper-2",
+    "front-right-arm-upper-3",
+    "front-right-arm-upper-4",
+    "front-right-arm-upper-5",
+    "front-right-arm-upper-6",
+    "front-right-arm-upper-7",
+    "front-right-arm-upper-8",
+    "front-right-arm-upper-9",
+    "front-right-arm-upper-10",
+    "front-right-arm-upper-11",
+    "front-right-arm-upper-12",
+    "front-right-arm-upper-13",
+    "front-right-arm-upper-14",
+    "front-right-arm-upper-15",
+    "front-right-arm-upper-16",
+    "front-right-arm-upper-17",
+    "front-right-arm-upper-18",
+    "front-right-arm-upper-19",
+    "front-right-arm-upper-20",
+    "front-right-arm-upper-21",
+    "front-right-arm-upper-22",
+    "front-right-arm-upper-23",
+    "front-right-arm-upper-24",
+    "front-right-arm-upper-25",
+    "front-right-arm-upper-26",
+    "front-right-arm-upper-27",
+    "front-right-arm-upper-28",
+    "front-right-arm-upper-29",
+    "front-right-arm-upper-30",
+    "front-right-arm-upper-31",
+    "front-right-arm-upper-32",
+    "front-right-arm-upper-33",
+    "front-right-arm-upper-34",
+    "front-right-arm-upper-35",
+    "front-right-arm-upper-36",
+    "front-right-arm-upper-37",
+    "front-right-arm-upper-38",
+    "front-right-arm-upper-39",
+    "front-right-arm-upper-40",
+    "front-right-arm-upper-41",
+    "front-right-arm-upper-42",
+    "front-right-arm-upper-43",
+    "front-right-arm-upper-44",
+    "front-right-arm-upper-45",
+    "front-right-arm-upper-46",
+    "front-right-arm-upper-47",
+    "front-right-arm-upper-48",
+    "front-right-arm-upper-49",
+    "front-right-arm-upper-50",
+    "front-right-arm-upper-51",
+    "front-right-arm-upper-52",
+    "front-right-arm-upper-53",
+    "front-right-arm-upper-54",
+    "front-right-arm-upper-55",
+    "front-right-arm-upper-56",
+    "front-right-arm-upper-57",
+    "front-right-arm-upper-58",
+    "front-right-arm-upper-59",
+    "front-right-arm-upper-60",
+    "front-right-arm-upper-61",
+    "front-right-arm-upper-62",
+    "front-right-arm-upper-63",
+    "front-right-arm-upper-64",
+    "front-right-arm-upper-65",
+    "front-right-arm-upper-66",
+    "front-right-arm-upper-67"
+   ],
+   "pivot": [
+    806.0,
+    264.0
+   ],
+   "rest_angle": 97.125,
+   "svg_source_order": 27
   },
   {
    "name": "near_hand",
    "bone": "near_arm_hand",
-   "z": 62.0,
+   "z": 77.0,
    "kind": "sprite",
    "include": [
-    "front-right-hand-shape"
+    "front-right-hand-1",
+    "front-right-hand-2",
+    "front-right-hand-3",
+    "front-right-hand-4",
+    "front-right-hand-5",
+    "front-right-hand-6",
+    "front-right-hand-7",
+    "front-right-hand-8",
+    "front-right-hand-9",
+    "front-right-hand-10",
+    "front-right-hand-11",
+    "front-right-hand-12",
+    "front-right-hand-13",
+    "front-right-hand-14",
+    "front-right-hand-15",
+    "front-right-hand-16",
+    "front-right-hand-17",
+    "front-right-hand-18",
+    "front-right-hand-19",
+    "front-right-hand-20",
+    "front-right-hand-21",
+    "front-right-hand-22",
+    "front-right-hand-23",
+    "front-right-hand-24",
+    "front-right-hand-25",
+    "front-right-hand-26",
+    "front-right-hand-27",
+    "front-right-hand-28",
+    "front-right-hand-29",
+    "front-right-hand-30"
    ],
    "pivot": [
-    435.5,
-    253.0
+    798.0,
+    356.0
    ],
-   "rest_angle": 91.7899,
-   "svg_source_order": 14
+   "rest_angle": 92.8624,
+   "svg_source_order": 28
   }
  ],
  "ik_legs": [
@@ -506,9 +1574,9 @@
    "lower": "near_leg_l",
    "foot": "near_leg_foot",
    "channel_prefix": "near_foot",
-   "rest_x": -6.4815,
+   "rest_x": -4.1061,
    "rest_lift": 0.0,
-   "rest_pitch": 155.2249,
+   "rest_pitch": 90.0,
    "bend": -1.0
   },
   {
@@ -516,9 +1584,9 @@
    "lower": "far_leg_l",
    "foot": "far_leg_foot",
    "channel_prefix": "far_foot",
-   "rest_x": 6.4815,
+   "rest_x": 4.1061,
    "rest_lift": 0.0,
-   "rest_pitch": 24.7751,
+   "rest_pitch": 90.0,
    "bend": 1.0
   }
  ],
@@ -528,9 +1596,9 @@
    "lower": "near_arm_l",
    "end": "near_arm_hand",
    "channel_prefix": "near_hand",
-   "rest_x": -14.4213,
-   "rest_y": -37.5926,
-   "rest_pitch": 91.7899,
+   "rest_x": -12.3184,
+   "rest_y": -42.2346,
+   "rest_pitch": 92.8624,
    "pitch_mode": "world",
    "bend": -1.0,
    "pose_authority": "svg-layout"
@@ -540,9 +1608,9 @@
    "lower": "far_arm_l",
    "end": "far_arm_hand",
    "channel_prefix": "far_hand",
-   "rest_x": 13.9352,
-   "rest_y": -37.5926,
-   "rest_pitch": 87.7974,
+   "rest_x": 12.3184,
+   "rest_y": -42.2346,
+   "rest_pitch": 87.1376,
    "pitch_mode": "world",
    "bend": 1.0,
    "pose_authority": "svg-layout"
@@ -660,32 +1728,32 @@
      "keys": [
       [
        0.0,
-       -14.4213,
+       -12.3184,
        "smooth"
       ],
       [
        0.166667,
-       -17.0463,
+       -9.9427,
        "smooth"
       ],
       [
        0.333333,
-       -20.2546,
+       -7.0391,
        "smooth"
       ],
       [
        0.5,
-       -18.7963,
+       -8.3589,
        "smooth"
       ],
       [
        0.666667,
-       -15.588,
+       -11.2625,
        "smooth"
       ],
       [
        0.833333,
-       -14.4213,
+       -12.3184,
        "smooth"
       ]
      ]
@@ -694,32 +1762,32 @@
      "keys": [
       [
        0.0,
-       -37.5926,
+       -42.2346,
        "smooth"
       ],
       [
        0.166667,
-       -40.3148,
+       -48.1885,
        "smooth"
       ],
       [
        0.333333,
-       -45.3704,
+       -59.2458,
        "smooth"
       ],
       [
        0.5,
-       -43.037,
+       -54.1424,
        "smooth"
       ],
       [
        0.666667,
-       -38.7593,
+       -44.7863,
        "smooth"
       ],
       [
        0.833333,
-       -37.5926,
+       -42.2346,
        "smooth"
       ]
      ]
@@ -728,32 +1796,32 @@
      "keys": [
       [
        0.0,
-       91.7899,
+       92.8624,
        "smooth"
       ],
       [
        0.166667,
-       83.7899,
+       52.8624,
        "smooth"
       ],
       [
        0.333333,
-       75.7899,
+       12.8624,
        "smooth"
       ],
       [
        0.5,
-       84.7899,
+       28.8624,
        "smooth"
       ],
       [
        0.666667,
-       91.7899,
+       76.8624,
        "smooth"
       ],
       [
        0.833333,
-       91.7899,
+       92.8624,
        "smooth"
       ]
      ]
@@ -762,32 +1830,32 @@
      "keys": [
       [
        0.0,
-       13.9352,
+       12.3184,
        "smooth"
       ],
       [
        0.166667,
-       15.1352,
+       13.5184,
        "smooth"
       ],
       [
        0.333333,
-       15.9352,
+       14.3184,
        "smooth"
       ],
       [
        0.5,
-       14.9352,
+       13.3184,
        "smooth"
       ],
       [
        0.666667,
-       13.9352,
+       12.3184,
        "smooth"
       ],
       [
        0.833333,
-       13.9352,
+       12.3184,
        "smooth"
       ]
      ]
@@ -796,44 +1864,364 @@
      "keys": [
       [
        0.0,
-       -37.5926,
+       -42.2346,
        "smooth"
       ],
       [
        0.166667,
-       -38.0926,
+       -42.7346,
        "smooth"
       ],
       [
        0.333333,
-       -38.5926,
+       -43.2346,
        "smooth"
       ],
       [
        0.5,
-       -38.0926,
+       -42.7346,
        "smooth"
       ],
       [
        0.666667,
-       -37.5926,
+       -42.2346,
        "smooth"
       ],
       [
        0.833333,
-       -37.5926,
+       -42.2346,
        "smooth"
       ]
      ]
     },
     "far_hand_pitch": {
-     "const": 87.7974
+     "const": 87.1376
     },
     "talk_vis": {
      "const": 0.0
     },
     "blink_vis": {
      "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 1.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_knowing": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 1.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_pleased": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 1.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_delighted": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 1.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_surprised": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 1.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_thinking": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 1.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_stern": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 1.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_worried": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 1.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "face_hurt": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 100,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 0.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 1.0
     }
    }
   }

@@ -1,143 +1,73 @@
 # Oiler SVG rig
 
-Oiler is an Euler-inspired brilliant mechanic: the face, cloth cap, blue coat,
-and pale neckcloth deliberately echo eighteenth-century portraits without
-turning the sprite into a literal costume copy. The silhouette should read as
-an older scholar-engineer before any tool or prop is attached.
+Oiler is a parody of Leonhard Euler as the game's scholar-mechanic. His look
+follows Handmann's 1753 pastel:
 
-`oiler-multiview.svg` is Oiler's editable source art. It is intentionally a
-normal, hand-editable Inkscape SVG rather than Python that emits SVG.
+- a broad, fleshy face, with the right eye screwed nearly shut and the left
+  eye pale blue;
+- a small closed mouth whose knowing smile pulls up at his left corner;
+- a rumpled silk cap wound high on the head, its long end hanging behind the
+  left ear;
+- a teal silk banyan, damask-figured and lined in straw silk, worn open over
+  his workshop clothes: shirt, ochre waistcoat, leather apron with a pouch,
+  dark breeches and boots;
+- sleeves pushed up, so his forearms and hands are bare.
 
-The intermediate vector document is useful because it separates concerns:
+He was redesigned on 2026-10-20 (design id `euler-banyan-v2`). The earlier
+drawings are eras in `design_history/lineages.yaml`.
 
-- the SVG owns silhouette, flat paint, view-specific anatomy, clothing,
-  expressions, and exact joint positions;
-- the generated `.rig.json` files own the extracted skeleton bindings and
-  animation channels;
-- the runtime target only chooses which view rig supplies each animation;
-- detachable props are separate runtime assets attached through character
-  sockets, never baked into Oiler's body sheet.
+## Source
 
-This means art can be corrected in Inkscape without rewriting limb-placement
-code, while the same generic FK/IK implementation continues to animate it.
-
-## Art constraints
-
-The root SVG carries `data-character-design="euler-mechanic-v1"`. The build
-script treats that marker and the following view-local shapes as a maintained
-contract: `cap-crown`, `cap-dark-fold`, `cap-front-fold`, `cap-hanging-tail`,
-and `neckcloth`. Oiler is clean-shaven; do not reintroduce the generic beard
-and moustache that made him converge on Bob's silhouette.
-
-The cloth cap should remain asymmetric and visibly folded rather than reading
-as a round skullcap. Use several flat overlapping pieces to describe the crown,
-front roll, dark fold, and trailing cloth. Do not simulate cloth with gradients.
-
-The character SVG contains anatomy and clothing only. Do not add tools,
-machines, bags, flasks, carried objects, or scenery to the view layers. Those
-belong in external prop assets and may attach to Oiler's hand sockets.
-
-Use flat fills and explicit highlight shapes. Gradients, filters, drop shadows,
-and other raster-like SVG effects are forbidden because they make the small
-runtime sprites muddy and harder to edit consistently.
-
-Each view includes a `pelvis_yoke` part bound to the pelvis bone. The upper-leg
-roots must remain behind this yoke and the coat/apron. Hip markers belong inside
-the yoke at the anatomical sockets, not on the belt line or the visible edge of
-the apron.
-
-The front view is independently authored rather than projected from the
-three-quarter view. Its hip sockets intentionally sit lower and farther apart
-inside the pelvis than the perspective-view markers, while the shorter leg
-segments keep Oiler's overall height consistent across views. The frontal skull
-must retain full cheek and temple volume; asymmetry belongs in Euler's gaze and
-cap folds, not in a narrowed head silhouette. Bake temporary Inkscape
-translations into the path geometry before committing so visible limbs and rig
-markers share one coordinate system.
-
-## Artist hierarchy and rig metadata
-
-The layer tree intentionally follows the manually authored PCA SVG rather than
-exposing machine syntax as layer names. Perspective views use camera-depth
-names because one limb genuinely overlaps the other:
-
-```text
-Arm - Far
-Leg - Far
-Leg - Near
-Torso
-Head
-Arm - Near
-Joints
-```
-
-The front view has no meaningful near/far distinction. It is always named from
-**Oiler's own anatomical frame**, so his right arm appears on screen-left and
-his left arm appears on screen-right:
-
-```text
-Arm - Left
-Leg - Left
-Leg - Right
-Torso
-Head
-Arm - Right
-Joints
-```
-
-Arms and legs contain `Upper`, `Lower`, and `Hand`/`Foot` layers. `Torso`
-contains `Pelvis`, `Coat and Torso`, and `Apron`. `Head` contains a rigged
-`Head Base`, expression layers, and editable sublayers for the face shape, cap,
-hair, and facial details. Perspective-view `Joints` are split into core,
-near/far arm, and near/far leg groups. Front-view `Joints` use left/right arm
-and leg groups. In either case, a whole joint chain is easy to select.
-
-Inkscape labels are strictly for humans. Rig bindings use ordinary SVG data
-attributes on the relevant group or marker:
-
-- `data-rig-part="<part name>"`
-- `data-rig-bone="<bone name>"`
-- `data-rig-z="<number>"`
-- optional `data-rig-opacity="<channel>"`
-- `data-rig-joint="<joint name>"`
-- optional view-level `data-rig-side-map="left=far,right=near"`
-
-This separation means the part sublayers can use readable names without
-encoding machine syntax, while Inkscape may still renumber leaf path ids
-safely. The top anatomical layer names remain a maintained authoring contract
-so every view presents the same predictable tree. The generic extractor also
-retains compatibility with the older `part:...` and `joint:...` label syntax
-for other SVGs.
-
-Ancestor grouping and transforms are respected by extraction. You can move or
-resize an anatomical art layer, then make the corresponding adjustment to the
-matching subgroup under `Joints`; a rebuild reads the resulting world-space
-geometry. Avoid ungrouping the `data-rig-part` layers themselves, because those
-are the rigid sprite boundaries.
-
-Perspective-view source joints are `waist`, `neck`, and the `near`/`far`
-versions of `shoulder`, `elbow`, `wrist`, `handtip`, `hip`, `knee`, `ankle`,
-and `toe`. The front SVG uses `left_*` and `right_*` instead. Its view-level
-side map normalizes those anatomical names to the shared runtime channels only
-during extraction; the editable SVG never asks an artist to call Oiler's right
-arm “near.”
-
-## Rebuild
-
-From `tools/ambition_sprite2d_renderer`:
+`oiler-multiview.svg` is GENERATED. Do not edit it by hand: the drawing is
+`scripts/svg_art/oiler_art.py`.
 
 ```bash
-uv run python scripts/build_oiler_rig.py build
+uv run python scripts/svg_art/oiler_art.py --all DIR        # every view of every look, as single SVGs
+uv run python scripts/svg_art/oiler_art.py --multiview \
+    ambition_sprite2d_renderer/data/characters/oiler/oiler-multiview.svg
+uv run python scripts/build_oiler_rig.py build --fresh      # the five view rigs and their clips
 uv run python scripts/build_oiler_rig.py validate
 ```
 
-A normal build refreshes geometry and preserves hand-tuned animation clips in
-the existing rig documents. It also removes the retired `tool_vis` and
-`machine_vis` channels from old files. Use `build --fresh` only when
-intentionally resetting the clips to the Python seed animation.
+## Views
 
-Publishing remains the normal target command:
+The file holds five views, each a layer of rig parts (`data-rig-part`,
+`data-rig-bone`, `data-rig-z`) plus its joint markers (`data-rig-joint`):
 
-```bash
-uv run python -m ambition_sprite2d_renderer publish oiler
-```
+| Layer | Used for |
+|---|---|
+| `Oiler - Three Quarter` | idle, interact, portraits |
+| `Oiler - Front` | talk (`data-rig-side-map="left=far,right=near"`) |
+| `Oiler - Side Right` | walk and every fight row |
+| `Oiler - Three Quarter Left` | the same rows, facing left |
+| `Oiler - Side Left` | the same rows, facing left |
+
+## He is asymmetric
+
+His right eye fails, so a mirrored sprite would put the bad eye on the wrong
+side. The two LEFT views show his left side but are drawn facing right
+(`data-view-mirror="x"`), so they share their right-facing twins' skeleton and
+clips. The target mirrors their frames into the sheet's `<row>~mirrored` rows,
+and the game draws those rows instead of flipping (`SheetRow::mirror_of`). From
+the front he looks the same whichever way he faces, so the front rows' twins
+are those frames unflipped.
+
+## Faces
+
+The eyes, brows, mouth and the folds round it are drawn per expression. Each
+expression is a layer behind its own opacity channel, `face_<name>_vis`:
+knowing (the default), pleased, delighted, surprised, thinking, stern,
+worried and hurt. Two overlays sit over any face: `blink_vis` and `talk_vis`.
+
+Each clip wears a face (`FACE_OF` in the rig build): fights are stern, hit and
+death are hurt, interact is thinking, and the taunt is delighted. Every
+expression is also published as a portrait clip of the same name, for
+`<<portrait_clip "name">>`.
+
+## Art rules
+
+- Flat cel shading: a shade band and a light band inside each shape, with thin
+  warm ink.
+- No gradients, filters or drop shadows.
+- No props in the body art. Tools attach at the hand sockets as separate
+  assets.
