@@ -338,6 +338,9 @@ lineages:
       - commit: "3f7d265b0"
         label: "A body that can throw a punch"
         note: "Same face; the body gained moves. A session list carries a synthetic entry."
+      - commit: "739addd"
+        label: "Euler after the 1753 pastel"
+        note: "Redesigned with Jon over seven rounds: rumpled silk cap, teal banyan over the workshop clothes, the failing right eye in every view (left-facing views drawn, not flipped), eight faces."
   giant_gnu:
     name: Giant GNU (GNU-ton's mount)
     ids: [gnu_ton_boss]
