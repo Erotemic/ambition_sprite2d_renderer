@@ -104,7 +104,8 @@ def _shoulders(body: RigBody, pose: WorldPose) -> Dict[str, Point]:
     return {side: world[f"{side}_arm_u"].origin for side in SIDES}
 
 
-def _pose(body: RigBody, phase: float) -> Dict[str, float]:
+def climb_pose(body: RigBody, phase: float) -> WorldPose:
+    """The body at ``phase`` of the climb, in world terms."""
     rise = BODY_UP + BODY_BOB * math.sin(phase * math.tau * 2.0)
     pose = WorldPose(
         root_x=-BODY_BACK,
@@ -127,6 +128,12 @@ def _pose(body: RigBody, phase: float) -> Dict[str, float]:
         angle = body.foot_rest[side] + TOE_ANGLE
         toe = rot(body.toe[side], angle)
         pose.ankles[side] = ((WALL_X - toe[0] - off, height - rise), angle)
+    return pose
+
+
+def climb_channels(body: RigBody, pose: WorldPose) -> Dict[str, float]:
+    """The rig channels of a climb pose: the head comes back on its neck,
+    off the wall."""
     channels = body.channels(pose)
     channels["bone.head.x"] = -HEAD_BACK
     channels["eye_squint"] = 0.12
@@ -136,7 +143,7 @@ def _pose(body: RigBody, phase: float) -> Dict[str, float]:
 
 def solve_wall_climb(doc: RigDocument, frames: int) -> Dict[str, List[float]]:
     body = RigBody(doc)
-    poses = [_pose(body, i / frames) for i in range(frames)]
+    poses = [climb_channels(body, climb_pose(body, i / frames)) for i in range(frames)]
     return {key: [p[key] for p in poses] for key in poses[0] if not key.startswith("_")}
 
 
@@ -146,4 +153,4 @@ def author_wall_climb(doc: RigDocument) -> None:
     write_frames(doc, ROW, solve_wall_climb(doc, frames))
 
 
-__all__ = ["ROW", "WALL_X", "author_wall_climb", "solve_wall_climb"]
+__all__ = ["ROW", "WALL_X", "author_wall_climb", "climb_channels", "climb_pose", "solve_wall_climb"]
