@@ -33,6 +33,7 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_double_jump i
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_turn import author_turnaround
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_gait import author_gaits
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_ground import keep_over_ground
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_cling import author_wall_cling
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_climb import (
     PURE_SIDE_ROWS,
     author_wall_climb,
@@ -625,6 +626,7 @@ def build_doc() -> dict:
     author_turnaround(solved)
     author_gaits(solved)
     author_strikes(solved)
+    author_wall_cling(solved)
     doc["features"] = {
         "paper_doll": True,
         "split_leg_artwork": True,
@@ -641,7 +643,7 @@ def build_doc() -> dict:
         "idle_eye_blink": True,
         "solved_rows": [
             "crouch_start", "crouch", "crouch_walk", "crouch_jump", "crouch_end",
-            "item_hold_crouch", "double_jump", "turnaround", "turn_away", "walk", "run", "wall_climb", *STRIKES,
+            "item_hold_crouch", "double_jump", "turnaround", "turn_away", "walk", "run", "wall_climb", "wall_land", "wall_grab", "wall_slide", "wall_jump", *STRIKES,
         ],
     }
     return doc
