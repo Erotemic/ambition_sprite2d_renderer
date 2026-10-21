@@ -158,18 +158,21 @@ def _copy_sheet_files(
         copied_names.add(fname)
 
     def page_siblings_for(fname: str) -> List[str]:
-        """Extra page PNGs for a split sheet: `<stem>_spritesheet.1.png`,
+        """Extra page PNGs: of a split sheet, `<stem>_spritesheet.1.png`,
         `.2.png`, … emitted next to `<stem>_spritesheet.png` when the sheet was
-        too tall for one texture. Empty for the common single-page case."""
-        suffix = "_spritesheet.png"
-        if not fname.endswith(suffix):
-            return []
-        stem = fname[: -len(suffix)]
+        too tall for one texture; and of a part flipbook whose parts fill more
+        than one atlas page, `<stem>_parts_1.png`, … next to
+        `<stem>_parts.png` (`PartFlipbook.page_names`). Empty for the common
+        single-page case."""
         out: List[str] = []
-        for src in render_dir.glob(f"{stem}_spritesheet.*.png"):
-            middle = src.name[len(stem) + len("_spritesheet.") : -len(".png")]
-            if middle.isdigit():
-                out.append(src.name)
+        for suffix, glob, sep in (("_spritesheet.png", "_spritesheet.*.png", "_spritesheet."), ("_parts.png", "_parts_*.png", "_parts_")):
+            if not fname.endswith(suffix):
+                continue
+            stem = fname[: -len(suffix)]
+            for src in render_dir.glob(f"{stem}{glob}"):
+                middle = src.name[len(stem) + len(sep) : -len(".png")]
+                if middle.isdigit():
+                    out.append(src.name)
         return sorted(out)
 
     for fname in sheet_files:
@@ -177,6 +180,8 @@ def _copy_sheet_files(
         for companion in install_companions(fname):
             if companion not in listed:
                 copy_if_exists(companion)
+                for page in page_siblings_for(companion):
+                    copy_if_exists(page)
         for page in page_siblings_for(fname):
             copy_if_exists(page)
     return copied

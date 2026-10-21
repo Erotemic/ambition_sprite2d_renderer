@@ -38,6 +38,7 @@ build, the head, the clothes and every pose are his.
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from typing import List
 
 from typing import Optional, Tuple
@@ -138,6 +139,15 @@ SLASH: RGBA = (255, 236, 232, 255)
 SLASH_DARK: RGBA = (226, 70, 86, 255)
 DUST: RGBA = (196, 186, 170, 255)
 DUST_DARK: RGBA = (122, 112, 102, 255)
+#: The charge of the coils: a white core in blue.
+ARC_CORE: RGBA = (236, 246, 255, 255)
+ARC_GLOW: RGBA = (110, 170, 255, 255)
+#: Ghost fire: the red spectral fire of the Inugami, his head risen as a
+#: spirit (Jon, 2026-10-20: "a red spectral glow"; ``wolfenstein_inugami``
+#: draws its fire in these).
+GHOST_OUT: RGBA = (196, 28, 52, 210)
+GHOST_MID: RGBA = (255, 96, 92, 235)
+GHOST_CORE: RGBA = (255, 226, 214, 255)
 #: The serum: an acid green that glows, and its glass.
 SERUM: RGBA = (132, 236, 64, 255)
 SERUM_DARK: RGBA = (52, 150, 40, 255)
@@ -152,6 +162,15 @@ BRAIN: RGBA = (232, 150, 160, 255)
 BRAIN_SHADE: RGBA = (196, 104, 124, 255)
 BRAIN_LIGHT: RGBA = (250, 196, 200, 255)
 BRAIN_FISSURE: RGBA = (176, 84, 104, 255)
+#: The small lights and lines of his head.
+NOSE_LIGHT: RGBA = (120, 120, 130, 255)
+TONGUE_LINE: RGBA = (176, 70, 84, 255)
+GLAZE: RGBA = (214, 212, 200, 255)
+GLAZE_PUPIL: RGBA = (120, 116, 104, 255)
+BUBBLE: RGBA = (230, 255, 245, 200)
+GLINT: RGBA = (255, 255, 255, 210)
+GLINT_FAINT: RGBA = (255, 255, 255, 150)
+COLLAR_LIGHT: RGBA = (200, 202, 210, 255)
 
 #: About 240 cm. ``height`` is the top of his skull as he stands, hunched
 #: (measured from the idle row); his ears lie back a little over it. A huge
@@ -180,10 +199,10 @@ KH = Kit((320, 320), K.reduce, out=K.out, zoom=HEAD_SIZE)
 TOP = BUILD.neck[1] - 2.0
 
 
-def stitches(d, pts, tick: float = 1.6, every: float = 2.6, width: float = 0.5, kit=None) -> None:
+def stitches(d, pts, tick: float = 1.6, every: float = 2.6, width: float = 0.5, kit=None, colour: RGBA = STITCH) -> None:
     """A sewn line through ``pts`` (frame points), crossed by short ticks."""
     kit = kit or K
-    kit.line(d, pts, STITCH, width)
+    kit.line(d, pts, colour, width)
     for (ax, ay), (bx, by) in zip(pts, pts[1:]):
         length = math.hypot(bx - ax, by - ay)
         if length < 1e-3:
@@ -192,7 +211,7 @@ def stitches(d, pts, tick: float = 1.6, every: float = 2.6, width: float = 0.5, 
         for k in range(max(1, int(length / every))):
             t = (k + 0.5) * every / length
             x, y = ax + (bx - ax) * t, ay + (by - ay) * t
-            kit.line(d, [(x - nx * tick, y - ny * tick), (x + nx * tick, y + ny * tick)], STITCH, width)
+            kit.line(d, [(x - nx * tick, y - ny * tick), (x + nx * tick, y + ny * tick)], colour, width)
 
 
 # ---- The coat ----------------------------------------------------------------
@@ -502,99 +521,8 @@ def _jaw_points(open_: float) -> List[Point]:
     return [(HINGE[0] + p[0], HINGE[1] + p[1]) for p in (turned((x - HINGE[0], y - HINGE[1]), open_) for x, y in pts)]
 
 
-def _jaw(open_: float, loll: bool = False):
-    """His mouth, open ``open_`` degrees: its inside, his tongue, his lower
-    jaw and its teeth. It is under his head. ``loll``: he is dead or out, and
-    his tongue hangs out over his teeth."""
-    jaw = _jaw_points(open_)
-    # The tongue out of the side of his mouth, hanging down over the jaw.
-    tongue = [(10.0, 9.0), (15.0, 9.4), (17.4, 12.0), (17.0, 16.6), (15.0, 18.4), (13.0, 17.0), (12.6, 13.0), (9.0, 11.0)]
-
-    def at(p: Point) -> Point:
-        return KH.at(*p)
-
-    def lower_teeth() -> List[List[Point]]:
-        out = []
-        top = [jaw[0], jaw[1]]
-        for k, (t, tall) in enumerate(((0.32, 2.0), (0.46, 1.8), (0.6, 2.0), (0.76, 3.4), (0.9, 2.2))):
-            x, y = lerp(top[0][0], top[1][0], t), lerp(top[0][1], top[1][1], t)
-            up = turned((0.0, -tall), open_)
-            side = turned((1.0, 0.0), open_)
-            out.append([(x - side[0], y - side[1]), (x + up[0], y + up[1]), (x + side[0], y + side[1])])
-            del k
-        return out
-
-    teeth = lower_teeth()
-
-    def shape(d) -> None:
-        KH.poly(d, [at(p) for p in [HINGE] + UPPER_LIP[1:] + [jaw[1], jaw[0]]], WHITE)
-        KH.poly(d, [at(p) for p in jaw], WHITE)
-        for tooth in teeth:
-            KH.poly(d, [at(p) for p in tooth], WHITE)
-        if loll:
-            KH.poly(d, [at(p) for p in tongue], WHITE)
-
-    def detail(d) -> None:
-        KH.poly(d, [at(p) for p in [HINGE] + UPPER_LIP[1:] + [jaw[1], jaw[0]]], MOUTH)
-        if open_ > 10.0:
-            mid = ((UPPER_LIP[2][0] + jaw[1][0]) / 2.0 - 4.0, (UPPER_LIP[2][1] + jaw[1][1]) / 2.0 + 1.0)
-            KH.oval(d, at(mid), 5.0, 1.8 + open_ * 0.05, TONGUE)
-        KH.poly(d, [at(p) for p in jaw[2:]] + [at(jaw[0]), at(jaw[1])], FUR)
-        KH.line(d, [at(jaw[0]), at(jaw[1])], GUM, 0.9)
-        KH.poly(d, [at(jaw[5]), at(jaw[4]), at(jaw[3]), at((jaw[3][0] - 3.0, jaw[3][1] - 1.0)), at((jaw[5][0] + 2.0, jaw[5][1] - 1.0))], FUR_LIGHT)
-        for tooth in teeth:
-            KH.poly(d, [at(p) for p in tooth], TOOTH)
-        if loll:
-            KH.poly(d, [at(p) for p in tongue], TONGUE)
-            KH.line(d, [at((14.4, 11.0)), at((14.8, 16.0))], (176, 70, 84, 255), 0.6)
-
-    return KH.solid(("jaw", round(open_, 1), loll), shape, FUR, detail, outline=1.3, rim=0.2, shade=0.3, shade_colour=FUR_DEEP)
 
 
-def _skull():
-    """His head: the skull, the ruff, the ears laid back, the muzzle with its
-    upper teeth bared, the nose."""
-    upper_teeth = []
-    for x, tall in ((8.4, 2.0), (10.6, 2.2), (12.8, 2.0), (15.0, 2.2), (17.6, 4.4), (20.0, 2.6)):
-        upper_teeth.append([(x - 1.0, 5.4), (x, 5.6 + tall), (x + 1.0, 5.4)])
-    ruff = [(-9.0, -10.0), (-16.0, -9.0), (-13.4, -5.6), (-19.0, -2.4), (-14.6, 0.6), (-19.4, 4.6), (-13.6, 6.4), (-16.0, 11.4), (-9.4, 10.6),
-            (-9.0, 15.6), (-4.0, 12.6), (-0.6, 16.4), (2.6, 12.8), (6.0, 14.6), (6.4, 9.0), (2.0, 4.0)]
-    muzzle = [(3.0, -9.0), (10.0, -9.6), (17.0, -6.6), (22.6, -4.4), (25.4, -2.0), (25.2, 1.4), (22.6, 3.4), (21.4, 5.4), (7.0, 5.6), (3.0, 4.0)]
-
-    def at(p: Point) -> Point:
-        return KH.at(*p)
-
-    def shape(d) -> None:
-        KH.oval(d, KH.at(-1.6, -2.4), 12.0, 11.0, WHITE)
-        KH.oval(d, KH.at(4.4, 2.0), 9.0, 7.6, WHITE)
-        KH.poly(d, [at(p) for p in ruff], WHITE)
-        KH.poly(d, [at(p) for p in muzzle], WHITE)
-        for tooth in upper_teeth:
-            KH.poly(d, [at(p) for p in tooth], WHITE)
-
-    def detail(d) -> None:
-        # The pale muzzle, cheeks and throat.
-        KH.poly(d, [at((2.0, 0.0)), at((10.0, 1.4)), at((21.0, 3.0)), at((21.4, 6.0)), at((2.0, 7.0)), at((-2.0, 4.0))], FUR_LIGHT)
-        KH.poly(d, [at((-6.0, 8.0)), at((4.0, 8.0)), at((6.0, 16.0)), at((-6.0, 16.0))], mix(FUR, FUR_LIGHT, 0.5))
-        # The dark mask round his eyes, and the bridge of his nose.
-        KH.oval(d, at(NEAR_EYE), 5.6, 5.0, FUR_DARK)
-        KH.oval(d, at(FAR_EYE), 4.4, 4.2, FUR_DARK)
-        KH.line(d, [at((9.0, -9.0)), at((16.6, -6.4)), at((22.0, -4.0))], FUR_LIGHT, 0.8)
-        # The snarl: the skin of his muzzle is pulled up in folds.
-        for x in (12.0, 14.6, 17.0):
-            KH.line(d, [at((x - 1.0, -7.2)), at((x + 0.4, -5.2)), at((x - 0.4, -3.4))], FUR_DEEP, 0.6)
-        # Fur on his skull and ruff.
-        for a, b in (((-8.0, -6.0), (-12.0, -2.0)), ((-10.0, 2.0), (-14.0, 5.0)), ((-6.0, 6.0), (-10.0, 10.0)), ((-2.0, -11.0), (-6.0, -8.0)),
-                     ((-1.0, 10.0), (-3.0, 14.0))):
-            KH.line(d, [at(a), at(b)], FUR_DARK, 0.7)
-        # His gums, his upper teeth, his nose.
-        KH.line(d, [at(p) for p in UPPER_LIP], GUM, 1.0)
-        for tooth in upper_teeth:
-            KH.poly(d, [at(p) for p in tooth], TOOTH)
-        KH.oval(d, KH.at(23.6, -1.4), 2.8, 2.4, NOSE)
-        KH.oval(d, KH.at(22.8, -2.4), 0.9, 0.6, (120, 120, 130, 255))
-
-    return KH.solid(("skull",), shape, FUR, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=FUR_DEEP)
 
 
 #: His ears, laid back, from the middle of his head, and the root each turns
@@ -606,107 +534,12 @@ FAR_EAR = [(0.0, -12.6), (-17.0, -17.4), (-11.0, -9.4), (-5.0, -8.0)]
 FAR_EAR_ROOT = (-3.0, -10.0)
 
 
-def _ear(near: bool, degrees: float):
-    """An ear turned ``degrees`` about its root: up (perked) is positive, flat
-    back is negative. The far ear is in shade; the near ear shows its
-    inside."""
-    degrees = round(degrees / 3.0) * 3.0
-    root = NEAR_EAR_ROOT if near else FAR_EAR_ROOT
-
-    def put(pts) -> List[Point]:
-        out = []
-        for x, y in pts:
-            r = turned((x - root[0], y - root[1]), degrees)
-            out.append(KH.at(root[0] + r[0], root[1] + r[1]))
-        return out
-
-    def shape(d) -> None:
-        KH.poly(d, put(NEAR_EAR if near else FAR_EAR), WHITE)
-
-    def detail(d) -> None:
-        if near:
-            KH.poly(d, put(NEAR_EAR_INNER), EAR_INNER)
-            KH.line(d, put(NEAR_EAR[:3]), OUTLINE, 0.6)
-
-    return KH.solid(("ear", near, degrees), shape, FUR if near else FUR_DARK, detail, outline=1.3, rim=0.3, shade=0.3, shade_colour=FUR_DEEP)
 
 
-def _eyes(mode: str, look: Point = (0.0, 0.0)):
-    """His eyes. Open, they are the eyes of the meme: white all round, small
-    pupils that look at you, red veins."""
-
-    def paint(d) -> None:
-        for (ex, ey), rx, ry in ((NEAR_EYE, 4.6, 4.4), (FAR_EYE, 3.5, 3.7)):
-            c = KH.at(ex, ey)
-            if mode in ("closed", "dead"):
-                r = rx * 0.7
-                for s in (-1.0, 1.0):
-                    KH.line(d, [(c[0] - r, c[1] - r * s), (c[0] + r, c[1] + r * s)], OUTLINE, 0.9)
-                continue
-            if mode == "wince":
-                KH.line(d, [(c[0] - rx, c[1] - 1.8), (c[0] + rx * 0.5, c[1]), (c[0] - rx, c[1] + 1.8)], OUTLINE, 1.0)
-                continue
-            if mode == "glazed":
-                # Dead and open: the lid half down over a dull eye that
-                # looks at nothing.
-                KH.oval(d, c, rx + 0.6, ry + 0.6, OUTLINE)
-                KH.oval(d, c, rx, ry, (214, 212, 200, 255))
-                KH.oval(d, (c[0] + 0.4, c[1] + ry * 0.45), rx * 0.24, rx * 0.2, (120, 116, 104, 255))
-                KH.poly(d, [(c[0] - rx - 1.0, c[1] - ry - 1.0), (c[0] + rx + 1.0, c[1] - ry - 1.0), (c[0] + rx + 1.0, c[1] + ry * 0.1),
-                           (c[0] - rx - 1.0, c[1] + ry * 0.2)], FUR_DARK)
-                KH.line(d, [(c[0] - rx - 0.6, c[1] + ry * 0.2), (c[0] + rx + 0.6, c[1] + ry * 0.1)], OUTLINE, 0.9)
-                continue
-            if mode in ("lit", "lit_green"):
-                # Lit by the charge in him: the eye is all light, with no
-                # pupil in it (blue from the coils, green from the serum).
-                glow, core = (ARC_GLOW, ARC_CORE) if mode == "lit" else (SERUM, SERUM_CORE)
-                KH.oval(d, c, rx + 0.6, ry + 0.6, OUTLINE)
-                KH.oval(d, c, rx, ry, glow)
-                KH.oval(d, (c[0] + 0.3, c[1] + 0.2), rx * 0.62, ry * 0.62, core)
-                continue
-            wide = 0.7 if mode == "pin" else 0.0
-            KH.oval(d, c, rx + 0.6 + wide, ry + 0.6 + wide, OUTLINE)
-            KH.oval(d, c, rx + wide, ry + wide, EYE_WHITE)
-            for ang, length in ((200.0, 0.75), (330.0, 0.7), (110.0, 0.65), (20.0, 0.6)):
-                a = math.radians(ang)
-                KH.line(d, [(c[0] + math.cos(a) * rx * 0.95, c[1] + math.sin(a) * ry * 0.95),
-                           (c[0] + math.cos(a) * rx * (0.95 - length * 0.5), c[1] + math.sin(a) * ry * (0.95 - length * 0.5) + 0.3)], VEIN, 0.55)
-            if mode == "roll":
-                # Rolled back: a sliver of iris under the top lid.
-                KH.oval(d, (c[0], c[1] - ry * 0.95), rx * 0.3, rx * 0.16, IRIS)
-                continue
-            at_ = (c[0] - 0.4 * rx / 4.0 + look[0], c[1] + 0.2 + look[1])
-            size = 0.15 if mode == "pin" else 0.26
-            KH.oval(d, at_, rx * size, rx * size, IRIS)
-            KH.oval(d, at_, rx * size * 0.58, rx * size * 0.58, OUTLINE)
-            if mode == "squint":
-                # The glare: the top lid down over half the eye.
-                KH.poly(d, [(c[0] - rx - 1.0, c[1] - ry - 1.0), (c[0] + rx + 1.0, c[1] - ry - 1.0), (c[0] + rx + 1.0, c[1] - ry * 0.1),
-                           (c[0] - rx - 1.0, c[1] + ry * 0.15)], FUR_DARK)
-                KH.line(d, [(c[0] - rx - 0.6, c[1] + ry * 0.15), (c[0] + rx + 0.6, c[1] - ry * 0.1)], OUTLINE, 0.8)
-
-    return KH.piece(("eyes", mode, round(look[0], 1), round(look[1], 1)), paint)
 
 
-def _brows(mood: int):
-    """Heavy dark fur over his eyes, the inner ends down."""
-    lift = -1.4 if mood > 0 else 0.0
-
-    def paint(d) -> None:
-        KH.stroke(d, [KH.at(-0.4, -10.2 + lift), KH.at(4.0, -10.4 + lift), KH.at(8.6, -8.0 + lift + (0.0 if mood > 0 else 1.0))], FUR_DEEP, 2.0)
-        KH.stroke(d, [KH.at(10.4, -9.6 + lift + (0.0 if mood > 0 else 1.2)), KH.at(13.6, -10.6 + lift), KH.at(16.0, -9.6 + lift)], FUR_DEEP, 1.7)
-
-    return KH.piece(("brows", mood), paint)
 
 
-def _seam():
-    """The seam round his neck, where the fur stops and his own skin starts.
-    From the middle of his head."""
-
-    def paint(d) -> None:
-        stitches(d, [KH.at(-8.0, 15.2), KH.at(-3.0, 16.6), KH.at(2.0, 16.0), KH.at(6.4, 14.4)], tick=1.4, every=2.2, width=0.55, kit=KH)
-
-    return KH.piece(("seam",), paint)
 
 
 #: The bolts in his neck are big: they are where his charge goes in and
@@ -750,6 +583,31 @@ def _neck_bolts(ctx) -> List[Stamp]:
 X.layers["over_torso"].append(_neck_bolts)
 
 
+def _stump():
+    """The end of his neck where the head tore off: the cut, the torn seam
+    round it and the loose ends of its thread. Along +x is up his neck."""
+
+    def paint(d) -> None:
+        K.oval(d, K.at(0.0, 0.0), 2.6, 7.0, SKIN_DEEP, OUTLINE, 0.8)
+        K.oval(d, K.at(0.6, 0.0), 1.4, 4.8, (70, 40, 46, 255))
+        for k, (y, length) in enumerate(((-5.6, 4.0), (-2.4, 6.0), (1.0, 3.4), (4.4, 5.2))):
+            K.line(d, [K.at(-1.0, y), K.at(1.6, y), K.at(1.6 + length, y + (1.6 if k % 2 else -1.4))], STITCH, 0.6)
+
+    return K.piece(("stump",), paint)
+
+
+def _neck_stump(ctx) -> List[Stamp]:
+    """The stump, on the top of his neck, when his head is off."""
+    if float(ctx.pose["headless"]) < 0.5:  # type: ignore[arg-type]
+        return []
+    top = turned(BUILD.throat, ctx.turn)
+    top = (ctx.head[0] + top[0], ctx.head[1] + top[1])
+    return [(_stump(), top, "stump", math.degrees(math.atan2(top[1] - ctx.neck[1], top[0] - ctx.neck[0])))]
+
+
+X.layers["over_torso"].append(_neck_stump)
+
+
 #: The jar, from the middle of his head: the middle of it across, the top of
 #: its collar, the top of its dome and its half width.
 JAR_X, JAR_BASE, JAR_TOP, JAR_HALF = -4.6, -12.4, -36.0, 11.6
@@ -766,73 +624,336 @@ def _jar_outline(inset: float = 0.0, steps: int = 24) -> List[Point]:
     return pts + [(JAR_X + r, JAR_BASE)]
 
 
-def _brain_jar():
-    """The brain in its jar on the top of his skull. The brain has no face:
-    two halves seen from the side, the folds, the stem."""
-
-    def at(x: float, y: float) -> Point:
-        return KH.at(x, y)
-
-    def paint(d) -> None:
-        glass = [at(*p) for p in _jar_outline()]
-        # The far wall of the glass, then the fluid it holds.
-        KH.poly(d, glass, GLASS[:3] + (70,))
-        surface = JAR_TOP + 6.0
-        KH.poly(d, [at(x, max(y, surface)) for x, y in _jar_outline(1.2)], JAR_FLUID)
-        KH.line(d, [at(JAR_X - JAR_HALF + 1.6, surface), at(JAR_X + JAR_HALF - 1.6, surface)], JAR_FLUID_TOP, 0.8)
-        # The brain, floating a little off the collar, its stem down into
-        # his skull.
-        bx, by = JAR_X + 0.4, JAR_BASE - 9.4
-        KH.line(d, [at(bx - 1.0, by + 5.0), at(bx - 2.0, JAR_BASE + 0.5)], BRAIN_SHADE, 2.2)
-        KH.oval(d, at(bx, by), 8.8, 6.6, BRAIN, OUTLINE, 0.7)
-        KH.oval(d, at(bx - 3.4, by + 3.6), 4.6, 2.6, BRAIN_SHADE, OUTLINE, 0.6)
-        KH.oval(d, at(bx + 0.6, by - 0.6), 7.6, 5.4, BRAIN)
-        for fold in ([(-6.0, -2.0), (-3.4, -3.6), (-1.0, -1.6), (1.4, -3.8), (4.0, -2.0), (6.4, -3.0)],
-                     [(-6.6, 1.0), (-4.0, -0.4), (-1.6, 1.2), (1.0, -0.6), (3.6, 1.0), (6.6, 0.2)],
-                     [(-4.6, 3.6), (-2.0, 2.4), (0.6, 3.8), (3.2, 2.6), (5.6, 3.4)],
-                     [(-2.0, -5.4), (0.0, -3.6), (2.6, -5.6)]):
-            KH.line(d, [at(bx + x, by + y) for x, y in fold], BRAIN_SHADE, 0.6)
-        KH.line(d, [at(bx - 7.0, by - 1.0), at(bx + 7.6, by - 0.6)], BRAIN_FISSURE, 0.7)
-        KH.line(d, [at(bx - 4.0, by - 4.6), at(bx + 3.0, by - 5.6)], BRAIN_LIGHT, 0.8)
-        # Bubbles going up.
-        for x, y, r in ((6.4, -4.0, 0.8), (7.0, -10.0, 0.6), (5.6, -15.0, 0.9), (-7.0, -17.0, 0.5)):
-            KH.oval(d, at(JAR_X + x, JAR_BASE + y), r, r, (230, 255, 245, 200))
-        # The glass over it: a tint, its edge, the light on it.
-        KH.poly(d, glass, GLASS[:3] + (40,))
-        KH.line(d, glass, OUTLINE, 1.3)
-        KH.line(d, [at(*p) for p in _jar_outline(0.9)], JAR_GLASS_EDGE, 0.5)
-        left = JAR_X - JAR_HALF
-        KH.line(d, [at(left + 3.0, JAR_BASE - 3.0), at(left + 3.0, JAR_TOP + 10.0), at(left + 5.4, JAR_TOP + 5.0)], (255, 255, 255, 210), 1.1)
-        KH.line(d, [at(JAR_X + JAR_HALF - 3.0, JAR_TOP + 9.0), at(JAR_X + JAR_HALF - 3.0, JAR_TOP + 13.0)], (255, 255, 255, 150), 0.7)
-        # The steel collar it is screwed into, riveted to his skull, and a
-        # valve on the crown of the glass.
-        x0, x1 = JAR_X - JAR_HALF - 2.4, JAR_X + JAR_HALF + 2.4
-        KH.rrect(d, *at(x0, JAR_BASE - 0.6), *at(x1, JAR_BASE + 4.2), 1.0, BOLT, OUTLINE, 0.9)
-        KH.line(d, [at(x0 + 1.0, JAR_BASE + 0.6), at(x1 - 1.0, JAR_BASE + 0.6)], (200, 202, 210, 255), 0.7)
-        KH.line(d, [at(x0 + 1.0, JAR_BASE + 3.2), at(x1 - 1.0, JAR_BASE + 3.2)], BOLT_DARK, 0.7)
-        for x in (-10.0, -5.0, 0.0, 5.0, 10.0):
-            KH.oval(d, at(JAR_X + x, JAR_BASE + 1.8), 0.8, 0.8, BOLT_DARK, OUTLINE, 0.4)
-        KH.rrect(d, *at(JAR_X - 2.4, JAR_TOP - 2.6), *at(JAR_X + 2.4, JAR_TOP + 0.6), 0.6, BOLT, OUTLINE, 0.7)
-        KH.rrect(d, *at(JAR_X - 0.9, JAR_TOP - 4.6), *at(JAR_X + 0.9, JAR_TOP - 2.4), 0.4, BOLT_DARK, OUTLINE, 0.6)
-
-    return KH.piece(("brain_jar",), paint)
 
 
 def _open(mouth: str) -> float:
     return {"gape": 48.0, "big": 34.0, "open": 18.0, "loll": 16.0, "o": 12.0, "grit": 1.0}.get(mouth, 5.0)
 
 
-def _head_layers(pose):
-    ears = float(pose["ears"])  # type: ignore[arg-type]
-    look = pose["look"]
-    # The far ear lags its pair a little: two ears are not one.
-    return [(_ear(False, ears * 0.85), "far_ear"), (_jaw(_open(str(pose["mouth"])), str(pose["mouth"]) == "loll"), "jaw"), (_skull(), "skull"), (_brain_jar(), "brain_jar"),
-            (_ear(True, ears), "near_ear"),
-            (_eyes(str(pose["eyes"]), look), "eyes"),  # type: ignore[arg-type]
-            (_brows(R.brow_mood(pose)), "brows"), (_seam(), "seam")]
 
 
-X.head_layers = _head_layers
+
+
+@dataclass(frozen=True)
+class HeadInk:
+    """The colours a wolf head is drawn in. ``name`` keys its pieces in a
+    kit, so two inks can share one kit."""
+
+    name: str
+    FUR: RGBA
+    FUR_DARK: RGBA
+    FUR_DEEP: RGBA
+    FUR_LIGHT: RGBA
+    EAR_INNER: RGBA
+    NOSE: RGBA
+    NOSE_LIGHT: RGBA
+    GUM: RGBA
+    MOUTH: RGBA
+    TONGUE: RGBA
+    TONGUE_LINE: RGBA
+    TOOTH: RGBA
+    EYE_WHITE: RGBA
+    VEIN: RGBA
+    IRIS: RGBA
+    GLAZE: RGBA
+    GLAZE_PUPIL: RGBA
+    ARC_GLOW: RGBA
+    ARC_CORE: RGBA
+    SERUM: RGBA
+    SERUM_CORE: RGBA
+    STITCH: RGBA
+    OUTLINE: RGBA
+    BRAIN: RGBA
+    BRAIN_SHADE: RGBA
+    BRAIN_LIGHT: RGBA
+    BRAIN_FISSURE: RGBA
+    JAR_FLUID: RGBA
+    JAR_FLUID_TOP: RGBA
+    JAR_GLASS_EDGE: RGBA
+    GLASS: RGBA
+    BUBBLE: RGBA
+    GLINT: RGBA
+    GLINT_FAINT: RGBA
+    BOLT: RGBA
+    BOLT_DARK: RGBA
+    COLLAR_LIGHT: RGBA
+
+
+class WolfHead:
+    """His head: the pieces of it, painted by ``k`` in ``c``. The pieces are in
+    head pixels from the middle of the head, facing right. Wolfenstein wears
+    ``HEAD``; another sheet can draw the same head in its own kit and ink."""
+
+    def __init__(self, k: Kit, c: HeadInk) -> None:
+        self.k = k
+        self.c = c
+
+    def jaw(self, open_: float, loll: bool = False):
+        """His mouth, open ``open_`` degrees: its inside, his tongue, his lower
+        jaw and its teeth. It is under his head. ``loll``: he is dead or out, and
+        his tongue hangs out over his teeth."""
+        k, c = self.k, self.c
+        jaw = _jaw_points(open_)
+        # The tongue out of the side of his mouth, hanging down over the jaw.
+        tongue = [(10.0, 9.0), (15.0, 9.4), (17.4, 12.0), (17.0, 16.6), (15.0, 18.4), (13.0, 17.0), (12.6, 13.0), (9.0, 11.0)]
+
+        def at(p: Point) -> Point:
+            return k.at(*p)
+
+        def lower_teeth() -> List[List[Point]]:
+            out = []
+            top = [jaw[0], jaw[1]]
+            for t, tall in ((0.32, 2.0), (0.46, 1.8), (0.6, 2.0), (0.76, 3.4), (0.9, 2.2)):
+                x, y = lerp(top[0][0], top[1][0], t), lerp(top[0][1], top[1][1], t)
+                up = turned((0.0, -tall), open_)
+                side = turned((1.0, 0.0), open_)
+                out.append([(x - side[0], y - side[1]), (x + up[0], y + up[1]), (x + side[0], y + side[1])])
+            return out
+
+        teeth = lower_teeth()
+
+        def shape(d) -> None:
+            k.poly(d, [at(p) for p in [HINGE] + UPPER_LIP[1:] + [jaw[1], jaw[0]]], WHITE)
+            k.poly(d, [at(p) for p in jaw], WHITE)
+            for tooth in teeth:
+                k.poly(d, [at(p) for p in tooth], WHITE)
+            if loll:
+                k.poly(d, [at(p) for p in tongue], WHITE)
+
+        def detail(d) -> None:
+            k.poly(d, [at(p) for p in [HINGE] + UPPER_LIP[1:] + [jaw[1], jaw[0]]], c.MOUTH)
+            if open_ > 10.0:
+                mid = ((UPPER_LIP[2][0] + jaw[1][0]) / 2.0 - 4.0, (UPPER_LIP[2][1] + jaw[1][1]) / 2.0 + 1.0)
+                k.oval(d, at(mid), 5.0, 1.8 + open_ * 0.05, c.TONGUE)
+            k.poly(d, [at(p) for p in jaw[2:]] + [at(jaw[0]), at(jaw[1])], c.FUR)
+            k.line(d, [at(jaw[0]), at(jaw[1])], c.GUM, 0.9)
+            k.poly(d, [at(jaw[5]), at(jaw[4]), at(jaw[3]), at((jaw[3][0] - 3.0, jaw[3][1] - 1.0)), at((jaw[5][0] + 2.0, jaw[5][1] - 1.0))], c.FUR_LIGHT)
+            for tooth in teeth:
+                k.poly(d, [at(p) for p in tooth], c.TOOTH)
+            if loll:
+                k.poly(d, [at(p) for p in tongue], c.TONGUE)
+                k.line(d, [at((14.4, 11.0)), at((14.8, 16.0))], c.TONGUE_LINE, 0.6)
+
+        return k.solid((c.name, "jaw", round(open_, 1), loll), shape, c.FUR, detail, outline=1.3, rim=0.2, shade=0.3, shade_colour=c.FUR_DEEP)
+
+    def skull(self):
+        """His head: the skull, the ruff, the ears laid back, the muzzle with its
+        upper teeth bared, the nose."""
+        k, c = self.k, self.c
+        upper_teeth = []
+        for x, tall in ((8.4, 2.0), (10.6, 2.2), (12.8, 2.0), (15.0, 2.2), (17.6, 4.4), (20.0, 2.6)):
+            upper_teeth.append([(x - 1.0, 5.4), (x, 5.6 + tall), (x + 1.0, 5.4)])
+        ruff = [(-9.0, -10.0), (-16.0, -9.0), (-13.4, -5.6), (-19.0, -2.4), (-14.6, 0.6), (-19.4, 4.6), (-13.6, 6.4), (-16.0, 11.4), (-9.4, 10.6),
+                (-9.0, 15.6), (-4.0, 12.6), (-0.6, 16.4), (2.6, 12.8), (6.0, 14.6), (6.4, 9.0), (2.0, 4.0)]
+        muzzle = [(3.0, -9.0), (10.0, -9.6), (17.0, -6.6), (22.6, -4.4), (25.4, -2.0), (25.2, 1.4), (22.6, 3.4), (21.4, 5.4), (7.0, 5.6), (3.0, 4.0)]
+
+        def at(p: Point) -> Point:
+            return k.at(*p)
+
+        def shape(d) -> None:
+            k.oval(d, k.at(-1.6, -2.4), 12.0, 11.0, WHITE)
+            k.oval(d, k.at(4.4, 2.0), 9.0, 7.6, WHITE)
+            k.poly(d, [at(p) for p in ruff], WHITE)
+            k.poly(d, [at(p) for p in muzzle], WHITE)
+            for tooth in upper_teeth:
+                k.poly(d, [at(p) for p in tooth], WHITE)
+
+        def detail(d) -> None:
+            # The pale muzzle, cheeks and throat.
+            k.poly(d, [at((2.0, 0.0)), at((10.0, 1.4)), at((21.0, 3.0)), at((21.4, 6.0)), at((2.0, 7.0)), at((-2.0, 4.0))], c.FUR_LIGHT)
+            k.poly(d, [at((-6.0, 8.0)), at((4.0, 8.0)), at((6.0, 16.0)), at((-6.0, 16.0))], mix(c.FUR, c.FUR_LIGHT, 0.5))
+            # The dark mask round his eyes, and the bridge of his nose.
+            k.oval(d, at(NEAR_EYE), 5.6, 5.0, c.FUR_DARK)
+            k.oval(d, at(FAR_EYE), 4.4, 4.2, c.FUR_DARK)
+            k.line(d, [at((9.0, -9.0)), at((16.6, -6.4)), at((22.0, -4.0))], c.FUR_LIGHT, 0.8)
+            # The snarl: the skin of his muzzle is pulled up in folds.
+            for x in (12.0, 14.6, 17.0):
+                k.line(d, [at((x - 1.0, -7.2)), at((x + 0.4, -5.2)), at((x - 0.4, -3.4))], c.FUR_DEEP, 0.6)
+            # Fur on his skull and ruff.
+            for a, b in (((-8.0, -6.0), (-12.0, -2.0)), ((-10.0, 2.0), (-14.0, 5.0)), ((-6.0, 6.0), (-10.0, 10.0)), ((-2.0, -11.0), (-6.0, -8.0)),
+                         ((-1.0, 10.0), (-3.0, 14.0))):
+                k.line(d, [at(a), at(b)], c.FUR_DARK, 0.7)
+            # His gums, his upper teeth, his nose.
+            k.line(d, [at(p) for p in UPPER_LIP], c.GUM, 1.0)
+            for tooth in upper_teeth:
+                k.poly(d, [at(p) for p in tooth], c.TOOTH)
+            k.oval(d, k.at(23.6, -1.4), 2.8, 2.4, c.NOSE)
+            k.oval(d, k.at(22.8, -2.4), 0.9, 0.6, c.NOSE_LIGHT)
+
+        return k.solid((c.name, "skull",), shape, c.FUR, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=c.FUR_DEEP)
+
+    def ear(self, near: bool, degrees: float):
+        """An ear turned ``degrees`` about its root: up (perked) is positive, flat
+        back is negative. The far ear is in shade; the near ear shows its
+        inside."""
+        k, c = self.k, self.c
+        degrees = round(degrees / 3.0) * 3.0
+        root = NEAR_EAR_ROOT if near else FAR_EAR_ROOT
+
+        def put(pts) -> List[Point]:
+            out = []
+            for x, y in pts:
+                r = turned((x - root[0], y - root[1]), degrees)
+                out.append(k.at(root[0] + r[0], root[1] + r[1]))
+            return out
+
+        def shape(d) -> None:
+            k.poly(d, put(NEAR_EAR if near else FAR_EAR), WHITE)
+
+        def detail(d) -> None:
+            if near:
+                k.poly(d, put(NEAR_EAR_INNER), c.EAR_INNER)
+                k.line(d, put(NEAR_EAR[:3]), c.OUTLINE, 0.6)
+
+        return k.solid((c.name, "ear", near, degrees), shape, c.FUR if near else c.FUR_DARK, detail, outline=1.3, rim=0.3, shade=0.3, shade_colour=c.FUR_DEEP)
+
+    def eyes(self, mode: str, look: Point = (0.0, 0.0)):
+        """His eyes. Open, they are the eyes of the meme: white all round, small
+        pupils that look at you, red veins."""
+        k, c = self.k, self.c
+
+        def paint(d) -> None:
+            for (ex, ey), rx, ry in ((NEAR_EYE, 4.6, 4.4), (FAR_EYE, 3.5, 3.7)):
+                e = k.at(ex, ey)
+                if mode in ("closed", "dead"):
+                    r = rx * 0.7
+                    for s in (-1.0, 1.0):
+                        k.line(d, [(e[0] - r, e[1] - r * s), (e[0] + r, e[1] + r * s)], c.OUTLINE, 0.9)
+                    continue
+                if mode == "wince":
+                    k.line(d, [(e[0] - rx, e[1] - 1.8), (e[0] + rx * 0.5, e[1]), (e[0] - rx, e[1] + 1.8)], c.OUTLINE, 1.0)
+                    continue
+                if mode == "glazed":
+                    # Dead and open: the lid half down over a dull eye that
+                    # looks at nothing.
+                    k.oval(d, e, rx + 0.6, ry + 0.6, c.OUTLINE)
+                    k.oval(d, e, rx, ry, c.GLAZE)
+                    k.oval(d, (e[0] + 0.4, e[1] + ry * 0.45), rx * 0.24, rx * 0.2, c.GLAZE_PUPIL)
+                    k.poly(d, [(e[0] - rx - 1.0, e[1] - ry - 1.0), (e[0] + rx + 1.0, e[1] - ry - 1.0), (e[0] + rx + 1.0, e[1] + ry * 0.1),
+                               (e[0] - rx - 1.0, e[1] + ry * 0.2)], c.FUR_DARK)
+                    k.line(d, [(e[0] - rx - 0.6, e[1] + ry * 0.2), (e[0] + rx + 0.6, e[1] + ry * 0.1)], c.OUTLINE, 0.9)
+                    continue
+                if mode in ("lit", "lit_green"):
+                    # Lit by the charge in him: the eye is all light, with no
+                    # pupil in it (blue from the coils, green from the serum).
+                    glow, core = (c.ARC_GLOW, c.ARC_CORE) if mode == "lit" else (c.SERUM, c.SERUM_CORE)
+                    k.oval(d, e, rx + 0.6, ry + 0.6, c.OUTLINE)
+                    k.oval(d, e, rx, ry, glow)
+                    k.oval(d, (e[0] + 0.3, e[1] + 0.2), rx * 0.62, ry * 0.62, core)
+                    continue
+                wide = 0.7 if mode == "pin" else 0.0
+                k.oval(d, e, rx + 0.6 + wide, ry + 0.6 + wide, c.OUTLINE)
+                k.oval(d, e, rx + wide, ry + wide, c.EYE_WHITE)
+                for ang, length in ((200.0, 0.75), (330.0, 0.7), (110.0, 0.65), (20.0, 0.6)):
+                    a = math.radians(ang)
+                    k.line(d, [(e[0] + math.cos(a) * rx * 0.95, e[1] + math.sin(a) * ry * 0.95),
+                               (e[0] + math.cos(a) * rx * (0.95 - length * 0.5), e[1] + math.sin(a) * ry * (0.95 - length * 0.5) + 0.3)], c.VEIN, 0.55)
+                if mode == "roll":
+                    # Rolled back: a sliver of iris under the top lid.
+                    k.oval(d, (e[0], e[1] - ry * 0.95), rx * 0.3, rx * 0.16, c.IRIS)
+                    continue
+                at_ = (e[0] - 0.4 * rx / 4.0 + look[0], e[1] + 0.2 + look[1])
+                size = 0.15 if mode == "pin" else 0.26
+                k.oval(d, at_, rx * size, rx * size, c.IRIS)
+                k.oval(d, at_, rx * size * 0.58, rx * size * 0.58, c.OUTLINE)
+                if mode == "squint":
+                    # The glare: the top lid down over half the eye.
+                    k.poly(d, [(e[0] - rx - 1.0, e[1] - ry - 1.0), (e[0] + rx + 1.0, e[1] - ry - 1.0), (e[0] + rx + 1.0, e[1] - ry * 0.1),
+                               (e[0] - rx - 1.0, e[1] + ry * 0.15)], c.FUR_DARK)
+                    k.line(d, [(e[0] - rx - 0.6, e[1] + ry * 0.15), (e[0] + rx + 0.6, e[1] - ry * 0.1)], c.OUTLINE, 0.8)
+
+        return k.piece((c.name, "eyes", mode, round(look[0], 1), round(look[1], 1)), paint)
+
+    def brows(self, mood: int):
+        """Heavy dark fur over his eyes, the inner ends down."""
+        k, c = self.k, self.c
+        lift = -1.4 if mood > 0 else 0.0
+
+        def paint(d) -> None:
+            k.stroke(d, [k.at(-0.4, -10.2 + lift), k.at(4.0, -10.4 + lift), k.at(8.6, -8.0 + lift + (0.0 if mood > 0 else 1.0))], c.FUR_DEEP, 2.0)
+            k.stroke(d, [k.at(10.4, -9.6 + lift + (0.0 if mood > 0 else 1.2)), k.at(13.6, -10.6 + lift), k.at(16.0, -9.6 + lift)], c.FUR_DEEP, 1.7)
+
+        return k.piece((c.name, "brows", mood), paint)
+
+    def seam(self):
+        """The seam round his neck, where the fur stops and his own skin starts.
+        From the middle of his head."""
+        k, c = self.k, self.c
+
+        def paint(d) -> None:
+            stitches(d, [k.at(-8.0, 15.2), k.at(-3.0, 16.6), k.at(2.0, 16.0), k.at(6.4, 14.4)], tick=1.4, every=2.2, width=0.55, kit=k, colour=c.STITCH)
+
+        return k.piece((c.name, "seam"), paint)
+
+    def brain_jar(self):
+        """The brain in its jar on the top of his skull. The brain has no face:
+        two halves seen from the side, the folds, the stem."""
+        k, c = self.k, self.c
+
+        def at(x: float, y: float) -> Point:
+            return k.at(x, y)
+
+        def paint(d) -> None:
+            glass = [at(*p) for p in _jar_outline()]
+            # The far wall of the glass, then the fluid it holds.
+            k.poly(d, glass, c.GLASS[:3] + (70,))
+            surface = JAR_TOP + 6.0
+            k.poly(d, [at(x, max(y, surface)) for x, y in _jar_outline(1.2)], c.JAR_FLUID)
+            k.line(d, [at(JAR_X - JAR_HALF + 1.6, surface), at(JAR_X + JAR_HALF - 1.6, surface)], c.JAR_FLUID_TOP, 0.8)
+            # The brain, floating a little off the collar, its stem down into
+            # his skull.
+            bx, by = JAR_X + 0.4, JAR_BASE - 9.4
+            k.line(d, [at(bx - 1.0, by + 5.0), at(bx - 2.0, JAR_BASE + 0.5)], c.BRAIN_SHADE, 2.2)
+            k.oval(d, at(bx, by), 8.8, 6.6, c.BRAIN, c.OUTLINE, 0.7)
+            k.oval(d, at(bx - 3.4, by + 3.6), 4.6, 2.6, c.BRAIN_SHADE, c.OUTLINE, 0.6)
+            k.oval(d, at(bx + 0.6, by - 0.6), 7.6, 5.4, c.BRAIN)
+            for fold in ([(-6.0, -2.0), (-3.4, -3.6), (-1.0, -1.6), (1.4, -3.8), (4.0, -2.0), (6.4, -3.0)],
+                         [(-6.6, 1.0), (-4.0, -0.4), (-1.6, 1.2), (1.0, -0.6), (3.6, 1.0), (6.6, 0.2)],
+                         [(-4.6, 3.6), (-2.0, 2.4), (0.6, 3.8), (3.2, 2.6), (5.6, 3.4)],
+                         [(-2.0, -5.4), (0.0, -3.6), (2.6, -5.6)]):
+                k.line(d, [at(bx + x, by + y) for x, y in fold], c.BRAIN_SHADE, 0.6)
+            k.line(d, [at(bx - 7.0, by - 1.0), at(bx + 7.6, by - 0.6)], c.BRAIN_FISSURE, 0.7)
+            k.line(d, [at(bx - 4.0, by - 4.6), at(bx + 3.0, by - 5.6)], c.BRAIN_LIGHT, 0.8)
+            # Bubbles going up.
+            for x, y, r in ((6.4, -4.0, 0.8), (7.0, -10.0, 0.6), (5.6, -15.0, 0.9), (-7.0, -17.0, 0.5)):
+                k.oval(d, at(JAR_X + x, JAR_BASE + y), r, r, c.BUBBLE)
+            # The glass over it: a tint, its edge, the light on it.
+            k.poly(d, glass, c.GLASS[:3] + (40,))
+            k.line(d, glass, c.OUTLINE, 1.3)
+            k.line(d, [at(*p) for p in _jar_outline(0.9)], c.JAR_GLASS_EDGE, 0.5)
+            left = JAR_X - JAR_HALF
+            k.line(d, [at(left + 3.0, JAR_BASE - 3.0), at(left + 3.0, JAR_TOP + 10.0), at(left + 5.4, JAR_TOP + 5.0)], c.GLINT, 1.1)
+            k.line(d, [at(JAR_X + JAR_HALF - 3.0, JAR_TOP + 9.0), at(JAR_X + JAR_HALF - 3.0, JAR_TOP + 13.0)], c.GLINT_FAINT, 0.7)
+            # The steel collar it is screwed into, riveted to his skull, and a
+            # valve on the crown of the glass.
+            x0, x1 = JAR_X - JAR_HALF - 2.4, JAR_X + JAR_HALF + 2.4
+            k.rrect(d, *at(x0, JAR_BASE - 0.6), *at(x1, JAR_BASE + 4.2), 1.0, c.BOLT, c.OUTLINE, 0.9)
+            k.line(d, [at(x0 + 1.0, JAR_BASE + 0.6), at(x1 - 1.0, JAR_BASE + 0.6)], c.COLLAR_LIGHT, 0.7)
+            k.line(d, [at(x0 + 1.0, JAR_BASE + 3.2), at(x1 - 1.0, JAR_BASE + 3.2)], c.BOLT_DARK, 0.7)
+            for x in (-10.0, -5.0, 0.0, 5.0, 10.0):
+                k.oval(d, at(JAR_X + x, JAR_BASE + 1.8), 0.8, 0.8, c.BOLT_DARK, c.OUTLINE, 0.4)
+            k.rrect(d, *at(JAR_X - 2.4, JAR_TOP - 2.6), *at(JAR_X + 2.4, JAR_TOP + 0.6), 0.6, c.BOLT, c.OUTLINE, 0.7)
+            k.rrect(d, *at(JAR_X - 0.9, JAR_TOP - 4.6), *at(JAR_X + 0.9, JAR_TOP - 2.4), 0.4, c.BOLT_DARK, c.OUTLINE, 0.6)
+
+        return k.piece((c.name, "brain_jar"), paint)
+
+    def layers(self, pose):
+        """The pieces of the head in a pose, from the back to the front."""
+        ears = float(pose["ears"])  # type: ignore[arg-type]
+        look = pose["look"]
+        # The far ear lags its pair a little: two ears are not one.
+        return [(self.ear(False, ears * 0.85), "far_ear"), (self.jaw(_open(str(pose["mouth"])), str(pose["mouth"]) == "loll"), "jaw"), (self.skull(), "skull"), (self.brain_jar(), "brain_jar"),
+                (self.ear(True, ears), "near_ear"),
+                (self.eyes(str(pose["eyes"]), look), "eyes"),  # type: ignore[arg-type]
+                (self.brows(R.brow_mood(pose)), "brows"), (self.seam(), "seam")]
+
+
+#: His head in his own colours.
+LIVING = HeadInk("living", FUR, FUR_DARK, FUR_DEEP, FUR_LIGHT, EAR_INNER, NOSE, NOSE_LIGHT, GUM, MOUTH, TONGUE, TONGUE_LINE, TOOTH, EYE_WHITE, VEIN, IRIS, GLAZE, GLAZE_PUPIL, ARC_GLOW, ARC_CORE, SERUM, SERUM_CORE, STITCH, OUTLINE, BRAIN, BRAIN_SHADE, BRAIN_LIGHT, BRAIN_FISSURE, JAR_FLUID, JAR_FLUID_TOP, JAR_GLASS_EDGE, GLASS, BUBBLE, GLINT, GLINT_FAINT, BOLT, BOLT_DARK, COLLAR_LIGHT)
+HEAD = WolfHead(KH, LIVING)
+# His head comes off when he is dead (``unsewn``): it rises as the Inugami
+# (``wolfenstein_inugami``), and his body lies on without it.
+X.head_layers = lambda pose: [] if float(pose["headless"]) >= 0.5 else HEAD.layers(pose)  # type: ignore[arg-type]
 
 
 def _armband(ctx) -> List[Stamp]:
@@ -867,7 +988,7 @@ X.layers["front"].append(_armband)
 # laid back. ``ears``: up (perked) positive, flat negative. ``look``: where
 # his pupils are, in head pixels.
 X.set_rest(lean=9.0, head=(1.0, 1.0, 4.0), na=(7.0, 30.0), fa=(9.0, 29.5), nh="soft", fh="soft", nf=(-6.0, 0.0, 0.0), ff=(7.0, 0.0, 0.0),
-           mouth="flat", brows=-1.0, ears=0.0, look=(0.0, 0.0), charge=0.0)
+           mouth="flat", brows=-1.0, ears=0.0, look=(0.0, 0.0), charge=0.0, headless=0.0)
 
 # His hands swing in arcs round his shoulders.
 X.polar = ("na", "fa")
@@ -1992,6 +2113,43 @@ def death(i: int, n: int):
     return on_the_floor(pose, i, n) if u >= 0.4 else pose
 
 
+#: Where the seam round his neck is, from the middle of his head (head
+#: pixels): the stitches pop here, and the stump is here when the head is off.
+SEAM = (-1.0, 15.6)
+
+
+def _seam_point(ctx) -> Point:
+    """The seam round his neck, in the frame."""
+    p = turned((SEAM[0] * HEAD_SIZE, SEAM[1] * HEAD_SIZE), ctx.turn)
+    return (ctx.head[0] + p[0], ctx.head[1] + p[1])
+
+
+@X.row
+def unsewn(i: int, n: int):
+    # Dead on his face. Then the seam round his neck gives: the stitches pop
+    # one by one and ghost fire comes out of it, and his head wrenches at it,
+    # harder and harder, until it tears free. The head goes on in the
+    # Inugami's sheet; the last frames are his body without it.
+    u = shot(i, n)
+    pose = dict(PRONE)
+    if 0.25 <= u < 0.85:
+        k = (u - 0.25) / 0.6
+        x, y, turn = PRONE["head"]  # type: ignore[misc]
+        pose = dict(pose, head=(x + jitter(i, 0.6 + 1.6 * k), y - 1.4 * k + jitter(i, 0.8 * k, 2.0), turn + jitter(i, 4.0 + 10.0 * k, 1.0)),
+                    ears=-34.0 + 20.0 * k * (i % 2), mouth="big" if i % 3 == 0 else "loll")
+    if u >= 0.85:
+        pose = dict(pose, headless=1.0)
+    return on_the_floor(pose, i, n)
+
+
+@X.row
+def headless(i: int, n: int):
+    # His body without its head, still. A little ghost fire hangs over the
+    # stump (drawn as his effects).
+    del i, n
+    return on_the_floor(dict(PRONE, headless=1.0), 0, 1)
+
+
 X.rows = [("idle", 16, 90), ("walk", 12, 100), ("prowl", 12, 70), ("run", 8, 85), ("jump", 6, 100), ("fall", 6, 100), ("land_hard", 8, 70),
           ("rake_tell", 8, 80), ("rake_a", 6, 50), ("rake_b", 6, 50), ("rake_c", 8, 55), ("rake_recover", 6, 80),
           ("hammer_tell", 10, 100), ("hammer_slam", 6, 50), ("hammer_stuck", 8, 80), ("hammer_pull", 6, 60),
@@ -2001,7 +2159,8 @@ X.rows = [("idle", 16, 90), ("walk", 12, 100), ("prowl", 12, 70), ("run", 8, 85)
           ("galvanize_tell", 10, 60), ("galvanize", 8, 60), ("lash_tell", 8, 80), ("lash", 6, 60), ("flatline", 16, 110), ("recharge", 8, 50),
           ("awaken", 14, 70), ("shock", 8, 50), ("hit", 6, 60), ("death", 28, 90),
           ("throne_dead", 12, 120), ("throne_wake", 20, 85), ("serum_tell", 10, 80), ("serum_inject", 10, 80), ("serum_surge", 20, 80),
-          ("stab_tell", 8, 80), ("stab", 6, 60), ("stab_recover", 8, 80)]
+          ("stab_tell", 8, 80), ("stab", 6, 60), ("stab_recover", 8, 80),
+          ("unsewn", 14, 80), ("headless", 8, 120)]
 
 # ---- What his blows do -------------------------------------------------------
 
@@ -2096,8 +2255,19 @@ def _arc(key: tuple, a: Point, b: Point, seed: int, kinks: int = 6, width: float
     return K.piece(("arc", key, seed, lines, width, glow_colour), paint)
 
 
-ARC_CORE: RGBA = (236, 246, 255, 255)
-ARC_GLOW: RGBA = (110, 170, 255, 255)
+
+def _ghost_lick(length: float, i: int):
+    """A small tongue of ghost fire from ``home`` along +x."""
+    length = round(length / 2.0) * 2.0
+    bend = round(3.0 * math.sin(i * 2.3)) * 1.0
+
+    def paint(d) -> None:
+        for scale, colour in ((1.0, GHOST_OUT), (0.6, GHOST_MID), (0.3, GHOST_CORE)):
+            w = length * 0.42 * scale
+            K.poly(d, [K.at(0.0, -w * 0.5), K.at(length * 0.5 * (0.6 + 0.4 * scale), -w * 0.4 + bend * 0.5), K.at(length * (0.6 + 0.4 * scale), bend),
+                       K.at(length * 0.5 * (0.6 + 0.4 * scale), w * 0.4 + bend * 0.5), K.at(0.0, w * 0.5)], colour)
+
+    return K.piece(("ghost_lick", length, bend), paint)
 
 
 def _bolt_point(ctx) -> Point:
@@ -2178,6 +2348,18 @@ def _effects(ctx) -> List[Stamp]:
         out.append((R.burst(K, 6.0, SPARK, SPARK_DARK, 6), bolt, "sputter", 0.0))
         if i in (5, 12):
             out.append((_arc("sputter", bolt, ctx.hand, i, kinks=5, width=1.6), R.pin(bolt), "arc_sputter", 0.0))
+    elif anim == "unsewn" and u >= 0.2:
+        # The stitches pop, in ghost fire; at the tear, a burst of it.
+        seam = _seam_point(ctx)
+        if u >= 0.85:
+            out.append((R.burst(K, 16.0, GHOST_CORE, GHOST_OUT, 10), seam, "torn", 0.0))
+        elif i % 2 == 0:
+            out.append((R.burst(K, 5.0 + 6.0 * u, GHOST_CORE, GHOST_OUT, 6), (seam[0] + jitter(i, 4.0), seam[1] + jitter(i, 3.0, 1.0)), "stitch_pop", 0.0))
+        if u < 0.85:
+            out.append((_ghost_lick(10.0 + 18.0 * u, i), seam, "ghost_fire", -90.0 + jitter(i, 12.0)))
+    elif anim == "headless":
+        # What is left of the fire over the stump.
+        out.append((_ghost_lick(8.0 + 3.0 * math.sin(i * 1.9), i), _seam_point(ctx), "ghost_fire", -90.0 + 10.0 * math.sin(i * 1.3)))
     elif anim == "hit" and u <= 0.5:
         out.append((R.burst(K, 13.0, SPARK, SPARK_DARK, 9), (ctx.head[0] + 14.0, ctx.head[1] - 4.0), "struck", 0.0))
     else:
