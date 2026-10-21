@@ -34,10 +34,11 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_turn import a
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_gait import author_gaits
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_ground import keep_over_ground
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_cling import author_wall_cling
-from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_climb import (
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_climb import author_wall_climb
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crawl import (
     PURE_SIDE_ROWS,
-    author_wall_climb,
-    lend_wall_climb,
+    author_crawl,
+    lend_pure_side_rows,
 )
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_strikes import (
     STRIKES,
@@ -53,7 +54,7 @@ RIG_DIR = PKG / "targets/characters/rigged/player_robot_v3"
 RIG_JSON = RIG_DIR / "player_robot_v3.rig.json"
 VIEW_LABEL = "Player Robot - Side Right"
 # The robot from the side with its torso and pelvis from the side, for the rows
-# of `PURE_SIDE_ROWS` (the wall climb). Its other parts are clones of the side
+# of `PURE_SIDE_ROWS` (the wall climb and the crawl). Its other parts are clones of the side
 # view's.
 PURE_SIDE_SVG_PATH = SVG_PATH
 PURE_SIDE_RIG_JSON = RIG_DIR / "player_robot_v3_side_pure.rig.json"
@@ -710,6 +711,7 @@ def build_pure_side_doc(side: dict) -> dict:
     # switches), and the solve replaces the body.
     doc["clips"] = {row: copy.deepcopy(side["clips"][row]) for row in PURE_SIDE_ROWS}
     author_wall_climb(RigDocument(doc))
+    author_crawl(RigDocument(doc))
     doc["features"] = {
         "paper_doll": True,
         "view": "side_pure",
@@ -765,7 +767,7 @@ def cmd_build() -> None:
     pure = build_pure_side_doc(doc)
     # The side rig keeps the clip of each pure-side row: the game solves the
     # body's hurt volumes from the side rig's clip of the row it draws.
-    lend_wall_climb(RigDocument(pure), RigDocument(doc))
+    lend_pure_side_rows(RigDocument(pure), RigDocument(doc))
     # This pass DRAWS each frame, so it needs the path of the rig: the parts
     # find their SVG beside it.
     keep_over_ground(RigDocument(doc, source_path=RIG_JSON))

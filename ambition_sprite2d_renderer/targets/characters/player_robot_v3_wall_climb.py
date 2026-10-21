@@ -32,7 +32,6 @@ the document, and nothing here touches the filesystem.
 
 from __future__ import annotations
 
-import copy
 import math
 from typing import Dict, List, Tuple
 
@@ -41,8 +40,6 @@ from ...authoring.skeleton import two_bone_ik
 from .player_robot_v3_body import SIDES, Arm, RigBody, WorldPose, rot, write_frames
 
 ROW = "wall_climb"
-#: The rows drawn from the pure side view.
-PURE_SIDE_ROWS: Tuple[str, ...] = (ROW,)
 
 Point = Tuple[float, float]
 
@@ -149,11 +146,4 @@ def author_wall_climb(doc: RigDocument) -> None:
     write_frames(doc, ROW, solve_wall_climb(doc, frames))
 
 
-def lend_wall_climb(pure: RigDocument, side: RigDocument) -> None:
-    """Give the side rig the pure side rig's climb, channel for channel. The
-    two rigs have the same bones at the same rest angles (the pure view's
-    limbs are the side view's, moved), so the side rig takes the same pose."""
-    side.data["clips"][ROW] = copy.deepcopy(pure.data["clips"][ROW])
-
-
-__all__ = ["PURE_SIDE_ROWS", "ROW", "WALL_X", "author_wall_climb", "lend_wall_climb", "solve_wall_climb"]
+__all__ = ["ROW", "WALL_X", "author_wall_climb", "solve_wall_climb"]

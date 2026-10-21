@@ -29,7 +29,6 @@ import itertools
 import math
 
 from ...authoring.rigdoc import RigDocument
-from .player_robot_v3_body import write_frames
 
 # How far the pelvis travels, in frame pixels.
 #
@@ -88,18 +87,9 @@ ITEM_HOLD_ARMS = {
     "near_arm_l": 3.0,
 }
 
-# Breathing on the hold, and the crouch-walk's stride, both in frame pixels.
+# Breathing on the hold, in frame pixels. The crouch walk is the crawl
+# (`player_robot_v3_crawl`).
 BREATH = 1.6
-# The crouch walk: how far a foot reaches each side of where it stands, how
-# high it clears the floor, and how far the body bobs (twice in a cycle).
-STRIDE_X = 8.0
-STRIDE_LIFT = 4.0
-STRIDE_BOB = 1.2
-# Jon, 2026-10-13: the crouch walk is on tiptoe. The boots point their toes
-# at the floor by this much, and the ankles are this much higher, so the toe
-# caps stay on the ground line.
-TIPTOE_DEG = 38.0
-TIPTOE_RISE = 6.0
 
 LEG_CHANNELS = ("far_leg_u", "far_leg_l", "far_leg_foot", "near_leg_u", "near_leg_l", "near_leg_foot")
 
@@ -224,24 +214,20 @@ def solve_foot(p: Poser, side: str, want_world_angle: float):
     return value
 
 
-def pose_at(p: Poser, rest, drop: float, foot_targets=None, seed=None, toe_down: float = 0.0):
-    """Leg channels for a body dropped `drop` px, both feet on the ground line.
-
-    `foot_targets` overrides where each ankle should land — `(x, y)` per side —
-    which is how the crouch WALK swings one leg while the other stays planted.
-    """
+def pose_at(p: Poser, rest, drop: float, seed=None):
+    """Leg channels for a body dropped `drop` px, both feet where they stand."""
     p.clear()
     p.set(root_y=drop)
     out = {"root_y": drop}
     worst = 0.0
     for side in ("far", "near"):
-        target = (foot_targets or {}).get(side) or (rest[side]["ankle"][0], p.ground)
+        target = (rest[side]["ankle"][0], p.ground)
         leg_seed = None
         if seed is not None:
             leg_seed = (seed[f"{side}_leg_u"], seed[f"{side}_leg_l"])
         u, lo = solve_leg(p, side, target, leg_seed)
         out[f"{side}_leg_u"], out[f"{side}_leg_l"] = u, lo
-        out[f"{side}_leg_foot"] = solve_foot(p, side, rest[side]["foot_angle"] + toe_down)
+        out[f"{side}_leg_foot"] = solve_foot(p, side, rest[side]["foot_angle"])
         landed = p.solve()[f"{side}_leg_foot"].origin
         worst = max(worst, abs(landed[1] - target[1]))
     out["_ankle_error"] = worst
@@ -369,40 +355,7 @@ def reauthor_crouch(doc: RigDocument) -> dict:
         leap.append(frame)
     poses["crouch_jump"] = leap
 
-    # crouch_walk: the hold, with the feet trading places along the ground line.
-    # On tiptoe (`TIPTOE_DEG`): the heels up and the body up with them. A foot
-    # reaches 8 px each side and clears the floor by 4: at 5.5 and 2.4 the
-    # steps did not read at the size of the game. A loop (`write_frames`).
-    walk = []
-    for i in range(8):
-        phase = 2.0 * math.pi * i / 8.0
-        targets = {}
-        for side, offset in (("far", 0.0), ("near", math.pi)):
-            swing = math.sin(phase + offset)
-            lift = max(0.0, math.sin(phase + offset + math.pi / 2.0)) * STRIDE_LIFT
-            targets[side] = (rest[side]["ankle"][0] + STRIDE_X * swing, p.ground - TIPTOE_RISE - lift)
-        bob = math.cos(2.0 * phase)
-        frame = pose_at(
-            p, rest, CROUCH_DROP - TIPTOE_RISE + STRIDE_BOB * bob, targets,
-            seed=walk[-1] if walk else hold, toe_down=TIPTOE_DEG,
-        )
-        frame.update(CROUCH_SHAPE)
-        # The body rocks with the steps, and the head lags the bob.
-        frame["torso"] = CROUCH_SHAPE["torso"] + 2.0 * math.sin(phase)
-        frame["head"] = CROUCH_SHAPE["head"] - 1.5 * math.sin(phase) - 1.0 * bob
-        frame["far_arm_u"] = CROUCH_SHAPE["far_arm_u"] + 14.0 * math.sin(phase)
-        frame["near_arm_u"] = CROUCH_SHAPE["near_arm_u"] - 14.0 * math.sin(phase)
-        frame.update(head_channels(1.0, breath=0.03 * bob))
-        walk.append(frame)
-    looping = {"crouch_walk": walk}
     p.drop()
-
-    for clip_name, frames in looping.items():
-        write_frames(
-            doc,
-            clip_name,
-            {key: [f.get(key, 0.0) for f in frames] for key in frames[0] if not key.startswith("_")},
-        )
 
     for clip_name, frames in poses.items():
         channels = doc.data["clips"][clip_name]["channels"]

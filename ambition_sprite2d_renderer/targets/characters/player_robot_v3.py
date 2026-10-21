@@ -38,7 +38,7 @@ from ...core import slash_envelope
 from .robot_side import RigCanvas, SideRobotGenerator, fx_piece
 from .player_robot_v3_back import BACK_FRAMES, BACK_ROWS, back_frame
 from .player_robot_v3_front import FRONT_FRAMES, front_frame
-from .player_robot_v3_wall_climb import PURE_SIDE_ROWS
+from .player_robot_v3_crawl import PURE_SIDE_ROWS
 from .player_robot_v3_gameplay import hurtbox_parts_for_rows
 from .player_robot_v3_double_jump import JETS as DOUBLE_JUMP_JETS
 from .player_robot_v3_motion import EFFECT_ALIASES, MIRRORED, ROBOT_ROWS
@@ -60,7 +60,7 @@ BACK_RIG_PATH = RIG_PATH.with_name("player_robot_v3_back.rig.json")
 #: frames of `FRONT_FRAMES` are drawn from it.
 FRONT_RIG_PATH = RIG_PATH.with_name("player_robot_v3_front.rig.json")
 #: The rig of the robot seen from the PURE SIDE, with its torso and pelvis from
-#: the side (`player_robot_v3_wall_climb`). The rows of `PURE_SIDE_ROWS` are
+#: the side (`player_robot_v3_wall_climb`, `player_robot_v3_crawl`). The rows of `PURE_SIDE_ROWS` are
 #: drawn from it.
 PURE_SIDE_RIG_PATH = RIG_PATH.with_name("player_robot_v3_side_pure.rig.json")
 
