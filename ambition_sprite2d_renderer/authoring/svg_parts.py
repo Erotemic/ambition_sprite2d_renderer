@@ -13,9 +13,10 @@ written to disk. Re-author the SVG, re-render the sheet, and the rig follows.
 Isolation works by *hiding everything else*: we keep ``<defs>`` (so gradient
 fills resolve) and every ancestor ``transform`` (so the kept elements land in
 their true document position), and set ``display:none`` on every other drawable
-leaf and on sibling view layers. Rendering over the full document viewBox means
-all parts share one coordinate frame, so a part's pivot is simply its joint
-position in SVG user units.
+leaf and on sibling view layers. Every part is placed in the frame of the full
+document viewBox, so a part's pivot is simply its joint position in SVG user
+units; the render itself covers only a window about the part
+(``_render_kept``).
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from __future__ import annotations
 import copy
 import io
 import inspect
+import math
 import warnings
 import xml.etree.ElementTree as ET
 from functools import lru_cache
@@ -305,11 +307,126 @@ def _rasterize_subset_cached(
         if _local(elem.tag) in _DRAWABLE and id(elem) not in keep:
             _hide(elem)
 
-    svg_str = ET.tostring(root, encoding="unicode")
-    png = _svg_to_png_bytes(svg_str, float(dpi))
-    img = Image.open(io.BytesIO(png)).convert("RGBA")
+    image, offset = _render_kept(root, keep, float(dpi))
+    return image, offset, dpi / MM_PER_INCH
+
+
+def _render_png(root: ET.Element, dpi: float) -> Image.Image:
+    png = _svg_to_png_bytes(ET.tostring(root, encoding="unicode"), dpi)
+    return Image.open(io.BytesIO(png)).convert("RGBA")
+
+
+def _render_full(root: ET.Element, dpi: float) -> Tuple[Optional[Image.Image], Tuple[int, int]]:
+    """The kept art over the whole canvas, cropped to its paint."""
+    img = _render_png(root, dpi)
     bbox = img.getbbox()
-    px_per_unit = dpi / MM_PER_INCH
     if bbox is None:
-        return None, (0, 0), px_per_unit
-    return img.crop(bbox), (bbox[0], bbox[1]), px_per_unit
+        return None, (0, 0)
+    return img.crop(bbox), (bbox[0], bbox[1])
+
+
+#: The coarse pass that finds where a subset's paint is: this many output
+#: pixels to the user unit. A canvas at no more than two times this is drawn
+#: whole, because the coarse pass would cost as much as the render.
+_COARSE_PX_PER_UNIT = 0.5
+
+
+def _canvas_geometry(root: ET.Element) -> Optional[Tuple[float, float, float, float, float, float]]:
+    """``(vb_x, vb_y, vb_w, vb_h, width_mm, height_mm)`` of a document sized in
+    mm with a viewBox, or ``None`` for any other sizing."""
+    vb = (root.get("viewBox") or "").replace(",", " ").split()
+    width, height = root.get("width") or "", root.get("height") or ""
+    if len(vb) != 4 or not width.endswith("mm") or not height.endswith("mm"):
+        return None
+    if root.get("preserveAspectRatio") not in (None, "xMidYMid", "xMidYMid meet"):
+        return None
+    try:
+        vb_x, vb_y, vb_w, vb_h = (float(v) for v in vb)
+        width_mm, height_mm = float(width[:-2]), float(height[:-2])
+    except ValueError:
+        return None
+    if vb_w <= 0 or vb_h <= 0 or width_mm <= 0 or height_mm <= 0:
+        return None
+    return vb_x, vb_y, vb_w, vb_h, width_mm, height_mm
+
+
+def _render_kept(root: ET.Element, keep: set, dpi: float) -> Tuple[Optional[Image.Image], Tuple[int, int]]:
+    """The kept art, cropped to its paint, with its offset in full-canvas pixels.
+
+    The art is drawn only in a window about it, not over the whole canvas: a
+    part of a sheet with many views is a small piece of a large canvas, and a
+    full-canvas render paid for all of it on every part. A coarse pass, with
+    each kept shape opaque, finds the window, with a margin of two coarse
+    pixels; its origin is on a whole output pixel, so the pixels are those of
+    a full-canvas render (to the rounding of resvg's single-precision
+    transform: an edge pixel can differ by a few levels). A document that is
+    not sized in mm with a viewBox, or a small canvas, is drawn whole.
+
+    ⛔ The coarse pass must never make paint SMALLER: it raised the stroke of
+    each shape to a fixed width, which shrank a leg drawn as an 18-unit
+    stroke, and the window cut the leg off.
+    """
+    geometry = _canvas_geometry(root)
+    if geometry is None:
+        return _render_full(root, dpi)
+    vb_x, vb_y, vb_w, vb_h, width_mm, height_mm = geometry
+    px_per_unit = dpi / MM_PER_INCH * width_mm / vb_w
+    canvas_w = max(1, math.floor(width_mm * dpi / MM_PER_INCH + 0.5))
+    canvas_h = max(1, math.floor(height_mm * dpi / MM_PER_INCH + 0.5))
+    if px_per_unit <= 2.0 * _COARSE_PX_PER_UNIT:
+        return _render_full(root, dpi)
+
+    # Coarse pass: every kept shape opaque, so nothing faint is lost.
+    coarse_px_per_unit = _COARSE_PX_PER_UNIT
+    boosted: List[Tuple[ET.Element, Optional[str]]] = []
+    for elem in root.iter():
+        if id(elem) in keep and _local(elem.tag) in _DRAWABLE and _local(elem.tag) != "use":
+            style = elem.get("style")
+            boosted.append((elem, style))
+            elem.set(
+                "style",
+                (style + ";" if style else "")
+                + "opacity:1;fill-opacity:1;stroke-opacity:1",
+            )
+    try:
+        coarse = _render_png(root, dpi * coarse_px_per_unit / px_per_unit)
+    finally:
+        for elem, style in boosted:
+            if style is None:
+                elem.attrib.pop("style", None)
+            else:
+                elem.set("style", style)
+    coarse_box = coarse.getbbox()
+    if coarse_box is None:
+        return None, (0, 0)
+
+    scale = px_per_unit / coarse_px_per_unit
+    pad = 2 * math.ceil(scale) + 2
+    x0 = max(0, math.floor(coarse_box[0] * scale) - pad)
+    y0 = max(0, math.floor(coarse_box[1] * scale) - pad)
+    x1 = min(canvas_w, math.ceil(coarse_box[2] * scale) + pad)
+    y1 = min(canvas_h, math.ceil(coarse_box[3] * scale) + pad)
+    if x1 <= x0 or y1 <= y0:
+        return None, (0, 0)
+
+    # The window: the same scale, the origin on a whole pixel of the canvas.
+    saved = {key: root.get(key) for key in ("viewBox", "width", "height")}
+    root.set(
+        "viewBox",
+        f"{vb_x + x0 / px_per_unit!r} {vb_y + y0 / px_per_unit!r} "
+        f"{(x1 - x0) / px_per_unit!r} {(y1 - y0) / px_per_unit!r}",
+    )
+    root.set("width", f"{x1 - x0}px")
+    root.set("height", f"{y1 - y0}px")
+    try:
+        img = _render_png(root, dpi)
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                root.attrib.pop(key, None)
+            else:
+                root.set(key, value)
+    bbox = img.getbbox()
+    if bbox is None:
+        return None, (0, 0)
+    return img.crop(bbox), (x0 + bbox[0], y0 + bbox[1])
