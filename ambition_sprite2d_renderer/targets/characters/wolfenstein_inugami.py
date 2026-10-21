@@ -167,6 +167,29 @@ def _wisp(size: float, flick: int = 0):
     return K.piece(("wisp", size, flick), paint)
 
 
+def _hitodama(size: float):
+    """A small blue spirit (a hitodama): a round head of cold fire and its tail
+    behind it, along -x (placed turned to the way it goes)."""
+    size = _r(size, 1.0)
+
+    def tail(scale: float) -> List[Point]:
+        # A tail that waves as it thins, from the top of the head round the back.
+        r = size * scale
+        up = [K.at(-size * 4.6 * t * scale, -r * (1.0 - t) ** 0.8 + size * 0.5 * math.sin(t * 5.0) * t) for t in (0.0, 0.25, 0.5, 0.75, 1.0)]
+        down = [K.at(-size * 4.0 * t * scale, r * (1.0 - t) ** 1.2 + size * 0.5 * math.sin(t * 5.0) * t) for t in (1.0, 0.75, 0.5, 0.25, 0.0)]
+        return up + down
+
+    def paint(d) -> None:
+        # Its cold light round it, then its fire, in three layers.
+        for k, alpha in enumerate((26, 40)):
+            K.oval(d, K.at(0.0, 0.0), size * (2.2 - 0.5 * k), size * (2.2 - 0.5 * k), ONIBI_MID[:3] + (alpha,))
+        for scale, colour in ((1.0, ONIBI_OUT), (0.68, ONIBI_MID), (0.38, ONIBI_CORE)):
+            K.poly(d, tail(scale), colour)
+            K.oval(d, K.at(0.0, 0.0), size * scale, size * scale, colour)
+
+    return K.piece(("hitodama", size), paint)
+
+
 def _glow(radius: float):
     """The cold light round the spirit: rings that fade outward."""
     radius = _r(radius, 2.0)
@@ -354,6 +377,17 @@ ROWS: List[Tuple[str, int, int]] = [
 
 # ---- The frame -----------------------------------------------------------------
 
+#: The blue spirits that circle it always (Jon, 2026-10-20: "the Japanese
+#: ghost spirits around him to be blue"): how many, their ring (frame pixels,
+#: a tilted ellipse: the far half of it is behind the head), and how many
+#: turns a row's frames make (a looping row comes back to where it began).
+SPIRITS = 4
+SPIRIT_RING = (104.0, 40.0)
+SPIRIT_TILT = -12.0
+#: Rows in which the spirits are not circling: before the fire catches, while
+#: they swell into its onibi, and once the spirit has left it.
+NO_SPIRITS = ("onibi_tell", "onibi", "vanish", "appear")
+
 #: The onibi round it: their places on their ring (degrees) and the ring's
 #: size, frame pixels.
 ONIBI_ANGLES = (-150.0, -30.0, 90.0)
@@ -383,6 +417,29 @@ def _licks(img: Image.Image, pose: Pose, i: int) -> None:
         f = _flicker(i, k + 5)
         K.place(img, _tongue_of_fire((16.0 + 4.0 * f) * flame, 9.0, 4.0 * f), _head_point(pose, p), f"lick_{k}",
                 float(pose["trail"]) + 30.0 * (1 if k else -1) + 8.0 * f)  # type: ignore[arg-type]
+
+
+def _spirits(img: Image.Image, anim: str, pose: Pose, i: int, n: int, behind: bool) -> None:
+    """The blue spirits circling it: the half of the ring behind the head
+    (``behind``) or in front of it."""
+    if anim in NO_SPIRITS or float(pose["spirit"]) < 0.5 or float(pose["flame"]) < 0.3:  # type: ignore[arg-type]
+        return
+    centre = _head_point(pose, (2.0, -8.0))
+    rx, ry = SPIRIT_RING
+    turn = math.tau * i / max(1, n)
+    tilt = math.radians(SPIRIT_TILT)
+    for k in range(SPIRITS):
+        a = turn + math.tau * k / SPIRITS
+        if (math.sin(a) < 0.0) != behind:
+            continue
+        x, y = rx * math.cos(a), ry * math.sin(a)
+        at = (centre[0] + x * math.cos(tilt) - y * math.sin(tilt), centre[1] + x * math.sin(tilt) + y * math.cos(tilt))
+        # It goes round the ring: its tail points back along it.
+        dx, dy = -rx * math.sin(a), ry * math.cos(a)
+        heading = math.degrees(math.atan2(dx * math.sin(tilt) + dy * math.cos(tilt), dx * math.cos(tilt) - dy * math.sin(tilt)))
+        # Nearer is bigger.
+        size = 9.0 + 2.0 * math.sin(a) + 0.8 * _flicker(i, k)
+        K.place(img, _hitodama(size), at, f"spirit_{k}", heading)
 
 
 def _effects_over(img: Image.Image, anim: str, pose: Pose, i: int, n: int) -> None:
@@ -424,6 +481,7 @@ def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if spirit:
         K.place(img, _glow(64.0 + 6.0 * float(pose["flame"])), centre, "glow")  # type: ignore[arg-type]
     _fire(img, pose, frame_idx)
+    _spirits(img, anim, pose, frame_idx, nframes, behind=True)
     turn, sq = float(pose["rot"]), float(pose["sq"])  # type: ignore[arg-type]
     at = _head_point(pose, (0.0, 0.0))
     for part, name in head.layers(pose):
@@ -431,6 +489,7 @@ def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if spirit:
         K.place(img, _torn_threads(-float(pose["trail"]) + 180.0 - turn), at, "torn", turn, sq)  # type: ignore[arg-type]
         _licks(img, pose, frame_idx)
+    _spirits(img, anim, pose, frame_idx, nframes, behind=False)
     _effects_over(img, anim, pose, frame_idx, nframes)
     fade = float(pose["fade"]) * (SPIRIT_OPACITY if spirit else 1.0)  # type: ignore[arg-type]
     if fade < 0.999:
