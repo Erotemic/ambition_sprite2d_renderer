@@ -144,6 +144,8 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("ledge_drop", 5, 60),
     ("ledge_climb", 6, 92),
     ("climb", 8, 100),
+    # Up or down a wall it clings to, hand over hand (`player_robot_v3_wall_climb`).
+    ("wall_climb", 8, 70),
     # From behind (`player_robot_v3_back`): the robot walks away from the
     # camera, into a doorway.
     ("walk_away", 8, 100),
@@ -355,6 +357,7 @@ POSE_ALIASES: Final[dict[str, str]] = {
     "tech": "land",
     "tech_roll": "roll",
     "wall_tech": "wall_grab",
+    "wall_climb": "wall_grab",
     "wall_tech_jump": "wall_jump",
     "ceiling_tech": "land",
     "shield_break_launch": "hit",
@@ -450,6 +453,7 @@ LOOPING_ROWS: Final[frozenset[str]] = frozenset(
         "grabbed",
         "ledge_grab",
         "climb",
+        "wall_climb",
         "walk_away",
         "swim",
         "item_hold",

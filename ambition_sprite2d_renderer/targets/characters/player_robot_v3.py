@@ -851,7 +851,7 @@ def body_metrics(fw: int, fh: int):
 #: steps (decision D3 of `docs/planning/engine/mary-o-part-realization.md`).
 TWEENED_ROWS = tuple(
     name
-    for row in ("walk", "run", "crouch_walk", "climb", "walk_away", "swim")
+    for row in ("walk", "run", "crouch_walk", "climb", "wall_climb", "walk_away", "swim")
     for name in (row, MIRRORED.format(row))
 )
 

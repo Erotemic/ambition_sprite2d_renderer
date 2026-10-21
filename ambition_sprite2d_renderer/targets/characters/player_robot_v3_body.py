@@ -54,7 +54,8 @@ class WorldPose:
     torso about the waist; whatever rides on it (neck, shoulders) rides the
     squash. ``shoulder_dx`` slides a shoulder along the torso — the visible half
     of a torso TURNING, since a paper doll cannot rotate out of its plane.
-    ``ankles`` default to where the boots stand at rest, flat.
+    ``ankles`` default to where the boots stand at rest, flat. ``hip_dx``
+    slides a hip along the pelvis, as ``shoulder_dx`` does a shoulder.
     """
 
     root_x: float = 0.0
@@ -65,6 +66,7 @@ class WorldPose:
     squash: float = 1.0
     head_dy: float = 0.0
     shoulder_dx: Dict[str, float] = field(default_factory=dict)
+    hip_dx: Dict[str, float] = field(default_factory=dict)
     arms: Dict[str, Arm] = field(default_factory=dict)
     ankles: Dict[str, Tuple[Point, float]] = field(default_factory=dict)
 
@@ -124,6 +126,9 @@ class RigBody:
             ch[f"bone.{side}_arm_u.x"] = dx
             ch[f"bone.{side}_arm_u.y"] = dy
             offsets[f"{side}_arm_u"] = (dx, dy)
+            if side in pose.hip_dx:
+                ch[f"bone.{side}_leg_u.x"] = pose.hip_dx[side]
+                offsets[f"{side}_leg_u"] = (pose.hip_dx[side], 0.0)
 
         angles = {k: v for k, v in ch.items() if k in self.sk.bones}
         root = (self.root[0] + pose.root_x, self.root[1] + pose.root_y)
