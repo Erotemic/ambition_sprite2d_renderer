@@ -62,10 +62,13 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional, Tuple
 
 from .skeleton import two_bone_ik
-from .svg_parts import _label, _local, rasterize_subset
+from .svg_parts import _label, _local, rasterize_subset, view_pixel_origin
 
 Point = Tuple[float, float]
-_DRAWABLE = {"path", "polygon", "rect", "ellipse", "circle", "line"}
+#: The elements that put ink on the canvas. ``use`` is an Inkscape clone: a
+#: view can draw a part as a clone of another view's art, and the clone is a
+#: drawable of the part it sits in (``svg_parts`` draws what it refers to).
+_DRAWABLE = {"path", "polygon", "rect", "ellipse", "circle", "line", "use"}
 _PART_NAME_ATTR = "data-rig-part"
 _PART_BONE_ATTR = "data-rig-bone"
 _PART_Z_ATTR = "data-rig-z"
@@ -812,10 +815,11 @@ def _joint_positions(
     view: str,
     joint_ids: Mapping[str, str],
     ref_dpi: float,
+    origin: Optional[Point] = None,
 ) -> Dict[str, Point]:
     out: Dict[str, Point] = {}
     for name, eid in joint_ids.items():
-        img, (ox, oy), _ = rasterize_subset(svg_path, view, [eid], ref_dpi)
+        img, (ox, oy), _ = rasterize_subset(svg_path, view, [eid], ref_dpi, origin)
         if img is None:
             raise ValueError(f"joint marker {name!r} rendered empty in {view!r}")
         out[name] = (ox + img.width / 2.0, oy + img.height / 2.0)
@@ -960,7 +964,10 @@ def build_humanoid_view_document(
             f"SVG view {spec.view!r} does not have one-to-one drawable ownership: "
             + "; ".join(details)
         )
-    joints = _joint_positions(svg_path, spec.view, joint_ids, spec.ref_dpi)
+    # The view's own pixel grid (`svg_parts.PIXEL_ORIGIN_ATTR`): pivots are
+    # read from it, and the rig keeps it so its parts are drawn on it.
+    pixel_origin = view_pixel_origin(svg_path, spec.view)
+    joints = _joint_positions(svg_path, spec.view, joint_ids, spec.ref_dpi, pixel_origin)
 
     required_joints = set(_required_joints())
     required_joints.update(aux.joint for aux in spec.auxiliary_bones)
@@ -969,7 +976,7 @@ def build_humanoid_view_document(
         raise ValueError(f"SVG view {spec.view!r} is missing joints: {missing}")
 
     art, (art_x, art_y), _ = rasterize_subset(
-        svg_path, spec.view, _rest_silhouette_ids(parts), spec.ref_dpi
+        svg_path, spec.view, _rest_silhouette_ids(parts), spec.ref_dpi, pixel_origin
     )
     if art is None:
         raise ValueError(f"SVG view {spec.view!r} rendered no art")
@@ -1233,6 +1240,7 @@ def build_humanoid_view_document(
             "view": spec.view,
             "ref_dpi": spec.ref_dpi,
             "scale": round(scale, 8),
+            **({} if pixel_origin is None else {"origin": [round(pixel_origin[0], 6), round(pixel_origin[1], 6)]}),
         },
         "palette": {},
         "bones": bones,

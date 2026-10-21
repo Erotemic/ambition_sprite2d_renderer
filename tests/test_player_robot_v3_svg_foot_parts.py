@@ -13,9 +13,11 @@ SVG_PATH = (
 
 def _parts():
     root = ET.parse(SVG_PATH).getroot()
+    # The side view's parts: the file holds every view, each in a cell.
+    side = next(elem for elem in root.iter() if elem.attrib.get("id") == "view-player-robot-side-right")
     return {
         elem.attrib["data-rig-part"]: elem
-        for elem in root.iter()
+        for elem in side.iter()
         if "data-rig-part" in elem.attrib
     }
 

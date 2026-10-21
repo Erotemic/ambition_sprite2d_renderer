@@ -35,7 +35,7 @@ def test_a_windowed_part_matches_the_full_canvas(tmp_path, ids):
     windowed = raw(*args)
     full_render = svg_parts._render_kept
     try:
-        svg_parts._render_kept = lambda root, keep, d: svg_parts._render_full(root, d)
+        svg_parts._render_kept = lambda root, keep, d, origin=None: svg_parts._render_full(root, d)
         full = raw(*args)
     finally:
         svg_parts._render_kept = full_render
@@ -44,3 +44,28 @@ def test_a_windowed_part_matches_the_full_canvas(tmp_path, ids):
     diff = np.abs(np.asarray(windowed[0]).astype(int) - np.asarray(full[0]).astype(int))
     # Only the rounding of resvg's single-precision transform, at an edge.
     assert diff.max() <= 16
+
+
+def test_a_view_with_a_pixel_origin_keeps_its_pixels_when_its_cell_moves(tmp_path):
+    """A view layer's `data-rig-pixel-origin` is in the layer's own
+    coordinates: a layer moved on the canvas by a distance that is not a whole
+    number of output pixels draws its part on the same pixels, at the same
+    offset from its origin."""
+    layer = """<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+      width="400mm" height="200mm" viewBox="0 0 400 200">
+      <g inkscape:label="View" inkscape:groupmode="layer" transform="translate(%s,0)" data-rig-pixel-origin="0 0">
+        <path id="leg" d="M 30 40 Q 35 58 37 77" fill="none" stroke="#17120e" stroke-width="18" stroke-linecap="round"/>
+      </g>
+    </svg>"""
+    dpi = 25.4 * 4.64  # not a whole number of pixels to the unit
+    drawn = []
+    for dx in ("0", "101.3"):
+        path = tmp_path / f"sheet_{dx}.svg"
+        path.write_text(layer % dx)
+        origin = svg_parts.view_pixel_origin(path, "View")
+        assert origin == (float(dx), 0.0)
+        drawn.append(svg_parts.rasterize_subset(path, "View", ["leg"], dpi, origin))
+    (a, off_a, _), (b, off_b, _) = drawn
+    assert off_a == off_b
+    assert a.size == b.size
+    assert np.abs(np.asarray(a).astype(int) - np.asarray(b).astype(int)).max() <= 16

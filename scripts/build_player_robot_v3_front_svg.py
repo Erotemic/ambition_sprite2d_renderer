@@ -2,7 +2,12 @@
 
     uv run python scripts/build_player_robot_v3_front_svg.py [--force]
 
-The output is ``data/characters/player_robot_v3_svg/player-robot-v3-front.svg``:
+⛔ HISTORY ONLY (2026-10-21): the view this wrote is now a layer of
+``player-robot-v3.svg``, a cell of its grid of views
+(``merge_player_robot_v3_views.py``), and that file is the authority. Do not
+run this again.
+
+The output was ``data/characters/player_robot_v3_svg/player-robot-v3-front.svg``:
 one view layer, ``Player Robot - Front``, with the same contract as the side
 and the back views (part groups, joint markers, depth on each part). The
 turnaround draws its middle frames from it.

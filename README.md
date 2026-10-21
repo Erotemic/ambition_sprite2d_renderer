@@ -465,12 +465,26 @@ uv run --extra gui python -m ambition_sprite2d_renderer.gui \
 uv run ambition-sprite2d-renderer sheet player_robot_v3
 ```
 
-The robot has a second view, from behind (`player-robot-v3-back.svg`, rig
-`player_robot_v3_back.rig.json`). The same build writes its rig, at the scale of
-the side view. The rows of `BACK_ROWS` (`player_robot_v3_back.py`: the ladder
-`climb`) are drawn from it. These rows are IK rows: a clip gives where each hand
+All the robot's views are layers of `player-robot-v3.svg`, each in its own cell
+of a grid on the canvas: the side view, the pure side view (a torso and a pelvis
+seen from the side; its other parts are clones of the side view's), the back
+and the front. Each view has a rig (`player_robot_v3*.rig.json`), and the same
+build writes them all at the scale of the side view. Each view layer has its own
+pixel grid (`data-rig-pixel-origin`, in the layer's own coordinates), so a cell
+moved on the canvas keeps the pixels of its art. After a change of the views,
+write the SVG's managed rig block again:
+
+```bash
+uv run python -m ambition_sprite2d_renderer.devtools.svg_rig_tool install-catalog \
+  ambition_sprite2d_renderer/data/characters/player_robot_v3_svg/player-robot-v3.svg \
+  ambition_sprite2d_renderer/targets/characters/rigged/player_robot_v3/*.rig.json
+```
+
+The rows of `BACK_ROWS` (`player_robot_v3_back.py`: the ladder `climb`) are
+drawn from the back view. These rows are IK rows: a clip gives where each hand
 and each foot is. The robot has one ear cup, so a back row is not mirrored for
-the other facing.
+the other facing. The rows of `PURE_SIDE_ROWS` (`player_robot_v3_wall_climb.py`)
+are drawn from the pure side view.
 
 A rig's logical authoring frame and its published raster need not be identical.
 Large rotations such as rolls should use rig-render overscan so parts are painted

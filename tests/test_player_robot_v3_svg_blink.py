@@ -28,9 +28,11 @@ def _load_builder():
 
 def test_player_robot_v3_svg_has_explicit_open_and_blink_faces():
     root = ET.parse(SVG_PATH).getroot()
+    # The side view's parts: the file holds every view, each in a cell.
+    side = next(elem for elem in root.iter() if elem.attrib.get("id") == "view-player-robot-side-right")
     parts = {
         elem.attrib.get("data-rig-part"): elem
-        for elem in root.iter()
+        for elem in side.iter()
         if elem.attrib.get("data-rig-part")
     }
 

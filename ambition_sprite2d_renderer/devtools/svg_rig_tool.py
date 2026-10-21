@@ -1447,23 +1447,7 @@ def install_repo_metadata(repo_root: Path, *, force: bool = False) -> list[Path]
     for svg_path, paths in sorted(by_svg.items(), key=lambda item: str(item[0])):
         if not force and BEGIN in svg_path.read_text(encoding="utf8"):
             continue
-        used: set[str] = set()
-        views: list[ViewCatalog] = []
-        qualities: dict[str, str] = {}
-        for rig_path in sorted(paths):
-            try:
-                catalog, quality = catalog_from_rigdoc(rig_path, svg_path, used_view_ids=used)
-            except ValueError as ex:
-                # Some retired rig documents intentionally remain beside their
-                # replacement view. They are not source authority when their
-                # named/source elements no longer exist in the current SVG.
-                if "expected exactly one SVG view labelled" in str(ex):
-                    continue
-                raise
-            views.append(catalog)
-            qualities[catalog.view_id] = quality
-        if views:
-            install_block(svg_path, _serialize_character_block(views, qualities))
+        if install_catalog(svg_path, paths):
             changed.append(svg_path)
 
     # Mary-O is already a direct-SVG rigid-part authoring source rather than a
@@ -1490,6 +1474,32 @@ def install_repo_metadata(repo_root: Path, *, force: bool = False) -> list[Path]
         install_block(svg_path, _serialize_reference_block(role))
         changed.append(svg_path)
     return sorted(set(changed))
+
+
+def install_catalog(svg_path: Path, rig_paths: Sequence[Path]) -> bool:
+    """Write the managed rig block of ONE SVG from the rig documents of its
+    views (``rig_paths``), replacing the block it has. Returns whether a block
+    was written. A rig of a view the SVG no longer has is passed over."""
+    svg_path = Path(svg_path).resolve()
+    used: set[str] = set()
+    views: list[ViewCatalog] = []
+    qualities: dict[str, str] = {}
+    for rig_path in sorted(Path(p) for p in rig_paths):
+        try:
+            catalog, quality = catalog_from_rigdoc(rig_path, svg_path, used_view_ids=used)
+        except ValueError as ex:
+            # Some retired rig documents intentionally remain beside their
+            # replacement view. They are not source authority when their
+            # named/source elements no longer exist in the current SVG.
+            if "expected exactly one SVG view labelled" in str(ex):
+                continue
+            raise
+        views.append(catalog)
+        qualities[catalog.view_id] = quality
+    if not views:
+        return False
+    install_block(svg_path, _serialize_character_block(views, qualities))
+    return True
 
 
 def _mary_o_block(path: Path) -> str:
@@ -1857,6 +1867,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="replace existing managed catalogs (normally preserve manual SVG rig edits)",
     )
 
+    p = sub.add_parser(
+        "install-catalog",
+        help="write one SVG's managed rig block from the rig documents of its views",
+    )
+    p.add_argument("svg")
+    p.add_argument("rigs", nargs="+")
+
     p = sub.add_parser("preview-repo", help="render a labelled contact sheet of SVG authoring layouts")
     p.add_argument("repo", nargs="?", default=".")
     p.add_argument("--output", "-o", default="svg_rig_layout_preview.png")
@@ -1890,6 +1907,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         changed = install_repo_metadata(Path(args.repo), force=args.force)
         for path in changed:
             print(path)
+        return 0
+    if args.command == "install-catalog":
+        if not install_catalog(Path(args.svg), [Path(r) for r in args.rigs]):
+            print("no rig names a view of this SVG")
+            return 1
+        print(args.svg)
         return 0
     if args.command == "preview-repo":
         path = write_repo_preview(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import math
 from pathlib import Path
@@ -32,7 +33,11 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_double_jump i
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_turn import author_turnaround
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_gait import author_gaits
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_ground import keep_over_ground
-from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_climb import author_wall_climb
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_climb import (
+    PURE_SIDE_ROWS,
+    author_wall_climb,
+    lend_wall_climb,
+)
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_strikes import (
     STRIKES,
     author_strikes,
@@ -40,18 +45,26 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_strikes impor
 
 ROOT = Path(__file__).resolve().parents[1]
 PKG = ROOT / "ambition_sprite2d_renderer"
+# Every view of the robot is a layer of one SVG, each in a cell of a grid on
+# its canvas (`scripts/merge_player_robot_v3_views.py`), and each has a rig.
 SVG_PATH = PKG / "data/characters/player_robot_v3_svg/player-robot-v3.svg"
 RIG_DIR = PKG / "targets/characters/rigged/player_robot_v3"
 RIG_JSON = RIG_DIR / "player_robot_v3.rig.json"
 VIEW_LABEL = "Player Robot - Side Right"
-# The robot from behind: a second SVG, with a rig of its own, for the rows of
-# `BACK_ROWS`. `scripts/build_player_robot_v3_back_svg.py` wrote its first drawing.
-BACK_SVG_PATH = PKG / "data/characters/player_robot_v3_svg/player-robot-v3-back.svg"
+# The robot from the side with its torso and pelvis from the side, for the rows
+# of `PURE_SIDE_ROWS` (the wall climb). Its other parts are clones of the side
+# view's.
+PURE_SIDE_SVG_PATH = SVG_PATH
+PURE_SIDE_RIG_JSON = RIG_DIR / "player_robot_v3_side_pure.rig.json"
+PURE_SIDE_VIEW_LABEL = "Player Robot - Side Pure"
+# The robot from behind, for the rows of `BACK_ROWS`.
+# `scripts/build_player_robot_v3_back_svg.py` wrote its first drawing.
+BACK_SVG_PATH = SVG_PATH
 BACK_RIG_JSON = RIG_DIR / "player_robot_v3_back.rig.json"
 BACK_VIEW_LABEL = "Player Robot - Back"
 # The robot from the front (`player_robot_v3_front`): the turnaround passes
 # through it. `scripts/build_player_robot_v3_front_svg.py` wrote its first drawing.
-FRONT_SVG_PATH = PKG / "data/characters/player_robot_v3_svg/player-robot-v3-front.svg"
+FRONT_SVG_PATH = SVG_PATH
 FRONT_RIG_JSON = RIG_DIR / "player_robot_v3_front.rig.json"
 FRONT_VIEW_LABEL = "Player Robot - Front"
 
@@ -612,7 +625,6 @@ def build_doc() -> dict:
     author_turnaround(solved)
     author_gaits(solved)
     author_strikes(solved)
-    author_wall_climb(solved)
     doc["features"] = {
         "paper_doll": True,
         "split_leg_artwork": True,
@@ -684,6 +696,27 @@ def build_back_doc(side: dict) -> dict:
     return doc
 
 
+def build_pure_side_doc(side: dict) -> dict:
+    """The rig of the pure side view (`build_view_doc`), with the clips of the
+    rows drawn from it (`PURE_SIDE_ROWS`)."""
+    doc = build_view_doc(side, PURE_SIDE_SVG_PATH, PURE_SIDE_VIEW_LABEL, "player_robot_v3_side_pure")
+    # As in the side rig, the rows are explicit bone channels: generated IK
+    # chains would put the limbs back at rest on each frame.
+    doc["ik_chains"] = []
+    doc["ik_legs"] = []
+    # Each row starts from the side rig's clip of it (its face and ear
+    # switches), and the solve replaces the body.
+    doc["clips"] = {row: copy.deepcopy(side["clips"][row]) for row in PURE_SIDE_ROWS}
+    author_wall_climb(RigDocument(doc))
+    doc["features"] = {
+        "paper_doll": True,
+        "view": "side_pure",
+        "motion_profile": "targets/characters/player_robot_v3_wall_climb.py",
+        "logical_frame": [FRAME_WIDTH, FRAME_HEIGHT],
+    }
+    return doc
+
+
 def _preserved_authoring_blocks() -> dict[str, dict]:
     """Keep GUI-authored metadata across deterministic rig regeneration.
 
@@ -727,11 +760,17 @@ def cmd_build() -> None:
     preserved = _preserved_authoring_blocks()
     doc = build_doc()
     doc.update(preserved)
+    pure = build_pure_side_doc(doc)
+    # The side rig keeps the clip of each pure-side row: the game solves the
+    # body's hurt volumes from the side rig's clip of the row it draws.
+    lend_wall_climb(RigDocument(pure), RigDocument(doc))
     # This pass DRAWS each frame, so it needs the path of the rig: the parts
     # find their SVG beside it.
     keep_over_ground(RigDocument(doc, source_path=RIG_JSON))
     RIG_JSON.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf8")
     print(RIG_JSON)
+    PURE_SIDE_RIG_JSON.write_text(json.dumps(pure, indent=2) + "\n", encoding="utf8")
+    print(PURE_SIDE_RIG_JSON)
     BACK_RIG_JSON.write_text(json.dumps(build_back_doc(doc), indent=2) + "\n", encoding="utf8")
     print(BACK_RIG_JSON)
     FRONT_RIG_JSON.write_text(json.dumps(build_front_doc(doc), indent=2) + "\n", encoding="utf8")

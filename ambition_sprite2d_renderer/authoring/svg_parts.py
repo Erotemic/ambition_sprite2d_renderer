@@ -172,6 +172,7 @@ def rasterize_subset(
     view: str,
     include_ids: Sequence[str],
     dpi: float,
+    origin: Optional[Tuple[float, float]] = None,
 ) -> Tuple[Optional[Image.Image], Tuple[int, int], float]:
     """Render only ``include_ids`` (within layer ``view``) to a cropped RGBA.
 
@@ -180,6 +181,10 @@ def rasterize_subset(
     where the offset is the cropped image's top-left in full-canvas pixels and
     ``px_per_unit`` converts SVG user units to those pixels. ``None`` when the
     subset renders empty (e.g. a fully off-screen or transparent selection).
+
+    ``origin`` (root user units, see ``view_pixel_origin``) is where pixel
+    (0, 0) is: the offset is from it and the pixels are on its grid. With no
+    origin it is the canvas's top-left corner.
 
     The expensive resvg result is cached process-wide by source-file identity,
     view, subset, and DPI. ``RigDocument`` also has a per-document prepared-part
@@ -196,8 +201,65 @@ def rasterize_subset(
         str(view),
         tuple(str(i) for i in include_ids),
         float(dpi),
+        None if origin is None else (float(origin[0]), float(origin[1])),
     )
     return (image.copy() if image is not None else None), offset, px_per_unit
+
+
+#: A view layer's ``data-rig-pixel-origin="X Y"``: where the view's pixel grid
+#: starts, in the layer's OWN coordinates. A layer moved on the canvas (a cell
+#: of a grid of views, dragged in Inkscape) takes its grid with it, so its art
+#: is drawn on the same pixels wherever the cell is. Without it a part's
+#: pixels follow the canvas, and moving a view by a distance that is not a
+#: whole number of output pixels shifts its art by a fraction of a pixel.
+PIXEL_ORIGIN_ATTR = "data-rig-pixel-origin"
+
+
+def _affine(transform: Optional[str]) -> Tuple[float, float, float, float, float, float]:
+    """The ``(a, b, c, d, e, f)`` matrix of an SVG ``transform`` (translate,
+    scale, matrix and rotate, composed left to right)."""
+    import re
+
+    m = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+
+    def mul(p, q):
+        a, b, c, d, e, f = p
+        A, B, C, D, E, F = q
+        return (a * A + c * B, b * A + d * B, a * C + c * D, b * C + d * D, a * E + c * F + e, b * E + d * F + f)
+
+    for name, args in re.findall(r"(\w+)\s*\(([^)]*)\)", transform or ""):
+        v = [float(x) for x in re.split(r"[\s,]+", args.strip()) if x]
+        if name == "translate":
+            q = (1.0, 0.0, 0.0, 1.0, v[0], v[1] if len(v) > 1 else 0.0)
+        elif name == "scale":
+            q = (v[0], 0.0, 0.0, v[1] if len(v) > 1 else v[0], 0.0, 0.0)
+        elif name == "matrix":
+            q = tuple(v[:6])
+        elif name == "rotate":
+            r = math.radians(v[0])
+            cx, cy = (v[1], v[2]) if len(v) > 2 else (0.0, 0.0)
+            q = mul(mul((1.0, 0.0, 0.0, 1.0, cx, cy), (math.cos(r), math.sin(r), -math.sin(r), math.cos(r), 0.0, 0.0)), (1.0, 0.0, 0.0, 1.0, -cx, -cy))
+        else:
+            raise ValueError(f"unsupported SVG transform {name!r}")
+        m = mul(m, q)
+    return m
+
+
+def view_pixel_origin(svg_path: Path, view: str) -> Optional[Tuple[float, float]]:
+    """The root-space point of the ``view`` layer's ``data-rig-pixel-origin``
+    (``PIXEL_ORIGIN_ATTR``), or ``None`` when the layer has none."""
+    root = ET.fromstring(Path(svg_path).read_bytes())
+    parent = {child: node for node in root.iter() for child in node}
+    layer = next((e for e in root.iter() if _label(e) == view), None)
+    if layer is None or not layer.get(PIXEL_ORIGIN_ATTR):
+        return None
+    x, y = (float(v) for v in layer.get(PIXEL_ORIGIN_ATTR).replace(",", " ").split())
+    node = layer
+    while node is not None and node is not root:
+        a, b, c, d, e, f = _affine(node.get("transform"))
+        x, y = a * x + c * y + e, b * x + d * y + f
+        node = parent.get(node)
+    return (x, y)
 
 
 @lru_cache(maxsize=256)
@@ -209,6 +271,7 @@ def _rasterize_subset_cached(
     view: str,
     include_ids: Tuple[str, ...],
     dpi: float,
+    origin: Optional[Tuple[float, float]] = None,
 ) -> Tuple[Optional[Image.Image], Tuple[int, int], float]:
     raw = _parse(svg_path, mtime_ns, size)
     root = ET.fromstring(raw)
@@ -307,7 +370,7 @@ def _rasterize_subset_cached(
         if _local(elem.tag) in _DRAWABLE and id(elem) not in keep:
             _hide(elem)
 
-    image, offset = _render_kept(root, keep, float(dpi))
+    image, offset = _render_kept(root, keep, float(dpi), origin)
     return image, offset, dpi / MM_PER_INCH
 
 
@@ -350,8 +413,11 @@ def _canvas_geometry(root: ET.Element) -> Optional[Tuple[float, float, float, fl
     return vb_x, vb_y, vb_w, vb_h, width_mm, height_mm
 
 
-def _render_kept(root: ET.Element, keep: set, dpi: float) -> Tuple[Optional[Image.Image], Tuple[int, int]]:
-    """The kept art, cropped to its paint, with its offset in full-canvas pixels.
+def _render_kept(
+    root: ET.Element, keep: set, dpi: float, origin: Optional[Tuple[float, float]] = None
+) -> Tuple[Optional[Image.Image], Tuple[int, int]]:
+    """The kept art, cropped to its paint, with its offset in pixels from
+    ``origin`` (root user units; the canvas's top-left corner when ``None``).
 
     The art is drawn only in a window about it, not over the whole canvas: a
     part of a sheet with many views is a small piece of a large canvas, and a
@@ -368,16 +434,21 @@ def _render_kept(root: ET.Element, keep: set, dpi: float) -> Tuple[Optional[Imag
     """
     geometry = _canvas_geometry(root)
     if geometry is None:
+        if origin is not None:
+            raise ValueError("a pixel origin needs a document sized in mm with a viewBox")
         return _render_full(root, dpi)
     vb_x, vb_y, vb_w, vb_h, width_mm, height_mm = geometry
     px_per_unit = dpi / MM_PER_INCH * width_mm / vb_w
-    canvas_w = max(1, math.floor(width_mm * dpi / MM_PER_INCH + 0.5))
-    canvas_h = max(1, math.floor(height_mm * dpi / MM_PER_INCH + 0.5))
-    if px_per_unit <= 2.0 * _COARSE_PX_PER_UNIT:
+    if origin is None and px_per_unit <= 2.0 * _COARSE_PX_PER_UNIT:
         return _render_full(root, dpi)
+    origin_x, origin_y = (vb_x, vb_y) if origin is None else origin
+    # The canvas, in pixels from the origin.
+    lo_x, lo_y = math.floor((vb_x - origin_x) * px_per_unit + 1e-6), math.floor((vb_y - origin_y) * px_per_unit + 1e-6)
+    hi_x = lo_x + max(1, math.floor(width_mm * dpi / MM_PER_INCH + 0.5))
+    hi_y = lo_y + max(1, math.floor(height_mm * dpi / MM_PER_INCH + 0.5))
 
     # Coarse pass: every kept shape opaque, so nothing faint is lost.
-    coarse_px_per_unit = _COARSE_PX_PER_UNIT
+    coarse_px_per_unit = min(px_per_unit, _COARSE_PX_PER_UNIT)
     boosted: List[Tuple[ET.Element, Optional[str]]] = []
     for elem in root.iter():
         if id(elem) in keep and _local(elem.tag) in _DRAWABLE and _local(elem.tag) != "use":
@@ -400,20 +471,22 @@ def _render_kept(root: ET.Element, keep: set, dpi: float) -> Tuple[Optional[Imag
     if coarse_box is None:
         return None, (0, 0)
 
+    # The coarse box in pixels from the origin, with a margin of two coarse pixels.
     scale = px_per_unit / coarse_px_per_unit
     pad = 2 * math.ceil(scale) + 2
-    x0 = max(0, math.floor(coarse_box[0] * scale) - pad)
-    y0 = max(0, math.floor(coarse_box[1] * scale) - pad)
-    x1 = min(canvas_w, math.ceil(coarse_box[2] * scale) + pad)
-    y1 = min(canvas_h, math.ceil(coarse_box[3] * scale) + pad)
+    shift_x, shift_y = (vb_x - origin_x) * px_per_unit, (vb_y - origin_y) * px_per_unit
+    x0 = max(lo_x, math.floor(coarse_box[0] * scale + shift_x) - pad)
+    y0 = max(lo_y, math.floor(coarse_box[1] * scale + shift_y) - pad)
+    x1 = min(hi_x, math.ceil(coarse_box[2] * scale + shift_x) + pad)
+    y1 = min(hi_y, math.ceil(coarse_box[3] * scale + shift_y) + pad)
     if x1 <= x0 or y1 <= y0:
         return None, (0, 0)
 
-    # The window: the same scale, the origin on a whole pixel of the canvas.
+    # The window: the same scale, its corner on a whole pixel from the origin.
     saved = {key: root.get(key) for key in ("viewBox", "width", "height")}
     root.set(
         "viewBox",
-        f"{vb_x + x0 / px_per_unit!r} {vb_y + y0 / px_per_unit!r} "
+        f"{origin_x + x0 / px_per_unit!r} {origin_y + y0 / px_per_unit!r} "
         f"{(x1 - x0) / px_per_unit!r} {(y1 - y0) / px_per_unit!r}",
     )
     root.set("width", f"{x1 - x0}px")

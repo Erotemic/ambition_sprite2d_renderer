@@ -1055,6 +1055,7 @@ class RigDocument:
             str(src.get("view", "")),
             float(src.get("ref_dpi", 96.0)),
             float(src.get("scale", 1.0)),
+            tuple(src.get("origin") or ()),
             part.get("name", ""),
             tuple(part.get("include") or ()),
             tuple(part.get("pivot", (0.0, 0.0))),
@@ -1074,8 +1075,11 @@ class RigDocument:
         view = str(src.get("view", ""))
         # 1 ref-px -> scale*S composite px, so render the SVG at this dpi.
         dpi = ref_dpi * scale * S
+        # A view with its own pixel grid (`svg_source.origin`): the pivots and
+        # the offset are both from it.
+        origin = src.get("origin")
         img, (off_x, off_y), _ppu = rasterize_subset(
-            svg_path, view, list(part.get("include", [])), dpi
+            svg_path, view, list(part.get("include", [])), dpi, tuple(origin) if origin else None
         )
         if img is None:
             return None

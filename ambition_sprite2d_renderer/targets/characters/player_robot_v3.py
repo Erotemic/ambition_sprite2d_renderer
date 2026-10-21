@@ -38,6 +38,7 @@ from ...core import slash_envelope
 from .robot_side import RigCanvas, SideRobotGenerator, fx_piece
 from .player_robot_v3_back import BACK_FRAMES, BACK_ROWS, back_frame
 from .player_robot_v3_front import FRONT_FRAMES, front_frame
+from .player_robot_v3_wall_climb import PURE_SIDE_ROWS
 from .player_robot_v3_gameplay import hurtbox_parts_for_rows
 from .player_robot_v3_double_jump import JETS as DOUBLE_JUMP_JETS
 from .player_robot_v3_motion import EFFECT_ALIASES, MIRRORED, ROBOT_ROWS
@@ -58,6 +59,10 @@ BACK_RIG_PATH = RIG_PATH.with_name("player_robot_v3_back.rig.json")
 #: The rig of the robot seen from the FRONT (`player_robot_v3_front`). The
 #: frames of `FRONT_FRAMES` are drawn from it.
 FRONT_RIG_PATH = RIG_PATH.with_name("player_robot_v3_front.rig.json")
+#: The rig of the robot seen from the PURE SIDE, with its torso and pelvis from
+#: the side (`player_robot_v3_wall_climb`). The rows of `PURE_SIDE_ROWS` are
+#: drawn from it.
+PURE_SIDE_RIG_PATH = RIG_PATH.with_name("player_robot_v3_side_pure.rig.json")
 
 ANIMATION_ORDER = [name for name, _frames, _duration in ROBOT_ROWS]
 
@@ -174,6 +179,16 @@ def load_back_doc() -> RigDocument:
             "`uv run python scripts/build_player_robot_v3_svg.py build`"
         )
     return RigDocument.load(BACK_RIG_PATH)
+
+
+@lru_cache(maxsize=1)
+def load_pure_side_doc() -> RigDocument:
+    if not PURE_SIDE_RIG_PATH.exists():
+        raise FileNotFoundError(
+            f"missing rig {PURE_SIDE_RIG_PATH}; rebuild it with "
+            "`uv run python scripts/build_player_robot_v3_svg.py build`"
+        )
+    return RigDocument.load(PURE_SIDE_RIG_PATH)
 
 
 @lru_cache(maxsize=1)
@@ -550,6 +565,15 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
         # cup stays on its right ear, at the right of the frame. The row of the
         # other facing is thus this picture, and it is not mirrored.
         return _render_back(row, frame_idx, frame_count)
+    if row in PURE_SIDE_ROWS:
+        # The pure side view, seen from the robot's other side as every side
+        # row is: the picture mirrored, with the head's other ear.
+        doc = load_pure_side_doc()
+        t = doc.frame_time(row, frame_idx, frame_count)
+        world, params = doc.solve(row, t)
+        frame = Image.new("RGBA", (int(doc.frame["width"]), int(doc.frame["height"])), (0, 0, 0, 0))
+        rigdoc.composite_canvas(frame, _render_body(doc, row, t, (world, _other_side(params) if mirrored else params)))
+        return rigdoc.mirrored_canvas(frame) if mirrored else frame
     doc = load_doc()
     # A strike authors its own other-side clip (the blade stays in the hand that
     # holds it, which from this side is the far one); every other row is the
@@ -582,10 +606,11 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
         return _frame_meta(clip, index, count, doc)
     if row in BACK_ROWS:
         return _frame_meta(row, frame_idx, frame_count, load_back_doc())
+    side_doc = load_pure_side_doc() if row in PURE_SIDE_ROWS else None
     clip = row
     if mirrored and MIRRORED.format(row) in load_doc().clips:
         clip = MIRRORED.format(row)
-    meta = _frame_meta(clip, frame_idx, frame_count)
+    meta = _frame_meta(clip, frame_idx, frame_count, side_doc)
     if mirrored:
         width = float(load_doc().frame["width"])
         meta["anchors"] = {k: [round(width - x, 3), y] for k, (x, y) in meta["anchors"].items()}
@@ -934,7 +959,7 @@ def render_canonical(out_dir: str | Path, **opts):
 
 __all__ = [
     "ACTOR_METADATA", "ANIMATION_ORDER", "FRAME_SIZE", "ROWS", "TARGET_NAME",
-    "build_part_flipbook", "frame_meta", "load_back_doc", "load_doc", "published_frame", "render",
+    "build_part_flipbook", "frame_meta", "load_back_doc", "load_doc", "load_pure_side_doc", "published_frame", "render",
     "render_canonical", "render_frame",
     "render_portraits",
 ]

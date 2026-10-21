@@ -10,10 +10,14 @@
     "render_scale": 1
   },
   "svg_source": {
-    "path": "../../../../data/characters/player_robot_v3_svg/player-robot-v3-back.svg",
+    "path": "../../../../data/characters/player_robot_v3_svg/player-robot-v3.svg",
     "view": "Player Robot - Back",
     "ref_dpi": 25.4,
-    "scale": 1.16091954
+    "scale": 1.16091954,
+    "origin": [
+      428.0,
+      118.0
+    ]
   },
   "palette": {},
   "bones": [
