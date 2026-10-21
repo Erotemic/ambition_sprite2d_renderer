@@ -268,7 +268,10 @@ FREED = P(at=(0.0, -2.0), rot=-10.0, mouth="big", eyes="pin", ears=-20.0, flame=
 KINDLE = P(at=(-2.0, -2.0), rot=-8.0, mouth="open", eyes="pin", ears=-16.0, flame=1.3, trail=110.0)
 FLING = P(at=(6.0, 0.0), rot=10.0, mouth="grit", eyes="pin", ears=-34.0, flame=1.5, trail=170.0)
 #: Its fire is spent: on the floor, chin down, dim.
-SPENT = P(at=(0.0, 10.0), rot=16.0, sq=0.95, mouth="loll", eyes="closed", ears=-36.0, brows=1.0, flame=0.15, trail=270.0, fade=0.75)
+#: Spent, not dead (Jon, 2026-10-21: "It looks like he is dead, but he is
+#: not"): heavy lids over eyes that still watch you, not the X of "closed",
+#: which is the dead head's.
+SPENT = P(at=(0.0, 10.0), rot=16.0, sq=0.95, mouth="loll", eyes="heavy", ears=-36.0, brows=1.0, flame=0.15, trail=270.0, fade=0.75)
 #: Struck.
 STRUCK = P(at=(-6.0, -2.0), rot=-14.0, mouth="big", eyes="wince", ears=-20.0, brows=1.0, flame=1.2, trail=140.0)
 

@@ -856,6 +856,13 @@ class WolfHead:
                 size = 0.15 if mode == "pin" else 0.26
                 k.oval(d, at_, rx * size, rx * size, c.IRIS)
                 k.oval(d, at_, rx * size * 0.58, rx * size * 0.58, c.OUTLINE)
+                if mode == "heavy":
+                    # Spent, not dead: the lid hangs low over an eye that
+                    # still watches you, a dark slit of it under the lid.
+                    k.poly(d, [(e[0] - rx - 1.0, e[1] - ry - 1.0), (e[0] + rx + 1.0, e[1] - ry - 1.0), (e[0] + rx + 1.0, e[1] + ry * 0.35),
+                               (e[0] - rx - 1.0, e[1] + ry * 0.45)], c.FUR_DARK)
+                    k.line(d, [(e[0] - rx - 0.6, e[1] + ry * 0.45), (e[0] + rx + 0.6, e[1] + ry * 0.35)], c.OUTLINE, 0.9)
+                    continue
                 if mode == "squint":
                     # The glare: the top lid down over half the eye.
                     k.poly(d, [(e[0] - rx - 1.0, e[1] - ry - 1.0), (e[0] + rx + 1.0, e[1] - ry - 1.0), (e[0] + rx + 1.0, e[1] - ry * 0.1),
