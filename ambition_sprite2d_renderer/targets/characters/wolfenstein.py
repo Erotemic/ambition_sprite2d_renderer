@@ -1107,6 +1107,21 @@ def run(i: int, n: int):
              nh="claw", fh="claw", nf=nf, ff=ff, mouth="open", hem=(3.0, 1.0), ears=-16.0, eyes="pin", sq=1.0 - 0.03 * math.cos(2.0 * ph))
 
 
+#: Turned: the sheet faces him the new way at once; his body comes round
+#: after it. His shoulders and arms are still swung the old way, his weight
+#: on his back foot, his head looking back over his shoulder.
+TURNING = P(hip=(-3.0, 4.0), lean=-4.0, sq=0.95, shrug=(1.0, 1.0), head=(-1.0, 1.0, 10.0), na=(-12.0, 26.0), fa=(-8.0, 27.0), nh="claw", fh="claw",
+            nf=(5.0, 0.0, 0.0), ff=(-7.0, -2.0, 6.0), mouth="grit", ears=-12.0, look=(-0.6, 0.2), hem=(-2.0, 2.0))
+
+
+@X.row
+def turn(i: int, n: int):
+    # He comes round heavily: the shoulders first, then the hips, and the feet
+    # catch up.
+    return keyed(i, n, [(0.0, TURNING), (0.45, dict(TURNING, hip=(0.0, 4.0), lean=6.0, na=(6.0, 28.0), fa=(4.0, 28.0), look=(0.4, 0.2)), "out"),
+                        (1.0, EXHALE, "back")], drag=HEAVY)
+
+
 RISE = P(hip=(0.0, -2.0), lean=6.0, head=(1.0, 0.0, -8.0), na=(-12.0, -16.0), nab=-1.0, fa=(21.0, -6.0), nh="splay", fh="splay", nf=(-4.0, -12.0, 26.0),
          ff=(7.0, -16.0, 10.0), mouth="big", hem=(2.0, 3.0), sq=1.06, ears=-10.0)
 APEX = P(hip=(0.0, -2.0), lean=4.0, head=(1.0, 0.0, -2.0), na=(-16.0, -8.0), nab=-1.0, fa=(22.0, 0.0), nh="open", fh="open", nf=(-4.0, -9.0, 20.0),
@@ -2157,17 +2172,17 @@ def headless(i: int, n: int):
     return on_the_floor(dict(PRONE, headless=1.0), 0, 1)
 
 
-X.rows = [("idle", 16, 90), ("walk", 12, 100), ("prowl", 12, 70), ("run", 8, 85), ("jump", 6, 100), ("fall", 6, 100), ("land_hard", 8, 70),
-          ("rake_tell", 8, 80), ("rake_a", 6, 50), ("rake_b", 6, 50), ("rake_c", 8, 55), ("rake_recover", 6, 80),
-          ("hammer_tell", 10, 100), ("hammer_slam", 6, 50), ("hammer_stuck", 8, 80), ("hammer_pull", 6, 60),
-          ("lunge_tell", 8, 90), ("lunge", 6, 60), ("lunge_skid", 8, 50),
+X.rows = [("idle", 16, 90), ("walk", 16, 75), ("prowl", 16, 52), ("run", 12, 57), ("jump", 6, 100), ("fall", 6, 100), ("land_hard", 8, 70),
+          ("rake_tell", 12, 55), ("rake_a", 6, 50), ("rake_b", 6, 50), ("rake_c", 8, 55), ("rake_recover", 10, 50),
+          ("hammer_tell", 14, 70), ("hammer_slam", 6, 50), ("hammer_stuck", 8, 80), ("hammer_pull", 10, 40),
+          ("lunge_tell", 12, 60), ("lunge", 6, 60), ("lunge_skid", 12, 35),
           ("bound_rise", 6, 60), ("bound_wall", 4, 70), ("bound_dive", 4, 60), ("winded", 12, 90),
           ("howl_tell", 8, 100), ("howl", 12, 70), ("taunt", 12, 100),
           ("galvanize_tell", 10, 60), ("galvanize", 8, 60), ("lash_tell", 8, 80), ("lash", 6, 60), ("flatline", 16, 110), ("recharge", 8, 50),
           ("awaken", 14, 70), ("shock", 8, 50), ("hit", 6, 60), ("death", 28, 90),
           ("throne_dead", 12, 120), ("throne_wake", 20, 85), ("serum_tell", 10, 80), ("serum_inject", 10, 80), ("serum_surge", 20, 80),
-          ("stab_tell", 8, 80), ("stab", 6, 60), ("stab_recover", 8, 80),
-          ("unsewn", 14, 80), ("headless", 8, 120)]
+          ("stab_tell", 8, 80), ("stab", 6, 60), ("stab_recover", 12, 55),
+          ("unsewn", 14, 80), ("headless", 8, 120), ("turn", 6, 40)]
 
 # ---- What his blows do -------------------------------------------------------
 

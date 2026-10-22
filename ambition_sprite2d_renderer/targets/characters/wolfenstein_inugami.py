@@ -8,7 +8,10 @@ The story: the regime sewed a wolf's head onto a soldier's body and gave it
 orders. When the body dies, the wolf is free at last: the stitches round the
 neck pop, the head tears itself off the body, and the ghost fire of an
 inugami (the dog spirit of the old stories, made from a dog's severed head)
-catches in it. It floats, it bites, it howls, and it throws ghost fire.
+catches in it. It is a hunting dog of the regime, set free (Jon, 2026-10-22:
+"it just doesn't have a strong boss identity"): it stalks you, it lunges, it
+pounces, its blue spirits run the floor at you as its pack, and the leash they
+kept it on is a ghost chain it cracks along the floor.
 
 The look. It is HIS head: the same skull, jaw, ears, eyes and brain in a jar
 (``wolfenstein.WolfHead``), drawn in the ink of a spirit (``SPIRIT``): a red
@@ -22,9 +25,11 @@ It faces right. There is no drop shadow. The glow round it is part of the
 spirit, not a shadow on a floor.
 
 Rows: the rise (the head comes off the body; it is his own head until the
-fire catches), the float and the drift, and a tell and a strike row for each
-move of its fight (``ambition_content_modules::inugami`` draws them by
-name).
+fire catches), the float, the drift and the hunt, its crash out of the arena,
+and a tell and a strike row for each move of its fight
+(``ambition_content_modules::inugami`` draws them by name). The chain's tip
+and the wisps of the pack are the game's (sparks and shots); a row draws the
+chain from the neck to the bottom of its frame.
 """
 
 from __future__ import annotations
@@ -78,6 +83,9 @@ GLOW: RGBA = (255, 70, 80, 255)
 ONIBI_OUT: RGBA = (70, 120, 255, 210)
 ONIBI_MID: RGBA = (130, 210, 255, 235)
 ONIBI_CORE: RGBA = (236, 250, 255, 255)
+#: The leash: a ghost chain, fire in the shape of links.
+CHAIN_OUT: RGBA = (230, 40, 64, 255)
+CHAIN_CORE: RGBA = (255, 226, 196, 255)
 RING: RGBA = (255, 214, 206, 255)
 RING_DARK: RGBA = (176, 24, 48, 255)
 THREAD: RGBA = (120, 22, 40, 255)
@@ -202,6 +210,37 @@ def _glow(radius: float):
     return K.piece(("glow", radius), paint)
 
 
+def _chain(length: float, bend: float, links: float = 1.0):
+    """The broken leash: links of ghost fire from ``home`` along +x,
+    ``length`` long, its end bent ``bend`` frame pixels to one side. Only the
+    first ``links`` of it (0-1) is drawn: the chain unrolls."""
+    length, bend, links = _r(length, 4.0), _r(bend, 4.0), _r(links, 0.1)
+    step = 12.0
+
+    def ring(d, c: Point, angle: float, rx: float, ry: float, colour: RGBA, width: float) -> None:
+        ca, sa = math.cos(angle), math.sin(angle)
+        pts = []
+        for k in range(12):
+            a = math.tau * k / 12.0
+            x, y = rx * math.cos(a), ry * math.sin(a)
+            pts.append(K.at(c[0] + x * ca - y * sa, c[1] + x * sa + y * ca))
+        K.line(d, pts + [pts[0]], colour, width)
+
+    def paint(d) -> None:
+        n = max(1, int(length * links / step))
+        for k in range(n):
+            t = (k + 0.5) * step / max(1.0, length)
+            c = (t * length, bend * t * t)
+            angle = math.atan2(2.0 * bend * t / max(1.0, length), 1.0)
+            # The links turn a quarter turn each: one seen flat, one edge on.
+            ry = 4.8 if k % 2 == 0 else 1.8
+            K.oval(d, K.at(*c), 10.0, 10.0, GLOW[:3] + (60,))
+            ring(d, c, angle, 8.0, ry, CHAIN_OUT, 3.6)
+            ring(d, c, angle, 8.0, ry, CHAIN_CORE, 1.4)
+
+    return K.piece(("chain", length, bend, links), paint)
+
+
 def _torn_threads(swing: float):
     """The stitches it tore out of the neck: loose ends hanging from the
     seam under its ruff, swung ``swing`` degrees by its motion."""
@@ -272,6 +311,21 @@ FLING = P(at=(6.0, 0.0), rot=10.0, mouth="grit", eyes="pin", ears=-34.0, flame=1
 #: not"): heavy lids over eyes that still watch you, not the X of "closed",
 #: which is the dead head's.
 SPENT = P(at=(0.0, 10.0), rot=16.0, sq=0.95, mouth="loll", eyes="heavy", ears=-36.0, brows=1.0, flame=0.15, trail=270.0, fade=0.75)
+#: THE HUNT: low and long, ears flat, jaws open, the fire long behind it.
+HUNT = P(at=(4.0, 6.0), rot=12.0, sq=0.97, mouth="open", eyes="pin", ears=-42.0, look=(1.0, 0.2), flame=1.6, trail=178.0)
+#: Its crash out of the arena: jaws first at the wall, everything flat back.
+CRASH = P(at=(12.0, 0.0), rot=4.0, sq=0.92, mouth="big", eyes="pin", ears=-46.0, brows=1.0, look=(1.0, 0.0), flame=1.9, trail=180.0)
+#: THE PACK: chin down, it growls its spirits down to the floor; then it
+#: barks one out at a time.
+GROWL = P(at=(-4.0, 8.0), rot=14.0, sq=0.98, mouth="grit", eyes="pin", ears=-30.0, look=(1.0, 0.5), flame=1.2, trail=120.0)
+BARK = P(at=(8.0, 4.0), rot=2.0, sq=1.03, mouth="big", eyes="pin", ears=-38.0, look=(1.0, 0.3), flame=1.5, trail=170.0)
+#: THE LEASH: it rears and strains at its neck, the stitches burning.
+STRAIN = P(at=(-8.0, -4.0), rot=-22.0, sq=1.03, mouth="grit", eyes="pin", ears=-20.0, brows=1.0, look=(1.0, -0.2), flame=1.4, trail=100.0)
+#: It throws its head round and the chain with it.
+WHIP_BACK = P(at=(-10.0, -2.0), rot=-30.0, sq=1.04, mouth="gape", eyes="pin", ears=-28.0, look=(-0.4, 0.2), flame=1.5, trail=110.0)
+WHIP_THROUGH = P(at=(12.0, 4.0), rot=28.0, sq=0.95, mouth="big", eyes="pin", ears=-40.0, look=(1.0, 0.4), flame=1.7, trail=190.0)
+#: The chain fallen slack, it pants: chin low, tongue out.
+SLACK = P(at=(0.0, 8.0), rot=10.0, sq=0.97, mouth="loll", eyes="heavy", ears=-10.0, brows=1.0, look=(0.6, 0.4), flame=0.7, trail=230.0)
 #: Struck.
 STRUCK = P(at=(-6.0, -2.0), rot=-14.0, mouth="big", eyes="wince", ears=-20.0, brows=1.0, flame=1.2, trail=140.0)
 
@@ -325,22 +379,35 @@ def _pose(anim: str, i: int, n: int) -> Pose:
         return dict(STUCK, rot=82.0 + 9.0 * s, at=(3.0 * s, 10.0 + 1.5 * abs(c)), ears=-30.0 + 30.0 * abs(s), flame=0.6 + 0.2 * _flicker(i))
     if anim == "pull_free":
         return keys(u, [(0.0, STUCK), (0.3, dict(STUCK, rot=60.0, mouth="open"), "snap"), (1.0, FREED, "out")])
-    if anim == "onibi_tell":
-        pose = keys(u, [(0.0, FLOAT), (0.4, KINDLE, "out"), (1.0, KINDLE)])
-        return dict(pose, at=(pose["at"][0], pose["at"][1] + 1.5 * s))  # type: ignore[index]
-    if anim == "onibi":
-        return keys(u, [(0.0, KINDLE), (0.25, FLING, "snap"), (0.6, FLING, "hold"), (1.0, FLOAT)])
+    if anim == "hunt":
+        # At a run: its head pumps, its jaws work.
+        pose = dict(HUNT, at=(HUNT["at"][0] + 2.0 * c, HUNT["at"][1] + 4.0 * s), rot=12.0 + 5.0 * c)  # type: ignore[index]
+        return dict(pose, mouth="open" if i % 4 < 2 else "big", ears=-42.0 + 4.0 * abs(s))
+    if anim == "crash":
+        return dict(CRASH, rot=4.0 + _jitter(i, 2.0), at=(12.0 + _jitter(i, 1.5, 1.0), 0.0))
+    if anim == "pack_tell":
+        # Chin down, it growls: a shiver, its spirits sinking to the floor.
+        pose = keys(u, [(0.0, FLOAT), (0.35, GROWL, "out"), (1.0, dict(GROWL, at=(-4.0, 10.0), rot=18.0))])
+        return dict(pose, rot=float(pose["rot"]) + (_jitter(i, 1.6) if u > 0.35 else 0.0))  # type: ignore[arg-type]
+    if anim == "pack":
+        # One bark: a wisp goes. The fight loops it, a bark a wisp.
+        return keys(u, [(0.0, GROWL), (0.3, BARK, "snap"), (0.6, BARK, "hold"), (1.0, GROWL, "io")])
+    if anim == "leash_tell":
+        # It rears and strains: the stitches burn, the chain unrolls.
+        pose = keys(u, [(0.0, FLOAT), (0.4, STRAIN, "out"), (0.8, dict(STRAIN, rot=-26.0)), (1.0, WHIP_BACK, "in")])
+        return dict(pose, rot=float(pose["rot"]) + (_jitter(i, 2.0) if 0.4 <= u < 0.8 else 0.0))  # type: ignore[arg-type]
+    if anim == "leash_whip":
+        # It throws the chain round: back, through, and it hangs on.
+        return keys(u, [(0.0, WHIP_BACK), (0.45, WHIP_THROUGH, "snap"), (0.8, dict(WHIP_THROUGH, rot=22.0, mouth="grit"), "out"),
+                        (1.0, dict(SLACK, at=(4.0, 4.0)), "io")])
+    if anim == "leash_slack":
+        # It pants, the chain hanging: its sides heave, its tongue lolls.
+        return dict(SLACK, mouth="loll" if i % 4 < 2 else "open", sq=0.97 + 0.03 * s, at=(0.0, 8.0 + 2.0 * s), flame=0.7 + 0.1 * _flicker(i))
     if anim == "howl_tell":
         return keys(u, [(0.0, FLOAT), (1.0, HOWL_DRAW, "in")])
     if anim == "howl":
         pose = keys(u, [(0.0, HOWL_DRAW), (0.2, HOWL, "snap"), (0.85, HOWL, "hold"), (1.0, dict(HOWL, rot=-30.0, mouth="big"))])
         return dict(pose, rot=float(pose["rot"]) + (_jitter(i, 2.0) if 0.2 <= u < 0.85 else 0.0))  # type: ignore[arg-type]
-    if anim == "vanish":
-        pose = keys(u, [(0.0, FLOAT), (0.3, dict(FLOAT, mouth="open", eyes="squint")), (1.0, dict(FLOAT, sq=0.6, flame=1.8, trail=270.0))])
-        return dict(pose, fade=max(0.0, 1.0 - u * 1.1))
-    if anim == "appear":
-        pose = keys(u, [(0.0, dict(FLOAT, sq=0.6, flame=1.8, trail=270.0)), (0.6, dict(GAPE, at=(0.0, 0.0))), (1.0, FLOAT)])
-        return dict(pose, fade=min(1.0, u * 1.4))
     if anim == "gutter":
         # The fire goes out of it and it drops (the fight carries it down).
         pose = keys(u, [(0.0, FLOAT), (0.35, dict(FLOAT, mouth="open", eyes="wince", flame=0.6, rot=-6.0), "out"),
@@ -367,12 +434,13 @@ def _pose(anim: str, i: int, n: int) -> Pose:
 
 #: Rows: name, frames, milliseconds a frame. The fight draws them by name.
 ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 12, 90), ("drift", 8, 80), ("rise", 22, 80), ("hit", 6, 60), ("death", 26, 90),
+    ("idle", 16, 70), ("drift", 8, 80), ("rise", 22, 80), ("hit", 6, 60), ("death", 26, 90),
     ("bite_tell", 8, 70), ("bite", 8, 50), ("bite_miss", 12, 70),
     ("dive_tell", 8, 80), ("dive", 4, 50), ("buried", 12, 70), ("pull_free", 6, 70),
-    ("onibi_tell", 10, 80), ("onibi", 8, 60),
-    ("howl_tell", 6, 80), ("howl", 12, 70),
-    ("vanish", 8, 60), ("appear", 8, 60),
+    ("howl_tell", 6, 80), ("howl", 16, 55),
+    ("hunt", 8, 70), ("crash", 4, 50),
+    ("pack_tell", 10, 80), ("pack", 7, 50),
+    ("leash_tell", 10, 80), ("leash_whip", 10, 60), ("leash_slack", 10, 100),
     ("gutter", 10, 80), ("guttered", 8, 120), ("rekindle", 6, 60),
     # Nothing: it is still his head on his body (before it tears off).
     ("unseen", 1, 100),
@@ -387,14 +455,28 @@ ROWS: List[Tuple[str, int, int]] = [
 SPIRITS = 4
 SPIRIT_RING = (104.0, 40.0)
 SPIRIT_TILT = -12.0
-#: Rows in which the spirits are not circling: before the fire catches, while
-#: they swell into its onibi, and once the spirit has left it.
-NO_SPIRITS = ("onibi_tell", "onibi", "vanish", "appear")
+#: Rows in which the spirits are not circling: while they sink to the floor
+#: as its pack, and while they run it.
+NO_SPIRITS = ("pack_tell", "pack")
 
-#: The onibi round it: their places on their ring (degrees) and the ring's
-#: size, frame pixels.
-ONIBI_ANGLES = (-150.0, -30.0, 90.0)
-ONIBI_RING = 74.0
+#: Where the leash goes in its rows: the chain from its neck (frame pixels
+#: long; the world's chain is longer, and its tip is the game's sparks), how
+#: much of it is drawn, and how far its end bends, by row and ``u``.
+CHAIN_LONG = 96.0
+
+
+def _leash(anim: str, u: float) -> Optional[Tuple[float, float, float]]:
+    """The chain of a row at ``u``: (how much of it, its bend, its turn from
+    straight down, degrees), or None."""
+    if anim == "leash_tell":
+        return (min(1.0, max(0.0, (u - 0.3) / 0.6)), -24.0 * u, 30.0 * u)
+    if anim == "leash_whip":
+        # Its end trails the swing: back, then flung through.
+        swing = -1.0 + 2.0 * min(1.0, u / 0.6)
+        return (1.0, 40.0 * swing, -40.0 * swing)
+    if anim == "leash_slack":
+        return (1.0, 4.0, 0.0)
+    return None
 
 
 def _fire(img: Image.Image, pose: Pose, i: int) -> None:
@@ -446,15 +528,33 @@ def _spirits(img: Image.Image, anim: str, pose: Pose, i: int, n: int, behind: bo
 
 
 def _effects_over(img: Image.Image, anim: str, pose: Pose, i: int, n: int) -> None:
-    """What the moves throw: the onibi, the howl's rings, the fire catching."""
+    """What the moves throw: the spirits sinking as the pack, the howl's
+    rings, the stitches burning, the fire catching."""
     u = R.shot(i, n)
     centre = _head_point(pose, (2.0, -6.0))
-    if anim == "onibi_tell" or (anim == "onibi" and u < 0.25):
-        grow = min(1.0, u / 0.6) if anim == "onibi_tell" else 1.0
-        for k, a in enumerate(ONIBI_ANGLES):
-            a = math.radians(a + 40.0 * u)
-            at = (centre[0] + math.cos(a) * ONIBI_RING, centre[1] + math.sin(a) * ONIBI_RING * 0.8)
-            K.place(img, _wisp((5.0 + 6.0 * grow) * (1.0 + 0.1 * _flicker(i, k)), i + k), at, f"onibi_{k}")
+    if anim == "pack_tell":
+        # Its circling spirits sink round it to the floor, and swell.
+        rx, ry = SPIRIT_RING
+        for k in range(SPIRITS):
+            a = math.tau * k / SPIRITS + 0.6
+            start = (centre[0] + rx * math.cos(a), centre[1] + ry * math.sin(a))
+            floor = (centre[0] + (k - 1.5) * 44.0, FRAME_SIZE[1] - 18.0)
+            f = min(1.0, u / 0.8)
+            f = f * f * (3.0 - 2.0 * f)
+            at = (start[0] + (floor[0] - start[0]) * f, start[1] + (floor[1] - start[1]) * f)
+            K.place(img, _hitodama(9.0 + 3.0 * f + 0.6 * _flicker(i, k)), at, f"pack_{k}", 180.0 if k < 2 else 0.0)
+    if anim == "pack":
+        # A wisp drops from its jaws to the floor at each bark.
+        mouth = _head_point(pose, (18.0, 6.0))
+        if u >= 0.3:
+            t = (u - 0.3) / 0.7
+            at = (mouth[0] + 30.0 * t, mouth[1] + (FRAME_SIZE[1] - 18.0 - mouth[1]) * t)
+            K.place(img, _hitodama(10.0 + 2.0 * t), at, "pack_wisp", 90.0 - 70.0 * t)
+    if anim == "leash_tell" and 0.3 <= u:
+        # The stitches burn as the chain comes out of them.
+        for k, p in enumerate(((-8.0, 15.2), (-1.0, 16.4), (6.4, 14.4))):
+            if (i + k) % 2 == 0:
+                K.place(img, _tongue_of_fire(14.0, 8.0, 2.0 * _flicker(i, k)), _head_point(pose, p), f"stitch_{k}", 260.0 + 10.0 * k)
     if anim == "howl" and 0.2 <= u < 0.85:
         mouth = _head_point(pose, (18.0, 6.0))
         turn = int(float(pose["rot"]))  # type: ignore[arg-type]
@@ -484,6 +584,11 @@ def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if spirit:
         K.place(img, _glow(64.0 + 6.0 * float(pose["flame"])), centre, "glow")  # type: ignore[arg-type]
     _fire(img, pose, frame_idx)
+    leash = _leash(anim, R.shot(frame_idx, nframes))
+    if leash is not None:
+        links, bend, turn_from_down = leash
+        if links > 0.0:
+            K.place(img, _chain(CHAIN_LONG, bend, links), _head_point(pose, NECK), "leash", 90.0 + turn_from_down)
     _spirits(img, anim, pose, frame_idx, nframes, behind=True)
     turn, sq = float(pose["rot"]), float(pose["sq"])  # type: ignore[arg-type]
     at = _head_point(pose, (0.0, 0.0))
@@ -540,8 +645,10 @@ ACTOR_METADATA = {
         "ghost, the torn stitches hanging from its ruff, ghost fire streaming from its neck."
     ),
     "gameplay_description": (
-        "A floating boss: a darting bite, a dive that sinks its teeth in the floor, ghost fire it "
-        "throws, a howl that pushes, and a vanish. Its fire gutters out at the end of each cycle."
+        "A floating boss that hunts: it stalks you at your height, lunges, pounces with a shock "
+        "both ways along the floor, sends its pack of wisps running the floor at you, howls a "
+        "ring that pushes, and cracks its broken leash along the floor. Its fire gutters out "
+        "once in a long cycle."
     ),
 }
 
