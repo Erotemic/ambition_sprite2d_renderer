@@ -38,12 +38,12 @@ GROUNDED: Tuple[str, ...] = (
 )
 
 
-def keep_over_ground(doc: RigDocument) -> Dict[str, float]:
-    """Lift each frame of the grounded rows that has paint under the ground
-    line. Returns the largest lift of each row that was changed."""
+def keep_over_ground(doc: RigDocument, rows: Tuple[str, ...] = GROUNDED) -> Dict[str, float]:
+    """Lift each frame of `rows` that has paint under the ground line.
+    Returns the largest lift of each row that was changed."""
     ground = float(doc.frame["ground_y"])
     lifted: Dict[str, float] = {}
-    for row in GROUNDED:
+    for row in rows:
         clip = doc.data["clips"][row]
         n = int(clip["frames"])
         times = [doc.frame_time(row, i, n) for i in range(n)]

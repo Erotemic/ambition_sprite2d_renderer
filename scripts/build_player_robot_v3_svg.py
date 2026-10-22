@@ -37,7 +37,9 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_cling im
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_climb import author_wall_climb
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crawl import (
     PURE_SIDE_ROWS,
+    START_ROW as CRAWL_START_ROW,
     author_crawl,
+    author_crawl_start,
     lend_pure_side_rows,
 )
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_strikes import (
@@ -712,6 +714,11 @@ def build_pure_side_doc(side: dict) -> dict:
     doc["clips"] = {row: copy.deepcopy(side["clips"][row]) for row in PURE_SIDE_ROWS}
     author_wall_climb(RigDocument(doc))
     author_crawl(RigDocument(doc))
+    author_crawl_start(RigDocument(doc), RigDocument(side))
+    # The way down onto the hands mixes two poses on the floor, and the
+    # middle of a mix can go under it. This pass DRAWS, so it needs the path
+    # of the rig (the parts find their SVG beside it).
+    keep_over_ground(RigDocument(doc, source_path=PURE_SIDE_RIG_JSON), (CRAWL_START_ROW,))
     doc["features"] = {
         "paper_doll": True,
         "view": "side_pure",

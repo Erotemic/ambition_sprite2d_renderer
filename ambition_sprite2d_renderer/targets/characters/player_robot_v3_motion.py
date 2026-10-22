@@ -38,6 +38,10 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("crouch_start", 5, 68),
     ("crouch", 6, 95),
     ("crouch_walk", 8, 88),
+    # From the crouch hold down onto the hands to the crawl's first frame, and
+    # backward up out of it: the game slaves it to how far into the crawl the
+    # body is (`player_robot_v3_crawl`).
+    ("crawl_start", 5, 40),
     # A crouch that leaves the ground. Nothing in the vocabulary could name one
     # until `CharacterAnim::CrouchJump` existed, so a ducked jump drew a plain
     # one; the row falls back to `jump` for a sheet that skips it.
@@ -330,6 +334,7 @@ POSE_ALIASES: Final[dict[str, str]] = {
     "stumble": "hit",
     "crouch_start": "crouch",
     "crouch_end": "crouch",
+    "crawl_start": "crouch",
     "land": "land",
     "jump_squat": "jump",
     "double_jump": "wall_jump",
