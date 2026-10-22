@@ -313,3 +313,57 @@ def undercroft(layer_key: str, art: Art) -> np.ndarray:
     art.put(layer, shafts(art, "dust shafts", 4, 0.03, 0.0, 0.9, 0.04), p["day"], 0.10)
     art.put(layer, fog(art, "floor haze", 0.78, 0.10), p["lamp"], 0.10)
     return layer
+
+
+# ---------------------------------------------------------------------------
+# Indoors: the rooms of the town's houses
+# ---------------------------------------------------------------------------
+
+INTERIOR = {
+    "plaster": (236, 222, 198),
+    "plaster_dark": (176, 150, 120),
+    "shadow": (92, 72, 60),
+    "beam": (112, 80, 58),
+    "beam_dark": (64, 44, 34),
+    "tile": (70, 112, 170),
+    "tile_gold": (214, 170, 84),
+    "lamp": (255, 214, 150),
+    "day": (255, 246, 222),
+}
+
+
+def interior(layer_key: str, art: Art) -> np.ndarray:
+    """Inside a house of the Math town: whitewashed plaster in lamplight
+    between timber posts. Each room puts its own furniture in front of this
+    (`math_town_interiors`); this is only the wall all of them share. Nothing
+    here is at a height of the room (a scene is not placed by a room's floor
+    or ceiling), so it has no wainscot and no beam."""
+    p = INTERIOR
+    if layer_key == "sky":
+        layer = art.opaque(art.ramp([(0.0, mix(p["plaster"], p["plaster_dark"], 0.5)), (0.5, p["plaster"]), (1.0, mix(p["plaster"], p["plaster_dark"], 0.5))]))
+        # The plaster is laid by hand: a soft mottle.
+        art.shade(layer, art.blur(np.clip(art.noise("plaster", 9.0, 3) - 0.5, 0.0, 1.0), 0.6), 0.10)
+        # Lamplight pools on the wall.
+        art.light(layer, art.spot(0.25, 0.42, 0.30, 1.6, squash=1.4), p["lamp"], 0.22)
+        art.light(layer, art.spot(0.75, 0.42, 0.30, 1.6, squash=1.4), p["lamp"], 0.22)
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        # A timber post at each bay, from top to bottom.
+        image, pen = art.drawing()
+        for cu in np.arange(0.125, 1.0, 0.25):
+            pen.rect(cu - 0.012, 0.0, cu + 0.012, 1.0)
+        body = art.mask_of(image)
+        layer = solid(art, body, p["beam"], p["beam_dark"], 0.2, 0.9, "wood", 0.10)
+        art.light(layer, art.rim(body, -0.003, 0.0, 0.5) * body, p["lamp"], 0.30)
+        haze(art, layer, p["shadow"], 0.12, None)
+        return layer
+    if layer_key == "near_background":
+        # Pools of lamplight in the air of the room, nearer than the wall.
+        layer = art.blank()
+        for cu in (0.25, 0.75):
+            art.put(layer, art.spot(cu, 0.45, 0.22, 2.0, squash=1.3), p["lamp"], 0.10)
+        return layer
+    layer = art.blank()
+    art.put(layer, shafts(art, "window light", 3, 0.04, 0.0, 0.9, 0.05), p["day"], 0.08)
+    return layer

@@ -217,6 +217,8 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     # The town of the Math dimension: a blue door of planks in a limestone arch.
     "math_town": (plank, _colours((226, 216, 194), (70, 112, 170), (40, 52, 70), (78, 124, 186), (255, 236, 190))),
     "math_undercroft": (plank, _colours((196, 178, 148), (70, 112, 170), (34, 38, 54), (214, 170, 84), (255, 204, 128))),
+    # A house door from inside: green plank in a plaster arch.
+    "math_interior": (plank, _colours((236, 222, 198), (60, 90, 80), (40, 52, 70), (90, 130, 90), (255, 214, 150))),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

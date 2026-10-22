@@ -67,6 +67,7 @@ SCENES: dict[str, Scene] = {
     "noodly": noodly.noodly,
     "math_town": math_town.math_town,
     "math_undercroft": math_town.undercroft,
+    "math_interior": math_town.interior,
     "eclipse": arenas.eclipse,
     "evil_forest": evil.evil_forest,
     "castle_godwin": evil.castle_godwin,

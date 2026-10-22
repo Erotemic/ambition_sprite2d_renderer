@@ -114,6 +114,8 @@ SKINS: tuple[Skin, ...] = (
     # curb with a blue line marked like a ruler.
     Skin("math_town", "block", (186, 172, 148), (118, 106, 90), (222, 210, 186), (78, 124, 186), "edge", (240, 234, 220), "lip", "slab"),
     # The gate hall under the Math town: the same limestone, in lamplight.
+    # Inside the town's houses: a floor of terracotta tiles with a blue line.
+    Skin("math_interior", "tile", (176, 108, 78), (110, 64, 46), (214, 150, 110), (78, 124, 186), "edge", (226, 200, 170), "lip", "slab"),
     Skin("math_undercroft", "block", (150, 134, 110), (74, 66, 58), (196, 178, 148), (214, 170, 84), "edge", (206, 194, 170), "lip", "slab"),
     Skin("noodly", "noodle", (160, 116, 58), (64, 34, 20), (226, 184, 106), (255, 222, 140), "sauce", (172, 44, 32), "noodles", "lasagne"),
     # The forest of the Evil dimension: black earth with dead grass on it,
@@ -355,6 +357,22 @@ def fill(skin: Skin) -> Image.Image:
                 else:
                     tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x0 + cx, y0 + cy, 0.7) for cx, cy in ((4.2, 4.2), (11.8, 11.8))]), skin.dark, 0.30)
         tile.tone((tile.noise(3, 3, 3) - 0.5) * 0.08)
+    elif skin.material == "tile":
+        # Glazed square tiles in grout, light and dark by turns, and a small
+        # diamond of the accent where four of them meet: a floor indoors.
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        for bx in range(4):
+            for by in range(4):
+                x0, y0 = bx * 16.0, by * 16.0
+                colour = skin.base if (bx + by) % 2 == 0 else _mix(skin.base, skin.light, 0.45)
+                colour = _mix(colour, skin.dark, rng.uniform(0.0, 0.10))
+                body = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.6, y0 + 0.6, x0 + 15.4, y0 + 15.4))
+                tile.put(body, colour)
+                glaze = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.6, y0 + 0.6, x0 + 15.4, y0 + 1.6))
+                tile.put(glaze, skin.light, 0.40)
+                if (bx + by) % 2 == 0:
+                    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0, y0 - 2.2), (x0 + 2.2, y0), (x0, y0 + 2.2), (x0 - 2.2, y0)])), skin.accent, 0.9)
+        tile.tone((tile.noise(3, 3, 3) - 0.5) * 0.10)
     elif skin.material == "block":
         _courses(tile, skin, 16.0, 32.0, 0.5, 0.7)
         cracks = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y), (x + a, y + 3), (x + a - 1.5, y + 7)], 0.3) for x, y, a in [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(-3, 3)) for _ in range(6)]])

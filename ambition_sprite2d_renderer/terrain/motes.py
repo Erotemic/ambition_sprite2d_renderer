@@ -103,6 +103,8 @@ MOTES = {
     "math_town": (_dot, (252, 250, 240)),
     # Dust in the shafts of day from the grates.
     "math_undercroft": (_dot, (255, 236, 200)),
+    # Dust in the lamplight of a room.
+    "math_interior": (_dot, (255, 230, 190)),
     # Embers of a dark light.
     "starless": (_glow, (255, 120, 196)),
     # Sparks that go up from the fire under the floor.
@@ -145,6 +147,7 @@ SHADOWS = {
     "noodly": (40, 18, 12),
     "math_town": (70, 80, 100),
     "math_undercroft": (20, 22, 32),
+    "math_interior": (60, 44, 36),
     "starlight": (88, 64, 120),
     "stardune": (124, 78, 70),
     "starless": (5, 2, 14),
