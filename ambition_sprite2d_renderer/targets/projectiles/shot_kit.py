@@ -10,6 +10,8 @@ Each row is one look, registered by `game/ambition_content/src/projectiles.rs`:
 * ``fireball``: the robot's fireball. A comet of fire: a white-hot nose, an
   orange body, tongues of flame behind it.
 * ``coldfire``: the same comet in blue (the Mockingbird, once its fire is cold).
+* ``ghostfire``: the same comet in the red ghost fire of the Inugami's kind
+  (the wisps a spectral wolf bursts into).
 * ``hadouken``: the robot's Hadouken. A ball of blue force behind a bright
   crescent front, with streamers behind.
 * ``hadouken_super``: the same, larger, with a second crescent and sparks.
@@ -68,6 +70,7 @@ ROWS: List[Tuple[str, int, int]] = [
     ("charge_0", 8, 60),
     ("charge_1", 8, 50),
     ("charge_2", 8, 40),
+    ("ghostfire", 6, 55),
 ]
 
 Point = Tuple[float, float]
@@ -127,6 +130,7 @@ def _comet(nose: float, tail: float, half: float, wave: float, tongues: int, pha
 
 #: The colours of a comet of fire, from its rim to its core, then its sparks.
 _HOT = ((150, 32, 20, 235), (240, 92, 26, 255), (255, 176, 46, 255), (255, 236, 150, 255), (255, 255, 240, 255), (255, 190, 70))
+_GHOST = ((122, 24, 50, 235), (196, 28, 52, 255), (255, 96, 92, 255), (255, 190, 180, 255), (255, 226, 214, 255), (255, 140, 130))
 _COLD = ((20, 44, 132, 235), (40, 110, 232, 255), (96, 184, 255, 255), (190, 236, 255, 255), (244, 252, 255, 255), (150, 214, 255))
 
 
@@ -415,6 +419,7 @@ def _phase(frame_idx: int, nframes: int) -> float:
 _DRAW: Dict[str, Callable[[int, int], Image.Image]] = {
     "fireball": lambda i, n: _fireball(_phase(i, n)),
     "coldfire": lambda i, n: _fireball(_phase(i, n), _COLD),
+    "ghostfire": lambda i, n: _fireball(_phase(i, n), _GHOST),
     "hadouken": lambda i, n: _hadouken(_phase(i, n), False),
     "hadouken_super": lambda i, n: _hadouken(_phase(i, n), True),
     "spit": lambda i, n: _spit(_phase(i, n)),
