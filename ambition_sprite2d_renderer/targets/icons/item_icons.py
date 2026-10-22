@@ -849,39 +849,6 @@ def icon_blink_crystal(d: ImageDraw.ImageDraw, s: float, accent: Color) -> None:
         )
 
 
-def icon_puppy_slug_gun(d: ImageDraw.ImageDraw, s: float, accent: Color) -> None:
-    d.polygon(
-        scaled([(20, 39), (31, 39), (28, 53), (19, 53)], s),
-        fill=rgba("#2A2740"),
-        outline=rgba("#05070D"),
-    )
-    d.rounded_rectangle(
-        (15 * s, 27 * s, 42 * s, 40 * s),
-        radius=4 * s,
-        fill=rgba("#3A3550"),
-        outline=rgba("#05070D"),
-        width=max(1, int(2 * s)),
-    )
-    d.polygon(
-        scaled([(41, 25), (47, 21), (46, 31)], s),
-        fill=with_alpha(accent, 230),
-        outline=rgba("#05070D"),
-    )
-    d.polygon(
-        scaled([(51, 25), (57, 22), (52, 32)], s),
-        fill=with_alpha(accent, 230),
-        outline=rgba("#05070D"),
-    )
-    d.ellipse(
-        bbox(47 * s, 33 * s, 17 * s, 15 * s),
-        fill=with_alpha(accent, 210),
-        outline=rgba("#05070D"),
-        width=max(1, int(2 * s)),
-    )
-    d.ellipse(bbox(44 * s, 31 * s, 3 * s, 3 * s), fill=rgba("#05070D"))
-    d.ellipse(bbox(50 * s, 34 * s, 5 * s, 4 * s), fill=rgba("#23262E"))
-
-
 def icon_fireball(d: ImageDraw.ImageDraw, s: float, accent: Color) -> None:
     # A flaming sphere: soft glow, flame tongues licking up, a hot orange body,
     # a white-hot core. Reads as fire whether held in hand or streaking in flight
@@ -1207,7 +1174,6 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float, Color], None]] = {
     "gravity_grenade": icon_gravity_grenade,
     "mark_recall": icon_mark_recall,
     "blink_crystal": icon_blink_crystal,
-    "puppy_slug_gun": icon_puppy_slug_gun,
     "fireball": icon_fireball,
 }
 
@@ -1232,11 +1198,27 @@ def render_item_object(
     symbol on a tile. Used for the wielded held-item ground props. No baked drop
     shadow (the ECS visual layer owns cast shadows; a baked one would shift the
     alpha bbox and float the item)."""
+    if spec.drawer in PICTURES:
+        return PICTURES[spec.drawer]()
     s = max(1, int(supersample))
     img = Image.new("RGBA", (size[0] * s, size[1] * s), (0, 0, 0, 0))
     d = blending_draw(img)
     DRAWERS[spec.drawer](d, float(s), rgba(spec.accent))
     return img.resize(size, RESAMPLING.LANCZOS)
+
+
+def _puppy_slug_gun_picture() -> Image.Image:
+    from ..props._puppy_slug_gun_art import picture
+
+    return picture()
+
+
+#: Items drawn as props of their own, at their own size and aspect, not as a
+#: 64x64 drawer: the picture is the whole sprite (``held_item_art.ron`` sizes
+#: it in the world).
+PICTURES: Dict[str, Callable[[], Image.Image]] = {
+    "puppy_slug_gun": _puppy_slug_gun_picture,
+}
 
 
 def write_icon_contact_sheet(
