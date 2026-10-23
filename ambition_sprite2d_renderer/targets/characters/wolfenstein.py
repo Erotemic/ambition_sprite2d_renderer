@@ -931,16 +931,14 @@ class WolfHead:
             left = JAR_X - JAR_HALF
             k.line(d, [at(left + 3.0, JAR_BASE - 3.0), at(left + 3.0, JAR_TOP + 10.0), at(left + 5.4, JAR_TOP + 5.0)], c.GLINT, 1.1)
             k.line(d, [at(JAR_X + JAR_HALF - 3.0, JAR_TOP + 9.0), at(JAR_X + JAR_HALF - 3.0, JAR_TOP + 13.0)], c.GLINT_FAINT, 0.7)
-            # The steel collar it is screwed into, riveted to his skull, and a
-            # valve on the crown of the glass.
+            # The steel collar it is screwed into, riveted to his skull. The
+            # dome is plain glass: nothing on its crown (Jon, 2026-10-23).
             x0, x1 = JAR_X - JAR_HALF - 2.4, JAR_X + JAR_HALF + 2.4
             k.rrect(d, *at(x0, JAR_BASE - 0.6), *at(x1, JAR_BASE + 4.2), 1.0, c.BOLT, c.OUTLINE, 0.9)
             k.line(d, [at(x0 + 1.0, JAR_BASE + 0.6), at(x1 - 1.0, JAR_BASE + 0.6)], c.COLLAR_LIGHT, 0.7)
             k.line(d, [at(x0 + 1.0, JAR_BASE + 3.2), at(x1 - 1.0, JAR_BASE + 3.2)], c.BOLT_DARK, 0.7)
             for x in (-10.0, -5.0, 0.0, 5.0, 10.0):
                 k.oval(d, at(JAR_X + x, JAR_BASE + 1.8), 0.8, 0.8, c.BOLT_DARK, c.OUTLINE, 0.4)
-            k.rrect(d, *at(JAR_X - 2.4, JAR_TOP - 2.6), *at(JAR_X + 2.4, JAR_TOP + 0.6), 0.6, c.BOLT, c.OUTLINE, 0.7)
-            k.rrect(d, *at(JAR_X - 0.9, JAR_TOP - 4.6), *at(JAR_X + 0.9, JAR_TOP - 2.4), 0.4, c.BOLT_DARK, c.OUTLINE, 0.6)
 
         return k.piece((c.name, "brain_jar"), paint)
 
