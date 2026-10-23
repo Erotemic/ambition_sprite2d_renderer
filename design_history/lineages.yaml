@@ -1249,3 +1249,31 @@ lineages:
         id: general_hero_v2
         label: "The knight who came back"
         note: "A new target beside the old one, a side-view SVG rig: a breastplate over a blue gambeson, a blue cape, a blond beard, his medals, both hands on his planted sword; he cuts two-handed and raises it to the sky. Jon saw three looks and did not pick; B was cast. Claude Opus 5.5 declared."
+  dividing_mite:
+    name: Dividing Mite
+    ids: [dividing_mite_v2, dividing_mite]
+    paths: ['dividing_mite', 'mites_art', 'mite_v2']
+    summary: "a white robot-toon biped with a sword, then a teal cell halfway through dividing on eight legs, an SVG rig"
+    eras:
+      - commit: "a29ed41"
+        id: dividing_mite
+        label: "The replicator drone"
+        note: "The last commit with the first design: the robot-toon generator's `replicator_blob_drone`, a box-headed biped with a sword (configs/dividing_mite.yaml)."
+      - commit: "eefba37"
+        id: dividing_mite_v2
+        label: "The twin-core cell"
+        note: "A new target beside the old one: two teal lobes with a nucleus, a feeler and four legs each, cinched by a cleavage ring; in death the lobes pull apart. Jon saw three looks and did not pick; A was cast when he asked for the art in the game. Claude Opus 5.5 declared."
+  exploding_mite:
+    name: Exploding Mite
+    ids: [exploding_mite_v2, exploding_mite]
+    paths: ['exploding_mite', 'mites_art', 'mite_v2']
+    summary: "a robot-toon biped with a sword, then a round bomb with a lit fuse on eight legs, an SVG rig"
+    eras:
+      - commit: "a29ed41"
+        id: exploding_mite
+        label: "The volatile bomb drone"
+        note: "The last commit with the first design: the robot-toon generator's `volatile_bomb_drone`, a box-headed biped with a sword (configs/exploding_mite.yaml)."
+      - commit: "eefba37"
+        id: exploding_mite_v2
+        label: "The bomb"
+        note: "A new target beside the old one: a gunmetal shell with a hazard belt, a valve and a lit fuse; in death the fuse burns down while the shell swells and goes white hot. Jon saw three looks and did not pick; A was cast when he asked for the art in the game. Claude Opus 5.5 declared."
