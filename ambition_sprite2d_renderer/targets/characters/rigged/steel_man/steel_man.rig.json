@@ -1,0 +1,612 @@
+{
+  "name": "steel_man",
+  "frame": {
+    "width": 400,
+    "height": 480,
+    "center_x": 200,
+    "ground_y": 460,
+    "ankle_h": 0,
+    "supersample": 3,
+    "render_scale": 1,
+    "trim": false
+  },
+  "svg_source": {
+    "path": "../../../../data/characters/steel_man/steel_man.svg",
+    "view": "Steel Man - Side Right",
+    "ref_dpi": 25.4,
+    "scale": 0.5
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.2,
+    "frame_sample_inset": 1
+  },
+  "palette": {},
+  "bones": [
+    {
+      "name": "body",
+      "parent": null,
+      "offset": [
+        0.5,
+        -80.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "torso",
+      "parent": "body",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "offset": [
+        0.5,
+        -63.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_arm_u",
+      "parent": "torso",
+      "offset": [
+        1.5,
+        -47.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_arm_l",
+      "parent": "near_arm_u",
+      "offset": [
+        2.0,
+        33.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_hand",
+      "parent": "near_arm_l",
+      "offset": [
+        2.0,
+        29.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_arm_u",
+      "parent": "torso",
+      "offset": [
+        -4.5,
+        -48.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_arm_l",
+      "parent": "far_arm_u",
+      "offset": [
+        -3.0,
+        33.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_hand",
+      "parent": "far_arm_l",
+      "offset": [
+        2.0,
+        29.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_leg_u",
+      "parent": "body",
+      "offset": [
+        4.0,
+        7.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_leg_l",
+      "parent": "near_leg_u",
+      "offset": [
+        1.0,
+        36.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_foot",
+      "parent": "near_leg_l",
+      "offset": [
+        -2.0,
+        29.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_leg_u",
+      "parent": "body",
+      "offset": [
+        -4.5,
+        7.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_leg_l",
+      "parent": "far_leg_u",
+      "offset": [
+        -1.0,
+        36.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_foot",
+      "parent": "far_leg_l",
+      "offset": [
+        -2.5,
+        29.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "far_arm_u",
+      "bone": "far_arm_u",
+      "z": 0,
+      "kind": "sprite",
+      "include": [
+        "far-arm-u"
+      ],
+      "pivot": [
+        272.0,
+        246.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_arm_l",
+      "bone": "far_arm_l",
+      "z": 1,
+      "kind": "sprite",
+      "include": [
+        "far-arm-l"
+      ],
+      "pivot": [
+        266.0,
+        312.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_hand",
+      "bone": "far_hand",
+      "z": 2,
+      "kind": "sprite",
+      "include": [
+        "far-hand"
+      ],
+      "pivot": [
+        270.0,
+        370.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_shin",
+      "bone": "far_leg_l",
+      "z": 3,
+      "kind": "sprite",
+      "include": [
+        "far-shin"
+      ],
+      "pivot": [
+        270.0,
+        428.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_thigh",
+      "bone": "far_leg_u",
+      "z": 4,
+      "kind": "sprite",
+      "include": [
+        "far-thigh"
+      ],
+      "pivot": [
+        272.0,
+        356.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_foot",
+      "bone": "far_foot",
+      "z": 5,
+      "kind": "sprite",
+      "include": [
+        "far-foot"
+      ],
+      "pivot": [
+        265.0,
+        486.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_shin",
+      "bone": "near_leg_l",
+      "z": 6,
+      "kind": "sprite",
+      "include": [
+        "near-shin"
+      ],
+      "pivot": [
+        291.0,
+        428.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_thigh",
+      "bone": "near_leg_u",
+      "z": 7,
+      "kind": "sprite",
+      "include": [
+        "near-thigh"
+      ],
+      "pivot": [
+        289.0,
+        356.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_foot",
+      "bone": "near_foot",
+      "z": 8,
+      "kind": "sprite",
+      "include": [
+        "near-foot"
+      ],
+      "pivot": [
+        287.0,
+        486.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "pelvis",
+      "bone": "body",
+      "z": 9,
+      "kind": "sprite",
+      "include": [
+        "pelvis"
+      ],
+      "pivot": [
+        281.0,
+        342.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "torso",
+      "bone": "torso",
+      "z": 10,
+      "kind": "sprite",
+      "include": [
+        "torso"
+      ],
+      "pivot": [
+        281.0,
+        342.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "neck",
+      "bone": "torso",
+      "z": 11,
+      "kind": "sprite",
+      "include": [
+        "neck"
+      ],
+      "pivot": [
+        281.0,
+        342.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "bone": "head",
+      "z": 12,
+      "kind": "sprite",
+      "include": [
+        "head"
+      ],
+      "pivot": [
+        282.0,
+        216.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "mouth_open",
+      "bone": "head",
+      "z": 13,
+      "kind": "sprite",
+      "include": [
+        "mouth-open"
+      ],
+      "pivot": [
+        282.0,
+        216.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "mouth_open",
+      "opacity_default": 0
+    },
+    {
+      "name": "near_arm_u",
+      "bone": "near_arm_u",
+      "z": 14,
+      "kind": "sprite",
+      "include": [
+        "near-arm-u"
+      ],
+      "pivot": [
+        284.0,
+        248.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_pauldron",
+      "bone": "near_arm_u",
+      "z": 15,
+      "kind": "sprite",
+      "include": [
+        "near-pauldron"
+      ],
+      "pivot": [
+        284.0,
+        248.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_arm_l",
+      "bone": "near_arm_l",
+      "z": 16,
+      "kind": "sprite",
+      "include": [
+        "near-arm-l"
+      ],
+      "pivot": [
+        288.0,
+        314.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_hand",
+      "bone": "near_hand",
+      "z": 17,
+      "kind": "sprite",
+      "include": [
+        "near-hand"
+      ],
+      "pivot": [
+        292.0,
+        372.0
+      ],
+      "rest_angle": 0
+    }
+  ],
+  "ik_legs": [],
+  "ik_chains": [],
+  "clips": {
+    "idle": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 170,
+      "channels": {
+        "root_y": {
+          "expr": "0.35*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-0.5*sin(tau*t)"
+        },
+        "head": {
+          "expr": "0.4*sin(tau*t+0.8)"
+        },
+        "near_arm_u": {
+          "expr": "0.6*sin(tau*t)"
+        },
+        "near_arm_l": {
+          "expr": "-0.4*sin(tau*t)"
+        },
+        "near_hand": {
+          "expr": "0"
+        },
+        "far_arm_u": {
+          "expr": "-0.6*sin(tau*t)"
+        },
+        "far_arm_l": {
+          "expr": "0.4*sin(tau*t)"
+        },
+        "far_hand": {
+          "expr": "0"
+        }
+      }
+    },
+    "walk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 115,
+      "channels": {
+        "root_y": {
+          "expr": "-1.6*(1-abs(sin(tau*t)))"
+        },
+        "torso": {
+          "expr": "1.5 + 0.6*sin(2*tau*t)"
+        },
+        "head": {
+          "expr": "-1.5 - 0.6*sin(2*tau*t)"
+        },
+        "near_leg_u": {
+          "expr": "-17*sin(tau*t)"
+        },
+        "far_leg_u": {
+          "expr": "17*sin(tau*t)"
+        },
+        "near_leg_l": {
+          "expr": "22*max(0.0, cos(tau*t))"
+        },
+        "far_leg_l": {
+          "expr": "22*max(0.0, -cos(tau*t))"
+        },
+        "near_foot": {
+          "expr": "-((-17*sin(tau*t)) + (22*max(0.0, cos(tau*t))))"
+        },
+        "far_foot": {
+          "expr": "-((17*sin(tau*t)) + (22*max(0.0, -cos(tau*t))))"
+        },
+        "near_arm_u": {
+          "expr": "12*sin(tau*t)"
+        },
+        "near_arm_l": {
+          "expr": "-8 + 4*sin(tau*t)"
+        },
+        "near_hand": {
+          "expr": "0"
+        },
+        "far_arm_u": {
+          "expr": "-12*sin(tau*t)"
+        },
+        "far_arm_l": {
+          "expr": "-8 - 4*sin(tau*t)"
+        },
+        "far_hand": {
+          "expr": "0"
+        }
+      }
+    },
+    "talk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 130,
+      "channels": {
+        "torso": {
+          "expr": "-1 + 0.8*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-2 + 2*sin(2*tau*t)"
+        },
+        "near_arm_u": {
+          "expr": "-22 + 5*sin(tau*t)"
+        },
+        "near_arm_l": {
+          "expr": "-58 + 8*sin(tau*t+0.6)"
+        },
+        "near_hand": {
+          "expr": "-10 + 6*sin(tau*t+1.0)"
+        },
+        "far_arm_u": {
+          "expr": "-4"
+        },
+        "far_arm_l": {
+          "expr": "-6"
+        },
+        "far_hand": {
+          "expr": "0"
+        },
+        "mouth_open": {
+          "expr": "1 if (sin(2*tau*t) > -0.3) else 0"
+        }
+      }
+    },
+    "interact": {
+      "loop": false,
+      "frames": 6,
+      "duration_ms": 120,
+      "channels": {
+        "torso": {
+          "expr": "6*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) - 6*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.6)/0.4)))"
+        },
+        "head": {
+          "expr": "9*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.1)/0.35))) - 9*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.6)/0.4)))"
+        },
+        "near_arm_u": {
+          "expr": "-24*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) + 24*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.6)/0.4)))"
+        },
+        "near_arm_l": {
+          "expr": "-30*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) + 30*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.6)/0.4)))"
+        },
+        "near_hand": {
+          "expr": "0"
+        }
+      }
+    },
+    "hurt": {
+      "loop": false,
+      "frames": 4,
+      "duration_ms": 92,
+      "channels": {
+        "root_x": {
+          "expr": "-2*(1-t)*(1-t)"
+        },
+        "torso": {
+          "expr": "-4*(1-t)*(1-t)"
+        },
+        "head": {
+          "expr": "-5*(1-t)*(1-t)"
+        },
+        "near_arm_u": {
+          "expr": "-6*(1-t)*(1-t)"
+        },
+        "near_arm_l": {
+          "expr": "0"
+        },
+        "near_hand": {
+          "expr": "0"
+        },
+        "far_arm_u": {
+          "expr": "8*(1-t)*(1-t)"
+        },
+        "far_arm_l": {
+          "expr": "0"
+        },
+        "far_hand": {
+          "expr": "0"
+        }
+      }
+    }
+  }
+}
