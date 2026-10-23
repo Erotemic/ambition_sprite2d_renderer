@@ -1144,3 +1144,29 @@ lineages:
         id: news_board_v2
         label: "The Drain Market board"
         note: "A new target beside the old one: planks on two drain pipes under a pitched tin roof, notices whose news is pictures, a PA horn that kicks when it talks. Jon saw three looks and did not pick; A was cast because the board stands in the Drain Market. Claude Opus 5.5 declared."
+  carl_runga:
+    name: Carl Runga
+    ids: [carl_runga_v2, carl_runga]
+    paths: ['carl_runga', 'runge_kutta']
+    summary: "a procedural numerical operator in a heavy apron, then Carl Runge as a Goettingen professor, an SVG rig"
+    eras:
+      - commit: "6b01ba0"
+        label: "The numerical operator"
+        note: "The last commit with the first design before the redesign: a square head, beard and moustache, a brown coat over a reinforced apron, heavy gloves, drawn by `_runge_kutta_duo.py`."
+      - commit: "d0f486f"
+        id: carl_runga_v2
+        label: "The Goettingen professor"
+        note: "Bald dome, full grizzled beard, a black frock coat over a wine waistcoat and watch chain; 183 cm and heavy. Look A of three; Jon did not pick and asked for the new art in the game. Claude Opus 5.5 declared."
+  martin_cutta:
+    name: Martin Cutta
+    ids: [martin_cutta_v2, martin_cutta]
+    paths: ['martin_cutta', 'runge_kutta']
+    summary: "a procedural numerical operator, then Martin Kutta as the coefficient clerk, an SVG rig"
+    eras:
+      - commit: "6b01ba0"
+        label: "The numerical operator"
+        note: "The last commit with the first design before the redesign, drawn by `_runge_kutta_duo.py` with Runga."
+      - commit: "d0f486f"
+        id: martin_cutta_v2
+        label: "The coefficient clerk"
+        note: "Upright, dark hair and a moustache, a dove-grey lounge suit with a high collar, pince-nez on a cord, the green ledger of coefficients; 173 cm. Look A of three. Claude Opus 5.5 declared."
