@@ -1131,3 +1131,16 @@ lineages:
       - commit: "04e9178"
         label: "The voyager captain"
         note: "The v2 robot rebuilt as white shell plates over a dark jointed suit: box head, dark visor, oval cyan eyes, one rigid antenna; a navy hull with a comet badge, gold shoulder boards, winglets, a comet trail. Jon asked what Claude would do redesigning the main character, then to use it on the Captain. Claude Opus 5.5 declared."
+  news_board:
+    name: News Board
+    ids: [news_board]
+    paths: ['news_board']
+    summary: "a purple corporate cork board, then the Drain Market's own board of planks on drain pipes with a PA horn for a voice"
+    eras:
+      - commit: "2b15cc8"
+        label: "Disruptor Industries board"
+        note: "The last commit with the first design: a procedural cork board in a dark frame, a purple corporate header, three clippings and a blinking power LED."
+      - commit: "e1405b9"
+        id: news_board_v2
+        label: "The Drain Market board"
+        note: "A new target beside the old one: planks on two drain pipes under a pitched tin roof, notices whose news is pictures, a PA horn that kicks when it talks. Jon saw three looks and did not pick; A was cast because the board stands in the Drain Market. Claude Opus 5.5 declared."
