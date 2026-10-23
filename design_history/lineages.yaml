@@ -1184,3 +1184,68 @@ lineages:
         id: paul_diracula_v2
         label: "The Count"
         note: "A new target beside the old one: a black tailcoat and white tie, the psi medallion, an opera cape lined in crimson; Dirac's long face and side parting under a small widow's peak. Jon saw three looks and did not pick; A was cast when he asked for the art in the game. Claude Opus 5.5 declared."
+  architect:
+    name: Architect
+    ids: [architect_v2, architect]
+    paths: ['architect']
+    summary: "a purple toon in a long coat with a blueprint, then a modernist in a dark suit with the roll of drawings under his arm"
+    eras:
+      - commit: "2b15cc8"
+        id: architect
+        label: "The toon architect"
+        note: "The last commit with the first design: the toon rig's tall body in a long coat, a bob of hair, a sash and a blueprint."
+      - commit: "56aa282"
+        id: architect_v2
+        label: "The modernist"
+        note: "A new target beside the old one, a side-view SVG rig: a dark suit, round glasses, a violet bow tie, a pencil behind the ear, the roll of drawings under his arm. Jon saw three looks and did not pick; A was cast. Claude Opus 5.5 declared."
+  manifest_clerk:
+    name: Manifest Clerk
+    ids: [manifest_clerk]
+    paths: ['manifest_clerk']
+    summary: "the Architect's sheet worn as a placeholder, then an old registrar with the fanfold manifest"
+    eras:
+      - commit: "56aa282"
+        label: "The registrar"
+        note: "His first art of his own (he wore the Architect's sheet): a stooped old clerk in a long cardigan coat, half-moon glasses, black oversleeves, the fanfold manifest from his fist to a heap on the floor. Jon saw three looks and did not pick; C was cast. Claude Opus 5.5 declared."
+  vault_keeper:
+    name: Vault Keeper
+    ids: [vault_keeper_v2, vault_keeper]
+    paths: ['vault_keeper']
+    summary: "a toon keeper, then the keeper of the vault in a wine-red robe with the key-headed staff"
+    eras:
+      - commit: "2b15cc8"
+        id: vault_keeper
+        label: "The toon keeper"
+        note: "The last commit with the first design: a body of the toon rig in the keeper palette."
+      - commit: "56aa282"
+        id: vault_keeper_v2
+        label: "The keeper of the vault"
+        note: "A new target beside the old one, a side-view SVG rig: a wine-red robe, bald, a black beard, a gold earring, the key-headed vault staff, a combination dial on a chain. Jon saw three looks and did not pick; C was cast. Claude Opus 5.5 declared."
+  merchant_prototype:
+    name: Merchant Prototype
+    ids: [merchant_prototype_v2, merchant_prototype]
+    paths: ['merchant_prototype']
+    summary: "a toon merchant, then a travelling pedlar with the whole shop on her back"
+    eras:
+      - commit: "2b15cc8"
+        id: merchant_prototype
+        label: "The toon merchant"
+        note: "The last commit with the first design: a body of the toon rig in the merchant palette."
+      - commit: "56aa282"
+        id: merchant_prototype_v2
+        label: "The travelling pedlar"
+        note: "A new target beside the old one, a side-view SVG rig: a pack frame with an axe, a bomb and a health cell, a polka-dot headscarf, gold hoops, a shawl, an apron over a blue skirt. Jon saw three looks and did not pick; B was cast. Claude Opus 5.5 declared."
+  general_hero:
+    name: General Hero
+    ids: [general_hero_v2, general_hero]
+    paths: ['general_hero']
+    summary: "the toon rig's generic sword hero, then a knight come back from the war, standing watch on his sword"
+    eras:
+      - commit: "2b15cc8"
+        id: general_hero
+        label: "The toon hero"
+        note: "The last commit with the first design: the toon rig's generic hero with a blade and a scarf."
+      - commit: "56aa282"
+        id: general_hero_v2
+        label: "The knight who came back"
+        note: "A new target beside the old one, a side-view SVG rig: a breastplate over a blue gambeson, a blue cape, a blond beard, his medals, both hands on his planted sword; he cuts two-handed and raises it to the sky. Jon saw three looks and did not pick; B was cast. Claude Opus 5.5 declared."
