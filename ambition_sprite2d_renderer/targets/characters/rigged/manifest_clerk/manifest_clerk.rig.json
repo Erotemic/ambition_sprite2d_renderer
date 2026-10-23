@@ -1,0 +1,665 @@
+{
+  "name": "manifest_clerk",
+  "frame": {
+    "width": 400,
+    "height": 480,
+    "center_x": 200,
+    "ground_y": 460,
+    "ankle_h": 0,
+    "supersample": 3,
+    "render_scale": 1,
+    "trim": false
+  },
+  "svg_source": {
+    "path": "../../../../data/characters/manifest_clerk/manifest_clerk.svg",
+    "view": "Manifest Clerk - Side Right",
+    "ref_dpi": 25.4,
+    "scale": 0.5
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.2,
+    "frame_sample_inset": 1
+  },
+  "palette": {},
+  "bones": [
+    {
+      "name": "body",
+      "parent": null,
+      "offset": [
+        -5.775,
+        -78.75
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "torso",
+      "parent": "body",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "offset": [
+        4.515,
+        -54.075
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_arm_u",
+      "parent": "torso",
+      "offset": [
+        0.0,
+        -44.1
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_arm_l",
+      "parent": "near_arm_u",
+      "offset": [
+        -1.575,
+        24.15
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_hand",
+      "parent": "near_arm_l",
+      "offset": [
+        19.95,
+        -8.4
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_arm_u",
+      "parent": "torso",
+      "offset": [
+        -5.25,
+        -44.1
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_arm_l",
+      "parent": "far_arm_u",
+      "offset": [
+        -1.575,
+        25.2
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_hand",
+      "parent": "far_arm_l",
+      "offset": [
+        4.2,
+        21.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_leg_u",
+      "parent": "body",
+      "offset": [
+        3.675,
+        0.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_leg_l",
+      "parent": "near_leg_u",
+      "offset": [
+        2.625,
+        34.65
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_foot",
+      "parent": "near_leg_l",
+      "offset": [
+        -1.05,
+        34.65
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_leg_u",
+      "parent": "body",
+      "offset": [
+        -3.675,
+        0.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_leg_l",
+      "parent": "far_leg_u",
+      "offset": [
+        0.0,
+        34.65
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_foot",
+      "parent": "far_leg_l",
+      "offset": [
+        -3.675,
+        34.65
+      ],
+      "length": 0,
+      "rest_angle": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "fanfold_heap",
+      "bone": "body",
+      "z": 0,
+      "kind": "sprite",
+      "include": [
+        "fanfold-heap"
+      ],
+      "pivot": [
+        268.45,
+        344.5
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "fanfold",
+      "bone": "near_hand",
+      "z": 1,
+      "kind": "sprite",
+      "include": [
+        "fanfold"
+      ],
+      "pivot": [
+        305.2,
+        287.8
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_arm_u",
+      "bone": "far_arm_u",
+      "z": 2,
+      "kind": "sprite",
+      "include": [
+        "far-arm-u"
+      ],
+      "pivot": [
+        257.95,
+        256.3
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_arm_l",
+      "bone": "far_arm_l",
+      "z": 3,
+      "kind": "sprite",
+      "include": [
+        "far-arm-l"
+      ],
+      "pivot": [
+        254.8,
+        306.7
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_hand",
+      "bone": "far_hand",
+      "z": 4,
+      "kind": "sprite",
+      "include": [
+        "far-hand"
+      ],
+      "pivot": [
+        263.2,
+        348.7
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_shin",
+      "bone": "far_leg_l",
+      "z": 5,
+      "kind": "sprite",
+      "include": [
+        "far-shin"
+      ],
+      "pivot": [
+        261.1,
+        413.8
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_thigh",
+      "bone": "far_leg_u",
+      "z": 6,
+      "kind": "sprite",
+      "include": [
+        "far-thigh"
+      ],
+      "pivot": [
+        261.1,
+        344.5
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_shoe",
+      "bone": "far_foot",
+      "z": 7,
+      "kind": "sprite",
+      "include": [
+        "far-shoe"
+      ],
+      "pivot": [
+        253.75,
+        483.1
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_shin",
+      "bone": "near_leg_l",
+      "z": 8,
+      "kind": "sprite",
+      "include": [
+        "near-shin"
+      ],
+      "pivot": [
+        281.05,
+        413.8
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_thigh",
+      "bone": "near_leg_u",
+      "z": 9,
+      "kind": "sprite",
+      "include": [
+        "near-thigh"
+      ],
+      "pivot": [
+        275.8,
+        344.5
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_shoe",
+      "bone": "near_foot",
+      "z": 10,
+      "kind": "sprite",
+      "include": [
+        "near-shoe"
+      ],
+      "pivot": [
+        278.95,
+        483.1
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "seat",
+      "bone": "body",
+      "z": 11,
+      "kind": "sprite",
+      "include": [
+        "seat"
+      ],
+      "pivot": [
+        268.45,
+        344.5
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "shirt",
+      "bone": "torso",
+      "z": 12,
+      "kind": "sprite",
+      "include": [
+        "shirt"
+      ],
+      "pivot": [
+        268.45,
+        344.5
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "tie",
+      "bone": "torso",
+      "z": 13,
+      "kind": "sprite",
+      "include": [
+        "tie"
+      ],
+      "pivot": [
+        268.45,
+        344.5
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "cardigan",
+      "bone": "torso",
+      "z": 14,
+      "kind": "sprite",
+      "include": [
+        "cardigan"
+      ],
+      "pivot": [
+        268.45,
+        344.5
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "neck",
+      "bone": "torso",
+      "z": 15,
+      "kind": "sprite",
+      "include": [
+        "neck"
+      ],
+      "pivot": [
+        268.45,
+        344.5
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "bone": "head",
+      "z": 16,
+      "kind": "sprite",
+      "include": [
+        "head"
+      ],
+      "pivot": [
+        277.48,
+        236.35
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_arm_u",
+      "bone": "near_arm_u",
+      "z": 17,
+      "kind": "sprite",
+      "include": [
+        "near-arm-u"
+      ],
+      "pivot": [
+        268.45,
+        256.3
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_arm_l",
+      "bone": "near_arm_l",
+      "z": 18,
+      "kind": "sprite",
+      "include": [
+        "near-arm-l"
+      ],
+      "pivot": [
+        265.3,
+        304.6
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_hand",
+      "bone": "near_hand",
+      "z": 19,
+      "kind": "sprite",
+      "include": [
+        "near-hand"
+      ],
+      "pivot": [
+        305.2,
+        287.8
+      ],
+      "rest_angle": 0
+    }
+  ],
+  "ik_legs": [],
+  "ik_chains": [],
+  "clips": {
+    "idle": {
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 140,
+      "channels": {
+        "root_y": {
+          "expr": "0.6*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "3.0 + 0.8*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-1.2*sin(tau*t+0.6)"
+        },
+        "near_arm_u": {
+          "expr": "0.4*sin(tau*t)"
+        },
+        "near_arm_l": {
+          "expr": "-0.4*sin(tau*t)"
+        },
+        "near_hand": {
+          "expr": "0"
+        },
+        "far_arm_u": {
+          "expr": "-1.5*sin(tau*t)"
+        },
+        "far_arm_l": {
+          "expr": "0"
+        },
+        "far_hand": {
+          "expr": "0"
+        }
+      }
+    },
+    "walk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 100,
+      "channels": {
+        "root_y": {
+          "expr": "-2.0*(1-abs(sin(tau*t)))"
+        },
+        "torso": {
+          "expr": "3.0 + 1 + 1.0*sin(2*tau*t)"
+        },
+        "head": {
+          "expr": "-1 - 1.0*sin(2*tau*t)"
+        },
+        "near_leg_u": {
+          "expr": "-16*sin(tau*t)"
+        },
+        "far_leg_u": {
+          "expr": "16*sin(tau*t)"
+        },
+        "near_leg_l": {
+          "expr": "20*max(0.0, cos(tau*t))"
+        },
+        "far_leg_l": {
+          "expr": "20*max(0.0, -cos(tau*t))"
+        },
+        "near_foot": {
+          "expr": "-((-16*sin(tau*t)) + (20*max(0.0, cos(tau*t))))"
+        },
+        "far_foot": {
+          "expr": "-((16*sin(tau*t)) + (20*max(0.0, -cos(tau*t))))"
+        },
+        "near_arm_u": {
+          "expr": "0.8*sin(tau*t)"
+        },
+        "near_arm_l": {
+          "expr": "0"
+        },
+        "near_hand": {
+          "expr": "0"
+        },
+        "far_arm_u": {
+          "expr": "-18*sin(tau*t)"
+        },
+        "far_arm_l": {
+          "expr": "-10"
+        },
+        "far_hand": {
+          "expr": "0"
+        }
+      }
+    },
+    "talk": {
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 120,
+      "channels": {
+        "root_y": {
+          "expr": "-0.5*abs(sin(tau*t))"
+        },
+        "torso": {
+          "expr": "1.5 + 1.2*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-3 + 4*sin(2*tau*t)"
+        },
+        "near_arm_u": {
+          "expr": "-1.2*sin(tau*t)"
+        },
+        "near_arm_l": {
+          "expr": "1.2*sin(tau*t)"
+        },
+        "near_hand": {
+          "expr": "0"
+        },
+        "far_arm_u": {
+          "expr": "-3*sin(tau*t)"
+        },
+        "far_arm_l": {
+          "expr": "-6"
+        },
+        "far_hand": {
+          "expr": "0"
+        }
+      }
+    },
+    "interact": {
+      "loop": false,
+      "frames": 6,
+      "duration_ms": 110,
+      "channels": {
+        "torso": {
+          "expr": "3.0 + 7*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) - 7*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.6)/0.4)))"
+        },
+        "head": {
+          "expr": "10*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.1)/0.35))) - 10*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.6)/0.4)))"
+        },
+        "near_arm_u": {
+          "expr": "-3*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) + 3*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.6)/0.4)))"
+        },
+        "near_arm_l": {
+          "expr": "0"
+        },
+        "near_hand": {
+          "expr": "0"
+        },
+        "far_arm_u": {
+          "expr": "-40*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) + 40*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.6)/0.4)))"
+        },
+        "far_arm_l": {
+          "expr": "-30*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) + 30*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.6)/0.4)))"
+        },
+        "far_hand": {
+          "expr": "0"
+        }
+      }
+    },
+    "hurt": {
+      "loop": false,
+      "frames": 4,
+      "duration_ms": 92,
+      "channels": {
+        "root_x": {
+          "expr": "-5*(1-t)*(1-t)"
+        },
+        "torso": {
+          "expr": "3.0 - 10*(1-t)*(1-t)"
+        },
+        "head": {
+          "expr": "-12*(1-t)*(1-t)"
+        },
+        "near_arm_u": {
+          "expr": "-6*(1-t)*(1-t)"
+        },
+        "near_arm_l": {
+          "expr": "0"
+        },
+        "near_hand": {
+          "expr": "0"
+        },
+        "far_arm_u": {
+          "expr": "24*(1-t)*(1-t)"
+        },
+        "far_arm_l": {
+          "expr": "0"
+        },
+        "far_hand": {
+          "expr": "0"
+        },
+        "near_leg_u": {
+          "expr": "-6*(1-t)*(1-t)"
+        },
+        "far_leg_u": {
+          "expr": "6*(1-t)*(1-t)"
+        },
+        "near_leg_l": {
+          "expr": "0"
+        },
+        "far_leg_l": {
+          "expr": "4*(1-t)*(1-t)"
+        },
+        "near_foot": {
+          "expr": "-((-6*(1-t)*(1-t)) + (0))"
+        },
+        "far_foot": {
+          "expr": "-((6*(1-t)*(1-t)) + (4*(1-t)*(1-t)))"
+        }
+      }
+    }
+  }
+}
