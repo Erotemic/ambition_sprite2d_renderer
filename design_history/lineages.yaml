@@ -1170,3 +1170,17 @@ lineages:
         id: martin_cutta_v2
         label: "The coefficient clerk"
         note: "Upright, dark hair and a moustache, a dove-grey lounge suit with a high collar, pince-nez on a cord, the green ledger of coefficients; 173 cm. Look A of three. Claude Opus 5.5 declared."
+  paul_diracula:
+    name: Paul Diracula
+    ids: [paul_diracula_v2, paul_diracula]
+    paths: ['paul_diracula']
+    summary: "a procedural gothic scientist, then Dirac's lean face and side parting on Lugosi's Count, an SVG rig"
+    eras:
+      - commit: "039a376"
+        id: paul_diracula
+        label: "The procedural vampire"
+        note: "The last commit with the first design: a bespoke procedural painter, a narrow pale face, a widow's peak, a long black-violet coat and a crimson-lined cape, sparse Dirac-sea effects."
+      - commit: "b0e13f2"
+        id: paul_diracula_v2
+        label: "The Count"
+        note: "A new target beside the old one: a black tailcoat and white tie, the psi medallion, an opera cape lined in crimson; Dirac's long face and side parting under a small widow's peak. Jon saw three looks and did not pick; A was cast when he asked for the art in the game. Claude Opus 5.5 declared."
