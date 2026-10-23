@@ -1,0 +1,580 @@
+{
+  "name": "carl_runga_v2_front",
+  "frame": {
+    "width": 320,
+    "height": 352,
+    "center_x": 160,
+    "ground_y": 344,
+    "ankle_h": 0,
+    "supersample": 3,
+    "render_scale": 1,
+    "trim": false
+  },
+  "svg_source": {
+    "path": "../../../../data/characters/carl_runga_v2/carl_runga_v2_front.svg",
+    "view": "Carl Runga - Front",
+    "ref_dpi": 25.4,
+    "scale": 0.5
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.2,
+    "frame_sample_inset": 1
+  },
+  "palette": {},
+  "bones": [
+    {
+      "name": "body",
+      "parent": null,
+      "offset": [
+        0.0,
+        -78.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "torso",
+      "parent": "body",
+      "offset": [
+        0.0,
+        -12.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "offset": [
+        0.0,
+        -50.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "right_arm_u",
+      "parent": "torso",
+      "offset": [
+        -19.5,
+        -34.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "right_arm_l",
+      "parent": "right_arm_u",
+      "offset": [
+        -3.5,
+        28.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "right_hand",
+      "parent": "right_arm_l",
+      "offset": [
+        0.0,
+        26.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "left_arm_u",
+      "parent": "torso",
+      "offset": [
+        19.5,
+        -34.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "left_arm_l",
+      "parent": "left_arm_u",
+      "offset": [
+        3.5,
+        28.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "left_hand",
+      "parent": "left_arm_l",
+      "offset": [
+        0.0,
+        26.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "right_leg_u",
+      "parent": "body",
+      "offset": [
+        -7.5,
+        0.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "right_leg_l",
+      "parent": "right_leg_u",
+      "offset": [
+        -0.5,
+        37.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "right_foot",
+      "parent": "right_leg_l",
+      "offset": [
+        0.0,
+        33.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "left_leg_u",
+      "parent": "body",
+      "offset": [
+        7.5,
+        0.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "left_leg_l",
+      "parent": "left_leg_u",
+      "offset": [
+        0.5,
+        37.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "left_foot",
+      "parent": "left_leg_l",
+      "offset": [
+        0.0,
+        33.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "pelvis_yoke",
+      "bone": "body",
+      "z": 9,
+      "kind": "sprite",
+      "include": [
+        "pelvis"
+      ],
+      "pivot": [
+        280.0,
+        346.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "left_shoe",
+      "bone": "left_foot",
+      "z": 10,
+      "kind": "sprite",
+      "include": [
+        "left-shoe"
+      ],
+      "pivot": [
+        296,
+        486
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "left_shin",
+      "bone": "left_leg_l",
+      "z": 11,
+      "kind": "sprite",
+      "include": [
+        "left-shin"
+      ],
+      "pivot": [
+        296,
+        420
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "left_thigh",
+      "bone": "left_leg_u",
+      "z": 12,
+      "kind": "sprite",
+      "include": [
+        "left-thigh"
+      ],
+      "pivot": [
+        295,
+        346
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "right_shoe",
+      "bone": "right_foot",
+      "z": 14,
+      "kind": "sprite",
+      "include": [
+        "right-shoe"
+      ],
+      "pivot": [
+        264,
+        486
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "right_shin",
+      "bone": "right_leg_l",
+      "z": 15,
+      "kind": "sprite",
+      "include": [
+        "right-shin"
+      ],
+      "pivot": [
+        264,
+        420
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "right_thigh",
+      "bone": "right_leg_u",
+      "z": 16,
+      "kind": "sprite",
+      "include": [
+        "right-thigh"
+      ],
+      "pivot": [
+        265,
+        346
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "vest",
+      "bone": "torso",
+      "z": 30,
+      "kind": "sprite",
+      "include": [
+        "vest"
+      ],
+      "pivot": [
+        280.0,
+        322.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "coat",
+      "bone": "torso",
+      "z": 36,
+      "kind": "sprite",
+      "include": [
+        "coat"
+      ],
+      "pivot": [
+        280.0,
+        322.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "neck",
+      "bone": "torso",
+      "z": 50,
+      "kind": "sprite",
+      "include": [
+        "neck"
+      ],
+      "pivot": [
+        280.0,
+        322.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "bone": "head",
+      "z": 60,
+      "kind": "sprite",
+      "include": [
+        "head"
+      ],
+      "pivot": [
+        280.0,
+        222.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "eyes_shut",
+      "bone": "head",
+      "z": 61,
+      "kind": "sprite",
+      "include": [
+        "eyes-shut"
+      ],
+      "pivot": [
+        280.0,
+        222.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eyes_shut",
+      "opacity_default": 0
+    },
+    {
+      "name": "mouth_open",
+      "bone": "head",
+      "z": 62,
+      "kind": "sprite",
+      "include": [
+        "mouth-open"
+      ],
+      "pivot": [
+        280.0,
+        222.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "mouth_open",
+      "opacity_default": 0
+    },
+    {
+      "name": "left_arm_l",
+      "bone": "left_arm_l",
+      "z": 70,
+      "kind": "sprite",
+      "include": [
+        "left-arm-lower"
+      ],
+      "pivot": [
+        326,
+        310
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "left_arm_u",
+      "bone": "left_arm_u",
+      "z": 71,
+      "kind": "sprite",
+      "include": [
+        "left-arm-upper"
+      ],
+      "pivot": [
+        319,
+        254
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "left_hand",
+      "bone": "left_hand",
+      "z": 72,
+      "kind": "sprite",
+      "include": [
+        "left-hand"
+      ],
+      "pivot": [
+        326,
+        362
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "right_arm_l",
+      "bone": "right_arm_l",
+      "z": 75,
+      "kind": "sprite",
+      "include": [
+        "right-arm-lower"
+      ],
+      "pivot": [
+        234,
+        310
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "right_arm_u",
+      "bone": "right_arm_u",
+      "z": 76,
+      "kind": "sprite",
+      "include": [
+        "right-arm-upper"
+      ],
+      "pivot": [
+        241,
+        254
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "right_hand",
+      "bone": "right_hand",
+      "z": 77,
+      "kind": "sprite",
+      "include": [
+        "right-hand"
+      ],
+      "pivot": [
+        234,
+        362
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "cape",
+      "bone": "torso",
+      "z": 90,
+      "kind": "sprite",
+      "include": [
+        "cape"
+      ],
+      "pivot": [
+        280.0,
+        322.0
+      ],
+      "rest_angle": 0
+    }
+  ],
+  "ik_legs": [],
+  "ik_chains": [],
+  "clips": {
+    "front_idle": {
+      "loop": true,
+      "frames": 1,
+      "duration_ms": 150,
+      "channels": {}
+    },
+    "talk": {
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 110,
+      "channels": {
+        "root_y": {
+          "expr": "-0.6*abs(sin(tau*t))"
+        },
+        "head": {
+          "expr": "-2 + 3*sin(tau*t)"
+        },
+        "left_arm_u": {
+          "expr": "-34 + 4*sin(tau*t)"
+        },
+        "left_arm_l": {
+          "expr": "-96 + 10*sin(2*tau*t)"
+        },
+        "left_hand": {
+          "expr": "-20"
+        },
+        "right_arm_u": {
+          "expr": "4*sin(tau*t)"
+        },
+        "eyes_shut": {
+          "expr": "1 if (False) else 0"
+        },
+        "mouth_open": {
+          "expr": "1 if (sin(2*tau*t) > -0.3) else 0"
+        }
+      }
+    },
+    "taunt": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 110,
+      "channels": {
+        "root_y": {
+          "expr": "-1.0*abs(sin(2*tau*t))"
+        },
+        "torso": {
+          "expr": "2*sin(tau*t)"
+        },
+        "head": {
+          "expr": "4 - 3*sin(tau*t)"
+        },
+        "right_arm_u": {
+          "expr": "52 + 3*sin(2*tau*t)"
+        },
+        "right_arm_l": {
+          "expr": "-130 - 4*sin(2*tau*t)"
+        },
+        "right_hand": {
+          "expr": "-30"
+        },
+        "left_arm_u": {
+          "expr": "-52 - 3*sin(2*tau*t)"
+        },
+        "left_arm_l": {
+          "expr": "130 + 4*sin(2*tau*t)"
+        },
+        "left_hand": {
+          "expr": "30"
+        },
+        "eyes_shut": {
+          "expr": "1 if (sin(2*tau*t) > 0.3) else 0"
+        },
+        "mouth_open": {
+          "expr": "1 if (sin(2*tau*t) > -0.4) else 0"
+        }
+      }
+    },
+    "seize": {
+      "loop": true,
+      "frames": 4,
+      "duration_ms": 94,
+      "channels": {
+        "root_y": {
+          "expr": "-1.5*abs(sin(tau*t))"
+        },
+        "head": {
+          "expr": "-4 + 2*sin(tau*t)"
+        },
+        "right_arm_u": {
+          "expr": "136 + 6*sin(tau*t)"
+        },
+        "right_arm_l": {
+          "expr": "28 + 8*sin(tau*t)"
+        },
+        "right_hand": {
+          "expr": "10"
+        },
+        "left_arm_u": {
+          "expr": "-136 - 6*sin(tau*t)"
+        },
+        "left_arm_l": {
+          "expr": "-28 - 8*sin(tau*t)"
+        },
+        "left_hand": {
+          "expr": "-10"
+        },
+        "eyes_shut": {
+          "expr": "1 if (False) else 0"
+        },
+        "mouth_open": {
+          "expr": "1 if (True) else 0"
+        }
+      }
+    }
+  }
+}
