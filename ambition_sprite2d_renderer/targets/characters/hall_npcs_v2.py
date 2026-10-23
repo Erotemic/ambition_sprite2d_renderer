@@ -47,6 +47,15 @@ CAST: Dict[str, tuple] = {
     "general_hero_v2": ("General Hero", ["hub", "peaceful", "humanoid", "hero"]),
 }
 
+# The catalog row each target draws.
+CATALOG_IDS: Dict[str, str] = {
+    "architect_v2": "npc_architect",
+    "manifest_clerk": "npc_manifest_clerk",
+    "vault_keeper_v2": "npc_vault_keeper",
+    "merchant_prototype_v2": "npc_merchant_prototype",
+    "general_hero_v2": "npc_general_hero",
+}
+
 
 def _rig_path(target: str) -> Path:
     return RIGGED / target / f"{target}.rig.json"
@@ -84,7 +93,8 @@ def actor_metadata(target: str) -> dict:
         return {"source": "explicit.profile.humanoid", "point": {"x": round(p[0], 1), "y": round(p[1], 1)}}
 
     return {
-        "actor": {"character_id": target, "display_name": display},
+        # The catalog row this art draws, as every other target names it.
+        "actor": {"character_id": CATALOG_IDS[target], "display_name": display},
         "body": {"body_plan": "HumanoidBiped", "body_kind": "Standard", "mass_class": "Medium", "traits": traits, "locomotion_hint": "Walk"},
         "capabilities": {
             "traversal": {"walk": True, "jump": None, "climb": None, "fly": None, "swim": None, "crawl": None, "use_lifts": True,
