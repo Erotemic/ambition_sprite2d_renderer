@@ -1119,6 +1119,32 @@ lineages:
       - commit: "a00656e"
         label: "Prime"
         note: "Silver crown braid and lit circlet, a lined face, plate over a blue himation and ivory chiton, Greek-key circuitry, an armillary ring on her back and an armillary tech-lance. Jon first chose A (a literal Alexandrian Hypatia, kept), then asked for an old woman in future armour. Claude Opus 5.5 declared."
+  genghis_can:
+    name: Genghis Can
+    ids: [genghis_can_v2, genghis_can]
+    paths: ['genghis_can', '_genghis_pair', 'genghis_pair']
+    summary: "a procedural conqueror in red lamellar, then Genghis Khan in a winter deel and a fox-fur hat, pointing the way"
+    eras:
+      - commit: "039a376"
+        label: "The procedural conqueror"
+        note: "The last commit with the first design: a painted pair on one painter, red and gold lamellar, a cape."
+      - commit: "7e84e2b"
+        id: genghis_can_v2
+        label: "Steppe"
+        note: "Look C of three: a teal winter deel crossed to the right, an orange sash, a quiver, the fox-fur flaps tied up; he stands tall and points the way. Jon asked for a redesign of the pair (2026-10-23); look C was decided after round 1. Claude Opus 5.5 declared."
+  genghis_cant:
+    name: Genghis Can't
+    ids: [genghis_cant_v2, genghis_cant]
+    paths: ['genghis_cant', '_genghis_pair', 'genghis_pair']
+    summary: "a procedural conqueror in slate lamellar, then Genghis Khan in a winter deel and a fox-fur hat, cupping his chin"
+    eras:
+      - commit: "039a376"
+        label: "The procedural conqueror"
+        note: "The last commit with the first design: his brother's painter, slouched, in slate and dull gold."
+      - commit: "7e84e2b"
+        id: genghis_cant_v2
+        label: "Steppe"
+        note: "Look C of three: a maroon winter deel, a slate sash, a quiver, the fox-fur flaps down; he stoops, greyer, and cups his chin. Jon asked for a redesign of the pair (2026-10-23); look C was decided after round 1. Claude Opus 5.5 declared."
   pulse_voyager_captain:
     name: Captain Pulse
     ids: [pulse_voyager_captain]
