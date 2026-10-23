@@ -114,7 +114,8 @@ def hand(o, wr, el, near, cid):
     out = []
     for k, (spread, length) in enumerate(((-5.0, 30), (-1.7, 34), (1.7, 32), (5.0, 26))):
         a, b = p(8, spread * 0.8), p(8 + length, spread * 1.8 + 3)
-        out += outlined(capsule(a, b, 2.8, 2.0), fill, [line([lerp(a, b, 0.45), lerp(a, b, 0.5)], o["skin_dk"], 1.0)], None, 1.1)
+        # Each finger clips its crease to its own outline: one id per finger.
+        out += outlined(capsule(a, b, 2.8, 2.0), fill, [line([lerp(a, b, 0.45), lerp(a, b, 0.5)], o["skin_dk"], 1.0)], f"{cid}-f{k}", 1.1)
     palm = smooth([p(-2, -7), p(10, -8), p(13, 0), p(10, 8), p(-2, 7)])
     out += outlined(palm, fill, [path(smooth([p(-2, 2), p(12, 2), p(9, 7), p(-2, 6)]), o["skin_sh"])], cid)
     thumb_a, thumb_b = p(4, 6), p(14, 12)
