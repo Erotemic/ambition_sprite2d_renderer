@@ -88,6 +88,8 @@ MOTES = {
     "hub": (_dot, (206, 214, 255)),
     "lab": (_dot, (196, 255, 244)),
     # Dust in the light of a station deck, and starlight glints in the trusses.
+    "orbital": (_dot, (210, 230, 255)),
+    "orbital_truss": (_twinkle, (200, 226, 255)),
     "basement": (_glow, (255, 190, 110)),
     # Drops of water that fall from the vault.
     "undertown": (_dot, (196, 232, 218)),
@@ -141,6 +143,8 @@ MOTES = {
 SHADOWS = {
     "hub": (8, 8, 30),
     "lab": (4, 12, 22),
+    "orbital": (10, 14, 24),
+    "orbital_truss": (6, 8, 20),
     "alarm": (3, 3, 9),
     "undertown": (6, 10, 10),
     "basement": (20, 8, 6),

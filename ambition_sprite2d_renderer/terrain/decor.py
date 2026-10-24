@@ -447,6 +447,9 @@ def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, pla
 #: The six things of each theme, and its colours.
 DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "lab": ((console, floor_light, cone, coil, crate, floor_light), _palette((8, 28, 38), (30, 70, 82), (70, 130, 140), (40, 84, 92), (38, 80, 92), (60, 150, 130), (236, 150, 70), (120, 236, 220))),
+    # The station: consoles, floor lights, crates of freight, coiled cable.
+    "orbital": ((console, crate, floor_light, coil, crate, console), _palette((14, 18, 30), (58, 70, 90), (130, 150, 172), (90, 76, 60), (70, 84, 104), (70, 140, 110), (246, 176, 76), (110, 220, 240))),
+    "orbital_truss": ((floor_light, coil, console, floor_light, crate, coil), _palette((10, 12, 24), (52, 64, 86), (120, 140, 162), (90, 76, 60), (64, 78, 98), (70, 140, 110), (246, 176, 76), (110, 220, 240))),
     "alarm": ((crate, cone, coil, console, cone, floor_light), _palette((6, 7, 14), (34, 38, 56), (84, 90, 118), (52, 50, 66), (44, 48, 70), (110, 60, 60), (236, 150, 70), (255, 92, 72))),
     "undertown": ((barrel, crate, mushrooms, lamp_post, coil, rock), _palette((10, 16, 16), (72, 68, 62), (122, 112, 98), (104, 76, 50), (52, 64, 66), (64, 110, 72), (200, 150, 90), (255, 196, 120))),
     "hub": ((planter, lamp_post, crate, floor_light, planter, cone), _palette((15, 15, 46), (52, 52, 110), (100, 102, 170), (70, 64, 120), (60, 60, 120), (90, 150, 130), (236, 150, 90), (255, 206, 140))),

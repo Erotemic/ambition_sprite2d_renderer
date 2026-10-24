@@ -72,6 +72,10 @@ SKINS: tuple[Skin, ...] = (
     # The lab is steel, not the teal of its air: the ground must not have the
     # colour of what is behind it.
     Skin("lab", "panel", (38, 54, 74), (14, 22, 36), (84, 112, 138), (120, 236, 220), "strip", (62, 84, 108), "pipes", "grate"),
+    # The orbital station of the Science dimension: deck plates of painted
+    # steel with a lit strip, a grate for a walkway; the same in its trusses.
+    Skin("orbital", "panel", (58, 70, 90), (22, 28, 40), (120, 140, 162), (246, 176, 76), "strip", (92, 110, 132), "bolts", "grate"),
+    Skin("orbital_truss", "panel", (52, 64, 86), (18, 24, 36), (112, 134, 158), (110, 220, 240), "strip", (86, 104, 128), "bolts", "grate"),
     # The clean state of the two-state hub: pale marble with a line of gold.
     # The look of that room draws its own blocks, and this is what the room
     # has on a device that does not draw the look.

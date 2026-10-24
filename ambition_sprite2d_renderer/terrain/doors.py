@@ -202,6 +202,8 @@ def _colours(frame: RGB, leaf: RGB, dark: RGB, accent: RGB, glow: RGB) -> dict:
 DOORS: dict[str, tuple[Draw, dict]] = {
     "lab": (bulkhead, _colours((40, 58, 78), (74, 104, 126), (12, 20, 32), (236, 178, 70), (130, 236, 224))),
     # The station: a sliding bulkhead, amber hazard trim, a cyan lamp.
+    "orbital": (bulkhead, _colours((70, 84, 104), (110, 128, 150), (18, 24, 36), (246, 176, 76), (110, 220, 240))),
+    "orbital_truss": (bulkhead, _colours((64, 78, 98), (100, 120, 144), (14, 18, 30), (246, 176, 76), (110, 220, 240))),
     "alarm": (bulkhead, _colours((34, 38, 54), (72, 78, 104), (8, 9, 17), (236, 178, 70), (255, 96, 80))),
     "undertown": (iron, _colours((52, 56, 56), (94, 98, 94), (14, 18, 18), (224, 170, 80), (140, 230, 200))),
     "hub": (bulkhead, _colours((44, 44, 100), (84, 86, 150), (14, 14, 44), (255, 206, 140), (196, 206, 255))),
