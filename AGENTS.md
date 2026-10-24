@@ -28,6 +28,24 @@ pose math, part composition, or animation construction. Keep cross-family output
 metadata such as bounds, anchors, sockets, face guides, and default poses
 independent of rig internals.
 
+## Sprite art rules: no drop shadows
+
+**NO BAKED DROP SHADOWS ON SPRITES.** Do not draw floor/contact ellipses,
+shadow puddles, cast-shadow silhouettes, detached blobs under hovering actors,
+or similar fake ground shadows into character, prop, projectile, or effect
+frames. Do not add them for sprite previews either. Leave grounding, contact
+lighting, and any environment-dependent shadows to the game renderer.
+Interior shading that belongs to the object (creases, bruises, face and body
+shadows, occlusion between attached parts) is allowed; this prohibition is
+against *detached* drop/ground shadows and not against shading generally.
+
+For actors that roll, tumble, or otherwise rotate continuously under physics,
+do not bake the full-body rotation into discrete locomotion sprite frames.
+Author expressions, localized squash/stretch, attachments, and effects in the
+sprite sheets; drive the actual rolling rotation through the engine's pose and
+interpolation when that behavior is integrated. Sprite generators do not
+implement gameplay motion themselves.
+
 ## Optional profiling instrumentation
 
 Expensive shared render-spine functions and representative generator-family
