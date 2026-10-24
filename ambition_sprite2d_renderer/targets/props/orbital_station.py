@@ -19,8 +19,9 @@ one-way platform the room places), except the two gates, which are the
   ``orbital_manifest_board``, and the gate of the quarantine pen
   ``orbital_quarantine_gate``;
 - decks: ``orbital_bunks``, ``orbital_galley``, ``orbital_hydroponics``,
-  ``orbital_machinery``, ``orbital_bench``, and the hatch of the damaged spur
-  ``orbital_spur_hatch``.
+  ``orbital_machinery``, ``orbital_bench``, the hatch of the damaged spur
+  ``orbital_spur_hatch``, and the spoke's tram car ``orbital_tram`` (the
+  sheet of a moving platform: its floor is the platform's top).
 
 Drawn in world units at `PX` pixels to the unit; the light of the decks is
 from above and a little left. No drop shadows, and no portal or ring is
@@ -378,6 +379,43 @@ def machinery(c: Canvas, w, h):
     hazard(c, w * 0.05, h - 6, w * 0.42, h)
 
 
+#: The tram car's floor, in world units of its piece: the platform's top
+#: (`TRAM_FLOOR_Y`) and the part of the car's width it covers.
+TRAM_FLOOR_Y = 88
+TRAM_FLOOR_SPAN = (16, 208)
+
+
+def tram(c: Canvas, w, h):
+    """The spoke's tram car, seen from the side: its floor is the platform a
+    body stands on, the back wall and roof of the car behind the body, the
+    guides that hold it to the spoke's rail under it."""
+    x0, x1 = TRAM_FLOOR_SPAN
+    floor = TRAM_FLOOR_Y
+    # The back wall, with its windows onto space.
+    plate(c, x0 + 4, 20, x1 - 4, floor, (96, 110, 130), "tram wall", seams=0)
+    for k in range(3):
+        wx = x0 + 18 + k * 60
+        win = c.mask(box(wx, 30, wx + 46, 62))
+        c.put(win, (16, 24, 44))
+        c.light(win * np.clip((c.y - 44) / 18, 0, 1), (120, 186, 255), 0.35)
+        outline(c, [(wx, 30), (wx + 46, 30), (wx + 46, 62), (wx, 62)], 0.9, STEEL_DARK)
+    c.put(c.mask(box(x0 + 4, 66, x1 - 4, 70)), AMBER, 0.9)
+    # The roof, its ends rounded, and the end posts.
+    roof = c.mask(lambda p: [p.rect(x0 + 8, 8, x1 - 8, 22), p.ellipse(x0 + 8, 15, 8, 7), p.ellipse(x1 - 8, 15, 8, 7)])
+    c.put(roof, HULL_LIGHT)
+    c.tone(roof * np.clip((c.y - 8) / 14, 0, 1), -0.2)
+    for px in (x0, x1 - 8):
+        c.put(c.mask(box(px, 14, px + 8, floor)), STEEL)
+    lamp(c, x1 - 4, 30, GREEN, k=0.7)
+    lamp(c, x0 + 4, 30, RED, k=0.7)
+    # The floor and the guides under it.
+    plate(c, x0, floor, x1, floor + 10, STEEL_DARK, "tram floor", seams=0)
+    hazard(c, x0, floor, x1, floor + 3)
+    for gx in (x0 + 30, x1 - 54):
+        c.put(c.mask(box(gx, floor + 10, gx + 24, h - 2)), STEEL)
+        c.put(c.mask(lambda p: p.ellipse(gx + 12, h - 6, 5)), STEEL_LIGHT)
+
+
 def bench(c: Canvas, w, h):
     """A bench before the big window, its seat padded."""
     plate(c, 0, h * 0.35, w, h * 0.60, (60, 70, 90), "seat", seams=0)
@@ -402,7 +440,9 @@ PIECES: Dict[str, Tuple[float, float, Callable]] = {
     "orbital_hydroponics": (240, 140, hydroponics),
     "orbital_machinery": (300, 200, machinery),
     "orbital_bench": (160, 40, bench),
+    "orbital_tram": (224, 112, tram),
 }
+
 
 #: Room round each piece in the frame, so a stroke on its edge is not cut.
 MARGIN = 6
