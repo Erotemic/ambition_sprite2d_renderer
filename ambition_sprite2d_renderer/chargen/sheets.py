@@ -200,12 +200,15 @@ def posed_sheet(rigs: Dict[str, Path], out: Path, *, rows: Optional[Sequence[str
     return out
 
 
-def actor_metadata(spec: CharacterSpec) -> dict:
+def actor_metadata(spec: CharacterSpec, *, character_id: Optional[str] = None, description: Optional[str] = None) -> dict:
+    """The actor sidecar of ``spec``. ``character_id`` is the game's catalog
+    id (default ``npc_chargen_<slug>``); ``description`` is the
+    ``authoring_description`` (default: a note that names the base and seed)."""
     name = slug(spec.name)
     traits = ["humanoid", "townsfolk", "generated"]
     return {
-        "actor": {"character_id": f"npc_chargen_{name}", "display_name": spec.name},
-        "authoring_description": (
+        "actor": {"character_id": character_id or f"npc_chargen_{name}", "display_name": spec.name},
+        "authoring_description": description or (
             f"A generated background townsperson ({spec.base.replace('_', ' ')}, seed {spec.seed}) from the character "
             "generator (ambition_sprite2d_renderer.chargen). It parodies no one; its look is drawn from the spec."
         ),
@@ -227,9 +230,12 @@ def actor_metadata(spec: CharacterSpec) -> dict:
     }
 
 
-def publish_sheet(spec: CharacterSpec, out_dir: Path, rigs: Optional[Dict[str, Path]] = None) -> List[Path]:
+def publish_sheet(spec: CharacterSpec, out_dir: Path, rigs: Optional[Dict[str, Path]] = None, *, target: Optional[str] = None,
+                  metadata: Optional[dict] = None) -> List[Path]:
     """The gameplay sprite sheet of ``spec`` (its rows: :data:`ROWS` and
-    ``turn``) with its YAML/RON manifests, actor sidecar and previews."""
+    ``turn``) with its YAML/RON manifests, actor sidecar and previews.
+    ``target`` names the files (default ``chargen_<slug>``); ``metadata`` is
+    the actor sidecar (default :func:`actor_metadata`)."""
     from ..authoring.part_flipbook import publish_rig_flipbook
     from ..authoring.sheet_build import build_sheet
 
@@ -237,7 +243,7 @@ def publish_sheet(spec: CharacterSpec, out_dir: Path, rigs: Optional[Dict[str, P
     if rigs is None:
         rigs = write_character(spec, out_dir).rigs
     rc = RiggedCharacter(rigs)
-    target = f"chargen_{slug(spec.name)}"
+    target = target or f"chargen_{slug(spec.name)}"
     frame_transform: dict = {}
     outputs = build_sheet(
         frame_transform_out=frame_transform,
@@ -248,7 +254,7 @@ def publish_sheet(spec: CharacterSpec, out_dir: Path, rigs: Optional[Dict[str, P
         frame_size=rc.frame_size(),
         auto_crop=True,
         crop_margin=4,
-        actor_metadata=actor_metadata(spec),
+        actor_metadata=metadata or actor_metadata(spec),
         sheet_tuning={"collision_scale": 1.7},
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")

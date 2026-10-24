@@ -1,0 +1,33 @@
+# A resident made by the character generator; see targets/characters/townsfolk.py.
+schema: ambition-chargen-v1
+name: Daichi
+base: slim_male
+seed: 24
+body:
+  height_cm: 169
+  age: 0.15
+hair:
+  style: short
+  facial: none
+palette:
+  skin: '#efc6a8'
+  hair: '#26201c'
+outfit:
+  top: tunic
+  sleeves: rolled
+  neckline: v
+  top_color: '#e6dec9'
+  outer: none
+  bottom: trousers
+  bottom_color: '#24304a'
+  shoes: shoes
+  hat: none
+  accessories:
+  - belt
+  - scarf
+  accent_color: '#b0453a'
+game:
+  character_id: npc_village_daichi
+  description: A resident of the Ninja Village (gate address SILENT), a mountain village of the ninja dimension. Generated
+    by chargen; it parodies no one, and its look is everyday village dress, not a costume. A young adult who wants to pass
+    the dojo's rank exam more than anything.

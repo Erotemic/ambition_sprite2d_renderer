@@ -121,6 +121,12 @@ SKINS: tuple[Skin, ...] = (
     # The forest of the Evil dimension: black earth with dead grass on it,
     # and the red of the sky in its cracks.
     Skin("evil_forest", "earth", (46, 32, 32), (16, 10, 12), (86, 58, 52), (230, 70, 44), "grass", (74, 56, 40), "roots", "plank"),
+    # The port of the pirate dimension: boards of weathered timber laid
+    # flat, under the edge of a plank deck, with weed under a pier.
+    Skin("pirate_port", "timber", (104, 76, 54), (42, 30, 22), (150, 114, 80), (214, 176, 108), "deck", (178, 140, 96), "weed", "plank"),
+    # The village of the ninja dimension: packed earth with a kerb of round
+    # stones, and a roof of grey tiles for a platform (a ridge to walk).
+    Skin("ninja_village", "earth", (84, 68, 58), (34, 28, 26), (130, 110, 92), (206, 72, 52), "kerb", (138, 138, 132), "roots", "roof"),
     # Castle Godwin: the cold blue-grey blocks of a fortress, dark.
     Skin("castle_godwin", "block", (82, 92, 112), (28, 32, 44), (134, 146, 168), (200, 40, 32), "edge", (112, 122, 142), "bolts", "grate"),
     # The castle's lab: the same blocks, lit green by the vats.
@@ -517,6 +523,30 @@ def fill(skin: Skin) -> Image.Image:
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, pitch * 0.42) for x, y in ends]), _mix(skin.base, skin.light, 0.5))
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, pitch * 0.16) for x, y in ends]), skin.dark, 0.55)
         tile.tone((tile.noise(3, 3, 3) - 0.5) * 0.20)
+    elif skin.material == "timber":
+        # Boards laid flat, eight to the tile, each board a few lengths. Each
+        # board has its own tone, a grain along it and a nail at each end.
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        board = 8.0
+        nails = []
+        for row in range(int(FILL[1] / board)):
+            y0 = row * board
+            x0 = rng.uniform(0.0, 20.0)
+            end = x0 + 64.0
+            while x0 < end - 1.0:
+                length = min(rng.choice([20.0, 26.0, 32.0, 40.0]), end - x0)
+                if end - (x0 + length) < 10.0:
+                    length = end - x0
+                tone = rng.uniform(-0.22, 0.14)
+                colour = _mix(skin.base, skin.light if tone > 0 else skin.dark, abs(tone) * 1.4)
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.4, y0 + 0.5, x0 + length - 0.4, y0 + board - 0.5)), colour)
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.4, y0 + 0.5, x0 + length - 0.4, y0 + 1.3)), skin.light, 0.22)
+                nails += [(x0 + 1.6, y0 + board * 0.5), (x0 + length - 1.6, y0 + board * 0.5)]
+                x0 += length
+        grain = np.sin(tile.y * 2.6 + (tile.noise(4, 16, 2) - 0.5) * 9.0)
+        tile.tone(grain * 0.05 + (tile.noise(4, 8, 3) - 0.5) * 0.18)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.45) for x, y in nails]), skin.dark, 0.85)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.15, y - 0.15, 0.2) for x, y in nails]), skin.accent, 0.5)
     elif skin.material == "rock":
         # Broken stone: each pixel is in the cell of its nearest point, and
         # the cracks are where the two nearest points are as near.
@@ -571,6 +601,47 @@ def cap(skin: Skin) -> Image.Image:
     rng = tile.rng
     s = CAP_SURFACE
     y = tile.y
+    if skin.cap == "deck":
+        # The edge of a deck of planks: a thick board seen from its end, with
+        # the butt joints of the planks, nails, and a dark seam under it.
+        thick = 5.0
+        body = ((y >= s - 0.4) & (y < s + thick)).astype(np.float32)
+        tile.put(body, skin.cap_colour)
+        tile.tone(((tile.noise(12, 2, 2) - 0.5) * 0.24) * body)
+        tile.put(((y >= s - 0.4) & (y < s + 0.5)).astype(np.float32), _mix(skin.cap_colour, (255, 244, 220), 0.45))
+        tile.put(((y >= s + thick - 0.9) & (y < s + thick)).astype(np.float32), skin.dark, 0.75)
+        joints = [rng.uniform(0, 64) for _ in range(3)]
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.3, s, x + 0.3, s + thick) for x in joints]), skin.dark, 0.8)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x + side, s + 2.4, 0.45) for x in joints for side in (-1.4, 1.4)]), skin.dark, 0.7)
+        # The shade the deck throws on the boards under it.
+        tile.put(np.clip(1.0 - (y - s - thick) / 3.0, 0.0, 1.0) * (y >= s + thick), (0, 0, 0), 0.35)
+        return tile.publish()
+    if skin.cap == "kerb":
+        # A kerb of round stones set in the earth, of a few sizes, with moss
+        # in the joints between them.
+        stones = []
+        x = rng.uniform(0.0, 3.0)
+        end = x + 64.0
+        while x < end - 2.0:
+            w = min(rng.uniform(5.0, 9.0), end - x)
+            if end - (x + w) < 4.0:
+                w = end - x
+            stones.append((x, w, rng.uniform(4.2, 5.6), rng.uniform(-0.18, 0.14)))
+            x += w
+        tile.put(((y >= s) & (y < s + 4.8)).astype(np.float32), skin.dark)
+        tile.put(np.clip(1.0 - (y - s - 4.8) / 3.0, 0.0, 1.0) * (y >= s + 4.8), (0, 0, 0), 0.32)
+        for x0, w, h, tone in stones:
+            colour = _mix(skin.cap_colour, (255, 255, 250) if tone > 0 else skin.dark, abs(tone) * 1.5)
+            soft = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.35, s - 0.6, x0 + w - 0.35, s - 0.6 + h), blur=0.9)
+            body = np.clip((soft - 0.5) * 6.0 + 0.5, 0.0, 1.0)
+            tile.put(body, colour)
+            tile.put(body * np.clip(1.0 - (y - s + 0.6) / 1.4, 0.0, 1.0), (240, 236, 226), 0.35)
+            tile.put(body * np.clip((y - s - h + 2.4) / 1.8, 0.0, 1.0), skin.dark, 0.45)
+        # The kerb covers its surface line from end to end.
+        tile.put(((y >= s - 0.2) & (y < s + 1.2)).astype(np.float32), _mix(skin.cap_colour, (240, 236, 226), 0.25), 0.55)
+        moss = [(x0, s + rng.uniform(0.5, 3.5)) for x0, _w, _h, _t in stones]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, 0.8, ry=0.5) for x, yy in moss]), (86, 110, 70), 0.75)
+        return tile.publish()
     if skin.cap in ("strip", "plate", "edge"):
         thick = {"strip": 5.5, "plate": 5.0, "edge": 4.2}[skin.cap]
         body = ((y >= s) & (y < s + thick)).astype(np.float32)
@@ -809,6 +880,20 @@ def oneway(skin: Skin) -> Image.Image:
         drips = [(rng.uniform(0, 64), rng.uniform(1.6, 3.6)) for _ in range(5)]
         tile.put(tile.mask(lambda p, dx, dy: [(_box(p, dx, dy, x - 0.5, 4.2, x + 0.5, 6.4 + h), _dot(p, dx, dy, x, 6.4 + h, 0.75)) for x, h in drips]), skin.cap_colour)
         tile.put(np.clip(1.0 - (y - 6.6) / 3.0, 0, 1) * (y >= 6.6) * (tile.alpha < 0.5), (0, 0, 0), 0.22)
+    elif skin.oneway == "roof":
+        # A ridge of roof tiles: a cap of half-round tiles along the top,
+        # and the round ends of the rows of tiles hanging below it.
+        tile_c, tile_dark = (72, 78, 94), (30, 32, 42)
+        tile_light = _mix(tile_c, (220, 226, 240), 0.35)
+        tile.put((y < 3.0).astype(np.float32), tile_c)
+        tile.put((y < 0.7).astype(np.float32), tile_light, 0.9)
+        tile.put(((y >= 2.4) & (y < 3.0)).astype(np.float32), tile_dark, 0.8)
+        ends = tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 8 + 4, 4.6, 3.6, ry=2.6) for k in range(8)])
+        tile.put(ends * (y >= 2.0), tile_c)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 8 + 4, 4.6, 1.5, ry=1.0) for k in range(8)]), tile_dark, 0.6)
+        tile.put(ends * (y >= 6.2), tile_dark, 0.6)
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, k * 8 - 0.25, 0.8, k * 8 + 0.25, 3.0) for k in range(9)]), tile_dark, 0.6)
+        tile.put(np.clip(1.0 - (y - 7.2) / 2.5, 0, 1) * (y >= 7.2) * (tile.alpha < 0.5), (0, 0, 0), 0.20)
     else:  # slab
         stone = _mix(skin.base, skin.light, 0.45)
         tile.put((y < 6.4).astype(np.float32), stone)

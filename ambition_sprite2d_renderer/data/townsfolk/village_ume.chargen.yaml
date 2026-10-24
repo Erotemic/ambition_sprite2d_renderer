@@ -1,0 +1,32 @@
+# A resident made by the character generator; see targets/characters/townsfolk.py.
+schema: ambition-chargen-v1
+name: Ume
+base: heavy_female
+seed: 23
+body:
+  height_cm: 158
+  age: 0.6
+hair:
+  style: bun
+palette:
+  skin: '#e6b592'
+  hair: '#26201c'
+outfit:
+  top: tunic
+  sleeves: long
+  neckline: v
+  top_color: '#8e5a78'
+  outer: apron
+  outer_length: knee
+  outer_color: '#e6dec9'
+  bottom: long_skirt
+  bottom_color: '#4a3f5c'
+  shoes: shoes
+  hat: headscarf
+  hat_color: '#3f5a6e'
+  accessories: []
+game:
+  character_id: npc_village_ume
+  description: A resident of the Ninja Village (gate address SILENT), a mountain village of the ninja dimension. Generated
+    by chargen; it parodies no one, and its look is everyday village dress, not a costume. She keeps the tea house on the
+    main street.

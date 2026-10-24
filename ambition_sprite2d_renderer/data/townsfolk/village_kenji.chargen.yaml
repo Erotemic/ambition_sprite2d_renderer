@@ -1,0 +1,33 @@
+# A resident made by the character generator; see targets/characters/townsfolk.py.
+schema: ambition-chargen-v1
+name: Kenji
+base: average_male
+seed: 22
+body:
+  height_cm: 171
+  age: 0.35
+hair:
+  style: short
+palette:
+  skin: '#e6b592'
+  hair: '#26201c'
+outfit:
+  top: shirt
+  sleeves: rolled
+  neckline: collar
+  top_color: '#d8cfb8'
+  outer: jacket
+  outer_length: hip
+  outer_color: '#2e5e5a'
+  bottom: trousers
+  bottom_color: '#5a5f66'
+  shoes: shoes
+  hat: cap
+  hat_color: '#2f3440'
+  accessories:
+  - belt
+game:
+  character_id: npc_village_kenji
+  description: A resident of the Ninja Village (gate address SILENT), a mountain village of the ninja dimension. Generated
+    by chargen; it parodies no one, and its look is everyday village dress, not a costume. A courier who carries letters through
+    the ring and does not like how it feels.

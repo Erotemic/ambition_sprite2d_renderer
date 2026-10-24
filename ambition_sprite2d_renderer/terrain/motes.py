@@ -87,6 +87,7 @@ def _petal(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
     "lab": (_dot, (196, 255, 244)),
+    # Dust in the light of a station deck, and starlight glints in the trusses.
     "basement": (_glow, (255, 190, 110)),
     # Drops of water that fall from the vault.
     "undertown": (_dot, (196, 232, 218)),
@@ -111,6 +112,10 @@ MOTES = {
     "void_castle": (_glow, (255, 150, 80)),
     # Ash and sparks from the fires of the Evil dimension.
     "evil_forest": (_glow, (255, 104, 60)),
+    # Spray off the sea in the late sun, at the port.
+    "pirate_port": (_dot, (250, 244, 228)),
+    # Maple leaves that fall in the village.
+    "ninja_village": (_petal, (214, 84, 52)),
     "castle_godwin": (_glow, (255, 140, 70)),
     # Sparks from the coils; ash in the throne room.
     "castle_godwin_lab": (_glow, (190, 230, 255)),

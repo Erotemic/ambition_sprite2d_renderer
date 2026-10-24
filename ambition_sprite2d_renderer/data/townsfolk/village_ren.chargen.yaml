@@ -1,0 +1,33 @@
+# A resident made by the character generator; see targets/characters/townsfolk.py.
+schema: ambition-chargen-v1
+name: Ren
+base: slim_female
+seed: 26
+body:
+  height_cm: 165
+  age: 0.2
+hair:
+  style: ponytail
+palette:
+  skin: '#efc6a8'
+  hair: '#26201c'
+outfit:
+  top: tunic
+  sleeves: long
+  neckline: v
+  top_color: '#e6dec9'
+  outer: jacket
+  outer_length: hip
+  outer_color: '#e6dec9'
+  bottom: trousers
+  bottom_color: '#24304a'
+  shoes: shoes
+  hat: none
+  accessories:
+  - belt
+  accent_color: '#26201c'
+game:
+  character_id: npc_village_ren
+  description: A resident of the Ninja Village (gate address SILENT), a mountain village of the ninja dimension. Generated
+    by chargen; it parodies no one, and its look is everyday village dress, not a costume. The dojo's top student, who names
+    a new rival every week.

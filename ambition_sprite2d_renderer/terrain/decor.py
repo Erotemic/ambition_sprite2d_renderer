@@ -334,6 +334,112 @@ def breadsticks(tile: Tile, c: dict) -> None:
     tile.put(jar * (np.abs(tile.y - (G - 4.4)) < 0.9), c["bloom"], 0.8)
 
 
+# -- The port of the pirate dimension, and the village of the ninja
+# dimension. These things have no shade under them (no drop shadows).
+
+
+def rope_coil(tile: Tile, c: dict) -> None:
+    """A coil of rope laid flat on the boards, its end hanging over."""
+    for k, (ry, r) in enumerate(((2.6, 6.4), (2.2, 5.2), (1.9, 4.0), (1.6, 2.8))):
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 2.0 - k * 1.2, r, ry=ry)), _mix(c["wood_light"], c["dark"], 0.15 + k * 0.08))
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 2.0 - k * 1.2, r - 0.6, ry=ry - 0.5)), c["dark"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 5.6, 1.2, ry=0.6)), c["dark"], 0.7)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 5.6, G - 2.2), (M + 7.8, G - 0.8), (M + 8.6, G - 0.3)], 0.7)), c["wood_light"])
+
+
+def bollard(tile: Tile, c: dict) -> None:
+    """An iron post a ship is tied to, with a turn of rope on it."""
+    body = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 2.6, G - 8.0, M + 2.6, G), _dot(p, dx, dy, M, G - 8.0, 3.6, ry=1.6), _box(p, dx, dy, M - 3.4, G - 1.2, M + 3.4, G)))
+    tile.put(body, c["metal"])
+    tile.put(body * (tile.x < M - 1.0), c["stone_light"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 2.8, G - 5.6, M + 2.8, G - 4.2)), c["wood_light"])
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 2.8, G - 4.9), (M + 8.0, G - 3.0), (M + 11.0, G - 2.4)], 0.6)), c["wood_light"], 0.9)
+
+
+def fish_basket(tile: Tile, c: dict) -> None:
+    """A wicker basket of the day's catch."""
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 5.6, G - 7.0), (M + 5.6, G - 7.0), (M + 4.4, G), (M - 4.4, G)]))
+    tile.put(body, c["wood"])
+    weave = tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M - 6.0, G - y, M + 6.0, G - y + 0.5) for y in (1.6, 3.4, 5.2)])
+    tile.put(weave * body, c["dark"], 0.45)
+    fish = [(M - 3.0, G - 7.6, 0.4), (M + 0.4, G - 8.0, -0.3), (M + 3.2, G - 7.4, 0.2)]
+    for x, y, lean in fish:
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x - 2.4, y + lean), (x + 1.6, y - 1.0 - lean), (x + 2.6, y), (x + 1.6, y + 1.0 - lean)])), c["stone_light"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 5.6, G - 7.4, M + 5.6, G - 6.6)), c["wood_light"])
+
+
+def net_heap(tile: Tile, c: dict) -> None:
+    """A fishing net heaped up to dry, with its floats."""
+    heap = [(M - 7.0, G), (M - 5.0, G - 4.0), (M - 1.0, G - 6.0), (M + 3.0, G - 5.0), (M + 6.6, G - 2.0), (M + 7.4, G)]
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, heap)), _mix(c["wood"], c["metal"], 0.5))
+    mesh = tile.mask(lambda p, dx, dy: ([_line(p, dx, dy, [(M + x, G), (M + x + 3.0, G - 6.0)], 0.3) for x in range(-8, 8, 2)], [_line(p, dx, dy, [(M + x, G), (M + x - 3.0, G - 6.0)], 0.3) for x in range(-6, 10, 2)]))
+    tile.put(mesh * tile.mask(lambda p, dx, dy: _poly(p, dx, dy, heap)), c["dark"], 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - y, 1.1) for x, y in ((-3.0, 4.2), (1.6, 5.2), (5.0, 2.6))]), c["bloom"])
+
+
+def harbour_lantern(tile: Tile, c: dict) -> None:
+    """A ship's lantern hung on a short post at the edge of the quay."""
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 0.7, G - 15.0, M + 0.7, G), _box(p, dx, dy, M - 2.2, G - 1.2, M + 2.2, G), _box(p, dx, dy, M - 0.7, G - 15.0, M + 4.0, G - 14.2))), c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 3.4, G - 11.0, 5.0), blur=1.6), c["glow"], 0.42)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M + 2.2, G - 12.8, M + 4.6, G - 9.0), _poly(p, dx, dy, [(M + 1.9, G - 12.8), (M + 4.9, G - 12.8), (M + 3.4, G - 14.2)]))), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M + 2.7, G - 12.3, M + 4.1, G - 9.5)), _mix(c["glow"], (255, 255, 255), 0.35))
+
+
+def toro(tile: Tile, c: dict) -> None:
+    """A stone lantern of a garden: a foot, a post, a light box with its
+    window, and a roof whose corners turn up."""
+    stone = tile.mask(lambda p, dx, dy: (
+        _box(p, dx, dy, M - 3.4, G - 1.8, M + 3.4, G), _box(p, dx, dy, M - 1.2, G - 8.0, M + 1.2, G - 1.8),
+        _box(p, dx, dy, M - 3.2, G - 9.2, M + 3.2, G - 8.0), _box(p, dx, dy, M - 2.6, G - 13.0, M + 2.6, G - 9.2),
+        _poly(p, dx, dy, [(M - 5.6, G - 13.0), (M - 4.6, G - 14.0), (M - 2.0, G - 15.6), (M + 2.0, G - 15.6), (M + 4.6, G - 14.0), (M + 5.6, G - 13.0)]),
+        _dot(p, dx, dy, M, G - 16.4, 1.0)))
+    tile.put(stone, c["stone"])
+    tile.put(stone * (tile.x < M - 1.0), c["stone_light"], 0.40)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 11.0, 6.0), blur=1.5), c["glow"], 0.34)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 1.4, G - 12.2, M + 1.4, G - 9.9)), _mix(c["glow"], (255, 255, 255), 0.3))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - 1.0, 1.0, ry=0.6) for x in (-3.0, 2.4)]), c["plant"], 0.6)
+
+
+def maple_shrub(tile: Tile, c: dict) -> None:
+    """A small maple in its autumn red, round and low."""
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M, G), (M - 0.4, G - 5.0)], 0.9)), c["wood"])
+    lumps = [(-4.0, 5.4, 3.6), (0.0, 8.4, 4.6), (4.2, 5.8, 3.6), (-1.8, 4.6, 3.0), (2.0, 4.4, 2.8)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - y, r) for x, y, r in lumps]), _mix(c["bloom"], c["dark"], 0.35))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x - 0.7, G - y - 0.7, r * 0.72) for x, y, r in lumps]), c["bloom"])
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x - 1.3, G - y - 1.4, r * 0.32) for x, y, r in lumps[:3]]), _mix(c["bloom"], (255, 220, 160), 0.4), 0.8)
+    tile.alpha *= tile.y < G
+
+
+def water_bucket(tile: Tile, c: dict) -> None:
+    """A wooden bucket of water with a ladle in it, by a door."""
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 4.0, G - 7.0), (M + 4.0, G - 7.0), (M + 3.4, G), (M - 3.4, G)]))
+    tile.put(body, c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M - 4.2, G - y, M + 4.2, G - y + 0.8) for y in (6.0, 2.0)]), c["metal"])
+    tile.put(body * (tile.x < M - 1.6), c["wood_light"], 0.4)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 7.0, 4.0, ry=0.9)), _mix(c["stone_light"], c["dark"], 0.3))
+    tile.put(tile.mask(lambda p, dx, dy: (_line(p, dx, dy, [(M + 1.0, G - 7.0), (M + 4.0, G - 13.0)], 0.5), _dot(p, dx, dy, M + 0.8, G - 7.2, 1.2, ry=0.6))), c["wood_light"])
+
+
+def sandal_rack(tile: Tile, c: dict) -> None:
+    """A low shelf by a door with wooden sandals on it, two pairs."""
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 7.0, G - 5.2, M + 7.0, G - 4.4), _box(p, dx, dy, M - 7.0, G - 1.0, M + 7.0, G - 0.2),
+                                          _box(p, dx, dy, M - 7.0, G - 5.2, M - 6.0, G), _box(p, dx, dy, M + 6.0, G - 5.2, M + 7.0, G))), c["wood"])
+    for x, y in ((-4.6, 5.2), (-1.8, 5.2), (1.6, 1.0), (4.4, 1.0)):
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M + x - 1.2, G - y - 1.0, M + x + 1.2, G - y)), c["wood_light"])
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + x - 0.8, G - y - 1.0), (M + x, G - y - 2.0), (M + x + 0.8, G - y - 1.0)], 0.35)), c["bloom"])
+
+
+def bamboo_fence(tile: Tile, c: dict) -> None:
+    """A short piece of fence of split bamboo tied with cord."""
+    for k in range(7):
+        x = M - 7.2 + k * 2.4
+        h = 9.0 + (k % 2) * 1.0
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x - 0.9, G - h, x + 0.9, G)), c["plant"] if k % 2 else _mix(c["plant"], c["dark"], 0.25))
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x - 0.9, G - h * 0.55, x + 0.9, G - h * 0.55 + 0.35)), c["dark"], 0.4)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M - 8.4, G - y, M + 8.4, G - y + 0.9) for y in (7.0, 3.0)]), c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M - 7.2 + k * 2.4, G - 6.6, 0.5) for k in range(7)]), c["bloom"], 0.7)
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -365,6 +471,10 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "primeval": ((bones, bush, rock, grass_tuft, mushrooms, bush), _palette((22, 28, 16), (104, 96, 78), (214, 204, 176), (104, 70, 44), (92, 86, 74), (62, 140, 58), (236, 150, 60), (255, 200, 110))),
     "forest": ((stone_lantern, bush, flowers, grass_tuft, rock, bush), _palette((20, 26, 20), (92, 98, 90), (150, 156, 140), (100, 70, 46), (70, 70, 64), (78, 136, 62), (236, 120, 150), (255, 190, 100))),
     # The Evil dimension: dead bushes, bones, stones and a brazier at the road.
+    # The port: rope, mooring posts, the catch, nets, a lantern.
+    "pirate_port": ((rope_coil, bollard, fish_basket, harbour_lantern, net_heap, bollard), _palette((40, 30, 24), (120, 112, 104), (196, 186, 170), (128, 94, 62), (58, 62, 70), (70, 110, 96), (214, 96, 60), (255, 200, 120))),
+    # The village: a stone lantern, maples, a bucket, sandals, a fence.
+    "ninja_village": ((toro, maple_shrub, water_bucket, sandal_rack, maple_shrub, bamboo_fence), _palette((30, 24, 30), (132, 128, 122), (190, 186, 176), (110, 76, 52), (70, 66, 64), (138, 150, 92), (206, 70, 48), (255, 186, 110))),
     "evil_forest": ((bones, bush, rock, grass_tuft, brazier, rock), _palette((8, 4, 6), (60, 50, 52), (110, 92, 90), (60, 36, 30), (50, 44, 48), (54, 44, 34), (200, 40, 32), (255, 110, 60))),
     # Castle Godwin: braziers, crates of the regime, anvils of its forge.
     "castle_godwin": ((brazier, crate, barrel, anvil, brazier, crate), _palette((10, 10, 16), (82, 92, 112), (134, 146, 168), (84, 54, 40), (46, 50, 62), (60, 60, 50), (200, 40, 32), (255, 132, 48))),
@@ -382,6 +492,8 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
 #: it is.
 LIGHTS: dict[Draw, tuple[float, float, float]] = {
     lamp_post: (M, 17.4, 0.36),
+    harbour_lantern: (M + 3.4, 11.0, 0.34),
+    toro: (M, 11.0, 0.32),
     stone_lantern: (M, 10.5, 0.32),
     brazier: (M, 12.5, 0.40),
     floor_light: (M, 7.0, 0.26),

@@ -201,6 +201,7 @@ def _colours(frame: RGB, leaf: RGB, dark: RGB, accent: RGB, glow: RGB) -> dict:
 #: The door of each theme: how it is drawn, and its colours.
 DOORS: dict[str, tuple[Draw, dict]] = {
     "lab": (bulkhead, _colours((40, 58, 78), (74, 104, 126), (12, 20, 32), (236, 178, 70), (130, 236, 224))),
+    # The station: a sliding bulkhead, amber hazard trim, a cyan lamp.
     "alarm": (bulkhead, _colours((34, 38, 54), (72, 78, 104), (8, 9, 17), (236, 178, 70), (255, 96, 80))),
     "undertown": (iron, _colours((52, 56, 56), (94, 98, 94), (14, 18, 18), (224, 170, 80), (140, 230, 200))),
     "hub": (bulkhead, _colours((44, 44, 100), (84, 86, 150), (14, 14, 44), (255, 206, 140), (196, 206, 255))),
@@ -222,6 +223,10 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),
+    # The port: a door of tarred planks with a round window, like a cabin's.
+    "pirate_port": (cabin, _colours((76, 54, 38), (132, 96, 64), (34, 24, 18), (214, 176, 108), (255, 214, 150))),
+    # The village: sliding paper screens in a frame of dark cedar.
+    "ninja_village": (shoji, _colours((52, 36, 30), (226, 216, 190), (24, 18, 16), (176, 60, 44), (255, 214, 160))),
     "evil_forest": (iron, _colours((40, 30, 32), (70, 24, 26), (10, 4, 6), (220, 50, 36), (255, 110, 60))),
     "castle_godwin": (iron, _colours((82, 92, 112), (40, 44, 56), (10, 10, 16), (200, 40, 32), (255, 132, 48))),
     "castle_godwin_lab": (iron, _colours((70, 88, 86), (40, 52, 50), (8, 12, 10), (120, 255, 150), (190, 230, 255))),
