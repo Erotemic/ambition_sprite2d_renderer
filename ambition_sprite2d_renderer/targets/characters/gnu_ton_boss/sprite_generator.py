@@ -109,11 +109,27 @@ ANIMATIONS: List[Tuple[str, int, int]] = [
           ("armed_kick", ((12, 60), (5, 60), (4, 60), (6, 70))),
       )
       for part, (frames, ms) in zip(("windup", "strike", "hold", "recover"), rows)],
+    # The giant as a character of its own (round 3): it walks (`walk_back`:
+    # the same steps backward, its face to the player), looks back at what is
+    # on its back, roars, grieves over its fallen rider (its arms hold him),
+    # and floats in space with its legs drawn up. `armed_*`: with its arms on.
+    ("walk", _giant.WALK_FRAMES, _giant.WALK_MS),
+    ("walk_back", _giant.WALK_FRAMES, _giant.WALK_MS),
+    ("armed_walk", _giant.WALK_FRAMES, _giant.WALK_MS),
+    ("armed_walk_back", _giant.WALK_FRAMES, _giant.WALK_MS),
+    ("look_back", 8, 90),
+    ("armed_look_back", 8, 90),
+    ("roar", 12, 70),
+    ("armed_roar", 12, 70),
+    ("grieve", 10, 120),
+    ("float", 10, 110),
+    ("armed_float", 10, 110),
 ]
 
 # The rows whose giant has its fists on its arms: the fused sheet draws no
 # fist beside it.
-_ROWS_WITH_FISTS_ON = ("armed_rest", "armed_rest_b", "armed_hit", "armed_buck") + tuple(
+_ROWS_WITH_FISTS_ON = ("armed_rest", "armed_rest_b", "armed_hit", "armed_buck", "armed_walk", "armed_walk_back",
+                       "armed_look_back", "armed_roar", "grieve", "armed_float") + tuple(
     f"{blow}_{part}" for blow in ("hammer", "jab", "upper", "left_hammer", "left_hook", "left_upper", "armed_kick")
     for part in ("windup", "strike", "hold", "recover"))
 

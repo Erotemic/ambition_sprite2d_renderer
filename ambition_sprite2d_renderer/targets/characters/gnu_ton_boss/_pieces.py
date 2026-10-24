@@ -121,7 +121,7 @@ def svg_of(scene: Scene, view: Tuple[float, float, float, float]) -> str:
            f'width="{w:g}" height="{h:g}" viewBox="{x:g} {y:g} {w:g} {h:g}">']
     for k, placed in enumerate(scene.ordered()):
         a, b, c, d, e, f = placed.full()
-        out.append(f'<g id="d{k}-{placed.name}" transform="matrix({a:.6f} {b:.6f} {c:.6f} {d:.6f} {e:.3f} {f:.3f})">')
+        out.append(f'<g id="d{k}-{placed.name.replace(":", ".")}" transform="matrix({a:.6f} {b:.6f} {c:.6f} {d:.6f} {e:.3f} {f:.3f})">')
         out.extend(placed.piece.body)
         out.append("</g>")
     out.append("</svg>")

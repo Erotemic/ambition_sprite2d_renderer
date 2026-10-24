@@ -43,6 +43,16 @@ ROWS = [
     ("gnu_blow_streak", 7, 33),
     ("gnu_hammer_quake", 10, 45),
     ("gnu_blow_impact", 8, 35),
+    # Round 3: two blows that meet (Newton's third law), the scholar's power
+    # on the giant's shoulders, the launch into space, and a puff of a push in
+    # space.
+    ("gnu_blow_clash", 9, 35),
+    ("gnu_power_up", 12, 60),
+    ("gnu_liftoff", 12, 50),
+    ("gnu_thrust_puff", 7, 40),
+    # The end of the fight: the golden apple falls on the beaten scholar's
+    # head, and he wakes.
+    ("gnu_apple_bonk", 14, 55),
 ]
 
 INK = art.INK
@@ -187,7 +197,156 @@ def impact(p: float) -> list[str]:
     return out
 
 
-DRAWINGS = {"gnu_blow_glint": glint, "gnu_blow_streak": streak, "gnu_hammer_quake": quake, "gnu_blow_impact": impact}
+def clash(p: float) -> list[str]:
+    """Two blows that meet, along X: two wedges driven at the middle from each
+    side, a flash ring where they meet, and sparks thrown out square to them.
+    Equal and opposite: the picture is the same from each side."""
+    out = []
+    # The ring of the meeting: it goes out and thins.
+    ring = 40.0 + 200.0 * _ease_out(p / 0.7)
+    width = 22.0 * max(0.0, 1.0 - p / 0.8)
+    if width > 0.5:
+        out.append(svg.ellipse(0.0, 0.0, ring, ring * 0.82, "none", INK, width + 4.0))
+        out.append(svg.ellipse(0.0, 0.0, ring, ring * 0.82, "none", GOLD_LIGHT, width))
+    # The two wedges: driven in, then thrown back from each other.
+    back = 70.0 * _ease_out(max(0.0, p - 0.15) / 0.6)
+    size = 1.0 - max(0.0, p - 0.45) / 0.55
+    if size > 0.05:
+        for s in (-1.0, 1.0):
+            x0 = s * (24.0 + back)
+            pts = [(x0, 0.0), (x0 + s * 120.0 * size, -54.0 * size), (x0 + s * 96.0 * size, 0.0), (x0 + s * 120.0 * size, 54.0 * size)]
+            out.append(svg.path(svg.poly(pts), WHITE if s > 0 else CREAM, INK, 3.0))
+    # The flash where they met.
+    if p < 0.4:
+        f = 1.0 - p / 0.4
+        out.append(svg.path(_star(0.0, 0.0, 4, 150.0 * f + 20.0, 26.0 * f + 6.0, 90.0), WHITE, INK, 3.0))
+    # Sparks, square to the blows: up and down.
+    for k, (a, speed) in enumerate(((-90, 1.0), (-70, 0.8), (-110, 0.85), (90, 1.0), (70, 0.75), (110, 0.9), (-80, 0.6), (100, 0.65))):
+        r0 = 30.0 + 230.0 * speed * _ease_out(p)
+        length = 46.0 * (1.0 - p)
+        if length < 4.0:
+            continue
+        ar = math.radians(a)
+        x0, y0 = r0 * math.cos(ar), r0 * math.sin(ar)
+        x1, y1 = (r0 + length) * math.cos(ar), (r0 + length) * math.sin(ar)
+        out.append(svg.path(f"M{x0:.1f},{y0:.1f} L{x1:.1f},{y1:.1f}", "none", GOLD_LIGHT if k % 2 else WHITE, 6.0 * (1.0 - p)))
+    return out
+
+
+def power_up(p: float) -> list[str]:
+    """The scholar takes his power from the giant's shoulders: rings of gold
+    go up round him, and sparks rise. Upright: its bottom is his feet
+    (y = 200)."""
+    out = []
+    feet = 200.0
+    for k in range(3):
+        u = (p * 1.5 - k * 0.25) % 1.0
+        if u < 0.02 or u > 0.98:
+            continue
+        y = feet - 400.0 * u
+        r = 110.0 * (1.0 - 0.45 * u)
+        w = 10.0 * (1.0 - u)
+        out.append(svg.ellipse(0.0, y, r, r * 0.26, "none", INK, w + 3.0))
+        out.append(svg.ellipse(0.0, y, r, r * 0.26, "none", GOLD_LIGHT if k % 2 else GOLD, w))
+    for k in range(9):
+        u = (p * 2.0 + k * 0.37) % 1.0
+        x = 120.0 * math.sin(k * 2.1 + p * 3.0) * (1.0 - u * 0.4)
+        y = feet - 30.0 - 380.0 * u
+        size = 14.0 * (1.0 - u)
+        if size < 2.0:
+            continue
+        out.append(svg.path(_star(x, y, 4, size * 2.2, size * 0.5, 45.0 * k), WHITE if k % 3 else GOLD_LIGHT, INK, 1.8))
+    return out
+
+
+def liftoff(p: float) -> list[str]:
+    """The launch into space, from the floor (the line y = 160): a flat ring
+    of force goes out along it, and a column of smoke and fire is left under
+    what went up."""
+    floor = 160.0
+    out = []
+    # The ring along the floor.
+    spread = 60.0 + 200.0 * _ease_out(p)
+    fade = max(0.0, 1.0 - p / 0.9)
+    if fade > 0.02:
+        out.append(svg.ellipse(0.0, floor - 6.0, spread, 26.0 + 30.0 * p, "none", INK, 14.0 * fade + 4.0))
+        out.append(svg.ellipse(0.0, floor - 6.0, spread, 26.0 + 30.0 * p, "none", CREAM, 14.0 * fade))
+    # The column: fire at its foot at first, then smoke that climbs.
+    if p < 0.35:
+        f = 1.0 - p / 0.35
+        out.append(svg.path(_jagged(0.0, floor - 50.0, 8, 120.0 * f + 30.0, 40.0, 0.9, -90.0), GOLD, INK, 3.0))
+        out.append(svg.path(_jagged(0.0, floor - 40.0, 7, 70.0 * f + 16.0, 24.0, 2.3, -90.0), WHITE, INK, 2.4))
+    rise = 300.0 * _ease_out(p / 0.8)
+    for k, (dx, up, r) in enumerate(((-40, 0.0, 50), (36, 0.15, 46), (-20, 0.35, 42), (24, 0.55, 36), (-8, 0.78, 30), (10, 1.0, 22))):
+        rr = r * (0.6 + 0.8 * _ease_out(p / 0.5)) * (1.0 - 0.5 * max(0.0, p - 0.6) / 0.4)
+        if rr < 4.0:
+            continue
+        out.append(svg.ellipse(dx * (1.0 + p), floor - 30.0 - rise * up, rr, rr * 0.9, DUST if k % 2 else DUST_DARK, INK, 2.2))
+    return out
+
+
+def thrust_puff(p: float) -> list[str]:
+    """A push in space, along +X: a puff of vapour left behind (toward -X)
+    that grows and goes."""
+    out = []
+    for k, (dx, r) in enumerate(((-20, 30), (-60, 24), (-96, 16))):
+        x = dx * (1.0 + 1.6 * p)
+        rr = r * (0.6 + 1.0 * _ease_out(p)) * (1.0 - p)
+        if rr < 3.0:
+            continue
+        out.append(svg.ellipse(x, 0.0, rr, rr * 0.86, WHITE if k == 0 else CREAM, INK, 2.2))
+    return out
+
+
+APPLE = "#d6a21e"
+APPLE_LIGHT = "#f6d763"
+LEAF = "#5f9a3c"
+
+
+def _golden_apple(x: float, y: float, r: float, turn: float) -> list[str]:
+    out = [svg.ellipse(x, y, r, r * 0.92, APPLE, INK, 3.0),
+           svg.ellipse(x - r * 0.36, y - r * 0.3, r * 0.3, r * 0.22, APPLE_LIGHT)]
+    a = math.radians(turn - 90.0)
+    sx, sy = x + math.cos(a) * r * 0.9, y + math.sin(a) * r * 0.9
+    ex, ey = x + math.cos(a) * r * 1.5, y + math.sin(a) * r * 1.5
+    out.append(svg.path(f"M{sx:.1f},{sy:.1f} L{ex:.1f},{ey:.1f}", "none", INK, 4.0))
+    b = math.radians(turn - 40.0)
+    leaf = [(ex, ey), (ex + math.cos(b) * r * 0.9, ey + math.sin(b) * r * 0.9 - r * 0.15),
+            (ex + math.cos(b) * r * 0.5, ey + math.sin(b) * r * 0.5 + r * 0.2)]
+    out.append(svg.path(svg.poly(leaf), LEAF, INK, 2.2))
+    return out
+
+
+def apple_bonk(p: float) -> list[str]:
+    """The golden apple falls on a head at the middle (y = 0): it falls from
+    the top of the frame under gravity (it gets faster), hits, a star and
+    small stars go round, and it bounces off up and to the side."""
+    out = []
+    hit = 0.42
+    if p < hit:
+        u = p / hit
+        out += _golden_apple(0.0, -230.0 + 200.0 * u * u, 34.0, 20.0 * u)
+    else:
+        u = (p - hit) / (1.0 - hit)
+        # It bounces: up and away, and falls again.
+        x, y = 150.0 * u, -30.0 - 260.0 * u + 330.0 * u * u
+        if y < 230.0:
+            out += _golden_apple(x, y, 34.0, 20.0 + 300.0 * u)
+        if u < 0.35:
+            f = 1.0 - u / 0.35
+            out.append(svg.path(_star(0.0, -40.0, 6, 110.0 * f + 20.0, 34.0 * f + 8.0, 15.0), WHITE, INK, 3.0))
+        # The small stars round the head.
+        for k in range(3):
+            a = 2.0 * math.pi * (k / 3.0 + 1.6 * u)
+            sx, sy = 70.0 * math.cos(a), -60.0 + 18.0 * math.sin(a)
+            if u < 0.95:
+                out.append(svg.path(_star(sx, sy, 5, 16.0, 6.0, 30.0 * k), GOLD_LIGHT, INK, 2.0))
+    return out
+
+
+DRAWINGS = {"gnu_blow_glint": glint, "gnu_blow_streak": streak, "gnu_hammer_quake": quake, "gnu_blow_impact": impact,
+            "gnu_blow_clash": clash, "gnu_power_up": power_up, "gnu_liftoff": liftoff, "gnu_thrust_puff": thrust_puff,
+            "gnu_apple_bonk": apple_bonk}
 
 
 def render_row(anim: str, p: float) -> Image.Image:
@@ -215,6 +374,16 @@ SPECS = {
                                   placement="surface", orientation="gravity_relative", rotate_safe=False, size=320),
     "gnu_blow_impact": make_spec("hit_impact", "A blow of the giant that lands on a body: a burst and its shards.",
                                  placement="world", orientation="radial", size=260),
+    "gnu_blow_clash": make_spec("hit_impact", "Two blows that meet, along +X: wedges driven at the middle, a ring, sparks square to them.",
+                                placement="world", orientation="directional", rotate_safe=True, size=300),
+    "gnu_power_up": make_spec("aura", "Rings of gold that go up round a body standing at the bottom, and rising sparks.",
+                              placement="world", orientation="gravity_relative", rotate_safe=False, size=420),
+    "gnu_liftoff": make_spec("surface_impact", "A launch from the floor: a flat ring of force and a column of fire and smoke.",
+                             placement="surface", orientation="gravity_relative", rotate_safe=False, size=440),
+    "gnu_thrust_puff": make_spec("motion_smear", "A push in space along +X: a puff of vapour left behind.",
+                                 placement="world", orientation="directional", rotate_safe=True, size=160),
+    "gnu_apple_bonk": make_spec("story_beat", "A golden apple falls on a head at the middle, a star, and it bounces off.",
+                                placement="world", orientation="gravity_relative", rotate_safe=False, size=480),
 }
 
 ORIGINS = {name: (FRAME_SIZE[0] * 0.5, FRAME_SIZE[1] * 0.5) for name, _, _ in ROWS}

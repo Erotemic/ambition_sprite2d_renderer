@@ -129,6 +129,15 @@ EXPRESSIONS = {
                    ears=(-30, -30), mouth="firm", tilt=4.0, hot=True, flare=1.3),
     "dazed": _face((0.0, 0.10), look=((-0.25, -0.10), (0.30, 0.20)), pupil=(0.34, 0.20), ears=(10, 30), tilt=-5.0),
     "sleepy": _face((0.50, 0.50), look=((0.05, 0.30), (0.05, 0.30)), pupil=(0.28, 0.28), ears=(16, 16)),
+    # It looks back over its shoulder at what is on its back.
+    "wary": _face((0.20, 0.20), slant=0.18, look=((-0.42, -0.26), (-0.42, -0.26)), pupil=(0.22, 0.22), ears=(-12, 8),
+                  tilt=-6.0),
+    # Its rider is down: the lids fall, their inner ends up; the ears hang.
+    "grief": _face((0.46, 0.46), slant=-0.34, low=0.10, look=((0.04, 0.38), (0.04, 0.38)), pupil=(0.30, 0.30),
+                   ears=(44, 44), mouth="sad", tilt=10.0),
+    # And then it roars.
+    "roar": _face((0.30, 0.30), slant=0.56, low=0.16, look=((0.10, 0.04), (0.10, 0.04)), pupil=(0.15, 0.15), ears=(-44, -44),
+                  mouth="roar", tilt=-8.0, hot=True, flare=1.55),
 }
 def grp(items, transform):
     return [f'<g transform="{transform}">'] + list(items) + ["</g>"]
@@ -556,6 +565,18 @@ def head_parts(expr, horns="gnu"):
         body += [line([P(108, 190), P(64, 194), P(30, 170), P(16, 148)], INK, 3.4), line([P(10, 152), P(22, 144)], INK, 3.0)]
     elif mouth == "firm":
         body += [line([P(110, 190), P(62, 190), P(26, 166), P(22, 176)], INK, 3.8)]
+    elif mouth == "sad":
+        body += [line([P(110, 186), P(66, 186), P(32, 178), P(20, 196)], INK, 3.6)]
+    elif mouth == "roar":
+        # The jaw drops: a dark mouth, its teeth, its tongue.
+        jaw = smooth([P(122, 182, True), P(70, 186), P(22, 162, True), P(20, 230), P(56, 286), P(112, 292), P(134, 250)])
+        body += outlined(jaw, "#3a1210", [path(smooth([P(36, 262), P(78, 240), P(118, 262), P(100, 290), P(56, 288)]), "#b8524a"),
+                                          path(svg.poly([P(104, 186), P(114, 186), P(109, 206)]), C["white"], INK, 1.6),
+                                          path(svg.poly([P(72, 188), P(82, 188), P(77, 206)]), C["white"], INK, 1.6),
+                                          path(svg.poly([P(42, 176), P(52, 180), P(46, 196)]), C["white"], INK, 1.6),
+                                          path(svg.poly([P(104, 290), P(114, 288), P(109, 270)]), C["white"], INK, 1.6),
+                                          path(svg.poly([P(64, 286), P(74, 288), P(69, 270)]), C["white"], INK, 1.6)],
+                         "clip-roar")
     if fl > 1.0:
         # Breath from the nose.
         body += [line([P(150, 158), P(170, 150), P(184, 156)], C["horn_light"], 3.0),
@@ -597,7 +618,9 @@ def head_parts(expr, horns="gnu"):
         if lids:
             body += [f'<clipPath id="{cid}"><circle cx="{ex:.1f}" cy="{ey:.1f}" r="{r:.1f}" /></clipPath>',
                      f'<g clip-path="url(#{cid})">'] + lids + ["</g>", ellipse(ex, ey, r, r, "none", INK, 2 * OW)]
-    out.append(("face", 60, body, tilt))
+    # The track `head`: the head of the body for the game (its landmark, where
+    # a helmet sits).
+    out.append(("head", 60, body, tilt))
     return out
 
 
@@ -1160,6 +1183,67 @@ HOOF_UP = dict(STANCES["sloped"], lift=(-12.0, -196.0),
                fore=(((1098, 706), (1176, 770), (1150, 852)), STANCES["sloped"]["fore"][1]))
 #: The eyes shut.
 _SHUT = dict(EXPRESSIONS["sleepy"], lids=(0.94, 0.94))
+#: The giant in the air (in space): its legs drawn up under it.
+FLOAT = dict(STANCES["sloped"], lift=(-8.0, -186.0),
+             hind=((452, 740), (356, 800), (420, 846)),
+             hind_far=((548, 734), (456, 792), (518, 840)),
+             fore=(((1098, 720), (1196, 770), (1208, 840)), ((960, 716), (1056, 768), (1068, 834))),
+             tail=((346, 612), 48.0))
+#: The arms that hold something in front of the chest (its rider, fallen).
+_CRADLE = ((ARM_ROOT_L, (900.0, 660.0), (1064.0, 704.0)), (ARM_ROOT_R, (1300.0, 650.0), (1154.0, 708.0)))
+
+
+def _far_hind(st):
+    """The far hind leg of a stance: its own, or the near one moved to where
+    the far one stands."""
+    if "hind_far" in st:
+        return st["hind_far"]
+    hip, mid, end = st["hind"]
+    return ((hip[0] + 96, hip[1] - 6), (mid[0] + 96, mid[1] - 4), (end[0] + 100, end[1]))
+
+
+#: A stride of the walk: how far a hoof goes back while it stands (design
+#: units), how high it lifts, and the part of a step it stands. The game moves
+#: the giant at the speed this makes (`STRIDE_SPEED`).
+STRIDE = 140.0
+STRIDE_LIFT = 46.0
+STRIDE_STAND = 0.7
+#: The walk's frames and their length (`sprite_generator.ANIMATIONS`).
+WALK_FRAMES, WALK_MS = 12, 80
+#: World units a second the walk carries the giant: a hoof that stands goes
+#: back STRIDE over the part of the cycle it stands (design units are half a
+#: frame pixel, and a frame pixel is `WORLD_PER_PIXEL` world units).
+STRIDE_SPEED = STRIDE * 0.5 * 1.3 / (STRIDE_STAND * WALK_FRAMES * WALK_MS / 1000.0)
+
+
+def _stride_leg(leg, phase, lag, back=1.0):
+    """One leg of the walk at ``phase`` (0..1), ``lag`` of a cycle behind the
+    first. ``back`` -1 walks backward. The hip stays; the hoof stands and goes
+    back, then lifts and comes forward; the knee goes with it, half as far."""
+    hip, mid, end = leg
+    u = (phase - lag) % 1.0
+    if u < STRIDE_STAND:
+        dx, lift = STRIDE * (0.5 - u / STRIDE_STAND), 0.0
+    else:
+        v = (u - STRIDE_STAND) / (1.0 - STRIDE_STAND)
+        dx, lift = STRIDE * (v - 0.5), STRIDE_LIFT * math.sin(math.pi * v)
+    dx *= back
+    return (hip, (mid[0] + dx * 0.5 + lift * 0.2, mid[1] - lift * 0.55), (end[0] + dx, end[1] - lift))
+
+
+def _walk_stance(st, phase, back=1.0):
+    """A stance walking: each leg a quarter of a step after the one before it
+    (near hind, near fore, far hind, far fore), the body bobbing on each step."""
+    two_pi = 2.0 * math.pi
+    out = dict(st)
+    out["hind"] = _stride_leg(st["hind"], phase, 0.0, back)
+    out["hind_far"] = _stride_leg(_far_hind(st), phase, 0.5, back)
+    out["fore"] = (_stride_leg(st["fore"][0], phase, 0.25, back), _stride_leg(st["fore"][1], phase, 0.75, back))
+    out["lift"] = (st["lift"][0], st["lift"][1] + 5.0 * math.sin(2.0 * two_pi * phase))
+    out["rump"] = (st["rump"][0], st["rump"][1] + 3.0 * math.sin(2.0 * two_pi * phase + 0.8))
+    (root, swing) = st["tail"]
+    out["tail"] = (root, swing + 9.0 * math.sin(two_pi * phase))
+    return out
 
 
 def _ease(u):
@@ -1259,6 +1343,50 @@ def pose_for(anim: str, phase: float) -> dict:
         pose["dust"] = max(0.0, 1.0 - (phase - 0.7) / 0.3) if phase >= 0.7 else 0.0
         pose["head"] = (0.0, 10.0 * (1.0 if phase >= 0.7 else 0.0) * (1.0 - (phase - 0.7) / 0.3))
         pose["expr"] = face("angry" if phase < 0.85 else "serious")
+    elif anim in ("walk", "walk_back"):
+        # It strides; `walk_back` is the same steps the other way (it backs
+        # off and keeps its face to the player). Its head nods with the steps.
+        back = -1.0 if anim == "walk_back" else 1.0
+        pose["stance"] = _walk_stance(sloped, phase, back)
+        pose["head"] = (0.0, 6.0 * math.sin(4.0 * math.pi * phase + 0.5))
+        pose["expr"] = face("ordered", 2.0 * math.sin(two_pi * phase))
+        if armed:
+            pose["arms"] = _whole_arms(sway=10.0 * math.sin(two_pi * phase) * back)
+            return pose
+    elif anim == "look_back":
+        # Something is on its back: it turns its head to see it, and holds.
+        turn = _ease(min(1.0, phase / 0.4))
+        pose["stance"] = breathe(sloped, 0.5)
+        pose["head"] = (-26.0 * turn, -14.0 * turn)
+        pose["expr"] = face("wary", -4.0 * turn)
+    elif anim == "roar":
+        # It rears and roars: up over 0.3 of the row, held, and down.
+        up = _ease(min(1.0, phase / 0.3)) * (1.0 - _ease((phase - 0.8) / 0.2))
+        shake = math.sin(2.0 * two_pi * 3.0 * phase) * (1.0 if 0.3 <= phase < 0.85 else 0.0)
+        pose["stance"] = mix_stance(sloped, STANCES["reared"], 0.7 * up)
+        pose["head"] = (4.0 * shake, -30.0 * up + 3.0 * shake)
+        pose["expr"] = face("roar" if up > 0.3 else "angry", 2.0 * shake)
+    elif anim == "grieve":
+        # It holds its fallen rider to its chest, the head low over him.
+        low = _ease(min(1.0, phase / 0.5))
+        s = breathe(sloped, 0.4)
+        s["lift"] = (s["lift"][0], s["lift"][1] + 18.0 * low)
+        pose["stance"] = s
+        pose["head"] = (16.0 * low, 70.0 * low)
+        pose["expr"] = face("grief")
+        pose["arms"] = [dict(kind="limb", name="arm-left", pts=mix(_HANG_L, _CRADLE[0], low)),
+                        dict(kind="limb", name="arm-right", pts=mix(_HANG_R, _CRADLE[1], low))]
+        return pose
+    elif anim == "float":
+        # In the air: the legs drawn up and paddling, slowly.
+        st = dict(FLOAT)
+        paddle = math.sin(two_pi * phase)
+        st["fore"] = tuple(((h, (m[0] + 10.0 * paddle * k, m[1]), (e[0] + 22.0 * paddle * k, e[1] - 6.0 * paddle * k))
+                            for (h, m, e), k in zip(FLOAT["fore"], (1.0, -1.0))))
+        st["lift"] = (FLOAT["lift"][0], FLOAT["lift"][1] + 6.0 * math.sin(two_pi * phase + 0.7))
+        pose["stance"] = st
+        pose["head"] = (0.0, 4.0 * math.sin(two_pi * phase))
+        pose["expr"] = face("ordered", 2.0 * paddle)
     elif anim == "clamp":
         # The arms go out to each side and into the lines; the lines close on them.
         out = _ease(min(1.0, phase / 0.7))
@@ -1383,6 +1511,8 @@ def _rest_length(a, b):
 #: Each leg's two bones at rest (the stance `sloped`): the length a bone is
 #: drawn at, so a leg at rest is drawn unstretched.
 _SLOPED = STANCES["sloped"]
+#: How far under the fetlock a hind hoof's sole is at rest.
+_HIND_FLOOR = FLOOR - _SLOPED["hind"][2][1]
 LEG_LENGTHS = {
     "hind": (_rest_length(*_SLOPED["hind"][:2]), _rest_length(*_SLOPED["hind"][1:])),
     "fore-near": (_rest_length(*_SLOPED["fore"][0][:2]), _rest_length(*_SLOPED["fore"][0][1:])),
@@ -1577,8 +1707,11 @@ def scene_for(pose: dict, *, arms: bool = False, horns: str = "gnu") -> pc.Scene
     svg.configure(dx=0.0, dy=0.0, ink=INK, ow=OW, colors=C)
     scene = pc.Scene()
     hip, mid, end = st["hind"]
-    leg_pieces(scene, "far-hind", "hind", (hip[0] + 96, hip[1] - 6), (mid[0] + 96, mid[1] - 4), (end[0] + 100, end[1]), True, 10)
-    leg_pieces(scene, "near-hind", "hind", hip, mid, end, False, 28)
+    # A hind hoof stands its sole at the floor at rest; a stance that lifts it
+    # (a step, the air) lifts its sole with it.
+    walking = "hind_far" in st
+    leg_pieces(scene, "far-hind", "hind", *_far_hind(st), True, 10, _HIND_FLOOR if walking else None)
+    leg_pieces(scene, "near-hind", "hind", hip, mid, end, False, 28, _HIND_FLOOR if walking else None)
     leg_pieces(scene, "far-fore", "fore-far", *st["fore"][1], True, 10, st["fore_floors"][1])
     if pose.get("kick"):
         hip, knee, fet = pose["kick"]
@@ -1633,7 +1766,27 @@ def scene_for(pose: dict, *, arms: bool = False, horns: str = "gnu") -> pc.Scene
     if pose.get("dust", 0.0) > 0.0:
         fx, _fy = st["fore"][0][2]
         scene.add("dust", 90, pc.Piece(tuple(_dust((fx, FLOOR), pose["dust"])), origin=(fx, FLOOR), reach=400.0))
+    for placed in scene.items:
+        placed.name = limb_track(placed.name)
     return scene
+
+
+#: The limbs of the giant that are bodies of their own in the game, by the
+#: name of their pieces: an arm, and the near fore leg (the kick). The game
+#: takes a limb's parts (and only them) through a portal pair by these names
+#: (`limb:<slot>`, `rigged::is_limb_track`).
+LIMB_SLOTS = {"arm-right": "hand_right", "arm-left": "hand_left", "near-fore": "hoof_right"}
+
+
+def limb_track(name: str) -> str:
+    """The track of a piece: ``limb:<slot>:<part>`` for a piece of a limb that
+    is a body of its own in the game, else its name."""
+    for prefix, slot in LIMB_SLOTS.items():
+        if name == prefix:
+            return f"limb:{slot}"
+        if name.startswith(prefix + "-"):
+            return f"limb:{slot}:{name[len(prefix) + 1:]}"
+    return name
 
 
 #: The canvas the frame is composed on: the design, at one pixel a unit (twice
