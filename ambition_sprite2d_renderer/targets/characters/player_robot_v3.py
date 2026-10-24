@@ -475,9 +475,11 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
         slash = max(0.35, float(params.get("slash", 0.0)))
         _place_blade(front, effect, base, hand.angle, slash, float(params.get("slash_arc", t)))
 
-    # The orb is held in the hand while it charges. The shot itself is the
-    # game's projectile, born at this hand: the `shoot` row draws no shot.
-    if effect in {"aim", "charge"}:
+    # The robot's fireball is the game's: the game draws its charge at the
+    # hand in `aim` and the shot it births at the hand in `shoot`, so neither
+    # row paints an orb. `charge` (the platform fighter's held charge) keeps
+    # its orb.
+    if effect == "charge":
         pulse = 0.55 + 0.45 * math.sin((t + 0.1) * math.pi)
         front.put(_disc(float(round(3 + 4 * pulse)), (25, 233, 255, 75), (193, 128, 255, 220), 2, "orb"), base, 0.0, "orb")
 
