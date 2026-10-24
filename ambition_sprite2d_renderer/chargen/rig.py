@@ -17,6 +17,7 @@ tall character is a tall sprite.
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -185,7 +186,69 @@ def view_document(spec: CharacterSpec, fig: Figure, dv: "DrawnView", svg_path: P
     worn = {p.feature for p in dv.parts if p.feature and "@" not in p.name}
     doc["features"] = {p.feature: False for p in dv.parts if p.feature and p.feature not in worn}
     doc["chargen"] = {"view": view.key, "yaw": view.yaw, "px_per_cm": PX_PER_CM, "spec_seed": spec.seed, "base": spec.base}
+    doc["continuity"] = _head_on_neck(fig, view, doc)
     return doc
+
+
+def _outline(loft, view: View, px) -> List[List[float]]:
+    """A loft's silhouette in this view (its left edge down, its right edge
+    up), mapped by ``px``."""
+    levels = [loft.top + (loft.bottom - loft.top) * i / 16.0 for i in range(17)]
+    sides = []
+    for y in levels:
+        pts = [view.project(q) for _a, q in loft.ring(y, 72)]
+        sides.append((min(pts), max(pts)))
+    return [px(lo) for lo, _hi in sides] + [px(hi) for _lo, hi in reversed(sides)]
+
+
+def _head_on_neck(fig: Figure, view: View, doc: dict) -> List[dict]:
+    """The audit's head-on-neck checks (``pose_audit``'s ``continuity``), in
+    this view's rest frame pixels: the lower corners of the neck the head
+    carries (``neck_upper``) stay on the neck the body carries (or a turn of
+    the head opens a gap), and the top of the neck the body carries stays
+    under the neck the head carries (or a head that rises leaves a stub of
+    neck below it: a floating head)."""
+    from ..authoring.rigdoc import RigDocument
+    from .draw import NECK_SLEEVE
+
+    probe = RigDocument(dict(doc, clips={}))
+    rest, _ = probe.solve("", 0.0, sampled_channels={})
+    hx, hy = rest["head"].origin
+    jx, jy = view.project(fig.joints["neck"])
+
+    def px(p: Tuple[float, float]) -> List[float]:
+        return [round(hx + (p[0] - jx) * PX_PER_CM, 4), round(hy + (p[1] - jy) * PX_PER_CM, 4)]
+
+    nk = fig.neck
+
+    def extremes(y: float) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        pts = [view.project(q) for _a, q in nk.ring(y, 72)]
+        return min(pts), max(pts)
+
+    y_s = nk.top + (nk.bottom - nk.top) * NECK_SLEEVE
+    lo, hi = extremes(y_s)
+    mid = ((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2)
+    # A little in from the sides: a head that only turns keeps them on the
+    # neck; one that comes off (a gap, a float) takes them off it.
+    corners = [px((c[0] + (mid[0] - c[0]) * 0.2, c[1] + (mid[1] - c[1]) * 0.2)) for c in (lo, hi)]
+    levels = [nk.top + (nk.bottom - nk.top) * i / 8.0 for i in range(9)]
+    sides = [extremes(y) for y in levels]
+    polygon = [px(lo) for lo, _hi in sides] + [px(hi) for _lo, hi in reversed(sides)]
+    # A turn may bend the neck's outline where the two meet (a kink of up
+    # to a quarter of the neck's half-width); it may not open it.
+    half = math.dist(lo, hi) / 2 * PX_PER_CM
+    tol = round(0.25 * half + 0.25, 3)
+    upper = [extremes(nk.top + (y_s - nk.top) * i / 6.0) for i in range(7)]
+    sleeve = [px(a) for a, _b in upper] + [px(b) for _a, b in reversed(upper)]
+    tlo, thi = extremes(nk.top + (y_s - nk.top) * 0.1)
+    tmid = ((tlo[0] + thi[0]) / 2, (tlo[1] + thi[1]) / 2)
+    tops = [px((c[0] + (tmid[0] - c[0]) * 0.2, c[1] + (tmid[1] - c[1]) * 0.2)) for c in (tlo, thi)]
+    return [
+        {"name": "head_on_neck", "carried": {"bone": "head", "points": corners}, "within": {"bone": "torso", "polygon": polygon},
+         "tolerance": tol},
+        {"name": "neck_under_head", "carried": {"bone": "torso", "points": tops},
+         "within": {"bone": "head", "polygons": [sleeve, _outline(fig.head, view, px)]}, "tolerance": tol},
+    ]
 
 
 def build_rigs(spec: CharacterSpec, svg_path: Path, rig_dir: Path, views: Sequence[View] = VIEWS, *, clips=None,

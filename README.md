@@ -825,7 +825,14 @@ body, not a sheet row).
 `cat`, `bird`) are fresh anthropomorphic heads on the same humanoid body,
 each a head model (rows, relief, face layout, ears, mane/tuft/crest). They
 wear every hat, take every expression and pose like any other spec. Never
-trace or adapt an existing animal sprite for one.
+trace or adapt an existing animal sprite for one. A species head says where
+its neck goes into it (`HeadModel.neck_f`): the neck's top ring is fitted
+inside the head there, the head turns about that point (less far than a
+human's, `pose3d.SPECIES_HEAD_TURN`), and the neck's upper part
+(`neck_upper`, and a horse's mane) is carried by the head over the neck the
+body carries. Every rig declares that join to `pose_audit` (`continuity`:
+`head_on_neck`, `neck_under_head`), so a head that floats or a neck that
+opens is an audit error.
 
 **Components** (`wear.py`): legwear, top, outer layer, footwear, hair, hat
 and accessories are separate parts tagged `slot:kind` (`data-rig-feature`),

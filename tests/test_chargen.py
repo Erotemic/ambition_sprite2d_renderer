@@ -209,7 +209,10 @@ def test_the_rig_derives_from_the_spec_for_many_seeds(tmp_path):
 @pytest.mark.parametrize("spec", [
     S.generate("average_female", 21, {"outfit": {"outer": "robe"}}),
     S.crowd(2, 1, species="horse")[1],
-], ids=["robe", "horse"])
+    S.crowd(2, 2, species="dog")[1],
+    S.crowd(2, 3, species="cat")[1],
+    S.crowd(2, 4, species="bird")[1],
+], ids=["robe", "horse", "dog", "cat", "bird"])
 def test_every_library_clip_poses_without_audit_errors_in_every_view(spec, tmp_path):
     from ambition_sprite2d_renderer.authoring.pose_audit import audit_document
     from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
@@ -344,3 +347,29 @@ def test_every_grip_class_poses_its_item_clips_cleanly_and_points_the_item(tmp_p
             d = (math.cos(math.radians(item)), math.sin(math.radians(item)))
             off_line = abs((f[0] - g[0]) * d[1] - (f[1] - g[1]) * d[0])
             assert off_line < 3.0, off_line
+
+
+def test_the_head_stays_on_its_neck_and_the_audit_says_when_it_does_not(tmp_path):
+    """Every view declares its head-on-neck continuity; a head that comes
+    off its neck (moved, or turned past what a neck allows) is an audit
+    error, and the rest pose is clean."""
+    import copy
+
+    from ambition_sprite2d_renderer.authoring.pose_audit import audit_document
+    from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
+
+    spec = S.crowd(2, 1, species="horse")[1]
+    rigs = _rest_rigs(spec, tmp_path)
+    for view, path in rigs.items():
+        data = RigDocument.load(path).data
+        assert [c["name"] for c in data["continuity"]] == ["head_on_neck", "neck_under_head"], view
+
+        def gaps(channels):
+            d = copy.deepcopy(data)
+            d["clips"] = {"probe": {"loop": False, "frames": 1, "duration_ms": 100,
+                                    "channels": {k: {"const": v} for k, v in channels.items()}}}
+            return [fd for f in audit_document(RigDocument(d)).frames for fd in f.findings if fd.code == "part_continuity_gap"]
+
+        assert gaps({}) == [], view
+        assert gaps({"head": 75.0}), (view, "a head turned past what a neck allows")
+        assert gaps({"bone.head.y": -12.0}), (view, "a head lifted off its neck")

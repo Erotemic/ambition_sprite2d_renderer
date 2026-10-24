@@ -30,6 +30,12 @@ from .svgout import FINE, Canvas
 
 #: The angle (degrees above forward) an item takes in an unturned hand.
 ITEM_REST_ANGLE = 24.0
+
+#: How far down the neck (a fraction of its length) the head carries the
+#: neck's upper part, and the depth that part is drawn at: over the torso and
+#: its clothes, under hair hanging behind the head and under the head.
+NECK_SLEEVE = 0.4
+NECK_UPPER_Z = 34.5
 #: The colour of the layer under the clothes at the hips.
 UNDERWEAR = "#d8d0c2"
 
@@ -154,6 +160,16 @@ def body_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     shaded_region(ctx, pt, nk, nk.top, nk.bottom, ctx.skin, shade_frac=0.25)
     pt.flat(loft_region(ctx.view, nk, nk.top, nk.top + (nk.bottom - nk.top) * 0.55), ctx.skin_sh)
     out.append(Part("neck", "torso", zmap["neck"], pt.els, "Neck"))
+    # The neck's upper half again, on the HEAD: when the head turns about the
+    # top of the neck it carries this with it over the neck below, so a tilt
+    # opens no gap and leaves no step. It is inked down its sides only (its
+    # fill runs past its inked end), so the two read as one neck.
+    pt = ctx.new()
+    y_s = nk.top + (nk.bottom - nk.top) * NECK_SLEEVE
+    pt.region(loft_region(ctx.view, nk, nk.top, y_s), ctx.skin)
+    shaded_region(ctx, pt, nk, nk.top, y_s + 0.9, ctx.skin, ink=False, shade_frac=0.25)
+    pt.flat(loft_region(ctx.view, nk, nk.top, nk.top + (nk.bottom - nk.top) * 0.55), ctx.skin_sh)
+    out.append(Part("neck_upper", "head", NECK_UPPER_Z, pt.els, "Neck - Upper (turns with the head)"))
     j = fig.joints
     rs, re, rw = fig.arm_r
     rt, rk, rc, ra = fig.leg_r

@@ -49,6 +49,8 @@ class Figure:
     joints: Dict[str, Vec3] = field(default_factory=dict)
     torso: Loft = None  # type: ignore[assignment]
     neck: Loft = None  # type: ignore[assignment]
+    #: The neck's top ring (where the head's turn is pivoted for a species).
+    neck_top: Optional[RingKey] = None
     head: Loft = None  # type: ignore[assignment]
     #: The head without the face's bumps: what hair and hats sit on.
     skull: Loft = None  # type: ignore[assignment]
@@ -132,12 +134,22 @@ def build(spec: CharacterSpec) -> Figure:
     fig.torso = Loft(torso_keys, bumps)
 
     # ---- neck and head -----------------------------------------------------------------
-    fig.neck = Loft([
-        RingKey(chin - 0.3 * hh, neck_r * 0.92, neck_r * 0.85, neck_r * 1.2, 0.0, -0.05 * hh, 2.0),
-        RingKey(y_nb + 1.5 * k, neck_r * 1.04, neck_r, neck_r * 1.2, 0.0, -0.05 * hh, 2.0),
-    ])
     fig.skull = skull_loft(fig.model)
     fig.head = head_loft(fig.model)
+    base = RingKey(y_nb + 1.5 * k, neck_r * 1.04, neck_r, neck_r * 1.2, 0.0, -0.05 * hh, 2.0)
+    if fig.model.neck_f is None:
+        top = RingKey(chin - 0.3 * hh, neck_r * 0.92, neck_r * 0.85, neck_r * 1.2, 0.0, -0.05 * hh, 2.0)
+    else:
+        # The neck goes INTO the head: its top ring sits inside the head's
+        # ring where it enters, so from every side the head covers its end.
+        y_t = fig.fy(fig.model.neck_f)
+        hr = fig.skull.section(y_t)
+        top = RingKey(y_t, min(neck_r * 0.95, 0.82 * hr.rx), min(neck_r * 0.9, 0.75 * hr.rzf), min(neck_r * 1.25, 0.85 * hr.rzb), 0.0,
+                      hr.cz - 0.1 * hr.rzb, 2.0)
+    mid = RingKey((top.y + base.y) / 2, (top.rx + base.rx) / 2 * 1.02, (top.rzf + base.rzf) / 2, (top.rzb + base.rzb) / 2, 0.0,
+                  (top.cz + base.cz) / 2, 2.0)
+    fig.neck = Loft([top, mid, base])
+    fig.neck_top = top
 
     # ---- limbs --------------------------------------------------------------------------
     ma = 1.0 if female else 1.07
@@ -151,7 +163,9 @@ def build(spec: CharacterSpec) -> Figure:
     foot = 0.15 * H
     j: Dict[str, Vec3] = {
         "waist": (0.0, fig.y_waist, 0.0),
-        "neck": (0.0, chin - 0.06 * hh, -0.12 * hh),
+        # The head turns about where it meets the neck: under the jaw for a
+        # human, the centre of the neck's top for a head the neck goes into.
+        "neck": (0.0, chin - 0.06 * hh, -0.12 * hh) if fig.model.neck_f is None else (0.0, fig.neck_top.y, fig.neck_top.cz),
         "neck_base": (0.0, y_nb, -1.0 * k),
     }
     for side, sgn in (("right", -1.0), ("left", 1.0)):

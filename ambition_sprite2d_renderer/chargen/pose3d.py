@@ -179,6 +179,11 @@ class RestFrame:
 # ---- 3D limb solve ----------------------------------------------------------------
 
 
+#: How far a head turns on its neck, either way (degrees): a human's, and a
+#: species head the neck goes into (``HeadModel.neck_f``).
+HEAD_TURN = 60.0
+SPECIES_HEAD_TURN = 32.0
+
 #: The angle above forward a held item rests at in an unturned hand (the
 #: runtime's ``ITEM_REST_ANGLE``; the fist art is drawn to it).
 ITEM_REST = 24.0
@@ -267,6 +272,10 @@ class ViewSolver:
         # Screen cm -> frame px about the rest hip centre (the rig's own map).
         self.hip_c = hip_c
         self.chains = {c["channel_prefix"]: c for c in doc.get("ik_chains", [])}
+        # How far the head turns on its neck either way (degrees): a head the
+        # neck goes into (a horse's, a dog's) turns less than a human's, or
+        # its carried neck kinks off the neck below.
+        self.head_turn = HEAD_TURN if fig.model is None or fig.model.neck_f is None else SPECIES_HEAD_TURN
         self.legs = {c["channel_prefix"]: c for c in doc.get("ik_legs", [])}
 
     def reset(self) -> None:
@@ -293,7 +302,7 @@ class ViewSolver:
         out = {
             "pelvis": pose.spin * s,
             "torso": pose.lean * s + pose.side * c,
-            "head": pose.head[0] * s + pose.head[1] * c,
+            "head": max(-self.head_turn, min(self.head_turn, pose.head[0] * s + pose.head[1] * c)),
         }
         rx, ry = v.project(pose.root)[0], pose.root[1]
         out["root_x"] = rx * self.px

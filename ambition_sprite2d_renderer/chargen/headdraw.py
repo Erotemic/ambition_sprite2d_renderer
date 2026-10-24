@@ -335,6 +335,9 @@ def hair_parts(ctx: Ctx, style: str, feature: str) -> List[Part]:
     """The hair of ``style`` (on an animal: its mane, tuft or crest)."""
     fig = ctx.fig
     out = []
+    if fig.species == "horse":
+        # A horse's mane is part of its neck, whatever style the spec names.
+        return _mane_parts(ctx, feature)
     if style == "bald":
         return out
     pt = ctx.new()
@@ -389,6 +392,40 @@ def _crest(ctx: Ctx, pt: Paint, col: str) -> None:
         pt.region([hull(ctx.p(q) for q in tri)], col if i == 0 else shade(col, 0.12), smooth=True)
 
 
+def _mane_parts(ctx: Ctx, feature: str) -> List[Part]:
+    """A horse's mane: a ridge of hair along the back of the neck, from
+    behind the ears to the shoulders. The part above the head's carried
+    neck (``draw.NECK_SLEEVE``) turns with the head; the part below stays
+    with the body; the two overlap, so a turn of the head leaves no gap."""
+    from .draw import NECK_SLEEVE, NECK_UPPER_Z
+
+    fig = ctx.fig
+    hh = fig.hh
+    nk = fig.neck
+    sk = fig.skull
+    col = ctx.hair
+
+    def ring(y: float, width: float, out_: float) -> RingKey:
+        src = nk.section(y) if y >= nk.top else sk.section(y)
+        back = src.cz - src.rzb
+        return RingKey(y, width * hh, 0.05 * hh, out_ * hh, 0.0, back + 0.02 * hh, 2.0)
+
+    y0 = fig.fy(0.12)
+    y_s = nk.top + (nk.bottom - nk.top) * NECK_SLEEVE
+    ys = [lerp(y0, nk.bottom - 0.02 * hh, i / 9.0) for i in range(10)]
+    keys = [ring(y, 0.075 - 0.02 * (i / 9.0), 0.09 - 0.03 * (i / 9.0)) for i, y in enumerate(ys)]
+    lf = Loft(keys)
+    front = ctx.view.c > 0.3
+    out = []
+    for name, bone, a, b, z in (("hair_mane", "head", lf.top, y_s + 0.06 * hh, 1.0 if front else NECK_UPPER_Z + 0.1),
+                                ("hair_mane_low", "torso", y_s - 0.06 * hh, lf.bottom, 1.0 if front else 26.5)):
+        pt = ctx.new()
+        shaded_region(ctx, pt, lf, a, b, col, shade_frac=0.3, shade_cap=0.04 * hh)
+        if pt.els:
+            out.append(Part(name, bone, z, pt.els, "Mane" + (" (turns with the head)" if bone == "head" else ""), feature=feature))
+    return out
+
+
 def hair_back(ctx: Ctx, style: str) -> Paint:
     fig = ctx.fig
     pt = ctx.new()
@@ -397,16 +434,6 @@ def hair_back(ctx: Ctx, style: str) -> Paint:
     hh = fig.hh
     t = hair_thickness(fig, style)
     sk = fig.skull
-    if fig.species == "horse":
-        back = fig.neck.section(fig.y_nb).rzb
-        keys = [
-            RingKey(fig.fy(0.2), 0.07 * hh, 0.1 * hh, 0.12 * hh, 0.0, -0.3 * hh, 2.0),
-            RingKey(fig.chin, 0.08 * hh, 0.08 * hh, 0.1 * hh, 0.0, -(back + 0.1 * hh), 2.0),
-            RingKey(fig.y_sh, 0.06 * hh, 0.05 * hh, 0.06 * hh, 0.0, -(back + 0.12 * hh), 2.0),
-        ]
-        lf = Loft(keys)
-        shaded_region(ctx, pt, lf, lf.top, lf.bottom, col, shade_frac=0.3, shade_cap=0.04 * hh)
-        return pt
     if fig.species != "human":
         return pt
     if st == "long":

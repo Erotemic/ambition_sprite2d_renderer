@@ -9,8 +9,8 @@ The primary design goal is to catch poses that are *structurally* wrong before
 an artist has to notice them in a 100-row sheet: elbow branch inversions,
 neutral/recovery arms pointing away from their authored natural pose, nearly
 straight IK chains, hand orientations that detach from the forearm, large
-frame-to-frame pops, excessive target reach, and joints leaving the logical
-frame.
+frame-to-frame pops, excessive target reach, joints leaving the logical
+frame, and parts a rig declares continuous coming apart (``continuity``).
 
 SVG-rigged characters whose source pose is marked ``geometry-layout-only`` are
 expected to provide ``natural_pose.arms`` metadata.  That makes the exploded
@@ -795,6 +795,74 @@ def _audit_discontinuities(doc: RigDocument, frames: list[FrameAudit]) -> None:
                         )
 
 
+def _carried(point: Point, bone: str, rest: Mapping[str, BoneWorld], world: Mapping[str, BoneWorld]) -> Point | None:
+    """``point`` (in the rest pose) where ``bone`` carries it in ``world``."""
+    if bone not in rest or bone not in world:
+        return None
+    r, w = rest[bone], world[bone]
+    a = math.radians(w.angle - r.angle)
+    dx, dy = point[0] - r.origin[0], point[1] - r.origin[1]
+    return (w.origin[0] + dx * math.cos(a) - dy * math.sin(a), w.origin[1] + dx * math.sin(a) + dy * math.cos(a))
+
+
+def _outside_polygon(p: Point, poly: Sequence[Point]) -> float:
+    """How far ``p`` is outside ``poly`` (0 inside)."""
+    inside = False
+    n = len(poly)
+    for i in range(n):
+        a, b = poly[i], poly[(i + 1) % n]
+        if (a[1] > p[1]) != (b[1] > p[1]):
+            x = a[0] + (p[1] - a[1]) * (b[0] - a[0]) / (b[1] - a[1])
+            if p[0] < x:
+                inside = not inside
+    if inside:
+        return 0.0
+    best = math.inf
+    for i in range(n):
+        a, b = poly[i], poly[(i + 1) % n]
+        ab = _sub(b, a)
+        t = max(0.0, min(1.0, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1]) / max(1e-9, ab[0] ** 2 + ab[1] ** 2)))
+        best = min(best, _distance(p, (a[0] + ab[0] * t, a[1] + ab[1] * t)))
+    return best
+
+
+def _audit_continuity(doc: RigDocument, frames: list[FrameAudit]) -> None:
+    """``doc.data["continuity"]``: places where a part carried by one bone
+    must stay over a part carried by another, so the body reads as one piece
+    whatever the pose (a head on its neck: the neck the head carries must
+    stay over the neck the body carries, or the head floats). Each entry:
+    ``{"name", "carried": {"bone", "points"}, "within": {"bone",
+    "polygon" | "polygons"}, "tolerance"}`` in the rest pose's frame pixels.
+    A carried point outside every polygon by more than ``tolerance`` is a
+    ``part_continuity_gap`` error."""
+    specs = doc.data.get("continuity") or []
+    if not specs:
+        return
+    rest, _ = doc.solve("", 0.0, sampled_channels={})
+    for frame in frames:
+        for spec in specs:
+            carried, within = spec["carried"], spec["within"]
+            polys = [[_carried(tuple(q), str(within["bone"]), rest, frame.world) for q in poly]
+                     for poly in (within.get("polygons") or [within["polygon"]])]
+            if any(q is None for poly in polys for q in poly):
+                continue
+            worst = 0.0
+            for q in carried["points"]:
+                pt = _carried(tuple(q), str(carried["bone"]), rest, frame.world)
+                if pt is not None:
+                    worst = max(worst, min(_outside_polygon(pt, poly) for poly in polys))
+            if worst > float(spec.get("tolerance", 0.5)):
+                frame.findings.append(
+                    Finding(
+                        "error",
+                        "part_continuity_gap",
+                        f"{spec.get('name', 'continuity')}: the part {carried['bone']} carries leaves the part {within['bone']} carries",
+                        subject=str(spec.get("name", "")),
+                        metrics=_round_metrics({"outside_px": worst}),
+                    )
+                )
+
+
 def audit_document(doc: RigDocument, *, target: str | None = None) -> AuditResult:
     target_name = str(target or doc.name)
     categories_by_row = _load_categories_by_row(target_name)
@@ -832,6 +900,7 @@ def audit_document(doc: RigDocument, *, target: str | None = None) -> AuditResul
             frames.append(frame)
 
     _audit_discontinuities(doc, frames)
+    _audit_continuity(doc, frames)
     rig_path = doc.source_path or Path(f"{doc.name}.rig.json")
     return AuditResult(
         target=target_name,

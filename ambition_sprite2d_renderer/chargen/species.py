@@ -51,6 +51,10 @@ class HeadModel:
     hair: str = "human"
     #: Below this ``f`` and in front, the muzzle (a second colour), or None.
     muzzle_f: float = 0.0
+    #: Where the neck enters the head (a fraction ``f``): the neck's top ring
+    #: is fitted inside the head's ring there, and the head turns about its
+    #: centre. ``None``: the human neck, which meets the head under the jaw.
+    neck_f: float | None = None
 
 
 def _rows(fy, hh: float, rows) -> List[RingKey]:
@@ -165,16 +169,20 @@ def _horse(fig) -> HeadModel:
     a broad muzzle; eyes set wide on the sides; tall ears; a mane."""
     hh = fig.hh
     m = fig.spec.head.muzzle
+    # In profile: a flat forehead running forward and down to a broad muzzle,
+    # and behind it a deep round jowl that the neck goes into; the throat
+    # line runs from the jowl forward to the chin.
     rows = [
-        (0.00, 0.0, 0.0, 0.0, -0.06, 2.0),
-        (0.12, 0.27, 0.29, 0.33, -0.06, 2.0),
-        (0.26, 0.31, 0.36, 0.38, -0.03, 2.1),
-        (0.40, 0.30, 0.40 + 0.03 * m, 0.33, 0.03, 2.2),
-        (0.54, 0.275, 0.44 + 0.06 * m, 0.27, 0.09 * m, 2.3),
-        (0.68, 0.235, 0.44 + 0.08 * m, 0.22, 0.15 * m, 2.4),
-        (0.82, 0.23, 0.42 + 0.08 * m, 0.19, 0.21 * m, 2.4),
-        (0.93, 0.235, 0.38 + 0.07 * m, 0.17, 0.25 * m, 2.3),
-        (1.00, 0.17, 0.3 + 0.05 * m, 0.12, 0.27 * m, 2.2),
+        (0.00, 0.0, 0.0, 0.0, -0.08, 2.0),
+        (0.10, 0.24, 0.27, 0.30, -0.08, 2.0),
+        (0.24, 0.30, 0.33, 0.38, -0.06, 2.1),
+        (0.38, 0.31, 0.38 + 0.03 * m, 0.42, -0.02, 2.2),
+        (0.52, 0.30, 0.42 + 0.05 * m, 0.44, 0.02 * m, 2.3),
+        (0.64, 0.27, 0.43 + 0.07 * m, 0.36, 0.08 * m, 2.4),
+        (0.76, 0.24, 0.43 + 0.08 * m, 0.22, 0.15 * m, 2.4),
+        (0.88, 0.235, 0.40 + 0.07 * m, 0.18, 0.21 * m, 2.3),
+        (0.96, 0.23, 0.35 + 0.06 * m, 0.16, 0.24 * m, 2.2),
+        (1.00, 0.17, 0.28 + 0.05 * m, 0.11, 0.25 * m, 2.1),
     ]
     layout = {
         "eye_f": 0.36, "brow_f": 0.29, "eye_alpha": 44.0, "eye_w": 0.155, "iris": 0.62, "nose_tip_f": 0.9, "mouth_f": 0.975,
@@ -189,7 +197,7 @@ def _horse(fig) -> HeadModel:
         v += 0.02 * gauss(f, 0.6, 0.12) * (gauss(al, 70.0, 22.0) + gauss(al, -70.0, 22.0))
         return hh * v
 
-    return HeadModel("horse", _rows(fig.fy, hh, rows), [relief], layout, ears="horse", hair="mane", muzzle_f=0.78)
+    return HeadModel("horse", _rows(fig.fy, hh, rows), [relief], layout, ears="horse", hair="mane", muzzle_f=0.78, neck_f=0.56)
 
 
 # ---- dog ------------------------------------------------------------------------------------
@@ -225,7 +233,7 @@ def _dog(fig) -> HeadModel:
         return hh * v
 
     ears = "dog_floppy" if fig.spec.head.ears in ("default", "floppy") else "dog_pointed"
-    return HeadModel("dog", _rows(fig.fy, hh, rows), [relief], layout, ears=ears, hair="tuft", muzzle_f=0.55)
+    return HeadModel("dog", _rows(fig.fy, hh, rows), [relief], layout, ears=ears, hair="tuft", muzzle_f=0.55, neck_f=0.7)
 
 
 # ---- cat ------------------------------------------------------------------------------------
@@ -258,7 +266,7 @@ def _cat(fig) -> HeadModel:
         v += 0.03 * gauss(f, 0.66, 0.08) * (gauss(al, 62.0, 18.0) + gauss(al, -62.0, 18.0))
         return hh * v
 
-    return HeadModel("cat", _rows(fig.fy, hh, rows), [relief], layout, ears="cat", hair="tuft", muzzle_f=0.6)
+    return HeadModel("cat", _rows(fig.fy, hh, rows), [relief], layout, ears="cat", hair="tuft", muzzle_f=0.6, neck_f=0.72)
 
 
 # ---- bird -----------------------------------------------------------------------------------
@@ -281,7 +289,7 @@ def _bird(fig) -> HeadModel:
         "eye_f": 0.45, "brow_f": 0.37, "eye_alpha": 44.0, "eye_w": 0.12, "iris": 0.7, "nose_tip_f": 0.55, "mouth_f": 0.6,
         "mouth_alpha": 0.0, "nose": "bird", "pupil": "round", "beak": 0.34 * fig.spec.head.muzzle,
     }
-    return HeadModel("bird", _rows(fig.fy, hh, rows), [], layout, ears="none", hair="crest")
+    return HeadModel("bird", _rows(fig.fy, hh, rows), [], layout, ears="none", hair="crest", neck_f=0.72)
 
 
 _BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird": _bird}
