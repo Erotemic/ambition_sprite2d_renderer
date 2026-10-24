@@ -994,7 +994,8 @@ def hat_parts(ctx: Ctx, hat: str, color: str, feature: str) -> List[Part]:
             rim.append(((rx + brim_w) * math.sin(a), yb, sec.cz + rz * math.cos(a)))
             rim.append(((rx + brim_w) * math.sin(a), yb - 0.35, sec.cz + rz * math.cos(a)))
         brim_poly = hull(ctx.p(q) for q in rim)
-        height = {"brimmed": 0.36, "top_hat": 0.62, "bowler": 0.36}[hat] * hh
+        # A head that rises above the crown (a sea lion's crest) raises the crown of the hat.
+        height = {"brimmed": 0.36, "top_hat": 0.62, "bowler": 0.36}[hat] * hh + max(0.0, fig.crown - sk.top)
         if hat == "top_hat":
             keys = [RingKey(yb, rx, rzf, rzb, 0.0, sec.cz, 2.2), RingKey(yb - height, rx * 1.05, rzf * 1.05, rzb * 1.05, 0.0, sec.cz, 2.2),
                     RingKey(yb - height - 0.01, 0.0, 0.0, 0.0, 0.0, sec.cz, 2.2)]

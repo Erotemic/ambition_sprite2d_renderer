@@ -538,9 +538,9 @@ def generate(base: Optional[str] = None, seed: int = 0, overrides: Optional[Mapp
     species = drawn["head"]["species"]
     if species != "human" and "skin" not in over.get("palette", {}):
         # An animal's skin is its coat, drawn from the species' coats.
-        from .species import COATS
+        from .species import COATS, COATS_BY_SEX
 
-        coats = COATS[species]
+        coats = COATS_BY_SEX.get(species, {}).get(BASES[first.base].sex, COATS[species])
         drawn["palette"]["skin"] = coats[int(first._coat_pick * len(coats)) % len(coats)]  # type: ignore[attr-defined]
     return check(CharacterSpec.from_dict(drawn))
 

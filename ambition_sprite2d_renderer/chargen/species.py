@@ -34,7 +34,12 @@ COATS: Dict[str, Tuple[str, ...]] = {
     "dog": ("#c08a4e", "#8a5a34", "#e4cfa6", "#3a3230", "#a9a39b", "#d7a45c", "#6e4a33", "#f0e8da"),
     "cat": ("#d68c4a", "#8b8580", "#3a3436", "#e8dcc8", "#b97a46", "#c9b9a4", "#5e5550", "#f2ece2"),
     "bird": ("#3f6f9e", "#c9473a", "#e3c24a", "#5b8f4f", "#ece6da", "#2e2c34", "#8a6a9e", "#d98a3e"),
-    "sea_lion": ("#6b4a32", "#a9804f", "#c9a876", "#4a3a30", "#8a7462", "#3a3230", "#b8946a", "#7e6a5a"),
+    "sea_lion": ("#c9a876", "#b8946a", "#d4b384", "#a9804f", "#4e3628", "#5c4232", "#3e3029", "#6b4a32"),
+}
+#: Coats where the sexes differ: a sea lion cow is blonde to tan, a bull dark brown.
+COATS_BY_SEX: Dict[str, Dict[str, Tuple[str, ...]]] = {
+    "sea_lion": {"female": ("#c9a876", "#b8946a", "#d4b384", "#a9804f", "#c2a27a", "#9a7a56"),
+                 "male": ("#4e3628", "#5c4232", "#3e3029", "#6b4a32", "#584538", "#47382f")},
 }
 
 
@@ -300,15 +305,33 @@ def _bird(fig) -> HeadModel:
 def _sea_lion(fig) -> HeadModel:
     """A sleek round head on a thick neck, a tapered muzzle with full
     whisker pads and a small nose pad at its tip, big dark eyes, small ear
-    flaps low behind the eyes, no hair. A male has a crest on the forehead."""
+    flaps low behind the eyes, no hair. A male (a bull) has the sagittal
+    crest: a tall narrow dome over the brow, above the skull's crown."""
     hh = fig.hh
     m = fig.spec.head.muzzle
+    if fig.female:
+        # The forehead slopes smoothly down into the muzzle.
+        top = [
+            (0.00, 0.0, 0.0, 0.0, -0.06, 2.0),
+            (0.12, 0.3, 0.33, 0.36, -0.05, 2.0),
+            (0.26, 0.35, 0.41, 0.42, -0.03, 2.0),
+        ]
+    else:
+        # The crest rises steeply over the eyes, its top forward of the
+        # skull's centre, and slopes down behind to the thick nape. It is
+        # narrow across (a ridge), so from the front it is a raised dome.
+        top = [
+            (-0.17, 0.0, 0.0, 0.0, 0.08, 2.0),
+            (-0.16, 0.13, 0.13, 0.14, 0.08, 2.0),
+            (-0.13, 0.19, 0.2, 0.21, 0.075, 2.0),
+            (-0.07, 0.24, 0.28, 0.29, 0.06, 2.0),
+            (0.02, 0.28, 0.36, 0.35, 0.04, 2.0),
+            (0.12, 0.31, 0.42, 0.4, 0.01, 2.0),
+            (0.24, 0.34, 0.46, 0.43, -0.02, 2.0),
+        ]
     # The back of the head stays deep down to the jaw: the head runs into
     # the neck with no step.
-    rows = [
-        (0.00, 0.0, 0.0, 0.0, -0.06, 2.0),
-        (0.12, 0.3, 0.33, 0.36, -0.05, 2.0),
-        (0.26, 0.35, 0.41, 0.42, -0.03, 2.0),
+    rows = top + [
         (0.4, 0.36, 0.48 + 0.04 * m, 0.43, 0.01 * m, 2.1),
         (0.52, 0.35, 0.54 + 0.08 * m, 0.42, 0.04 * m, 2.2),
         (0.63, 0.33, 0.57 + 0.11 * m, 0.41, 0.07 * m, 2.3),
@@ -321,14 +344,11 @@ def _sea_lion(fig) -> HeadModel:
         "eye_f": 0.38, "brow_f": 0.3, "eye_alpha": 42.0, "eye_w": 0.185, "iris": 0.95, "nose_tip_f": 0.6, "mouth_f": 0.84,
         "mouth_alpha": 26.0, "nose": "sea_lion", "pupil": "round",
     }
-    crest = 0.0 if fig.female else 0.045
 
     def relief(alpha: float, y: float) -> float:
         f = (y - fig.crown) / hh
         al = wrap180(alpha)
-        v = 0.035 * gauss(f, 0.72, 0.06) * (gauss(al, 16.0, 11.0) + gauss(al, -16.0, 11.0))
-        v += crest * gauss(f, 0.15, 0.07) * gauss(al, 0.0, 20.0)
-        return hh * v
+        return hh * 0.035 * gauss(f, 0.72, 0.06) * (gauss(al, 16.0, 11.0) + gauss(al, -16.0, 11.0))
 
     return HeadModel("sea_lion", _rows(fig.fy, hh, rows), [relief], layout, ears="flap", hair="none", muzzle_f=0.56, neck_f=0.58)
 
@@ -348,4 +368,4 @@ def head_loft(model: HeadModel) -> Loft:
     return Loft(list(model.keys), list(model.bumps))
 
 
-__all__ = ["COATS", "HEAD_SCALE", "HeadModel", "SPECIES", "head_loft", "head_model", "skull_loft"]
+__all__ = ["COATS", "COATS_BY_SEX", "HEAD_SCALE", "HeadModel", "SPECIES", "head_loft", "head_model", "skull_loft"]
