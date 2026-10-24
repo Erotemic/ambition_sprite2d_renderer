@@ -779,11 +779,16 @@ BLOWS = {
     # Up in front of the chest, the elbow out in front.
     "upper": dict(arm="right", way=(0.0, -1.0), elbow=90.0, side=1, back=230.0, hitch=40.0, deep=_ARM_DEEP,
                   out=140.0, past=56.0, strike=0.26, hold=0.24, recover=0.4, open_from=0.05, close_at=0.82),
-    # Down and out behind, the elbow up over the slope of the back.
-    "left_hammer": dict(arm="left", way=(-0.643, 0.766), elbow=110.0, side=1, back=260.0, hitch=40.0, deep=_ARM_DEEP,
+    # The left shoulder is at the middle of the giant's body, so a clean line
+    # of its arm is over the body (a line in its body would take the giant
+    # through its own portal): its blows go up. The hammer goes up from the
+    # left shoulder, and comes down on the player out of the far line.
+    "left_hammer": dict(arm="left", way=(-0.174, -0.985), elbow=60.0, side=-1, back=260.0, hitch=40.0, deep=_ARM_DEEP,
                         out=140.0, past=56.0, strike=0.24, hold=0.36, recover=0.5, open_from=0.26, close_at=0.82),
-    # Out behind, level, over the slope of the back: wound across the chest.
-    "left_hook": dict(arm="left", way=(-1.0, 0.0), elbow=80.0, side=1, back=210.0, hitch=20.0, deep=_ARM_DEEP,
+    # Out behind and up, over the slope of the back: wound across the chest.
+    # Each left line is out past the horns, so its light does not cross the
+    # face.
+    "left_hook": dict(arm="left", way=(-0.342, -0.94), elbow=40.0, side=-1, back=210.0, hitch=20.0, deep=_ARM_DEEP,
                       out=140.0, past=56.0, strike=0.2, hold=0.24, recover=0.36, open_from=0.05, close_at=0.82),
     # Up, the elbow out to the left.
     "left_upper": dict(arm="left", way=(0.0, -1.0), elbow=90.0, side=-1, back=230.0, hitch=40.0, deep=_ARM_DEEP,
@@ -847,7 +852,7 @@ _WIND = {
     "hammer": [(0.25, (70.0, -40.0)), (0.5, (90.0, -200.0))],
     "jab": [(0.3, (-10.0, 60.0)), (0.5, (-40.0, -10.0))],
     "upper": [(0.3, (-40.0, 200.0))],
-    "left_hammer": [(0.25, (-70.0, -40.0)), (0.5, (-90.0, -200.0))],
+    "left_hammer": [(0.3, (-60.0, 180.0))],
     "left_hook": [(0.3, (120.0, 160.0)), (0.5, (260.0, 20.0))],
     "left_upper": [(0.3, (40.0, 200.0))],
 }

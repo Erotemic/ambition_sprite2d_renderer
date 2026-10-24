@@ -191,3 +191,26 @@ def test_every_arm_of_every_row_is_two_rigid_bones():
                 if math.hypot(end[0] - start[0], end[1] - start[1]) > 0.5:
                     bad.append(f"{anim} {slot}: the elbow is apart")
     assert not bad, "\n".join(bad)
+
+
+def _segments_cross(a, b, c, d):
+    def orient(p, q, r):
+        return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+    return orient(a, b, c) * orient(a, b, d) < 0 and orient(c, d, a) * orient(c, d, b) < 0
+
+
+@pytest.mark.parametrize("blow", ARM_BLOWS)
+def test_no_near_line_is_in_the_giants_own_body(blow):
+    """A near line in the giant's body box (the box it collides with,
+    `BODY_BBOX`) would take the giant through its own portal: each is out of
+    it, by a margin."""
+    x, y, w, h = g.BODY_BBOX
+    box = (2.0 * (x - g.OFFSET[0]), 2.0 * (y - g.OFFSET[1]), 2.0 * (x + w - g.OFFSET[0]), 2.0 * (y + h - g.OFFSET[1]))
+    margin = 12.0
+    x0, y0, x1, y1 = box[0] - margin, box[1] - margin, box[2] + margin, box[3] + margin
+    (cx, cy), (nx, ny) = g.BLOWS[blow]["line"]
+    a, b = (cx + ny * HALF, cy - nx * HALF), (cx - ny * HALF, cy + nx * HALF)
+    inside = lambda p: x0 <= p[0] <= x1 and y0 <= p[1] <= y1  # noqa: E731
+    edges = [((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0))]
+    assert not (inside(a) or inside(b) or any(_segments_cross(a, b, p, q) for p, q in edges)), (
+        f"{blow}: its near line {a} to {b} is in the giant's body {box}")
