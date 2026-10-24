@@ -1054,6 +1054,26 @@ def _union_bbox(images) -> Tuple[int, int, int, int]:
     return (x0, y0, x1 - x0, y1 - y0)
 
 
+def _giant_seams(anim: str, frame_idx: int, frame_count: int) -> dict:
+    """Where the giant's arms are cut at their lines in a frame (as
+    `giant_art.render_giant` poses it)."""
+    return _giant.limb_seams(_giant.pose_for(anim, frame_idx / max(1, frame_count)))
+
+
+def _with_seam_anchors(rows_meta: list[dict], seams_of, frame_size) -> list[dict]:
+    """``rows_meta`` with the seams of each frame as its anchors
+    (`giant_art.limb_seam_anchors`): ``seams_of(row, frame, count)``."""
+    out = []
+    for row in rows_meta:
+        count = row["frame_count"]
+        rects = []
+        for f, rect in enumerate(row["rects"]):
+            anchors = _giant.limb_seam_anchors(seams_of(row["animation"], f, count), frame_size)
+            rects.append(dict(rect, anchors=anchors) if anchors else rect)
+        out.append(dict(row, rects=rects))
+    return out
+
+
 def _runtime_spritesheet_ron(
     rows_meta: list[dict],
     parts_doc: dict,
@@ -1379,7 +1399,7 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     # carried: the giant is the scholar's mount, not the thing you hit.
     giant_ron_path.write_text(
         _runtime_spritesheet_ron(
-            rows_meta,
+            _with_seam_anchors(rows_meta, _giant_seams, FRAME_SIZE),
             parts_doc,
             giant_page_names,
             target=GIANT_TARGET_NAME,
@@ -1545,7 +1565,7 @@ def build_fist_sheet(outdir: Path, policy) -> List[Path]:
     ron_path = outdir / f"{FIST_TARGET_NAME}_spritesheet.ron"
     ron_path.write_text(
         _runtime_spritesheet_ron(
-            rows_meta,
+            _with_seam_anchors(rows_meta, _giant.fist_seams, FIST_FRAME),
             {},
             [f"{FIST_TARGET_NAME}_spritesheet.png"],
             target=FIST_TARGET_NAME,

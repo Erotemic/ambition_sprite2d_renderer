@@ -683,8 +683,12 @@ CLAMP_LINE_R = (1412.0, 580.0)
 CLAMP_HALF = 80.0
 _HANG_L = (ARM_ROOT_L, (792.0, 660.0), (822.0, 800.0))
 _HANG_R = (ARM_ROOT_R, (1304.0, 660.0), (1282.0, 800.0))
-_OUT_L = (ARM_ROOT_L, (748.0, 560.0), (600.0, 580.0))
-_OUT_R = (ARM_ROOT_R, (1340.0, 560.0), (1488.0, 580.0))
+#: An arm in its line: the upper arm down and out from its root, and the fore
+#: arm level and out, so that it goes through its line SQUARE to it, about
+#: half of its length past the elbow (the elbow and its hair stay out of the
+#: line).
+_OUT_L = (ARM_ROOT_L, (747.0, 643.0), (604.0, 643.0))
+_OUT_R = (ARM_ROOT_R, (1337.0, 643.0), (1480.0, 643.0))
 
 
 def _whole_arms(sway=0.0, pts=None):
@@ -1717,11 +1721,18 @@ BARREL_SNAP = 0.02
 _BARREL_AXIS = math.degrees(math.atan2(_BARREL_REST[1][1] - _BARREL_REST[0][1], _BARREL_REST[1][0] - _BARREL_REST[0][0]))
 
 
+def _body_map(pose: dict):
+    """The map of the chest, the head and the arms: lifted to the stance, and
+    leaned about the seat (the scholar stays on it)."""
+    lx, ly = pose["stance"]["lift"]
+    sx, sy = (SHOULDER_R[0] + SHOULDER_R[1]) * 0.5, SHOULDER_R[2]
+    return pc.chain(pc.T(lx, ly), pc.R(pose.get("lean", 0.0), sx, sy))
+
+
 def scene_for(pose: dict, *, arms: bool = False, horns: str = "gnu") -> pc.Scene:
     """The giant in ``pose`` as placed pieces. ``arms`` draws an arm from each
     shoulder to its fist for a pose that says none."""
     st = pose["stance"]
-    lx, ly = st["lift"]
     hx, hy = pose["head"]
     svg.configure(dx=0.0, dy=0.0, ink=INK, ow=OW, colors=C)
     scene = pc.Scene()
@@ -1761,9 +1772,7 @@ def scene_for(pose: dict, *, arms: bool = False, horns: str = "gnu") -> pc.Scene
         scene.add(name, z, pc.Piece(body, origin=r0, axis=axis, reach=1150.0), barrel_map, stretch)
     # The chest, the head and the arms are drawn in one place and lifted to the
     # stance, and leaned about the seat (the scholar stays on it).
-    lean = pose.get("lean", 0.0)
-    sx, sy = (SHOULDER_R[0] + SHOULDER_R[1]) * 0.5, SHOULDER_R[2]
-    body_map = pc.chain(pc.T(lx, ly), pc.R(lean, sx, sy))
+    body_map = _body_map(pose)
     for name, z, body in _harvest(chest) + _harvest(epaulet, "epaulet-left", SHOULDER_L, SHOULDER_L[0]) + \
             _harvest(epaulet, "epaulet-right", SHOULDER_R, SHOULDER_R[1]):
         scene.add(name, z, pc.Piece(body, origin=_MIDDLE, reach=700.0), body_map)
@@ -1788,6 +1797,115 @@ def scene_for(pose: dict, *, arms: bool = False, horns: str = "gnu") -> pc.Scene
     for placed in scene.items:
         placed.name = limb_track(placed.name)
     return scene
+
+
+# ---------------------------------------------------------------------------
+# The seams. A limb that is cut at a portal's line ends at the line, and the
+# game draws the line there: at the middle of the cut, along it, and as wide
+# as the limb is there (its outline included). The sheets publish the two ends
+# of each cut as anchors of each frame (`seam:<slot>:a`, `seam:<slot>:b`, as
+# parts of the frame: `limb_seam_anchors`), so the line is on the limb that is
+# drawn and not where a constant says it is.
+
+
+def band_seam(a, b, r0, r1, cut):
+    """Where the line of ``cut`` (``("x" or "y", where, keep)``) goes across
+    the band from ``a`` to ``b``, a capsule of radius ``r0`` at ``a`` and
+    ``r1`` at ``b``: the two ends of the cut, on the line, the outline
+    included. ``None`` when the line does not cross the band between its
+    ends."""
+    axis, where = cut[0], cut[1]
+    i = 0 if axis == "x" else 1
+    da, db = a[i] - where, b[i] - where
+    if da == db or da * db > 0.0:
+        return None
+    t = da / (da - db)
+    p = (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+    # A band that goes across the line at a slant is cut longer than it is
+    # wide: by its width over the cosine of the slant.
+    across = abs(b[i] - a[i]) / math.hypot(b[0] - a[0], b[1] - a[1])
+    half = (r0 + (r1 - r0) * t + OW * 0.5) / max(across, 0.2)
+    if axis == "x":
+        return (p[0], p[1] - half), (p[0], p[1] + half)
+    return (p[0] - half, p[1]), (p[0] + half, p[1])
+
+
+def limb_seams(pose: dict) -> dict:
+    """Where each arm of ``pose`` that is cut at a portal's line is cut, in
+    pixels of the published frame: ``{slot: (end, end)}`` (`LIMB_SLOTS`).
+
+    The middle of the cut is where the arm's rigid bones (`rigid_joints`) go
+    across the line; its two ends are MEASURED on the arm as it is drawn (its
+    piece alone, rastered at the design's scale), a little into the side that
+    is kept. So the hair of an elbow or a fist that is at the line is in the
+    cut, and the line is as wide as what it cuts."""
+    out = {}
+    body_map = _body_map(pose)
+    linear = body_map[:4] + (0.0, 0.0)
+    for spec in pose.get("arms") or []:
+        cut = spec.get("cut")
+        if not cut or cut[0] == "hole":
+            continue
+        shoulder, elbow, wrist = spec["pts"]
+        elbow, wrist = rigid_joints(shoulder, wrist, _side_of(shoulder, elbow, wrist))
+        seam = band_seam(shoulder, elbow, 46.0, 36.0, cut) or band_seam(elbow, wrist, 38.0, 44.0, cut)
+        if not seam:
+            continue
+        axis, _where, low = cut
+        along = pc.apply(linear, (0.0, 1.0) if axis == "x" else (1.0, 0.0))
+        side = -1.0 if low else 1.0
+        inward = pc.apply(linear, (side, 0.0) if axis == "x" else (0.0, side))
+        middle = pc.apply(body_map, ((seam[0][0] + seam[1][0]) * 0.5, (seam[0][1] + seam[1][1]) * 0.5))
+        scene = pc.Scene()
+        scene.add(spec["name"], 40, _cut_arm_piece(spec), body_map)
+        drawn = _drawn_across(pc.compose(scene, CANVAS, CANVAS_ORIGIN), middle, along, inward)
+        if drawn:
+            ends = [(middle[0] + along[0] * k, middle[1] + along[1] * k) for k in drawn]
+            out[LIMB_SLOTS[spec["name"]]] = tuple(to_frame(p) for p in ends)
+    return out
+
+
+#: How far into its kept side a cut is measured, in design units.
+SEAM_INSIDE = 2.0
+
+
+def _drawn_across(canvas, middle, along, inward, reach=200.0):
+    """The run of ``canvas`` (the design at one pixel a unit) that is drawn
+    on the line through ``middle`` along ``along``, ``SEAM_INSIDE`` toward
+    ``inward``: where it starts and ends, in design units along the line from
+    ``middle``. ``None`` when nothing is drawn at ``middle``."""
+    alpha = canvas.getchannel("A")
+    ox, oy = CANVAS_ORIGIN
+    steps = int(reach * 2)
+
+    def drawn(k):
+        u = k * 0.5
+        x = middle[0] + along[0] * u + inward[0] * SEAM_INSIDE + ox
+        y = middle[1] + along[1] * u + inward[1] * SEAM_INSIDE + oy
+        inside = 0 <= x < canvas.width and 0 <= y < canvas.height
+        return inside and alpha.getpixel((int(x), int(y))) >= 128
+
+    if not drawn(0):
+        return None
+    lo = 0
+    while lo > -steps and drawn(lo - 1):
+        lo -= 1
+    hi = 0
+    while hi < steps and drawn(hi + 1):
+        hi += 1
+    return lo * 0.5, (hi + 1) * 0.5
+
+
+def limb_seam_anchors(seams: dict, frame_size) -> dict:
+    """The anchors of a frame for ``seams`` (``{slot: (end, end)}`` in pixels
+    of a frame of ``frame_size``): ``seam:<slot>:a`` and ``seam:<slot>:b``, as
+    parts of the frame (0 to 1), so a sheet of any quality has the same."""
+    w, h = frame_size
+    out = {}
+    for slot, (a, b) in seams.items():
+        out[f"seam:{slot}:a"] = {"x": round(a[0] / w, 5), "y": round(a[1] / h, 5)}
+        out[f"seam:{slot}:b"] = {"x": round(b[0] / w, 5), "y": round(b[1] / h, 5)}
+    return out
 
 
 #: The limbs of the giant that are bodies of their own in the game, by the
@@ -1903,49 +2021,36 @@ def render_fist(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
     `none` is nothing: a fist that is not there.
     """
     phase = frame_idx / max(1, frame_count)
-    two_pi = 2.0 * math.pi
     svg.configure(dx=0.0, dy=0.0, ink=INK, ow=OW, colors=C)
     if anim == "none":
         return Image.new("RGBA", FIST_FRAME, (0, 0, 0, 0))
     if anim.startswith("through_"):
-        depth = punch_depth("hammer_" + anim[len("through_"):], phase)
-        # The line is over the body by FIST_LINE_OVER; at the full depth of the
-        # blow the fist is on the body's middle.
-        line_y = -2.0 * FIST_LINE_OVER
-        wrist_y = line_y + (PUNCH_DEPTH_DOWN + depth) * (2.0 * FIST_LINE_OVER - 56.0) / (2.0 * PUNCH_DEPTH_DOWN) if depth > -PUNCH_DEPTH_DOWN else line_y - 400.0
-        body = outlined(svg.capsule((0.0, wrist_y - 400.0), (0.0, wrist_y), 40.0, 44.0), C["fur"],
+        line_y, wrist_y = _through_wrist(anim, phase)
+        body = outlined(svg.capsule((0.0, wrist_y - 400.0), (0.0, wrist_y), *_FIST_STUB_RADII), C["fur"],
                         [path(svg.capsule((18.0, wrist_y - 400.0), (18.0, wrist_y), 16.0, 20.0), C["dark"])], "clip-through")
         body += [f'<g transform="translate(0 {wrist_y + 56.0:.1f}) rotate(-90)">'] + fist("fist") + ["</g>"]
         part("through", "Through", "through", "fist", 10,
              [_cut("cut-through", ("y", line_y, False)), '<g clip-path="url(#cut-through)">'] + body + ["</g>"])
         return _raster(_fist_document(), FIST_FRAME)
 
-    dx = dy = turn = 0.0
+    dx, dy, turn = _fist_motion(anim, phase)
     extra: List[str] = []
-    if anim == "rest":
-        dy = 4.0 * math.sin(two_pi * phase)
-        turn = 2.0 * math.sin(two_pi * phase + 0.8)
-    elif anim == "fall":
-        dy = 4.0 * math.sin(math.pi * phase)
+    if anim == "fall":
         # Lines of speed over a fist that comes down.
         for i, x in enumerate((-60.0, 0.0, 52.0)):
             y0 = -96.0 - (i % 2) * 8.0
             extra.append(line([(x, y0), (x, y0 - 22.0 - 8.0 * math.sin(math.pi * phase))], "#f0e2be", 3.0))
-    elif anim == "hit":
-        dx = 6.0 * math.sin(two_pi * phase * 2.0) * (1.0 - phase)
-        turn = -5.0 * (1.0 - phase)
     elif anim == "stuck":
-        # In the floor and pulling to come out: it shakes, and grit jumps.
-        dx = 5.0 * math.sin(two_pi * phase * 3.0)
-        dy = 10.0
+        # In the floor and pulling to come out: grit jumps.
         for i, x in enumerate((-80.0, -24.0, 36.0, 88.0)):
             up = (phase * 1.7 + i * 0.27) % 1.0
             extra.append(ellipse(x + dx, 92.0 - 56.0 * up, 6.0 - 3.0 * up, 5.0 - 2.4 * up, C["dark"], INK, 1.2))
     # The fore arm behind the wrist, cut at its portal's line (drawn knuckles
     # to the left, then turned over with the fist).
-    stub = outlined(svg.capsule((300.0, 0.0), (92.0, 0.0), 40.0, 44.0), C["fur"],
-                    [path(svg.capsule((300.0, 18.0), (92.0, 18.0), 16.0, 20.0), C["dark"])], "clip-fore-arm")
-    fore = [_cut("cut-fore-arm", ("x", FIST_STUB_LINE, True)), '<g clip-path="url(#cut-fore-arm)">'] + stub + ["</g>"]
+    (a, b), (r0, r1) = _FIST_STUB, _FIST_STUB_RADII
+    stub = outlined(svg.capsule(a, b, r0, r1), C["fur"],
+                    [path(svg.capsule((a[0], 18.0), (b[0], 18.0), 16.0, 20.0), C["dark"])], "clip-fore-arm")
+    fore = [_cut("cut-fore-arm", _FIST_STUB_CUT), '<g clip-path="url(#cut-fore-arm)">'] + stub + ["</g>"]
     part("fist", "Fist", "fist", "fist", 10,
          grp(fore + fist("fist"), f"translate({dx:.2f} {dy:.2f}) rotate({turn:.2f}) scale(-1 1)") + extra)
     return _raster(_fist_document(), FIST_FRAME)
@@ -1954,6 +2059,60 @@ def render_fist(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
 #: Where the line of a fist's own portal is behind its wrist, in design
 #: units from the fist's middle (the fist drawn with its knuckles to the left).
 FIST_STUB_LINE = 150.0
+#: The fore arm behind a lone fist (drawn with its knuckles to the left): from
+#: its far end to its wrist, its radius at each, and its cut at its line.
+_FIST_STUB = ((300.0, 0.0), (92.0, 0.0))
+_FIST_STUB_RADII = (40.0, 44.0)
+_FIST_STUB_CUT = ("x", FIST_STUB_LINE, True)
+
+
+def _fist_motion(anim: str, phase: float) -> Tuple[float, float, float]:
+    """How a lone fist of row ``anim`` is moved at ``phase``: its shift (x, y)
+    and its turn in degrees, in design units about its middle."""
+    two_pi = 2.0 * math.pi
+    if anim == "rest":
+        return 0.0, 4.0 * math.sin(two_pi * phase), 2.0 * math.sin(two_pi * phase + 0.8)
+    if anim == "fall":
+        return 0.0, 4.0 * math.sin(math.pi * phase), 0.0
+    if anim == "hit":
+        return 6.0 * math.sin(two_pi * phase * 2.0) * (1.0 - phase), 0.0, -5.0 * (1.0 - phase)
+    if anim == "stuck":
+        # In the floor and pulling to come out: it shakes.
+        return 5.0 * math.sin(two_pi * phase * 3.0), 10.0, 0.0
+    return 0.0, 0.0, 0.0
+
+
+def _through_wrist(anim: str, phase: float) -> Tuple[float, float]:
+    """The row ``through_*`` at ``phase``: where its line is (design y), and
+    where the wrist is under it. The line is over the body by
+    FIST_LINE_OVER; at the full depth of the blow the fist is on the body's
+    middle."""
+    depth = punch_depth("hammer_" + anim[len("through_"):], phase)
+    line_y = -2.0 * FIST_LINE_OVER
+    if depth <= -PUNCH_DEPTH_DOWN:
+        return line_y, line_y - 400.0
+    return line_y, line_y + (PUNCH_DEPTH_DOWN + depth) * (2.0 * FIST_LINE_OVER - 56.0) / (2.0 * PUNCH_DEPTH_DOWN)
+
+
+def fist_seams(anim: str, frame_idx: int, frame_count: int) -> dict:
+    """Where the fore arm of a lone fist of row ``anim`` is cut by its line, in
+    pixels of the fist's frame: ``{"self": (end, end)}``, the two ends of the
+    cut. The game draws the far line of the arm there (`limb_seams`). Empty
+    when no arm is in the line."""
+    phase = frame_idx / max(1, frame_count)
+    cx, cy = FIST_BBOX[0] + FIST_BBOX[2] * 0.5, FIST_BBOX[1] + FIST_BBOX[3] * 0.5
+    frame = lambda p: (p[0] * 0.5 + cx, p[1] * 0.5 + cy)  # noqa: E731
+    if anim == "none":
+        return {}
+    if anim.startswith("through_"):
+        line_y, wrist_y = _through_wrist(anim, phase)
+        seam = band_seam((0.0, wrist_y - 400.0), (0.0, wrist_y), *_FIST_STUB_RADII, ("y", line_y, False))
+        return {"self": tuple(frame(p) for p in seam)} if seam else {}
+    dx, dy, turn = _fist_motion(anim, phase)
+    seam = band_seam(*_FIST_STUB, *_FIST_STUB_RADII, _FIST_STUB_CUT)
+    # As the fist's group is moved: mirrored, turned, then shifted.
+    m = pc.chain(pc.T(dx, dy), pc.R(turn), (-1.0, 0.0, 0.0, 1.0, 0.0, 0.0))
+    return {"self": tuple(frame(pc.apply(m, p)) for p in seam)}
 
 
 # The near line of each arm blow comes from its arm (`_derive_lines`): after
