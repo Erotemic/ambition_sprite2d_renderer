@@ -87,17 +87,41 @@ ANIMATIONS: List[Tuple[str, int, int]] = [
     ("armed_rest_b", 8, 110),
     ("armed_hit", 5, 80),
     ("armed_buck", 8, 70),
-    ("punch_windup", 6, 70),
+    ("punch_windup", 8, 80),
     ("punch_strike", 5, 70),
     ("punch_hold", 4, 70),
     ("punch_recover", 6, 70),
     ("clamp", 8, 80),
+    # The blows through a portal's line (`giant_art.BLOWS`): `jab_*` straight
+    # out, `upper_*` up, `kick_*` the near fore leg with the arms in their
+    # lines (after the clamp) and `armed_kick_*` with the arms on. Each
+    # strike, hold and recover is as long as the blow's numbers in
+    # `giant_art.BLOWS`, which the game types again.
+    ("jab_windup", 8, 80),
+    ("jab_strike", 4, 60),
+    ("jab_hold", 4, 60),
+    ("jab_recover", 5, 80),
+    ("upper_windup", 8, 80),
+    ("upper_strike", 5, 60),
+    ("upper_hold", 4, 60),
+    ("upper_recover", 5, 80),
+    ("kick_windup", 8, 80),
+    ("kick_strike", 5, 60),
+    ("kick_hold", 4, 60),
+    ("kick_recover", 6, 70),
+    ("armed_kick_windup", 8, 80),
+    ("armed_kick_strike", 5, 60),
+    ("armed_kick_hold", 4, 60),
+    ("armed_kick_recover", 6, 70),
 ]
 
 # The rows whose giant has its fists on its arms: the fused sheet draws no
 # fist beside it.
 _ROWS_WITH_FISTS_ON = ("armed_rest", "armed_rest_b", "armed_hit", "armed_buck",
-                       "punch_windup", "punch_strike", "punch_hold", "punch_recover")
+                       "punch_windup", "punch_strike", "punch_hold", "punch_recover",
+                       "jab_windup", "jab_strike", "jab_hold", "jab_recover",
+                       "upper_windup", "upper_strike", "upper_hold", "upper_recover",
+                       "armed_kick_windup", "armed_kick_strike", "armed_kick_hold", "armed_kick_recover")
 
 # Output files: the runtime consumes the split body/hands pair plus the
 # canonical SheetRecord RON. Runtime collision/hurtbox metadata is stored in
@@ -433,6 +457,8 @@ _FUSED_SCHOLAR_ROW = {
     "punch_hold": "point",
     "punch_recover": "conduct",
     "clamp": "invoke",
+    **{f"{blow}_{part}": ("conduct" if part == "recover" else "point")
+       for blow in ("jab", "upper", "kick", "armed_kick") for part in ("windup", "strike", "hold", "recover")},
 }
 # On the giant he is drawn at this multiple of his design size, so he stands as
 # tall as the figure he replaced (~45 design px, sole to wig).

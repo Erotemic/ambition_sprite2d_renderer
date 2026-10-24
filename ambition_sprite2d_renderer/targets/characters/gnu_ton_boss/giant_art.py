@@ -179,8 +179,10 @@ def catmull(pts, u):
     return out, d
 
 
-def leg2(name, hip, mid, end, far, z, floor=None):
-    """A long leg in two parts, with a knee, a cuff of long hair and a great hoof."""
+def leg2(name, hip, mid, end, far, z, floor=None, turn=0.0):
+    """A long leg in two parts, with a knee, a cuff of long hair and a great hoof.
+    ``turn`` turns the cuff and the hoof about the fetlock (degrees): 0 is a hoof
+    under its fetlock, -90 a hoof whose sole faces the front (a kick)."""
     skin, shade, hair = (C["far"], C["far_dark"], C["far_dark"]) if far else (C["fur"], C["dark"], C["mane"])
     ex, ey = end
     floor = FLOOR if floor is None else ey + floor
@@ -189,13 +191,15 @@ def leg2(name, hip, mid, end, far, z, floor=None):
     body += outlined(svg.capsule(mid, end, 28.0, 25.0), skin,
                      [path(svg.capsule((mid[0] - 13, mid[1]), (ex - 12, ey), 10.0, 9.0), shade)], f"clip-{name}-l")
     body += [ellipse(mid[0], mid[1], 33, 31, skin, INK, 2 * OW), ellipse(mid[0] - 7, mid[1] - 8, 13, 10, C["far"] if far else C["light"])]
+    foot = []
     hoof = smooth([(ex - 40, floor - 40, True), (ex + 46, floor - 40, True), (ex + 60, floor, True), (ex - 50, floor, True)])
-    body += outlined(hoof, C["hoof"], [path(svg.poly([(ex - 50, floor - 38), (ex + 58, floor - 38), (ex + 58, floor - 27),
+    foot += outlined(hoof, C["hoof"], [path(svg.poly([(ex - 50, floor - 38), (ex + 58, floor - 38), (ex + 58, floor - 27),
                                                       (ex - 50, floor - 27)]), C["far_dark"] if far else C["hoof_light"]),
                                        line([(ex + 10, floor - 38), (ex + 14, floor)], INK, 2.6)], f"clip-{name}-hoof")
     cuff = smooth([(ex + 44, floor - 84, True), (ex - 40, floor - 84, True)] + locks(ex - 52, ex + 58, floor - 40, floor - 20, 5))
-    body += outlined(cuff, hair, strands(ex - 36, ex + 42, floor - 76, floor - 40, 4, C["far"] if far else C["mane_light"]),
+    foot += outlined(cuff, hair, strands(ex - 36, ex + 42, floor - 76, floor - 40, 4, C["far"] if far else C["mane_light"]),
                      f"clip-{name}-cuff")
+    body += grp(foot, f"rotate({turn:.2f} {ex:.2f} {ey:.2f})") if turn else foot
     part(name, name, name.replace("-", "_"), name.replace("-", "_"), z, body)
 
 
@@ -636,73 +640,362 @@ def _clamped_arms(amount=1.0):
             dict(kind="limb", name="arm-right", pts=right, cut=("x", CLAMP_LINE_R[0], True))]
 
 
-def _punch_arm(wrist, first, last, through):
-    """The right arm as one curve from its shoulder to ``wrist``. ``first`` is
-    its first handle from the shoulder, ``last`` is the way its end goes (the
-    fore arm, to the fist). The arm is drawn whole, through its line or not:
-    the game cuts the giant at the portal and draws what went in at the far
-    line (`docs/planning/engine/portals-a-body-in-two-places.md`)."""
-    del through
+# ---------------------------------------------------------------------------
+# The blows. A blow is a limb of the giant (its right arm, or its near fore
+# leg) that goes into the NEAR line of a portal pair and comes out of the far
+# line, by the player. The game draws the two lines and what comes out of the
+# far one (it cuts the giant's picture at the near line); this draws the giant
+# whole. The limb goes into its line SQUARE to it: through the line, the end of
+# the limb is held along the line's normal, and its middle is on the line's
+# middle.
+#
+# Each place of a blow is FINAL: in design units, with the lift of the stance
+# `sloped` already in it. A row that moves the body (a lift, a lean) moves the
+# root of the limb, and the end of the limb stays on the line: the line is at
+# one place of the giant in every row. The game has the same places, typed by
+# hand (`choreography::blows` of `ambition_content_modules::gnu_ton`):
+# `blow_lines_world` prints them.
+
+#: The lift of the stance `sloped`: a place before the lift, plus this, is final.
+SLOPED_LIFT = STANCES["sloped"]["lift"]
+#: Where the scholar's soles are (final): the body leans about it, so he does
+#: not move when the giant leans under him.
+SEAT_FINAL = ((SHOULDER_R[0] + SHOULDER_R[1]) * 0.5 + SLOPED_LIFT[0], SHOULDER_R[2] + SLOPED_LIFT[1])
+
+
+def _final(p):
+    return (p[0] + SLOPED_LIFT[0], p[1] + SLOPED_LIFT[1])
+
+
+#: Each blow. `line`: the middle of its near line and its normal (the side the
+#: giant is on; the limb goes in against it). `back`: how far the wrist (the
+#: fetlock of the leg) is on the giant's side of the line when the blow is
+#: cocked. `deep`: how far it is past the line at the full blow. `out`: how far
+#: on the giant's side it is when the limb has come back out. `past`: how far
+#: the middle of the fist (of the hoof) is past the wrist (the fetlock), along
+#: the limb's end. `strike`, `hold`, `recover`: the lengths of its rows, in
+#: seconds (each row's frames times its frame time in `sprite_generator`).
+BLOWS = {
+    # Down, from over the right shoulder: a hammer.
+    "punch": dict(line=((1443.0, 160.0), (0.0, -1.0)), back=190.0, deep=94.0, out=125.0, past=56.0,
+                  strike=0.35, hold=0.28, recover=0.42),
+    # Straight out from the right shoulder: a jab. The line is not farther out
+    # than this: the fist of the full blow stays in the frame.
+    "jab": dict(line=((1390.0, 318.0), (-1.0, 0.0)), back=190.0, deep=110.0, out=120.0, past=56.0,
+                strike=0.24, hold=0.24, recover=0.40),
+    # Up, in front of the chest: an uppercut.
+    "upper": dict(line=((1430.0, 150.0), (0.0, 1.0)), back=150.0, deep=100.0, out=120.0, past=56.0,
+                  strike=0.30, hold=0.24, recover=0.40),
+    # Forward with the near fore leg, low: a kick. The fetlock is the end of
+    # the leg; the hoof is past it.
+    "kick": dict(line=((1290.0, 800.0), (-1.0, 0.0)), back=50.0, deep=100.0, out=50.0, past=24.0,
+                 strike=0.30, hold=0.24, recover=0.42),
+}
+#: How far the end of a limb gives back toward its line in the row `*_hold`.
+HOLD_GIVE = 14.0
+#: The part of the row `*_strike` at which the blow is full (it is still after).
+STRIKE_FULL = 0.8
+#: The part of the row `*_recover` at which the limb is out of its line.
+RECOVER_OUT = 0.45
+#: The last part of a row `*_windup`: the blow is cocked, and trembles.
+COCKED_AT = 0.78
+
+
+def blow_wrist_depth(blow: str, part: str, phase: float) -> Optional[float]:
+    """How far the end of the limb (the wrist, the fetlock) is past the near
+    line in the row ``part`` (``strike``, ``hold``, ``recover``) at ``phase``
+    (0..1 of the row); less than 0: on the giant's side. ``None``: the limb is
+    not on its way through (the windup, and the end of the recover). The game
+    poses the limb's body by the same numbers (`choreography::blows::depth`)."""
+    b = BLOWS[blow]
+    if part == "strike":
+        u = min(1.0, phase / STRIKE_FULL)
+        return -b["back"] + (b["deep"] + b["back"]) * u * u * u
+    if part == "hold":
+        return b["deep"] - HOLD_GIVE * abs(math.sin(2.0 * math.pi * min(1.0, phase)))
+    if part == "recover" and phase < RECOVER_OUT:
+        return b["deep"] + (-b["out"] - b["deep"]) * _ease(phase / RECOVER_OUT)
+    return None
+
+
+def _on_line(blow, depth):
+    """The point ``depth`` past the near line of ``blow``, on its middle."""
+    (cx, cy), (nx, ny) = BLOWS[blow]["line"]
+    return (cx - nx * depth, cy - ny * depth)
+
+
+def _square(blow, depth, first, length):
+    """An arm key whose end is square to the line: the wrist ``depth`` past it,
+    the end coming along the line's inward normal over ``length``."""
+    _, (nx, ny) = BLOWS[blow]["line"]
+    return (_on_line(blow, depth), first, (-nx * length, -ny * length))
+
+
+#: The right arm at rest (final): wrist, first handle, the way its end goes.
+_A_HANG = (_final((1282.0, 800.0)), (46.0, 150.0), (0.0, 140.0))
+
+#: The arm keys of each blow, before it is cocked and while it comes back: (until,
+#: key). The keys of the line itself (cocked, full, out) are made by `_square`.
+_ARM_KEYS = {
+    "punch": dict(
+        wind=[(0.0, _A_HANG), (0.28, (_final((1480.0, 520.0)), (150.0, 60.0), (100.0, -90.0))),
+              (0.52, (_final((1440.0, 160.0)), (120.0, -170.0), (-120.0, -60.0))),
+              # Over the top, past the place it is cocked: the hammer is up.
+              (0.68, ((1420.0, -70.0), (-30.0, -330.0), (20.0, 120.0)))],
+        cocked_first=(-24.0, -340.0), full_first=(-6.0, -330.0), out_first=(-10.0, -300.0),
+        cocked_len=120.0, full_len=220.0, out_len=120.0,
+        home=[(0.62, (_final((1460.0, 250.0)), (130.0, -120.0), (-120.0, -40.0))),
+              (0.82, (_final((1480.0, 520.0)), (150.0, 60.0), (100.0, -90.0))), (1.0, _A_HANG)]),
+    "jab": dict(
+        wind=[(0.0, _A_HANG), (0.3, ((1300.0, 470.0), (40.0, 60.0), (60.0, -60.0))),
+              # Drawn back past where it is cocked: the elbow high and behind,
+              # the fist by the jaw.
+              (0.62, ((1160.0, 300.0), (-10.0, -230.0), (100.0, 10.0)))],
+        cocked_first=(-20.0, -210.0), full_first=(90.0, 0.0), out_first=(-50.0, 90.0),
+        cocked_len=110.0, full_len=150.0, out_len=110.0,
+        home=[(0.7, ((1240.0, 480.0), (-30.0, 120.0), (30.0, 100.0))), (1.0, _A_HANG)]),
+    "upper": dict(
+        wind=[(0.0, _A_HANG), (0.3, ((1180.0, 690.0), (-40.0, 150.0), (0.0, 120.0))),
+              # Down and back, low: the fist by the knee.
+              (0.6, ((1250.0, 720.0), (-10.0, 190.0), (40.0, 110.0)))],
+        cocked_first=(40.0, 220.0), full_first=(110.0, -40.0), out_first=(60.0, 140.0),
+        cocked_len=130.0, full_len=200.0, out_len=120.0,
+        home=[(0.7, ((1380.0, 520.0), (80.0, 120.0), (-20.0, 120.0))), (1.0, _A_HANG)]),
+}
+
+#: The near fore leg: hip, knee, fetlock (final; the legs are not lifted).
+_L_REST = ((1098.0, 720.0), (1106.0, 846.0), (1100.0, 934.0))
+_L_LIFT = ((1098.0, 716.0), (1168.0, 782.0), (1150.0, 880.0))
+
+
+def _leg_at(fetlock_depth):
+    """The near fore leg with its fetlock ``fetlock_depth`` past the kick's
+    line, its lower leg along the line's inward normal (level)."""
+    (fx, fy) = _on_line("kick", fetlock_depth)
+    hip = (1098.0, 716.0)
+    # The knee is behind the fetlock, level with it: the lower leg is square
+    # to the line. It is never past the line.
+    knee = (min(fx - 70.0, BLOWS["kick"]["line"][0][0] - 40.0), fy)
+    return (hip, knee, (fx, fy))
+
+
+def _blow_arm(blow, part, phase):
+    """The right arm's key (wrist, first handle, the way its end goes) in a row
+    of a punch."""
+    b, k = BLOWS[blow], _ARM_KEYS[blow]
+    cocked = _square(blow, -b["back"], k["cocked_first"], k["cocked_len"])
+    full = _square(blow, b["deep"], k["full_first"], k["full_len"])
+    out = _square(blow, -b["out"], k["out_first"], k["out_len"])
+    if part == "windup":
+        keys = list(k["wind"]) + [(COCKED_AT, cocked)]
+        if phase <= COCKED_AT:
+            return _between(keys, phase)
+        # Cocked, and it trembles: a blow about to go.
+        (wx, wy), first, last = cocked
+        s = math.sin(phase * 97.0)
+        return ((wx + 3.0 * s, wy + 2.0 * math.cos(phase * 71.0)), first, last)
+    depth = blow_wrist_depth(blow, part, phase)
+    if part == "strike":
+        u = min(1.0, phase / STRIKE_FULL)
+        key = mix(cocked, full, u * u * u)
+        return (_on_line(blow, depth),) + tuple(key[1:])
+    if part == "hold":
+        return (_on_line(blow, depth),) + tuple(full[1:])
+    # recover: back out along the line, then home.
+    if depth is not None:
+        u = _ease(phase / RECOVER_OUT)
+        key = mix(full, out, u)
+        return (_on_line(blow, depth),) + tuple(key[1:])
+    return _between([(RECOVER_OUT, out)] + list(k["home"]), phase)
+
+
+def _blow_leg(part, phase):
+    """The near fore leg in a row of the kick: hip, knee, fetlock."""
+    b = BLOWS["kick"]
+    cocked = _leg_at(-b["back"])
+    if part == "windup":
+        if phase <= COCKED_AT:
+            return _between([(0.0, _L_REST), (0.4, _L_LIFT), (COCKED_AT, cocked)], phase)
+        hip, knee, (fx, fy) = cocked
+        return (hip, knee, (fx + 3.0 * math.sin(phase * 97.0), fy + 2.0 * math.cos(phase * 71.0)))
+    depth = blow_wrist_depth("kick", part, phase)
+    if depth is not None:
+        return _leg_at(depth)
+    return _between([(RECOVER_OUT, _leg_at(-b["out"])), (0.72, _L_LIFT), (1.0, _L_REST)], phase)
+
+
+#: How the body moves in each part of a blow: (until, (lift down, lean in
+#: degrees about the seat, the head's offset, the face, the face's tilt)).
+#: A lean that is more than 0 is toward the giant's front.
+_BODY = {
+    "punch": dict(
+        windup=[(0.0, (0.0, 0.0, (0.0, 0.0))), (0.5, (-10.0, -2.0, (-4.0, -6.0))), (COCKED_AT, (-26.0, -5.0, (-12.0, -14.0)))],
+        strike=[(0.0, (-26.0, -5.0, (-12.0, -14.0))), (0.8, (18.0, 5.0, (16.0, 24.0)))],
+        recover=[(0.0, (18.0, 5.0, (16.0, 24.0))), (1.0, (0.0, 0.0, (0.0, 0.0)))]),
+    "jab": dict(
+        windup=[(0.0, (0.0, 0.0, (0.0, 0.0))), (COCKED_AT, (8.0, -6.0, (-18.0, 6.0)))],
+        strike=[(0.0, (8.0, -6.0, (-18.0, 6.0))), (0.8, (4.0, 7.0, (24.0, 4.0)))],
+        recover=[(0.0, (4.0, 7.0, (24.0, 4.0))), (1.0, (0.0, 0.0, (0.0, 0.0)))]),
+    "upper": dict(
+        windup=[(0.0, (0.0, 0.0, (0.0, 0.0))), (COCKED_AT, (26.0, 5.0, (12.0, 30.0)))],
+        strike=[(0.0, (26.0, 5.0, (12.0, 30.0))), (0.8, (-26.0, -5.0, (-6.0, -22.0)))],
+        recover=[(0.0, (-26.0, -5.0, (-6.0, -22.0))), (1.0, (0.0, 0.0, (0.0, 0.0)))]),
+    "kick": dict(
+        windup=[(0.0, (0.0, 0.0, (0.0, 0.0))), (COCKED_AT, (-12.0, -4.0, (-10.0, -8.0)))],
+        strike=[(0.0, (-12.0, -4.0, (-10.0, -8.0))), (0.8, (6.0, 3.0, (14.0, 10.0)))],
+        recover=[(0.0, (6.0, 3.0, (14.0, 10.0))), (1.0, (0.0, 0.0, (0.0, 0.0)))]),
+}
+
+#: The left arm (before the lift, as `_whole_arms` has it): at rest, braced
+#: forward, guarding up, and swung back.
+_LEFT = dict(
+    hang=_HANG_L,
+    brace=(ARM_ROOT_L, (760.0, 650.0), (850.0, 760.0)),
+    guard=(ARM_ROOT_L, (900.0, 600.0), (960.0, 470.0)),
+    back=(ARM_ROOT_L, (740.0, 640.0), (680.0, 740.0)),
+    up=(ARM_ROOT_L, (740.0, 520.0), (700.0, 400.0)),
+)
+#: What the left arm does in each part of each blow: (until, pose name).
+_LEFT_KEYS = {
+    "punch": dict(windup=[(0.0, "hang"), (COCKED_AT, "brace")], strike=[(0.0, "brace"), (0.8, "back")],
+                  recover=[(0.0, "back"), (1.0, "hang")]),
+    "jab": dict(windup=[(0.0, "hang"), (COCKED_AT, "guard")], strike=[(0.0, "guard"), (0.8, "back")],
+                recover=[(0.0, "back"), (1.0, "hang")]),
+    "upper": dict(windup=[(0.0, "hang"), (COCKED_AT, "brace")], strike=[(0.0, "brace"), (0.8, "back")],
+                  recover=[(0.0, "back"), (1.0, "hang")]),
+    "kick": dict(windup=[(0.0, "hang"), (COCKED_AT, "back")], strike=[(0.0, "back"), (0.8, "brace")],
+                 recover=[(0.0, "brace"), (1.0, "hang")]),
+}
+#: The right arm of an armed kick (before the lift): up and out of the way of
+#: the kick's line, for balance.
+_RIGHT_UP = (ARM_ROOT_R, (1340.0, 470.0), (1350.0, 370.0))
+
+
+def _keys_at(keys, phase):
+    return _between(keys, phase)
+
+
+def _named_at(keys, table, phase):
+    """A pose of ``table`` by name, eased from key to key."""
+    return _between([(until, table[name]) for until, name in keys], phase)
+
+
+def blow_parts(anim: str):
+    """``(blow, part, armed)`` of a row of a blow, or ``None``. ``punch_*`` is
+    the hammer; ``jab_*``, ``upper_*``; ``kick_*`` with the arms in their lines
+    and ``armed_kick_*`` with the arms on."""
+    armed = True
+    if anim.startswith("armed_kick_"):
+        anim = anim[len("armed_"):]
+    elif anim.startswith("kick_"):
+        armed = False
+    for blow in BLOWS:
+        prefix = blow + "_"
+        if anim.startswith(prefix):
+            part = anim[len(prefix):]
+            if part in ("windup", "strike", "hold", "recover"):
+                return blow, part, armed
+    return None
+
+
+def _blow_pose(pose, blow, part, armed, phase):
+    """Fill ``pose`` (from `pose_for`) for a row of a blow."""
+    sloped = STANCES["sloped"]
+    body = _BODY[blow]
+    if part == "hold":
+        # The blow lands: the body jolts and comes back (its recoil).
+        drop, lean, head = body["strike"][-1][1]
+        jolt = math.sin(math.pi * min(1.0, phase * 2.5)) * (1.0 - phase)
+        drop, lean, head = drop + 10.0 * jolt, lean - 2.5 * jolt, (head[0] - 8.0 * jolt, head[1] + 8.0 * jolt)
+    else:
+        drop, lean, head = _keys_at(body[part], phase)
+    s = dict(sloped)
+    s["lift"] = (sloped["lift"][0], sloped["lift"][1] + drop)
+    pose["stance"] = s
+    pose["lean"] = lean
+    pose["head"] = head
+    cocked = part == "windup" and phase > COCKED_AT * 0.6
+    name = "angry" if part != "windup" or cocked else "serious"
+    tilt = lean * 0.8 + (2.0 * math.sin(phase * 61.0) if part == "windup" and phase > COCKED_AT else 0.0)
+    pose["expr"] = dict(EXPRESSIONS[name], tilt=EXPRESSIONS[name]["tilt"] + tilt)
+    left_part = "strike" if part == "hold" else part
+    left_phase = 1.0 if part == "hold" else phase
+    left = _named_at(_LEFT_KEYS[blow][left_part], _LEFT, left_phase)
+    left_spec = dict(kind="limb", name="arm-left", pts=left)
+    if blow == "kick":
+        pose["kick"] = _blow_leg(part, phase)
+        if armed:
+            right = mix(_HANG_R, _RIGHT_UP, _ease(min(1.0, phase / 0.5)) if part == "windup" else
+                        (1.0 if part != "recover" else 1.0 - _ease(phase)))
+            pose["arms"] = [left_spec, dict(kind="limb", name="arm-right", pts=right)]
+        else:
+            pose["arms"] = _clamped_arms(1.0)
+        return pose
+    wrist, first, last = _blow_arm(blow, part, phase)
     size = math.hypot(*last) or 1.0
-    return dict(kind="soft", name="arm-right", toward=(last[0] / size, last[1] / size),
-                handles=(ARM_ROOT_R, (ARM_ROOT_R[0] + first[0], ARM_ROOT_R[1] + first[1]), (wrist[0] - last[0], wrist[1] - last[1]), wrist))
+    # The arm of a blow is FIXED to the giant (its end is on the line), so it
+    # is drawn outside the body's lift and lean: its root is moved by them here.
+    root = _lean_point(_final(ARM_ROOT_R), lean)
+    root = (root[0], root[1] + drop)
+    # The jab is cocked by the jaw: its arm is in front of the head.
+    z = 62 if blow == "jab" else 40
+    pose["arms"] = [left_spec, dict(kind="soft", name="arm-right", fixed=True, z=z, toward=(last[0] / size, last[1] / size),
+                                    handles=(root, (root[0] + first[0], root[1] + first[1]),
+                                             (wrist[0] - last[0], wrist[1] - last[1]), wrist))]
+    return pose
 
 
-#: The keys of the punch: where the wrist is, the arm's first handle from the
-#: shoulder, the way its end goes. The line is OVER the shoulder: the arm goes
-#: out to the side and up, and the fist comes down into the line.
-_P_HANG = ((1282.0, 800.0), (46.0, 150.0), (0.0, 140.0))
-# The arm goes out no farther than this: the widest frame of the sheet says
-# how wide each cell of its page is, and ten cells must be under 8192 px (the
-# default limit of a texture's side).
-_P_OUT = ((1480.0, 520.0), (150.0, 60.0), (100.0, -90.0))
-_P_HIGH = ((1460.0, 250.0), (130.0, -120.0), (-120.0, -40.0))
-_P_UP = ((PUNCH_LINE[0][0], PUNCH_LINE[0][1] - 125.0), (-10.0, -300.0), (0.0, 120.0))
-_P_BACK = ((PUNCH_LINE[0][0], PUNCH_LINE[0][1] - 155.0), (-14.0, -320.0), (0.0, 120.0))
-# Down: the fist's middle 150 under the line (94 + the 56 to the fist), which
-# is 96.2 in the world, where the fist lands on the floor under the far line
-# (`arms::LINE_OVER` of the game).
-_P_DOWN = ((PUNCH_LINE[0][0], PUNCH_LINE[0][1] + 94.0), (-6.0, -330.0), (0.0, 220.0))
-#: How far past its line the wrist is at the end of the blow. The fist's own
-#: sheet draws the far side of the punch from this.
-PUNCH_DEPTH_DOWN = _P_DOWN[0][1] - PUNCH_LINE[0][1]
+def _lean_point(p, lean):
+    """``p`` (final) turned by ``lean`` degrees about the seat."""
+    a = math.radians(lean)
+    sx, sy = SEAT_FINAL
+    dx, dy = p[0] - sx, p[1] - sy
+    return (sx + dx * math.cos(a) - dy * math.sin(a), sy + dx * math.sin(a) + dy * math.cos(a))
+
+
+def blow_lines_world():
+    """Each blow's near line in the world, from the middle of the giant's body
+    (+y down), and the scale of a design unit: the numbers the game types."""
+    cx = BODY_BBOX[0] + BODY_BBOX[2] * 0.5
+    cy = BODY_BBOX[1] + BODY_BBOX[3] * 0.5
+    out = {}
+    for blow, b in BLOWS.items():
+        (x, y), normal = b["line"]
+        out[blow] = dict(at=((x * 0.5 + OFFSET[0] - cx) * WORLD_PER_PIXEL, (y * 0.5 + OFFSET[1] - cy) * WORLD_PER_PIXEL),
+                         normal=normal, back=b["back"], deep=b["deep"], out=b["out"], past=b["past"],
+                         strike=b["strike"], hold=b["hold"], recover=b["recover"])
+    return dict(design=0.5 * WORLD_PER_PIXEL, blows=out)
+
+
+#: World units of a pixel of the published frame (the catalog's `posed_body`).
+WORLD_PER_PIXEL = 1.3
 
 
 def _between(keys, phase):
     """``keys``: (until, key) in order. The pose at ``phase``, eased from each
     key to the next."""
-    start, last = 0.0, keys[0][1]
+    start, last = keys[0]
+    if phase <= start:
+        return last
     for until, key in keys[1:]:
         if phase <= until:
-            return mix(last, key, _ease((phase - start) / (until - start)))
+            return mix(last, key, _ease((phase - start) / max(1e-6, until - start)))
         start, last = until, key
     return last
 
 
-def punch_keys(anim: str, phase: float):
-    """The punch at ``phase`` of one of its four rows: (wrist, first handle,
-    the way the end goes, through its line)."""
-    if anim.endswith("windup"):
-        # The fist goes out to the side, up, and over the line.
-        return _between(((0.0, _P_HANG), (0.35, _P_OUT), (0.62, _P_HIGH), (0.85, _P_UP), (1.0, _P_BACK)), phase) + (False,)
-    if anim.endswith("strike"):
-        u = min(1.0, phase / 0.8)
-        return mix(_P_BACK, _P_DOWN, u * u * u) + (True,)
-    if anim.endswith("hold"):
-        give = 12.0 * abs(math.sin(2.0 * math.pi * phase))
-        (x, y), first, last = _P_DOWN
-        return ((x, y - give), first, last, True)
-    # recover: it comes back out the same way, and the arm goes down to hang.
-    if phase < 0.45:
-        return mix(_P_DOWN, _P_UP, _ease(phase / 0.45)) + (True,)
-    return _between(((0.45, _P_UP), (0.62, _P_HIGH), (0.82, _P_OUT), (1.0, _P_HANG)), phase) + (False,)
-
-
 def punch_depth(anim: str, phase: float) -> float:
-    """How far past its line the wrist is (less than 0: over it). A fist that
-    is not on its way through the line is far over it."""
-    wrist, _first, _last, through = punch_keys(anim, phase)
-    return wrist[1] - PUNCH_LINE[0][1] if through else -9000.0
+    """How far past its line the wrist of the hammer is in a row `punch_*`
+    (less than 0: over it). A fist that is not on its way through is far over
+    it. For the fist's own rows `through_*`."""
+    part = anim[len("punch_"):]
+    depth = blow_wrist_depth("punch", part, phase) if part != "windup" else None
+    return depth if depth is not None else -9000.0
+
+
+#: How far past its line the wrist is at the end of the hammer. The fist's own
+#: sheet draws the far side of the punch from this.
+PUNCH_DEPTH_DOWN = BLOWS["punch"]["deep"]
 
 
 #: Down, at the end of its fight: the body low, the legs folded under it.
@@ -732,6 +1025,9 @@ def pose_for(anim: str, phase: float) -> dict:
     two_pi = 2.0 * math.pi
     sloped = STANCES["sloped"]
     pose = dict(stance=sloped, expr=EXPRESSIONS["ordered"], head=(0.0, 0.0), dust=0.0, arms=[])
+    blow = blow_parts(anim)
+    if blow is not None:
+        return _blow_pose(pose, *blow, phase)
     # A row draws the giant with its arms in the two lines: its fists are
     # bodies of their own. A row `armed_*` is the same body with whole arms
     # and its fists on them (phase 1). `*_b` is a copy of a row: a pinned row
@@ -812,16 +1108,6 @@ def pose_for(anim: str, phase: float) -> dict:
         pose["dust"] = max(0.0, 1.0 - (phase - 0.7) / 0.3) if phase >= 0.7 else 0.0
         pose["head"] = (0.0, 10.0 * (1.0 if phase >= 0.7 else 0.0) * (1.0 - (phase - 0.7) / 0.3))
         pose["expr"] = face("angry" if phase < 0.85 else "serious")
-    elif anim.startswith("punch_"):
-        wrist, first, last, through = punch_keys(anim, phase)
-        struck = anim in ("punch_strike", "punch_hold")
-        s = dict(sloped)
-        s["lift"] = (sloped["lift"][0], sloped["lift"][1] + (10.0 if struck else -4.0))
-        pose["stance"] = s
-        pose["head"] = (0.0, 8.0 if struck else 0.0)
-        pose["expr"] = face("angry" if struck or anim == "punch_recover" else "serious")
-        pose["arms"] = [_whole_arms()[0], _punch_arm(wrist, first, last, through)]
-        return pose
     elif anim == "clamp":
         # The arms go out to each side and into the lines; the lines close on them.
         out = _ease(min(1.0, phase / 0.7))
@@ -918,7 +1204,7 @@ def _draw_arm(spec):
         body = svg.PARTS.pop(n0)[6]
     if spec.get("cut"):
         body = [_cut(f"cut-{name}", spec["cut"]), f'<g clip-path="url(#cut-{name})">'] + body + ["</g>"]
-    part(name, name, name.replace("-", "_"), name.replace("-", "_"), 40, body)
+    part(name, name, name.replace("-", "_"), name.replace("-", "_"), spec.get("z", 40), body)
 
 
 def giant_svg(pose: dict, *, arms: bool = False, horns: str = "gnu", view=None) -> str:
@@ -933,7 +1219,13 @@ def giant_svg(pose: dict, *, arms: bool = False, horns: str = "gnu", view=None) 
     leg2("far-hind", (hip[0] + 96, hip[1] - 6), (mid[0] + 96, mid[1] - 4), (end[0] + 100, end[1]), True, 10)
     leg2("near-hind", hip, mid, end, False, 28)
     leg2("far-fore", *st["fore"][1], True, 10, st["fore_floors"][1])
-    leg2("near-fore", *st["fore"][0], False, 28, st["fore_floors"][0])
+    if pose.get("kick"):
+        # The near fore leg kicks: the hoof is turned along the lower leg.
+        hip, knee, fet = pose["kick"]
+        turn = math.degrees(math.atan2(fet[1] - knee[1], fet[0] - knee[0])) - 90.0
+        leg2("near-fore", hip, knee, fet, False, 28, 44.0, turn=turn)
+    else:
+        leg2("near-fore", *st["fore"][0], False, 28, st["fore_floors"][0])
     n0 = len(svg.PARTS)
     tail()
     (tx, ty), swing = st["tail"]
@@ -948,17 +1240,26 @@ def giant_svg(pose: dict, *, arms: bool = False, horns: str = "gnu", view=None) 
     epaulet("epaulet-right", SHOULDER_R, SHOULDER_R[1])
     drawn = pose.get("arms") or (_whole_arms(pts=st["arms"]) if arms else [])
     for spec in drawn:
-        _draw_arm(spec)
+        if not spec.get("fixed"):
+            _draw_arm(spec)
     n1 = len(svg.PARTS)
     head(pose["expr"], horns)
     if hx or hy:
         for i in range(n1, len(svg.PARTS)):
             pid, label, name, bone, z, extra, body = svg.PARTS[i]
             svg.PARTS[i] = (pid, label, name, bone, z, extra, grp(body, f"translate({hx:.2f} {hy:.2f})"))
-    # The chest, the head and the arms are drawn in one place and lifted to the stance.
+    # The chest, the head and the arms are drawn in one place and lifted to the
+    # stance, and leaned about the seat (the scholar stays on it).
+    lean = pose.get("lean", 0.0)
+    sx, sy = (SHOULDER_R[0] + SHOULDER_R[1]) * 0.5, SHOULDER_R[2]
+    turned = f" rotate({lean:.2f} {sx:.2f} {sy:.2f})" if lean else ""
     for i in range(n0, len(svg.PARTS)):
         pid, label, name, bone, z, extra, body = svg.PARTS[i]
-        svg.PARTS[i] = (pid, label, name, bone, z, extra, grp(body, f"translate({lx:.2f} {ly:.2f})"))
+        svg.PARTS[i] = (pid, label, name, bone, z, extra, grp(body, f"translate({lx:.2f} {ly:.2f}){turned}"))
+    # The arm of a blow is fixed to the giant: its end is on its portal's line.
+    for spec in drawn:
+        if spec.get("fixed"):
+            _draw_arm(spec)
     if pose.get("dust", 0.0) > 0.0:
         fx, _fy = st["fore"][0][2]
         part("dust", "Dust", "dust", "dust", 90, _dust((fx, FLOOR), pose["dust"]))
