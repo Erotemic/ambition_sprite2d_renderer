@@ -48,7 +48,7 @@ BOTTOMS = ("trousers", "shorts", "skirt", "long_skirt")
 SHOES = ("shoes", "boots")
 HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", "bowler")
 ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders")
-SPECIES = ("human", "horse", "dog", "cat", "bird")
+SPECIES = ("human", "horse", "dog", "cat", "bird", "sea_lion")
 EAR_STYLES = ("default", "floppy", "pointed")
 #: The slots a wardrobe item swaps in, and the kinds each slot takes.
 SLOTS = {"hat": HATS, "outer": OUTERS, "top": TOPS, "legwear": BOTTOMS, "footwear": SHOES, "hair": HAIR_STYLES}

@@ -822,8 +822,8 @@ look (`look_left`…). Each face's eyes, brows and each talking mouth (visemes
 body, not a sheet row).
 
 **Species heads** (`species.py`, `head.species`: `human`, `horse`, `dog`,
-`cat`, `bird`) are fresh anthropomorphic heads on the same humanoid body,
-each a head model (rows, relief, face layout, ears, mane/tuft/crest). They
+`cat`, `bird`, `sea_lion`) are fresh anthropomorphic heads on the same humanoid body,
+each a head model (rows, relief, face layout, ears, mane/tuft/crest or none). They
 wear every hat, take every expression and pose like any other spec. Never
 trace or adapt an existing animal sprite for one. A species head says where
 its neck goes into it (`HeadModel.neck_f`): the neck's top ring is fitted

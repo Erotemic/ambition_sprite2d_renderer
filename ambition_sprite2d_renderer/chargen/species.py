@@ -25,15 +25,16 @@ from typing import Dict, List, Tuple
 
 from .geometry import Loft, RingKey, gauss, smoothstep, wrap180
 
-SPECIES = ("human", "horse", "dog", "cat", "bird")
+SPECIES = ("human", "horse", "dog", "cat", "bird", "sea_lion")
 #: A species' head height against a human's of the same build.
-HEAD_SCALE = {"human": 1.0, "horse": 1.16, "dog": 1.05, "cat": 0.98, "bird": 1.0}
+HEAD_SCALE = {"human": 1.0, "horse": 1.16, "dog": 1.05, "cat": 0.98, "bird": 1.0, "sea_lion": 1.02}
 #: Coats: fur and feathers, by species.
 COATS: Dict[str, Tuple[str, ...]] = {
     "horse": ("#7a4a2c", "#5c3a24", "#a8672f", "#2e2622", "#8d8a86", "#c9a26a", "#e6dfd2", "#4a3528"),
     "dog": ("#c08a4e", "#8a5a34", "#e4cfa6", "#3a3230", "#a9a39b", "#d7a45c", "#6e4a33", "#f0e8da"),
     "cat": ("#d68c4a", "#8b8580", "#3a3436", "#e8dcc8", "#b97a46", "#c9b9a4", "#5e5550", "#f2ece2"),
     "bird": ("#3f6f9e", "#c9473a", "#e3c24a", "#5b8f4f", "#ece6da", "#2e2c34", "#8a6a9e", "#d98a3e"),
+    "sea_lion": ("#6b4a32", "#a9804f", "#c9a876", "#4a3a30", "#8a7462", "#3a3230", "#b8946a", "#7e6a5a"),
 }
 
 
@@ -44,10 +45,11 @@ class HeadModel:
     bumps: list
     #: Where the face's parts sit (see the module doc).
     layout: Dict[str, float] = field(default_factory=dict)
-    #: The ear: ``human``, ``horse``, ``dog_floppy``, ``dog_pointed``, ``cat``, ``none``.
+    #: The ear: ``human``, ``horse``, ``dog_floppy``, ``dog_pointed``, ``cat``,
+    #: ``flap`` (a small rolled ear flap), ``none``.
     ears: str = "human"
     #: What the head's hair is: ``human`` (the spec's style), ``mane``,
-    #: ``tuft``, ``crest``.
+    #: ``tuft``, ``crest``, ``none`` (a sleek coat).
     hair: str = "human"
     #: Below this ``f`` and in front, the muzzle (a second colour), or None.
     muzzle_f: float = 0.0
@@ -292,7 +294,46 @@ def _bird(fig) -> HeadModel:
     return HeadModel("bird", _rows(fig.fy, hh, rows), [], layout, ears="none", hair="crest", neck_f=0.72)
 
 
-_BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird": _bird}
+# ---- sea lion -------------------------------------------------------------------------------
+
+
+def _sea_lion(fig) -> HeadModel:
+    """A sleek round head on a thick neck, a tapered muzzle with full
+    whisker pads and a small nose pad at its tip, big dark eyes, small ear
+    flaps low behind the eyes, no hair. A male has a crest on the forehead."""
+    hh = fig.hh
+    m = fig.spec.head.muzzle
+    # The back of the head stays deep down to the jaw: the head runs into
+    # the neck with no step.
+    rows = [
+        (0.00, 0.0, 0.0, 0.0, -0.06, 2.0),
+        (0.12, 0.3, 0.33, 0.36, -0.05, 2.0),
+        (0.26, 0.35, 0.41, 0.42, -0.03, 2.0),
+        (0.4, 0.36, 0.48 + 0.04 * m, 0.43, 0.01 * m, 2.1),
+        (0.52, 0.35, 0.54 + 0.08 * m, 0.42, 0.04 * m, 2.2),
+        (0.63, 0.33, 0.57 + 0.11 * m, 0.41, 0.07 * m, 2.3),
+        (0.73, 0.31, 0.54 + 0.11 * m, 0.41, 0.08 * m, 2.3),
+        (0.83, 0.29, 0.45 + 0.08 * m, 0.41, 0.07 * m, 2.1),
+        (0.93, 0.25, 0.36 + 0.04 * m, 0.39, 0.04 * m, 2.0),
+        (1.00, 0.19, 0.28, 0.35, 0.03, 2.0),
+    ]
+    layout = {
+        "eye_f": 0.38, "brow_f": 0.3, "eye_alpha": 42.0, "eye_w": 0.185, "iris": 0.95, "nose_tip_f": 0.6, "mouth_f": 0.84,
+        "mouth_alpha": 26.0, "nose": "sea_lion", "pupil": "round",
+    }
+    crest = 0.0 if fig.female else 0.045
+
+    def relief(alpha: float, y: float) -> float:
+        f = (y - fig.crown) / hh
+        al = wrap180(alpha)
+        v = 0.035 * gauss(f, 0.72, 0.06) * (gauss(al, 16.0, 11.0) + gauss(al, -16.0, 11.0))
+        v += crest * gauss(f, 0.15, 0.07) * gauss(al, 0.0, 20.0)
+        return hh * v
+
+    return HeadModel("sea_lion", _rows(fig.fy, hh, rows), [relief], layout, ears="flap", hair="none", muzzle_f=0.56, neck_f=0.58)
+
+
+_BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird": _bird, "sea_lion": _sea_lion}
 
 
 def head_model(fig) -> HeadModel:
