@@ -429,17 +429,6 @@ def _hit_sparks():
     return fx_piece(("v3_hit_sparks",), (-16 * K, -16 * K, 16 * K, 16 * K), paint)
 
 
-def _shot(length: float):
-    """The shot leaving the hand: a beam along +x and its bright head."""
-
-    def paint(d, ox, oy) -> None:
-        tip = (ox + length * K, oy)
-        d.line([(ox, oy), tip], fill=(245, 255, 255, 240), width=int(3 * K))
-        d.ellipse((tip[0] - 3 * K, tip[1] - 3 * K, tip[0] + 3 * K, tip[1] + 3 * K), fill=(23, 234, 255, 220))
-
-    return fx_piece(("v3_shot", length), (-3 * K, -4 * K, (length + 4) * K, 4 * K), paint)
-
-
 def _render_body(doc: RigDocument, clip: str, t: float, solved) -> Image.Image:
     """The rig's frame (``render_at``)."""
     return doc.render_at(clip, t, solved=solved)
@@ -486,11 +475,11 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
         slash = max(0.35, float(params.get("slash", 0.0)))
         _place_blade(front, effect, base, hand.angle, slash, float(params.get("slash_arc", t)))
 
-    if effect in {"aim", "charge", "shoot"}:
+    # The orb is held in the hand while it charges. The shot itself is the
+    # game's projectile, born at this hand: the `shoot` row draws no shot.
+    if effect in {"aim", "charge"}:
         pulse = 0.55 + 0.45 * math.sin((t + 0.1) * math.pi)
         front.put(_disc(float(round(3 + 4 * pulse)), (25, 233, 255, 75), (193, 128, 255, 220), 2, "orb"), base, 0.0, "orb")
-        if effect == "shoot" and 0.35 <= t <= 0.72:
-            front.put(_shot(float(round(20 + 15 * (t - 0.35) / 0.37))), base, 0.0, "shot")
 
     if effect == "hit":
         front.put(_hit_sparks(), (78, 48), 0.0, "hit_sparks")

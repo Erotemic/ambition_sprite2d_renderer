@@ -117,7 +117,8 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("air_up", 7, 51),
     ("air_land", 6, 62),
     # Robot-specific / Ambition abilities used as Smash specials.
-    ("shoot", 6, 58),
+    # 0.18 s: the game shows the row for that long after each shot.
+    ("shoot", 6, 30),
     ("blink_out", 6, 62),
     ("blink_in", 6, 62),
     ("hover", 8, 78),

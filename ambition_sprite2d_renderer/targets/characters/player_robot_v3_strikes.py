@@ -816,6 +816,48 @@ def pet(body: RigBody) -> List[Key]:
     return keys
 
 
+def shoot(body: RigBody) -> List[Key]:
+    """The fireball pushed out of both palms (a Hadouken). 0.18 s: the game
+    shows this row for that long after each shot (`SHOOT_ANIM_HOLD_SECS`).
+
+    The game fires on the tick the row starts and births the shot at the near
+    hand of this row's FIRST frame (`SHOOT_RELEASE_PHASE`), so both arms are
+    already out at frame 0. The rest of the row is the follow-through. In this
+    three-quarter drawing the near shoulder is behind the chest and the near
+    arm alone ends at the chest; the far arm, whose shoulder is in front,
+    carries the push out past the body. The push is at chest height: the head
+    hides a hand at the shoulder.
+    """
+    push = dict(torso=12.0, head=4.0, drop=3.0, shoulder=-4.0, feet={"far": (5.0, 0.0, 0.0)},
+                blade=0.0, turn="open", face="fierce", arm_in_front=True)
+    return [
+        Key(at=0.0, near=(15.0, 0.0, 0.0), far=(8.0, 0.0), lunge=5.0, squash=1.03, squint=0.35,
+            **push),
+        Key(at=0.45, near=(17.0, 3.0, 0.0), far=(10.0, 2.0), lunge=5.5, squint=0.3, ease="out",
+            **push),
+        Key(at=1.0, near=(55.0, 38.0, 0.0), far=(50.0, 40.0), torso=6.0, head=2.0, lunge=2.5,
+            drop=2.0, shoulder=3.0, feet={"far": (2.0, 0.0, 0.0)}, blade=0.0, face="open",
+            squint=0.15, arm_in_front=True),
+    ]
+
+
+def aim(body: RigBody) -> List[Key]:
+    """The fireball held and growing: the wind-up of the push in `shoot`.
+    Loops on its own clock for as long as the button is held.
+
+    Both hands are drawn back to the hip with the orb cupped in the near one,
+    the chest open to the camera and the weight back, so the release is the
+    push forward from here.
+    """
+    def coil(at: float, bob: float) -> Key:
+        return Key(at=at, near=(105.0, 165.0, 0.0), far=(95.0, 150.0), torso=-6.0 - bob,
+                   head=-2.0, lunge=-1.5, drop=3.0 + bob, squash=0.98, shoulder=-3.0,
+                   blade=0.0, turn="open", face="strain", squint=0.3 + 0.1 * bob,
+                   ease="smooth", arm_in_front=False)
+
+    return [coil(0.0, 0.0), coil(0.5, 0.8), coil(1.0, 0.0)]
+
+
 # The game draws a held item in the hand of the blade arm: where the hand part
 # is, turned as the hand part is turned (`rendering::posed_hand` in the game).
 # A hand that is not turned holds the item this many degrees above level, so
@@ -911,6 +953,8 @@ STRIKES: Dict[str, Callable[[RigBody], List[Key]]] = {
     "taunt": taunt,
     "pet": pet,
     "item_swing": item_swing,
+    "shoot": shoot,
+    "aim": aim,
 }
 
 
