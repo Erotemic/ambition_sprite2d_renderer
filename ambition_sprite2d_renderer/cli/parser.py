@@ -610,7 +610,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.set_defaults(func=_cmd_ultrapack)
 
+    p = sub.add_parser(
+        "chargen",
+        help=(
+            "The character generator: a cast of townsfolk, a spec's SVG, rigs, "
+            "posed rows or sprite sheet. `chargen --help` lists its commands."
+        ),
+        add_help=False,
+    )
+    p.add_argument("chargen_args", nargs=argparse.REMAINDER)
+    p.set_defaults(func=_cmd_chargen)
+
     return parser
+
+
+def _cmd_chargen(args) -> int:
+    from ..chargen.cli import main as chargen_main
+
+    return chargen_main(args.chargen_args)
 
 
 @profile

@@ -39,6 +39,14 @@ from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (
     build_humanoid_view_document,
     merge_generated_geometry,
 )
+from ambition_sprite2d_renderer.authoring.rig_clip_keys import (
+    const as _const,
+    expr as _expr,
+    keys as _keys,
+    rest as _rest,
+    rest_pitch as _rest_pitch,
+    shot as _shot,
+)
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -142,62 +150,6 @@ def _validate_svg_source() -> None:
         defaults = sorted(ch for ch, d in channels.items() if d == "1")
         if defaults != ["face_knowing_vis"]:
             raise ValueError(f"{name!r}: exactly face_knowing_vis is shown by default, not {defaults}")
-
-
-def _const(value: float) -> dict:
-    return {"const": round(float(value), 4)}
-
-
-def _expr(expr: str) -> dict:
-    return {"expr": expr}
-
-
-def _keys(values, *, ease: str = "smooth") -> dict:
-    n = len(values)
-    return {
-        "keys": [
-            [round(i / n, 6), round(float(value), 4), ease]
-            for i, value in enumerate(values)
-        ]
-    }
-
-
-def _shot(values, *, ease: str = "smooth") -> dict:
-    """Keys for a ONE-SHOT clip, spaced the way one-shots are sampled.
-
-    ``RigDocument.frame_time`` samples a loop at ``i/n`` and a one-shot at
-    ``i/(n-1)`` -- so a one-shot authored with :func:`_keys` puts its last key at
-    ``(n-1)/n`` and its last FRAME at ``1.0``, which clamps and spends the final
-    frame repeating the one before it.  For a walk cycle that is invisible; for
-    an attack it eats the recovery frame, which is the one the eye reads as "the
-    swing is over".  These land on the frames.
-    """
-
-    n = len(values)
-    return {
-        "keys": [
-            [round(i / max(1, n - 1), 6), round(float(value), 4), ease]
-            for i, value in enumerate(values)
-        ]
-    }
-
-
-def _rest(doc: dict, prefix: str, axis: str) -> float:
-    for chain in doc.get("ik_chains", []):
-        if chain.get("channel_prefix") == prefix:
-            return float(chain[f"rest_{axis}"])
-    for leg in doc.get("ik_legs", []):
-        if leg.get("channel_prefix") == prefix:
-            return float(leg[f"rest_{axis}"])
-    raise KeyError((prefix, axis))
-
-
-def _rest_pitch(doc: dict, prefix: str) -> float:
-    for collection in (doc.get("ik_chains", []), doc.get("ik_legs", [])):
-        for chain in collection:
-            if chain.get("channel_prefix") == prefix:
-                return float(chain["rest_pitch"])
-    raise KeyError(prefix)
 
 
 def _set_face(channels: dict, face: str) -> dict:

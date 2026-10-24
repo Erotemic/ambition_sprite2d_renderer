@@ -94,6 +94,7 @@ The package is organized by role; the import boundary `core` ← `authoring`
 | [`cli/`](ambition_sprite2d_renderer/cli/) | Command-line surface — `commands` (logic), `parser` (argparse + `main`), `console` | — |
 | [`gui/`](ambition_sprite2d_renderer/gui/) | PySide6 rig editor | +PySide6 |
 | [`devtools/`](ambition_sprite2d_renderer/devtools/) | Author-facing inspection (`debug_hitboxes`) + editor bridges (`ldtk_manifest`) | — |
+| [`chargen/`](ambition_sprite2d_renderer/chargen/) | The character generator: specs → multiview SVG → humanoid rigs (see "Generated characters") | +authoring |
 | `configs/` · `data/` | YAML generator jobs · optional rig templates + `pack_plan.yaml` | data |
 
 ## Published target contract
@@ -721,6 +722,65 @@ sheet. The `raid_enforcer` preset is a fictional raid-enforcer enemy pass: sever
 cap, charcoal tunic, red armband with an invented black sigil, collar skull
 tabs, and a long rifle so it reads as a distinct villain rather than a variant
 of the General.
+
+## Generated characters (`chargen`)
+
+The character generator makes many distinct humanoid townsfolk from simple
+parts, for minor background characters. A small record, the **spec**, is drawn
+in five views (front, front 3/4, side, back 3/4, back; a left view is the
+mirror of its right twin) from ONE 3D description, so the views agree. The
+output is a multiview SVG in the `humanoid_svg_rig` contract (the one Oiler
+uses) and one `.rig.json` per view, so a generated character is posed, audited
+and published by the same tools as the hand-made cast.
+
+```bash
+uv run ambition-sprite2d-renderer chargen cast --count 24 --seed 7 --out OUT --turnaround 3
+uv run ambition-sprite2d-renderer chargen new --base slim_male --seed 3 -o baker.json   # then edit it
+uv run ambition-sprite2d-renderer chargen show baker.json --out OUT    # SVG + turnaround
+uv run ambition-sprite2d-renderer chargen rig baker.json --out OUT     # + rigs + posed rows
+uv run ambition-sprite2d-renderer chargen sheet baker.json --out OUT   # + the gameplay sprite sheet
+uv run ambition-sprite2d-renderer chargen bases                        # the bases and their ranges
+```
+
+**The spec** (`chargen/spec.py`, schema `ambition-chargen-v1`) is JSON or
+YAML: `name`, `base`, `seed`, and the sections `body` (height in cm, head
+size, shoulders, chest, waist, hips, belly, bust, legs, arms, neck, limb
+thickness, age), `face` (eye shape, size and spacing; brows; nose; mouth;
+lips; jaw and chin; ears), `hair` (style, facial hair, volume, length),
+`palette` (skin, hair and eye colours) and `outfit` (top, sleeves, neckline,
+outer garment and its length, trousers or skirt, shoes or boots, hat,
+accessories, colours). `BOUNDS` and the choice lists are the hard limits;
+`validate()` names every break. A file may leave fields out: they are drawn
+from its `base` and `seed`, and a field it gives changes only that field.
+The same spec always gives byte-identical SVG.
+
+**Bases** are a build (slim, average, broad, heavy) in each sex, named
+symmetrically (`slim_female`, `slim_male`). A base gives the range each body
+number is drawn from and the odds of each hair and facial-hair style. To add a
+base, add its build to `BUILDS` and its ranges to `_ranges` in `spec.py`.
+
+**How a character is drawn.** `body.py` turns a spec into 3D joints (the rest
+pose bends every elbow and knee a little, so each view's IK branch is read
+from the drawing) and *lofts*: bodies of horizontal rings (torso, neck, head
+with the face's relief as radial bumps). `geometry.py` projects them: a loft's
+silhouette is the visible arc of each ring, and a *coverage margin*
+`m(alpha, y)` (positive where covered) cuts a region out of a surface — the
+hairline, a V-neck, an open coat, a beard — so a garment or a hairstyle is the
+same region in every view. Limbs are tubes, hands and shoes convex hulls of 3D
+points. `draw.py` paints each view as rig parts (`data-rig-part`/`-bone`/`-z`;
+the paint order depends on the view), and `rig.py` binds every view with
+`build_humanoid_view_document` and seeds `idle`, `walk` and `talk` clips (a
+stride is seen along the view: full from the side, a lift from the front).
+Every view is drawn at one scale (`PX_PER_CM`), so a tall character is a tall
+sprite. The sheet's rows are `idle`, `walk`, `talk`, `idle_back`,
+`walk_away`, `walk_toward` and `turn` (`sheets.ROWS`).
+
+**To add a part** (a hairstyle, a hat, a garment): add its name to the choice
+list in `spec.py` (and to the odds in `_draw` if generation should pick it),
+then draw it in `draw.py` from the figure's lofts — a hairstyle is a hairline
+in `_HAIRLINES` plus, for hanging hair, a loft in `draw_hair_back`; a garment
+is a shell of a loft (`loft.shell(t)`) with a coverage margin; a worn thing is
+3D points through `ctx.p`. Draw it in 3D, never per view. No drop shadows.
 
 ## Conventions
 
