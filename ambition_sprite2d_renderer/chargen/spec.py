@@ -48,6 +48,10 @@ BOTTOMS = ("trousers", "shorts", "skirt", "long_skirt")
 SHOES = ("shoes", "boots")
 HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", "bowler")
 ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders")
+SPECIES = ("human", "horse", "dog", "cat", "bird")
+EAR_STYLES = ("default", "floppy", "pointed")
+#: The slots a wardrobe item swaps in, and the kinds each slot takes.
+SLOTS = {"hat": HATS, "outer": OUTERS, "top": TOPS, "legwear": BOTTOMS, "footwear": SHOES, "hair": HAIR_STYLES}
 
 # ---- palettes ----------------------------------------------------------------------
 
@@ -120,6 +124,16 @@ class Hair:
 
 
 @dataclass
+class Head:
+    #: The head on the humanoid body: a person, or an anthropomorphic animal.
+    species: str = "human"
+    #: How far an animal's muzzle (or beak) reaches.
+    muzzle: float = 1.0
+    #: A dog's ears: floppy or pointed (``default`` is the species' own).
+    ears: str = "default"
+
+
+@dataclass
 class Palette:
     skin: str = SKIN_TONES[3]
     hair: str = HAIR_COLORS["brown"]
@@ -145,6 +159,9 @@ class Outfit:
     hat_color: str = CLOTH[2]
     accessories: List[str] = field(default_factory=list)
     accent_color: str = CLOTH[10]
+    #: Alternates drawn into the rig but hidden: ``"slot:kind"`` items
+    #: (``"hat:bowler"``, ``"outer:coat"``) a clip or a game can swap in.
+    wardrobe: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -157,6 +174,7 @@ class CharacterSpec:
     hair: Hair = field(default_factory=Hair)
     palette: Palette = field(default_factory=Palette)
     outfit: Outfit = field(default_factory=Outfit)
+    head: Head = field(default_factory=Head)
 
     @property
     def sex(self) -> str:
@@ -218,7 +236,7 @@ class CharacterSpec:
         return path
 
 
-_SECTIONS = {"body": Body, "face": Face, "hair": Hair, "palette": Palette, "outfit": Outfit}
+_SECTIONS = {"body": Body, "face": Face, "hair": Hair, "palette": Palette, "outfit": Outfit, "head": Head}
 
 
 def _section_from_dict(kind, value: Mapping[str, Any], where: str):
@@ -259,6 +277,7 @@ BOUNDS: Dict[str, Tuple[float, float]] = {
     "face.ear_angle": (0.0, 1.0),
     "hair.volume": (0.0, 1.0),
     "hair.length": (0.0, 1.0),
+    "head.muzzle": (0.6, 1.4),
 }
 
 CHOICES: Dict[str, Sequence[str]] = {
@@ -277,6 +296,8 @@ CHOICES: Dict[str, Sequence[str]] = {
     "outfit.bottom": BOTTOMS,
     "outfit.shoes": SHOES,
     "outfit.hat": HATS,
+    "head.species": SPECIES,
+    "head.ears": EAR_STYLES,
 }
 COLORS = ("palette.skin", "palette.hair", "palette.eyes", "outfit.top_color", "outfit.outer_color", "outfit.bottom_color",
           "outfit.shoe_color", "outfit.hat_color", "outfit.accent_color")
@@ -311,6 +332,10 @@ def validate(spec: CharacterSpec) -> List[str]:
             errors.append(f"outfit.accessories: {acc!r} is not one of {list(ACCESSORIES)}")
     if len(set(spec.outfit.accessories)) != len(spec.outfit.accessories):
         errors.append("outfit.accessories repeats an item")
+    for item in spec.outfit.wardrobe:
+        slot, _, kind = item.partition(":")
+        if slot not in SLOTS or kind not in SLOTS[slot]:
+            errors.append(f"outfit.wardrobe: {item!r} is not slot:kind with a slot of {sorted(SLOTS)}")
     for key in ("outfit.tucked", "outfit.outer_open"):
         if not isinstance(_get(spec, key), bool):
             errors.append(f"{key} must be true or false")
@@ -470,13 +495,18 @@ def _draw(base: Base, seed: int) -> CharacterSpec:
                                           ("suspenders", 0.0 if female else 0.1)) if rng.random() < p),
         accent_color=cloth[rng.randrange(len(cloth))],
     )
+    coat_pick = rng.random()
+    muzzle = _uniform(rng, 0.85, 1.2)
+    ears = _pick(rng, {"floppy": 1, "pointed": 1})
     if outfit.outer == "robe":
         outfit.outer_length = "ankle"
         outfit.outer_open = False
     if outfit.outer == "apron":
         outfit.outer_length = "knee" if outfit.outer_length == "hip" else outfit.outer_length
-    return CharacterSpec(name=f"{base.display_name} #{seed}", base=base.key, seed=int(seed), body=body, face=face, hair=hair,
-                         palette=palette, outfit=outfit)
+    spec = CharacterSpec(name=f"{base.display_name} #{seed}", base=base.key, seed=int(seed), body=body, face=face, hair=hair,
+                         palette=palette, outfit=outfit, head=Head("human", muzzle, ears))
+    spec._coat_pick = coat_pick  # type: ignore[attr-defined]
+    return spec
 
 
 def _merge(dst: Dict[str, Any], src: Mapping[str, Any]) -> Dict[str, Any]:
@@ -496,13 +526,22 @@ def generate(base: Optional[str] = None, seed: int = 0, overrides: Optional[Mapp
         base = sorted(BASES)[random.Random(f"{SCHEMA}:base:{seed}").randrange(len(BASES))]
     if base not in BASES:
         raise ValueError(f"unknown base {base!r}; one of {sorted(BASES)}")
-    drawn = _draw(BASES[base], seed).to_dict()
+    first = _draw(BASES[base], seed)
+    drawn = first.to_dict()
+    over: Dict[str, Any] = {}
     if overrides:
         over = dict(overrides)
         over.pop("schema", None)
         over.pop("base", None)
         over.pop("seed", None)
         _merge(drawn, over)
+    species = drawn["head"]["species"]
+    if species != "human" and "skin" not in over.get("palette", {}):
+        # An animal's skin is its coat, drawn from the species' coats.
+        from .species import COATS
+
+        coats = COATS[species]
+        drawn["palette"]["skin"] = coats[int(first._coat_pick * len(coats)) % len(coats)]  # type: ignore[attr-defined]
     return check(CharacterSpec.from_dict(drawn))
 
 
@@ -513,14 +552,15 @@ def complete(data: Mapping[str, Any]) -> CharacterSpec:
     return generate(data.get("base"), int(data.get("seed", 0)), data)
 
 
-def crowd(count: int, seed: int = 0, bases: Optional[Sequence[str]] = None) -> List[CharacterSpec]:
+def crowd(count: int, seed: int = 0, bases: Optional[Sequence[str]] = None, species: Optional[str] = None) -> List[CharacterSpec]:
     """``count`` characters, one per seed ``seed*1000 + i``, cycling through
-    ``bases`` (every base by default) so a crowd has every body type."""
+    ``bases`` (every base by default) so a crowd has every body type; all of
+    ``species`` when it is given."""
     keys = list(bases) if bases else sorted(BASES, key=lambda k: (BASES[k].build != "average", k))
     out = []
     for i in range(count):
         s = int(seed) * 1000 + i
-        spec = generate(keys[i % len(keys)], s)
+        spec = generate(keys[i % len(keys)], s, {"head": {"species": species}} if species else None)
         spec.name = f"Townsfolk {i + 1:02d}"
         out.append(spec)
     return out

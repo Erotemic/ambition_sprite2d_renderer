@@ -25,6 +25,12 @@ def _alpha_box(img: Image.Image):
     return img.getchannel("A").getbbox()
 
 
+def _differs(a: Image.Image, b: Image.Image) -> bool:
+    """Whether two renders differ in any pixel (colour or coverage; an RGBA
+    difference's own bbox reads only its alpha)."""
+    return ImageChops.difference(a.convert("RGBA"), b.convert("RGBA")).getbbox(alpha_only=False) is not None
+
+
 # ---- the record ------------------------------------------------------------------------------
 
 
@@ -147,8 +153,158 @@ def test_a_generated_character_binds_to_the_humanoid_rig_and_poses(tmp_path):
         errors = [(f.animation, fd.code) for f in audit_document(doc).frames for fd in f.findings if fd.severity == "error"]
         assert errors == [], (path.name, errors)
     rc = RiggedCharacter(files.rigs)
-    for row in ("idle", "walk", "talk", "walk_away", "turn"):
+    for row in ("idle", "walk", "talk", "walk_away", "turnaround"):
         frames = {r[0]: r[1] for r in rc.rows()}[row]
         a, b = rc.render_frame(row, 0, frames), rc.render_frame(row, frames // 2, frames)
         assert _alpha_box(a) is not None and _alpha_box(b) is not None
-        assert ImageChops.difference(a, b).getbbox() is not None, row
+        assert _differs(a, b), row
+
+
+# ---- the parameterized rig, the motion library, faces, wardrobe, held items ----------------------
+
+_REST = {"rest": {"loop": False, "frames": 1, "duration_ms": 100, "channels": {}}}
+
+
+def _rest_rigs(spec, tmp_path):
+    from ambition_sprite2d_renderer.chargen.rig import build_rigs
+
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    svg = tmp_path / "c.svg"
+    svg.write_text(character_svg(spec), encoding="utf8")
+    return build_rigs(spec, svg, tmp_path, clips=lambda fig, view, doc: dict(_REST))
+
+
+def test_the_rig_derives_from_the_spec_for_many_seeds(tmp_path):
+    from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
+    from ambition_sprite2d_renderer.chargen.rig import CELL_H, CELL_W
+
+    specs = S.crowd(3, 31) + [S.crowd(1, 32 + i, species=sp)[0] for i, sp in enumerate(("horse", "dog", "cat", "bird"))]
+    for n, spec in enumerate(specs):
+        rigs = _rest_rigs(spec, tmp_path / str(n))
+        for view, path in rigs.items():
+            doc = RigDocument.load(path)
+            bones = {b["name"]: b for b in doc.bones}
+            parts = {p["name"]: p for p in doc.data["parts"]}
+            assert len(parts) == len(doc.data["parts"]), (spec.name, view)
+            assert all(p["bone"] in bones for p in parts.values()), (spec.name, view)
+            # Each hand is a fist on a grip bone: the item's socket.
+            for depth in ("near", "far"):
+                assert bones[f"{depth}_grip"]["parent"] == f"{depth}_arm_hand"
+                assert parts[f"{depth}_hand"]["bone"] == f"{depth}_grip"
+            assert all(c["pitch_mode"] == "follow_lower" for c in doc.ik_chains)
+            # Every pivot is in the view's own cell (pivots are read from the
+            # view's pixel origin, not the whole sheet's).
+            for p in parts.values():
+                assert 0.0 <= p["pivot"][0] <= CELL_W and 0.0 <= p["pivot"][1] <= CELL_H, (spec.name, view, p["name"], p["pivot"])
+            if n == 0 and view in ("front", "side"):
+                # The drawing lands on its skeleton: centred in the frame, on the ground.
+                img = doc.render_frame("rest", 0, 1)
+                box = _alpha_box(img)
+                k = int(doc.frame.get("render_scale", 1))
+                centre = float(doc.frame["center_x"]) * k
+                assert abs((box[0] + box[2]) / 2 - centre) < 0.12 * img.width, (spec.name, view, box)
+                assert abs(box[3] - float(doc.frame["ground_y"]) * k) < 0.03 * img.height, (spec.name, view, box)
+
+
+@pytest.mark.parametrize("spec", [
+    S.generate("average_female", 21, {"outfit": {"outer": "robe"}}),
+    S.crowd(2, 1, species="horse")[1],
+], ids=["robe", "horse"])
+def test_every_library_clip_poses_without_audit_errors_in_every_view(spec, tmp_path):
+    from ambition_sprite2d_renderer.authoring.pose_audit import audit_document
+    from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
+    from ambition_sprite2d_renderer.chargen.body import build
+    from ambition_sprite2d_renderer.chargen.motion import build_library
+
+    files = write_character(spec, tmp_path)
+    names = set(build_library(build(spec)))
+    for view, path in files.rigs.items():
+        doc = RigDocument.load(path)
+        assert set(doc.clips) == names
+        errors = sorted({(f.animation, fd.code) for f in audit_document(doc).frames for fd in f.findings if fd.severity == "error"})
+        assert errors == [], (view, errors)
+        # A held item rides the fist: the grip keeps its place on the hand in
+        # every frame of every clip.
+        reach = None
+        for name, clip in doc.clips.items():
+            for i in range(int(clip["frames"])):
+                world, _ = doc.solve(name, i / max(1, int(clip["frames"])))
+                for depth in ("near", "far"):
+                    g, h = world[f"{depth}_grip"].origin, world[f"{depth}_arm_hand"].origin
+                    d = ((g[0] - h[0]) ** 2 + (g[1] - h[1]) ** 2) ** 0.5
+                    reach = reach or {}
+                    assert abs(d - reach.setdefault(depth, d)) < 1e-3, (view, name, i, depth)
+
+
+def test_expressions_compose_and_show_only_from_the_front(tmp_path):
+    from ambition_sprite2d_renderer.chargen import face as F
+
+    for a, b in itertools.combinations(F.EMOTIONS, 2):
+        mixed = F.compose(F.EMOTIONS[a], F.EMOTIONS[b], F.LOOKS["look_left"])
+        assert F.clamp(mixed) == mixed
+    names = set(F.all_face_channel_names())
+    for f in F.FACES:
+        for vis in F.VISEMES:
+            ch = F.face_channels(f, vis, blink=1.0)
+            assert set(ch) <= names
+            # One eyes, one brows and one mouth part show at a time.
+            shown = {n for n in names if ch.get(n, 1.0 if "__neutral" in n and not n.startswith("face_mouth__neutral__") or
+                                         n == F.mouth_part("neutral") + "_vis" else 0.0) >= 0.5}
+            assert len([n for n in shown if n.startswith("face_eyes__")]) == 1, (f, vis)
+            assert len([n for n in shown if n.startswith("face_mouth__")]) == 1, (f, vis)
+    spec = S.crowd(1, 4)[0]
+    for view in ("front", "front_3q", "side"):
+        neutral = render_view(spec, VIEW_BY_KEY[view], 2.0)
+        for f in ("happy", "angry", "surprised"):
+            other = render_view(spec, VIEW_BY_KEY[view], 2.0, state=F.face_channels(f, "a"))
+            assert _differs(neutral, other), (view, f)
+    back = render_view(spec, VIEW_BY_KEY["back"], 2.0)
+    assert not _differs(back, render_view(spec, VIEW_BY_KEY["back"], 2.0, state=F.face_channels("angry", "o")))
+
+
+def test_wardrobe_alternates_swap_as_features_and_layer_by_slot():
+    from ambition_sprite2d_renderer.chargen.rig import draw_views
+    from ambition_sprite2d_renderer.chargen.wear import LAYER
+
+    spec = S.generate("average_male", 8, {"outfit": {"top": "shirt", "outer": "none", "hat": "cap",
+                                                      "wardrobe": ["outer:coat", "hat:top_hat", "legwear:skirt", "top:sweater"]}})
+    assert S.validate(spec) == []
+    _fig, drawn = draw_views(spec)
+    for dv in drawn:
+        names = [p.name for p in dv.parts]
+        assert len(names) == len(set(names))
+        for item in spec.outfit.wardrobe:
+            slot, _, kind = item.partition(":")
+            alts = [p for p in dv.parts if p.name.endswith("@" + kind)]
+            if dv.view.key != "back" or slot != "top":
+                assert alts, (dv.view.key, item)
+            assert all(p.feature == item for p in alts)
+        # On one bone, an outer layer draws over a top, a top over legwear.
+        for bone in ("torso", "pelvis"):
+            z = {}
+            for p in dv.parts:
+                if p.bone == bone and p.feature and ":" in p.feature:
+                    z.setdefault(p.feature.split(":")[0], []).append(p.z)
+            for lo, hi in (("legwear", "top"), ("top", "outer")):
+                if lo in z and hi in z and bone == "torso":
+                    assert max(z[lo]) < min(z[hi]), (dv.view.key, bone, z)
+    assert LAYER["legwear"] < LAYER["top"] < LAYER["outer"]
+    worn = render_view(spec, VIEW_BY_KEY["front_3q"], 0.8)
+    swapped = render_view(spec, VIEW_BY_KEY["front_3q"], 0.8, features={"outer:coat": True, "hat:cap": False, "hat:top_hat": True})
+    assert _differs(worn, swapped)
+
+
+def test_every_species_head_draws_in_every_view():
+    from ambition_sprite2d_renderer.chargen.rig import draw_views
+
+    for i, species in enumerate(S.SPECIES):
+        spec = S.crowd(1, 50 + i, species=species)[0]
+        assert spec.head.species == species
+        _fig, drawn = draw_views(spec)
+        for dv in drawn:
+            assert any(p.name == "head" for p in dv.parts), (species, dv.view.key)
+            assert _alpha_box(render_view(spec, dv.view, 0.5)) is not None
+        if species == "bird":
+            # From behind, the beak is drawn under the head, not over it.
+            back = {p.name for p in drawn[-1].parts}
+            assert "head_behind" in back

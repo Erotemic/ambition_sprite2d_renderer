@@ -739,6 +739,9 @@ uv run ambition-sprite2d-renderer chargen new --base slim_male --seed 3 -o baker
 uv run ambition-sprite2d-renderer chargen show baker.json --out OUT    # SVG + turnaround
 uv run ambition-sprite2d-renderer chargen rig baker.json --out OUT     # + rigs + posed rows
 uv run ambition-sprite2d-renderer chargen sheet baker.json --out OUT   # + the gameplay sprite sheet
+uv run ambition-sprite2d-renderer chargen faces baker.json --out OUT   # the expression sheet
+uv run ambition-sprite2d-renderer chargen wardrobe baker.json --out OUT  # the wardrobe swaps
+uv run ambition-sprite2d-renderer chargen species --out OUT            # a head of every species
 uv run ambition-sprite2d-renderer chargen bases                        # the bases and their ranges
 ```
 
@@ -749,7 +752,8 @@ thickness, age), `face` (eye shape, size and spacing; brows; nose; mouth;
 lips; jaw and chin; ears), `hair` (style, facial hair, volume, length),
 `palette` (skin, hair and eye colours) and `outfit` (top, sleeves, neckline,
 outer garment and its length, trousers or skirt, shoes or boots, hat,
-accessories, colours). `BOUNDS` and the choice lists are the hard limits;
+accessories, colours, and `wardrobe` alternates) and `head` (species, muzzle
+length, ear kind). `BOUNDS` and the choice lists are the hard limits;
 `validate()` names every break. A file may leave fields out: they are drawn
 from its `base` and `seed`, and a field it gives changes only that field.
 The same spec always gives byte-identical SVG.
@@ -759,28 +763,77 @@ symmetrically (`slim_female`, `slim_male`). A base gives the range each body
 number is drawn from and the odds of each hair and facial-hair style. To add a
 base, add its build to `BUILDS` and its ranges to `_ranges` in `spec.py`.
 
-**How a character is drawn.** `body.py` turns a spec into 3D joints (the rest
-pose bends every elbow and knee a little, so each view's IK branch is read
-from the drawing) and *lofts*: bodies of horizontal rings (torso, neck, head
-with the face's relief as radial bumps). `geometry.py` projects them: a loft's
-silhouette is the visible arc of each ring, and a *coverage margin*
-`m(alpha, y)` (positive where covered) cuts a region out of a surface — the
-hairline, a V-neck, an open coat, a beard — so a garment or a hairstyle is the
-same region in every view. Limbs are tubes, hands and shoes convex hulls of 3D
-points. `draw.py` paints each view as rig parts (`data-rig-part`/`-bone`/`-z`;
-the paint order depends on the view), and `rig.py` binds every view with
-`build_humanoid_view_document` and seeds `idle`, `walk` and `talk` clips (a
-stride is seen along the view: full from the side, a lift from the front).
-Every view is drawn at one scale (`PX_PER_CM`), so a tall character is a tall
-sprite. The sheet's rows are `idle`, `walk`, `talk`, `idle_back`,
-`walk_away`, `walk_toward` and `turn` (`sheets.ROWS`).
+**How a character is drawn.** `body.py` turns a spec into 3D joints and
+*lofts*: bodies of horizontal rings (torso, neck, head with the face's relief
+as radial bumps). `geometry.py` projects them: a loft's silhouette is the
+visible arc of each ring, and a *coverage margin* `m(alpha, y)` (positive
+where covered) cuts a region out of a surface — the hairline, a V-neck, an
+open coat, a beard — so a garment or a hairstyle is the same region in every
+view. Limbs are tubes (a crease at the joint, not a full outline), hands are a
+loose fist, shoes convex hulls of 3D points. `draw.py` paints each view as rig
+parts (`data-rig-part`/`-bone`/`-z`/`-feature`; the paint order depends on the
+view). Every view is drawn at one scale (`PX_PER_CM`), so a tall character is
+a tall sprite.
+
+**The rig is derived from the spec**, not read back off the drawing: `rig.py`
+hands the figure's projected joints and the parts to
+`humanoid_svg_rig.humanoid_document_from_geometry` (the same binder Oiler's
+markers feed), so bones, pivots and sockets are exact for any proportions.
+Each hand is drawn on a `near_grip`/`far_grip` bone whose pivot is the centre
+of the fist: the item socket. The fist is drawn so an item held in it runs
+forward and 24° up on screen in every view (`draw.ITEM_REST_ANGLE`, the
+runtime's `ITEM_REST_ANGLE`), so a held item seats in the hand without a
+per-character offset.
+
+**Motion** (`motion.py`, `pose3d.py`) is posed once, in 3D, for every view: a
+`Pose` places the root, spins and leans the body, and puts each hand and foot
+somewhere around its shoulder or hip (with an elbow/knee pole and a wrist
+bend); `ViewSolver` projects it into one view's IK channels. A reach toward
+the camera is drawn swung off the view axis (an animator's cheat), an elbow
+changes sides only where that is cheap, and a fast swing is sampled with more
+frames, so no clip pops. `build_library` holds the clip union of the cast and
+more (locomotion, air, wall/ledge/ladder, swim, defence, strikes, aerials,
+specials, grabs and throws, reactions, status, items, social and emotes,
+talk per emotion); each clip names the view the sheet draws it from (a
+ladder from behind, a chat at three-quarters). Every clip is audit-clean
+(`pose_audit`) in every view; the test suite holds that.
+
+**Faces** (`face.py`): an `Expression` (brows, lids, squint, gaze, pupils,
+smile, open, width, roundness, skew, teeth) per emotion (`neutral`, `happy`,
+`angry`, `afraid`, `sad`, `surprised`, `smug`, `pained`, `determined`) and
+look (`look_left`…). Each face's eyes, brows and each talking mouth (visemes
+`rest`, `a`, `e`, `o`, `m`) are rig parts behind opacity channels
+(`face_channels(face, viseme)`); a clip key names its face and viseme.
+`face_blink` is an overlay part for the engine's blink (an effect of the
+body, not a sheet row).
+
+**Species heads** (`species.py`, `head.species`: `human`, `horse`, `dog`,
+`cat`, `bird`) are fresh anthropomorphic heads on the same humanoid body,
+each a head model (rows, relief, face layout, ears, mane/tuft/crest). They
+wear every hat, take every expression and pose like any other spec. Never
+trace or adapt an existing animal sprite for one.
+
+**Components** (`wear.py`): legwear, top, outer layer, footwear, hair, hat
+and accessories are separate parts tagged `slot:kind` (`data-rig-feature`),
+layered by slot (`wear.LAYER`); a skirt or coat tail is split per leg so it
+moves with the thigh. `outfit.wardrobe` lists alternates ("hat:top_hat",
+"outer:coat") drawn into the same rig, hidden; a document's `features` turns
+any of them on (`rigdoc.part_visible`). The sheet's rows are
+`sheets.PUBLISH_ROWS` (any library clip may be named) plus the composed
+`turnaround` and `turn_away` turns (through the front and through the back).
+
+Review sheets: `chargen faces SPEC`, `chargen wardrobe SPEC`, `chargen
+species`, and `posed_sheet` for clip strips.
 
 **To add a part** (a hairstyle, a hat, a garment): add its name to the choice
 list in `spec.py` (and to the odds in `_draw` if generation should pick it),
 then draw it in `draw.py` from the figure's lofts — a hairstyle is a hairline
-in `_HAIRLINES` plus, for hanging hair, a loft in `draw_hair_back`; a garment
-is a shell of a loft (`loft.shell(t)`) with a coverage margin; a worn thing is
-3D points through `ctx.p`. Draw it in 3D, never per view. No drop shadows.
+in `_HAIRLINES` (`headdraw.py`) plus, for hanging hair, a loft in
+`hair_parts`; a garment (`wear.py`) is a shell of a loft (`loft.shell(t)`)
+with a coverage margin; a worn thing is 3D points through `ctx.p`. Tag it with
+its `slot:kind` feature. Draw it in 3D, never per view. No drop shadows. To
+add a clip, add it to `build_library` from the `Kit` builders and run the
+chargen tests (the audit must stay clean in every view).
 
 ## Conventions
 

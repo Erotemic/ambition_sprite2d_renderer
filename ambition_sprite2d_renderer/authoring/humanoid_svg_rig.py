@@ -59,7 +59,7 @@ import os
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .skeleton import two_bone_ik
 from .svg_parts import _label, _local, rasterize_subset, view_pixel_origin
@@ -74,6 +74,7 @@ _PART_BONE_ATTR = "data-rig-bone"
 _PART_Z_ATTR = "data-rig-z"
 _PART_OPACITY_ATTR = "data-rig-opacity"
 _PART_OPACITY_DEFAULT_ATTR = "data-rig-opacity-default"
+_PART_FEATURE_ATTR = "data-rig-feature"
 _JOINT_ATTR = "data-rig-joint"
 _SIDE_MAP_ATTR = "data-rig-side-map"
 _LABEL_BINDING_MODES = {"explicit", "standard-humanoid"}
@@ -150,6 +151,15 @@ class _PartBinding:
     # 1.0 is the NORMAL member of a swap set — the torso a pivot cuts away
     # from, visible in every clip that never mentions the swap.
     opacity_default: Optional[float] = None
+    # An optional accessory: the part draws unless the document's
+    # ``features[feature]`` is false (``rigdoc.part_visible``). Read from
+    # ``data-rig-feature``; a swappable hat, scarf or pair of glasses.
+    feature: Optional[str] = None
+
+
+#: The binding of one drawable group to a bone, for callers that build parts
+#: themselves (``humanoid_document_from_geometry``).
+PartBinding = _PartBinding
 
 
 def _parse_side_map(layer: ET.Element) -> Dict[str, str]:
@@ -729,7 +739,8 @@ def _collect_parts(
             (
                 depths.get(id(elem), 0),
                 _PartBinding(
-                    name, bone, z, include, opacity, source_order, opacity_default
+                    name, bone, z, include, opacity, source_order, opacity_default,
+                    elem.get(_PART_FEATURE_ATTR) or None,
                 ),
             )
         )
@@ -981,8 +992,48 @@ def build_humanoid_view_document(
     if art is None:
         raise ValueError(f"SVG view {spec.view!r} rendered no art")
     art_bottom = art_y + art.height
-    art_height = float(art.height)
-    scale = spec.target_height / art_height
+    scale = spec.target_height / float(art.height)
+    return humanoid_document_from_geometry(
+        spec=spec,
+        joints=joints,
+        parts=parts,
+        scale=scale,
+        art_bottom=art_bottom,
+        svg_path=svg_path,
+        rig_dir=rig_dir,
+        pixel_origin=pixel_origin,
+        clips=clips,
+    )
+
+
+def humanoid_document_from_geometry(
+    *,
+    spec: HumanoidViewSpec,
+    joints: Mapping[str, Point],
+    parts: Sequence["_PartBinding"],
+    scale: float,
+    art_bottom: float,
+    svg_path: Path,
+    rig_dir: Path,
+    pixel_origin: Optional[Point] = None,
+    clips: Optional[Mapping[str, dict]] = None,
+) -> dict:
+    """A complete ``RigDocument`` mapping from KNOWN joint positions and part
+    bindings, in SVG user units.
+
+    ``build_humanoid_view_document`` reads the joints off an artist's marker
+    circles; a generator that already knows its joints (``chargen``) calls
+    this directly, so its skeleton is exact and nothing is rasterized to find
+    it. ``scale`` is frame pixels per SVG unit; ``art_bottom`` is the SVG
+    ``y`` that lands on ``spec.ground_y``.
+    """
+    svg_path = Path(svg_path).resolve()
+    rig_dir = Path(rig_dir).resolve()
+    required_joints = set(_required_joints())
+    required_joints.update(aux.joint for aux in spec.auxiliary_bones)
+    missing = sorted(required_joints - set(joints))
+    if missing:
+        raise ValueError(f"SVG view {spec.view!r} is missing joints: {missing}")
     hip_center_src = (
         (joints["near_hip"][0] + joints["far_hip"][0]) / 2.0,
         (joints["near_hip"][1] + joints["far_hip"][1]) / 2.0,
@@ -1003,8 +1054,12 @@ def build_humanoid_view_document(
         ("torso", "pelvis", mapped["waist"], None),
         ("head", "torso", mapped["neck"], None),
     ]
+    # An auxiliary bone on the trunk goes in here; one that hangs off a limb
+    # (a grip at the palm) goes after the limbs, once its parent exists.
+    trunk = {"pelvis", "torso", "head"}
     for aux in spec.auxiliary_bones:
-        bone_specs.append((aux.name, aux.parent, mapped[aux.joint], None))
+        if aux.parent in trunk or aux.parent in {a.name for a in spec.auxiliary_bones}:
+            bone_specs.append((aux.name, aux.parent, mapped[aux.joint], None))
     for side in ("far", "near"):
         bone_specs.extend(
             [
@@ -1046,6 +1101,10 @@ def build_humanoid_view_document(
                 ),
             ]
         )
+
+    for aux in spec.auxiliary_bones:
+        if not (aux.parent in trunk or aux.parent in {a.name for a in spec.auxiliary_bones}):
+            bone_specs.append((aux.name, aux.parent, mapped[aux.joint], None))
 
     world: Dict[str, Tuple[Point, float]] = {}
     bones: List[dict] = []
@@ -1133,6 +1192,8 @@ def build_humanoid_view_document(
             part["opacity_channel"] = binding.opacity_channel
         if binding.opacity_default is not None:
             part["opacity_default"] = binding.opacity_default
+        if binding.feature:
+            part["feature"] = binding.feature
         rig_parts.append(part)
     rig_parts.sort(
         key=lambda p: (
@@ -1285,6 +1346,8 @@ def merge_generated_geometry(existing: Mapping[str, object], generated: dict) ->
 __all__ = [
     "AuxiliaryBoneSpec",
     "HumanoidViewSpec",
+    "PartBinding",
     "build_humanoid_view_document",
+    "humanoid_document_from_geometry",
     "merge_generated_geometry",
 ]

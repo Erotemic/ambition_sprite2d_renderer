@@ -315,8 +315,16 @@ def _front_arc(view: View, samples: List[Tuple[float, Vec3]]) -> List[Tuple[floa
     return [(proj[j][0], proj[j][1]) for j in arc]
 
 
-def ring_runs(view: View, loft: Loft, y: float, margin: Optional[Margin] = None, n: int = N_ALPHA) -> List[Run]:
-    """The covered runs of the visible arc of the ring at ``y``."""
+def ring_runs(view: View, loft: Loft, y: float, margin: Optional[Margin] = None, n: int = N_ALPHA, *, solid: bool = False) -> List[Run]:
+    """The covered runs of the visible arc of the ring at ``y``. ``solid``:
+    the whole covered ring, front and back, as one run from its leftmost to
+    its rightmost point (a loose piece of cloth that moves on its own is seen
+    whole, not only where it faces the camera)."""
+    if solid:
+        pts = [view.project(p) for a, p in loft.ring(y, n) if margin is None or margin(a, y) >= 0.0]
+        if not pts:
+            return []
+        return [Run([min(pts), max(pts)])]
     arc = _front_arc(view, loft.ring(y, n))
     if margin is None:
         return [Run([p for _a, p in arc])]
@@ -352,15 +360,17 @@ def loft_region(
     margin: Optional[Margin] = None,
     *,
     step: float = 0.5,
+    solid: bool = False,
 ) -> List[List[Point]]:
     """The polygons of a loft's surface between heights ``y0`` and ``y1``
-    (covered where ``margin`` is positive) as seen from ``view``."""
+    (covered where ``margin`` is positive) as seen from ``view`` (``solid``:
+    see :func:`ring_runs`)."""
     y0, y1 = max(y0, loft.top), min(y1, loft.bottom)
     if y1 <= y0:
         return []
     count = max(2, int(math.ceil((y1 - y0) / step)) + 1)
     levels = [lerp(y0, y1, i / (count - 1)) for i in range(count)]
-    rings = [ring_runs(view, loft, y, margin) for y in levels]
+    rings = [ring_runs(view, loft, y, margin, solid=solid) for y in levels]
     return runs_to_polygons(rings)
 
 

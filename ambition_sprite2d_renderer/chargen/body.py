@@ -16,10 +16,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, Optional, Tuple
 
-from .geometry import Loft, RingKey, Vec3, add3, gauss, norm3, scale3, smoothstep, wrap180
+from .geometry import Loft, RingKey, Vec3, add3, gauss, norm3, scale3, wrap180
 from .spec import CharacterSpec
+from .species import HEAD_SCALE, HeadModel, head_loft, head_model, skull_loft
 
 #: The reference height every width is scaled from.
 REF_H = 172.0
@@ -54,8 +55,11 @@ class Figure:
     #: Radii: shoulder, elbow, wrist; thigh top, knee, calf, ankle.
     arm_r: Tuple[float, float, float] = (4.0, 3.2, 2.5)
     leg_r: Tuple[float, float, float, float] = (7.0, 4.8, 5.0, 3.3)
-    #: Face anchors, as heights on the head (``fy``) and angles.
+    #: Face anchors, as heights on the head (``fy``) and angles: the head
+    #: model's layout.
     face: Dict[str, float] = field(default_factory=dict)
+    species: str = "human"
+    model: Optional[HeadModel] = None
 
     def fy(self, f: float) -> float:
         """The height of fraction ``f`` of the head (0 the crown, 1 the chin)."""
@@ -66,101 +70,12 @@ class Figure:
         return self.y_hip - self.y_sh
 
 
-def _head_keys(fig: Figure) -> List[RingKey]:
-    s = fig.spec
-    hh = fig.hh
-    jaw = s.face.jaw
-    jw = s.face.jaw_width
-    # f, rx, rzf, rzb, cz (head heights)
-    rows = [
-        (0.00, 0.0, 0.0, 0.0, -0.04),
-        (0.13, 0.355, 0.38, 0.44, -0.04),
-        (0.24, 0.395, 0.425, 0.48, -0.035),
-        (0.38, 0.405, 0.44, 0.47, -0.02),
-        (0.50, 0.395, 0.43, 0.42, 0.0),
-        (0.62, 0.375, 0.415, 0.33, 0.0),
-        (0.74, 0.35, 0.39, 0.3, 0.01),
-        (0.86, 0.3, 0.36, 0.27, 0.02),
-        (0.95, 0.22, 0.32, 0.25, 0.03),
-        (1.00, 0.1, 0.28, 0.22, 0.04),
-    ]
-    out = []
-    for f, rx, rzf, rzb, cz in rows:
-        if f >= 0.6:
-            t = smoothstep(0.6, 0.86, f)
-            if jaw == "square":
-                rx += {0.62: 0.0, 0.74: 0.01, 0.86: 0.03, 0.95: 0.05, 1.0: 0.06}.get(f, 0.0)
-            elif jaw == "pointed":
-                rx -= {0.74: 0.02, 0.86: 0.05, 0.95: 0.06, 1.0: 0.05}.get(f, 0.0)
-            elif jaw == "wide":
-                rx += 0.03 * t
-            rx *= 1.0 + (jw - 1.0) * (0.4 + 0.6 * t)
-        if jaw == "long":
-            rx *= 0.95
-        if not fig.female and 0.3 < f < 0.95:
-            rx *= 1.02
-        out.append(RingKey(fig.fy(f), rx * hh, rzf * hh, rzb * hh, 0.0, cz * hh, 2.0))
-    return out
-
-
-def _face_bumps(fig: Figure) -> list:
-    """The face's relief, as radial bumps: brow, nose, lips, chin, cheeks."""
-    s = fig.spec
-    hh = fig.hh
-    a = fig.face
-    male = not fig.female
-    nose = s.face.nose
-    size = s.face.nose_size
-    tip_f = a["nose_tip_f"]
-    base_f = tip_f + 0.045
-    bridge_f = a["brow_f"] + 0.035
-    length = {"straight": 0.105, "button": 0.08, "long": 0.13, "hooked": 0.12, "broad": 0.1, "upturned": 0.09}[nose] * size
-    curve = {"straight": 0.0, "button": -0.5, "long": 0.1, "hooked": 1.0, "broad": 0.0, "upturned": -0.7}[nose]
-    width = {"broad": 1.35, "button": 1.1}.get(nose, 1.0) * (0.9 + 0.2 * size)
-    brow = (0.010 + (0.012 if male else 0.0)) * (0.8 + 0.4 * s.face.brow_weight)
-
-    def f_of(y: float) -> float:
-        return (y - fig.crown) / hh
-
-    def nose_bump(alpha: float, y: float) -> float:
-        f = f_of(y)
-        al = wrap180(alpha)
-        if abs(al) > 40.0 or f < bridge_f - 0.02 or f > base_f + 0.01:
-            return 0.0
-        if f <= tip_f:
-            t = max(0.0, (f - bridge_f) / (tip_f - bridge_f))
-            prof = length * (0.22 + 0.78 * t ** 1.25) + curve * 0.018 * math.sin(math.pi * t)
-            if nose == "upturned":
-                prof -= 0.012 * smoothstep(0.75, 1.0, t)
-            sig = 6.5 + 4.0 * width * t
-        else:
-            t = (f - tip_f) / (base_f - tip_f)
-            prof = length * (1.0 - 0.82 * smoothstep(0.0, 1.0, t))
-            sig = 10.5 * width
-        fade = smoothstep(bridge_f - 0.02, bridge_f + 0.02, f)
-        wings = 0.035 * width * gauss(f, tip_f + 0.015, 0.03) * (gauss(al, 13.0 * width, 6.0) + gauss(al, -13.0 * width, 6.0))
-        return hh * (fade * prof * gauss(al, 0.0, sig) + wings)
-
-    def relief(alpha: float, y: float) -> float:
-        f = f_of(y)
-        al = wrap180(alpha)
-        v = brow * gauss(f, a["brow_f"] + 0.005, 0.045) * gauss(al, 0.0, 42.0)
-        mf = a["mouth_f"]
-        lips = 0.6 + 0.6 * s.face.lips
-        v += 0.016 * lips * gauss(f, mf - 0.022, 0.018) * gauss(al, 0.0, 17.0)
-        v += 0.019 * lips * gauss(f, mf + 0.028, 0.02) * gauss(al, 0.0, 15.0)
-        v += 0.026 * s.face.chin * gauss(f, 0.925, 0.045) * gauss(al, 0.0, 22.0)
-        v += 0.010 * gauss(f, 0.55, 0.06) * (gauss(al, 48.0, 18.0) + gauss(al, -48.0, 18.0))
-        return hh * v
-
-    return [nose_bump, relief]
-
-
 def build(spec: CharacterSpec) -> Figure:
     b = spec.body
     female = spec.sex == "female"
     H = b.height_cm
-    hh = b.head * H * (1.05 if spec.face.jaw == "long" else 1.0)
+    species = spec.head.species
+    hh = b.head * H * (1.05 if spec.face.jaw == "long" and species == "human" else 1.0) * HEAD_SCALE[species]
     k = H / REF_H
     crown = -H
     chin = crown + hh
@@ -174,20 +89,15 @@ def build(spec: CharacterSpec) -> Figure:
         y_chest=y_sh + 0.23 * T, y_under=y_sh + 0.42 * T, y_waist=y_sh + 0.62 * T, y_hipw=y_sh + 0.9 * T, y_hip=y_hip,
         y_crotch=y_hip + 0.036 * H,
     )
-    f = spec.face
-    fig.face = {
-        "eye_f": 0.475,
-        "brow_f": 0.395,
-        "nose_tip_f": {"long": 0.655, "button": 0.6, "upturned": 0.605}.get(f.nose, 0.63),
-        "mouth_f": 0.77,
-        "eye_alpha": 23.5 * f.eye_spacing,
-    }
+    fig.species = species
+    fig.model = head_model(fig)
+    fig.face = fig.model.layout
 
     # ---- torso --------------------------------------------------------------------------
     sx = 0.9 if female else 1.0
     limbs = b.limbs
     sh_hw = 17.2 * k * b.shoulders * sx
-    neck_r = (0.215 if female else 0.245) * hh * (0.85 + 0.15 * limbs) * (1.0 + 0.25 * b.belly)
+    neck_r = (0.215 if female else 0.245) * b.head * H * (0.85 + 0.15 * limbs) * (1.0 + 0.25 * b.belly) * {"horse": 1.25, "dog": 1.1}.get(species, 1.0)
     chest_rx = 15.2 * k * b.chest * (0.91 if female else 1.0)
     chest_rx = min(chest_rx, sh_hw + 1.0 * k)
     chest_rzf = 10.2 * k * b.chest * (0.95 if female else 1.0)
@@ -226,8 +136,8 @@ def build(spec: CharacterSpec) -> Figure:
         RingKey(chin - 0.3 * hh, neck_r * 0.92, neck_r * 0.85, neck_r * 1.2, 0.0, -0.05 * hh, 2.0),
         RingKey(y_nb + 1.5 * k, neck_r * 1.04, neck_r, neck_r * 1.2, 0.0, -0.05 * hh, 2.0),
     ])
-    fig.skull = Loft(_head_keys(fig))
-    fig.head = Loft(_head_keys(fig), _face_bumps(fig))
+    fig.skull = skull_loft(fig.model)
+    fig.head = head_loft(fig.model)
 
     # ---- limbs --------------------------------------------------------------------------
     ma = 1.0 if female else 1.07

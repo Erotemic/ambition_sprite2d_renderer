@@ -20,12 +20,12 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
-from ..authoring.humanoid_svg_rig import HumanoidViewSpec, build_humanoid_view_document
-from ..authoring.rig_clip_keys import const, expr, keys, rest, rest_pitch
+from ..authoring.humanoid_svg_rig import AuxiliaryBoneSpec, HumanoidViewSpec, PartBinding, humanoid_document_from_geometry
 from .body import Figure, build
-from .draw import Part, draw_view, view_joints
+from .draw import draw_view, view_joints
+from .drawkit import Part
 from .geometry import VIEWS, View
 from .spec import CharacterSpec, check
 from .svgout import Canvas, element_xml
@@ -70,7 +70,8 @@ def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
-def character_svg(spec: CharacterSpec, views: Sequence[View] = VIEWS, *, joints: bool = True) -> str:
+def character_svg(spec: CharacterSpec, views: Sequence[View] = VIEWS, *, joints: bool = True,
+                  state: Optional[Mapping[str, float]] = None, features: Optional[Mapping[str, bool]] = None) -> str:
     """The multiview SVG of ``spec``: one cell per view, left to right."""
     _fig, drawn = draw_views(spec, views)
     w = CELL_W * len(drawn)
@@ -89,10 +90,13 @@ def character_svg(spec: CharacterSpec, views: Sequence[View] = VIEWS, *, joints:
         out.append(f'  <g id="view-{key}" inkscape:groupmode="layer" inkscape:label="{_esc(view_label(spec, dv.view))}" '
                    f'data-view-key="{key}" data-rig-pixel-origin="{dv.cell_x:g} 0">')
         for part in dv.parts:
-            extra = ""
+            extra = f' data-rig-feature="{part.feature}"' if part.feature else ""
             if part.opacity:
-                extra = (f' data-rig-opacity="{part.opacity}" data-rig-opacity-default="{part.opacity_default or 0}"'
-                         ' data-rig-editor-visibility="editor-only" style="display:none"')
+                extra += f' data-rig-opacity="{part.opacity}" data-rig-opacity-default="{part.opacity_default or 0}"'
+            if not _shown(part, state, features):
+                # Hidden in the editor (an alternate face, a wardrobe item)
+                # until an author shows it; the rig still draws it on demand.
+                extra += ' data-rig-editor-visibility="editor-only" style="display:none"'
             out.append(f'    <g id="{key}-{part.name}" inkscape:groupmode="layer" inkscape:label="{part.label}" '
                        f'data-rig-part="{part.name}" data-rig-bone="{part.bone}" data-rig-z="{part.z:g}"{extra}>')
             for n, el in enumerate(part.els):
@@ -111,27 +115,32 @@ def character_svg(spec: CharacterSpec, views: Sequence[View] = VIEWS, *, joints:
     return "\n".join(out) + "\n"
 
 
-def view_svg(spec: CharacterSpec, view: View) -> str:
+def _shown(part: Part, state: Optional[Mapping[str, float]], features: Optional[Mapping[str, bool]]) -> bool:
+    """Whether ``part`` shows in a picture with these channel values and
+    features (the defaults: the neutral face, the worn outfit)."""
+    if part.opacity:
+        v = (state or {}).get(part.opacity, float(part.opacity_default or 0))
+        if v < 0.5:
+            return False
+    if part.feature:
+        return bool((features or {}).get(part.feature, "@" not in part.name))
+    return True
+
+
+def view_svg(spec: CharacterSpec, view: View, *, state: Optional[Mapping[str, float]] = None,
+             features: Optional[Mapping[str, bool]] = None) -> str:
     """One view alone in a document of one cell (for previews)."""
-    return character_svg(spec, [view], joints=False)
+    return character_svg(spec, [view], joints=False, state=state, features=features)
 
 
 # ---- rigs -----------------------------------------------------------------------------------
-
-
-def _art_height_units(svg_path: Path, label: str, part_ids: Sequence[str], origin) -> float:
-    from ..authoring.svg_parts import rasterize_subset
-
-    img, _off, _ = rasterize_subset(svg_path, label, list(part_ids), 25.4, origin)
-    if img is None:
-        raise ValueError(f"{label!r} drew nothing")
-    return float(img.height)
 
 
 def view_spec(spec: CharacterSpec, view: View, target_height: float) -> HumanoidViewSpec:
     return HumanoidViewSpec(
         view=view_label(spec, view),
         name=f"{slug(spec.name)}_{view.key}",
+        auxiliary_bones=tuple(AuxiliaryBoneSpec(f"{d}_grip", f"{d}_arm_hand", f"{d}_grip") for d in ("near", "far")),
         frame_width=FRAME_W,
         frame_height=FRAME_H,
         center_x=FRAME_CX,
@@ -141,120 +150,66 @@ def view_spec(spec: CharacterSpec, view: View, target_height: float) -> Humanoid
     )
 
 
-def build_rigs(spec: CharacterSpec, svg_path: Path, rig_dir: Path, views: Sequence[View] = VIEWS) -> Dict[str, Path]:
-    """One ``.rig.json`` per view, bound to ``svg_path``, with seeded clips."""
-    import xml.etree.ElementTree as ET
+def view_document(spec: CharacterSpec, fig: Figure, dv: "DrawnView", svg_path: Path, rig_dir: Path) -> dict:
+    """The rig of one drawn view, built from the figure's KNOWN joints.
 
-    from ..authoring.svg_parts import view_pixel_origin
+    Nothing is read back off the drawing: the bones, their lengths and every
+    part's pivot come from the spec's 3D body projected through the view, in
+    SVG units, and the scale is fixed (``PX_PER_CM``), so the skeleton is
+    exact for any proportions."""
+    view = dv.view
+    # Joints in the view's own pixel grid (``pixel_origin`` is its cell).
+    ox = CELL_W / 2.0
+    joints = {name: (ox + x * UNIT, GROUND + y * UNIT) for name, (x, y) in dv.joints.items()}
+    parts = [
+        PartBinding(
+            name=p.name, bone=p.bone, z=p.z, include=tuple(f"{view.key}-{p.name}-{n}" for n in range(len(p.els))),
+            opacity_channel=p.opacity, source_order=i, opacity_default=None if p.opacity_default is None else float(p.opacity_default),
+            feature=p.feature,
+        )
+        for i, p in enumerate(dv.parts)
+    ]
+    doc = humanoid_document_from_geometry(
+        spec=view_spec(spec, view, 0.0),
+        joints=joints,
+        parts=parts,
+        scale=PX_PER_CM / UNIT,
+        art_bottom=GROUND,
+        svg_path=Path(svg_path),
+        rig_dir=Path(rig_dir),
+        pixel_origin=(dv.cell_x, 0.0),
+    )
+    for chain in doc["ik_chains"]:
+        # The hand follows its forearm unless a clip names its angle.
+        chain["pitch_mode"] = "follow_lower"
+    worn = {p.feature for p in dv.parts if p.feature and "@" not in p.name}
+    doc["features"] = {p.feature: False for p in dv.parts if p.feature and p.feature not in worn}
+    doc["chargen"] = {"view": view.key, "yaw": view.yaw, "px_per_cm": PX_PER_CM, "spec_seed": spec.seed, "base": spec.base}
+    return doc
 
+
+def build_rigs(spec: CharacterSpec, svg_path: Path, rig_dir: Path, views: Sequence[View] = VIEWS, *, clips=None) -> Dict[str, Path]:
+    """One ``.rig.json`` per view, bound to ``svg_path``, with its clips
+    (``clips(fig, view, doc) -> {name: clip}``; the motion library by
+    default)."""
     rig_dir = Path(rig_dir)
     rig_dir.mkdir(parents=True, exist_ok=True)
-    root = ET.fromstring(Path(svg_path).read_bytes())
-    fig = build(spec)
+    fig, drawn = draw_views(spec, views)
+    from .motion import publish_views
+
+    if clips is None:
+        from .motion import library_clips as clips
+    views_of = publish_views(fig)
     out: Dict[str, Path] = {}
-    for view in views:
-        label = view_label(spec, view)
-        layer = next(e for e in root.iter() if e.get("id") == f"view-{view.key}")
-        ids = [e.get("id") for g in layer if g.get("data-rig-part") and not g.get("data-rig-opacity") for e in g.iter() if e is not g]
-        art_h = _art_height_units(Path(svg_path), label, ids, view_pixel_origin(Path(svg_path), label))
-        target = art_h / UNIT * PX_PER_CM
-        doc = build_humanoid_view_document(Path(svg_path), rig_dir, view_spec(spec, view, target))
-        doc["clips"] = seed_clips(doc, view, fig)
-        doc.setdefault("features", {})
+    for dv in drawn:
+        doc = view_document(spec, fig, dv, svg_path, rig_dir)
+        doc["clips"] = clips(fig, dv.view, doc)
+        # Which view the sprite sheet draws each clip from.
+        doc["chargen"]["publish_views"] = {name: views_of.get(name, "side") for name in doc["clips"]}
         path = rig_dir / f"{doc['name']}.rig.json"
         path.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf8")
-        out[view.key] = path
+        out[dv.view.key] = path
     return out
-
-
-def _relaxed_hand(doc: dict, side: str, k: float = 0.965) -> Tuple[float, float]:
-    """The hand's rest target drawn in toward its shoulder (to ``k`` of the
-    drawn reach), in channel units. The drawn arm can look straight in some
-    view (its bend is along the line of sight there); a target short of the
-    full reach gives the IK an elbow to bend in every view."""
-    from ..authoring.rigdoc import RigDocument
-
-    probe = RigDocument(dict(doc, clips={"rest": {"loop": False, "frames": 1, "duration_ms": 100, "channels": {}}}))
-    world, _params = probe.solve("rest", 0.0)
-    fr = doc["frame"]
-    sx, sy = world[f"{side}_arm_u"].origin
-    sx, sy = sx - fr["center_x"], sy - fr["ground_y"]
-    hx, hy = rest(doc, f"{side}_hand", "x"), rest(doc, f"{side}_hand", "y")
-    return sx + (hx - sx) * k, sy + (hy - sy) * k
-
-
-def seed_clips(doc: dict, view: View, fig: Figure) -> dict:
-    """``idle``, ``walk`` and ``talk`` for one view, as offsets from its rest
-    pose. A stride is seen along the view: full from the side, none from the
-    front (there the feet only lift)."""
-    px = fig.H * PX_PER_CM / 107.0
-    s, c = view.s, view.c
-    nfx, ffx = rest(doc, "near_foot", "x"), rest(doc, "far_foot", "x")
-    nfp, ffp = rest_pitch(doc, "near_foot"), rest_pitch(doc, "far_foot")
-    nhx, nhy = _relaxed_hand(doc, "near")
-    fhx, fhy = _relaxed_hand(doc, "far")
-    nhp, fhp = rest_pitch(doc, "near_hand"), rest_pitch(doc, "far_hand")
-
-    idle = {
-        "root_y": expr(f"-{0.5 * px:.3f}*sin(tau*t)"),
-        "torso": expr("0.7*sin(tau*t)"),
-        "head": expr("-0.6*sin(tau*t+0.6)"),
-        # A hand only ever moves toward its shoulder from rest: the rest arm
-        # is near its full reach, and a target past it straightens the elbow.
-        "near_hand_x": const(nhx),
-        "near_hand_y": expr(f"{nhy:.4f} - {0.4 * px:.3f}*(1+sin(tau*t))"),
-        "near_hand_pitch": const(nhp),
-        "far_hand_x": const(fhx),
-        "far_hand_y": expr(f"{fhy:.4f} - {0.35 * px:.3f}*(1-sin(tau*t))"),
-        "far_hand_pitch": const(fhp),
-        "blink_vis": {"keys": [[0.0, 0.0, "linear"], [0.74, 0.0, "linear"], [0.78, 1.0, "linear"], [0.88, 0.0, "linear"]]},
-        "talk_vis": const(0.0),
-    }
-    stride = [v * px * s for v in (10, 7, 3, -2, -10, -8, -3, 4)]
-    # Seen from the front a lifted foot only shortens the leg: a small lift.
-    lift = [v * px * (0.35 + 0.65 * abs(s)) for v in (0, 0, 0, 0, 0, 3, 6, 3)]
-    swing = [v * px * s for v in (-5.5, -4.0, -1.5, 2.5, 5.5, 4.0, 1.5, -2.5)]
-    walk = {
-        "root_y": keys([v * px for v in (0.0, 1.15, 0.35, -0.55, 0.0, 1.15, 0.35, -0.55)]),
-        "torso": keys([v * s for v in (0.5, 1.2, 0.4, -0.2, -0.5, -1.2, -0.4, 0.2)]),
-        "head": keys([-0.3, -0.7, -0.2, 0.2, 0.3, 0.7, 0.2, -0.2]),
-        "near_foot_x": keys([nfx + v for v in stride], ease="linear"),
-        "near_foot_lift": keys(lift),
-        "near_foot_pitch": keys([nfp + v * s for v in (6, 2, -2, -5, 0, 3, 9, 11)]),
-        "far_foot_x": keys([ffx + v for v in stride[4:] + stride[:4]], ease="linear"),
-        "far_foot_lift": keys(lift[4:] + lift[:4]),
-        "far_foot_pitch": keys([ffp + v * s for v in (0, 3, 9, 11, 6, 2, -2, -5)]),
-        "near_hand_x": keys([nhx + v for v in swing]),
-        "near_hand_y": keys([nhy - 0.3 * abs(v) - 0.6 * px for v in swing]),
-        "near_hand_pitch": keys([nhp + v * s for v in (0, 1, 2, 1, 0, -1, -2, -1)]),
-        "far_hand_x": keys([fhx + v for v in swing[4:] + swing[:4]]),
-        "far_hand_y": keys([fhy - 0.3 * abs(v) - 0.6 * px for v in swing[4:] + swing[:4]]),
-        "far_hand_pitch": keys([fhp + v * s for v in (0, -1, -2, -1, 0, 1, 2, 1)]),
-        "blink_vis": keys([0, 0, 0, 0, 0, 0, 1, 0], ease="linear"),
-        "talk_vis": const(0.0),
-    }
-    # The near hand comes up open to the chest: forward from the side, toward
-    # the middle of the body from the front (and the back).
-    gx = (7.0 * s + 9.0 * c) * px
-    gy = -0.13 * fig.H * PX_PER_CM
-    talk = {
-        "root_y": keys([v * px for v in (0.0, -0.4, 0.0, -0.5, 0.0, -0.2)]),
-        "torso": keys([0.0, -0.5, 0.3, -0.4, 0.2, 0.0]),
-        "head": keys([0.0, 1.2, -0.6, 0.9, -0.5, 0.0]),
-        "near_hand_x": keys([nhx + gx * f for f in (0.0, 0.5, 1.0, 0.8, 0.25, 0.0)]),
-        "near_hand_y": keys([nhy + gy * f for f in (0.0, 0.4, 1.0, 0.75, 0.2, 0.0)]),
-        "near_hand_pitch": keys([nhp + v * s for v in (0, -20, -40, -32, -8, 0)]),
-        "far_hand_x": const(fhx),
-        "far_hand_y": keys([fhy + v * px for v in (0, -0.6, -1.2, -0.6, 0, 0)]),
-        "far_hand_pitch": const(fhp),
-        "talk_vis": keys([0.0, 1.0, 0.0, 1.0, 0.0, 1.0], ease="linear"),
-        "blink_vis": keys([0.0, 0.0, 0.0, 0.0, 1.0, 0.0], ease="linear"),
-    }
-    return {
-        "idle": {"loop": True, "frames": 8, "duration_ms": 120, "channels": idle},
-        "walk": {"loop": True, "frames": 8, "duration_ms": 100, "channels": walk},
-        "talk": {"loop": True, "frames": 6, "duration_ms": 100, "channels": talk},
-    }
 
 
 @dataclass
@@ -278,6 +233,6 @@ def write_character(spec: CharacterSpec, out_dir: Path, *, rigs: bool = True) ->
 
 
 __all__ = [
-    "CELL_H", "CELL_W", "CharacterFiles", "DESIGN_ID", "PX_PER_CM", "UNIT", "build_rigs", "character_svg", "draw_views", "seed_clips",
+    "CELL_H", "CELL_W", "CharacterFiles", "DESIGN_ID", "PX_PER_CM", "UNIT", "build_rigs", "character_svg", "draw_views",
     "slug", "view_label", "view_svg", "write_character",
 ]

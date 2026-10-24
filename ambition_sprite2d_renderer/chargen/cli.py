@@ -6,6 +6,9 @@
     chargen show SPEC --out DIR                     # SVG + turnaround of one spec
     chargen rig SPEC --out DIR                      # + rigs and posed rows
     chargen sheet SPEC --out DIR                    # + the gameplay sprite sheet
+    chargen faces SPEC --out DIR                    # the expression sheet
+    chargen wardrobe SPEC --out DIR                 # the wardrobe-swap sheet
+    chargen species --seed 1 --out DIR              # a head of every species
     chargen bases                                   # the bases and their ranges
 
 A SPEC is a ``.json`` or ``.yaml`` file; fields it leaves out are drawn from
@@ -84,6 +87,33 @@ def _cmd_sheet(args) -> int:
     return 0
 
 
+def _cmd_faces(args) -> int:
+    from .rig import slug
+    from .sheets import expression_sheet
+
+    spec = CharacterSpec.load(args.spec)
+    print(expression_sheet(spec, Path(args.out) / f"{slug(spec.name)}_expressions.png"))
+    return 0
+
+
+def _cmd_wardrobe(args) -> int:
+    from .rig import slug
+    from .sheets import wardrobe_sheet
+
+    spec = CharacterSpec.load(args.spec)
+    print(wardrobe_sheet(spec, Path(args.out) / f"{slug(spec.name)}_wardrobe.png"))
+    return 0
+
+
+def _cmd_species(args) -> int:
+    from .sheets import species_sheet
+    from .spec import SPECIES
+
+    specs = [crowd(1, args.seed * 100 + i, species=sp)[0] for i, sp in enumerate(SPECIES)]
+    print(species_sheet(specs, Path(args.out) / "species_sheet.png"))
+    return 0
+
+
 def _cmd_bases(args) -> int:
     for key, base in sorted(BASES.items()):
         print(f"{key}: {base.display_name}")
@@ -110,11 +140,17 @@ def build_parser() -> argparse.ArgumentParser:
     n.add_argument("-o", "--output")
     n.set_defaults(func=_cmd_new)
     for name, fn, text in (("show", _cmd_show, "the SVG and turnaround of a spec"), ("rig", _cmd_rig, "the SVG, rigs and posed rows of a spec"),
-                           ("sheet", _cmd_sheet, "the gameplay sprite sheet of a spec")):
+                           ("sheet", _cmd_sheet, "the gameplay sprite sheet of a spec"),
+                           ("faces", _cmd_faces, "the expression sheet of a spec (every face, the visemes, the blink)"),
+                           ("wardrobe", _cmd_wardrobe, "the spec as worn and with each wardrobe alternate swapped in")):
         s = sub.add_parser(name, help=text)
         s.add_argument("spec")
         s.add_argument("--out", required=True)
         s.set_defaults(func=fn)
+    sp = sub.add_parser("species", help="one character of every head species, in five views and a few faces")
+    sp.add_argument("--seed", type=int, default=1)
+    sp.add_argument("--out", required=True)
+    sp.set_defaults(func=_cmd_species)
     b = sub.add_parser("bases", help="list the bases and their body ranges")
     b.set_defaults(func=_cmd_bases)
     return p
