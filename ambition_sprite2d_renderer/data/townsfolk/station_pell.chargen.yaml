@@ -2,7 +2,7 @@
 schema: ambition-chargen-v1
 name: Pell
 base: heavy_male
-seed: 5
+seed: 6
 body:
   height_cm: 178
   age: 0.7
