@@ -859,7 +859,9 @@ def build_sheet(
     change.
 
     ``fx`` (``{"cue_family": .., "residency": "Core" | "OwnedByCharacter",
-    "fade": "OverItsLife" | "InItsFrames"}``) declares an effect sheet: each
+    "fade": "OverItsLife" | "InItsFrames"}``, and for an owned sheet
+    optionally ``"owners"``: the characters it is decoded with) declares an
+    effect sheet: each
     row is an effect, named by the row (``SheetRecord::fx``). The game finds
     its effect sheets by this, so a new one needs no Rust edit.
 
@@ -902,15 +904,21 @@ FX_FADES = ("OverItsLife", "InItsFrames")
 def _checked_fx(fx, target: str) -> dict:
     """``fx`` as the record states it, or a ValueError that names the field."""
     fields = {"cue_family", "residency", "fade"}
-    if set(fx) != fields:
-        raise ValueError(f"{target}: fx has {sorted(fx)}; it has exactly {sorted(fields)}")
+    if not fields <= set(fx) <= fields | {"owners"}:
+        raise ValueError(f"{target}: fx has {sorted(fx)}; it has {sorted(fields)} and may have `owners`")
     if not str(fx["cue_family"]).strip():
         raise ValueError(f"{target}: fx.cue_family is empty")
     if fx["residency"] not in FX_RESIDENCIES:
         raise ValueError(f"{target}: fx.residency is {fx['residency']!r}; it is one of {FX_RESIDENCIES}")
     if fx["fade"] not in FX_FADES:
         raise ValueError(f"{target}: fx.fade is {fx['fade']!r}; it is one of {FX_FADES}")
-    return {"cue_family": str(fx["cue_family"]), "residency": fx["residency"], "fade": fx["fade"]}
+    owners = [str(owner) for owner in fx.get("owners", ())]
+    if owners and fx["residency"] != "OwnedByCharacter":
+        raise ValueError(f"{target}: fx.owners names characters, but a {fx['residency']} sheet is owned by none")
+    checked = {"cue_family": str(fx["cue_family"]), "residency": fx["residency"], "fade": fx["fade"]}
+    if owners:
+        checked["owners"] = owners
+    return checked
 
 
 def _published_column_tile(declared, dy: float, frame_height: int, target: str):

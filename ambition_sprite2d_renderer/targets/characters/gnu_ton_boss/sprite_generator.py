@@ -81,47 +81,41 @@ ANIMATIONS: List[Tuple[str, int, int]] = [
     # there; the game draws the lines), and its fists are bodies of their own.
     # `armed_*`: the same row with whole arms and the fists on them (phase 1).
     # `armed_rest_b` is a copy of `armed_rest`: a pinned row does not loop, so
-    # the game goes from one to the other. `punch_*`: the right fist goes down
-    # into a portal's line. `clamp`: the arms go out and into the two lines.
+    # the game goes from one to the other. `clamp`: the arms go out and into
+    # the two lines.
     ("armed_rest", 8, 110),
     ("armed_rest_b", 8, 110),
     ("armed_hit", 5, 80),
     ("armed_buck", 8, 70),
-    ("punch_windup", 8, 80),
-    ("punch_strike", 5, 70),
-    ("punch_hold", 4, 70),
-    ("punch_recover", 6, 70),
     ("clamp", 8, 80),
-    # The blows through a portal's line (`giant_art.BLOWS`): `jab_*` straight
-    # out, `upper_*` up, `kick_*` the near fore leg with the arms in their
-    # lines (after the clamp) and `armed_kick_*` with the arms on. Each
-    # strike, hold and recover is as long as the blow's numbers in
-    # `giant_art.BLOWS`, which the game types again.
-    ("jab_windup", 8, 80),
-    ("jab_strike", 4, 60),
-    ("jab_hold", 4, 60),
-    ("jab_recover", 5, 80),
-    ("upper_windup", 8, 80),
-    ("upper_strike", 5, 60),
-    ("upper_hold", 4, 60),
-    ("upper_recover", 5, 80),
-    ("kick_windup", 8, 80),
-    ("kick_strike", 5, 60),
-    ("kick_hold", 4, 60),
-    ("kick_recover", 6, 70),
-    ("armed_kick_windup", 8, 80),
-    ("armed_kick_strike", 5, 60),
-    ("armed_kick_hold", 4, 60),
-    ("armed_kick_recover", 6, 70),
+    # The blows through a portal's line (`giant_art.BLOWS`), each with the arm
+    # (the leg) that throws it: the hammer down, the jab across, the uppercut
+    # up; with the left arm the hammer, the hook out behind and the uppercut;
+    # `kick_*` the near fore leg with the arms in their lines (after the clamp)
+    # and `armed_kick_*` with the arms on. Each windup is 0.72 s (the game
+    # plays it over the tell's length, so it ends cocked); each strike, hold
+    # and recover is as long as the blow's numbers in `giant_art.BLOWS`, which
+    # the game types again. A part frame costs no texels, so the rows are
+    # dense: the arm moves by small steps.
+    *[(f"{blow}_{part}", frames, ms)
+      for blow, rows in (
+          ("hammer", ((12, 60), (6, 40), (6, 60), (10, 50))),
+          ("jab", ((12, 60), (5, 40), (4, 60), (8, 40))),
+          ("upper", ((12, 60), (5, 52), (4, 60), (8, 50))),
+          ("left_hammer", ((12, 60), (6, 40), (6, 60), (10, 50))),
+          ("left_hook", ((12, 60), (5, 40), (4, 60), (8, 45))),
+          ("left_upper", ((12, 60), (5, 52), (4, 60), (8, 50))),
+          ("kick", ((12, 60), (5, 60), (4, 60), (6, 70))),
+          ("armed_kick", ((12, 60), (5, 60), (4, 60), (6, 70))),
+      )
+      for part, (frames, ms) in zip(("windup", "strike", "hold", "recover"), rows)],
 ]
 
 # The rows whose giant has its fists on its arms: the fused sheet draws no
 # fist beside it.
-_ROWS_WITH_FISTS_ON = ("armed_rest", "armed_rest_b", "armed_hit", "armed_buck",
-                       "punch_windup", "punch_strike", "punch_hold", "punch_recover",
-                       "jab_windup", "jab_strike", "jab_hold", "jab_recover",
-                       "upper_windup", "upper_strike", "upper_hold", "upper_recover",
-                       "armed_kick_windup", "armed_kick_strike", "armed_kick_hold", "armed_kick_recover")
+_ROWS_WITH_FISTS_ON = ("armed_rest", "armed_rest_b", "armed_hit", "armed_buck") + tuple(
+    f"{blow}_{part}" for blow in ("hammer", "jab", "upper", "left_hammer", "left_hook", "left_upper", "armed_kick")
+    for part in ("windup", "strike", "hold", "recover"))
 
 # Output files: the runtime consumes the split body/hands pair plus the
 # canonical SheetRecord RON. Runtime collision/hurtbox metadata is stored in
@@ -145,6 +139,11 @@ OUTPUT_FILES = [
     f"{GIANT_TARGET_NAME}_hands_spritesheet.ron",
     f"{GIANT_TARGET_NAME}_spritesheet.ron",
     f"{GIANT_TARGET_NAME}_actor.ron",
+    # The giant drawn from its pieces: the game draws it from these and loads
+    # no baked page of it (`_publish_giant_flipbook`). Its part pages after
+    # the first (`giant_gnu_parts_1.png`, ...) are installed by name pattern.
+    f"{GIANT_TARGET_NAME}_parts.ron",
+    f"{GIANT_TARGET_NAME}_parts.png",
     f"{RIDER_TARGET_NAME}_spritesheet.png",
     f"{RIDER_TARGET_NAME}_spritesheet.ron",
     f"{RIDER_TARGET_NAME}_actor.ron",
@@ -452,13 +451,10 @@ _FUSED_SCHOLAR_ROW = {
     "armed_rest_b": "rest",
     "armed_hit": "hit",
     "armed_buck": "brace",
-    "punch_windup": "point",
-    "punch_strike": "point",
-    "punch_hold": "point",
-    "punch_recover": "conduct",
     "clamp": "invoke",
     **{f"{blow}_{part}": ("conduct" if part == "recover" else "point")
-       for blow in ("jab", "upper", "kick", "armed_kick") for part in ("windup", "strike", "hold", "recover")},
+       for blow in ("hammer", "jab", "upper", "left_hammer", "left_hook", "left_upper", "kick", "armed_kick")
+       for part in ("windup", "strike", "hold", "recover")},
 }
 # On the giant he is drawn at this multiple of his design size, so he stands as
 # tall as the figure he replaced (~45 design px, sole to wig).
@@ -535,7 +531,39 @@ _FUSED_SCHOLAR_BODY_PX = 85.0
 
 @functools.lru_cache(maxsize=None)
 def _giant_frame(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
+    """The giant's frame for the layers of the sheets (each layer draws it):
+    composed once. The part flipbook records its own render of each frame
+    (`_publish_giant_flipbook`): a cached frame carries no record."""
     return _giant.render_giant(anim, frame_idx, frame_count)
+
+
+#: Where the giant's feet are in its frame: the middle of the floor line. The
+#: part flipbook places each draw from here.
+GIANT_FEET = (FRAME_W * 0.5, float(_giant.to_frame((0.0, _giant.FLOOR))[1]))
+
+
+def _publish_giant_flipbook(outdir: Path, sheet_page: Image.Image) -> List[Path]:
+    """The giant's part flipbook (`giant_gnu_parts.ron` and its pages), beside
+    its sheet. The giant is drawn from pieces (`giant_art.scene_for`), so the
+    flipbook keeps each piece once and where it is in each frame: the game
+    draws the giant from it and loads no baked page. Its road is the measured
+    one: parts unless their pages hold more texels than the sheet, or a frame
+    takes more draws than the most a part-drawn body may."""
+    from ambition_sprite2d_renderer.authoring.part_flipbook import (
+        REALIZE_BAKED, REALIZE_MAX_DRAWS, REALIZE_PARTS, build_rig_flipbook)
+    from ambition_sprite2d_renderer.authoring.sheet_build import rendering_quality_tier
+
+    if rendering_quality_tier():
+        return []
+    flipbook = build_rig_flipbook(GIANT_TARGET_NAME, ANIMATIONS, _giant.render_giant, None, GIANT_FEET, FRAME_SIZE)
+    flipbook.pack()
+    most = max(len(draws) for _d, frames in flipbook.clips.values() for draws in frames)
+    sheet_texels = sheet_page.width * sheet_page.height
+    cheaper = flipbook.packed_texels() <= sheet_texels and most <= REALIZE_MAX_DRAWS
+    flipbook.realize = REALIZE_PARTS if cheaper else REALIZE_BAKED
+    print(f"  [part flipbook] {GIANT_TARGET_NAME}: realize {flipbook.realize} (part pages {flipbook.packed_texels()} "
+          f"texels, sheet {sheet_texels}; at most {most} draws a frame)", flush=True)
+    return list(flipbook.write(outdir).values())
 
 
 @functools.lru_cache(maxsize=None)
@@ -1326,6 +1354,7 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     giant_page_names = [f"{GIANT_TARGET_NAME}_spritesheet.png"] + [
         f"{GIANT_TARGET_NAME}_spritesheet.{k}.png" for k in range(1, num_pages)
     ]
+    outputs.extend(_publish_giant_flipbook(outdir, giant_body_page))
     giant_ron_path = outdir / f"{GIANT_TARGET_NAME}_spritesheet.ron"
     # The giant's body IS its art: the authored box of the beast and its chest
     # (`giant_art.BODY_BBOX`: shoulders to hooves, not the head, the horns or
@@ -1702,7 +1731,8 @@ def install_outputs(render_dir: Path, install_dir: Path) -> List[Path]:
     """Copy generated PNG + manifest into the sandbox assets tree."""
     install_dir.mkdir(parents=True, exist_ok=True)
     copied = []
-    for fname in OUTPUT_FILES:
+    pages = sorted(p.name for p in render_dir.glob(f"{GIANT_TARGET_NAME}_parts_*.png"))
+    for fname in list(OUTPUT_FILES) + pages:
         src = render_dir / fname
         if not src.exists():
             print(f"  [WARN] missing: {src.name}")

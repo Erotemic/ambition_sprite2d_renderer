@@ -264,7 +264,9 @@ def record_to_ron(record: Dict) -> str:
     fx = record.get("fx")
     fx_field = (
         f'    fx: Some((cue_family: "{_ron_escape(fx["cue_family"])}", '
-        f"residency: {fx['residency']}, fade: {fx['fade']})),\n"
+        f"residency: {fx['residency']}, fade: {fx['fade']}"
+        + ("".join([", owners: [", ", ".join(f'"{_ron_escape(o)}"' for o in fx["owners"]), "]"]) if fx.get("owners") else "")
+        + ")),\n"
         if fx
         else ""
     )
