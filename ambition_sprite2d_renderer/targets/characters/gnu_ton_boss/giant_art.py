@@ -351,8 +351,10 @@ def fist(name):
 
 
 def arm(name, shoulder, elbow, wrist):
-    """An arm from a shoulder to its fist: the fist is the fist of the fight."""
+    """An arm from a shoulder to its fist: the fist is the fist of the fight.
+    Rigid: ``elbow`` only says the side the elbow is on (`rigid_joints`)."""
     far = shoulder[0] < 1000
+    elbow, wrist = rigid_joints(shoulder, wrist, _side_of(shoulder, elbow, wrist))
     upper = outlined(svg.capsule(shoulder, elbow, 46.0, 36.0), C["fur"],
                      [path(svg.capsule((shoulder[0] + 16, shoulder[1]), (elbow[0] + 14, elbow[1]), 20.0, 14.0), C["dark"])],
                      f"clip-{name}-u")
@@ -728,49 +730,68 @@ def _final(p):
 
 
 #: Each blow. `arm`: the limb (``right``, ``left``, or ``leg``: the near fore
-#: leg). `line`: the middle of its near line and its normal (the side the limb
-#: comes from; it goes in against the normal). `back`: how far the wrist (the
-#: fetlock of the leg) is on that side of the line when the blow is cocked, at
-#: the end of its windup. `hitch`: how much of `back` is the last pull before
-#: the blow goes (the windup holds this much less, trembling, then draws back
-#: to the full `back`: the tell that it goes NOW). `deep`: how far past the
-#: line the wrist is at the full blow. `out`: how far on the near side it is
-#: when the limb has come back out. `past`: how far the middle of the fist (of
-#: the hoof) is past the wrist (the fetlock), along the limb's end. `strike`,
-#: `hold`, `recover`: the lengths of its rows, in seconds (each row's frames
-#: times its frame time in `sprite_generator`; the game types them again).
+#: leg).
+#:
+#: An ARM is two rigid bones (`ARM_UPPER`, `ARM_FORE`) with a joint at the
+#: shoulder, the elbow and the wrist; it never bends between them and never
+#: stretches (Jon, 2026-10-24: "I really don't like the bendy arm"). Only the
+#: forearm and the fist go through the near line of a blow, square to it; the
+#: upper arm (shoulder to elbow, and the hair at the elbow) stays on the
+#: giant's side of the line's plane in every frame
+#: (`tests/test_gnu_ton_giant_blows.py`). So the line is DERIVED from the
+#: arm (`_derive_lines`): `way` is the way the forearm goes through it,
+#: `elbow` the angle between the upper arm and `way` (and `side`, the side of
+#: `way` the elbow is on: +1 is the side of `way` turned +90 degrees) when the
+#: wrist is in the middle of its way through. The line is square to `way`, in
+#: front of the wrist there.
+#:
+#: The leg keeps a line of its own (`line`: the middle of its near line and
+#: its normal).
+#:
+#: `back`: how far the wrist (the fetlock of the leg) is on the near side of
+#: the line when the blow is cocked, at the end of its windup. `hitch`: how
+#: much of `back` is the last pull before the blow goes. `deep`: how far past
+#: the line the wrist is at the full blow. `out`: how far on the near side it
+#: is when the limb has come back out. `past`: how far the middle of the fist
+#: (of the hoof) is past the wrist (the fetlock), along the limb's end.
+#: `strike`, `hold`, `recover`: the lengths of its rows, in seconds (each
+#: row's frames times its frame time in `sprite_generator`; the game types
+#: them again). `open_from`: the part of the windup from which the arm is
+#: out of the place of the line's opening, so the game opens the pair from
+#: there (the hanging arm is where a hammer's line is); `close_at`: the part
+#: of the recover by which the pair is closed (the arm goes home after it,
+#: `HOME_FROM`).
 #:
 #: Each arm has a blow down, one across and one up, each with a body of its
-#: own: the HAMMER rears back with the fist over the head and slams with the
-#: whole body; the JAB is cocked by the jaw and snaps; the left HOOK is wound
-#: across the chest and thrown out behind; the UPPERCUT crouches with the fist
-#: by the knee and rises.
+#: own: the HAMMER rears back and slams its forearm down with the whole body;
+#: the JAB is cocked by the jaw and drives out; the left HOOK is wound across
+#: the chest and thrown out behind; the UPPERCUT crouches and rises.
 MIDDLE_X = 1042.0
+_ARM_DEEP = 60.0
 BLOWS = {
-    # Down, from over the right shoulder.
-    "hammer": dict(arm="right", line=((1443.0, 160.0), (0.0, -1.0)), back=210.0, hitch=40.0, deep=94.0, out=125.0,
-                   past=56.0, strike=0.24, hold=0.36, recover=0.5),
-    # Straight out from the right shoulder. The line is not farther out than
-    # this: the fist of the full blow stays in the frame.
-    "jab": dict(arm="right", line=((1390.0, 318.0), (-1.0, 0.0)), back=190.0, hitch=18.0, deep=110.0, out=120.0,
-                past=56.0, strike=0.2, hold=0.24, recover=0.32),
-    # Up, in front of the chest.
-    "upper": dict(arm="right", line=((1430.0, 150.0), (0.0, 1.0)), back=330.0, hitch=40.0, deep=100.0, out=120.0,
-                  past=56.0, strike=0.26, hold=0.24, recover=0.4),
-    # Down, from over the left shoulder, over the slope of the back: the right
-    # hammer's mirror about the middle of the chest.
-    "left_hammer": dict(arm="left", line=((2 * MIDDLE_X - 1443.0, 160.0), (0.0, -1.0)), back=210.0, hitch=40.0, deep=94.0,
-                        out=125.0, past=56.0, strike=0.24, hold=0.36, recover=0.5),
+    # Down and forward, the elbow up in front of the right shoulder: its line
+    # is by the shoulder, so a body that comes up out of it is by the back.
+    "hammer": dict(arm="right", way=(0.643, 0.766), elbow=110.0, side=-1, back=260.0, hitch=40.0, deep=_ARM_DEEP,
+                   out=140.0, past=56.0, strike=0.24, hold=0.36, recover=0.5, open_from=0.3, close_at=0.82),
+    # Out in front, a little down, the elbow under the shoulder.
+    "jab": dict(arm="right", way=(0.966, 0.259), elbow=80.0, side=1, back=210.0, hitch=18.0, deep=_ARM_DEEP,
+                out=140.0, past=56.0, strike=0.2, hold=0.24, recover=0.32, open_from=0.3, close_at=0.82),
+    # Up in front of the chest, the elbow out in front.
+    "upper": dict(arm="right", way=(0.0, -1.0), elbow=90.0, side=1, back=230.0, hitch=40.0, deep=_ARM_DEEP,
+                  out=140.0, past=56.0, strike=0.26, hold=0.24, recover=0.4, open_from=0.05, close_at=0.82),
+    # Down and out behind, the elbow up over the slope of the back.
+    "left_hammer": dict(arm="left", way=(-0.643, 0.766), elbow=110.0, side=1, back=260.0, hitch=40.0, deep=_ARM_DEEP,
+                        out=140.0, past=56.0, strike=0.24, hold=0.36, recover=0.5, open_from=0.26, close_at=0.82),
     # Out behind, level, over the slope of the back: wound across the chest.
-    "left_hook": dict(arm="left", line=((600.0, 230.0), (1.0, 0.0)), back=150.0, hitch=20.0, deep=110.0, out=110.0,
-                      past=56.0, strike=0.2, hold=0.24, recover=0.36),
-    # Up, from the left side of the chest.
-    "left_upper": dict(arm="left", line=((2 * MIDDLE_X - 1430.0, 150.0), (0.0, 1.0)), back=330.0, hitch=40.0, deep=100.0,
-                       out=120.0, past=56.0, strike=0.26, hold=0.24, recover=0.4),
+    "left_hook": dict(arm="left", way=(-1.0, 0.0), elbow=80.0, side=1, back=210.0, hitch=20.0, deep=_ARM_DEEP,
+                      out=140.0, past=56.0, strike=0.2, hold=0.24, recover=0.36, open_from=0.05, close_at=0.82),
+    # Up, the elbow out to the left.
+    "left_upper": dict(arm="left", way=(0.0, -1.0), elbow=90.0, side=-1, back=230.0, hitch=40.0, deep=_ARM_DEEP,
+                       out=140.0, past=56.0, strike=0.26, hold=0.24, recover=0.4, open_from=0.05, close_at=0.82),
     # Forward with the near fore leg, low: a kick. The fetlock is the end of
     # the leg; the hoof is past it.
     "kick": dict(arm="leg", line=((1290.0, 800.0), (-1.0, 0.0)), back=50.0, hitch=10.0, deep=100.0, out=50.0, past=24.0,
-                 strike=0.3, hold=0.24, recover=0.42),
+                 strike=0.3, hold=0.24, recover=0.42, open_from=0.0, close_at=1.0),
 }
 #: How far the end of a limb gives back toward its line in the row `*_hold`.
 HOLD_GIVE = 14.0
@@ -811,77 +832,193 @@ def _on_line(blow, depth):
     return (cx - nx * depth, cy - ny * depth)
 
 
-def _square(blow, depth, first, length):
-    """An arm key whose end is square to the line: the wrist ``depth`` past it,
-    the end coming along the line's inward normal over ``length``."""
-    _, (nx, ny) = BLOWS[blow]["line"]
-    return (_on_line(blow, depth), first, (-nx * length, -ny * length))
+def _mirror_point(p):
+    return (2 * MIDDLE_X - p[0], p[1])
 
 
-def _mirror_key(key):
-    """An arm key (wrist, first handle, last handle) of one arm as the other
-    arm's: mirrored about the middle of the chest."""
-    (wx, wy), (fx, fy), (lx, ly) = key
-    return ((2 * MIDDLE_X - wx, wy), (-fx, fy), (-lx, ly))
+#: The right arm's wrist at rest (final), and its elbow's side.
+_A_HANG = _final((1282.0, 800.0))
+_L_HANG = _mirror_point(_A_HANG)
 
-
-def _mirror_keys(keys):
-    return [(until, _mirror_key(key)) for until, key in keys]
-
-
-#: The right arm at rest (final): wrist, first handle, the way its end goes.
-_A_HANG = (_final((1282.0, 800.0)), (46.0, 150.0), (0.0, 140.0))
-
-#: The arm keys of each blow, before it is set and while it comes back: (until,
-#: key). The keys of the line itself (set, cocked, full, out) are made by
-#: `_square`.
-_ARM_KEYS = {
-    "hammer": dict(
-        wind=[(0.0, _A_HANG), (0.24, (_final((1480.0, 520.0)), (150.0, 60.0), (100.0, -90.0))),
-              (0.44, (_final((1440.0, 160.0)), (120.0, -170.0), (-120.0, -60.0))),
-              # Over the top, past the place it is set: the hammer is up.
-              (0.58, ((1420.0, -70.0), (-30.0, -330.0), (20.0, 120.0)))],
-        cocked_first=(-24.0, -350.0), full_first=(-6.0, -330.0), out_first=(-10.0, -300.0),
-        cocked_len=130.0, full_len=220.0, out_len=120.0,
-        # It drags its arm back out of the floor: a heavy way back.
-        home=[(0.6, (_final((1470.0, 230.0)), (130.0, -120.0), (-120.0, -40.0))),
-              (0.8, (_final((1490.0, 520.0)), (150.0, 60.0), (100.0, -90.0))), (1.0, _A_HANG)]),
-    "jab": dict(
-        wind=[(0.0, _A_HANG), (0.3, ((1300.0, 470.0), (40.0, 60.0), (60.0, -60.0))),
-              # Drawn back past where it is set: the elbow high and behind,
-              # the fist by the jaw.
-              (0.56, ((1160.0, 300.0), (-10.0, -230.0), (100.0, 10.0)))],
-        cocked_first=(-20.0, -210.0), full_first=(90.0, 0.0), out_first=(-50.0, 90.0),
-        cocked_len=110.0, full_len=150.0, out_len=110.0,
-        home=[(0.7, ((1240.0, 480.0), (-30.0, 120.0), (30.0, 100.0))), (1.0, _A_HANG)]),
-    "upper": dict(
-        wind=[(0.0, _A_HANG), (0.3, ((1180.0, 690.0), (-40.0, 150.0), (0.0, 120.0))),
-              # Down and back, low: the fist by the knee.
-              (0.56, ((1250.0, 720.0), (-10.0, 190.0), (40.0, 110.0)))],
-        cocked_first=(40.0, 220.0), full_first=(110.0, -40.0), out_first=(60.0, 140.0),
-        cocked_len=130.0, full_len=200.0, out_len=120.0,
-        home=[(0.7, ((1380.0, 520.0), (80.0, 120.0), (-20.0, 120.0))), (1.0, _A_HANG)]),
+#: Where each blow's wrist goes on its way to the windup's set place, as a
+#: part of the windup: (until, wrist from the shoulder, final). The set
+#: place itself is on the line's axis (`_axis_point`).
+_WIND = {
+    "hammer": [(0.25, (70.0, -40.0)), (0.5, (90.0, -200.0))],
+    "jab": [(0.3, (-10.0, 60.0)), (0.5, (-40.0, -10.0))],
+    "upper": [(0.3, (-40.0, 200.0))],
+    "left_hammer": [(0.25, (-70.0, -40.0)), (0.5, (-90.0, -200.0))],
+    "left_hook": [(0.3, (120.0, 160.0)), (0.5, (260.0, 20.0))],
+    "left_upper": [(0.3, (40.0, 200.0))],
 }
-# The left arm's hammer and uppercut are the right arm's, mirrored.
-for _right, _left in (("hammer", "left_hammer"), ("upper", "left_upper")):
-    _k = _ARM_KEYS[_right]
-    _ARM_KEYS[_left] = dict(
-        wind=_mirror_keys(_k["wind"]), home=_mirror_keys(_k["home"]),
-        cocked_first=(-_k["cocked_first"][0], _k["cocked_first"][1]), full_first=(-_k["full_first"][0], _k["full_first"][1]),
-        out_first=(-_k["out_first"][0], _k["out_first"][1]),
-        cocked_len=_k["cocked_len"], full_len=_k["full_len"], out_len=_k["out_len"])
-_L_HANG = _mirror_key(_A_HANG)
-#: The hook: the left fist is wound across the chest to the right jaw, then
-#: pulled back out over the left shoulder, where it is set level with its line.
-_ARM_KEYS["left_hook"] = dict(
-    wind=[(0.0, _L_HANG), (0.3, ((960.0, 560.0), (60.0, 140.0), (-80.0, 40.0))),
-          # Across the chest, the fist by the right jaw: the tell of a blow
-          # thrown out behind.
-          (0.5, ((1150.0, 330.0), (150.0, -40.0), (-130.0, 40.0))),
-          (0.58, ((1120.0, 300.0), (150.0, -60.0), (-130.0, 30.0)))],
-    cocked_first=(-60.0, -170.0), full_first=(-140.0, -60.0), out_first=(-60.0, -100.0),
-    cocked_len=110.0, full_len=170.0, out_len=110.0,
-    home=[(0.68, ((870.0, 500.0), (-40.0, 120.0), (0.0, 110.0))), (1.0, _L_HANG)])
+#: The part of the row ``*_recover`` the arm holds out of its line, in front
+#: of it, while the pair closes (`close_at` of each blow); then it goes home.
+HOME_FROM = 0.8
+
+#: How far before the line the wrist is when the forearm is square to it
+#: and stays so: the forearm and the fist go through square. More than the
+#: forearm's half width at the wrist (44): the end of the forearm reaches the
+#: line square.
+SQUARE_BEFORE = 60.0
+#: The fist turns at its wrist to the way of the blow before it reaches the
+#: line: square from the wrist this far before the line (its front is 126
+#: past the wrist).
+FIST_SQUARE_BEFORE = 160.0
+
+
+def rigid_joints(shoulder, wrist, side):
+    """The elbow of a rigid arm from ``shoulder`` to ``wrist`` (two bones,
+    `ARM_UPPER` and `ARM_FORE`), on ``side`` of the line from the shoulder
+    to the wrist (+1: the side turned +90 degrees). A wrist out of reach is
+    brought in to it. Returns (elbow, wrist)."""
+    sx, sy = shoulder
+    dx, dy = wrist[0] - sx, wrist[1] - sy
+    dist = math.hypot(dx, dy) or 1e-6
+    ux, uy = dx / dist, dy / dist
+    reach = ARM_UPPER + ARM_FORE - 0.01
+    least = abs(ARM_UPPER - ARM_FORE) + 0.01
+    dist = min(reach, max(least, dist))
+    wrist = (sx + ux * dist, sy + uy * dist)
+    along = (ARM_UPPER ** 2 - ARM_FORE ** 2 + dist ** 2) / (2.0 * dist)
+    h = math.sqrt(max(0.0, ARM_UPPER ** 2 - along ** 2))
+    nx, ny = -uy, ux
+    return (sx + ux * along + nx * h * side, sy + uy * along + ny * h * side), wrist
+
+
+def _side_of(shoulder, elbow, wrist):
+    cross = (wrist[0] - shoulder[0]) * (elbow[1] - shoulder[1]) - (wrist[1] - shoulder[1]) * (elbow[0] - shoulder[0])
+    return 1 if cross >= 0 else -1
+
+
+def _shoulder(blow, part, phase):
+    """The shoulder of the arm of ``blow`` (final) in a row of it: its root,
+    moved by the body's lift and lean."""
+    drop, lean, _head = _body_at(blow, part, phase)
+    root = _lean_point(_final(ARM_ROOT_L if BLOWS[blow]["arm"] == "left" else ARM_ROOT_R), lean)
+    return (root[0], root[1] + drop)
+
+
+def _strike_phase_at(blow, depth):
+    """The part of the row ``*_strike`` at which its wrist is ``depth`` past
+    the line."""
+    b = BLOWS[blow]
+    u = (depth + b["back"]) / (b["deep"] + b["back"])
+    return STRIKE_FULL * max(0.0, min(1.0, u)) ** (1.0 / 3.0)
+
+
+def _derive_lines():
+    """Each arm blow's near line, from its arm: when the wrist is in the
+    middle of its way through, the forearm is along `way` and the upper arm
+    at `elbow` degrees from it. The line is square to `way`."""
+    for blow, b in BLOWS.items():
+        if b["arm"] == "leg":
+            continue
+        dx, dy = b["way"]
+        n = (-dy, dx)
+        mid = (b["deep"] - SQUARE_BEFORE) * 0.5
+        sx, sy = _shoulder(blow, "strike", _strike_phase_at(blow, mid))
+        t = math.radians(b["elbow"])
+        ax, ay = math.cos(t) * dx + math.sin(t) * b["side"] * n[0], math.cos(t) * dy + math.sin(t) * b["side"] * n[1]
+        ex, ey = sx + ARM_UPPER * ax, sy + ARM_UPPER * ay
+        wx, wy = ex + ARM_FORE * dx, ey + ARM_FORE * dy
+        b["line"] = ((round(wx - mid * dx, 2), round(wy - mid * dy, 2)), (-dx, -dy))
+        b["bend"] = _side_of((sx, sy), (ex, ey), (wx, wy))
+
+
+def _axis_point(blow, depth, lateral=0.0):
+    """The point ``depth`` past the line of ``blow`` and ``lateral`` to the
+    side of its middle (+: the side of the way turned +90 degrees)."""
+    (cx, cy), (nx, ny) = BLOWS[blow]["line"]
+    dx, dy = -nx, -ny
+    return (cx + dx * depth - dy * lateral, cy + dy * depth + dx * lateral)
+
+
+def _square_arm(blow, shoulder, depth):
+    """The arm through its line: the forearm along the way, the wrist
+    ``depth`` past the line and as far to the side of its middle as the
+    rigid upper arm puts it. Returns (elbow, wrist, lateral)."""
+    b = BLOWS[blow]
+    (cx, cy), (nx, ny) = b["line"]
+    dx, dy = -nx, -ny
+    px, py = shoulder[0] - cx, shoulder[1] - cy
+    along = px * dx + py * dy - depth + ARM_FORE
+    across = px * -dy + py * dx
+    h = math.sqrt(max(0.0, ARM_UPPER ** 2 - along ** 2))
+    # Of the two places of the elbow, the one that keeps the wrist nearer
+    # the middle of the line.
+    lateral = min((across - h, across + h), key=abs)
+    wrist = _axis_point(blow, depth, lateral)
+    elbow = (wrist[0] - dx * ARM_FORE, wrist[1] - dy * ARM_FORE)
+    return elbow, wrist, lateral
+
+
+def _ik_arm(blow, shoulder, wrist):
+    elbow, wrist = rigid_joints(shoulder, wrist, BLOWS[blow]["bend"])
+    return elbow, wrist
+
+
+def _tremble_point(p, phase, amount=1.0):
+    return (p[0] + 3.0 * amount * math.sin(phase * 97.0), p[1] + 2.0 * amount * math.cos(phase * 71.0))
+
+
+def _lerp_dir(a, b, u):
+    x, y = a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u
+    d = math.hypot(x, y) or 1.0
+    return (x / d, y / d)
+
+
+def _unit(a, b):
+    d = math.hypot(b[0] - a[0], b[1] - a[1]) or 1.0
+    return ((b[0] - a[0]) / d, (b[1] - a[1]) / d)
+
+
+def _blow_arm(blow, part, phase):
+    """The striking arm in a row of a blow: (shoulder, elbow, wrist, the way
+    the fist goes from the wrist). Rigid in every frame; square through its
+    line."""
+    b = BLOWS[blow]
+    way = (-b["line"][1][0], -b["line"][1][1])
+    shoulder = _shoulder(blow, part, phase)
+    hang = _L_HANG if b["arm"] == "left" else _A_HANG
+    # Where the arm enters its square part: its lateral place there.
+    entry = _square_arm(blow, _shoulder(blow, "strike", _strike_phase_at(blow, -SQUARE_BEFORE)), -SQUARE_BEFORE)[2]
+
+    def off_line(depth):
+        elbow, wrist = _ik_arm(blow, shoulder, _axis_point(blow, depth, entry))
+        return elbow, wrist
+
+    def fist_way(depth, forearm):
+        u = (depth + b["back"]) / max(1.0, b["back"] - FIST_SQUARE_BEFORE)
+        return _lerp_dir(forearm, way, _ease(max(0.0, min(1.0, u))))
+
+    if part == "windup":
+        held = _axis_point(blow, -(b["back"] - b["hitch"]), entry)
+        cocked = _axis_point(blow, -b["back"], entry)
+        if phase <= SET_AT:
+            keys = [(0.0, hang)] + [(until, (shoulder[0] + ox, shoulder[1] + oy)) for until, (ox, oy) in _WIND[blow]]
+            wrist = _between(keys + [(SET_AT, held)], phase)
+        elif phase <= HITCH_AT:
+            wrist = _tremble_point(held, phase)
+        else:
+            wrist = _tremble_point(_between([(HITCH_AT, held), (1.0, cocked)], phase), phase, 0.4)
+        elbow, wrist = _ik_arm(blow, shoulder, wrist)
+        return shoulder, elbow, wrist, _unit(elbow, wrist)
+    depth = blow_wrist_depth(blow, part, phase)
+    if depth is not None and depth >= -SQUARE_BEFORE:
+        elbow, wrist, _ = _square_arm(blow, shoulder, depth)
+        return shoulder, elbow, wrist, way
+    if depth is not None:
+        elbow, wrist = off_line(depth)
+        return shoulder, elbow, wrist, fist_way(depth, _unit(elbow, wrist))
+    # Out of its line, it holds in front of it while the pair closes; then
+    # it goes home.
+    out = _axis_point(blow, -b["out"], entry)
+    elbow, wrist = _ik_arm(blow, shoulder, _between([(RECOVER_OUT, out), (HOME_FROM, out), (1.0, hang)], phase))
+    forearm = _unit(elbow, wrist)
+    # The fist stays square until it goes home.
+    home = _ease(max(0.0, (phase - HOME_FROM) / (1.0 - HOME_FROM)))
+    return shoulder, elbow, wrist, _lerp_dir(fist_way(-b["out"], forearm), forearm, home)
+
 
 #: The near fore leg: hip, knee, fetlock (final; the legs are not lifted).
 _L_REST = ((1098.0, 720.0), (1106.0, 846.0), (1100.0, 934.0))
@@ -897,42 +1034,6 @@ def _leg_at(fetlock_depth):
     # to the line. It is never past the line.
     knee = (min(fx - 70.0, BLOWS["kick"]["line"][0][0] - 40.0), fy)
     return (hip, knee, (fx, fy))
-
-
-def _tremble(key, phase, amount=1.0):
-    """A key that trembles: a blow held, about to go."""
-    (wx, wy), first, last = key
-    return ((wx + 3.0 * amount * math.sin(phase * 97.0), wy + 2.0 * amount * math.cos(phase * 71.0)), first, last)
-
-
-def _blow_arm(blow, part, phase):
-    """The arm's key (wrist, first handle, the way its end goes) in a row of a
-    blow."""
-    b, k = BLOWS[blow], _ARM_KEYS[blow]
-    cocked = _square(blow, -b["back"], k["cocked_first"], k["cocked_len"])
-    held = _square(blow, -(b["back"] - b["hitch"]), k["cocked_first"], k["cocked_len"])
-    full = _square(blow, b["deep"], k["full_first"], k["full_len"])
-    out = _square(blow, -b["out"], k["out_first"], k["out_len"])
-    if part == "windup":
-        if phase <= SET_AT:
-            return _between(list(k["wind"]) + [(SET_AT, held)], phase)
-        if phase <= HITCH_AT:
-            return _tremble(held, phase)
-        # The last pull: it draws back, and goes.
-        return _tremble(_between([(HITCH_AT, held), (1.0, cocked)], phase), phase, 0.4)
-    depth = blow_wrist_depth(blow, part, phase)
-    if part == "strike":
-        u = min(1.0, phase / STRIKE_FULL)
-        key = mix(cocked, full, u * u * u)
-        return (_on_line(blow, depth),) + tuple(key[1:])
-    if part == "hold":
-        return (_on_line(blow, depth),) + tuple(full[1:])
-    # recover: back out along the line, then home.
-    if depth is not None:
-        u = _ease(phase / RECOVER_OUT)
-        key = mix(full, out, u)
-        return (_on_line(blow, depth),) + tuple(key[1:])
-    return _between([(RECOVER_OUT, out)] + list(k["home"]), phase)
 
 
 def _blow_leg(part, phase):
@@ -1061,10 +1162,8 @@ def blow_parts(anim: str):
     return None
 
 
-def _blow_pose(pose, blow, part, armed, phase):
-    """Fill ``pose`` (from `pose_for`) for a row of a blow."""
-    sloped = STANCES["sloped"]
-    b = BLOWS[blow]
+def _body_at(blow, part, phase):
+    """(drop, lean, head) of the body in a row of a blow."""
     body = _BODY[blow]
     if part == "hold":
         # The blow lands: the body jolts and comes back (its recoil). A hammer
@@ -1072,10 +1171,16 @@ def _blow_pose(pose, blow, part, armed, phase):
         drop, lean, head = body["strike"][-1][1]
         jolt = math.sin(math.pi * min(1.0, phase * 2.5)) * (1.0 - phase)
         heavy = 1.6 if blow.endswith("hammer") else 1.0
-        drop, lean, head = (drop + 10.0 * heavy * jolt, lean - 2.5 * jolt * (1 if lean >= 0 else -1),
-                            (head[0] - 8.0 * jolt, head[1] + 8.0 * heavy * jolt))
-    else:
-        drop, lean, head = _keys_at(body[part], phase)
+        return (drop + 10.0 * heavy * jolt, lean - 2.5 * jolt * (1 if lean >= 0 else -1),
+                (head[0] - 8.0 * jolt, head[1] + 8.0 * heavy * jolt))
+    return _keys_at(body[part], phase)
+
+
+def _blow_pose(pose, blow, part, armed, phase):
+    """Fill ``pose`` (from `pose_for`) for a row of a blow."""
+    sloped = STANCES["sloped"]
+    b = BLOWS[blow]
+    drop, lean, head = _body_at(blow, part, phase)
     s = dict(sloped)
     s["lift"] = (sloped["lift"][0], sloped["lift"][1] + drop)
     pose["stance"] = s
@@ -1103,19 +1208,15 @@ def _blow_pose(pose, blow, part, armed, phase):
         else:
             pose["arms"] = _clamped_arms(1.0)
         return pose
-    wrist, first, last = _blow_arm(blow, part, phase)
-    size = math.hypot(*last) or 1.0
-    # The arm of a blow is FIXED to the giant (its end is on the line), so it
-    # is drawn outside the body's lift and lean: its root is moved by them here.
-    root = _lean_point(_final(ARM_ROOT_L if b["arm"] == "left" else ARM_ROOT_R), lean)
-    root = (root[0], root[1] + drop)
+    # The arm of a blow is FIXED to the giant (its fist is on its line), so
+    # it is drawn outside the body's lift and lean: its shoulder is moved by
+    # them in `_blow_arm`.
+    shoulder, elbow, wrist, fist_way = _blow_arm(blow, part, phase)
     # A jab is cocked by the jaw, a hook across the chest: their arm is in
     # front of the head.
     z = 62 if blow in ("jab", "left_hook") else 40
     name = "arm-left" if b["arm"] == "left" else "arm-right"
-    pose["arms"] = [other_spec, dict(kind="soft", name=name, fixed=True, z=z, toward=(last[0] / size, last[1] / size),
-                                     handles=(root, (root[0] + first[0], root[1] + first[1]),
-                                              (wrist[0] - last[0], wrist[1] - last[1]), wrist))]
+    pose["arms"] = [other_spec, dict(kind="rigid", name=name, fixed=True, z=z, pts=(shoulder, elbow, wrist), fist_way=fist_way)]
     return pose
 
 
@@ -1422,41 +1523,6 @@ def _dust(at, amount):
     return out
 
 
-def soft_arm(name, p0, p1, p2, p3, toward):
-    """An arm as one curve (a cubic through four handles), and its fist. Its
-    end goes the way ``toward``: the arm of a punch, which is longer in the
-    blow than at rest."""
-    def at(u):
-        a, b, c, d = (1 - u) ** 3, 3 * u * (1 - u) ** 2, 3 * u * u * (1 - u), u ** 3
-        return (a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0], a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1])
-
-    n = 22
-    mid = [at(k / n) for k in range(n + 1)]
-    left, right, shade, light = [], [], [], []
-    for k, (x, y) in enumerate(mid):
-        ax, ay = mid[max(0, k - 1)]
-        bx, by = mid[min(n, k + 1)]
-        d = math.hypot(bx - ax, by - ay) or 1.0
-        nx, ny = -(by - ay) / d, (bx - ax) / d
-        u = k / n
-        r = 46.0 - 2.0 * u - 9.0 * math.sin(math.pi * u)
-        left.append((x + nx * r, y + ny * r))
-        right.append((x - nx * r, y - ny * r))
-        shade.append((x + nx * r * 0.45, y + ny * r * 0.45))
-        light.append((x - nx * r * 0.55, y - ny * r * 0.55))
-    sil = smooth(left + right[::-1])
-    items = [path(smooth(left + shade[::-1]), C["dark"]),
-             path(smooth(list(light[3:-3]), closed=False), "none", C["light"], 9.0)]
-    ex, ey = mid[n // 2]
-    tuft = smooth([(ex - 30, ey - 6, True), (ex + 30, ey - 6, True), (ex + 26, ey + 30), (ex + 10, ey + 58, True),
-                   (ex, ey + 34), (ex - 12, ey + 64, True), (ex - 26, ey + 28)])
-    body = outlined(tuft, C["mane"], [], None) + outlined(sil, C["fur"], items, f"clip-{name}")
-    fx, fy = p3[0] + toward[0] * 56, p3[1] + toward[1] * 56
-    turn = math.degrees(math.atan2(-toward[1], -toward[0]))
-    body += [f'<g transform="translate({fx:.1f} {fy:.1f}) rotate({turn:.1f})">'] + fist(f"{name}-fist") + ["</g>"]
-    return body
-
-
 def _cut(cid, cut):
     """A clip at a portal's line: ("x" or "y", where, keep the lower side), or
     ("hole", x0, y0, x1, y1)."""
@@ -1475,12 +1541,9 @@ def _cut(cid, cut):
 
 def _draw_arm(spec):
     name = spec["name"]
-    if spec["kind"] == "soft":
-        body = soft_arm(name, *spec["handles"], spec["toward"])
-    else:
-        n0 = len(svg.PARTS)
-        arm(name, *spec["pts"])
-        body = svg.PARTS.pop(n0)[6]
+    n0 = len(svg.PARTS)
+    arm(name, *spec["pts"])
+    body = svg.PARTS.pop(n0)[6]
     if spec.get("cut"):
         body = [_cut(f"cut-{name}", spec["cut"]), f'<g clip-path="url(#cut-{name})">'] + body + ["</g>"]
     part(name, name, name.replace("-", "_"), name.replace("-", "_"), spec.get("z", 40), body)
@@ -1601,72 +1664,23 @@ def _fist_piece(flip=False):
     return pc.Piece(tuple(body), reach=140.0)
 
 
-def arm_pieces(scene, name, shoulder, elbow, wrist, outer, z=40):
+def arm_pieces(scene, name, shoulder, elbow, wrist, outer, z=40, fist_way=None):
     """An arm from a shoulder to its fist, as pieces (its bones, the hair at
-    its elbow, the fist of the fight), moved by ``outer``."""
+    its elbow, the fist of the fight), moved by ``outer``. The arm is RIGID:
+    ``elbow`` only says which side the elbow is on, and the bones keep their
+    lengths (a wrist out of reach is brought in). ``fist_way``: the way the
+    fist goes from the wrist (it turns at the wrist); the forearm's way by
+    default."""
     far = shoulder[0] < 1000
-    m, k = pc.bone(shoulder, elbow, ARM_UPPER)
-    scene.add(f"{name}-upper", z, _arm_upper(), pc.chain(outer, m), k)
-    m, k = pc.bone(elbow, wrist, ARM_FORE)
-    scene.add(f"{name}-fore", z, _arm_fore(), pc.chain(outer, m), k)
+    elbow, wrist = rigid_joints(shoulder, wrist, _side_of(shoulder, elbow, wrist))
+    m, _k = pc.bone(shoulder, elbow, ARM_UPPER)
+    scene.add(f"{name}-upper", z, _arm_upper(), pc.chain(outer, m))
+    m, _k = pc.bone(elbow, wrist, ARM_FORE)
+    scene.add(f"{name}-fore", z, _arm_fore(), pc.chain(outer, m))
     scene.add(f"{name}-tuft", z, _tuft(), pc.chain(outer, pc.T(*elbow)))
-    d = _rest_length(elbow, wrist) or 1.0
-    ux, uy = (wrist[0] - elbow[0]) / d, (wrist[1] - elbow[1]) / d
+    ux, uy = fist_way or _unit(elbow, wrist)
     turn = math.degrees(math.atan2(-uy, -ux))
     scene.add(f"{name}-fist", z, _fist_piece(far), pc.chain(outer, pc.at_point((wrist[0] + ux * 56, wrist[1] + uy * 56), turn)))
-
-
-#: A soft arm (`soft_arm`) as a chain of this many bones.
-SOFT_BONES = 8
-#: The length each bone of a soft arm is drawn at.
-SOFT_LENGTH = 55.0
-
-
-def _soft_radius(u):
-    return 46.0 - 2.0 * u - 9.0 * math.sin(math.pi * u)
-
-
-def _soft_ink(k):
-    u0, u1 = k / SOFT_BONES, (k + 1) / SOFT_BONES
-    sil = svg.capsule((0.0, 0.0), (0.0, SOFT_LENGTH), _soft_radius(u0) + OW, _soft_radius(u1) + OW)
-    return pc.Piece((path(sil, INK),), reach=SOFT_LENGTH + 110.0)
-
-
-def _soft_fill(k):
-    """Bone ``k`` of a soft arm: its fill, inside the ink, with the dark of the
-    arm on its -x side and its light down its +x side."""
-    u0, u1 = k / SOFT_BONES, (k + 1) / SOFT_BONES
-    r0, r1 = _soft_radius(u0), _soft_radius(u1)
-    sil = svg.capsule((0.0, 0.0), (0.0, SOFT_LENGTH), r0 - OW, r1 - OW)
-    shade = svg.poly([(-r0 - 4, -r0), (-0.45 * r0, -r0), (-0.45 * r1, SOFT_LENGTH + r1), (-r1 - 4, SOFT_LENGTH + r1)])
-    items = [path(shade, C["dark"])]
-    if 0 < k < SOFT_BONES - 1:
-        items.append(line([(0.55 * r0, -6.0), (0.55 * r1, SOFT_LENGTH + 6.0)], C["light"], 9.0))
-    return pc.Piece(tuple(svg.clipped(f"clip-soft-{k}", sil, [path(sil, C["fur"])] + items)), reach=SOFT_LENGTH + 110.0)
-
-
-def _bezier(handles, u):
-    p0, p1, p2, p3 = handles
-    a, b, c, d = (1 - u) ** 3, 3 * u * (1 - u) ** 2, 3 * u * u * (1 - u), u ** 3
-    return (a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0], a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1])
-
-
-def soft_arm_pieces(scene, name, handles, toward, z):
-    """An arm as one curve (a cubic through four ``handles``) and its fist,
-    as a chain of bones. Its end goes the way ``toward``: the arm of a blow,
-    which is longer in the blow than at rest. The ink of every bone is drawn
-    before the fill of any, so the chain is one tube."""
-    joints = [_bezier(handles, k / SOFT_BONES) for k in range(SOFT_BONES + 1)]
-    scene.add(f"{name}-tuft", z, _tuft(), pc.T(*_bezier(handles, 0.5)))
-    for k in range(SOFT_BONES):
-        m, s = pc.bone(joints[k], joints[k + 1], SOFT_LENGTH)
-        scene.add(f"{name}-ink{k}", z, _soft_ink(k), m, s)
-    for k in range(SOFT_BONES):
-        m, s = pc.bone(joints[k], joints[k + 1], SOFT_LENGTH)
-        scene.add(f"{name}-bone{k}", z, _soft_fill(k), m, s)
-    p3 = handles[3]
-    turn = math.degrees(math.atan2(-toward[1], -toward[0]))
-    scene.add(f"{name}-fist", z, _fist_piece(), pc.at_point((p3[0] + toward[0] * 56, p3[1] + toward[1] * 56), turn))
 
 
 #: The middle of the giant's body (design units): the pivot of the pieces
@@ -1759,10 +1773,10 @@ def scene_for(pose: dict, *, arms: bool = False, horns: str = "gnu") -> pc.Scene
     head_map = pc.chain(body_map, pc.T(hx, hy))
     for name, z, body, local in head_parts(pose["expr"], horns):
         scene.add(name, z, pc.Piece(tuple(body), reach=700.0 if name == "horns" else 400.0, origin=HEAD), pc.chain(head_map, local))
-    # The arm of a blow is fixed to the giant: its end is on its portal's line.
+    # The arm of a blow is fixed to the giant: its fist is on its portal's line.
     for spec in drawn:
         if spec.get("fixed"):
-            soft_arm_pieces(scene, spec["name"], spec["handles"], spec["toward"], spec.get("z", 40))
+            arm_pieces(scene, spec["name"], *spec["pts"], pc.IDENT, spec.get("z", 40), spec.get("fist_way"))
     if pose.get("dust", 0.0) > 0.0:
         fx, _fy = st["fore"][0][2]
         scene.add("dust", 90, pc.Piece(tuple(_dust((fx, FLOOR), pose["dust"])), origin=(fx, FLOOR), reach=400.0))
@@ -1935,3 +1949,8 @@ def render_fist(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
 #: Where the line of a fist's own portal is behind its wrist, in design
 #: units from the fist's middle (the fist drawn with its knuckles to the left).
 FIST_STUB_LINE = 150.0
+
+
+# The near line of each arm blow comes from its arm (`_derive_lines`): after
+# every number it reads is defined.
+_derive_lines()
