@@ -308,3 +308,39 @@ def test_every_species_head_draws_in_every_view():
             # From behind, the beak is drawn under the head, not over it.
             back = {p.name for p in drawn[-1].parts}
             assert "head_behind" in back
+
+
+def test_every_grip_class_poses_its_item_clips_cleanly_and_points_the_item(tmp_path):
+    import math
+    from functools import partial
+
+    from ambition_sprite2d_renderer.authoring.pose_audit import audit_document
+    from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
+    from ambition_sprite2d_renderer.chargen.motion import GRIPS, library_clips
+    from ambition_sprite2d_renderer.chargen.rig import build_rigs
+
+    spec = S.generate("average_male", 6, {"outfit": {"outer": "none"}})
+    names = ["item_hold", "item_grip", "item_hold_crouch", "item_pickup", "item_throw", "item_drop", "item_swing", "item_swing_up",
+             "item_swing_down", "item_swing_back"]
+    svg = tmp_path / "c.svg"
+    svg.write_text(character_svg(spec), encoding="utf8")
+    for grip in GRIPS:
+        rigs = build_rigs(spec, svg, tmp_path / grip, clips=partial(library_clips, names=names, grip=grip), grip=grip)
+        for view, path in rigs.items():
+            doc = RigDocument.load(path)
+            errors = sorted({(f.animation, fd.code) for f in audit_document(doc).frames for fd in f.findings if fd.severity == "error"})
+            assert errors == [], (grip, view, errors)
+        side = RigDocument.load(rigs["side"])
+        world, _ = side.solve("item_hold", 0.0)
+        rest = next(p for p in side.data["parts"] if p["name"] == "near_hand")["rest_angle"]
+        # The item's screen angle: forward and 24 deg up when the hand is unturned.
+        item = -24.0 + (world["near_grip"].angle - rest)
+        want = {"gun": 0.0, "staff": -88.0, "blade": -62.0}.get(grip)
+        if want is not None:
+            assert abs((item - want + 180.0) % 360.0 - 180.0) < 12.0, (grip, item)
+        if grip == "two_handed":
+            # The far fist closes on the item's line.
+            g, f = world["near_grip"].origin, world["far_grip"].origin
+            d = (math.cos(math.radians(item)), math.sin(math.radians(item)))
+            off_line = abs((f[0] - g[0]) * d[1] - (f[1] - g[1]) * d[0])
+            assert off_line < 3.0, off_line

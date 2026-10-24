@@ -135,9 +135,11 @@ def body_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     fig = ctx.fig
     out: List[Part] = []
     T = fig.T
-    # The trunk is skin from the neck to the crotch: every garment covers it.
+    # The trunk is skin from the neck to just below the waist; the pelvis
+    # (underwear, then legwear) carries on from the waist, so a top that is
+    # not tucked lies over the trousers instead of skin showing under it.
     pt = ctx.new()
-    shaded_region(ctx, pt, fig.torso, fig.torso.top, fig.y_crotch - 0.02 * T, ctx.skin, shade_cap=2.5)
+    shaded_region(ctx, pt, fig.torso, fig.torso.top, fig.y_waist + 0.06 * T, ctx.skin, shade_cap=2.5)
     out.append(Part("torso", "torso", zmap["torso"], pt.els, "Torso"))
     pt = ctx.new()
 

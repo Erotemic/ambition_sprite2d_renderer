@@ -53,6 +53,13 @@ class Hand:
     at: Vec3
     pole: Vec3 = (0.0, 0.3, -1.0)
     wrist: float = 0.0
+    #: Where a held item points, in the trunk frame (a direction): the wrist
+    #: is then turned so the item points there in each view, in place of
+    #: ``wrist``.
+    item: Optional[Vec3] = None
+    #: A two-handed grip: the other hand closes on the item this far (cm)
+    #: along it from this hand.
+    two_hand: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -122,7 +129,12 @@ def blend(a: Pose, b: Pose, t: float, rest: "RestFrame") -> Pose:
     for side in set(a.hands) | set(b.hands):
         ha = a.hands.get(side) or rest.rest_hand(side)
         hb = b.hands.get(side) or rest.rest_hand(side)
-        hands[side] = Hand(_arc(ha.at, hb.at, t), norm3(_lerp3(ha.pole, hb.pole, t)), _lerp(ha.wrist, hb.wrist, t))
+        item = None
+        if ha.item is not None or hb.item is not None:
+            ia, ib = ha.item or hb.item, hb.item or ha.item
+            item = norm3(_lerp3(ia, ib, t))
+        hands[side] = Hand(_arc(ha.at, hb.at, t), norm3(_lerp3(ha.pole, hb.pole, t)), _lerp(ha.wrist, hb.wrist, t), item,
+                           _lerp(ha.two_hand, hb.two_hand, t))
     feet = {}
     for side in set(a.feet) | set(b.feet):
         fa = a.feet.get(side) or Foot(body=(b.feet.get(side) or Foot()).body)
@@ -166,6 +178,10 @@ class RestFrame:
 
 # ---- 3D limb solve ----------------------------------------------------------------
 
+
+#: The angle above forward a held item rests at in an unturned hand (the
+#: runtime's ``ITEM_REST_ANGLE``; the fist art is drawn to it).
+ITEM_REST = 24.0
 
 #: The furthest a drawn elbow folds (degrees between upper arm and forearm
 #: directions); the rig's two-bone solve cannot fold past straight back.
@@ -290,6 +306,22 @@ class ViewSolver:
         world, _ = self._probe.solve("probe", 0.0)
         return world
 
+    def item_angle(self, item: Vec3, trunk_rot: float) -> float:
+        """The screen angle (degrees, y down) a held item pointing ``item``
+        (trunk frame) is drawn at. An item pointing nearly at the camera is
+        drawn swung toward the way the character faces (forward and a little
+        up, the hand's rest hold), so it never vanishes or flips."""
+        v = self.view
+        o0 = v.project((0.0, 0.0, 0.0))
+        p = v.project(norm3(item))
+        p = _rot2((p[0] - o0[0], p[1] - o0[1]), trunk_rot)
+        n = math.hypot(*p)
+        if n < 0.45:
+            r = math.radians(-ITEM_REST)
+            w = (0.45 - n) / 0.45
+            p = (p[0] + w * 0.45 * math.cos(r), p[1] + w * 0.45 * math.sin(r))
+        return math.degrees(math.atan2(p[1], p[0]))
+
     def solve(self, pose: Pose) -> Dict[str, float]:
         v = self.view
         body = self.body_channels(pose)
@@ -396,7 +428,11 @@ class ViewSolver:
             out[f"{pre}_x"] = target[0] - cx
             out[f"{pre}_y"] = target[1] - gy
             out[f"{pre}_bend"] = bend
-            if hand.wrist:
+            if hand.item is not None:
+                out[f"{pre}_item"] = self.item_angle(hand.item, trunk_rot)
+                if hand.two_hand:
+                    out[f"{pre}_two"] = hand.two_hand * self.px
+            elif hand.wrist:
                 out[f"{pre}_wrist"] = hand.wrist
             # ---- the foot ----
             foot = pose.feet.get(side) or Foot()

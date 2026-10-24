@@ -236,12 +236,18 @@ def wardrobe_sheet(spec: CharacterSpec, out: Path, *, px_per_cm: float = 1.4,
 
 # ---- the rigged character --------------------------------------------------------------------
 
-#: The rows a published sheet carries by default: what the game asks a
-#: townsperson or a fighter-capable NPC for (``CharacterAnim`` names). Any
-#: library clip can be published by naming it (``publish_sheet(rows=...)``).
+#: The rows a background townsperson publishes by default: standing,
+#: walking every way, talking, and turning (``CharacterAnim`` names).
+TOWNSFOLK_ROWS: Tuple[str, ...] = (
+    "idle", "idle_back", "walk", "walk_away", "walk_toward", "talk", "interact", "turnaround", "turn_away",
+)
+
+#: The rows of a character that moves, fights and holds items: what the game
+#: asks a fighter-capable NPC for. Any library clip can be published by
+#: naming it (``publish_sheet(rows=...)``).
 PUBLISH_ROWS: Tuple[str, ...] = (
     "idle", "idle_back", "walk", "walk_away", "walk_toward", "run", "skid", "jump", "fall", "land", "crouch", "crawl",
-    "climb", "ledge_hang", "wall_slide", "dash", "attack", "jab", "attack_up", "attack_down", "air_neutral", "special",
+    "climb", "ledge_hang", "wall_slide", "dash", "attack", "attack_side", "jab", "attack_up", "attack_down", "air_neutral", "special",
     "hurt", "tumble", "death", "death_idle", "talk", "interact", "wave", "happy", "sit_down", "sit_idle", "stand_up",
     "sleep", "shield_hold", "item_hold", "item_pickup", "item_throw", "item_swing", "item_swing_up", "item_swing_down",
     "item_swing_back", "turnaround", "turn_away",
@@ -269,7 +275,7 @@ class RiggedCharacter:
         some = next(iter(self.docs.values()))
         views = some.data.get("chargen", {}).get("publish_views") or {}
         self.views: Dict[str, str] = {name: views.get(name, "side") for name in some.clips}
-        self.names = list(rows) if rows is not None else [r for r in PUBLISH_ROWS if r in self.views or r in COMPOSED]
+        self.names = list(rows) if rows is not None else [r for r in TOWNSFOLK_ROWS if r in self.views or r in COMPOSED]
 
     def frame_size(self) -> Tuple[int, int]:
         """The size of a rendered frame (the rig frame at its render scale)."""
@@ -445,25 +451,32 @@ def held_items_sheet(rigs: Dict[str, Path], arts: Sequence[HeldItemArt], out: Pa
                      title: str = "") -> Path:
     """Each item (a row) in the near hand through ``shots`` (view, clip,
     frame): the item's grip on the fist in every view and clip."""
+    return grips_sheet([(art.item, rigs, art) for art in arts], out, shots=shots, scale=scale, title=title)
+
+
+def grips_sheet(entries: Sequence[Tuple[str, Dict[str, Path], HeldItemArt]], out: Path, *, shots=HELD_SHOTS, scale: float = 0.6,
+                title: str = "") -> Path:
+    """One row per (label, rigs, item): a character whose item clips are
+    posed for a grip class, holding an item of that class through ``shots``."""
     from ..authoring.rigdoc import RigDocument
 
-    docs = {k: RigDocument.load(p) for k, p in rigs.items()}
     rows = []
-    for art in arts:
+    for label, rigs, art in entries:
+        docs = {k: RigDocument.load(p) for k, p in rigs.items()}
         tiles = []
         for view, clip, frame in shots:
             doc = docs[view]
             n = int(doc.clips[clip]["frames"])
             fi = n // 2 if frame < 0 else min(frame, n - 1)
             tiles.append((f"{clip} {view}", render_holding(doc, clip, fi, art)))
-        rows.append((art.item, tiles))
+        rows.append((label, tiles))
     box = _union_bbox(im for _r, tiles in rows for _n, im in tiles)
     fit = []
     for name, tiles in rows:
         fit.append((name, [(c, _on_bg(im.crop((box[0] - 4, box[1] - 4, box[2] + 4, box[3] + 4)).resize(
             (int((box[2] - box[0] + 8) * scale), int((box[3] - box[1] + 8) * scale)), Image.LANCZOS))) for c, im in tiles]))
     return _grid(title or "Held items: the game's item art on the fist (grip on the hand pivot, forward and 24 deg up at rest)", fit, out,
-                 label_w=130)
+                 label_w=170)
 
 
 def actor_metadata(spec: CharacterSpec, *, character_id: Optional[str] = None, description: Optional[str] = None) -> dict:
@@ -497,10 +510,11 @@ def actor_metadata(spec: CharacterSpec, *, character_id: Optional[str] = None, d
 
 
 def publish_sheet(spec: CharacterSpec, out_dir: Path, rigs: Optional[Dict[str, Path]] = None, *, target: Optional[str] = None,
-                  metadata: Optional[dict] = None, rows: Optional[Sequence[str]] = None) -> List[Path]:
+                  metadata: Optional[dict] = None, rows: Optional[Sequence[str]] = None, grip: str = "blade") -> List[Path]:
     """The gameplay sprite sheet of ``spec`` (``rows``, default
-    :data:`PUBLISH_ROWS`) with its YAML/RON manifests, actor sidecar,
-    part flipbook and previews.
+    :data:`TOWNSFOLK_ROWS`; :data:`PUBLISH_ROWS` for a character that
+    fights and holds items, its item rows posed for ``grip``) with its
+    YAML/RON manifests, actor sidecar, part flipbook and previews.
     ``target`` names the files (default ``chargen_<slug>``); ``metadata`` is
     the actor sidecar (default :func:`actor_metadata`)."""
     from ..authoring.part_flipbook import publish_rig_flipbook
@@ -508,7 +522,7 @@ def publish_sheet(spec: CharacterSpec, out_dir: Path, rigs: Optional[Dict[str, P
 
     out_dir = Path(out_dir)
     if rigs is None:
-        rigs = write_character(spec, out_dir).rigs
+        rigs = write_character(spec, out_dir, grip=grip).rigs
     rc = RiggedCharacter(rigs, rows)
     target = target or f"chargen_{slug(spec.name)}"
     frame_transform: dict = {}
@@ -529,4 +543,4 @@ def publish_sheet(spec: CharacterSpec, out_dir: Path, rigs: Optional[Dict[str, P
     return [Path(outputs[k]) for k in keys if outputs.get(k)] + list(parts.values())
 
 
-__all__ = ["COMPOSED", "HELD_SHOTS", "HeldItemArt", "held_items_sheet", "load_held_item_art", "render_holding", "clip_union_sheet", "PUBLISH_ROWS", "SPECIES_FACES", "expression_sheet", "species_sheet", "wardrobe_sheet", "RiggedCharacter", "actor_metadata", "contact_sheet", "posed_sheet", "publish_sheet", "render_view", "turnaround"]
+__all__ = ["TOWNSFOLK_ROWS", "COMPOSED", "HELD_SHOTS", "HeldItemArt", "grips_sheet", "held_items_sheet", "load_held_item_art", "render_holding", "clip_union_sheet", "PUBLISH_ROWS", "SPECIES_FACES", "expression_sheet", "species_sheet", "wardrobe_sheet", "RiggedCharacter", "actor_metadata", "contact_sheet", "posed_sheet", "publish_sheet", "render_view", "turnaround"]

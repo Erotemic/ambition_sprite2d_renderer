@@ -93,7 +93,8 @@ def skirt_loft(fig: Figure, y_top: float, hem: float, t: float, flare: float) ->
 
 
 def lobe_parts(ctx: Ctx, slot: str, feature: str, loft: Loft, y0: float, y1: float, color: str, margin=None, *,
-               z: Tuple[float, float], lit: bool = True, extra: Optional[Callable[[Paint, str], None]] = None) -> List[Part]:
+               z: Tuple[float, float], lit: bool = True, extra: Optional[Callable[[Paint, str], None]] = None,
+               solid: bool = True) -> List[Part]:
     """A hanging garment as two halves, one on each leg: the right half (the
     near side) above the left one. A half that hangs well past the knee is
     cut there: the part above rides the thigh, the part below the shin, so a
@@ -109,13 +110,14 @@ def lobe_parts(ctx: Ctx, slot: str, feature: str, loft: Loft, y0: float, y1: flo
         pieces = [(y0, knee + lap, "leg_u", ""), (knee - lap, y1, "leg_l", "_lower")] if split else [(y0, y1, "leg_u", "")]
         for a, b, bone, suffix in pieces:
             pt = ctx.new()
-            # Each piece is drawn whole (its back as well as its front), so
+            # Each piece is drawn whole (its back as well as its front; not an
+            # apron, a front panel only), so
             # a leg swinging out behind keeps its cloth. The shin's piece is
             # inked from the knee down but filled from above it, so its top
             # edge hides under its own cloth: no seam at the knee.
-            pt.region(loft_region(ctx.view, loft, knee if suffix else a, b, m, solid=True), color)
+            pt.region(loft_region(ctx.view, loft, knee if suffix else a, b, m, solid=solid), color)
             if suffix:
-                pt.flat(loft_region(ctx.view, loft, a, b, m, solid=True), color)
+                pt.flat(loft_region(ctx.view, loft, a, b, m, solid=solid), color)
             shaded_region(ctx, pt, loft, a, b, color, m, lit=lit, ink=False)
             if extra and not suffix:
                 extra(pt, side)
@@ -352,7 +354,9 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
                 p.region(loft_region(ctx.view, lo.shell(0.3), fig.y_waist - 0.04 * T, fig.y_waist + 0.04 * T, half_of(side)),
                          o.accent_color, outline=FINE)
 
-        out += lobe_parts(ctx, "outer", feature, lo, fig.y_waist, hem, col, lower_margin, z=(32.0, 32.5), extra=extra)
+        # An apron is a front panel only: drawn whole it would show on the back.
+        out += lobe_parts(ctx, "outer", feature, lo, fig.y_waist, hem, col, lower_margin, z=(32.0, 32.5), extra=extra,
+                          solid=o.outer != "apron")
         out += drape_parts(ctx, "outer", feature, zmap)
     return out
 

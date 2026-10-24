@@ -28,7 +28,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from .body import Figure
 from .face import brows_part, eyes_part, face_channels, mouth_part
 from .geometry import View
-from .pose3d import Foot, Hand, Pose, RestFrame, ViewSolver, blend
+from .pose3d import ITEM_REST, Foot, Hand, Pose, RestFrame, ViewSolver, blend
 
 Vec = Tuple[float, float, float]
 
@@ -65,13 +65,22 @@ class Kit:
         self.rest_hand = (r[2] / self.A, r[1] / self.A, -r[0] / self.A)
 
     # hands and feet
-    def hand(self, side: str, fwd: float, down: float, out: float = 0.15, *, pole: Vec = (0.25, 0.2, -1.0), wrist: float = 0.0) -> Hand:
+    def hand(self, side: str, fwd: float, down: float, out: float = 0.15, *, pole: Vec = (0.25, 0.2, -1.0), wrist: float = 0.0,
+             item: Optional[float] = None, item_out: float = 0.0, two_hand: float = 0.0) -> Hand:
         """``wrist``: the hand bent off its forearm's line, degrees (a held
-        item runs across the fist, so it turns with it)."""
+        item runs across the fist, so it turns with it). ``item``: the angle
+        above forward (degrees; 90 straight up, 180 back, -90 down) a held
+        item points, which turns the wrist in its place; ``item_out`` tips it
+        out to the side. ``two_hand``: the other hand closes on the item
+        this many cm along it."""
         sgn = -1.0 if side == "right" else 1.0
         at = (sgn * out * self.A, down * self.A, fwd * self.A)
         p = (sgn * pole[0], pole[1], pole[2])
-        return Hand(at, p, wrist)
+        it = None
+        if item is not None:
+            r = math.radians(item)
+            it = (sgn * item_out, -math.sin(r), math.cos(r))
+        return Hand(at, p, wrist, it, two_hand)
 
     def foot(self, side: str, fwd: float = 0.0, lift: float = 0.0, out: float = 0.0, toe: float = 0.0, *, pole: Vec = (0.0, 0.0, 1.0)) -> Foot:
         sgn = -1.0 if side == "right" else 1.0
@@ -168,7 +177,90 @@ def _even(poses: Sequence[Pose]) -> List[Tuple[float, Pose]]:
 # ---- the library -----------------------------------------------------------------------------
 
 
-def build_library(fig: Figure) -> Dict[str, Clip]:
+#: How a held item is held: each grip class poses the item clips its own
+#: way (a sword is raised, a gun aimed, a staff planted, a shield held up,
+#: a heavy thing carried in both hands).
+GRIPS = ("blade", "two_handed", "gun", "staff", "shield", "tool", "carried", "thrown")
+
+
+def _grip_poses(k: "Kit", grip: str) -> Dict[str, object]:
+    """The item poses of one grip class: ``ready`` (item_hold), ``crouch``,
+    the ``throw_*`` keys and ``swings`` (name -> wind, hit, follow)."""
+    R, Lf = "right", "left"
+    two = 0.0
+    if grip == "two_handed":
+        two = 0.22 * k.A
+    elif grip == "staff":
+        two = 0.0
+
+    def h(fwd, down, out=0.1, item=0.0, pole=(0.3, 0.6, -0.5), **kw):
+        return k.hand(R, fwd, down, out, pole=pole, item=item, two_hand=two, **kw)
+
+    def guard(**kw):
+        return k.guard(face=kw.pop("face", "determined"), **kw)
+
+    if grip in ("blade", "two_handed", "tool", "staff"):
+        out = -0.02 if grip == "two_handed" else 0.1
+        ready_item = {"blade": 62.0, "two_handed": 50.0, "tool": 28.0, "staff": 88.0}[grip]
+        ready_at = {"blade": (0.45, 0.45), "two_handed": (0.42, 0.52), "tool": (0.32, 0.72), "staff": (0.3, 0.5)}[grip]
+        ready = guard(lean=6, rh=h(*ready_at, out, item=ready_item))
+        swings = {
+            "item_swing": (guard(lean=-8, side=-4, rh=h(-0.3, -0.55, 0.25 if grip != "two_handed" else 0.05, item=150, pole=(0.6, -0.4, -0.5))),
+                           guard(root=(0.04, -0.05, 0), lean=18, rh=h(0.9, 0.2, out, item=2, pole=(0.3, 0.8, -0.2)), face="angry"),
+                           guard(root=(0.04, -0.05, 0), lean=20, rh=h(0.55, 0.75, out - 0.12, item=-55, pole=(0.3, 0.8, -0.2)))),
+            "item_swing_up": (k.crouch(0.1, lean=10, rh=h(0.4, 0.75, out, item=-30), face="angry"),
+                              k.pose(root=(0.01, 0.01, 0), lean=-8, head=(-20, 0), rh=h(0.3, -0.9, out, item=95, pole=(0.5, 0.2, -0.6)), face="angry"),
+                              k.pose(lean=-12, head=(-22, 0), rh=h(-0.1, -0.88, out, item=125, pole=(0.5, 0.2, -0.6)))),
+            "item_swing_down": (k.pose(lean=-8, rh=h(0.05, -0.92, out, item=115, pole=(0.5, 0.2, -0.6)), face="angry"),
+                                k.crouch(0.14, lean=26, rh=h(0.9, 0.5, out, item=-25), face="angry"),
+                                k.crouch(0.14, lean=28, rh=h(0.62, 0.82, out - 0.1, item=-70))),
+            "item_swing_back": (guard(lean=10, rh=h(0.6, 0.25, out - 0.2, item=20)),
+                                guard(lean=-16, side=-6, head=(8, 0), rh=h(-0.8, 0.25, 0.35, item=172), face="angry"),
+                                guard(lean=-12, rh=h(-0.55, 0.55, 0.35, item=-150))),
+        }
+        crouch = k.crouch(0.2, rh=h(ready_at[0] + 0.1, ready_at[1] + 0.1, out, item=ready_item - 10))
+    elif grip == "gun":
+        ready = guard(lean=4, head=(2, 0), rh=h(0.95, 0.08, 0.02, item=0.0, pole=(0.5, 0.6, -0.3)))
+        swings = {
+            "item_swing": (guard(lean=-6, rh=h(0.6, 0.3, 0.05, item=30.0)), guard(lean=10, rh=h(0.97, 0.05, 0.02, item=-2.0), face="angry"),
+                           guard(lean=4, rh=h(0.85, -0.1, 0.02, item=18.0))),
+            "item_swing_up": (guard(lean=0, rh=h(0.8, 0.1, 0.02, item=10.0)), k.pose(lean=-10, head=(-24, 0), rh=h(0.5, -0.8, 0.05, item=62.0), face="angry"),
+                              k.pose(lean=-10, head=(-24, 0), rh=h(0.48, -0.82, 0.05, item=66.0))),
+            "item_swing_down": (guard(lean=6, rh=h(0.8, 0.1, 0.02, item=0.0)), guard(lean=16, head=(16, 0), rh=h(0.75, 0.65, 0.02, item=-42.0), face="angry"),
+                                guard(lean=16, head=(16, 0), rh=h(0.72, 0.68, 0.02, item=-46.0))),
+            "item_swing_back": (guard(lean=0, rh=h(0.8, 0.1, 0.02, item=0.0)), guard(lean=-10, side=-6, rh=h(-0.6, 0.2, 0.4, item=178.0), face="angry"),
+                                guard(lean=-10, rh=h(-0.6, 0.25, 0.4, item=176.0))),
+        }
+        crouch = k.crouch(0.2, rh=h(0.95, 0.15, 0.02, item=0.0, pole=(0.5, 0.6, -0.3)))
+    elif grip == "shield":
+        ready = guard(lean=4, rh=h(0.42, 0.18, 0.02, item=88.0, pole=(0.6, 0.5, -0.3)))
+        bash = guard(root=(0.04, -0.04, 0), lean=14, rh=h(0.8, 0.12, 0.0, item=86.0, pole=(0.6, 0.5, -0.3)), face="angry")
+        swings = {name: (guard(lean=-4, rh=h(0.25, 0.25, 0.05, item=88.0)), bash, guard(lean=10, rh=h(0.6, 0.15, 0.0, item=88.0)))
+                  for name in ("item_swing", "item_swing_up", "item_swing_down", "item_swing_back")}
+        crouch = k.crouch(0.24, rh=h(0.45, 0.25, 0.02, item=88.0, pole=(0.6, 0.5, -0.3)))
+    else:  # carried, thrown
+        lift = grip == "carried"
+        ready = guard(lean=2, rh=h(0.4, 0.5 if lift else 0.62, 0.05 if lift else 0.15, item=0.0 if lift else 35.0),
+                      lh=k.hand(Lf, 0.38, 0.52, 0.05) if lift else None)
+        swings = {name: (guard(lean=-6, rh=h(-0.2, 0.3, 0.2, item=120.0)), guard(lean=16, rh=h(0.9, 0.2, 0.05, item=10.0), face="angry"),
+                         guard(lean=14, rh=h(0.5, 0.75, 0.0, item=-50.0)))
+                  for name in ("item_swing", "item_swing_up", "item_swing_down", "item_swing_back")}
+        crouch = k.crouch(0.2, rh=h(0.45, 0.6, 0.08, item=10.0))
+    throw = {
+        "throw_wind": guard(lean=-14, side=-4, rh=h(-0.45, -0.55, 0.3, item=140.0, pole=(0.5, 0.2, -0.6)), lh=k.hand(Lf, 0.6, 0.3, 0.2),
+                            rf=k.foot(R, 0.2), lf=k.foot(Lf, -0.25)),
+        "throw_release": guard(root=(0.04, -0.04, 0), lean=22, rh=h(0.95, 0.1, 0.05, item=10.0), lh=k.hand(Lf, -0.2, 0.6, 0.3),
+                               rf=k.foot(R, 0.3), lf=k.foot(Lf, -0.25, toe=-15), face="angry", vis="a"),
+        "throw_follow": guard(root=(0.04, -0.05, 0), lean=20, rh=h(0.55, 0.75, -0.1, item=-50.0), rf=k.foot(R, 0.28)),
+    }
+    return {"ready": ready, "crouch": crouch, "swings": swings, **throw}
+
+
+def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
+    """The clip union for ``fig``; the item clips (``item_*``) are posed for
+    the grip class ``grip`` (one of :data:`GRIPS`)."""
+    if grip not in GRIPS:
+        raise KeyError(f"unknown grip {grip!r}; one of {GRIPS}")
     k = Kit(fig)
     R, Lf = "right", "left"
     out: Dict[str, Clip] = {}
@@ -563,11 +655,11 @@ def build_library(fig: Figure) -> Dict[str, Clip]:
         add(_seq(name, 6, 80, False, _even([trip, sit_up, stand]), cat="reaction"))
 
     # ---- held items --------------------------------------------------------------------------
-    item_ready = k.guard(lean=6, rh=k.hand(R, 0.5, 0.42, 0.08, pole=(0.4, 0.6, -0.4), wrist=-12), face="determined")
-    add(_seq("item_hold", 6, 110, True, _cycle([item_ready, replace(item_ready, lean=6.6)]), cat="item"))
+    g = _grip_poses(k, grip)
+    item_ready = g["ready"]
+    add(_seq("item_hold", 6, 110, True, _cycle([item_ready, replace(item_ready, lean=item_ready.lean + 0.6)]), cat="item"))
     add(_seq("item_grip", 4, 70, False, _even([stand, item_ready]), cat="item"))
-    add(_seq("item_hold_crouch", 6, 110, True, _cycle([k.crouch(0.2, rh=k.hand(R, 0.55, 0.55, 0.1, wrist=-9)),
-                                                       k.crouch(0.21, rh=k.hand(R, 0.55, 0.56, 0.1, wrist=-9))]), cat="item"))
+    add(_seq("item_hold_crouch", 6, 110, True, _cycle([g["crouch"], replace(g["crouch"], lean=g["crouch"].lean + 0.6)]), cat="item"))
     pick_low = k.crouch(0.3, lean=40, head=(-20, 0), rh=k.hand(R, 0.75, 0.95, 0.15), lh=k.hand(Lf, 0.4, 0.8, 0.3))
     add(_seq("item_pickup", 7, 82, False, _even([stand, pick_low, pick_low, item_ready]), cat="item"))
     add(_seq("pickup", 7, 82, False, out["item_pickup"].keys, cat="item"))
@@ -577,20 +669,11 @@ def build_library(fig: Figure) -> Dict[str, Clip]:
                                                        k.crouch(0.15, rh=k.hand(R, 0.45, 0.2, 0.3), lh=k.hand(Lf, 0.4, 0.22, 0.35)), carry]), cat="item"))
     add(_seq("item_heavy_carry", 8, 100, True, _cycle([replace(walk_pose(2 * math.pi * i / 8), hands=carry.hands, lean=-6,
                                                               face=face_channels("pained")) for i in range(8)]), cat="item"))
-    throw_wind = k.guard(lean=-14, side=-4, rh=k.hand(R, -0.45, -0.55, 0.3, pole=(0.5, 0.2, -0.6), wrist=-40), lh=k.hand(Lf, 0.6, 0.3, 0.2),
-                         rf=k.foot(R, 0.2), lf=k.foot(Lf, -0.25), face="determined")
-    throw_rel = k.guard(root=(0.04, -0.04, 0), lean=22, rh=k.hand(R, 0.95, 0.1, 0.05, wrist=-4), lh=k.hand(Lf, -0.2, 0.6, 0.3),
-                        rf=k.foot(R, 0.3), lf=k.foot(Lf, -0.25, toe=-15), face="angry", vis="a")
-    add(_seq("item_throw", 7, 72, False, [(0.0, item_ready), (0.35, throw_wind), (0.55, throw_rel), (0.75, side_follow), (1.0, guard)], cat="item"))
-    add(_seq("item_drop", 5, 80, False, _even([item_ready, k.pose(rh=k.hand(R, 0.4, 0.75, 0.2, wrist=20), face="surprised"), stand]), cat="item"))
-    strike("item_swing", side_wind, side_hit, side_follow, start=item_ready, end=item_ready, cat="item")
-    strike("item_swing_up", up_wind, up_hit, up_follow, start=item_ready, end=item_ready, cat="item")
-    strike("item_swing_down", k.pose(lean=-8, rh=k.hand(R, 0.05, -0.95, 0.15, pole=(0.5, 0.2, -0.6), wrist=-34), face="angry"),
-           k.crouch(0.14, lean=26, rh=k.hand(R, 0.9, 0.55, 0.05, wrist=18), face="angry"), k.crouch(0.14, lean=28, rh=k.hand(R, 0.6, 0.85, -0.05, wrist=28)),
-           start=item_ready, end=item_ready, cat="item")
-    strike("item_swing_back", k.guard(lean=10, rh=k.hand(R, 0.6, 0.2, -0.2, wrist=3)),
-           k.guard(lean=-16, side=-6, head=(8, 0), rh=k.hand(R, -0.85, 0.2, 0.35, wrist=40), face="angry"),
-           k.guard(lean=-12, rh=k.hand(R, -0.6, 0.5, 0.35, wrist=40)), start=item_ready, end=item_ready, cat="item")
+    add(_seq("item_throw", 10, 54, False, [(0.0, item_ready), (0.35, g["throw_wind"]), (0.55, g["throw_release"]), (0.75, g["throw_follow"]),
+                                          (1.0, guard)], cat="item"))
+    add(_seq("item_drop", 5, 80, False, _even([item_ready, k.pose(rh=k.hand(R, 0.4, 0.75, 0.2, item=-60), face="surprised"), stand]), cat="item"))
+    for name, (wind, hit, follow) in g["swings"].items():
+        strike(name, wind, hit, follow, start=item_ready, end=item_ready, cat="item", frames=10, ms=50)
 
     # ---- talk, emotes and social -------------------------------------------------------------
     def talk_keys(face: str) -> List[Tuple[float, Pose]]:
@@ -716,13 +799,77 @@ def _solve_frames(clip: Clip, solver: ViewSolver) -> List[dict]:
             if f"{pre}_bend" in f:
                 f[f"{pre}_bend"] = side
     for pre in ("near_hand", "far_hand"):
-        key = f"{pre}_wrist"
-        if any(f.get(key) for f in frames):
+        key, ikey = f"{pre}_wrist", f"{pre}_item"
+        if any(f.get(key) or ikey in f for f in frames):
+            rest = solver.rest_world[solver.chains[pre]["end"]].angle
             for f in frames:
-                f[f"{pre}_pitch"] = _world(pre, f, solver)[0] + f.get(key, 0.0)
+                follow = _world(pre, f, solver)[0]
+                if ikey in f:
+                    # The hand turns so the item points where the pose says,
+                    # as far as a wrist bends.
+                    want = rest + f[ikey] + ITEM_REST
+                    bend = max(-WRIST_LIMIT, min(WRIST_LIMIT, (want - follow + 180.0) % 360.0 - 180.0))
+                    f[f"{pre}_pitch"] = follow + bend
+                else:
+                    f[f"{pre}_pitch"] = follow + f.get(key, 0.0)
         for f in frames:
             f.pop(key, None)
+    for f in frames:
+        if f.get("near_hand_two"):
+            _close_other_hand(f, solver)
+        for k in ("near_hand_item", "far_hand_item", "near_hand_two", "far_hand_two"):
+            f.pop(k, None)
     return frames
+
+
+#: How far a wrist turns a hand off its forearm's line (degrees). The game
+#: holds every item ACROSS the fist (forward and 24 deg up with the arm
+#: hanging), so a gun aimed down an outstretched arm needs the fist turned
+#: about 110 deg; the limit allows it (inside ``pose_audit``'s 115). An item
+#: class held along the forearm (a gun's barrel) would need a per-item rest
+#: angle in the runtime instead.
+WRIST_LIMIT = 112.0
+
+
+def _close_other_hand(frame: dict, solver: ViewSolver) -> None:
+    """A two-handed grip: the far hand closes on the item ``near_hand_two``
+    px along it from the near grip, its fist turned as the near one is."""
+    probe = {k: {"const": v} for k, v in frame.items() if not k.endswith(("_item", "_two"))}
+    solver._probe.data["clips"]["probe"] = {"loop": False, "frames": 1, "duration_ms": 100, "channels": probe}
+    world, _ = solver._probe.solve("probe", 0.0)
+    rest = solver.rest_world
+    near_end, far_end = solver.chains["near_hand"]["end"], solver.chains["far_hand"]["end"]
+    turn = world[near_end].angle - rest[near_end].angle
+    theta = math.radians(frame["near_hand_item"])
+    d = (math.cos(theta), math.sin(theta))
+    g = world["near_grip"].origin
+    chain = solver.chains["far_hand"]
+    shoulder = world[chain["upper"]].origin
+    reach = 0.97 * (solver.bone_len[chain["upper"]] + solver.bone_len[chain["lower"]])
+    # The far hand takes the handle where it comes nearest its shoulder,
+    # behind the near hand (toward the pommel) when it can, a hand apart at
+    # least and no further than the grip allows.
+    span = frame["near_hand_two"]
+    s = (shoulder[0] - g[0]) * d[0] + (shoulder[1] - g[1]) * d[1]
+    s = max(-span, min(span, s))
+    if abs(s) < 0.55 * span:
+        s = -0.55 * span if s <= 0.0 else 0.55 * span
+    target_grip = (g[0] + s * d[0], g[1] + s * d[1])
+    off = (rest["far_grip"].origin[0] - rest[far_end].origin[0], rest["far_grip"].origin[1] - rest[far_end].origin[1])
+    r = math.radians(turn)
+    off = (off[0] * math.cos(r) - off[1] * math.sin(r), off[0] * math.sin(r) + off[1] * math.cos(r))
+    wrist = (target_grip[0] - off[0], target_grip[1] - off[1])
+    gap = math.dist(wrist, shoulder)
+    if gap > reach:
+        wrist = (shoulder[0] + (wrist[0] - shoulder[0]) * reach / gap, shoulder[1] + (wrist[1] - shoulder[1]) * reach / gap)
+    cx, gy = float(solver.frame["center_x"]), float(solver.frame["ground_y"])
+    frame["far_hand_x"] = wrist[0] - cx
+    frame["far_hand_y"] = wrist[1] - gy
+    # The far fist turns with the near one, as far as its own wrist allows
+    # (its forearm read with the hand where it now is).
+    follow = _world("far_hand", frame, solver)[0]
+    want = rest[far_end].angle + turn
+    frame["far_hand_pitch"] = follow + max(-WRIST_LIMIT, min(WRIST_LIMIT, (want - follow + 180.0) % 360.0 - 180.0))
 
 
 def _largest_turn(clip: Clip, frames: List[dict], solver: ViewSolver) -> float:
@@ -783,11 +930,12 @@ def _world(pre: str, frame: dict, solver: ViewSolver) -> Tuple[float, float]:
     return a + rel, a
 
 
-def library_clips(fig: Figure, view: View, doc: dict, names: Optional[Sequence[str]] = None) -> Dict[str, dict]:
-    """Every clip of the library (or ``names``) solved for one view's rig."""
+def library_clips(fig: Figure, view: View, doc: dict, names: Optional[Sequence[str]] = None, *, grip: str = "blade") -> Dict[str, dict]:
+    """Every clip of the library (or ``names``) solved for one view's rig,
+    the item clips posed for ``grip``."""
     from .rig import PX_PER_CM
 
-    lib = build_library(fig)
+    lib = build_library(fig, grip)
     solver = ViewSolver(fig, view, doc, PX_PER_CM)
     return {name: solve_clip(c, solver) for name, c in lib.items() if names is None or name in names}
 
@@ -796,4 +944,4 @@ def publish_views(fig: Figure) -> Dict[str, str]:
     return {name: c.view for name, c in build_library(fig).items()}
 
 
-__all__ = ["Clip", "Kit", "build_library", "library_clips", "pose_at", "publish_views", "solve_clip"]
+__all__ = ["GRIPS", "Clip", "Kit", "build_library", "library_clips", "pose_at", "publish_views", "solve_clip"]

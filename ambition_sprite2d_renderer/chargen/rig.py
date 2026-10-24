@@ -188,17 +188,22 @@ def view_document(spec: CharacterSpec, fig: Figure, dv: "DrawnView", svg_path: P
     return doc
 
 
-def build_rigs(spec: CharacterSpec, svg_path: Path, rig_dir: Path, views: Sequence[View] = VIEWS, *, clips=None) -> Dict[str, Path]:
+def build_rigs(spec: CharacterSpec, svg_path: Path, rig_dir: Path, views: Sequence[View] = VIEWS, *, clips=None,
+               grip: str = "blade") -> Dict[str, Path]:
     """One ``.rig.json`` per view, bound to ``svg_path``, with its clips
     (``clips(fig, view, doc) -> {name: clip}``; the motion library by
-    default)."""
+    default, its item clips posed for the grip class ``grip``)."""
     rig_dir = Path(rig_dir)
     rig_dir.mkdir(parents=True, exist_ok=True)
     fig, drawn = draw_views(spec, views)
     from .motion import publish_views
 
     if clips is None:
-        from .motion import library_clips as clips
+        from functools import partial
+
+        from .motion import library_clips
+
+        clips = partial(library_clips, grip=grip)
     views_of = publish_views(fig)
     out: Dict[str, Path] = {}
     for dv in drawn:
@@ -206,9 +211,21 @@ def build_rigs(spec: CharacterSpec, svg_path: Path, rig_dir: Path, views: Sequen
         doc["clips"] = clips(fig, dv.view, doc)
         # Which view the sprite sheet draws each clip from.
         doc["chargen"]["publish_views"] = {name: views_of.get(name, "side") for name in doc["clips"]}
+        doc["chargen"]["grip"] = grip
         path = rig_dir / f"{doc['name']}.rig.json"
         path.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf8")
         out[dv.view.key] = path
+    return out
+
+
+def find_rigs(directory: Path) -> Dict[str, Path]:
+    """The chargen rigs in ``directory``, by view key (read from each
+    document's ``chargen`` record, not its file name)."""
+    out: Dict[str, Path] = {}
+    for path in sorted(Path(directory).glob("*.rig.json")):
+        view = json.loads(path.read_text(encoding="utf8")).get("chargen", {}).get("view")
+        if view:
+            out[view] = path
     return out
 
 
@@ -219,20 +236,20 @@ class CharacterFiles:
     rigs: Dict[str, Path]
 
 
-def write_character(spec: CharacterSpec, out_dir: Path, *, rigs: bool = True) -> CharacterFiles:
+def write_character(spec: CharacterSpec, out_dir: Path, *, rigs: bool = True, grip: str = "blade") -> CharacterFiles:
     """``<out>/<slug>.chargen.json``, ``<slug>.svg`` and, when ``rigs``, one
-    ``<slug>_<view>.rig.json`` per view."""
+    ``<slug>_<view>.rig.json`` per view (item clips posed for ``grip``)."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     name = slug(spec.name)
     spec_path = spec.save(out_dir / f"{name}.chargen.json")
     svg_path = out_dir / f"{name}.svg"
     svg_path.write_text(character_svg(spec), encoding="utf8")
-    rig_paths = build_rigs(spec, svg_path, out_dir) if rigs else {}
+    rig_paths = build_rigs(spec, svg_path, out_dir, grip=grip) if rigs else {}
     return CharacterFiles(spec_path, svg_path, rig_paths)
 
 
 __all__ = [
-    "CELL_H", "CELL_W", "CharacterFiles", "DESIGN_ID", "PX_PER_CM", "UNIT", "build_rigs", "character_svg", "draw_views",
+    "CELL_H", "CELL_W", "CharacterFiles", "DESIGN_ID", "PX_PER_CM", "UNIT", "build_rigs", "character_svg", "draw_views", "find_rigs",
     "slug", "view_label", "view_svg", "write_character",
 ]

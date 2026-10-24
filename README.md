@@ -798,6 +798,20 @@ talk per emotion); each clip names the view the sheet draws it from (a
 ladder from behind, a chat at three-quarters). Every clip is audit-clean
 (`pose_audit`) in every view; the test suite holds that.
 
+**Held items.** The runtime puts an item's grip on the hand part's pivot
+(the `near_grip` bone) and holds it ACROSS the fist: forward and 24° up with
+the arm hanging, turning with the hand. A grip class (`motion.GRIPS`:
+`blade`, `two_handed`, `gun`, `staff`, `shield`, `tool`, `carried`,
+`thrown`) poses the `item_*` clips its own way: each item key names where
+the item points (`Kit.hand(..., item=DEG)`) and the solver turns the wrist
+so it points there in each view (within `WRIST_LIMIT`); `two_handed` closes
+the far fist on the item's line. Publish with `grip=` (a townsfolk spec's
+`game.grip`). `sheets.held_items_sheet`/`grips_sheet` draw the game's own
+item art (`held_item_art.ron`) on the fist through the clips, as the game
+places it. A sheet's rows are `sheets.TOWNSFOLK_ROWS` by default, or
+`PUBLISH_ROWS` (moving, fighting, holding items; a townsfolk spec's
+`game.rows: full`).
+
 **Faces** (`face.py`): an `Expression` (brows, lids, squint, gaze, pupils,
 smile, open, width, roundness, skew, teeth) per emotion (`neutral`, `happy`,
 `angry`, `afraid`, `sad`, `surprised`, `smug`, `pained`, `determined`) and
@@ -818,9 +832,9 @@ and accessories are separate parts tagged `slot:kind` (`data-rig-feature`),
 layered by slot (`wear.LAYER`); a skirt or coat tail is split per leg so it
 moves with the thigh. `outfit.wardrobe` lists alternates ("hat:top_hat",
 "outer:coat") drawn into the same rig, hidden; a document's `features` turns
-any of them on (`rigdoc.part_visible`). The sheet's rows are
-`sheets.PUBLISH_ROWS` (any library clip may be named) plus the composed
-`turnaround` and `turn_away` turns (through the front and through the back).
+any of them on (`rigdoc.part_visible`). A sheet may name any library clip as a row, and the
+composed `turnaround` and `turn_away` turns (through the front and through
+the back).
 
 Review sheets: `chargen faces SPEC`, `chargen wardrobe SPEC`, `chargen
 species`, and `posed_sheet` for clip strips.
