@@ -82,3 +82,18 @@ def test_the_flat_backdrop_is_opaque_and_leaves_out_the_foreground() -> None:
     assert np.asarray(flat)[:, :, 3].min() == 255
     without = scenes.flat({**layers, scenes.FOREGROUND: None})
     assert (np.asarray(flat) == np.asarray(without)).all()
+
+
+def test_the_space_parts_publish_at_their_sizes_and_the_dark_fades_to_clear() -> None:
+    # The game poses each part by its size in the table, and slides the dark
+    # down with its soft edge as the front: whole above `DARK_TO_V`, clear at
+    # its bottom.
+    from ambition_sprite2d_renderer.backgrounds import sky_parts
+
+    for name in sky_parts.PARTS:
+        assert sky_parts.render(name).size == sky_parts.SIZES[name], name
+    alpha = np.asarray(sky_parts.render("mockingbird_space"))[:, :, 3].astype(float) / 255.0
+    v = sky_parts.SPACE_V
+    whole_row = int((sky_parts.DARK_TO_V - v[0]) / (v[1] - v[0]) * alpha.shape[0]) - 2
+    assert alpha[:whole_row].min() > 0.99, "the dark has a hole above its front"
+    assert alpha[-1].max() < 0.02, "the dark does not fade to clear at its bottom"

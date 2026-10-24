@@ -2,12 +2,17 @@
 
     python -m ambition_sprite2d_renderer.backgrounds draw --out-dir DIR [THEME ...]
     python -m ambition_sprite2d_renderer.backgrounds preview OUT.png [THEME ...]
+    python -m ambition_sprite2d_renderer.backgrounds parts --out-dir DIR [--look LOOK]
+    python -m ambition_sprite2d_renderer.backgrounds parts-preview OUT.png [--looks A,B]
 
 `draw` publishes `<theme>_<layer>.png` for each layer of each scene, and
 `<theme>_flat.png`, the one picture a tier with no parallax draws (`scenes.flat`).
 `preview` writes one picture of what a 16:9 view of the game shows of each
 scene: the camera at the middle of its room, and then at the top and at the
 bottom. It does not run the game.
+`parts` publishes the parts of the Mockingbird's space, `<part>.png`
+(`sky_parts.py`). `parts-preview` writes one labelled sheet with a row for
+each look of them, at three moments of the climb, as the game poses them.
 """
 
 from __future__ import annotations
@@ -18,7 +23,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import scenes
+from . import scenes, sky_parts
 
 # A shared machine: this is the most jobs a publish starts.
 MAX_JOBS = 6
@@ -55,8 +60,29 @@ def main(argv: list[str] | None = None) -> int:
     preview.add_argument("out", type=Path)
     preview.add_argument("themes", nargs="*")
     preview.add_argument("--cameras", default="0", help="camera heights to show, of -1 (top), 0, 1 (bottom)")
+    parts = sub.add_parser("parts", help="publish the parts of the Mockingbird's space")
+    parts.add_argument("--out-dir", type=Path, required=True)
+    parts.add_argument("--look", default=sky_parts.PUBLISHED, choices=sorted(sky_parts.LOOKS))
+    parts_preview = sub.add_parser("parts-preview", help="a labelled sheet of the looks of the space parts")
+    parts_preview.add_argument("out", type=Path)
+    parts_preview.add_argument("--looks", default=",".join(sky_parts.LOOKS))
     args = parser.parse_args(argv)
 
+    if args.command == "parts":
+        args.out_dir.mkdir(parents=True, exist_ok=True)
+        for name in sky_parts.PARTS:
+            path = args.out_dir / f"{name}.png"
+            sky_parts.render(name, args.look).save(path)
+            print(path)
+        return 0
+    if args.command == "parts-preview":
+        backdrop = scenes.view(_render_all(["open_sky"])["open_sky"], (1280, 720))
+        moments = [("climbing (ascent 0.5)", 0.5, None), ("nearly in space (0.85)", 0.85, None), ("in space, moon on its lane", 1.0, 0.42)]
+        sheet = sky_parts.candidate_sheet(args.looks.split(","), backdrop, moments)
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        sheet.save(args.out)
+        print(args.out)
+        return 0
     themes = _themes(args.themes)
     rendered = _render_all(themes)
     if args.command == "draw":
