@@ -417,6 +417,16 @@ def tavern_room(c, k):
     c.put(c.mask(box(x0, g - 70, x1, g - 64)), PLANK_DARK)
     for cx in (220, 520):
         k.window(cx, 110, 70, 80, "rect", lit=0.0, tag=("tav_in_w", cx))
+    # The door out (the room's door zone, x 40..88, 96 tall on the floor):
+    # a planked cabin door in a frame, with a lit porthole.
+    c.put(c.mask(box(34, g - 102, 94, g)), TIMBER)
+    door = c.mask(box(40, g - 96, 88, g))
+    c.put(door, PLANK)
+    c.put(c.mask(lambda p: [p.rect(x, g - 96, x + 0.8, g) for x in np.arange(40 + 8, 88, 8)]) * door, PLANK_DARK, 0.9)
+    c.put(c.mask(lambda p: (p.rect(40, g - 80, 88, g - 75), p.rect(40, g - 24, 88, g - 19))), PLANK_DARK)
+    c.put(c.mask(lambda p: p.ring(64, g - 56, 8, 2.4)), PAL["brass"])
+    k.glass(c.mask(lambda p: p.ellipse(64, g - 56, 6.6)), 0.5, g - 63, g - 49, "tavern_door_port")
+    c.put(c.mask(lambda p: p.ellipse(82, g - 44, 2.2)), PAL["brass"])
     # The wheel.
     c.put(c.mask(lambda p: (p.ring(380, 140, 26, 4), [p.line([(380, 140), (380 + 36 * math.cos(a), 140 + 36 * math.sin(a))], 2.4) for a in np.linspace(0, math.tau, 9)[:-1]], p.ellipse(380, 140, 6))), PLANK_LIGHT)
     # The back bar: shelves of bottles.
