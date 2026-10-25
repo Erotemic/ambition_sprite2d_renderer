@@ -9,11 +9,12 @@ document's ``features`` hide or show it, ``rigdoc.part_visible``).
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from .body import Figure
-from .geometry import Loft, Point, Vec3, View, add3, capsule, capsule_band, column_bands, loft_region, scale3, sub3, tube, wrap180
+from .geometry import Loft, Point, Vec3, View, add3, capsule, capsule_band, column_bands, cross3, ellipse3, loft_region, norm3, scale3, sub3, tube, wrap180
 from .svgout import FINE, INK, OUTLINE, Canvas, El, Paint, luminance, mix, shade
 
 Margin = Callable[[float, float], float]
@@ -127,6 +128,29 @@ def surface_line(ctx: Ctx, loft: Loft, pts: Sequence[Tuple[float, float]], out: 
     return [r for r in runs if len(r) >= 2]
 
 
+def insignia(ctx: Ctx, pt: Paint, c: Vec3, n: Vec3, r: float, thresh: float = 0.15) -> None:
+    """The badge of the Faction of Steel at ``c`` on a surface of normal
+    ``n``: a white five-point star on an olive roundel in a brass rim, drawn
+    in the plane of the surface (an invented emblem). Not drawn when the
+    surface faces away from the camera."""
+    from .spec import UNIFORM
+
+    n = norm3(n)
+    if n[2] * ctx.view.c - n[0] * ctx.view.s < thresh:
+        return
+    u = norm3(cross3((0.0, -1.0, 0.0), n))
+    up = norm3(cross3(n, u))
+    rim = [ctx.p(q) for q in ellipse3(c, u, up, r, r, 14)]
+    pt.region([rim], UNIFORM["brass"], outline=FINE * 0.7)
+    pt.flat([[ctx.p(q) for q in ellipse3(add3(c, scale3(n, 0.05)), u, up, 0.74 * r, 0.74 * r, 14)]], UNIFORM["dark_olive"])
+    star = []
+    for i in range(10):
+        a = math.pi / 2 + i * math.pi / 5
+        rr = (0.62 if i % 2 == 0 else 0.25) * r
+        star.append(ctx.p(add3(c, add3(scale3(n, 0.08), add3(scale3(u, rr * math.cos(a)), scale3(up, rr * math.sin(a)))))))
+    pt.flat([star], "#f4f1e6")
+
+
 def dark_of(c: str) -> str:
     """Brows and lashes: a dark version of the hair, never pale."""
     d = shade(c, 0.45)
@@ -183,13 +207,16 @@ def outfit_plan(fig: Figure) -> Dict[str, object]:
         hem = knee_y + (0.06 * T if o.outer_length == "knee" else 0.5 * (-0.075 * fig.H - knee_y))
     if outer == "robe":
         hem = -0.06 * fig.H
+    if outer == "field_jacket":
+        # A field jacket always ends at the hips, on the torso.
+        hem = fig.y_hipw + 0.08 * T
     plan["outer_hem"] = hem
-    plan["outer_t"] = {"vest": 0.6, "jacket": 0.95, "coat": 1.15, "robe": 1.1, "apron": 0.75, "cardigan": 0.8}.get(outer, 0.0)
+    plan["outer_t"] = {"vest": 0.6, "jacket": 0.95, "coat": 1.15, "robe": 1.1, "apron": 0.75, "cardigan": 0.8, "field_jacket": 1.0}.get(outer, 0.0)
     plan["bottom_hem"] = {"skirt": knee_y + 0.04 * T, "long_skirt": -0.085 * fig.H}.get(o.bottom)
     return plan
 
 
 __all__ = [
-    "Ctx", "Margin", "Part", "SIDES", "all_of", "bands", "between", "dark_of", "half_of", "make_ctx", "outfit_plan", "segment",
+    "Ctx", "Margin", "Part", "SIDES", "all_of", "bands", "between", "dark_of", "half_of", "insignia", "make_ctx", "outfit_plan", "segment",
     "shaded_region", "surface_line", "tube3", "visible",
 ]

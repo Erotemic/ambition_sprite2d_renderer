@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, evil, foregrounds, interiors, math_town, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
+from . import arenas, evil, foregrounds, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from .artkit import Art
 from .parts import LAYER_BLUR, LAYER_SIZE
 
@@ -73,6 +73,7 @@ SCENES: dict[str, Scene] = {
     "castle_godwin": evil.castle_godwin,
     "castle_godwin_lab": evil.castle_godwin_lab,
     "castle_godwin_throne": evil.castle_godwin_throne,
+    "military_tower": military_tower.military_tower,
     "pirate_port": pirate_port.pirate_port,
     "ninja_village": ninja_village.ninja_village,
     "orbital": orbital.orbital,

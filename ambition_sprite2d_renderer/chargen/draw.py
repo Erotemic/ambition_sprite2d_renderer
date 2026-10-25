@@ -219,6 +219,8 @@ def _component_parts(ctx: Ctx, zmap: Dict[str, float], slots) -> List[Part]:
         out += headdraw.hair_parts(ctx, fig.spec.hair.style, f"hair:{fig.spec.hair.style}")
     if "hat" in slots and o.hat != "none":
         out += headdraw.hat_parts(ctx, o.hat, o.hat_color, f"hat:{o.hat}")
+    if "acc" in slots:
+        out += wear.accessory_parts(ctx, zmap) + headdraw.glasses_parts(ctx)
     return out
 
 
@@ -273,6 +275,9 @@ def _with_slot(spec, slot: str, kind: str):
         o.shoes = kind
     elif slot == "hair":
         alt.hair.style = kind
+    elif slot == "acc":
+        # An accessory alternate is drawn alone: it is added, not swapped.
+        o.accessories = [kind]
     o.wardrobe = []
     return alt
 

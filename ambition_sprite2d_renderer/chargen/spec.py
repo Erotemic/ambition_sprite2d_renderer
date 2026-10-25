@@ -42,16 +42,19 @@ FACIAL_HAIR = ("none", "stubble", "mustache", "goatee", "full_beard", "chops")
 TOPS = ("tshirt", "shirt", "tunic", "blouse", "sweater")
 SLEEVES = ("short", "long", "rolled")
 NECKLINES = ("crew", "v", "collar", "scoop")
-OUTERS = ("none", "vest", "jacket", "coat", "robe", "apron", "cardigan")
+OUTERS = ("none", "vest", "jacket", "coat", "robe", "apron", "cardigan", "field_jacket")
 OUTER_LENGTHS = ("hip", "knee", "ankle")
 BOTTOMS = ("trousers", "shorts", "skirt", "long_skirt")
 SHOES = ("shoes", "boots")
-HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", "bowler")
-ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders")
+#: ``helmet``, ``beret``, ``garrison_cap``, ``peaked_cap`` and ``campaign`` (a
+#: drill instructor's brimmed hat with a pinched crown) are military.
+HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", "bowler", "helmet", "beret", "garrison_cap", "peaked_cap",
+        "campaign")
+ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders", "webbing", "dog_tags")
 SPECIES = ("human", "horse", "dog", "cat", "bird", "sea_lion")
 EAR_STYLES = ("default", "floppy", "pointed")
 #: The slots a wardrobe item swaps in, and the kinds each slot takes.
-SLOTS = {"hat": HATS, "outer": OUTERS, "top": TOPS, "legwear": BOTTOMS, "footwear": SHOES, "hair": HAIR_STYLES}
+SLOTS = {"hat": HATS, "outer": OUTERS, "top": TOPS, "legwear": BOTTOMS, "footwear": SHOES, "hair": HAIR_STYLES, "acc": ACCESSORIES}
 
 # ---- palettes ----------------------------------------------------------------------
 
@@ -68,6 +71,10 @@ CLOTH = (
     "#b0453a", "#2e5e5a", "#c99a3c", "#5a5f66", "#24304a", "#9a7b5a", "#7d8f9e", "#8e5a78", "#3d4a2c", "#d8cfb8",
 )
 LEATHER = ("#4a3123", "#5e3b26", "#3a2a22", "#2c2522", "#6b4a33", "#7a5a3a")
+#: Uniform cloth and metal of the Faction of Steel. ``webbing`` is the
+#: canvas of a duty belt and its straps; ``brass`` is buttons and badges.
+UNIFORM = {"olive_drab": "#5b6136", "khaki": "#b7a77a", "dark_olive": "#3d4a2c", "field_grey": "#6b6e60", "webbing": "#958b5c",
+           "brass": "#b8913e"}
 
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 

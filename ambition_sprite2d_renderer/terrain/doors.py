@@ -171,6 +171,44 @@ def stone(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def blast(tile: Tile, c: dict) -> np.ndarray:
+    """A steel blast door of the military tower: one heavy leaf on three
+    hinges, a raised panel, two ribs across it, a narrow vision slot, a
+    lever, the star of the faction stencilled on it, and warning stripes
+    (`c["warn"]`, else the accent) at its foot."""
+    leaf = _frame(tile, c)
+    # Rivets round the frame.
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.6) for x in (2.4, W - 2.4) for y in np.arange(6.0, H - STEP - 2.0, 8.0)]), c["dark"], 0.6)
+    # The raised panel: light on its top and left edge, dark on the others.
+    x0, y0, x1, y1 = F + 4.0, F + 4.0, W - F - 4.0, H - STEP - 13.0
+    panel = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0, x1, y1))
+    tile.put(panel, c["leaf_light"], 0.18)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0, y0, x1, y0 + 0.8), _box(p, dx, dy, x0, y0, x0 + 0.8, y1))), c["leaf_light"], 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0, y1 - 0.8, x1, y1), _box(p, dx, dy, x1 - 0.8, y0, x1, y1))), c["dark"], 0.55)
+    for y in (46.0, 86.0):
+        tile.put(leaf * (np.abs(tile.y - y) < 1.8), c["frame"])
+        tile.put(leaf * (np.abs(tile.y - y + 1.5) < 0.35), c["frame_light"], 0.6)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, F + 3.0 + k * 6.2, y, 0.65) for k in range(9)]) * leaf, c["leaf_light"], 0.7)
+    _window(tile, c, 21.0, 17.0, W - 21.0, 23.0)
+    # The star, stencilled: a gap cuts each point from the middle.
+    cx, cy, r = W * 0.5, 66.0, 11.0
+    corners = [(cx + (r if k % 2 == 0 else r * 0.40) * np.cos(np.radians(-90 + k * 36)), cy + (r if k % 2 == 0 else r * 0.40) * np.sin(np.radians(-90 + k * 36))) for k in range(10)]
+    inner = corners[1::2]
+    star = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, corners))
+    gaps = tile.mask(lambda p, dx, dy: _line(p, dx, dy, inner + inner[:1], 0.7))
+    tile.put(star * (1.0 - gaps), _mix(c["leaf"], (232, 228, 212), 0.72))
+    # Three hinges on the left jamb and a lever on the right.
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, F - 2.0, y, F + 2.6, y + 7.0) for y in (16.0, 58.0, 98.0)]), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, F - 2.0, y, F + 2.6, y + 0.8) for y in (16.0, 58.0, 98.0)]), c["frame_light"], 0.7)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, W - F - 6.5, 56.0, W - F - 3.5, 76.0), _dot(p, dx, dy, W - F - 5.0, 58.0, 2.2))), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, W - F - 6.5, 56.0, W - F - 5.7, 76.0)), c["frame_light"], 0.6)
+    warn = c.get("warn", c["accent"])
+    stripes = tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(F + k * 8.0, H - STEP), (F + k * 8.0 + 4.0, H - STEP), (F + k * 8.0 + 9.0, H - STEP - 8.0), (F + k * 8.0 + 5.0, H - STEP - 8.0)]) for k in range(-1, 8)])
+    tile.put(leaf * (tile.y > H - STEP - 8.0), _mix((214, 196, 140), c["dark"], 0.2), 0.9)
+    tile.put(stripes * leaf * (tile.y > H - STEP - 8.0), warn, 0.9)
+    return leaf
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -183,6 +221,7 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     shoji: (SLIDE, True),
     cabin: (SWING, False),
     stone: (SWING, True),
+    blast: (SWING, False),
 }
 
 
@@ -233,6 +272,9 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "castle_godwin": (iron, _colours((82, 92, 112), (40, 44, 56), (10, 10, 16), (200, 40, 32), (255, 132, 48))),
     "castle_godwin_lab": (iron, _colours((70, 88, 86), (40, 52, 50), (8, 12, 10), (120, 255, 150), (190, 230, 255))),
     "castle_godwin_throne": (iron, _colours((78, 70, 84), (44, 36, 48), (10, 8, 12), (200, 40, 32), (255, 132, 48))),
+    # The military tower: an olive blast door in a gunmetal frame, a brass
+    # step, the lamp of the corridor behind its slot.
+    "military_tower": (blast, {**_colours((70, 78, 84), (84, 90, 52), (20, 22, 20), (176, 150, 84), (255, 200, 132)), "warn": (168, 56, 44)}),
     "skybridge": (stone, _colours((150, 164, 200), (96, 128, 190), (60, 76, 120), (255, 214, 110), (255, 246, 200))),
     "open_sky": (plank, _colours((176, 164, 150), (150, 112, 74), (84, 70, 70), (255, 214, 110), (255, 246, 200))),
     "eclipse": (stone, _colours((22, 26, 70), (44, 50, 112), (8, 10, 30), (172, 112, 255), (110, 240, 210))),

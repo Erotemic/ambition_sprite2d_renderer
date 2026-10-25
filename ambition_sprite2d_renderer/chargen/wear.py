@@ -33,7 +33,7 @@ from .drawkit import (
     tube3,
     visible,
 )
-from .geometry import Loft, RingKey, add3, hull, lerp, loft_region, smoothstep, wrap180
+from .geometry import Loft, RingKey, Vec3, add3, hull, lerp, loft_region, smoothstep, wrap180
 from .svgout import FINE, INK, Paint, light, shade
 
 #: How far above its segment each slot paints.
@@ -322,6 +322,8 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         for run in surface_line(ctx, shell, line, out=0.1):
             pt.line(run, INK, FINE * 1.3)
         pt.region(loft_region(ctx.view, shell.shell(0.3), fig.y_waist - 0.04 * T, fig.y_waist + 0.04 * T), o.accent_color, outline=FINE)
+    elif o.outer == "field_jacket":
+        _field_jacket(ctx, pt, shell, torso_bottom)
     else:
         half, lapel = {"vest": (6.0, 30.0), "jacket": (9.0, 22.0), "coat": (10.0, 24.0), "cardigan": (11.0, 16.0)}[o.outer]
         if not o.outer_open and o.outer != "vest":
@@ -342,9 +344,9 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
             hw = 6.0 if o.outer == "vest" else 11.0
             lower_margin = lambda a, y, _w=hw: (abs(wrap180(a)) - _w) * 0.2  # noqa: E731
     out.append(Part("torso__outer", "torso", 33.0, pt.els, "Outer", feature=feature))
-    if o.outer in ("jacket", "coat", "robe", "cardigan"):
+    if o.outer in ("jacket", "coat", "robe", "cardigan", "field_jacket"):
         out += sleeve_parts(ctx, "outer", feature, 0.97 if o.outer == "robe" else 1.0, 1.0 + (0.9 if o.outer == "robe" else 0.0), col, zmap,
-                            cuff=o.outer in ("coat", "jacket"), wide=2.0 if o.outer == "robe" else 0.0)
+                            cuff=o.outer in ("coat", "jacket", "field_jacket"), wide=2.0 if o.outer == "robe" else 0.0)
     if hem > torso_bottom + 0.02 * T:
         flare = {"robe": 1.3, "coat": 1.2, "apron": 1.0, "cardigan": 1.1, "jacket": 1.05, "vest": 1.0}.get(o.outer, 1.1)
         lo = skirt_loft(fig, fig.y_waist, hem, t + 0.6, flare)
@@ -359,6 +361,77 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
                           solid=o.outer != "apron")
         out += drape_parts(ctx, "outer", feature, zmap)
     return out
+
+
+def _box(alpha: float, half: float, y0: float, y1: float):
+    """Covered inside a box on a loft: ``half`` degrees each side of
+    ``alpha``, from ``y0`` down to ``y1``."""
+    return lambda a, y: min((half - abs(wrap180(a - alpha))) * 0.2, y - y0, y1 - y)
+
+
+def _field_jacket(ctx: Ctx, pt: Paint, shell: Loft, bottom: float) -> None:
+    """A military field jacket: buttoned up to a small collar (or open), a
+    cloth belt at the waist, four flap pockets and a strap on each
+    shoulder. Buttons are the accent colour (brass on a uniform)."""
+    fig, o = ctx.fig, ctx.fig.spec.outfit
+    T = fig.T
+    col = o.outer_color
+    button = o.accent_color
+    half, lapel = (9.0, 18.0) if o.outer_open else (0.0, 9.0)
+    front = opening(fig, half, lapel)
+    shaded_region(ctx, pt, shell, fig.torso.top, bottom, col, front, lit=True)
+    _collar(ctx, pt, shell, col)
+    if o.outer_open:
+        for sgn in (-1.0, 1.0):
+            pts = [(sgn * (half + lapel * (1.0 - smoothstep(fig.y_nb, fig.y_chest + 0.12 * T, y)) + 0.5), y)
+                   for y in (lerp(fig.y_nb + 0.5, bottom - 0.5, i / 8.0) for i in range(9))]
+            for run in surface_line(ctx, shell, pts, out=0.15):
+                pt.line(run, INK, FINE)
+    else:
+        for run in surface_line(ctx, shell, [(2.0, lerp(fig.y_nb + 2.0, bottom - 0.3, i / 6.0)) for i in range(7)], out=0.12, thresh=0.2):
+            pt.line(run, shade(col, 0.45), FINE)
+        _buttons(ctx, pt, shell, [5.0], fig.y_chest - 0.02 * T, bottom - 0.08 * T, 5, button)
+    # Four flap pockets: two on the chest, two below the belt.
+    pocket = shell.shell(0.12)
+    for sgn in (-1.0, 1.0):
+        for c, w, y0, y1 in ((sgn * 33.0, 13.0, fig.y_chest - 0.03 * T, fig.y_chest + 0.13 * T),
+                             (sgn * 36.0, 15.0, fig.y_waist + 0.07 * T, bottom - 0.04 * T)):
+            if not visible(ctx, c, 0.05):
+                continue
+            box = all_of(_box(c, w, y0, y1), front)
+            pt.region(loft_region(ctx.view, pocket, y0, y1, box), light(col, 0.04), outline=FINE * 0.8)
+            fy1 = y0 + 0.05 * T
+            pt.region(loft_region(ctx.view, pocket.shell(0.12), y0 - 0.005 * T, fy1, all_of(_box(c, w + 1.5, y0 - 0.005 * T, fy1), front)),
+                      shade(col, 0.1), outline=FINE * 0.8)
+            if visible(ctx, c, 0.3) and front(c, fy1) > 0.0:
+                pt.dot(ctx.p(pocket.point(c, fy1 - 0.012 * T, 0.35)), 0.42, INK)
+                pt.dot(ctx.p(pocket.point(c, fy1 - 0.012 * T, 0.4)), 0.3, button)
+    # The cloth belt and its buckle.
+    belt = shell.shell(0.3)
+    pt.region(loft_region(ctx.view, belt, fig.y_waist - 0.03 * T, fig.y_waist + 0.03 * T), shade(col, 0.18), outline=FINE * 0.8)
+    if visible(ctx, 0.0, 0.3):
+        cb = belt.point(0.0, fig.y_waist, 0.2)
+        q = [ctx.p(add3(cb, d)) for d in ((-1.3, -1.1, 0), (1.3, -1.1, 0), (1.3, 1.1, 0), (-1.3, 1.1, 0))]
+        pt.region([q], button, outline=FINE * 0.7)
+    _shoulder_straps(ctx, pt, shell, col, button)
+
+
+def _shoulder_straps(ctx: Ctx, pt: Paint, shell: Loft, col: str, button: str) -> None:
+    """A strap (an epaulette) along the top of each shoulder, from the
+    collar to the shoulder seam, with a button at the collar end: a thin
+    slab of 3D points on the shoulder's top."""
+    fig = ctx.fig
+    k = fig.k
+    y_end = fig.y_sh + 2.4 * k
+    for _depth, side, sgn in SIDES:
+        ys = [lerp(fig.y_nb + 0.4, y_end, i / 4.0) for i in range(5)]
+        rail = [shell.point(sgn * 90.0, y, 0.0) for y in ys]
+        for a, b in zip(rail, rail[1:]):
+            pts3 = [add3(q, (0.0, dy, dz)) for q in (a, b) for dy in (-0.15, -0.75) for dz in (-1.6 * k, 1.6 * k)]
+            pt.region([hull(ctx.p(q) for q in pts3)], light(col, 0.05), outline=FINE * 0.7)
+        btn = add3(rail[1], (0.0, -0.8, 0.0))
+        pt.dot(ctx.p(btn), 0.42, INK)
+        pt.dot(ctx.p(btn), 0.3, button)
 
 
 # ---- legwear -------------------------------------------------------------------------------------
@@ -529,7 +602,77 @@ def accessory_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         shaded_region(ctx, pt, ends.shell(0.3), fig.y_nb, fig.y_chest + 0.02 * T, shade(col, 0.1), lambda a, y: (6.0 - abs(wrap180(a) + 7.0)) * 0.3)
         shaded_region(ctx, pt, ring, ring.top, ring.bottom, col)
         out.append(Part("torso__scarf", "torso", 34.0, pt.els, "Scarf", feature="acc:scarf"))
+    if "webbing" in o.accessories:
+        out += _webbing(ctx, zmap)
+    if "dog_tags" in o.accessories:
+        pt = ctx.new()
+        shell = fig.torso.shell(0.35)
+        pts = [(a, fig.y_nb + 0.4 + 0.11 * T * math.cos(math.radians(a * 1.4)) ** 2) for a in range(-60, 61, 6)]
+        for run in surface_line(ctx, shell, pts, out=0.25):
+            pt.line(run, "#a9aaa5", 0.28)
+        if visible(ctx, 0.0, 0.3):
+            for dx, dy in ((-0.5, 0.0), (0.6, 0.4)):
+                c = shell.point(0.0, fig.y_nb + 0.4 + 0.12 * T + dy, 0.45)
+                q = [ctx.p(add3(c, (dx + ex, ey, 0.0))) for ex, ey in ((-0.8, -1.2), (0.8, -1.2), (0.8, 1.2), (-0.8, 1.2))]
+                pt.region([q], "#c9ccc8", outline=FINE * 0.6)
+        if pt.els:
+            out.append(Part("torso__dog_tags", "torso", zmap["torso"] + LAYER["top"] + 0.08, pt.els, "Dog tags", feature="acc:dog_tags"))
     return out
+
+
+def _webbing(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
+    """A duty belt of canvas webbing with a brass buckle, four pouches on
+    it, and a strap over each shoulder from the belt in front to the belt
+    behind. It is worn over everything on the torso."""
+    from .spec import UNIFORM
+
+    fig, o, plan = ctx.fig, ctx.fig.spec.outfit, ctx.plan
+    T, k = fig.T, fig.k
+    web = UNIFORM["webbing"]
+    t = (plan["outer_t"] if o.outer != "none" else 0.45) + 0.7
+    shell = fig.torso.shell(t)
+    y = fig.y_waist + 0.015 * T
+    w = 0.04 * T
+    pt = ctx.new()
+    # The shoulder straps first: the belt and the pouches go over their ends.
+    for sgn in (-1.0, 1.0):
+        path = [(sgn * 26.0, y), (sgn * 27.0, fig.y_under), (sgn * 30.0, fig.y_chest), (sgn * 40.0, fig.y_sh), (sgn * 62.0, fig.y_nb + 1.2),
+                (sgn * 90.0, fig.y_nb + 0.6), (sgn * 120.0, fig.y_nb + 1.2), (sgn * 148.0, fig.y_sh), (sgn * 154.0, fig.y_chest),
+                (sgn * 156.0, y)]
+        dense = [(lerp(a0, a1, i / 4.0), lerp(y0, y1, i / 4.0)) for (a0, y0), (a1, y1) in zip(path, path[1:]) for i in range(4)] + [path[-1]]
+        for run in surface_line(ctx, shell, dense, out=0.2, thresh=0.0):
+            pt.line(run, INK, 1.8, smooth=True)
+            pt.line(run, web, 1.2, smooth=True)
+        if visible(ctx, sgn * 27.0, 0.2):
+            c = shell.point(sgn * 27.0, fig.y_under + 0.02 * T, 0.5)
+            q = [ctx.p(add3(c, d)) for d in ((-0.9, -0.7, 0), (0.9, -0.7, 0), (0.9, 0.7, 0), (-0.9, 0.7, 0))]
+            pt.region([q], UNIFORM["brass"], outline=FINE * 0.6)
+    pt.region(loft_region(ctx.view, shell, y - w, y + w), web, outline=FINE)
+    if visible(ctx, 0.0, 0.3):
+        c = shell.point(0.0, y, 0.3)
+        q = [ctx.p(add3(c, d)) for d in ((-1.6, -1.3, 0), (1.6, -1.3, 0), (1.6, 1.3, 0), (-1.6, 1.3, 0))]
+        pt.region([q], UNIFORM["brass"], outline=FINE * 0.8)
+        pt.flat([[ctx.p(add3(c, d)) for d in ((-0.8, -0.6, 0.1), (0.8, -0.6, 0.1), (0.8, 0.6, 0.1), (-0.8, 0.6, 0.1))]], shade(UNIFORM["brass"], 0.35))
+    # Pouches: boxes of 3D points hung on the belt, each with a flap.
+    for a in (-48.0, 48.0, -100.0, 100.0):
+        if not visible(ctx, a, -0.3):
+            continue
+        ra = math.radians(a)
+        n, tg = (math.sin(ra), 0.0, math.cos(ra)), (math.cos(ra), 0.0, -math.sin(ra))
+        base = shell.point(a, y, 0.0)
+        hw, d = 3.0 * k, 3.2 * k
+        top, bot = -0.03 * T, 0.075 * T
+
+        def corner(u: float, v: float, e: float, _b=base, _n=n, _t=tg) -> Vec3:
+            return add3(_b, (_t[0] * u + _n[0] * e, v, _t[2] * u + _n[2] * e))
+
+        box = [corner(u, v, e) for u in (-hw, hw) for v in (top, bot) for e in (0.0, d)]
+        pt.region([hull(ctx.p(q) for q in box)], shade(web, 0.06), outline=FINE)
+        flap = [corner(u, v, e) for u in (-hw * 1.04, hw * 1.04) for v in (top - 0.2, top + 0.38 * (bot - top)) for e in (0.0, d + 0.25)]
+        pt.region([hull(ctx.p(q) for q in flap)], shade(web, 0.2), outline=FINE * 0.8)
+        if visible(ctx, a, 0.2):
+            pt.dot(ctx.p(corner(0.0, top + 0.3 * (bot - top), d + 0.3)), 0.32, UNIFORM["brass"])
+    return [Part("torso__webbing", "torso", 33.6, pt.els, "Webbing", feature="acc:webbing")] if pt.els else []
 
 
 __all__ = ["accessory_parts", "drape_color", "foot_points", "footwear_parts", "legwear_parts", "outer_parts", "skirt_loft", "top_parts"]

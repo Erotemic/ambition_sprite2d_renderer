@@ -18,7 +18,7 @@ import math
 from typing import Callable, Dict, List, Optional, Tuple
 
 from .body import Figure
-from .drawkit import SIDES, Ctx, Part, all_of, dark_of, shaded_region, surface_line, visible
+from .drawkit import SIDES, Ctx, Part, all_of, dark_of, insignia, shaded_region, surface_line, visible
 from .face import EMOTIONS, FACES, TALKING, VISEMES, Expression, brows_part, eyes_part, mouth_part, with_viseme
 from .geometry import Loft, Point, RingKey, Vec3, add3, capsule, capsule_band, clip_convex, column_bands, ellipse3, hull, interp_knots, lerp, loft_region, norm3, scale3, smoothstep, sub3, wrap180
 from .svgout import FINE, INK, Paint, light, luminance, mix, shade
@@ -917,7 +917,10 @@ def glasses_parts(ctx: Ctx) -> List[Part]:
 # ---- hats -----------------------------------------------------------------------------------------
 
 _BANDS = {"cap": (0.25, 0.36), "flat_cap": (0.26, 0.33), "beanie": (0.27, 0.34), "headscarf": (0.24, 0.5), "top_hat": (0.24, 0.3),
-          "bowler": (0.24, 0.3), "brimmed": (0.23, 0.29)}
+          "bowler": (0.24, 0.3), "brimmed": (0.23, 0.29), "campaign": (0.23, 0.29), "helmet": (0.22, 0.46), "beret": (0.2, 0.3),
+          "garrison_cap": (0.17, 0.24), "peaked_cap": (0.24, 0.28)}
+#: The military hats: drawn by ``_military_hat``.
+_MILITARY = ("helmet", "beret", "garrison_cap", "peaked_cap")
 
 
 def hat_parts(ctx: Ctx, hat: str, color: str, feature: str) -> List[Part]:
@@ -973,6 +976,8 @@ def hat_parts(ctx: Ctx, hat: str, color: str, feature: str) -> List[Part]:
             pt.dot(ctx.p(shell.point(0.0, shell.top + 0.01, 0.0)), 0.5, INK)
         if brim_poly and brim_front:
             pt.region([brim_poly], shade(col, 0.08), smooth=True)
+    elif hat in _MILITARY:
+        _military_hat(ctx, pt, hat, col, t, band, lift)
     elif hat == "headscarf":
         shell = sk.shell(t + 0.3)
         knots = [(0, 0.22), (40, 0.25), (58, 0.4), (70, 0.95), (180, 1.0)]
@@ -986,7 +991,7 @@ def hat_parts(ctx: Ctx, hat: str, color: str, feature: str) -> List[Part]:
         yb = fig.fy(band(0.0) + 0.02)
         sec = sk.section(yb)
         rx, rzf, rzb = sec.rx + t + 0.4, sec.rzf + t + 0.4, sec.rzb + t + 0.4
-        brim_w = {"brimmed": 0.34, "top_hat": 0.14, "bowler": 0.1}[hat] * hh
+        brim_w = {"brimmed": 0.34, "top_hat": 0.14, "bowler": 0.1, "campaign": 0.4}[hat] * hh
         rim = []
         for i in range(24):
             a = 2 * math.pi * i / 24
@@ -995,20 +1000,191 @@ def hat_parts(ctx: Ctx, hat: str, color: str, feature: str) -> List[Part]:
             rim.append(((rx + brim_w) * math.sin(a), yb - 0.35, sec.cz + rz * math.cos(a)))
         brim_poly = hull(ctx.p(q) for q in rim)
         # A head that rises above the crown (a sea lion's crest) raises the crown of the hat.
-        height = {"brimmed": 0.36, "top_hat": 0.62, "bowler": 0.36}[hat] * hh + max(0.0, fig.crown - sk.top)
-        if hat == "top_hat":
+        height = {"brimmed": 0.36, "top_hat": 0.62, "bowler": 0.36, "campaign": 0.44}[hat] * hh + max(0.0, fig.crown - sk.top)
+        bumps = []
+        if hat == "campaign":
+            # The crown rises to a peak with four dents (a pinch) round it.
+            keys = [RingKey(yb, rx, rzf, rzb, 0.0, sec.cz, 2.0), RingKey(yb - height * 0.55, rx * 0.97, rzf * 0.97, rzb * 0.97, 0.0, sec.cz, 2.0),
+                    RingKey(yb - height * 0.88, rx * 0.62, rzf * 0.62, rzb * 0.62, 0.0, sec.cz, 2.0),
+                    RingKey(yb - height, 0.0, 0.0, 0.0, 0.0, sec.cz, 2.0)]
+
+            def pinch(a: float, y: float, _y0=yb - 0.35 * height, _y1=yb - 0.9 * height, _d=0.075 * hh) -> float:
+                return -_d * smoothstep(_y0, _y1, y) * (0.5 + 0.5 * math.cos(math.radians(4.0 * (a - 45.0)))) ** 2
+
+            bumps.append(pinch)
+        elif hat == "top_hat":
             keys = [RingKey(yb, rx, rzf, rzb, 0.0, sec.cz, 2.2), RingKey(yb - height, rx * 1.05, rzf * 1.05, rzb * 1.05, 0.0, sec.cz, 2.2),
                     RingKey(yb - height - 0.01, 0.0, 0.0, 0.0, 0.0, sec.cz, 2.2)]
         else:
             keys = [RingKey(yb, rx, rzf, rzb, 0.0, sec.cz, 2.0), RingKey(yb - height * 0.6, rx * 0.96, rzf * 0.96, rzb * 0.96, 0.0, sec.cz, 2.0),
                     RingKey(yb - height * 0.9, rx * 0.72, rzf * 0.72, rzb * 0.72, 0.0, sec.cz, 2.0), RingKey(yb - height, 0.0, 0.0, 0.0, 0.0, sec.cz, 2.0)]
-        crown = Loft(keys[::-1] if False else keys)
+        crown = Loft(keys, bumps)
         pt.region([brim_poly], col, smooth=True)
         pt.flat([brim_poly], shade(col, 0.08), smooth=True)
         shaded_region(ctx, pt, crown, crown.top, crown.bottom, col, lit=True, shade_cap=0.12 * hh)
-        ribbon = fig.spec.outfit.accent_color if hat != "top_hat" else shade(col, 0.4)
+        ribbon = {"top_hat": shade(col, 0.4), "campaign": shade(col, 0.45)}.get(hat, fig.spec.outfit.accent_color)
         pt.flat(loft_region(ctx.view, crown, yb - 0.11 * hh, yb - 0.01), ribbon)
+        if hat == "campaign":
+            # The pinch's four dents: a crease down the middle of each.
+            for a0 in (45.0, 135.0, -45.0, -135.0):
+                for run in surface_line(ctx, crown, [(a0, lerp(yb - 0.5 * height, yb - 0.86 * height, i / 4.0)) for i in range(5)], out=-0.03 * hh,
+                                        thresh=0.2):
+                    pt.line(run, shade(col, 0.3), FINE)
     return [Part(f"hat_{hat}", "head", 58.0, pt.els, f"Hat - {hat}", feature=feature)] if pt.els else []
+
+
+def _cover(sk: Loft, y: float, t: float, rx: float, rzf: float, rzb: float, cl: float, cz: float, sq: float) -> RingKey:
+    """A ring of a hat at ``y``: the given one, made at least as large as the
+    skull there plus ``t`` all round, so the hat never cuts into the head."""
+    if y < sk.top:
+        return RingKey(y, rx, rzf, rzb, cl, cz, sq)
+    sec = sk.section(y)
+    return RingKey(y, max(rx, sec.rx + t + abs(cl)), max(rzf, sec.rzf + t + max(0.0, sec.cz - cz)), max(rzb, sec.rzb + t + max(0.0, cz - sec.cz)),
+                   cl, cz, sq)
+
+
+def _military_hat(ctx: Ctx, pt: Paint, hat: str, col: str, t: float, band: Callable[[float], float], lift: float) -> None:
+    """A helmet, a beret, a garrison cap or a peaked cap, drawn from the
+    skull loft (``t``: the hat's distance from the skull, over the hair). On a
+    head that rises above the crown (a sea lion's crest) the top of the hat
+    goes up with it."""
+    from .spec import UNIFORM
+
+    fig = ctx.fig
+    hh = fig.hh
+    sk = fig.skull
+    rise = max(0.0, fig.crown - sk.top)
+    widest = max(sk.keys, key=lambda kk: kk.rx if kk.y < fig.fy(0.7) else -1.0)
+
+    def f_of(y: float) -> float:
+        return (y - fig.crown) / hh
+
+    if hat == "helmet":
+        # A round steel shell: the skull, rounded out to a dome over its
+        # top (a crest stays under a dome, not a ridge), and a little lip
+        # all round its rim. The rim is low at the sides and back, over the
+        # tops of the ears.
+        tt = t + 0.075 * hh
+        knots = [(0, 0.22 - lift), (50, 0.27 - lift), (95, 0.43 - lift), (140, 0.47 - lift), (180, 0.46 - lift)]
+
+        def rim(a: float) -> float:
+            return interp_knots(abs(wrap180(a)), knots)
+
+        y_top = sk.top - tt
+        y_mid = widest.y
+        keys = [RingKey(y_top, 0.0, 0.0, 0.0, 0.0, widest.cz, 2.0)]
+        for i in range(1, 9):
+            y = lerp(y_top, y_mid, i / 8.0)
+            u = (y_mid - y) / max(1e-6, y_mid - y_top)
+            d = math.sqrt(max(0.0, 1.0 - u * u))
+            keys.append(_cover(sk, y, tt, (widest.rx + tt) * d, (widest.rzf + tt) * d, (widest.rzb + tt) * d, 0.0, widest.cz, 2.0))
+        for f in (0.55, 0.62):
+            sec = sk.section(fig.fy(f))
+            keys.append(RingKey(fig.fy(f), max(sec.rx, widest.rx) + tt, max(sec.rzf, widest.rzf) + tt, max(sec.rzb, widest.rzb) + tt, 0.0,
+                                widest.cz, 2.0))
+        shell = Loft(keys)
+        cover = lambda a, y: rim(a) - f_of(y)  # noqa: E731
+        shaded_region(ctx, pt, shell, shell.top, shell.bottom, col, cover, lit=True, shade_frac=0.26, shade_cap=0.12 * hh)
+        lip = shell.shell(0.035 * hh)
+        pt.region(loft_region(ctx.view, lip, lip.top, lip.bottom, all_of(cover, lambda a, y: f_of(y) - (rim(a) - 0.045))), shade(col, 0.12),
+                  outline=FINE)
+        # The chinstrap: from the rim at each side down the cheek and under the chin.
+        hd = fig.head
+        for sgn in (-1.0, 1.0):
+            pts = [(sgn * 84.0, fig.fy(rim(84.0) - 0.01)), (sgn * 74.0, fig.fy(0.62)), (sgn * 58.0, fig.fy(0.82)), (sgn * 36.0, fig.fy(0.95)),
+                   (sgn * 12.0, fig.fy(1.0)), (0.0, fig.fy(1.0))]
+            dense = [(lerp(a0, a1, i / 4.0), lerp(y0, y1, i / 4.0)) for (a0, y0), (a1, y1) in zip(pts, pts[1:]) for i in range(4)] + [pts[-1]]
+            for run in surface_line(ctx, hd, dense, out=0.25, thresh=0.05):
+                pt.line(run, INK, 0.75)
+                pt.line(run, "#4a4630", 0.42)
+    elif hat == "beret":
+        # A soft crown that flares out over a narrow band and is pulled down
+        # over the right ear: the right side swells out and hangs lower. The
+        # badge sits over the left eye.
+        def edge(a: float) -> float:
+            return band(a) + 0.09 * max(0.0, -math.sin(math.radians(a))) ** 1.5
+
+        f_band = band(0.0)
+        y_puff = fig.fy(f_band - 0.06) - rise * 0.5
+        keys = [_cover(sk, fig.fy(0.5), t + 0.25, 0.0, 0.0, 0.0, 0.0, widest.cz, 2.0),
+                _cover(sk, fig.fy(f_band + 0.02), t + 0.3, 0.0, 0.0, 0.0, 0.0, widest.cz, 2.0)]
+        for y, k in ((y_puff, 1.2), (fig.fy(f_band - 0.13) - rise, 1.1), (fig.fy(f_band - 0.17) - rise, 0.72)):
+            keys.append(_cover(sk, y, t + 0.4, widest.rx * k, widest.rzf * k * 0.98, widest.rzb * k * 0.95, 0.0, widest.cz, 2.2))
+        y_top = min(keys[-1].y, sk.top - t) - 0.012 * hh
+        keys.append(RingKey(y_top, 0.0, 0.0, 0.0, 0.0, widest.cz, 2.2))
+
+        def droop(a: float, y: float, _y0=fig.fy(f_band + 0.12), _y1=y_puff, _hh=hh) -> float:
+            return 0.1 * _hh * max(0.0, -math.sin(math.radians(a))) ** 1.5 * smoothstep(_y0, _y1, y)
+
+        body = Loft(keys, [droop])
+        cover = lambda a, y: edge(a) - f_of(y)  # noqa: E731
+        shaded_region(ctx, pt, body, body.top, body.bottom, col, cover, lit=True, shade_frac=0.3, shade_cap=0.1 * hh)
+        # The leather trim of the band.
+        pt.flat(loft_region(ctx.view, body.shell(0.05), body.top, body.bottom, all_of(cover, lambda a, y: f_of(y) - (edge(a) - 0.03))),
+                shade(col, 0.45))
+        c = body.point(30.0, fig.fy(band(30.0) - 0.07), 0.15)
+        insignia(ctx, pt, c, (math.sin(math.radians(30.0)), -0.2, math.cos(math.radians(30.0))), 0.075 * hh)
+    elif hat == "garrison_cap":
+        # A folded side cap: a narrow wedge on top of the head, long from
+        # front to back, its two sides meeting in a ridge, worn a little
+        # down on the right. The turned-up curtain round its lower part is a
+        # darker band under a fold line.
+        def edge(a: float) -> float:
+            return band(a) + 0.035 * max(0.0, -math.sin(math.radians(a)))
+
+        y0 = fig.fy(max(band(0.0), band(180.0)) + 0.06)
+        sec = sk.section(fig.fy(band(0.0)))
+        y_top = min(fig.fy(band(0.0) - 0.15), sk.top - 0.04 * hh) - 0.02 * hh
+        keys = []
+        for i in range(6):
+            u = i / 5.0
+            y = lerp(y0, y_top, u)
+            ring = RingKey(y, (sec.rx + t) * lerp(1.0, 0.14, u ** 1.2), (sec.rzf + t) * lerp(1.0, 1.06, u), (sec.rzb + t) * lerp(1.0, 1.06, u),
+                           -0.02 * hh * u, sec.cz, 2.6)
+            if rise > 0.0 and y < fig.fy(0.1):
+                # Over a crest the cap must still cover it.
+                ring = _cover(sk, y, t * 0.5, ring.rx, ring.rzf, ring.rzb, ring.cl, ring.cz, ring.sq)
+            keys.append(ring)
+        cap = Loft(keys)
+        cover = lambda a, y: edge(a) - f_of(y)  # noqa: E731
+        shaded_region(ctx, pt, cap, cap.top, cap.bottom, col, cover, lit=True, shade_frac=0.3, shade_cap=0.08 * hh)
+        y_fold = lerp(fig.fy(band(0.0)), y_top, 0.45)
+        fold = lambda a, y: y - (y_fold + 0.025 * hh * math.sin(math.radians(abs(wrap180(a)))))  # noqa: E731
+        pt.flat(loft_region(ctx.view, cap.shell(0.04), cap.top, cap.bottom, all_of(cover, fold)), shade(col, 0.14))
+        line = [(a, y_fold + 0.025 * hh * math.sin(math.radians(abs(a)))) for a in range(-180, 181, 10)]
+        for run in surface_line(ctx, cap, line, out=0.06, thresh=0.05):
+            pt.line(run, shade(col, 0.5), FINE * 1.2)
+    else:
+        # An officer's service cap: a stiff band, a wide flat crown over it
+        # that stands out at the front, a short black visor, a brass chin
+        # cord and the badge on the crown's front.
+        yb = fig.fy(band(0.0))
+        sec = sk.section(yb)
+        rx, rzf, rzb = sec.rx + t + 0.3, sec.rzf + t + 0.3, sec.rzb + t + 0.3
+        y_bt = yb - 0.13 * hh - rise
+        band_loft = Loft([RingKey(yb + 0.04 * hh, rx, rzf, rzb, 0.0, sec.cz, 2.1), RingKey(y_bt, rx * 1.01, rzf * 1.01, rzb * 1.01, 0.0, sec.cz, 2.1)])
+        crown = Loft([RingKey(y_bt + 0.01 * hh, rx * 1.01, rzf * 1.01, rzb * 1.01, 0.0, sec.cz, 2.1),
+                      RingKey(y_bt - 0.05 * hh, rx * 1.14, rzf * 1.3, rzb * 1.08, 0.0, sec.cz + 0.04 * hh, 2.3),
+                      RingKey(y_bt - 0.085 * hh, rx * 1.1, rzf * 1.26, rzb * 1.05, 0.0, sec.cz + 0.04 * hh, 2.4),
+                      RingKey(y_bt - 0.09 * hh, 0.0, 0.0, 0.0, 0.0, sec.cz + 0.04 * hh, 2.4)])
+        visor_col = "#2a2622"
+        pts3 = [band_loft.point(a, yb + 0.03 * hh, 0.0) for a in range(-75, 76, 10)]
+        tip3 = [band_loft.point(a, yb + 0.03 * hh + 0.11 * hh * math.cos(math.radians(a)), 0.2 * hh * math.cos(math.radians(a)) ** 0.8)
+                for a in range(-70, 71, 10)]
+        visor = hull(ctx.p(q) for q in pts3 + tip3)
+        visor_front = ctx.view.c > -0.2
+        if not visor_front:
+            pt.region([visor], visor_col, smooth=True)
+        cover = lambda a, y: band(a) + 0.04 - f_of(y)  # noqa: E731
+        shaded_region(ctx, pt, band_loft, band_loft.top, band_loft.bottom, shade(col, 0.3), cover, shade_frac=0.25, shade_cap=0.06 * hh)
+        for run in surface_line(ctx, band_loft, [(a, yb - 0.035 * hh) for a in range(-80, 81, 10)], out=0.12, thresh=0.05):
+            pt.line(run, INK, 0.7)
+            pt.line(run, UNIFORM["brass"], 0.4)
+        shaded_region(ctx, pt, crown, crown.top, crown.bottom, col, lit=True, shade_frac=0.22, shade_cap=0.08 * hh)
+        insignia(ctx, pt, crown.point(0.0, y_bt - 0.035 * hh, 0.1), (0.0, -0.25, 1.0), 0.08 * hh)
+        if visor_front:
+            pt.region([visor], visor_col, smooth=True)
+            pt.flat([hull(ctx.p(q) for q in pts3[3:-3] + tip3[3:-3])], light(visor_col, 0.12), smooth=True)
 
 
 __all__ = ["coat_colors", "face_parts", "facial_hair_parts", "glasses_parts", "hair_parts", "hair_thickness", "hat_parts", "head_parts"]

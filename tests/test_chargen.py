@@ -213,7 +213,8 @@ def test_the_rig_derives_from_the_spec_for_many_seeds(tmp_path):
     S.crowd(2, 3, species="cat")[1],
     S.crowd(2, 4, species="bird")[1],
     S.crowd(2, 5, species="sea_lion")[1],
-], ids=["robe", "horse", "dog", "cat", "bird", "sea_lion"])
+    S.generate("broad_male", 7, {"outfit": {"outer": "field_jacket", "outer_open": False, "hat": "helmet", "accessories": ["webbing"]}}),
+], ids=["robe", "horse", "dog", "cat", "bird", "sea_lion", "soldier"])
 def test_every_library_clip_poses_without_audit_errors_in_every_view(spec, tmp_path):
     from ambition_sprite2d_renderer.authoring.pose_audit import audit_document
     from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
@@ -374,3 +375,90 @@ def test_the_head_stays_on_its_neck_and_the_audit_says_when_it_does_not(tmp_path
         assert gaps({}) == [], view
         assert gaps({"head": 75.0}), (view, "a head turned past what a neck allows")
         assert gaps({"bone.head.y": -12.0}), (view, "a head lifted off its neck")
+
+
+# ---- military wardrobe ----------------------------------------------------------------------------
+
+MILITARY_HATS = ("helmet", "beret", "garrison_cap", "peaked_cap", "campaign")
+
+
+def _hat_heads():
+    """A human, a horse and a male sea lion (whose crest rises above the crown)."""
+    return [("human", S.generate("average_male", 3, {"hair": {"style": "short"}})),
+            ("horse", S.generate("average_male", 3, {"head": {"species": "horse"}})),
+            ("sea_lion", S.generate("broad_male", 3, {"head": {"species": "sea_lion"}}))]
+
+
+@pytest.mark.parametrize("hat", MILITARY_HATS)
+def test_military_hats_draw_on_every_species_head_in_every_view(hat):
+    from ambition_sprite2d_renderer.chargen.body import build
+    from ambition_sprite2d_renderer.chargen.rig import GROUND, UNIT, draw_views
+
+    for label, head in _hat_heads():
+        spec = S.generate(head.base, head.seed, {"head": {"species": head.head.species}, "outfit": {"hat": hat, "hat_color": "#5b6136"}})
+        bare = S.generate(head.base, head.seed, {"head": {"species": head.head.species}, "outfit": {"hat": "none"}})
+        assert S.validate(spec) == []
+        _fig, drawn = draw_views(spec)
+        for dv in drawn:
+            assert any(p.name == f"hat_{hat}" and p.feature == f"hat:{hat}" for p in dv.parts), (label, dv.view.key)
+        sk_top = build(bare).skull.top
+        for key in ("front", "side", "back"):
+            a, b = render_view(spec, VIEW_BY_KEY[key], 1.0), render_view(bare, VIEW_BY_KEY[key], 1.0)
+            hat_top = ImageChops.difference(a, b).getbbox(alpha_only=False)[1]
+            # The hat covers the top of the skull (a sea lion's crest too):
+            # it reaches above it on screen.
+            skull_top = (GROUND + sk_top * UNIT) / UNIT
+            assert hat_top < skull_top, (label, key, hat_top, skull_top)
+
+
+def test_the_field_jacket_webbing_and_dog_tags_draw_in_every_view():
+    from ambition_sprite2d_renderer.chargen.rig import draw_views
+
+    for open_ in (False, True):
+        spec = S.generate("slim_female", 4, {"outfit": {"outer": "field_jacket", "outer_open": open_, "top": "tshirt",
+                                                         "accessories": ["webbing", "dog_tags"], "accent_color": "#b8913e"}})
+        assert S.validate(spec) == []
+        _fig, drawn = draw_views(spec)
+        for dv in drawn:
+            feats = {p.feature for p in dv.parts}
+            assert {"outer:field_jacket", "acc:webbing"} <= feats, (open_, dv.view.key)
+            assert any(p.feature == "outer:field_jacket" and p.bone.endswith("arm_l") for p in dv.parts), dv.view.key
+            # The webbing is worn over the jacket.
+            jacket = max(p.z for p in dv.parts if p.feature == "outer:field_jacket" and p.bone == "torso")
+            assert next(p.z for p in dv.parts if p.name == "torso__webbing") > jacket
+        front = render_view(spec, VIEW_BY_KEY["front"], 1.0)
+        plain = render_view(S.generate("slim_female", 4, {"outfit": {"outer": "jacket", "outer_open": open_, "top": "tshirt",
+                                                                      "accessories": []}}), VIEW_BY_KEY["front"], 1.0)
+        assert _differs(front, plain)
+
+
+def test_military_items_are_wardrobe_alternates_and_accessories_add():
+    from ambition_sprite2d_renderer.chargen.rig import draw_views
+
+    spec = S.generate("average_male", 9, {"outfit": {"outer": "none", "hat": "beret", "accessories": ["belt"],
+                                                      "wardrobe": ["hat:helmet", "outer:field_jacket", "acc:webbing", "hat:peaked_cap"]}})
+    assert S.validate(spec) == []
+    _fig, drawn = draw_views(spec)
+    for dv in drawn:
+        for item in spec.outfit.wardrobe:
+            kind = item.partition(":")[2]
+            alts = [p for p in dv.parts if p.name.endswith("@" + kind)]
+            assert alts and all(p.feature == item for p in alts), (dv.view.key, item)
+    worn = render_view(spec, VIEW_BY_KEY["front_3q"], 0.8)
+    kitted = render_view(spec, VIEW_BY_KEY["front_3q"], 0.8, features={"acc:webbing": True, "acc:belt": True})
+    assert _differs(worn, kitted)
+
+
+def test_the_iron_bastion_soldiers_are_valid_and_distinct():
+    from ambition_sprite2d_renderer.targets.characters.townsfolk import SPECS, load
+
+    paths = sorted(SPECS.glob("tower_*.chargen.yaml"))
+    assert len(paths) >= 7
+    specs = []
+    for path in paths:
+        spec, game = load(path)
+        assert S.validate(spec) == [], path.name
+        assert game["character_id"] == "npc_" + path.name.removesuffix(".chargen.yaml")
+        specs.append(spec)
+    for a, b in itertools.combinations(specs, 2):
+        assert (a.outfit.hat, a.outfit.hat_color, a.outfit.outer, a.base) != (b.outfit.hat, b.outfit.hat_color, b.outfit.outer, b.base)

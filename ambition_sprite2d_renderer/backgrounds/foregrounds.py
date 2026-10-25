@@ -36,6 +36,7 @@ import numpy as np
 from .arenas import BOSS, ECLIPSE, HUB
 from .artkit import Art, Pen, polar, scale
 from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
+from .military_tower import TOWER
 from .noodly import NOODLY
 from .noodly import foreground as _noodly
 from .outdoors import COVE, FOREST, SKYBRIDGE, WATER
@@ -133,6 +134,23 @@ def _cave(art: Art, pen: Pen, layer_lights: list) -> None:
             tip = rng.uniform(0.595, 0.64)
             pen.poly([(u, 1.0), (u + w, 1.0), (u + w * 0.45, tip)])
         u += w + rng.uniform(0.0, 0.08)
+
+
+def _military_tower(art: Art, pen: Pen, layer_lights: list) -> None:
+    """From the deck above: two caged lamps on conduit, a chain with a hook,
+    and a cable that sags. Nothing stands from below."""
+    rng = art.rand("military tower foreground")
+    for u in (0.21, 0.69):
+        end = rng.uniform(0.385, 0.395)
+        pen.rect(u - 0.0016, 0.0, u + 0.0016, end - 0.012)
+        pen.poly([(u - 0.004, end - 0.012), (u + 0.004, end - 0.012), (u + 0.010, end - 0.004), (u - 0.010, end - 0.004)])
+        pen.line([(u - 0.008, end - 0.004), (u - 0.008, end + 0.006), (u, end + 0.011), (u + 0.008, end + 0.006), (u + 0.008, end - 0.004)], 0.0016)
+        layer_lights.append((u, end + 0.003, 0.0036, TOWER["lamp"]))
+    u = 0.45
+    end = rng.uniform(0.375, 0.385)
+    _chain(pen, u, 0.0, end)
+    pen.arc(u + 0.006, end + 0.010, 0.010, 0, 200, 0.004)
+    pen.curve((0.52, 0.0), (0.93, 0.0), 0.39, 0.003)
 
 
 def _cove(art: Art, pen: Pen, layer_lights: list) -> None:
@@ -268,6 +286,7 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "boss": (_boss, scale(BOSS["rock"], 0.8)),
     "noodly": (_noodly, scale(NOODLY["noodle_dark"], 0.62)),
     "eclipse": (_eclipse, scale(ECLIPSE["rock"], 0.9)),
+    "military_tower": (_military_tower, scale(TOWER["near"], 0.9)),
 }
 
 

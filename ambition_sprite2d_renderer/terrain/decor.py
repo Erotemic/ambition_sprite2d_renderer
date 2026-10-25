@@ -440,6 +440,93 @@ def bamboo_fence(tile: Tile, c: dict) -> None:
     tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M - 7.2 + k * 2.4, G - 6.6, 0.5) for k in range(7)]), c["bloom"], 0.7)
 
 
+# The things of a military building. They have no shade on the ground under
+# them: a thing has form shade on its own faces only.
+
+
+def _ammo_box(tile: Tile, c: dict, x0: float, y1: float, w: float, h: float) -> None:
+    """A box of ammunition of the `wood` colour: its foot at `y1`, from `x0`,
+    `w` wide and `h` high. A lid with two latches, a rope handle at the end
+    and a stencilled mark of the light stone colour on the front."""
+    body = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y1 - h, x0 + w, y1))
+    tile.put(body, c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y1 - h, x0 + w, y1 - h + 1.4)), c["wood_light"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y1 - h + 1.4, x0 + w, y1 - h + 1.8)), c["dark"], 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y1 - h, x0 + 0.6, y1)), c["wood_light"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + w - 0.8, y1 - h, x0 + w, y1)), c["dark"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x, y1 - h + 0.6, x + 1.2, y1 - h + 2.6) for x in (x0 + w * 0.22, x0 + w * 0.72)]), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 1.2, y1 - h * 0.45, x0 + 2.2, y1 - h * 0.45 + 1.0)), c["dark"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0 + w * 0.35, y1 - h * 0.55, x0 + w * 0.82, y1 - h * 0.55 + 0.7), _box(p, dx, dy, x0 + w * 0.35, y1 - h * 0.30, x0 + w * 0.62, y1 - h * 0.30 + 0.6))), c["stone_light"], 0.75)
+
+
+def ammo_crate(tile: Tile, c: dict) -> None:
+    """One box of ammunition."""
+    _ammo_box(tile, c, M - 6.0, G, 12.0, 7.5)
+
+
+def ammo_stack(tile: Tile, c: dict) -> None:
+    """Two boxes of ammunition, a small one on a large one."""
+    _ammo_box(tile, c, M - 7.0, G, 14.0, 6.5)
+    _ammo_box(tile, c, M - 4.6, G - 6.5, 9.0, 5.0)
+
+
+def sandbags(tile: Tile, c: dict) -> None:
+    """Bags of sand of the light stone colour, three on the floor and two on
+    them. Each bag has light on its top and shade on its lower half."""
+    bags = [(M - 5.6, G - 1.9), (M, G - 1.9), (M + 5.6, G - 1.9), (M - 2.8, G - 5.3), (M + 2.8, G - 5.3)]
+    canvas = _mix(c["stone_light"], c["dark"], 0.18)
+    for x, y in bags:
+        bag = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, y, 3.0, ry=1.95))
+        tile.put(bag, canvas)
+        tile.put(bag * (tile.y > y + 0.3), c["dark"], 0.28)
+        tile.put(bag * (tile.y < y - 1.0), (255, 248, 226), 0.16)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x + 2.0, y - 1.2), (x + 2.4, y + 1.2)], 0.3)), c["dark"], 0.45)
+    tile.alpha *= tile.y < G
+
+
+def jerrycan(tile: Tile, c: dict) -> None:
+    """A can of fuel of the `wood` colour: the pressed X on its side, three
+    handles on top and a spout cap at one corner."""
+    x0, x1, top = M - 3.6, M + 3.6, G - 10.5
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0, G), (x1, G), (x1, top + 1.0), (x1 - 1.0, top), (x0, top)]))
+    tile.put(body, c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M - 2.8 + k * 2.0, top - 1.6, M - 1.8 + k * 2.0, top) for k in range(3)]), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x1 - 1.6, top - 1.8, x1 - 0.2, top + 0.4))), c["metal"])
+    x_pts = [((x0 + 1.0, top + 2.0), (x1 - 1.0, G - 1.6)), ((x1 - 1.0, top + 2.0), (x0 + 1.0, G - 1.6))]
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [a, b], 0.5) for a, b in x_pts]), c["dark"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(a[0] - 0.4, a[1]), (b[0] - 0.4, b[1])], 0.3) for a, b in x_pts]), c["wood_light"], 0.35)
+    tile.put(body * (tile.x < x0 + 0.7), c["wood_light"], 0.4)
+    tile.put(body * (tile.x > x1 - 0.8), c["dark"], 0.4)
+
+
+def oil_drum(tile: Tile, c: dict) -> None:
+    """A drum of steel with two ribs and a band of the light stone colour:
+    light on its left, shade on its right, as a round thing."""
+    x0, x1, top = M - 4.4, M + 4.4, G - 11.0
+    body = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0, top, x1, G), _dot(p, dx, dy, M, top, 4.4, ry=0.9)))
+    tile.put(body, c["metal"])
+    tile.put(body * (tile.y > G - 7.0) * (tile.y < G - 4.4), _mix(c["stone_light"], c["dark"], 0.2), 0.8)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x0, y, x1, y + 0.6) for y in (top + 3.2, G - 3.2)]), c["dark"], 0.45)
+    across = (tile.x - x0) / (x1 - x0)
+    tile.put(body * np.clip(1.0 - np.abs(across - 0.25) / 0.18, 0.0, 1.0), (255, 255, 255), 0.14)
+    tile.put(body * np.clip((across - 0.6) / 0.4, 0.0, 1.0), c["dark"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, top, 3.6, ry=0.55)), c["dark"], 0.5)
+
+
+def extinguisher(tile: Tile, c: dict) -> None:
+    """A fire extinguisher of the `bloom` colour: a round-topped body with a
+    pale label, a valve and a hose that hangs to one side."""
+    x0, x1, top = M - 1.9, M + 1.9, G - 9.5
+    body = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0, top, x1, G), _dot(p, dx, dy, M, top, 1.9, ry=1.3)))
+    tile.put(body, c["bloom"])
+    tile.put(body * (tile.x < x0 + 0.8), (255, 236, 220), 0.22)
+    tile.put(body * (tile.x > x1 - 0.9), c["dark"], 0.40)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.4, G - 6.4, x1 - 0.4, G - 3.6)), _mix(c["stone_light"], (240, 236, 220), 0.4), 0.75)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 0.6, top - 2.6, M + 0.6, top - 1.0), _box(p, dx, dy, M - 1.8, top - 2.8, M + 1.4, top - 2.2))), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 0.6, top - 1.8), (x1 + 1.4, top - 0.6), (x1 + 1.8, top + 3.0), (x1 + 1.4, top + 5.0)], 0.5)), c["dark"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, G - 0.8, x1, G)), c["dark"], 0.6)
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -484,6 +571,10 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # The lab: coils, consoles, barrels of what the vats drink.
     "castle_godwin_lab": ((coil, console, barrel, coil, crate, console), _palette((6, 12, 10), (70, 88, 86), (118, 150, 140), (84, 54, 40), (60, 70, 70), (60, 120, 80), (120, 255, 150), (190, 230, 255))),
     "castle_godwin_throne": ((brazier, bones, column_stub, brazier, bones, column_stub), _palette((8, 6, 10), (78, 70, 84), (130, 118, 134), (84, 54, 40), (40, 40, 48), (60, 50, 50), (200, 40, 32), (255, 132, 48))),
+    # The military tower: boxes of ammunition, sandbags, cans of fuel, a
+    # drum and a fire extinguisher. `wood` is olive paint, `stone_light`
+    # khaki and `bloom` the red of an extinguisher.
+    "military_tower": ((ammo_crate, sandbags, jerrycan, oil_drum, extinguisher, ammo_stack), _palette((20, 22, 18), (110, 108, 98), (183, 167, 122), (84, 90, 52), (74, 82, 88), (91, 97, 54), (150, 52, 42), (255, 198, 124))),
     "skybridge": ((bush, flowers, column_stub, grass_tuft, planter, flowers), _palette((86, 100, 142), (160, 172, 204), (224, 230, 244), (150, 120, 90), (130, 144, 180), (106, 176, 96), (255, 150, 170), (255, 236, 150))),
     "open_sky": ((grass_tuft, rock, flowers, bush, grass_tuft, rock), _palette((104, 92, 92), (176, 164, 150), (232, 222, 204), (150, 112, 74), (140, 136, 140), (116, 178, 90), (255, 190, 110), (255, 240, 170))),
     "eclipse": ((obelisk, crystal, rock, obelisk, rock, crystal), _palette((10, 12, 36), (40, 46, 104), (84, 90, 164), (60, 60, 110), (44, 50, 110), (60, 150, 140), (172, 112, 255), (92, 232, 200))),

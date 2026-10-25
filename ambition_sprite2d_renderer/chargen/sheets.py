@@ -228,7 +228,8 @@ def wardrobe_sheet(spec: CharacterSpec, out: Path, *, px_per_cm: float = 1.4,
     rows = [("as worn", [(v.key, im) for v, im in zip(vs, _figure_tiles(spec, px_per_cm, vs))])]
     for item in spec.outfit.wardrobe:
         slot, _, kind = item.partition(":")
-        feats = {f: (not f.startswith(slot + ":")) for f in worn}
+        # An accessory is added to what is worn; any other slot is swapped.
+        feats = {f: (slot == "acc" or not f.startswith(slot + ":")) for f in worn}
         feats[f"{slot}:{kind}"] = True
         rows.append((f"{slot} -> {kind}", [(v.key, im) for v, im in zip(vs, _figure_tiles(spec, px_per_cm, vs, features=feats))]))
     return _grid(f"Wardrobe swaps: {spec.name} (one rig, components toggled)", rows, out)

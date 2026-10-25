@@ -137,6 +137,9 @@ SKINS: tuple[Skin, ...] = (
     Skin("castle_godwin_lab", "block", (70, 88, 86), (22, 32, 30), (118, 150, 140), (120, 255, 150), "edge", (96, 120, 112), "bolts", "grate"),
     # The throne room: darker blocks, warmed by the red moon.
     Skin("castle_godwin_throne", "block", (78, 70, 84), (26, 22, 30), (130, 118, 134), (220, 50, 40), "edge", (108, 96, 112), "bolts", "slab"),
+    # The tower of the Faction of Steel: riveted plates of gunmetal steel,
+    # a deck edge with warning stripes of signal red, and a girder under it.
+    Skin("military_tower", "deckplate", (74, 82, 88), (30, 34, 38), (124, 132, 136), (168, 56, 44), "hazard", (92, 98, 100), "girder", "grate"),
     # The islands in the sky are rock that broke off, not a wall that was laid.
     Skin("skybridge", "rock", (150, 164, 198), (86, 100, 142), (216, 224, 242), (255, 236, 150), "grass", (112, 178, 96), "roots", "slab"),
     Skin("open_sky", "rock", (176, 164, 150), (104, 92, 92), (232, 222, 204), (255, 240, 170), "grass", (126, 184, 92), "roots", "plank"),
@@ -551,6 +554,31 @@ def fill(skin: Skin) -> Image.Image:
         tile.tone(grain * 0.05 + (tile.noise(4, 8, 3) - 0.5) * 0.18)
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.45) for x, y in nails]), skin.dark, 0.85)
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.15, y - 0.15, 0.2) for x, y in nails]), skin.accent, 0.5)
+    elif skin.material == "deckplate":
+        # Square plates of steel, four to the tile, each with a row of rivets
+        # along each edge. The paint is a little worn: low contrast, so the
+        # repeat does not show.
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        rivets = []
+        for px in range(2):
+            for py in range(2):
+                x0, y0 = px * 32.0, py * 32.0
+                tone = rng.uniform(-0.08, 0.08)
+                colour = _mix(skin.base, skin.light if tone > 0 else skin.dark, abs(tone) * 1.6)
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.4, y0 + 0.4, x0 + 31.6, y0 + 31.6)), colour)
+                tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0 + 0.4, y0 + 0.4, x0 + 31.6, y0 + 1.0), _box(p, dx, dy, x0 + 0.4, y0 + 0.4, x0 + 1.0, y0 + 31.6))), skin.light, 0.30)
+                tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0 + 0.4, y0 + 31.0, x0 + 31.6, y0 + 31.6), _box(p, dx, dy, x0 + 31.0, y0 + 0.4, x0 + 31.6, y0 + 31.6))), skin.dark, 0.45)
+                for k in range(8):
+                    t = 2.0 + k * 4.0
+                    rivets += [(x0 + t, y0 + 2.2), (x0 + t, y0 + 29.8)]
+                    if 0 < k < 7:
+                        rivets += [(x0 + 2.2, y0 + t), (x0 + 29.8, y0 + t)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x + 0.2, y + 0.2, 0.62) for x, y in rivets]), skin.dark, 0.55)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.1, y - 0.1, 0.5) for x, y in rivets]), skin.light, 0.40)
+        # Worn paint: a few faint scuffs.
+        scuffs = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(2.0, 5.0)) for _ in range(6)]
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y), (x + w, y + w * 0.15)], 0.35) for x, y, w in scuffs]), skin.light, 0.18)
+        tile.tone((tile.noise(4, 4, 4) - 0.5) * 0.14)
     elif skin.material == "rock":
         # Broken stone: each pixel is in the cell of its nearest point, and
         # the cracks are where the two nearest points are as near.
@@ -645,6 +673,21 @@ def cap(skin: Skin) -> Image.Image:
         tile.put(((y >= s - 0.2) & (y < s + 1.2)).astype(np.float32), _mix(skin.cap_colour, (240, 236, 226), 0.25), 0.55)
         moss = [(x0, s + rng.uniform(0.5, 3.5)) for x0, _w, _h, _t in stones]
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, 0.8, ry=0.5) for x, yy in moss]), (86, 110, 70), 0.75)
+        return tile.publish()
+    if skin.cap == "hazard":
+        # The steel edge of a deck: a light lip, then stripes at a slant of
+        # the accent and of pale warning paint, eight to the tile. The
+        # stripes are on the face of the edge only: nothing is under it.
+        thick = 5.0
+        body = ((y >= s) & (y < s + thick)).astype(np.float32)
+        tile.put(body, skin.cap_colour)
+        tile.put(((y >= s) & (y < s + 0.7)).astype(np.float32), _mix(skin.cap_colour, (255, 255, 255), 0.42))
+        face = ((y >= s + 1.5) & (y < s + thick - 0.8)).astype(np.float32)
+        stripe = (np.mod((tile.x + (y - s)) / 8.0, 1.0) < 0.5).astype(np.float32)
+        tile.put(face * stripe, _mix(skin.accent, skin.dark, 0.12))
+        tile.put(face * (1.0 - stripe), _mix((214, 196, 140), skin.dark, 0.18))
+        tile.put(((y >= s + thick - 0.8) & (y < s + thick)).astype(np.float32), skin.dark, 0.7)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 16 + 8, s + 1.05, 0.4) for k in range(4)]), skin.dark, 0.6)
         return tile.publish()
     if skin.cap in ("strip", "plate", "edge"):
         thick = {"strip": 5.5, "plate": 5.0, "edge": 4.2}[skin.cap]
@@ -813,6 +856,15 @@ def under(skin: Skin) -> Image.Image:
             colour = _mix(colour, skin.dark if tone < 0 else (255, 244, 200), abs(tone) * 1.6)
             tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x + 0.3, y) for x, y in pts], w)), skin.dark, 0.55)
             tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, pts, w)), colour)
+    elif skin.under == "girder":
+        # The bottom flange of a girder under a deck: a band of steel with a
+        # row of rivets, and a stiffener each 16 units on the web over it.
+        tile.put(((y >= e - 0.4) & (y < e + 3.0)).astype(np.float32), _mix(skin.cap_colour, skin.dark, 0.25))
+        tile.put(((y >= e + 1.8) & (y < e + 3.0)).astype(np.float32), skin.cap_colour)
+        tile.put(((y >= e + 1.8) & (y < e + 2.3)).astype(np.float32), _mix(skin.cap_colour, (255, 255, 255), 0.25))
+        tile.put(((y >= e + 2.6) & (y < e + 3.0)).astype(np.float32), skin.dark, 0.8)
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, k * 16 + 7.4, e - 0.4, k * 16 + 8.6, e + 1.8) for k in range(4)]), _mix(skin.cap_colour, skin.light, 0.2))
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 4 + 2, e + 2.4, 0.4) for k in range(16)]), skin.dark, 0.6)
     elif skin.under == "bolts":
         tile.put(((y >= e - 0.4) & (y < e + 2.6)).astype(np.float32), skin.cap_colour)
         tile.put(((y >= e - 0.4) & (y < e + 0.2)).astype(np.float32), _mix(skin.cap_colour, (255, 255, 255), 0.3))

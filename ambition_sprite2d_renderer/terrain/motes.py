@@ -122,6 +122,8 @@ MOTES = {
     # Sparks from the coils; ash in the throne room.
     "castle_godwin_lab": (_glow, (190, 230, 255)),
     "castle_godwin_throne": (_glow, (255, 110, 70)),
+    # Dust in the light of the caged lamps of the military tower.
+    "military_tower": (_dot, (255, 226, 178)),
     # The sparkles of a wand.
     "starlight": (_twinkle, (255, 240, 200)),
     # Grains of sand in the light.
@@ -165,6 +167,7 @@ SHADOWS = {
     "castle_godwin": (6, 6, 12),
     "castle_godwin_lab": (4, 10, 8),
     "castle_godwin_throne": (8, 4, 8),
+    "military_tower": (10, 12, 10),
     "water": (2, 16, 30),
     "cove": (4, 14, 24),
     "skybridge": (40, 52, 84),
