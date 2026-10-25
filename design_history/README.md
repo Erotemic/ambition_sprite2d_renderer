@@ -90,6 +90,26 @@ documents).
   `<cache>/blame`; a blame of a fixed commit never changes, and a change to how
   imports are followed changes the cache's version (`_LINES_VERSION`).
 
+### A person's drawing (`authors.yaml`)
+
+A drawing Jon made by hand may be committed by an agent session (its trailer
+names the model) or from his account (Jon's rule would say GPT).
+`authors.yaml` names the commit and the files whose lines are the person's;
+that outranks every other basis, for those files only.
+
+## Every variation, and the holistic looks (`variations.py`)
+
+`python -m design_history survey --all --jobs 6` draws a still at every
+candidate commit of every lineage and writes `variations.yaml`: each run of
+identical pixels is a variation. A lineage is surveyed in tracks, its `ids`
+and then each generation or form target alone, because two generations are
+drawn at the same commits. A **holistic** look is the last variation of a
+burst of work (variations less than 8 hours apart), unless its still is
+almost the same as the previous holistic look (a refactor that redraws a
+look keeps the look's first author). The record keeps every variation and
+its distance, so the thresholds can change without a new render. The curated
+looks stay the `eras` of `lineages.yaml`.
+
 ## From a character to its lineage (`characters.py`)
 
 A character has three names: a lineage (here), a renderer target, and a

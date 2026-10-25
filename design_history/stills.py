@@ -40,12 +40,14 @@ class Still:
 class Worktrees:
     """One sparse worktree per history segment, moved between commits."""
 
-    def __init__(self, store: Path, cache: Path):
-        self.store, self.cache = store, cache
+    def __init__(self, store: Path, cache: Path, slot: str = ""):
+        """`slot` names a set of worktrees, so that processes drawing at the
+        same time each move their own."""
+        self.store, self.cache, self.slot = store, cache, slot
         self._ready: set[str] = set()
 
     def _path(self, seg: Segment) -> Path:
-        return self.cache / "worktrees" / seg.name
+        return self.cache / "worktrees" / (f"{self.slot}-{seg.name}" if self.slot else seg.name)
 
     def at(self, seg: Segment, sha: str) -> Path:
         """The renderer root of ``seg`` checked out at ``sha``."""
@@ -307,7 +309,8 @@ def still_for(
     hit = stills / f"{key}.png"
     miss = stills / f"{key}.failed"
     if hit.exists():
-        return Still(hit, None, pixel_hash(hit))
+        used = stills / f"{key}.id"
+        return Still(hit, used.read_text().strip() or None if used.exists() else None, pixel_hash(hit))
     if miss.exists():
         return Still(None, None, None, miss.read_text())
     root = worktrees.at(seg, sha)

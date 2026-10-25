@@ -15,7 +15,8 @@ from . import census as census_mod
 from . import models
 from . import characters as characters_mod
 from . import survey as survey_mod
-from .attribution import attribute
+from . import variations as variations_mod
+from .attribution import attribute, curated
 from .authorship import Blamer
 from .progression import Tile, compose, stack
 from .store import (
@@ -62,39 +63,64 @@ def _short(text: str, n: int = 52) -> str:
 def cmd_survey(args) -> int:
     store, cache, worktrees = _context(args)
     ledger = load_ledger(store)
+    timeline = models.from_store(store, ledger, cache)
     rows = survey_mod.history(store)
     names = list(load_lineages()) if args.all else args.lineage
     lineages = load_lineages()
     OUT.joinpath("survey").mkdir(parents=True, exist_ok=True)
+    plan = []
+    for name in names:
+        spec = lineages.get(name, {})
+        patterns = args.paths.split(",") if args.paths else spec.get("paths", [name])
+        found = survey_mod.candidates_for(rows, patterns)
+        if args.sweep:
+            seen = {c.commit.sha for c in found}
+            found += [c for c in survey_mod.sweep(rows, args.sweep) if c.commit.sha not in seen]
+        for ids in [args.ids.split(",")] if args.ids else variations_mod.tracks(name, spec):
+            # Each track draws its own stills: a Candidate holds one.
+            cands = [survey_mod.Candidate(c.commit, c.segment, c.paths) for c in found]
+            plan.append((name, spec, ids, cands))
+    if args.jobs > 1:
+        tasks = {(c.segment, c.commit.sha, tuple(ids), spec.get("pick")) for _, spec, ids, cands in plan for c in cands}
+        variations_mod.render_all(sorted(tasks, key=lambda t: (t[0].name, t[1])), python=_python(args), store=store,
+                                  cache=cache, jobs=min(args.jobs, 6))
+    record = variations_mod.load() if args.record else {}
+    drawn = {c: a.models[0] for (c, _), a in curated().items()}
+    fresh: set[str] = set()
     try:
-        for name in names:
-            spec = lineages.get(name, {})
-            ids = args.ids.split(",") if args.ids else spec.get("ids", [name])
-            patterns = args.paths.split(",") if args.paths else spec.get("paths", [name])
-            cands = survey_mod.candidates_for(rows, patterns)
-            if args.sweep:
-                seen = {c.commit.sha for c in cands}
-                cands += [c for c in survey_mod.sweep(rows, args.sweep) if c.commit.sha not in seen]
+        for name, spec, ids, cands in plan:
             print(f"{name}: {len(cands)} candidate commits, ids={ids}")
             survey_mod.draw_candidates(
                 cands, python=_python(args), worktrees=worktrees, cache=cache, ids=ids,
-                pick=spec.get("pick"),
+                pick=spec.get("pick"), log=(lambda *_: None) if args.jobs > 1 else print,
             )
             found = survey_mod.eras(cands)
+            if args.record:
+                looks = [variations_mod.Variation(
+                    c.commit.sha, c.commit.date, c.segment.name, c.still.target_id or "", c.still.pixel_hash, c.still.path,
+                    drawn.get(c.commit.sha) or attribute(c.commit, ledger, timeline).label(), c.commit.subject) for c in found]
+                variations_mod.classify(looks)
+                failed = sum(1 for c in cands if c.still is None or c.still.pixel_hash is None)
+                if name not in fresh:
+                    record[name] = {"tracks": {}}  # a lineage's record is rewritten whole
+                    fresh.add(name)
+                record[name]["tracks"][ids[0]] = {
+                    "candidates": len(cands), "failed": failed, "ids": ids, "variations": variations_mod.as_rows(looks)}
+                variations_mod.write(record)
             tiles = []
             for cand in found:
-                who = attribute(cand.commit, ledger, models.from_store(store, ledger, default_cache())).label()
+                who = attribute(cand.commit, ledger, timeline).label()
                 tiles.append(Tile(
                     cand.still.path,
                     [f"{cand.commit.date[:10]} {cand.commit.sha[:9]}",
                      _short(cand.commit.subject, 60), _short(who, 60),
                      f"{cand.segment.name}"],
                 ))
-            print(f"{name}: {len(found)} distinct looks")
+            print(f"{name} [{ids[0]}]: {len(found)} distinct looks")
             for cand in found:
                 print(f"  {cand.commit.date[:10]} {cand.commit.sha}  {_short(cand.commit.subject, 70)}")
             if tiles:
-                compose(f"{name} — survey", tiles, per_row=spec.get("per_row", 6), tile_w=spec.get("tile_w", 190)).save(OUT / "survey" / f"{Path(name).name}.png")
+                compose(f"{name} — survey", tiles, per_row=spec.get("per_row", 6), tile_w=spec.get("tile_w", 190)).save(OUT / "survey" / f"{Path(name).name}-{ids[0]}.png")
     finally:
         if not args.keep_worktrees:
             worktrees.remove()
@@ -269,6 +295,8 @@ def main(argv=None) -> int:
     p.add_argument("--ids", help="comma list of target ids, newest name first")
     p.add_argument("--paths", help="comma list of path regexes")
     p.add_argument("--sweep", type=int, default=0, help="also draw every N-th commit")
+    p.add_argument("--jobs", type=int, default=1, help="draw the stills on N processes first (at most 6)")
+    p.add_argument("--no-record", dest="record", action="store_false", help="do not rewrite variations.yaml")
     p.set_defaults(fn=cmd_survey)
     p = sub.add_parser("build", help="render the curated progression sheets")
     p.add_argument("lineage", nargs="*")

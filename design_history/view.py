@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .attribution import attribute
+from .attribution import attribute, curated
 from .authorship import Blamer, era_generator
 from .characters import era_ids, lineage_targets
 from .stills import cached_still
@@ -34,6 +34,9 @@ def lineage_view(
         if sha:
             info = commit_info(store, sha)
             pin = attribute(info, ledger or {}, blamer.timeline if blamer is not None else None)
+            drawn = sorted({a.models[0] for (c, _), a in curated().items() if c == sha})
+            if drawn:
+                row["drawn_by"] = drawn
             row.update({
                 "in_store": True,
                 "sha": sha,

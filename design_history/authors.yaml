@@ -1,0 +1,17 @@
+# Who drew what where the commits cannot say: a person's drawing committed by
+# an agent session, or Jon's hand work committed from his account. Each entry
+# names a commit (full id) and the renderer-relative paths whose lines it
+# covers. It outranks every basis of attribution.py: the person said so.
+#
+# `who`    the author to show
+# `paths`  the files whose lines (blamed to `commit`) the entry covers
+# `note`   where the statement comes from
+authors:
+  - commit: dc09e88d89c0856efa6ab59b61eaf8b322a8f491
+    paths: [assets/mary_o_v2.svg]
+    who: Jon Crall (drawn by hand)
+    note: "Jon, 2026-10-25: he drew most of Mary-O v2. The commit (a Claude Opus 5 session) says it carries Jon's art pass."
+  - commit: 36fb44d79da39e29ab4245f4058e779718fb8c4f
+    paths: [assets/noether.svg]
+    who: Jon Crall (drawn by hand)
+    note: "The commit, from Jon's account, says: hand traced noether svg with part labels."

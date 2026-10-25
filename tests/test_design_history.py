@@ -360,3 +360,57 @@ def test_a_model_named_without_its_version_takes_the_newest_on_its_date():
     unsigned = attribution.attribute(_commit(store, "joncrall", "tune", date="2026-07-12T00:00:00+00:00"), {}, timeline)
     assert (unsigned.models, unsigned.basis) == (("GPT-5.6",), "inferred"), unsigned
     assert "2026-07-12" in unsigned.note
+
+
+def test_a_curated_author_outranks_the_commit_for_its_files_only(history_store, tmp_path, monkeypatch):
+    """`authors.yaml` says who drew a file's lines at a commit (Jon's drawing
+    committed by an agent session). It covers the files it names, nothing else."""
+    import importlib
+
+    attribution = importlib.import_module("design_history.attribution")
+    authorship = importlib.import_module("design_history.authorship")
+    repo, head = history_store
+    foo = "ambition_sprite2d_renderer/targets/characters/foo.py"
+    gpt = _git(repo, "log", "--format=%H", "--grep=^Three", "refs/epochs/ambition_sprite2d_renderer/000/heads/main")
+    authors = tmp_path / "authors.yaml"
+    authors.write_text(f"authors:\n  - commit: {gpt}\n    paths: [{foo}]\n    who: A Person\n    note: they said so\n")
+    monkeypatch.setattr(attribution, "AUTHORS", authors)
+    blamer = authorship.Blamer(repo, tmp_path / "cache")
+    got = {s.who: (s.lines, s.kind) for s in blamer.authorship(head, [foo]).shares}
+    assert got["A Person"] == (1, "curated") and "GPT-6" not in got, got
+    svg = "ambition_sprite2d_renderer/data/characters/foo/foo.svg"
+    assert "A Person" not in {s.who for s in blamer.authorship(head, [svg]).shares}
+
+
+def test_a_holistic_look_ends_a_burst_and_a_later_redraw_of_it_keeps_its_author(tmp_path):
+    """Patches within hours are one burst: its last variation is the look. A
+    later burst that draws almost the same look (a refactor) is not a new one."""
+    import importlib
+
+    from PIL import Image, ImageDraw
+
+    variations = importlib.import_module("design_history.variations")
+
+    def still(name, color, nub=False):
+        image = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((16, 8, 48, 60), fill=color)
+        if nub:
+            draw.point((17, 9), fill=(0, 0, 0, 255))
+        path = tmp_path / f"{name}.png"
+        image.save(path)
+        return path
+
+    def v(name, date, path):
+        return variations.Variation(name, date, "R1", "foo", name, path)
+
+    found = [
+        v("a1", "2026-05-21T00:00:00+00:00", still("a1", (200, 30, 30, 255))),
+        v("a2", "2026-05-21T02:00:00+00:00", still("a2", (210, 30, 30, 255))),   # same burst: a patch
+        v("b", "2026-07-12T00:00:00+00:00", still("b", (30, 30, 200, 255))),     # a new look
+        v("b2", "2026-10-03T00:00:00+00:00", still("b2", (30, 30, 200, 255), nub=True)),  # a refactor of it
+    ]
+    variations.classify(found)
+    assert [x.commit for x in found if x.burst_end] == ["a2", "b", "b2"]
+    assert [x.commit for x in found if x.holistic] == ["a2", "b"]
+    assert found[3].change is not None and found[3].change < variations.SAME_LOOK

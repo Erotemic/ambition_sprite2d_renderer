@@ -7,6 +7,9 @@ Three kinds of evidence, strongest first:
 ``declared``  a ``Co-Authored-By`` trailer in the commit message.
 ``message``   no trailer, but the subject or body names a model ("Big GPT 5.6
               Alice improvement"). Weaker: it may be a plan, not a signature.
+``curated``   `authors.yaml` says who drew the lines of a file at a commit (a
+              person's drawing committed by an agent session). It outranks
+              everything below, for those files only.
 ``inferred``  no ledger row, no model trailer and no model named, from Jon's
               account or an agent's: GPT (Jon's rule, 2026-10-25). Claude Code
               signs its commits and GPT mostly does not: of the ledger's
@@ -24,6 +27,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
+from pathlib import Path
 
 from .store import Commit
 
@@ -172,3 +176,20 @@ def _raw(commit: Commit, ledger: dict[str, list[dict]]) -> Attribution:
     if author in _HUMAN_AUTHORS or author.split(" ")[0] == "agent":
         return Attribution(("GPT",), "inferred", "no model trailer: GPT by Jon's rule, or a hand commit")
     return Attribution((), "unknown", "nothing names a model")
+
+
+AUTHORS = Path(__file__).resolve().parent / "authors.yaml"
+
+
+def curated(path: Path | None = None) -> dict[tuple[str, str], Attribution]:
+    """`(commit, renderer-relative path) -> Attribution` from `authors.yaml`."""
+    path = path or AUTHORS
+    if not path.is_file():
+        return {}
+    import yaml  # noqa: PLC0415
+
+    out: dict[tuple[str, str], Attribution] = {}
+    for row in (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("authors") or []:
+        for file in row.get("paths") or []:
+            out[(str(row["commit"]), str(file))] = Attribution((str(row["who"]),), "curated", str(row.get("note", "")))
+    return out

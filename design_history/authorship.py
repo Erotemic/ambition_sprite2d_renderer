@@ -30,7 +30,7 @@ import re
 from pathlib import Path
 
 from . import models
-from .attribution import Attribution, attribute
+from .attribution import Attribution, attribute, curated
 from .store import commit_info, git
 
 #: The suffixes of a generator: code, job configs, SVG art and rig documents.
@@ -58,7 +58,7 @@ class Share:
     """Lines of the generator that one author made."""
 
     who: str          # "Claude Opus 5.5", "GPT (inferred)", "unknown"
-    kind: str         # model | inferred | unknown
+    kind: str         # model | curated (a person, authors.yaml) | inferred | unknown
     basis: str        # the strongest `attribution` basis among its commits
     lines: int
     commits: tuple[str, ...]
@@ -114,11 +114,13 @@ class Authorship:
         }
 
 
-_BASIS_RANK = {"measured": 0, "declared": 1, "message": 2, "inferred": 3, "unknown": 4}
+_BASIS_RANK = {"curated": -1, "measured": 0, "declared": 1, "message": 2, "inferred": 3, "unknown": 4}
 
 
 def describe(who: Attribution) -> tuple[str, str]:
     """`(name, kind)` of one commit's author for a share."""
+    if who.basis == "curated":
+        return ", ".join(who.models), "curated"
     if who.basis == "inferred":
         # No model signed the commit (see `attribution.py`): the share says
         # so in its name, apart from the GPT commits that name themselves.
@@ -141,6 +143,8 @@ class Blamer:
         self.ledger = ledger or {}
         # A model named without its version takes the newest on the commit's date.
         self.timeline = models.from_store(store, self.ledger, cache)
+        # A person's drawing that an agent session committed (`authors.yaml`).
+        self.curated = curated()
         self._who: dict[str, Attribution] = {}
         self._roots: dict[str, str] | None = None
         self._repo_of: dict[str, Path | None] = {}
@@ -251,6 +255,9 @@ class Blamer:
         return last or sha
 
     def who(self, sha: str) -> Attribution:
+        if sha.startswith("curated:"):
+            _, commit, path = sha.split(":", 2)
+            return self.curated[(commit, path)]
         if sha not in self._who:
             if sha in self.roots():
                 self._who[sha] = Attribution((), "unknown", "an import commit: the line was not found before it")
@@ -267,6 +274,8 @@ class Blamer:
             commits = self.lines(sha, prefix + path)
             if not commits:
                 continue
+            # The lines of a curated (commit, file) are the person's.
+            commits = [f"curated:{c}:{path}" if (c, path) in self.curated else c for c in commits]
             files[path] = len(commits)
             part = "art" if path.endswith(ART_SUFFIXES) else "code"
             groups["all"].update(commits)
@@ -285,7 +294,8 @@ class Blamer:
             if _BASIS_RANK.get(who.basis, 9) < _BASIS_RANK.get(slot[2], 9):
                 slot[2] = who.basis
         shares = [
-            Share(name, kind, basis, n, tuple(c for _, c in sorted(commits, reverse=True)[:5]))
+            Share(name, kind, basis, n, tuple(c.split(":")[1] if c.startswith("curated:") else c
+                                              for _, c in sorted(commits, reverse=True)[:5]))
             for (name, kind), (n, commits, basis) in per.items()
         ]
         shares.sort(key=lambda s: (-s.lines, s.who))
