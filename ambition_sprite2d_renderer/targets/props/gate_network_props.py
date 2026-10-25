@@ -3,8 +3,8 @@ keeps a ring running.
 
 - ``gate_dialer``: the console a traveller dials from, in the ring's bronze.
   A pedestal with a sloped top holding a round dial: the ring's fifteen
-  glyphs (``glyphs.legally_distinct``) lit cyan round a dark centre, seen at
-  the slant. A small screen stands behind it. The game draws the terminal's
+  glyphs (``glyphs.legally_distinct``) lit cyan round a dark centre with a
+  solid Δ in it, seen at the slant. A small screen stands behind it. The game draws the terminal's
   press button over the brass plate on the front. Every dialed ring has one
   beside it.
 - ``gate_power_cabinet``: the ring's power: a grey cabinet with a meter, a
@@ -35,7 +35,7 @@ import numpy as np
 from PIL import Image
 
 from ...authoring.sheet_build import build_sheet
-from ...glyphs.legally_distinct import GLYPHS, Placement, glyphs_mask, spell
+from ...glyphs.legally_distinct import BY_ID, GLYPHS, Placement, glyphs_mask, spell
 from ._town_kit import Canvas, box
 from .castle_godwin import lettering
 
@@ -65,10 +65,11 @@ SCREEN = (16, 42, 52)
 
 def _dial_glyphs(c: Canvas, cx: float, cy: float, radius: float, cap: float, slant: float) -> np.ndarray:
     """The coverage of the fifteen glyphs round a dial centred at (cx, cy)
-    (units): Λ at the top, each foot toward the centre, the dial seen at a
-    slant that shortens it to ``slant`` of its height."""
+    (units): Λ at the top, each foot toward the centre, and a solid Δ in the
+    middle (the press that engages a dial), all seen at a slant that shortens
+    the dial to ``slant`` of its height."""
     px, py, k = (cx - c.o[0]) * c.k, (cy - c.o[1]) * c.k, c.k
-    placements = []
+    placements = [Placement(BY_ID["delta"], (px, py), 1.6 * cap * k)]
     for glyph in GLYPHS:
         ang = -90.0 + glyph.index * 360.0 / len(GLYPHS)
         rad = math.radians(ang)

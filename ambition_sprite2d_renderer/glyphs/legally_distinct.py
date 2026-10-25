@@ -42,10 +42,12 @@ _M = CAP / 2.0
 
 @dataclass(frozen=True)
 class Line:
-    """A polyline stroked ``STROKE`` wide with round caps and round joins."""
+    """A polyline stroked ``STROKE`` wide with round caps and round joins;
+    a ``filled`` one is closed and solid inside."""
 
     points: Tuple[Point, ...]
     closed: bool = False
+    filled: bool = False
 
 
 @dataclass(frozen=True)
@@ -102,7 +104,8 @@ def _alpha() -> Tuple[float, List[Shape]]:
 
 
 def _delta() -> Tuple[float, List[Shape]]:
-    return 600.0, [Line(((_B, _B), (300.0, _T), (600.0 - _B, _B)), closed=True)]
+    # Solid: the one filled letter of the inscription (Jon, 2026-10-24).
+    return 600.0, [Line(((_B, _B), (300.0, _T), (600.0 - _B, _B)), closed=True, filled=True)]
 
 
 def _epsilon() -> Tuple[float, List[Shape]]:
@@ -274,8 +277,14 @@ def shape_contours(shape: Shape) -> List[Contour]:
             _circle(shape.center, shape.radius + RING_BAND / 2.0),
             _circle(shape.center, shape.radius - RING_BAND / 2.0, clockwise=True),
         ]
-    points = list(shape.points) + ([shape.points[0]] if shape.closed else [])
-    return [_capsule(a, b, STROKE / 2.0) for a, b in zip(points, points[1:])]
+    closed = shape.closed or shape.filled
+    points = list(shape.points) + ([shape.points[0]] if closed else [])
+    outlines = [_capsule(a, b, STROKE / 2.0) for a, b in zip(points, points[1:])]
+    if shape.filled:
+        area = sum(ax * by - bx * ay for (ax, ay), (bx, by) in zip(points, points[1:]))
+        inside = list(shape.points)
+        outlines.append(inside if area > 0 else inside[::-1])
+    return outlines
 
 
 def contours(glyph: GateGlyph) -> List[Contour]:
