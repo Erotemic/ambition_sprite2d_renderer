@@ -18,12 +18,12 @@ the pupil (a coloured iris or a dark dot) and the brows' weight.
 from __future__ import annotations
 
 import math
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from .body import Figure
 from .drawkit import SIDES, Ctx, Part, all_of, dark_of, insignia, shaded_region, surface_line, visible
 from .face import EMOTIONS, FACES, TALKING, VISEMES, Expression, brows_part, eyes_part, mouth_part, with_viseme
-from .geometry import Loft, Point, RingKey, Vec3, add3, capsule, capsule_band, clip_convex, column_bands, ellipse3, gauss, hull, interp_knots, lerp, loft_region, norm3, scale3, smoothstep, sub3, wrap180
+from .geometry import Loft, Point, RingKey, Vec3, add3, capsule, capsule_band, clip_convex, column_bands, cross3, ellipse3, gauss, hull, interp_knots, lerp, loft_region, norm3, scale3, smoothstep, sub3, View, wrap180
 from .family import family_of
 from .svgout import FINE, INK, Paint, light, luminance, mix, shade, style
 
@@ -312,16 +312,18 @@ def _pale(ctx: Ctx) -> bool:
     return luminance(ctx.skin) > 0.75
 
 
-def _dome(ctx: Ctx, pt: Paint, behind: Paint, c: Vec3, r: Vec3, color: str) -> None:
+def _dome(ctx: Ctx, pt: Paint, behind: Paint, c: Vec3, r: Vec3, color: str, *, far: Optional[bool] = None) -> None:
     """A dome of the head that rises above its outline (an eye bump, the
-    nostril knob): an ellipsoid half sunk in the head. When it is on the far
-    side of the head, it goes under the head, so only what rises above
-    shows."""
+    nostril knob): an ellipsoid half sunk in the head, drawn as the part
+    that rises out of it (its sunk half has no outline). When it is on the
+    far side of the head, it goes under the head, so only what rises above
+    shows (``far`` overrides the test)."""
     fig = ctx.fig
     centre = (0.0, fig.fy(0.4), 0.0)
     pts = [add3(c, (r[0] * math.cos(a) * math.cos(b), r[1] * math.sin(b), r[2] * math.sin(a) * math.cos(b)))
-           for a in (2 * math.pi * i / 14 for i in range(14)) for b in (math.radians(d) for d in (-80, -45, -15, 15, 45))]
-    far = ctx.view.depth(sub3(c, centre)) < -0.12 * fig.hh
+           for a in (2 * math.pi * i / 14 for i in range(14)) for b in (math.radians(d) for d in (-80, -50, -25, 0, 17))]
+    if far is None:
+        far = ctx.view.depth(sub3(c, centre)) < -0.12 * fig.hh
     p = behind if far else pt
     poly = hull(ctx.p(q) for q in pts)
     p.region([poly], color, smooth=True)
@@ -397,12 +399,8 @@ def _alligator_features(ctx: Ctx, pt: Paint, behind: Paint) -> None:
                 q = [ctx.p(add3(c, (0.028 * hh * math.cos(t), 0.0, 0.012 * hh * math.sin(t)))) for t in (2 * math.pi * i / 10 for i in range(10))]
                 pt.flat([hull(q)], nostril, smooth=True)
     # The eye bumps, the far one first.
-    bumps = []
-    for sgn in (-1.0, 1.0):
-        e = hd.point(sgn * ea, fig.fy(ef), 0.0)
-        bumps.append(add3(e, (-sgn * 0.02 * hh, -0.03 * hh, -0.05 * hh)))
-    for c in sorted(bumps, key=lambda q: ctx.view.depth(q)):
-        _dome(ctx, pt, behind, c, (0.12 * hh, 0.1 * hh, 0.14 * hh), ctx.skin)
+    for sgn in sorted((-1.0, 1.0), key=lambda s: ctx.view.depth(_gator_bump(fig, s))):
+        _dome(ctx, pt, behind, _gator_bump(fig, sgn), scale3(GATOR_BUMP, hh), ctx.skin, far=gator_far(ctx, sgn))
     for sgn in (-1.0, 1.0):
         a0 = sgn * (ea + 34.0)
         line([(a0, fig.fy(ef + 0.06)), (a0 + sgn * 5.0, fig.fy(ef + 0.09)), (a0 + sgn * 12.0, fig.fy(ef + 0.1))], dark, FINE * 1.1, thresh=0.15)
@@ -928,6 +926,106 @@ def facial_hair_parts(ctx: Ctx) -> List[Part]:
     return [Part("face_beard", "head", 54.5, pt.els, "Facial Hair", feature=f"facial_hair:{kind}")]
 
 
+#: An alligator's eye bump: its radii (parts of ``hh``), and the direction
+#: its eye looks (forward, out to the side and up).
+GATOR_BUMP = (0.12, 0.1, 0.14)
+GATOR_LOOK = (0.5, -0.45, 0.75)
+
+
+def _toward_camera(view: View) -> Vec3:
+    """The unit direction from the figure to the camera (with its pitch)."""
+    cp = math.sqrt(max(0.0, 1.0 - view.sp * view.sp))
+    return (-view.s * cp, -view.sp, view.c * cp)
+
+
+def _gator_bump(fig: Figure, sgn: float) -> Vec3:
+    """The centre of the alligator's eye bump on side ``sgn``."""
+    hh, lay = fig.hh, fig.face
+    e = fig.head.point(sgn * lay["eye_alpha"], fig.fy(lay["eye_f"]), 0.0)
+    return add3(e, (-sgn * 0.02 * hh, -0.03 * hh, -0.05 * hh))
+
+
+def gator_far(ctx: Ctx, sgn: float) -> bool:
+    """Whether the alligator's eye bump on side ``sgn`` is on the far side of
+    the head's midline: it and its eye then go under the head, and only
+    what rises above the head's outline shows."""
+    return ctx.fig.species == "alligator" and -_gator_bump(ctx.fig, sgn)[0] * ctx.view.s < -0.03 * ctx.fig.hh
+
+
+def _eye_frame(fig: Figure, g: Dict[str, object]):
+    """An alligator's eye is on the outer face of its eye bump, not on the
+    head's ring (that ring goes round the long snout and would pull the eye
+    along it). Returns the eye's centre, its forward and down directions on
+    the bump, its normal, and the length of one degree of ``alpha``."""
+    sgn = 1.0 if g["alpha"] > 0 else -1.0
+    hh = fig.hh
+    n = norm3((sgn * GATOR_LOOK[0], GATOR_LOOK[1], GATOR_LOOK[2]))
+    r = scale3(GATOR_BUMP, hh)
+    s = 1.0 / math.sqrt(sum((n[i] / r[i]) ** 2 for i in range(3)))
+    centre = add3(_gator_bump(fig, sgn), scale3(n, s))
+    fwd = norm3((-sgn * n[2], 0.0, sgn * n[0]))
+    down = norm3(cross3(n, fwd))
+    if down[1] < 0.0:
+        down = scale3(down, -1.0)
+    half = abs(g["inner"][0] - g["outer"][0]) / 2.0
+    return centre, fwd, down, n, (g["ew"] / 2.0) / max(1e-6, half)
+
+
+def _eye_point(fig: Figure, g: Dict[str, object], a: float, y: float, out: float = 0.0) -> Vec3:
+    """The point of eye ``g`` at (``a``, ``y``) pushed ``out`` along its
+    normal: on the head's surface, or on an alligator's eye bump."""
+    if fig.species != "alligator":
+        return fig.head.point(a, y, out)
+    centre, fwd, down, n, k = _eye_frame(fig, g)
+    sgn = 1.0 if g["alpha"] > 0 else -1.0
+    c = _gator_bump(fig, sgn)
+    r = scale3(GATOR_BUMP, fig.hh)
+    reach = math.sqrt(sum((centre[i] - c[i]) ** 2 for i in range(3)))
+    d = norm3(add3(add3(n, scale3(fwd, -sgn * (a - g["alpha"]) * k / reach)), scale3(down, (y - g["y"]) / reach)))
+    return add3(c, scale3(d, 1.0 / math.sqrt(sum((d[i] / r[i]) ** 2 for i in range(3))) + out))
+
+
+def _wrapped(ctx: Ctx, g: Dict[str, object], q: Vec3) -> Vec3:
+    """``q`` on an alligator's eye bump, moved onto the bump's rim (as the
+    camera sees it) when it is on the side turned away: the eye wraps round
+    the bump and is cut by its outline."""
+    if ctx.fig.species != "alligator":
+        return q
+    sgn = 1.0 if g["alpha"] > 0 else -1.0
+    c = _gator_bump(ctx.fig, sgn)
+    r = scale3(GATOR_BUMP, ctx.fig.hh)
+    d = sub3(q, c)
+    w = _toward_camera(ctx.view)
+    toward = sum(d[i] * w[i] for i in range(3))
+    if toward >= 0.0:
+        return q
+    d = norm3(sub3(d, scale3(w, toward)))
+    return add3(c, scale3(d, 1.0 / math.sqrt(sum((d[i] / r[i]) ** 2 for i in range(3)))))
+
+
+def _eye_shown(ctx: Ctx, g: Dict[str, object], thresh: float) -> bool:
+    """Whether eye ``g`` faces the camera enough to draw. An alligator's eye
+    is on a bump and shows a sliver until it is well past the bump's rim."""
+    if ctx.fig.species != "alligator":
+        return visible(ctx, g["alpha"], thresh)
+    n = _eye_frame(ctx.fig, g)[3]
+    return sum(n[i] * w for i, w in enumerate(_toward_camera(ctx.view))) > 0.0
+
+
+def _eye_normal(fig: Figure, g: Dict[str, object]) -> Vec3:
+    return (0.0, 0.0, 1.0) if fig.species != "alligator" else _eye_frame(fig, g)[3]
+
+
+def _eye_runs(ctx: Ctx, g: Dict[str, object], pts: Sequence[Tuple[float, float]], out: float, thresh: float) -> List[List[Point]]:
+    """``surface_line`` for marks at the eye (brows, lid paint): an
+    alligator's go on its eye bump."""
+    if ctx.fig.species != "alligator":
+        return surface_line(ctx, ctx.fig.head, pts, out=out, thresh=thresh)
+    if not _eye_shown(ctx, g, thresh):
+        return []
+    return [[ctx.p(_wrapped(ctx, g, _eye_point(ctx.fig, g, a, y, out))) for a, y in pts]]
+
+
 # ---- the face's parts --------------------------------------------------------------------------
 
 
@@ -936,7 +1034,7 @@ def _eye_geometry(fig: Figure, sgn: float, e: Expression) -> Dict[str, object]:
     hh = fig.hh
     lay = fig.face
     shape = s.eye_shape if fig.species == "human" else {"horse": "almond", "dog": "round", "cat": "almond", "bird": "round",
-                                                                "sea_lion": "round", "alligator": "hooded"}[fig.species]
+                                                                "sea_lion": "round", "alligator": "almond"}[fig.species]
     ratio = {"almond": 0.42, "round": 0.56, "narrow": 0.3, "hooded": 0.36, "downturned": 0.42, "upturned": 0.42}[shape]
     if fig.species == "human":
         ratio *= family_of(fig.spec).face.eye_open
@@ -979,9 +1077,9 @@ def _quad_curve(a: Point, m: Point, b: Point, n: int = 8) -> List[Point]:
 
 def _eye_shapes(ctx: Ctx, g: Dict[str, object]) -> Optional[Dict[str, List[Point]]]:
     hd = ctx.fig.head
-    if not visible(ctx, g["alpha"], 0.18):
+    if not _eye_shown(ctx, g, 0.18):
         return None
-    P = {k: ctx.p(hd.point(*g[k], 0.06)) for k in ("inner", "outer", "top", "bottom")}
+    P = {k: ctx.p(_wrapped(ctx, g, _eye_point(ctx.fig, g, *g[k], 0.06))) for k in ("inner", "outer", "top", "bottom")}
     top = _quad_curve(P["inner"], P["top"], P["outer"])
     bot = _quad_curve(P["outer"], P["bottom"], P["inner"])
     return {"top": top, "bottom": bot, "shape": top + bot[1:-1]}
@@ -997,11 +1095,12 @@ def _draw_eye(ctx: Ctx, pt: Paint, g: Dict[str, object], e: Expression) -> None:
     if not shut:
         pt.flat([eye], "#f4efe6")
         eh = g["eh"]
-        c3 = add3(fig.head.point(*g["center"], 0.06), (0.0, 0.0, 0.3 * eh + 0.15))
+        c3 = add3(_eye_point(fig, g, *g["center"], 0.06), scale3(_eye_normal(fig, g), 0.3 * eh + 0.15))
         cx, cy = ctx.p(c3)
         iris_frac = fig.face["iris"]
         ry = eh * (iris_frac if g["shape"] != "narrow" else min(0.62, iris_frac + 0.12))
-        rx = ry * max(0.38, abs(ctx.view.c) ** 0.8)
+        turn = ctx.view.c if fig.species != "alligator" else ctx.view.facing(g["alpha"])
+        rx = ry * max(0.38, abs(turn) ** 0.8)
         iris = [(cx + rx * math.cos(a), cy + ry * math.sin(a)) for a in (2 * math.pi * i / 16 for i in range(16))]
         clip = hull(eye)
         cut = clip_convex(iris, clip)
@@ -1070,7 +1169,7 @@ def _brow(ctx: Ctx, pt: Paint, g: Dict[str, object], sgn: float, e: Expression) 
         # Painted brows: a soft charcoal on the white.
         col = "#3a2a2a"
     dark_skin = fig.species == "human" and luminance(ctx.skin) < 0.3
-    for run in surface_line(ctx, fig.head, pts, out=0.08, thresh=0.12):
+    for run in _eye_runs(ctx, g, pts, 0.08, 0.12):
         left, right = [], []
         for i, q in enumerate(run):
             a = run[max(0, i - 1)]
@@ -1303,9 +1402,11 @@ def _eye_corners(ctx: Ctx, pt: Paint, eyes: Dict[float, Dict[str, object]]) -> N
     """Face paint's red at the outer corner of each eye (mejiri)."""
     fig = ctx.fig
     for sgn, g in eyes.items():
+        if gator_far(ctx, sgn):
+            continue
         o = g["outer"]
         pts = [(o[0] - sgn * 1.5, o[1] - 0.2 * g["eh"]), (o[0] + sgn * 3.0, o[1] - 0.45 * g["eh"]), (o[0] + sgn * 7.0, o[1] - 0.5 * g["eh"])]
-        for run in surface_line(ctx, fig.head, pts, out=0.07, thresh=0.2):
+        for run in _eye_runs(ctx, g, pts, 0.07, 0.2):
             pt.line(run, PAINT_RED, 0.32 * g["eh"], smooth=True)
 
 
@@ -1325,15 +1426,24 @@ def face_parts(ctx: Ctx) -> List[Part]:
         out.append(Part("face_lines", "head", 54.0, fixed.els, "Face Lines"))
     for name, e in FACES.items():
         eyes, brows = ctx.new(), ctx.new()
+        # An eye on the far side of an alligator's head is under the head
+        # (with its bump); it shares the expression's channel.
+        eyes_far, brows_far = ctx.new(), ctx.new()
         for _n, _s, sgn in SIDES:
             g = _eye_geometry(fig, sgn, e)
-            _draw_eye(ctx, eyes, g, e)
-            _brow(ctx, brows, g, sgn, e)
+            far = gator_far(ctx, sgn)
+            _draw_eye(ctx, eyes_far if far else eyes, g, e)
+            _brow(ctx, brows_far if far else brows, g, sgn, e)
         default = 1 if name == "neutral" else 0
         if eyes.els:
             out.append(Part(eyes_part(name), "head", 54.2, eyes.els, f"Eyes - {name}", eyes_part(name) + "_vis", default))
         if brows.els:
             out.append(Part(brows_part(name), "head", 54.3, brows.els, f"Brows - {name}", brows_part(name) + "_vis", default))
+        if eyes_far.els:
+            out.append(Part(eyes_part(name) + "_far", "head", 49.6, eyes_far.els, f"Eyes - {name} (far)", eyes_part(name) + "_vis", default))
+        if brows_far.els:
+            out.append(Part(brows_part(name) + "_far", "head", 49.7, brows_far.els, f"Brows - {name} (far)", brows_part(name) + "_vis",
+                            default))
     for name in TALKING:
         for vis in VISEMES:
             mouth = ctx.new()
@@ -1341,17 +1451,20 @@ def face_parts(ctx: Ctx) -> List[Part]:
             if mouth.els:
                 default = 1 if (name, vis) == ("neutral", "rest") else 0
                 out.append(Part(mouth_part(name, vis), "head", 54.6, mouth.els, f"Mouth - {name} {vis}", mouth_part(name, vis) + "_vis", default))
-    blink = ctx.new()
+    blink, blink_far = ctx.new(), ctx.new()
     for _n, _s, sgn in SIDES:
         g = _eye_geometry(fig, sgn, EMOTIONS["neutral"])
         sh = _eye_shapes(ctx, g)
         if sh is None:
             continue
+        b = blink_far if gator_far(ctx, sgn) else blink
         lid = [(x, y - 0.06 * g["eh"]) for x, y in sh["top"]] + [(x, y + 0.06 * g["eh"]) for x, y in sh["bottom"][1:-1]]
-        blink.region([lid], face_skin(ctx), outline=0.12)
-        blink.line([(x, y + 0.22 * g["eh"]) for x, y in sh["top"]], INK, 0.34)
+        b.region([lid], face_skin(ctx), outline=0.12)
+        b.line([(x, y + 0.22 * g["eh"]) for x, y in sh["top"]], INK, 0.34)
     if blink.els:
         out.append(Part("face_blink", "head", 55.9, blink.els, "Blink", "face_blink_vis", 0))
+    if blink_far.els:
+        out.append(Part("face_blink_far", "head", 49.8, blink_far.els, "Blink (far)", "face_blink_vis", 0))
     return out
 
 
@@ -1364,7 +1477,7 @@ def glasses_parts(ctx: Ctx) -> List[Part]:
     frame = "#2b2420"
     eyes = {sgn: _eye_geometry(fig, sgn, EMOTIONS["neutral"]) for _n, _s, sgn in SIDES}
     for sgn, g in eyes.items():
-        c = add3(hd.point(*g["center"], 0.0), (0.0, 0.0, 0.9))
+        c = add3(_eye_point(fig, g, *g["center"], 0.0), scale3(_eye_normal(fig, g), 0.9))
         r = g["ew"] * 0.62
         if ctx.view.facing(g["alpha"]) > 0.1:
             rim = [ctx.p(add3(c, (r * math.cos(t), 0.85 * r * math.sin(t), 0.0))) for t in (2 * math.pi * i / 18 for i in range(18))]
@@ -1402,9 +1515,13 @@ def hat_parts(ctx: Ctx, hat: str, color: str, feature: str) -> List[Part]:
     # The band sits as far above the brows as on a human head, so a hat
     # never hides an animal's higher-set eyes.
     lift = max(0.0, front - (fig.face["brow_f"] - 0.145))
-    # A head whose eyes sit at its very top (an alligator's) wears the band
-    # on the crown, not above it.
-    lift = min(lift, max(0.0, front - 0.05))
+    # A head whose eyes sit on bumps at its very top (an alligator's) wears
+    # the band level with the tops of the bumps, behind them, so that no
+    # brim comes down over the eyes.
+    if fig.species == "alligator":
+        lift = front - (fig.face["eye_f"] - 0.15)
+    else:
+        lift = min(lift, max(0.0, front - 0.05))
     front, back = front - lift, back - lift
 
     def band(a: float) -> float:
@@ -1434,8 +1551,9 @@ def hat_parts(ctx: Ctx, hat: str, color: str, feature: str) -> List[Part]:
             yb = fig.fy(band(0.0))
             ln = (0.3 if hat == "cap" else 0.16) * hh
             pts3 = [shell.point(a, fig.fy(band(a)), 0.0) for a in range(-70, 71, 10)]
-            tip3 = [shell.point(a, yb + (0.1 if hat == "cap" else 0.05) * hh * math.cos(math.radians(a)), ln * math.cos(math.radians(a)) ** 0.7)
-                    for a in range(-60, 61, 10)]
+            # An alligator wears its peak tipped up, clear of its eyes.
+            dip = (0.1 if hat == "cap" else 0.05) * (-0.6 if fig.species == "alligator" else 1.0)
+            tip3 = [shell.point(a, yb + dip * hh * math.cos(math.radians(a)), ln * math.cos(math.radians(a)) ** 0.7) for a in range(-60, 61, 10)]
             brim_poly = hull(ctx.p(q) for q in pts3 + tip3)
             brim_front = ctx.view.c > -0.2
         if brim_poly and not brim_front:
@@ -1454,6 +1572,15 @@ def hat_parts(ctx: Ctx, hat: str, color: str, feature: str) -> List[Part]:
     elif hat == "headscarf":
         shell = sk.shell(t + 0.3)
         knots = [(0, 0.22), (40, 0.25), (58, 0.4), (70, 0.95), (180, 1.0)]
+        if fig.species == "alligator":
+            # Over the back of the head only: its front edge is behind the
+            # eye bumps.
+            knots = [(0, 0.04), (90, 0.06), (118, 0.9), (180, 1.0)]
+        elif fig.species != "human":
+            # An animal's eyes are further round the head: the scarf's front
+            # edge goes back with them.
+            push = 1.3 * max(0.0, fig.face["eye_alpha"] - 23.5)
+            knots = [(0, 0.22)] + [(min(175.0, a + push), f) for a, f in knots[1:-1]] + [(180, 1.0)]
         hang = Loft(list(shell.keys) + [RingKey(fig.fy(1.12), shell.section(fig.fy(0.5)).rx * 0.9, 0.15 * hh, 0.4 * hh, 0.0, -0.15 * hh, 2.0)])
         shaded_region(ctx, pt, hang, hang.top, hang.bottom, col, lambda a, y: interp_knots(abs(wrap180(a)), knots) - (y - fig.crown) / hh,
                       lit=True, shade_cap=0.12 * hh)
@@ -1540,6 +1667,10 @@ def _military_hat(ctx: Ctx, pt: Paint, hat: str, col: str, t: float, band: Calla
         # tops of the ears.
         tt = t + 0.075 * hh
         knots = [(0, 0.22 - lift), (50, 0.27 - lift), (95, 0.43 - lift), (140, 0.47 - lift), (180, 0.46 - lift)]
+        if fig.species == "alligator":
+            # Its eyes look out to the sides: the rim stays up until it is
+            # behind them.
+            knots = [(0, 0.22 - lift), (110, 0.24 - lift), (140, 0.47 - lift), (180, 0.46 - lift)]
 
         def rim(a: float) -> float:
             return interp_knots(abs(wrap180(a)), knots)
@@ -1567,6 +1698,10 @@ def _military_hat(ctx: Ctx, pt: Paint, hat: str, col: str, t: float, band: Calla
         for sgn in (-1.0, 1.0):
             pts = [(sgn * 84.0, fig.fy(rim(84.0) - 0.01)), (sgn * 74.0, fig.fy(0.62)), (sgn * 58.0, fig.fy(0.82)), (sgn * 36.0, fig.fy(0.95)),
                    (sgn * 12.0, fig.fy(1.0)), (0.0, fig.fy(1.0))]
+            if fig.species == "alligator":
+                # Down behind the eye bumps and the jaw's hinge, and under the throat.
+                pts = [(sgn * 118.0, fig.fy(rim(118.0) - 0.01)), (sgn * 114.0, fig.fy(0.5)), (sgn * 104.0, fig.fy(0.85)), (sgn * 70.0, fig.fy(1.0)),
+                       (sgn * 20.0, fig.fy(1.0)), (0.0, fig.fy(1.0))]
             dense = [(lerp(a0, a1, i / 4.0), lerp(y0, y1, i / 4.0)) for (a0, y0), (a1, y1) in zip(pts, pts[1:]) for i in range(4)] + [pts[-1]]
             for run in surface_line(ctx, hd, dense, out=0.25, thresh=0.05):
                 pt.line(run, INK, 0.75)

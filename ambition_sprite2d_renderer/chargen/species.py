@@ -406,15 +406,18 @@ def _alligator(fig) -> HeadModel:
         (0.9, 0.37 * w, tip - 0.68, 0.58, 0.0, 2.6),
         (1.00, 0.27 * w, tip - 1.1, 0.5, 0.0, 2.3),
     ]
+    # The skull that hair and hats sit on is behind the eye bumps (their
+    # back edge is about 0.2 hh in front of the centre), so a wig or a hat
+    # never covers the eyes.
     skull = [
-        (0.00, 0.0, 0.0, 0.0, -0.02, 2.0),
-        (0.07, 0.34 * w, 0.4, 0.46, -0.02, 2.2),
-        (0.3, 0.4 * w, 0.46, 0.52, -0.02, 2.3),
-        (0.6, 0.42 * w, 0.46, 0.52, -0.02, 2.3),
-        (1.00, 0.24 * w, 0.3, 0.36, 0.0, 2.2),
+        (0.00, 0.0, 0.0, 0.0, -0.17, 2.0),
+        (0.07, 0.34 * w, 0.3, 0.42, -0.17, 2.2),
+        (0.3, 0.4 * w, 0.34, 0.44, -0.15, 2.3),
+        (0.6, 0.42 * w, 0.36, 0.44, -0.12, 2.3),
+        (1.00, 0.24 * w, 0.26, 0.32, -0.06, 2.2),
     ]
     layout = {
-        "eye_f": 0.075, "brow_f": 0.035, "eye_alpha": 36.0, "eye_w": 0.17, "iris": 0.9, "nose_tip_f": 0.38, "mouth_f": 0.6,
+        "eye_f": 0.13, "brow_f": 0.085, "eye_alpha": 50.0, "eye_w": 0.2, "iris": 0.9, "nose_tip_f": 0.38, "mouth_f": 0.6,
         "mouth_alpha": 104.0, "nose": "alligator", "pupil": "slit", "mouth_wave": 0.04, "tip": tip,
         # Hats fit the skull above this (the snout is not under them).
         "crown_f": 0.7, "hat_flat": 0.0,

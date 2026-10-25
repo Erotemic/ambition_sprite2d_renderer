@@ -637,3 +637,41 @@ def test_geta_raise_the_figure_and_keep_the_feet_on_the_ground(tmp_path):
         if label == "geta":
             ref = lows[("shoes", view, n)]
             assert max(abs(a - b) for a, b in zip(bottoms, ref)) <= 2, (view, n, bottoms, ref)
+
+
+def test_no_hat_or_wig_covers_the_eyes():
+    """A hat or a wig never paints over an eye, on any head, in the views
+    where the eyes face the camera. An eye pixel (inside the head's outline)
+    is covered when it shows on the bare head and its colour changes when
+    the item is put on (a dark lid line over dark hair does not change, and
+    is not counted)."""
+    import numpy as np
+
+    from ambition_sprite2d_renderer.chargen.face import eyes_part
+
+    hide_eyes = {eyes_part("neutral") + "_vis": 0}
+
+    def px(spec, view, state=None):
+        return np.asarray(render_view(spec, VIEW_BY_KEY[view], 3.0, state=state).convert("RGBA"), dtype=np.int16)
+
+    def changed(a, b):
+        return np.abs(a - b).sum(axis=2) > 60
+
+    bad = []
+    for species in S.SPECIES:
+        bare_over = {"head": {"species": species}, "hair": {"style": "bald"}, "outfit": {"hat": "none"}}
+        bare = S.generate("slim_female", seed=3, overrides=bare_over)
+        looks = [("nihongami", {"hair": {"style": "nihongami"}})] + [(h, {"outfit": {"hat": h}}) for h in S.HATS if h != "none"]
+        for view in ("front", "front_3q", "side"):
+            with_eyes, no_eyes = px(bare, view), px(bare, view, hide_eyes)
+            # Inside the head's outline only: an edge pixel of an eye on the
+            # outline also shows what is behind the head.
+            eye = changed(with_eyes, no_eyes) & (with_eyes[..., 3] == 255) & (no_eyes[..., 3] == 255)
+            # The eye shows in this view at all (not edge-on, not smeared).
+            assert eye.sum() >= 10, (species, view, int(eye.sum()))
+            for name, over in looks:
+                worn = S.generate("slim_female", seed=3, overrides={k: {**v, **over.get(k, {})} for k, v in bare_over.items()})
+                covered = (eye & changed(with_eyes, px(worn, view))).sum() / eye.sum()
+                if covered > 0.05:
+                    bad.append((species, name, view, round(float(covered), 2)))
+    assert not bad, bad
