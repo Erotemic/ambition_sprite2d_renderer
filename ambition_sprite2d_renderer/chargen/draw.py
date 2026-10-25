@@ -133,6 +133,13 @@ def draw_hand(ctx: Ctx, side: str) -> List:
     pt.flat([capsule_band(P(W), P(add3(W, scale3(u, 0.68 * L))), 3.0 * k, 2.6 * k, 1.0 * k)], ctx.skin_sh)
     if thumb_front:
         thumb()
+    if fig.species == "alligator":
+        # Claws: a short pale point on each curled finger.
+        for off in (-2.7, -0.9, 0.9, 2.7):
+            a = add3(add3(W, scale3(u, L * 0.74)), add3(scale3(v, off * k), scale3(w, 1.3 * k)))
+            tip = add3(a, add3(scale3(u, 0.9 * k), scale3(w, 1.0 * k)))
+            side = scale3(v, 0.45 * k)
+            pt.region([[P(add3(a, side)), P(sub3(a, side)), P(tip)]], "#e2d8bc", outline=FINE * 0.5)
     if abs(ctx.view.s) > 0.5:
         for off in (-1.5, 0.0, 1.5):
             a = add3(add3(W, scale3(u, L * 0.52)), add3(scale3(v, off * k), scale3(w, 0.4 * k)))
@@ -144,10 +151,10 @@ def draw_hand(ctx: Ctx, side: str) -> List:
 def _throat(ctx: Ctx, pt, y0: float, y1: float) -> None:
     """The front of the neck in a second colour: an animal's pale throat
     (``HeadModel.throat``), or face paint, which goes down the neck."""
-    from .headdraw import PAINT, coat_colors
+    from .headdraw import PAINT, coat_colors, painted
 
     fig = ctx.fig
-    paint = fig.spec.face.makeup == "geisha"
+    paint = painted(ctx)
     if not (paint or fig.model.throat):
         return
     col = PAINT if paint else coat_colors(ctx)[1]

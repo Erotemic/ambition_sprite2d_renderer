@@ -28,7 +28,7 @@ from .geometry import Loft, RingKey, gauss, smoothstep, wrap180
 
 SPECIES = ("human", "horse", "dog", "cat", "bird", "sea_lion", "alligator")
 #: A species' head height against a human's of the same build.
-HEAD_SCALE = {"human": 1.0, "horse": 1.16, "dog": 1.05, "cat": 0.98, "bird": 1.0, "sea_lion": 1.02, "alligator": 0.84}
+HEAD_SCALE = {"human": 1.0, "horse": 1.16, "dog": 1.05, "cat": 0.98, "bird": 1.0, "sea_lion": 1.02, "alligator": 0.64}
 #: Coats: fur and feathers, by species.
 COATS: Dict[str, Tuple[str, ...]] = {
     "horse": ("#7a4a2c", "#5c3a24", "#a8672f", "#2e2622", "#8d8a86", "#c9a26a", "#e6dfd2", "#4a3528"),
@@ -37,8 +37,10 @@ COATS: Dict[str, Tuple[str, ...]] = {
     "bird": ("#3f6f9e", "#c9473a", "#e3c24a", "#5b8f4f", "#ece6da", "#2e2c34", "#8a6a9e", "#d98a3e"),
     "sea_lion": ("#c9a876", "#b8946a", "#d4b384", "#a9804f", "#4e3628", "#5c4232", "#3e3029", "#6b4a32"),
     # Dark olive to near black hides.
-    "alligator": ("#3d4a2e", "#2f3a26", "#4a5434", "#2a2f24", "#424a30", "#55603a", "#33392a", "#262a20"),
+    "alligator": ("#3d4a2e", "#2f3a26", "#4a5434", "#2a2f24", "#424a30", "#55603a", "#33392a", "#262a20", "#efece3"),
 }
+#: The alligator's albino coat: white to pale cream (its eyes are pink-red).
+ALBINO = "#efece3"
 #: Coats where the sexes differ: a sea lion cow is blonde to tan, a bull dark brown.
 COATS_BY_SEX: Dict[str, Dict[str, Tuple[str, ...]]] = {
     "sea_lion": {"female": ("#c9a876", "#b8946a", "#d4b384", "#a9804f", "#c2a27a", "#9a7a56"),
@@ -69,6 +71,9 @@ class HeadModel:
     #: is fitted inside the head's ring there, and the head turns about its
     #: centre. ``None``: the human neck, which meets the head under the jaw.
     neck_f: float | None = None
+    #: The skull that hair and hats sit on and the neck goes under, when it
+    #: is not the whole head (a long snout runs forward of it).
+    skull_keys: List[RingKey] | None = None
 
 
 def _rows(fy, hh: float, rows) -> List[RingKey]:
@@ -367,56 +372,63 @@ def _sea_lion(fig) -> HeadModel:
 
 
 def _alligator(fig) -> HeadModel:
-    """A low skull with the eyes high on raised bony bumps, a long, broad
-    snout with a round U-shaped end (not a crocodile's narrow V), nostrils on
-    a raised knob at its tip, and the jaw line along each side of the snout,
-    where the upper teeth show when the mouth is shut. The lower jaw and the
-    throat are pale. A male's snout is broader and heavier.
+    """A LOW, FLAT head (not a dinosaur's tall skull on a thin neck): the
+    snout is most of its length, long, flat and broad, ending in a round,
+    bulbous U (not a crocodile's narrow V). The top is almost a flat line
+    from the tip back to the thick neck; only the eye bumps (drawn by
+    ``headdraw``) rise above it, with the eyes high at the back looking
+    forward over the snout. A nostril knob sits on the tip. The jaw line runs
+    back along each side and curls up behind the eye (the smile), with the
+    upper teeth showing when it is shut. The lower jaw and the throat are
+    pale. A male's head is broader.
 
-    The snout runs FORWARD from the face (``rzf``), so the head is long in a
-    side view and a broad flat face from the front. The rings stay centred on
-    the skull (``cz`` near 0), so the neck goes in under the skull, not under
-    the snout."""
+    The rings stay centred on the skull (``cz`` 0), so the neck goes in
+    under the back of the head. Hair and hats sit on ``skull_keys``: the
+    back part of the head, not the snout."""
     hh = fig.hh
     m = fig.spec.head.muzzle
     w = 0.94 if fig.female else 1.06
-    tip = 0.62 + 0.78 * m
+    tip = 1.55 + 0.5 * m
     # (f, rx, rzf, rzb, cz, sq); the snout's rows are boxy (sq) for the U.
-    # The skull is low: the eyes sit near its top, and the snout's top runs
-    # forward from just under them.
     rows = [
-        (0.00, 0.0, 0.0, 0.0, -0.08, 2.0),
-        (0.07, 0.25 * w, 0.3, 0.32, -0.08, 2.0),
-        (0.16, 0.3 * w, 0.4, 0.36, -0.07, 2.0),
-        (0.26, 0.33 * w, 0.56, 0.36, -0.05, 2.2),
-        (0.34, 0.345 * w, 0.62 + 0.45 * (tip - 0.62), 0.35, -0.03, 2.5),
-        (0.42, 0.355 * w, tip - 0.1, 0.33, -0.02, 2.7),
-        (0.5, 0.36 * w, tip - 0.02, 0.31, 0.0, 2.8),
-        (0.62, 0.37 * w, tip, 0.29, 0.0, 2.8),
-        (0.76, 0.38 * w, tip, 0.27, 0.0, 2.8),
-        (0.88, 0.37 * w, tip - 0.06, 0.25, 0.0, 2.7),
-        (0.96, 0.32 * w, tip - 0.14, 0.23, 0.0, 2.5),
-        (1.00, 0.22 * w, tip - 0.25, 0.2, 0.0, 2.3),
+        (0.00, 0.0, 0.0, 0.0, 0.0, 2.0),
+        # The back of the head slopes down into the thick neck.
+        (0.07, 0.36 * w, 0.5, 0.3, 0.0, 2.4),
+        (0.15, 0.4 * w, 0.66 * tip, 0.4, 0.0, 2.7),
+        (0.24, 0.42 * w, 0.83 * tip, 0.47, 0.0, 2.9),
+        (0.33, 0.43 * w, 0.96 * tip, 0.52, 0.0, 3.0),
+        (0.44, 0.44 * w, tip, 0.56, 0.0, 3.0),
+        (0.58, 0.44 * w, tip, 0.59, 0.0, 3.0),
+        # The lower jaw is deep at the back and thin at the tip: its
+        # underside rises toward the tip.
+        (0.7, 0.43 * w, tip - 0.1, 0.6, 0.0, 2.9),
+        (0.8, 0.41 * w, tip - 0.32, 0.6, 0.0, 2.8),
+        (0.9, 0.37 * w, tip - 0.68, 0.58, 0.0, 2.6),
+        (1.00, 0.27 * w, tip - 1.1, 0.5, 0.0, 2.3),
+    ]
+    skull = [
+        (0.00, 0.0, 0.0, 0.0, -0.02, 2.0),
+        (0.07, 0.34 * w, 0.4, 0.46, -0.02, 2.2),
+        (0.3, 0.4 * w, 0.46, 0.52, -0.02, 2.3),
+        (0.6, 0.42 * w, 0.46, 0.52, -0.02, 2.3),
+        (1.00, 0.24 * w, 0.3, 0.36, 0.0, 2.2),
     ]
     layout = {
-        "eye_f": 0.16, "brow_f": 0.095, "eye_alpha": 28.0, "eye_w": 0.135, "iris": 0.92, "nose_tip_f": 0.44, "mouth_f": 0.72,
-        "mouth_alpha": 94.0, "nose": "alligator", "pupil": "slit", "mouth_wave": 0.014, "tip": tip,
-        # Hats fit the skull above this: below it the snout runs forward.
-        "crown_f": 0.3, "hat_flat": 0.0,
+        "eye_f": 0.075, "brow_f": 0.035, "eye_alpha": 36.0, "eye_w": 0.17, "iris": 0.9, "nose_tip_f": 0.38, "mouth_f": 0.6,
+        "mouth_alpha": 104.0, "nose": "alligator", "pupil": "slit", "mouth_wave": 0.04, "tip": tip,
+        # Hats fit the skull above this (the snout is not under them).
+        "crown_f": 0.7, "hat_flat": 0.0,
     }
-    eye_f, eye_a = layout["eye_f"], layout["eye_alpha"]
+    tf = layout["nose_tip_f"]
 
     def relief(alpha: float, y: float) -> float:
         f = (y - fig.crown) / hh
         al = wrap180(alpha)
-        # The bony bumps the eyes sit on, and the knob at the snout's tip
-        # that carries the nostrils.
-        v = 0.17 * gauss(f, eye_f - 0.01, 0.07) * (gauss(al, eye_a, 15.0) + gauss(al, -eye_a, 15.0))
-        v += 0.05 * gauss(f, layout["nose_tip_f"] - 0.02, 0.05) * gauss(al, 0.0, 9.0)
-        return hh * v
+        # The bulbous end of the snout, a little wider than behind it.
+        return hh * 0.06 * gauss(f, tf + 0.15, 0.16) * (gauss(al, 36.0, 14.0) + gauss(al, -36.0, 14.0))
 
-    return HeadModel("alligator", _rows(fig.fy, hh, rows), [relief], layout, ears="none", hair="none", muzzle_f=0.77, muzzle_alpha=118.0,
-                     throat=True, neck_f=0.6)
+    return HeadModel("alligator", _rows(fig.fy, hh, rows), [relief], layout, ears="none", hair="none", muzzle_f=0.68, muzzle_alpha=124.0,
+                     throat=True, neck_f=0.62, skull_keys=_rows(fig.fy, hh, skull))
 
 
 _BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird": _bird, "sea_lion": _sea_lion, "alligator": _alligator}
@@ -432,15 +444,18 @@ def head_model(fig) -> HeadModel:
     if P.head_width != 1.0 or P.head_depth != 1.0:
         model.keys = [replace(r, rx=r.rx * P.head_width, rzf=r.rzf * P.head_depth, rzb=r.rzb * P.head_depth, cz=r.cz * P.head_depth)
                       for r in model.keys]
+        if model.skull_keys:
+            model.skull_keys = [replace(r, rx=r.rx * P.head_width, rzf=r.rzf * P.head_depth, rzb=r.rzb * P.head_depth,
+                                        cz=r.cz * P.head_depth) for r in model.skull_keys]
     return model
 
 
 def skull_loft(model: HeadModel) -> Loft:
-    return Loft(list(model.keys))
+    return Loft(list(model.skull_keys or model.keys))
 
 
 def head_loft(model: HeadModel) -> Loft:
     return Loft(list(model.keys), list(model.bumps))
 
 
-__all__ = ["COATS", "COATS_BY_SEX", "HEAD_SCALE", "HeadModel", "SPECIES", "head_loft", "head_model", "skull_loft"]
+__all__ = ["ALBINO", "COATS", "COATS_BY_SEX", "HEAD_SCALE", "HeadModel", "SPECIES", "head_loft", "head_model", "skull_loft"]

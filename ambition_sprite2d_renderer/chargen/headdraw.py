@@ -142,9 +142,16 @@ PAINT = "#f6f1e8"
 PAINT_RED = "#c3202b"
 
 
+def painted(ctx: Ctx) -> bool:
+    """Whether the face is painted white: face paint on any face but a
+    white hide (an albino alligator's), on which it adds only the red."""
+    fig = ctx.fig
+    return fig.spec.face.makeup == "geisha" and (fig.species == "human" or luminance(ctx.skin) < 0.75)
+
+
 def face_skin(ctx: Ctx) -> str:
     """The colour of the face round the eyes: the skin, or the face paint."""
-    return PAINT if ctx.fig.spec.face.makeup == "geisha" else ctx.skin
+    return PAINT if painted(ctx) else ctx.skin
 
 
 def head_parts(ctx: Ctx) -> List[Part]:
@@ -177,7 +184,7 @@ def head_parts(ctx: Ctx) -> List[Part]:
             return min(f - mf, (model.muzzle_alpha - abs(wrap180(a))) * 0.01)
 
         pt.flat(loft_region(ctx.view, hd.shell(0.02), fig.fy(mf), hd.bottom, muzzle_m), muzzle)
-    if fig.spec.face.makeup == "geisha":
+    if painted(ctx):
         _face_paint(ctx, pt)
     for front, outer, inner, upright in ears:
         if front and not upright:
@@ -247,17 +254,32 @@ def _species_features(ctx: Ctx, pt: Paint, behind: Paint) -> None:
     elif kind == "sea_lion":
         _sea_lion_nose(ctx, pt)
     elif kind == "alligator":
-        _alligator_features(ctx, pt)
+        _alligator_features(ctx, pt, behind)
 
 
 def _face_paint(ctx: Ctx, pt: Paint) -> None:
     """White face paint over the front of the face, from under the hairline
     (on an animal, from over the brows) down to the chin; the ears and the
-    back of the head stay bare."""
+    back of the head stay bare. On a snout (``layout["eye_alpha"]`` of an
+    alligator) only the face is painted: the top and the tip of the snout
+    down to the jaw line, and round each eye; the hide shows at the edges."""
     fig = ctx.fig
     hh = fig.hh
     human = fig.species == "human"
-    f0 = 0.17 if human else fig.face["brow_f"] - 0.07
+    lay = fig.face
+    if lay["nose"] == "alligator":
+        ef, ea, tf, mf = lay["eye_f"], lay["eye_alpha"], lay["nose_tip_f"], lay["mouth_f"]
+
+        def snout(a: float, y: float) -> float:
+            f = (y - fig.crown) / hh
+            al = wrap180(a)
+            top = min(f - 0.3, mf + 0.005 - f, ((44.0 if f < tf + 0.02 else 28.0) - abs(al)) * 0.01)
+            eyes = max(1.0 - ((al - s_ * ea) / 21.0) ** 2 - ((f - ef - 0.01) / 0.085) ** 2 for s_ in (-1.0, 1.0)) * 0.05
+            return max(top, eyes)
+
+        pt.flat(loft_region(ctx.view, fig.head.shell(0.03), fig.fy(ef - 0.1), fig.fy(mf + 0.01), snout), PAINT)
+        return
+    f0 = 0.17 if human else lay["brow_f"] - 0.07
     reach = 80.0 if human else 96.0
     # On an animal the paint stops at the jaw line: the pale underside of
     # the jaw stays its own colour.
@@ -270,39 +292,133 @@ def _face_paint(ctx: Ctx, pt: Paint) -> None:
     pt.flat(loft_region(ctx.view, fig.head.shell(0.03), fig.fy(f0), fig.fy(f1), m), PAINT)
 
 
-def _alligator_features(ctx: Ctx, pt: Paint) -> None:
-    """The fixed marks of an alligator's head: two nostrils on the knob at
-    the tip of the snout, an ear slit behind each eye, a row of small pits
-    along the upper jaw, and rows of bony scutes on the back of the head."""
+def _raised(ctx: Ctx, pt: Paint, loft: Loft, alpha: float, y: float, ru: float, rv: float, height: float, color: str,
+            outline: Optional[float] = None) -> None:
+    """A small raised bump on a loft (a scute, a scale): an oval on the
+    surface and its top pushed out, as one hull."""
+    c = loft.point(alpha, y, 0.0)
+    ra = math.radians(alpha)
+    n = (math.sin(ra), 0.0, math.cos(ra))
+    t = (math.cos(ra), 0.0, -math.sin(ra))
+    base = ellipse3(c, t, (0.0, 1.0, 0.0), ru, rv, 10)
+    top = ellipse3(add3(c, scale3(n, height)), t, (0.0, 1.0, 0.0), 0.55 * ru, 0.55 * rv, 8)
+    if outline is None:
+        pt.flat([hull(ctx.p(q) for q in base + top)], color, smooth=True)
+    else:
+        pt.region([hull(ctx.p(q) for q in base + top)], color, outline=outline, smooth=True)
+
+
+def _pale(ctx: Ctx) -> bool:
+    return luminance(ctx.skin) > 0.75
+
+
+def _dome(ctx: Ctx, pt: Paint, behind: Paint, c: Vec3, r: Vec3, color: str) -> None:
+    """A dome of the head that rises above its outline (an eye bump, the
+    nostril knob): an ellipsoid half sunk in the head. When it is on the far
+    side of the head, it goes under the head, so only what rises above
+    shows."""
+    fig = ctx.fig
+    centre = (0.0, fig.fy(0.4), 0.0)
+    pts = [add3(c, (r[0] * math.cos(a) * math.cos(b), r[1] * math.sin(b), r[2] * math.sin(a) * math.cos(b)))
+           for a in (2 * math.pi * i / 14 for i in range(14)) for b in (math.radians(d) for d in (-80, -45, -15, 15, 45))]
+    far = ctx.view.depth(sub3(c, centre)) < -0.12 * fig.hh
+    p = behind if far else pt
+    poly = hull(ctx.p(q) for q in pts)
+    p.region([poly], color, smooth=True)
+    top = [add3(c, (0.55 * r[0] * math.cos(a), -0.8 * r[1], 0.55 * r[2] * math.sin(a))) for a in (2 * math.pi * i / 10 for i in range(10))]
+    p.flat([hull(ctx.p(q) for q in top)], mix(color, "#fffaf0", 0.18), smooth=True)
+
+
+def _raised(ctx: Ctx, pt: Paint, loft: Loft, alpha: float, y: float, ru: float, rv: float, height: float, color: str,
+            outline: Optional[float] = None, square: bool = False) -> None:
+    """A small raised bump on a loft (a scale), or with ``square`` a raised
+    square plate (a scute): its outline on the surface and its top pushed
+    out, as one hull."""
+    c = loft.point(alpha, y, 0.0)
+    ra = math.radians(alpha)
+    n = (math.sin(ra), 0.0, math.cos(ra))
+    t = (math.cos(ra), 0.0, -math.sin(ra))
+    if square:
+        ring = [(math.copysign(abs(math.cos(a)) ** 0.4, math.cos(a)), math.copysign(abs(math.sin(a)) ** 0.4, math.sin(a)))
+                for a in (2 * math.pi * i / 16 for i in range(16))]
+        base = [add3(c, add3(scale3(t, ru * x), (0.0, rv * y_, 0.0))) for x, y_ in ring]
+        top = [add3(add3(c, scale3(n, height)), add3(scale3(t, 0.7 * ru * x), (0.0, 0.7 * rv * y_, 0.0))) for x, y_ in ring]
+    else:
+        base = ellipse3(c, t, (0.0, 1.0, 0.0), ru, rv, 10)
+        top = ellipse3(add3(c, scale3(n, height)), t, (0.0, 1.0, 0.0), 0.55 * ru, 0.55 * rv, 8)
+    if outline is None:
+        pt.flat([hull(ctx.p(q) for q in base + top)], color, smooth=True)
+    else:
+        pt.region([hull(ctx.p(q) for q in base + top)], color, outline=outline, smooth=True)
+
+
+def _alligator_features(ctx: Ctx, pt: Paint, behind: Paint) -> None:
+    """The fixed marks of an alligator's head, drawn over its paint:
+
+    * the eye bumps: a dome over each eye that rises above the flat top of
+      the head (the eye and its lid ridge are drawn on it by the face);
+    * the nostril knob on the tip of the snout, with two nostrils;
+    * the edges of the snout's top and the outline of its tip, and a sparse
+      pattern of raised scales on its top;
+    * an ear slit behind each eye and a row of pits along the upper jaw;
+    * square scute plates in rows on the back of the head and the neck,
+      which stand out of the outline in a side view."""
     fig = ctx.fig
     hd = fig.head
     hh = fig.hh
     lay = fig.face
+    pale = _pale(ctx)
+    paint = painted(ctx)
     dark = shade(ctx.skin, 0.55)
-    knob = lay["nose_tip_f"] - 0.035
+    edge = mix(style().ink, dark, 0.35)
+    ef, ea, tf = lay["eye_f"], lay["eye_alpha"], lay["nose_tip_f"]
+
+    def line(pts, color, width, thresh=0.1) -> None:
+        for run in surface_line(ctx, hd, pts, out=0.04, thresh=thresh):
+            pt.line(run, color, width, smooth=True)
+
+    # The snout: its top's edges, its tip's outline, sparse scales on its top.
     for sgn in (-1.0, 1.0):
-        a = sgn * 8.0
-        if visible(ctx, a, 0.05):
-            c = hd.point(a, fig.fy(knob), 0.005 * hh)
-            q = [ctx.p(add3(c, (0.03 * hh * math.cos(t), -0.012 * hh * abs(math.sin(t)) - 0.004 * hh, 0.014 * hh * math.sin(t))))
-                 for t in (2 * math.pi * i / 10 for i in range(10))]
-            pt.flat([hull(q)], "#141210", smooth=True)
+        line([(sgn * lerp(54.0, 50.0, i / 6.0), fig.fy(lerp(0.1, tf + 0.02, i / 6.0))) for i in range(7)], edge, FINE * 0.9)
+    line([(a, fig.fy(tf + 0.03 + 0.012 * (abs(a) / 50.0) ** 2)) for a in range(-50, 51, 5)], edge, FINE)
+    scale_col = shade(PAINT, 0.12) if paint else shade(ctx.skin, 0.12 if pale else 0.2)
+    for r, f in enumerate((0.1, 0.16, 0.22)):
+        for a in (-27.0, -9.0, 9.0, 27.0) if r % 2 == 0 else (-18.0, 0.0, 18.0):
+            if visible(ctx, a, 0.25):
+                _raised(ctx, pt, hd, a, fig.fy(f), 0.03 * hh, 0.024 * hh, 0.012 * hh, scale_col)
+    # The nostril knob on the tip, and its nostrils.
+    if ctx.view.c > -0.8:
+        k0 = add3(hd.point(0.0, fig.fy(tf - 0.04), 0.0), (0.0, -0.02 * hh, -0.2 * hh))
+        _dome(ctx, pt, behind, k0, (0.12 * hh, 0.06 * hh, 0.09 * hh), ctx.skin)
+        nostril = "#b8707a" if pale else "#141210"
+        if ctx.view.c > -0.3:
+            for sgn in (-1.0, 1.0):
+                c = add3(k0, (sgn * 0.045 * hh, -0.045 * hh, 0.02 * hh))
+                q = [ctx.p(add3(c, (0.028 * hh * math.cos(t), 0.0, 0.012 * hh * math.sin(t)))) for t in (2 * math.pi * i / 10 for i in range(10))]
+                pt.flat([hull(q)], nostril, smooth=True)
+    # The eye bumps, the far one first.
+    bumps = []
     for sgn in (-1.0, 1.0):
-        a0 = sgn * (lay["eye_alpha"] + 36.0)
-        pts = [(a0, fig.fy(lay["eye_f"] + 0.02)), (a0 + sgn * 5.0, fig.fy(lay["eye_f"] + 0.05)), (a0 + sgn * 12.0, fig.fy(lay["eye_f"] + 0.06))]
-        for run in surface_line(ctx, hd, pts, out=0.05, thresh=0.15):
-            pt.line(run, dark, FINE * 1.1)
-    pit = shade(ctx.skin, 0.35)
+        e = hd.point(sgn * ea, fig.fy(ef), 0.0)
+        bumps.append(add3(e, (-sgn * 0.02 * hh, -0.03 * hh, -0.05 * hh)))
+    for c in sorted(bumps, key=lambda q: ctx.view.depth(q)):
+        _dome(ctx, pt, behind, c, (0.12 * hh, 0.1 * hh, 0.14 * hh), ctx.skin)
     for sgn in (-1.0, 1.0):
-        for a in (6.0, 18.0, 30.0, 44.0, 60.0):
+        a0 = sgn * (ea + 34.0)
+        line([(a0, fig.fy(ef + 0.06)), (a0 + sgn * 5.0, fig.fy(ef + 0.09)), (a0 + sgn * 12.0, fig.fy(ef + 0.1))], dark, FINE * 1.1, thresh=0.15)
+    pit = shade(ctx.skin, 0.25 if pale else 0.35)
+    for sgn in (-1.0, 1.0):
+        for a in (16.0, 30.0, 44.0, 60.0, 74.0):
             if visible(ctx, sgn * a, 0.2):
-                pt.dot(ctx.p(hd.point(sgn * a, fig.fy(lay["mouth_f"] - 0.075), 0.04)), 0.011 * hh, pit)
-    # Two rows of bony scutes down the back of the head: short raised dashes.
-    ridge = shade(ctx.skin, 0.4)
-    for sgn in (-1.0, 1.0):
-        for f in (0.5, 0.62, 0.74, 0.86):
-            for run in surface_line(ctx, hd, [(sgn * 168.0, fig.fy(f)), (sgn * 168.0, fig.fy(f + 0.07))], out=0.01 * hh, thresh=0.2):
-                pt.line(run, ridge, FINE * 1.4, smooth=False)
+                pt.dot(ctx.p(hd.point(sgn * a, fig.fy(lay["mouth_f"] - 0.09), 0.04)), 0.012 * hh, pit)
+    # Square scute plates in rows on the back of the head and the neck.
+    scute = shade(ctx.skin, 0.1)
+    for al in (-162.0, 162.0):
+        if ctx.view.facing(al) < -0.35:
+            continue
+        for f in (0.22, 0.42, 0.62, 0.82):
+            _raised(ctx, pt, hd, al, fig.fy(f), 0.05 * hh, 0.06 * hh, 0.03 * hh, scute, FINE * 0.55, square=True)
+        _raised(ctx, pt, fig.neck, al, fig.chin + 0.12 * hh, 0.045 * hh, 0.055 * hh, 0.025 * hh, scute, FINE * 0.55, square=True)
 
 
 def _sea_lion_nose(ctx: Ctx, pt: Paint) -> None:
@@ -820,7 +936,7 @@ def _eye_geometry(fig: Figure, sgn: float, e: Expression) -> Dict[str, object]:
     hh = fig.hh
     lay = fig.face
     shape = s.eye_shape if fig.species == "human" else {"horse": "almond", "dog": "round", "cat": "almond", "bird": "round",
-                                                                "sea_lion": "round", "alligator": "almond"}[fig.species]
+                                                                "sea_lion": "round", "alligator": "hooded"}[fig.species]
     ratio = {"almond": 0.42, "round": 0.56, "narrow": 0.3, "hooded": 0.36, "downturned": 0.42, "upturned": 0.42}[shape]
     if fig.species == "human":
         ratio *= family_of(fig.spec).face.eye_open
@@ -892,7 +1008,8 @@ def _draw_eye(ctx: Ctx, pt: Paint, g: Dict[str, object], e: Expression) -> None:
         if len(cut) >= 3:
             eye_col = fig.spec.palette.eyes if fig.species == "human" else {"horse": "#3a261c", "dog": "#4a2e1e", "cat": "#9aa83a",
                                                                              "bird": "#2a2020", "sea_lion": "#1e1612",
-                                                                             "alligator": "#b39a3c"}[fig.species]
+                                                                             "alligator": "#c4405a" if luminance(ctx.skin) > 0.75 else
+                                                                             "#b39a3c"}[fig.species]
             if fig.species == "human" and family_of(fig.spec).face.pupil == "dot":
                 # A dark pupil with the iris' colour in it, and a catch-light.
                 pt.flat([cut], mix(eye_col, "#1a1412", 0.6))
@@ -949,7 +1066,7 @@ def _brow(ctx: Ctx, pt: Paint, g: Dict[str, object], sgn: float, e: Expression) 
         pts.append((a, yb + dy))
     w = 0.033 * hh * s.brow_weight * {"heavy": 1.4, "soft": 0.75}.get(kind, 1.0) * (1.12 if not fig.female else 0.9) * family_of(fig.spec).face.brow
     col = dark_of(fig.spec.palette.hair) if fig.species == "human" else _brow_of_coat(ctx.skin)
-    if fig.spec.face.makeup == "geisha":
+    if painted(ctx):
         # Painted brows: a soft charcoal on the white.
         col = "#3a2a2a"
     dark_skin = fig.species == "human" and luminance(ctx.skin) < 0.3
@@ -1048,8 +1165,8 @@ def _mouth(ctx: Ctx, pt: Paint, e: Expression) -> None:
     if kind == "alligator":
         _alligator_mouth(ctx, pt, e)
         return
-    painted = fig.spec.face.makeup == "geisha" and fig.species == "human"
-    if painted:
+    lips = fig.spec.face.makeup == "geisha" and fig.species == "human"
+    if lips:
         _painted_lips(ctx, pt, e)
     lip = mix(ctx.skin, "#9c3c3c", 0.32) if fig.species == "human" else shade(ctx.skin, 0.5)
     up = [q for q in _mouth_points(fig, e, False) if ctx.view.facing(q[0]) > 0.04]
@@ -1073,7 +1190,7 @@ def _mouth(ctx: Ctx, pt: Paint, e: Expression) -> None:
             lo2 = [ctx.p(hd.point(a, y + 0.02 * fig.hh, out)) for a, y in up]
             pt.region([line + list(reversed(lo2))], "#f2ece2", outline=0.2, smooth=True)
         pt.line(line, mix(style().ink, lip, 0.3), 0.38 * (family_of(fig.spec).face.lip if fig.species == "human" else 1.0))
-    if fig.species == "human" and not painted:
+    if fig.species == "human" and not lips:
         ym = fig.fy(fig.face["mouth_f"])
         lower = [(a * 0.55, ym + 0.04 * fig.hh + 0.004 * fig.hh * (a / 9.0) ** 2 + 0.085 * e.open * fig.hh) for a in range(-9, 10, 3)]
         for run in surface_line(ctx, hd, lower, out=0.05, thresh=0.1):
@@ -1108,10 +1225,14 @@ def _jaw_line(fig: Figure, e: Expression, lower: bool) -> List[Tuple[float, floa
     ym = fig.fy(lay["mouth_f"])
     wave = lay.get("mouth_wave", 0.0)
     out = []
-    for i in range(25):
-        t = lerp(-1.0, 1.0, i / 24.0)
+    for i in range(49):
+        t = lerp(-1.0, 1.0, i / 48.0)
         u = abs(t)
-        y = ym + wave * hh * math.sin(math.pi * min(1.0, u / 0.8)) - (0.035 + 0.03 * e.smile) * hh * smoothstep(0.72, 1.0, u)
+        # Down over the big front teeth, up, down again, then up at the back
+        # into the corner of the mouth.
+        y = ym + wave * hh * (gauss(u, 0.2, 0.09) - 0.8 * gauss(u, 0.4, 0.08) + 0.7 * gauss(u, 0.6, 0.1))
+        # The smile: the line curls up behind and under the eye.
+        y -= (0.22 + 0.05 * e.smile) * hh * smoothstep(0.7, 1.0, u) ** 1.4
         y -= 0.02 * e.skew * hh * smoothstep(0.6, 1.0, max(0.0, t))
         if lower:
             y += 0.12 * e.open * hh * (1.0 - u) ** 0.85
@@ -1127,10 +1248,20 @@ def _alligator_mouth(ctx: Ctx, pt: Paint, e: Expression) -> None:
     fig = ctx.fig
     hd = fig.head
     hh = fig.hh
-    up = [q for q in _jaw_line(fig, e, False) if ctx.view.facing(q[0]) > 0.04]
-    lo = [q for q in _jaw_line(fig, e, True) if ctx.view.facing(q[0]) > 0.04]
+    full_up, full_lo = _jaw_line(fig, e, False), _jaw_line(fig, e, True)
+    up = [q for q in full_up if ctx.view.facing(q[0]) > 0.04]
+    lo = [q for q in full_lo if ctx.view.facing(q[0]) > 0.04]
     if len(up) < 2:
         return
+    # Seen from behind, only the corners show: draw each visible stretch
+    # on its own, never a line across the back of the head.
+    runs: List[List[Tuple[float, float]]] = [[]]
+    for q in full_up:
+        if ctx.view.facing(q[0]) > 0.04:
+            runs[-1].append(q)
+        elif runs[-1]:
+            runs.append([])
+    runs = [r for r in runs if len(r) >= 2]
     out = 0.06
     tooth = "#efe8d2"
     is_open = e.open > 0.06
@@ -1140,25 +1271,26 @@ def _alligator_mouth(ctx: Ctx, pt: Paint, e: Expression) -> None:
         # (+1) or up (-1); none in the corners.
         for i in range(1, len(line) - 1, 1):
             a, y = line[i]
-            if abs(a) > 0.86 * fig.face["mouth_alpha"] or not visible(ctx, a, 0.12):
+            if i % 2 or abs(a) > 0.72 * fig.face["mouth_alpha"] or not visible(ctx, a, 0.12):
                 continue
-            if i % 2:
-                continue
-            ln = 0.034 * hh * (1.0 - 0.35 * abs(a) / fig.face["mouth_alpha"])
-            da = 2.6
+            ln = (0.13 if i % 4 == 2 else 0.1) * hh * (1.0 - 0.3 * abs(a) / fig.face["mouth_alpha"])
+            da = 2.8
             tri = [ctx.p(hd.point(a - da, y, out)), ctx.p(hd.point(a + da, y, out)), ctx.p(hd.point(a, y + down * ln, out + 0.004 * hh))]
             pt.region([tri], tooth, outline=FINE * 0.45)
 
-    if is_open:
+    if is_open and len(runs) == 1:
         poly = [ctx.p(hd.point(a, y, out)) for a, y in up] + [ctx.p(hd.point(a, y, out * 0.5)) for a, y in reversed(lo)]
-        pt.region([poly], "#4a2422", outline=0.22, smooth=True)
+        pt.region([poly], "#c46a72" if _pale(ctx) else "#4a2422", outline=0.22, smooth=True)
         tongue = [ctx.p(hd.point(a * 0.7, y - 0.018 * hh, out * 0.5)) for a, y in lo if abs(a) < 0.6 * fig.face["mouth_alpha"]]
         if len(tongue) >= 2 and e.open > 0.3:
             pt.line(tongue, "#b8746a", 0.03 * hh, smooth=True, fixed=True)
         teeth(lo, -1.0)
+    # The dark line of the closed jaw, wide enough that the white teeth
+    # read against it at game scale (on a white hide too).
+    gum = mix(style().ink, shade(ctx.skin, 0.5), 0.2)
+    for r in runs:
+        pt.line([ctx.p(hd.point(a, y, out)) for a, y in r], gum, max(0.6, 0.07 * hh))
     teeth(up, 1.0)
-    line = [ctx.p(hd.point(a, y, out)) for a, y in up]
-    pt.line(line, mix(style().ink, shade(ctx.skin, 0.5), 0.2), 0.42)
     if fig.spec.face.makeup == "geisha":
         # Red on the front of the jaw line, like painted lips.
         for edge in ((up, lo) if is_open else (up,)):

@@ -868,11 +868,19 @@ body carries. Every rig declares that join to `pose_audit` (`continuity`:
 `head_on_neck`, `neck_under_head`), so a head that floats or a neck that
 opens is an audit error.
 
-The `alligator` head is a low skull with the eyes high on bony bumps, a long
-broad snout with a round U-shaped end (not a crocodile's V), nostrils on a
-knob at its tip, the jaw line along each side with the upper teeth showing
-when it is shut, and a pale lower jaw and throat (`HeadModel.muzzle_alpha`,
-`throat`). Its jaw opens on a hinge at the back (`headdraw._jaw_line`).
+The `alligator` head is LOW and FLAT, not a dinosaur's tall skull: the
+snout is most of its length, broad, ending in a bulbous U (not a crocodile's
+V), with a nostril knob on top of the tip. The top is a nearly flat line back
+to a thick neck; the eye bumps (drawn domes, `headdraw._dome`) rise above it
+with the eyes high at the back, under a heavy lid. The jaw line is scalloped
+and curls up behind the eye (the smile), with a row of white teeth on a dark
+gum line that reads at game scale; it opens on a hinge at the back. Square
+scute plates run down the back of the head and the neck, sparse raised
+scales sit on the snout, and the hands have claws. The lower jaw and throat
+are pale (`HeadModel.muzzle_alpha`, `throat`). Hair and hats sit on the back
+of the head, not the snout (`HeadModel.skull_keys`). Coats are dark olive to
+black, and albino (`species.ALBINO`, with pink-red eyes and pink nostrils
+and mouth); on a white hide, face paint adds only the red.
 
 **The geisha wardrobe** is in the same vocabulary: `outer: kimono` (ankle
 long, wrapped left over right, the collar over a white under-collar and

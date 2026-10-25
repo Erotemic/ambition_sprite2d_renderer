@@ -744,7 +744,7 @@ def _kimono_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     forearm as a deep pouch; the lining (the trim colour) at the hem and the
     front edge; a motif near the hem. The wrap is not symmetric: a left view
     (a mirror) shows it the other way."""
-    from .headdraw import PAINT
+    from .headdraw import PAINT, painted
 
     fig, o, plan = ctx.fig, ctx.fig.spec.outfit, ctx.plan
     feature = "outer:kimono"
@@ -772,7 +772,7 @@ def _kimono_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         return y0 - 0.3 + vee(a, 0.12 * T, 15.0) + 0.55 * drop(a)
 
     pt = ctx.new()
-    skin = PAINT if fig.spec.face.makeup == "geisha" else ctx.skin
+    skin = PAINT if painted(ctx) else ctx.skin
     # Skin in the collar's V and at the nape, the white under-collar, then
     # the kimono: each over what is under it.
     shaded_region(ctx, pt, fig.torso.shell(t - 0.5), top, y0 + 0.22 * T, skin, lambda a, y: neck_k(a) + 0.6 - y, shade_frac=0.15)

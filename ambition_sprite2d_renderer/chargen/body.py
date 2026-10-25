@@ -112,7 +112,7 @@ def build(spec: CharacterSpec) -> Figure:
     limbs = b.limbs
     sh_hw = 17.2 * k * b.shoulders * sx * P.shoulders
     neck_r = (0.215 if female else 0.245) * b.head * H * (0.85 + 0.15 * limbs) * (1.0 + 0.25 * b.belly) * {"horse": 1.25, "dog": 1.1, "sea_lion": 1.55,
-                                                                                                         "alligator": 1.15}.get(species, 1.0) * P.neck_r
+                                                                                                         "alligator": 1.5}.get(species, 1.0) * P.neck_r
     chest_rx = 15.2 * k * b.chest * (0.91 if female else 1.0) * P.torso
     chest_rx = min(chest_rx, sh_hw + 1.0 * k)
     chest_rzf = 10.2 * k * b.chest * (0.95 if female else 1.0)
