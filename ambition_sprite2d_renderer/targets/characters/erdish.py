@@ -1340,6 +1340,215 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+# ---- In the round (``_person_round``) -----------------------------------------
+#
+# His pieces placed in 3D, so he can be drawn from the views he has no art
+# for. His own pieces draw him: his head, jacket and collar in his
+# three-quarter view (and its mirror for the left), his sleeves, hands,
+# trousers, socks and sandals in every view. A head and a jacket in 3D draw
+# the other views. He has no front view, so how wide he is from the front is
+# read from his build, not drawn. His rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+
+#: As he rests (``idle``, its first frame): thinking, his chin on his near
+#: hand, his far hand behind his back.
+_REST = ROW_POSES["idle"](0, dict((n, k) for n, k, _ in ROWS)["idle"])
+_LEAN = float(_REST["lean"])
+_TILT = float(_REST["head"][2])
+#: Half his width from the front at the shoulders, at the hips, and at the
+#: feet (he is thin).
+_SW, _HW = 7.8, 4.2
+_FOOT = _HW + 2.2 * U
+
+
+def _seen(p: Point, lean: float = _LEAN) -> Point:
+    """A point of his trunk where his three-quarter view draws it (it leans)."""
+    return turned(p, lean)
+
+
+def _lifted(p: Point, l: float, lean: float = _LEAN) -> Tuple[float, float, float]:
+    x, y = _seen(p, lean)
+    return (l, y, O.lift(x, l))
+
+
+_NECK3 = _lifted(NECK, 0.0)
+_up = turned(HEAD_UP, _LEAN * 0.5 + _TILT * 0.3)
+HEAD3 = (0.0, _seen(NECK)[1] + _up[1], O.lift(_seen(NECK)[0] + _up[0] + float(_REST["head"][0]) * U, 0.0))
+SHOULDERS3 = {"r": _lifted(NEAR_SHOULDER, -_SW), "l": _lifted(FAR_SHOULDER, _SW)}
+HIPS3 = {"r": (-_HW, 0.0, O.lift(NEAR_HIP[0], -_HW)), "l": (_HW, 0.0, O.lift(FAR_HIP[0], _HW))}
+ANKLES3 = {"r": (-_FOOT, HIP_UP - ANKLE_UP, O.lift(float(_REST["nf"][0]) * U, -_FOOT)),
+           "l": (_FOOT, HIP_UP - ANKLE_UP, O.lift(float(_REST["ff"][0]) * U, _FOOT))}
+#: His hands: where his three-quarter view puts them, at a side chosen for
+#: each (his chin is in the middle; his far hand is behind his back).
+_CHIN = (NEAR_SHOULDER[0] + AT_CHIN[0] * U, NEAR_SHOULDER[1] + AT_CHIN[1] * U)
+_BACK = (FAR_SHOULDER[0] + BEHIND[0] * U, FAR_SHOULDER[1] + BEHIND[1] * U)
+WRISTS3 = {"r": ((-1.0, _seen(_CHIN)[1], O.lift(_seen(_CHIN)[0], -1.0)), (-0.4, 1.0, 0.1), str(_REST["nh"])),
+           "l": ((3.0, _seen(_BACK)[1], O.lift(_seen(_BACK)[0], 3.0)), (1.0, 0.2, -0.4), str(_REST["fh"]))}
+
+#: His head in 3D, from his three-quarter view: a long skull, a thin jaw well
+#: forward of it, a long nose, large ears, grey hair on top that stands up,
+#: high over the forehead and down behind the ears; large square black
+#: glasses; no beard.
+HEAD_3D = O.Head3D(
+    skin=SKIN, shade=SKIN_SHADE, deep=SKIN_DEEP,
+    skull=((0.0, -2.4, 0.0), (7.4, 9.0, 8.2)), jaw=((0.0, 4.2, 3.7), (5.0, 7.6, 3.8)), nose=((0.0, 2.2, 9.8), (1.2, 3.0, 3.2)),
+    ear=((-7.6, 1.2, 0.5), (1.8, 3.7, 2.5)), eye=(36.0, -0.1), eye_size=0.95, ink=INK, lid=SKIN_DEEP, brow=(HAIR_SHADE, None, -4.6, 1.1),
+    hair=lambda u, v: (v < -8.4 + 2.4 * np.abs(u) / 180.0) | ((np.abs(u) > 80.0) & (v < 5.0)),
+    hair_colour=HAIR, hair_shade=HAIR_SHADE,
+    volumes=[((0.0, -8.8, -0.6), (7.8, 4.8, 8.4)), ((0.0, 1.0, -6.0), (7.0, 5.2, 3.6)),
+             ((-3.4, -13.0, 1.0), (2.2, 2.4, 2.2)), ((1.0, -13.8, -1.6), (2.2, 2.6, 2.2)), ((3.6, -12.8, 2.6), (2.0, 2.2, 2.0))],
+    glasses=O.Glasses("square", (3.1, 2.9), FRAME, LENS, 0.9, top=0.5),
+    lines=[O.curve([(-2.4, 8.0, 6.4), (0.0, 8.4, 7.0), (2.4, 8.0, 6.4)], MOUTH, 0.8),
+           O.curve([(-3.4, 4.4, 8.0), (-3.8, 6.6, 7.0), (-3.6, 9.2, 6.0)], SKIN_DEEP, 0.6),
+           O.curve([(3.4, 4.4, 8.0), (3.8, 6.6, 7.0), (3.6, 9.2, 6.0)], SKIN_DEEP, 0.6),
+           O.curve([(-2.2, -6.6, 7.0), (0.0, -7.0, 7.4), (2.2, -6.6, 7.0)], mix(SKIN, SKIN_DEEP, 0.55), 0.45)],
+)
+
+
+def _round_jacket(u, v, lit, far):
+    """His jacket open on his cardigan and his shirt (no tie, the collar
+    open); a pocket on his chest with chalk and two pens in it, a pocket low
+    on each side, a seam down his round back."""
+    a = np.abs(u)
+    x = O.arc(u, 8.8)
+    out = O.fill(TWEED, len(u))
+    O.put(out, (a < 30.0) & (v > -34.0), CARDIGAN)
+    for k in range(4):
+        O.put(out, x ** 2 + (v - lerp(-23.0, 2.0, k / 3.0)) ** 2 < 0.9 ** 2, CARDIGAN_DARK)
+    O.put(out, (v < -26.5) & (a < 24.0 * (-26.5 - v) / 12.5), SHIRT)
+    O.put(out, (v < -32.6) & (a < 12.0 * (-32.6 - v) / 6.4), SKIN_SHADE)
+    lapel = (v < -20.0) & (a >= 30.0 - 12.0 * (v + 20.0) / (-38.0 + 20.0)) & (a < 32.0)
+    O.put(out, lapel, TWEED_LIGHT)
+    O.put(out, (np.abs(np.abs(x) - O.arc(30.0, 8.8)) < 0.35) & (v > -20.0), TWEED_DARK)
+    # The pocket on his (right) chest, and what is in it.
+    O.put(out, (u > -62.0) & (u < -28.0) & (np.abs(v + 21.4) < 0.35), TWEED_DARK)
+    O.put(out, (np.abs(u + 54.0) < 4.0) & (v > -25.0) & (v < -21.6), CHALK)
+    O.put(out, (np.abs(u + 40.0) < 2.0) & (v > -24.4) & (v < -21.6), CHALK_BLUE)
+    O.put(out, (np.abs(u + 33.0) < 2.0) & (v > -24.0) & (v < -21.4), CARDIGAN)
+    O.put(out, (a > 50.0) & (a < 85.0) & (np.abs(v + 3.0) < 0.35), TWEED_DARK)
+    O.put(out, (np.abs(O.arc(180.0 - a, 8.8)) < 0.35) & (v > -26.0), TWEED_DARK)
+    O.put(out, lit < -0.45, TWEED_DARK)
+    return out
+
+
+def _round_trunk() -> O.Part:
+    """His jacket in 3D: narrow, its back round (the rings go back at the
+    shoulders), its hem a little wider."""
+    jacket = O.loft([O.Ring(-38.5, 0.0, 2.6, 4.0, 3.4), O.Ring(-35.0, 0.0, 1.4, 7.8, 6.4), O.Ring(-30.0, 0.0, 0.0, 8.6, 7.8),
+                     O.Ring(-24.0, 0.0, 0.0, 8.8, 7.4), O.Ring(-14.0, 0.0, 0.4, 8.4, 6.4), O.Ring(-4.0, 0.0, 0.4, 8.4, 6.2),
+                     O.Ring(0.0, 0.0, 0.2, 8.8, 6.4), O.Ring(8.0, 0.0, 0.2, 9.6, 7.0)], _round_jacket, cols=64)
+    tweed = O.flat(TWEED, shade=TWEED_DARK, at=-0.45)
+    collar = O.loft([O.Ring(-40.0, 0.0, 3.0, 2.9, 2.7), O.Ring(-38.4, 0.0, 2.8, 3.6, 3.4), O.Ring(-36.6, 0.0, 3.0, 4.2, 4.0, droop=1.2)],
+                    lambda u, v, lit, far: O.put(O.fill(SHIRT, len(u)), np.abs(u) < 16.0, SKIN_SHADE))
+    return O.Part("trunk", [jacket, O.ellipsoid((-6.6, -30.4, 0.6), (4.6, 5.4, 4.6), tweed), O.ellipsoid((6.6, -30.4, 0.6), (4.6, 5.4, 4.6), tweed), collar],
+                  base=TWEED, shade_colour=TWEED_DARK, anchor=(0.0, -20.0, 0.4))
+
+
+def _front_sandal():
+    """A foot in its sock and its sandal, seen from the toe: two straps over
+    the sock."""
+
+    def shape(d) -> None:
+        K.oval(d, K.at(0.0, 1.4), 4.2, 3.2, WHITE)
+        K.rrect(d, K.home[0] - 4.2, K.home[1] + 0.4, K.home[0] + 4.2, K.home[1] + ANKLE_UP + 0.4, 1.4, WHITE)
+
+    def detail(d) -> None:
+        K.rrect(d, K.home[0] - 6.0, K.home[1] + ANKLE_UP - 0.9, K.home[0] + 6.0, K.home[1] + ANKLE_UP + 2.0, 0.0, SANDAL_DARK)
+        K.rrect(d, K.home[0] - 4.4, K.home[1] + 0.2, K.home[0] + 4.4, K.home[1] + 1.6, 0.4, SANDAL)
+
+    return K.solid(("front_sandal",), shape, SOCK_FILL, detail, outline=1.2, rim=0.25, shade=0.3, shade_colour=SOCK_DARK)
+
+
+def _back_sandal():
+    """A foot in its sock and its sandal, seen from the heel: the strap round
+    the back of the heel."""
+
+    def shape(d) -> None:
+        K.oval(d, K.at(0.0, 1.4), 3.8, 3.0, WHITE)
+        K.rrect(d, K.home[0] - 3.8, K.home[1] + 0.4, K.home[0] + 3.8, K.home[1] + ANKLE_UP + 0.4, 1.4, WHITE)
+
+    def detail(d) -> None:
+        K.rrect(d, K.home[0] - 6.0, K.home[1] + ANKLE_UP - 0.9, K.home[0] + 6.0, K.home[1] + ANKLE_UP + 2.0, 0.0, SANDAL_DARK)
+        K.rrect(d, K.home[0] - 3.8, K.home[1] + 0.8, K.home[0] + 3.8, K.home[1] + 2.2, 0.4, SANDAL)
+
+    return K.solid(("back_sandal",), shape, SOCK_FILL, detail, outline=1.2, rim=0.25, shade=0.3, shade_colour=SOCK_DARK)
+
+
+def _round_arm(side: str) -> O.Drawn:
+    (target, pole, mode) = WRISTS3[side]
+    elbow, wrist = O.two_bone(SHOULDERS3[side], target, UPPER, FORE, pole)
+    shoulder = SHOULDERS3[side]
+
+    def draw(view, far, at):
+        s, e, w = at(shoulder), at(elbow), at(wrist)
+        near = not far
+        colour = TWEED if near else TWEED_DARK
+        img = K.new_frame()
+        O.place_bones(K, img, f"{side}_arm", [(s, e, lambda edge, n: _bone("upper", n, 7.0, 5.8, colour, TWEED_DARK, edge)),
+                                              (e, w, lambda edge, n: _bone("fore", n, 5.8, 5.0, colour, TWEED_DARK, edge))])
+        if side == "r":
+            K.place(img, _patch(), e, "elbow_patch", angle(e, w))
+        K.place(img, _hand(mode, near), w, f"{side}_hand", angle(e, w))
+        return img
+
+    return O.Drawn(f"{side}_arm", tuple(wrist), draw, dims=True, lead=3.0)
+
+
+def _round_leg(side: str) -> List[object]:
+    knee, ankle = O.two_bone(HIPS3[side], ANKLES3[side], THIGH, SHIN, (0.0, 0.0, 1.0))
+    cuff = knee + (ankle - knee) * (1.0 - SOCK / SHIN)
+    hip = HIPS3[side]
+
+    def draw(view, far, at):
+        h, k, c, a = at(hip), at(knee), at(cuff), at(ankle)
+        near = not far
+        colour = TROUSER if near else TROUSER_DARK
+        sock = SOCK_FILL if near else mix(SOCK_FILL, SOCK_DARK, 0.7)
+        img = K.new_frame()
+        O.place_bones(K, img, f"{side}_leg", [(c, a, lambda edge, n: _bone("sock", n, 4.2, 4.0, sock, SOCK_DARK, edge)),
+                                              (h, k, lambda edge, n: _bone("thigh", n, 7.4, 6.2, colour, TROUSER_DARK, edge)),
+                                              (k, c, lambda edge, n: _bone("shin", n, 6.2, 6.4, colour, TROUSER_DARK, edge))])
+        return img
+
+    return [O.Drawn(f"{side}_leg", tuple(knee), draw, dims=True, lead=-12.0), O.shoes(f"{side}_sandal", ankle, _sandal, _front_sandal, _back_sandal)]
+
+
+def round_figure() -> O.Figure:
+    """Erdish in the round, as he rests."""
+    head, trunk = O.head_part(HEAD_3D, HEAD3), _round_trunk()
+    turn = _LEAN * 0.35 + _TILT
+    layers = lambda: O.composed(K, [(_head(), "head"), (_eyes(str(_REST["eyes"])), "eyes"), (_glasses(), "glasses"),  # noqa: E731
+                                    (_brows(1 if float(_REST["brows"]) > 0.5 else 0), "brows"), (_mouth(str(_REST["mouth"])), "mouth")], turn)
+    throat = np.asarray(HEAD3) + [0.0, 4.0, -0.6]
+
+    def neck(view, far, at):
+        a, b = at(_NECK3), at(throat)
+        img = K.new_frame()
+        K.place(img, _neck(round(math.dist(a, b))), a, "neck", angle(a, b))
+        return img
+
+    # His jacket has its pocket on his right: it is not mirrored, and the
+    # jacket in 3D draws his left three-quarter view.
+    jacket = O.own_art("own_jacket", (0.0, 0.0, 0.0), lambda: _jacket(0, 0), degrees=_LEAN, lead=0.4, mirror=False)
+    own_head = O.own_art("own_head", HEAD3, layers, lead=9.0)
+    collar = O.own_art("own_collar", _NECK3, _collar, degrees=_LEAN, lead=9.5, mirror=False)
+    trunk.when, head.when = O.not_in(jacket.when), O.not_in(own_head.when)
+    parts = [trunk, head, O.Drawn("neck", _NECK3, neck), jacket, own_head, collar]
+    for side in ("r", "l"):
+        parts += [_round_arm(side)] + _round_leg(side)
+    return O.Figure(parts, FRAME_SIZE, CX, GROUND, HIP_UP, trunk=(0.0, -20.0, 0.4))
+
+
+def render_turnaround(path):
+    """His eight views, with his own three-quarter view (the first frame of
+    ``idle``) under the view it draws."""
+    rows = {name: n for name, n, _ms in ROWS}
+    return O.turnaround(K, round_figure(), path, title="Erdish in the round", own={"front_3q": _render_frame("idle", 0, rows["idle"])})
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 

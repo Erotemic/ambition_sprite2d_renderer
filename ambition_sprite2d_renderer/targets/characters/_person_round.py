@@ -426,6 +426,35 @@ def composed(K: Kit, layers: Sequence[Tuple[object, str]], degrees: float = 0.0)
     return K._cut(canvas)
 
 
+@dataclass
+class Drawn:
+    """A piece the cast's own code draws on a frame at points that 3D gives
+    it: ``draw(view, far, at)`` paints a frame (``Kit.new_frame``) and returns
+    it; ``at(p)`` is where a body-space point is in the frame. A limb is drawn
+    so: its bones from joint to joint, its hand at its wrist, as the cast
+    draws them."""
+
+    name: str
+    anchor: Vec
+    draw: Callable[[View, bool, Callable[[Sequence[float]], Tuple[float, float]]], Optional[Image.Image]]
+    dims: bool = False
+    when: Optional[Callable[[View], bool]] = None
+    lead: float = 0.0
+
+
+def place_bones(K: Kit, img: Image.Image, name: str, bones: Sequence[Tuple[Tuple[float, float], Tuple[float, float], Callable[[bool, float], object]]]) -> None:
+    """A limb as the cast paints it: every bone's outline, and then every
+    bone, so a joint has no line through it. A bone is ``(a, b, make)``, frame
+    points and ``make(edge, length)``, the piece along +x from ``a``."""
+    for edge in (True, False):
+        for k, (a, b, make) in enumerate(bones):
+            K.place(img, make(edge, math.dist(a, b)), a, f"{name}_{k}{'_edge' if edge else ''}", _angle(a, b))  # type: ignore[arg-type]
+
+
+def _angle(a: Sequence[float], b: Sequence[float]) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
 def facing(view: View, heading: float = 0.0) -> float:
     """The turn of a thing that points ``heading`` (degrees, 0 forward, 90 to
     the person's left), as this view sees it: 0 toward the viewer, 90 to the
@@ -446,6 +475,259 @@ class Figure:
     hip_up: float
     #: The trunk's middle: a ``dims`` part behind it is a far limb.
     trunk: Vec = (0.0, -20.0, 0.0)
+
+
+# ---- A head in 3D ------------------------------------------------------------
+
+
+@dataclass
+class Glasses:
+    """``round`` or ``square`` lenses ``size`` (half the width, half the
+    height) in front of the eyes, their rims ``weight`` thick, the top of a
+    rim ``top`` heavier (a heavy frame), and their arms back to the ears."""
+
+    shape: str
+    size: Tuple[float, float]
+    frame: RGBA
+    lens: Optional[RGBA] = None
+    weight: float = 0.8
+    top: float = 0.0
+
+
+@dataclass
+class Head3D:
+    """A head from its middle, for the views a character has no head drawn
+    for. Each part is an ellipsoid ``(middle, radii)``; ``ear`` is the right
+    one (the left is its mirror); ``eye`` is the turn and the height of the
+    right eye on the skull. ``hair(u, v)`` says where the skull is hair;
+    ``volumes`` stand off it in the hair's colour. A ``beard`` is a loft of
+    rings; ``moustache`` an ellipsoid; ``mouth`` ``(y, z, half width,
+    colour)``. ``lines`` are the character's own (in head space)."""
+
+    skin: RGBA
+    shade: RGBA
+    deep: RGBA
+    skull: Tuple[Vec, Vec]
+    jaw: Tuple[Vec, Vec]
+    nose: Tuple[Vec, Vec]
+    ear: Tuple[Vec, Vec]
+    eye: Tuple[float, float]
+    eye_size: float = 1.0
+    ink: RGBA = (28, 24, 32, 255)
+    lid: Optional[RGBA] = None
+    #: ``(colour, under, height, weight)``: the brows over the eyes.
+    brow: Optional[Tuple[RGBA, Optional[RGBA], float, float]] = None
+    hair: Optional[Callable[[np.ndarray, np.ndarray], np.ndarray]] = None
+    hair_colour: RGBA = (240, 240, 236, 255)
+    hair_shade: Optional[RGBA] = None
+    volumes: Sequence[Tuple[Vec, Vec]] = ()
+    beard: Optional[Sequence[Ring]] = None
+    moustache: Optional[Tuple[Vec, Vec]] = None
+    mouth: Optional[Tuple[float, float, float, RGBA]] = None
+    glasses: Optional[Glasses] = None
+    lines: Sequence[Line] = ()
+    #: Where the far side of the face is in shade (``lit`` under it).
+    shade_at: float = -0.45
+
+
+def head_part(h: Head3D, at: Vec, name: str = "head") -> Part:
+    """``h`` as a part, its middle at ``at``."""
+    skin_shade = _mix(h.skin, h.shade, 0.7)
+    flat_skin = flat(h.skin, shade=skin_shade, at=h.shade_at)
+    hair_shade = h.hair_shade or h.hair_colour
+
+    def scalp(u, v, lit, far):
+        out = fill(h.skin, len(u))
+        put(out, lit < h.shade_at, skin_shade)
+        if h.hair is not None:
+            put(out, h.hair(u, v), h.hair_colour)
+        return out
+
+    def beard(u, v, lit, far):
+        out = fill(h.hair_colour, len(u))
+        put(out, lit < -0.6, hair_shade)
+        if h.mouth is not None:
+            y, _z, half, colour = h.mouth
+            put(out, (np.abs(v - y) < 0.35) & (np.abs(arc(u, 5.6)) < half), colour)
+        return out
+
+    skull_c, skull_r = h.skull
+    surfaces = [ellipsoid(skull_c, skull_r, scalp), ellipsoid(h.jaw[0], h.jaw[1], flat_skin), ellipsoid(h.nose[0], h.nose[1], flat_skin)]
+    surfaces += [ellipsoid(c, r, flat(h.hair_colour, shade=hair_shade, at=-0.6)) for c, r in h.volumes]
+    (el, ey_, ez), er = h.ear
+    for side in (-1.0, 1.0):
+        surfaces.append(ellipsoid((side * abs(el), ey_, ez), er, flat(h.skin, shade=h.shade)))
+    if h.beard is not None:
+        surfaces.append(loft(h.beard, beard))
+    if h.moustache is not None:
+        surfaces.append(ellipsoid(h.moustache[0], h.moustache[1], flat(h.hair_colour, shade=hair_shade, at=-0.4)))
+    lines: List[Line] = []
+    eu, ev = h.eye
+    for side in (-1.0, 1.0):
+        eye, n = on_ellipsoid(skull_c, skull_r, side * eu, ev, 0.1)
+        g = h.glasses
+        lens = eye + np.array([0.0, 0.0, 1.0])
+        face = np.array([0.25 * side, 0.0, 1.0])
+        if g is not None and g.lens is not None:
+            lines.append(_lens(lens, face, g, None, fill_colour=g.lens))
+        lines.append(circle(eye + n * 0.4, n, h.eye_size, None, fill=h.ink, slack=1.6))
+        if h.lid is not None:
+            lid = [on_ellipsoid(skull_c, skull_r, side * eu + du, ev - 1.6 + 0.02 * du * du, 0.1)[0] for du in (-14.0, -6.0, 0.0, 6.0, 14.0)]
+            lines.append(curve(lid, h.lid, 0.5))
+        if h.brow is not None:
+            colour, under, by, weight = h.brow
+            brow = [on_ellipsoid(skull_c, skull_r, side * u, by - 0.4 * math.sin(math.radians((u - 10.0) * 6.0)), 0.3)[0] for u in (10.0, 20.0, 30.0, 40.0)]
+            if under is not None:
+                lines.append(curve(brow, under, weight + 0.6))
+            lines.append(curve(brow, colour, weight))
+        if g is not None:
+            lines.append(_lens(lens, face, g, g.frame))
+            ear_top = (side * (abs(el) - 0.3), ey_ - 1.6, ez)
+            lines.append(curve([lens + [side * g.size[0], -0.2, -0.4], (side * (skull_r[0] - 0.4), ev - 0.3, lens[2] - 4.0), ear_top], g.frame, 0.6))
+        ear = np.array([side * (abs(el) + er[0]), ey_, ez])
+        lines.append(circle(ear, (side, 0.0, 0.0), min(er[1], er[2]) * 0.85, (34, 22, 48, 255), 0.6, slack=0.6))
+        lines.append(curve([ear + [0.0, -1.4, 0.6], ear + [0.0, 0.0, -0.2], ear + [0.0, 1.4, 0.4]], h.deep, 0.45, slack=0.6))
+    if h.glasses is not None:
+        left = on_ellipsoid(skull_c, skull_r, -eu, ev)[0] + [0.0, 0.0, 1.0]
+        right = on_ellipsoid(skull_c, skull_r, eu, ev)[0] + [0.0, 0.0, 1.0]
+        bridge_z = h.nose[0][2] - h.nose[1][2] * 0.2
+        lines.append(curve([left + [h.glasses.size[0], -0.2, 0.2], (0.0, ev - 0.4, bridge_z), right + [-h.glasses.size[0], -0.2, 0.2]], h.glasses.frame, 0.6))
+    tip = np.asarray(h.nose[0]) + [0.0, h.nose[1][1] * 0.8, h.nose[1][2] * 0.5]
+    lines.append(curve([tip + [-1.2, -0.5, -0.6], tip + [0.0, 0.0, 0.2], tip + [1.2, -0.5, -0.6]], h.deep, 0.6))
+    lines += list(h.lines)
+    return Part(name, [s.moved(at) for s in surfaces], [ln.moved(at) for ln in lines], base=h.skin, shade_colour=h.deep, anchor=at)
+
+
+def _lens(centre: np.ndarray, face: np.ndarray, g: Glasses, colour: Optional[RGBA], fill_colour: Optional[RGBA] = None) -> Line:
+    if g.shape == "round":
+        return circle(centre, face, g.size[0], colour, g.weight, fill=fill_colour)
+    w = face / np.linalg.norm(face)
+    a = np.cross([0.0, 1.0, 0.0], w)
+    a /= np.linalg.norm(a)
+    b = np.array([0.0, 1.0, 0.0])
+    rx, ry = g.size
+    corners = [centre + a * x + b * y for x, y in ((-rx, -ry), (rx, -ry), (rx, ry), (-rx, ry), (-rx, -ry))]
+    return Line(np.array(corners), colour, g.weight + g.top, fill_colour)
+
+
+def _mix(a: RGBA, b: RGBA, t: float) -> RGBA:
+    return tuple(int(round(a[i] * (1.0 - t) + b[i] * t)) for i in range(4))  # type: ignore[return-value]
+
+
+# ---- A person of _person_rig in the round ------------------------------------
+#
+# A ``Person`` has its pieces drawn by its own makers: the dress of each bone
+# (``upper_arm``, ``forearm``, ``thigh``, ``shin``), its hands, its neck and
+# shoes, its head and trunk in the views it has them. These place them at
+# joints in 3D.
+
+
+def _between(a: Tuple[float, float], b: Tuple[float, float], t: float) -> Tuple[float, float]:
+    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+
+
+def _seg_bones(K: Kit, tag: str, a: Tuple[float, float], b: Tuple[float, float], segs) -> list:
+    """The bones of a limb dressed in ``segs`` (``_person_rig.Seg``) from
+    frame point ``a`` to ``b``, as ``Person.limb`` places them."""
+    from ._person_rig import bone
+
+    out = []
+    for t0, t1, w0, w1, colour in segs:
+        out.append((_between(a, b, t0), _between(a, b, t1),
+                    lambda edge, length, w0=w0, w1=w1, colour=colour: bone(K, tag, length, w0, w1, colour, edge)))
+    return out
+
+
+def person_arm(person, name: str, shoulder: Sequence[float], elbow: Sequence[float], wrist: Sequence[float], hand: str, *,
+               lead: float = 3.0) -> Drawn:
+    """An arm of ``person`` from 3D joints: its sleeve on its two bones and
+    its hand (``hand``: soft, flat, fist, point, open) at its wrist, as near
+    as the wrist."""
+    K = person.K
+
+    def draw(view: View, far: bool, at) -> Image.Image:
+        s, e, w = at(shoulder), at(elbow), at(wrist)
+        img = K.new_frame()
+        near = not far
+        place_bones(K, img, name, _seg_bones(K, name, s, e, person.upper_arm(near)) + _seg_bones(K, name, e, w, person.forearm(near)))
+        K.place(img, person.hand(hand, near), w, f"{name}_hand", _angle(e, w))
+        return img
+
+    return Drawn(name, tuple(wrist), draw, dims=True, lead=lead)
+
+
+def person_leg(person, name: str, hip: Sequence[float], knee: Sequence[float], ankle: Sequence[float], *, lead: float = -12.0) -> Drawn:
+    """A leg of ``person`` from 3D joints, in what its bones are dressed in.
+    It goes under the trunk (``lead``), as the cast paints a leg that does not
+    kick."""
+    K = person.K
+
+    def draw(view: View, far: bool, at) -> Image.Image:
+        h, k, a = at(hip), at(knee), at(ankle)
+        img = K.new_frame()
+        near = not far
+        place_bones(K, img, name, _seg_bones(K, name, h, k, person.thigh(near)) + _seg_bones(K, name, k, a, person.shin(near)))
+        return img
+
+    return Drawn(name, tuple(knee), draw, dims=True, lead=lead)
+
+
+def person_neck(person, base: Sequence[float], top: Sequence[float]) -> Drawn:
+    """``person``'s neck from its base to where it goes into the head."""
+    K = person.K
+
+    def draw(view: View, far: bool, at) -> Optional[Image.Image]:
+        if person.neck is None:
+            return None
+        a, b = at(base), at(top)
+        img = K.new_frame()
+        K.place(img, person.neck(float(round(math.dist(a, b)))), a, "neck", _angle(a, b))
+        return img
+
+    return Drawn("neck", tuple(base), draw)
+
+
+def shoes(name: str, ankle: Sequence[float], side: Callable[[bool], object], front: Callable[[], object], back: Callable[[], object]) -> Sprite:
+    """A shoe in every view: ``front()`` seen from the toe, ``back()`` from
+    the heel, ``side(near)`` from the side, its toe to the side the foot
+    points (mirrored for the left)."""
+
+    def draw(view: View, far: bool):
+        turn = facing(view)
+        toward = math.cos(math.radians(turn))
+        if toward > 0.85:
+            return front(), 0.0, False
+        if toward < -0.85:
+            return back(), 0.0, False
+        return side(not far), 0.0, turn < 0.0
+
+    return Sprite(name, tuple(ankle), draw, dims=True, lead=3.0)
+
+
+def own_art(name: str, anchor: Sequence[float], three_quarter: Optional[Callable[[], object]], front: Optional[Callable[[], object]] = None, *,
+            degrees: float = 0.0, lead: float = 0.0, mirror: bool = True) -> Sprite:
+    """A piece of a character's own art in the views it is drawn for: its
+    three-quarter view, its mirror for the left (``mirror``: only a piece that
+    is the same on both sides; a pocket on one side is not), and its front
+    view if it has one. Another piece draws the other views
+    (``not_in(sprite.when)``)."""
+
+    def draw(view: View, far: bool):
+        turn = facing(view)
+        if abs(turn) <= 10.0:
+            return (front() if front is not None else None), 0.0, False
+        return three_quarter(), degrees, turn < 0.0  # type: ignore[misc]
+
+    return Sprite(name, tuple(anchor), draw, when=own_turns(front is not None, mirror), lead=lead)
+
+
+def own_turns(front: bool, mirror: bool = True) -> Callable[[View], bool]:
+    """The views a character's own art is drawn for (``own_art``)."""
+    return near_turn(*((45.0,) + ((-45.0,) if mirror else ()) + ((0.0,) if front else ())))
+
+
+def not_in(when: Callable[[View], bool]) -> Callable[[View], bool]:
+    return lambda view: not when(view)
 
 
 # ---- Drawing -----------------------------------------------------------------
@@ -609,11 +891,24 @@ def draw(K: Kit, figure: Figure, view: View) -> Image.Image:
     w, h = K.canvas
     best = np.full((h, w), -np.inf, np.float32)
     out = np.zeros((h, w, 4), np.uint8)
+    def at(p: Sequence[float]) -> Tuple[float, float]:
+        q = np.asarray(p, float)
+        return (figure.cx + float(q @ ex), figure.ground - lift + float(q @ ey))
+
     for part in figure.parts:
         if part.when is not None and not part.when(view):
             continue
         far = part.dims and float(np.asarray(part.anchor) @ ed) < trunk - 1.5
-        layer = _draw_sprite(K, part, view, to_canvas, far) if isinstance(part, Sprite) else _draw_part(K, part, view, to_canvas, far)
+        if isinstance(part, Drawn):
+            img = part.draw(view, far, at)
+            if img is None:
+                continue
+            rgba = np.asarray(img)
+            layer = rgba, np.where(rgba[..., 3] > 0, float(np.asarray(part.anchor) @ ed) + part.lead, -np.inf).astype(np.float32)
+        elif isinstance(part, Sprite):
+            layer = _draw_sprite(K, part, view, to_canvas, far)
+        else:
+            layer = _draw_part(K, part, view, to_canvas, far)
         if layer is None:
             continue
         rgba, depth = layer
@@ -671,5 +966,5 @@ def turnaround(K: Kit, figure: Figure, path: Path, *, title: str = "", own: Opti
     return path
 
 
-__all__ = ["composed", "near_turn", "lift", "Sprite", "facing", "Cheat", "both", "from_above", "profile_push", "Figure", "Line", "Paint", "Part", "Ring", "Surface", "VIEWS", "VIEW_BY_KEY", "View", "arc", "circle", "curve", "draw", "ellipsoid", "fill",
+__all__ = ["not_in", "own_art", "own_turns", "person_arm", "person_leg", "person_neck", "shoes", "Drawn", "Glasses", "Head3D", "head_part", "place_bones", "composed", "near_turn", "lift", "Sprite", "facing", "Cheat", "both", "from_above", "profile_push", "Figure", "Line", "Paint", "Part", "Ring", "Surface", "VIEWS", "VIEW_BY_KEY", "View", "arc", "circle", "curve", "draw", "ellipsoid", "fill",
            "flat", "limb", "loft", "on_ellipsoid", "put", "turnaround", "two_bone"]
