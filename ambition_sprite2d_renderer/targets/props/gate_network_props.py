@@ -1,16 +1,18 @@
 """The fittings of a gate of the gate network: what a traveller uses and what
 keeps a ring running.
 
-- ``gate_dialer``: the pedestal a traveller dials from. A sloped steel desk on
-  a short column, its face a half ring of eleven amber chevron keys (the
-  ring's own inscription, ΛΕΓΑΛΛΥ ΔΙΣΤΙΝΧΤ, one key for each symbol) around a
-  round dome. The game draws the terminal's press button over the low front
-  of the column. Every dialed ring has one beside it.
+- ``gate_dialer``: the console a traveller dials from, in the ring's bronze.
+  A pedestal with a sloped top holding a round dial: the ring's fifteen
+  glyphs (``glyphs.legally_distinct``) lit cyan round a dark centre, seen at
+  the slant. A small screen stands behind it. The game draws the terminal's
+  press button over the brass plate on the front. Every dialed ring has one
+  beside it.
 - ``gate_power_cabinet``: the ring's power: a grey cabinet with a meter, a
   lever, warning stripes and the conduit that runs out of its side to the
   ring. Rings are expensive to run, and every gate hall shows it.
 - ``gate_traffic_board``: the board of arrivals and departures over a public
-  gate: rows of lamps, some lit, one red, under the word GATES.
+  gate: addresses in the gate's glyphs, each with its lamp (one red), under
+  the word GATES.
 - ``gate_transit_bags``: a wall dispenser of bags for the sickness organic
   travellers get in transit. A robot has no use for it.
 
@@ -29,9 +31,11 @@ import math
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
 
+import numpy as np
 from PIL import Image
 
 from ...authoring.sheet_build import build_sheet
+from ...glyphs.legally_distinct import GLYPHS, Placement, glyphs_mask, spell
 from ._town_kit import Canvas, box
 from .castle_godwin import lettering
 
@@ -51,46 +55,65 @@ CREAM = (236, 226, 200)
 INK = (22, 22, 26)
 HAZARD = (232, 186, 40)
 
-#: The symbols on the keys, in the order of the ring's inscription.
-INSCRIPTION = "ΛΕΓΑΥΔΙΣΤΝΧ"
+WOOD = (86, 64, 44)
+WOOD_DARK = (48, 35, 24)
+WOOD_LIGHT = (140, 108, 72)
+CYAN = (127, 243, 255)
+CYAN_GLOW = (57, 212, 255)
+SCREEN = (16, 42, 52)
 
 
-def _chevron(cx: float, cy: float, s: float, angle: float) -> List[Tuple[float, float]]:
-    """A chevron key `s` units across, pointing at `angle` (radians)."""
-    shape = [(-0.5, -0.32), (0.5, -0.32), (0.75, 0.1), (0.0, 0.62), (-0.75, 0.1)]
-    ca, sa = math.cos(angle), math.sin(angle)
-    return [(cx + (x * ca - y * sa) * s, cy + (x * sa + y * ca) * s) for x, y in shape]
+def _dial_glyphs(c: Canvas, cx: float, cy: float, radius: float, cap: float, slant: float) -> np.ndarray:
+    """The coverage of the fifteen glyphs round a dial centred at (cx, cy)
+    (units): Λ at the top, each foot toward the centre, the dial seen at a
+    slant that shortens it to ``slant`` of its height."""
+    px, py, k = (cx - c.o[0]) * c.k, (cy - c.o[1]) * c.k, c.k
+    placements = []
+    for glyph in GLYPHS:
+        ang = -90.0 + glyph.index * 360.0 / len(GLYPHS)
+        rad = math.radians(ang)
+        placements.append(Placement(glyph, (px + radius * k * math.cos(rad), py + radius * k * math.sin(rad)), cap * k, ang + 90.0))
+    squash = f"translate({px:.3f} {py:.3f}) scale(1 {slant}) translate({-px:.3f} {-py:.3f})"
+    return glyphs_mask(placements, (c.W, c.H), transform=squash)
 
 
 def _dialer(c: Canvas) -> None:
     w, h = DIALER_W, DIALER_H
-    # The column and its foot.
-    c.put(c.mask(box(w * 0.5 - 13, 26, w * 0.5 + 13, h - 4)), STEEL_DARK)
-    c.paint(c.mask(box(w * 0.5 - 12, 26, w * 0.5 + 12, h - 4)), c.ramp([(26, STEEL), (h, STEEL_DARK)]))
-    c.put(c.mask(box(w * 0.5 - 20, h - 6, w * 0.5 + 20, h)), STEEL_DARK)
-    c.put(c.mask(box(w * 0.5 - 19, h - 6, w * 0.5 + 19, h - 4.5)), STEEL_LIGHT, 0.6)
-    # The desk: a slab leaning toward the user.
-    desk = [(2, 16), (w - 2, 16), (w - 6, 30), (6, 30)]
-    c.put(c.mask(lambda p: p.poly([(x, y + 1) for x, y in desk])), INK)
-    c.paint(c.mask(lambda p: p.poly(desk)), c.ramp([(16, STEEL_LIGHT), (30, STEEL)]))
-    c.put(c.mask(lambda p: p.poly([(6, 30), (w - 6, 30), (w - 8, 33), (8, 33)])), STEEL_DARK)
-    # The face: a half ring of the eleven keys round a dome, seen from above.
-    cx, cy = w * 0.5, 23.5
-    keys = []
-    for i, _ in enumerate(INSCRIPTION):
-        a = math.pi * (1.05 + 0.9 * i / (len(INSCRIPTION) - 1))
-        x, y = cx + 25 * math.cos(a), cy + 7.5 * math.sin(a) + 1.5
-        keys.append(_chevron(x, y, 4.2, a + math.pi / 2))
-    c.put(c.mask(lambda p: [p.poly(k) for k in keys]), BRASS_DARK)
-    c.put(c.mask(lambda p: [p.poly([(x, y - 0.6) for x, y in k]) for k in keys]), AMBER)
-    c.put(c.mask(lambda p: [p.ellipse(sum(x for x, _ in k) / 5, sum(y for _, y in k) / 5 - 0.6, 0.8) for k in keys]), CREAM, 0.9)
-    # The dome in the middle, red under amber glass.
-    c.put(c.mask(lambda p: p.ellipse(cx, cy + 1, 7, 3.6)), BRASS_DARK)
-    c.put(c.mask(lambda p: p.ellipse(cx, cy, 6, 3)), RED)
-    c.put(c.mask(lambda p: p.ellipse(cx - 1.8, cy - 1, 2.2, 1.0), blur=0.3), (255, 210, 190), 0.8)
-    # A brass plate on the column, where the press button sits.
-    c.put(c.mask(box(w * 0.5 - 9, 34, w * 0.5 + 9, h - 9)), BRASS_DARK)
-    c.put(c.mask(box(w * 0.5 - 8, 35, w * 0.5 + 8, h - 10)), BRASS, 0.55)
+    # The plinth on the floor.
+    c.put(c.mask(box(5, h - 6, w - 5, h)), WOOD_DARK)
+    c.put(c.mask(box(6, h - 6, w - 6, h - 5)), WOOD_LIGHT, 0.6)
+    # The pedestal: its front, and a sliver of its right side for depth.
+    c.put(c.mask(box(9, 30, w - 7, h - 6)), WOOD_DARK)
+    c.paint(c.mask(box(10, 31, w - 10, h - 6)), c.ramp([(31, WOOD), (h, WOOD_DARK)]))
+    c.tone(c.mask(box(10, 31, w - 10, h - 6)) * (c.noise("pedestal", 3, 4, 2) - 0.5), 0.14)
+    c.put(c.mask(lambda p: p.poly([(w - 10, 31), (w - 7, 29), (w - 7, h - 6), (w - 10, h - 6)])), WOOD_DARK)
+    # The screen behind the desk, on a stem: three lines of cyan text.
+    c.put(c.mask(box(30, 11, 34, 16)), WOOD_DARK)
+    c.put(c.mask(box(18, 1, 46, 13)), WOOD_DARK)
+    c.put(c.mask(box(19, 2, 45, 12)), WOOD)
+    c.put(c.mask(box(20.5, 3.5, 43.5, 10.5)), SCREEN)
+    c.put(c.mask(lambda p: [p.rect(22.5, 5 + 2 * i, 22.5 + (17, 13, 9)[i], 6 + 2 * i) for i in range(3)], blur=0.15), CYAN, 0.85)
+    c.put(c.mask(box(20.5, 3.5, 43.5, 10.5), blur=1.2), CYAN_GLOW, 0.18)
+    # The desk: a slab leaning toward the user, with its front edge.
+    desk = [(5, 14), (w - 5, 14), (w - 7, 31), (7, 31)]
+    c.paint(c.mask(lambda p: p.poly(desk)), c.ramp([(14, WOOD_LIGHT), (31, WOOD)]))
+    c.put(c.mask(lambda p: p.poly([(7, 31), (w - 7, 31), (w - 8, 34), (8, 34)])), WOOD_DARK)
+    c.put(c.mask(lambda p: p.line(desk[:2], 0.8)), WOOD_LIGHT, 0.9)
+    # The dial, seen at the slant: a bronze rim, the glyph band, a bronze
+    # hub and its dark centre.
+    cx, cy, slant = w * 0.5, 22.5, 0.5
+    c.put(c.mask(lambda p: p.ellipse(cx, cy + 0.8, 18, 18 * slant)), WOOD_DARK)
+    c.put(c.mask(lambda p: p.ellipse(cx, cy, 17.5, 17.5 * slant)), BRASS)
+    c.put(c.mask(lambda p: p.ellipse(cx, cy, 16, 16 * slant)), WOOD_DARK)
+    c.put(c.mask(lambda p: p.ellipse(cx, cy, 9.5, 9.5 * slant)), BRASS_DARK)
+    c.put(c.mask(lambda p: p.ellipse(cx, cy - 0.3, 8, 8 * slant)), (34, 30, 30))
+    c.put(c.mask(lambda p: p.ellipse(cx - 2, cy - 1.2, 3, 3 * slant), blur=0.6), CYAN_GLOW, 0.25)
+    glyphs = _dial_glyphs(c, cx, cy, 12.6, 3.6, slant)
+    c.put(c.soften(glyphs, 0.5), CYAN_GLOW, 0.55)
+    c.put(glyphs, CYAN)
+    # A brass plate on the front, where the press button sits.
+    c.put(c.mask(box(w * 0.5 - 9, 37, w * 0.5 + 9, h - 9)), BRASS_DARK)
+    c.put(c.mask(box(w * 0.5 - 8, 38, w * 0.5 + 8, h - 10)), BRASS, 0.55)
 
 
 DIALER_W, DIALER_H = 64, 56
@@ -140,16 +163,25 @@ def _traffic_board(c: Canvas) -> None:
     c.put(c.mask(box(2, 10, w - 2, h - 2)), (28, 26, 30))
     lettering(c, "GATES", w / 2, 14, 8, AMBER)
     rng = c.rand("board lamps")
-    for row in range(5):
+    placements = []
+    for row, address in enumerate(BOARD_ADDRESSES):
         y = 30 + row * 12
-        # A row: a line of dim letters (the name) and its lamp.
-        c.put(c.mask(lambda p: [p.rect(10 + 6 * i, y, 14 + 6 * i, y + 5) for i in range(rng.randint(5, 9))]), AMBER_DIM)
+        # A row: the address in glyphs, and its lamp.
+        for i, glyph in enumerate(spell(address)):
+            placements.append(Placement(glyph, ((12 + 6.5 * i) * c.k, (y + 2.5) * c.k), 5.0 * c.k))
+    letters = glyphs_mask(placements, (c.W, c.H))
+    c.put(c.soften(letters, 0.6), AMBER, 0.3)
+    c.put(letters, AMBER)
+    for row in range(len(BOARD_ADDRESSES)):
+        y = 30 + row * 12
         lamp = RED if row == 3 else (GREEN if rng.random() < 0.7 else AMBER)
         c.put(c.mask(lambda p: p.ellipse(w - 14, y + 2.5, 3)), lamp)
         c.put(c.mask(lambda p: p.ellipse(w - 15, y + 1.5, 1.0)), CREAM, 0.7)
 
 
 BOARD_W, BOARD_H = 160, 96
+#: The rows of the board: the public network's busiest addresses.
+BOARD_ADDRESSES = ("TANGENT", "GENESIS", "SAILING", "CITADEL", "SILENT")
 
 
 def _transit_bags(c: Canvas) -> None:

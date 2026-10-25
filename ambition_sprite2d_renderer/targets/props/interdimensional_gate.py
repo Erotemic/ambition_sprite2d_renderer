@@ -1,10 +1,25 @@
 """Procedural interdimensional portal / gate sprite sheets.
 
 This target intentionally evokes a monumental sci-fi portal ring while staying
-well clear of an exact screen-used reproduction. The ring carries the Greek
-inscription "ΛΕΓΑΛΛΥ ΔΙΣΤΙΝΧΤ" on plaque-like chevron housings, with Λ anchored
-at 12 o'clock. The wormhole / portal membrane is rendered as a separate
-transparent overlay sheet so gameplay can layer it over the ring when active.
+well clear of an exact screen-used reproduction. The ring is old bronze, and
+carries the inscription "ΛΕΓΑΛΛΥ ΔΙΣΤΙΝΧΤ" in the gate's fifteen glyphs
+(``glyphs.legally_distinct``: each chevron its own symbol), cut into dark
+plaques and lit a faint cyan. The ring's bottom slice sinks into a stepped
+base (the way in), so the plaques run round the rest of it: clockwise from
+the lower left over the top to the lower right, reading LEGALLY DISTINCT left
+to right, Δ at 12 o'clock. Each glyph's foot faces the centre: its baseline
+is square to the ray from the centre through it.
+
+Three sheets of one assembly, on one canvas:
+
+- ``_ring``: the ring on its base (``idle``; ``charge``, a pulse running
+  round the plaques from the first to the last as a link opens, the lamps
+  locking one by one; the band does not turn, the base holds it);
+- ``_portal``: the wormhole membrane, layered over the ring while a link is
+  open;
+- ``_glyphs``: ``lit``, one frame per chevron, that glyph alone blazing on
+  its plaque where the ring draws it. Laid over the ring, frame k lights
+  chevron k as it is dialed.
 """
 
 from __future__ import annotations
@@ -15,10 +30,11 @@ from pathlib import Path
 from typing import List, Sequence, Tuple
 
 import numpy as np
-from PIL import Image, ImageColor, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import alpha_bbox_metrics, build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from ambition_sprite2d_renderer.glyphs.legally_distinct import GLYPHS, Placement, glyphs_mask
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -26,15 +42,11 @@ Point = Tuple[float, float]
 TARGET_NAME = "interdimensional_gate"
 RING_TARGET = f"{TARGET_NAME}_ring"
 PORTAL_TARGET = f"{TARGET_NAME}_portal"
+GLYPHS_TARGET = f"{TARGET_NAME}_glyphs"
 
-# The spin turns the band one full turn. Its step must divide the spacing of
-# the glyphs (360 / 15 = 24 degrees), or the eye pairs each glyph with its
-# neighbour and the band seems to creep and jitter as it turns (the wagon
-# wheel): 12 frames of 30 degrees did. 30 frames of 12 degrees step half a
-# glyph each frame.
 RING_ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 140),
-    ("spin", 30, 34),
+    ("charge", 30, 34),
 ]
 PORTAL_ROWS: List[Tuple[str, int, int]] = [
     ("opening", 8, 80),
@@ -47,11 +59,15 @@ PORTAL_ROWS: List[Tuple[str, int, int]] = [
     ("emit", 12, 55),
 ]
 
+GLYPH_ROWS: List[Tuple[str, int, int]] = [("lit", len(GLYPHS), 100)]
+
 SHEET_FILES = [
     f"{RING_TARGET}_spritesheet.png",
     f"{RING_TARGET}_spritesheet.yaml",
     f"{PORTAL_TARGET}_spritesheet.png",
     f"{PORTAL_TARGET}_spritesheet.yaml",
+    f"{GLYPHS_TARGET}_spritesheet.png",
+    f"{GLYPHS_TARGET}_spritesheet.yaml",
 ]
 
 # Use a larger canvas than the default character sheets so the gate has more
@@ -63,8 +79,31 @@ OUTER_R = 69.0 * SUPER
 INNER_R = 45.0 * SUPER
 PORTAL_R = 39.5 * SUPER
 RING_MID_R = (INNER_R + OUTER_R) / 2.0
-INSCRIPTION = [c for c in "ΛΕΓΑΛΛΥ ΔΙΣΤΙΝΧΤ" if c != " "]
-GLYPH_STEP_DEG = 360.0 / len(INSCRIPTION)
+#: The bottom slice of the ring the base hides: no plaque there.
+BASE_GAP_DEG = 96.0
+GLYPH_STEP_DEG = (360.0 - BASE_GAP_DEG) / (len(GLYPHS) - 1)
+#: The plaques shrink to fit the shorter arc.
+PLAQUE_SCALE = 0.78
+#: A plaque's dark face, about its centre, foot down (y down), where the
+#: glyph is cut and where a dialed glyph's light washes.
+PLAQUE_FACE = [
+    (x * PLAQUE_SCALE * SUPER, y * PLAQUE_SCALE * SUPER)
+    for x, y in ((-5.6, -4.0), (5.6, -4.0), (8.4, 1.95), (0.0, 8.8), (-8.4, 1.95))
+]
+#: A glyph's cap height, and how far its centre sits inward of the band's
+#: middle (the plaque's open face is nearer the aperture than its middle).
+GLYPH_CAP = 7.0 * SUPER
+GLYPH_INSET = 1.3 * SUPER
+
+# The palette of the concept (Jon, 2026-10-24): old bronze, cyan light.
+BRONZE = "#7a5b3a"
+BRONZE_LIGHT = "#b08a5c"
+BRONZE_DARK = "#3e2c1c"
+OUTLINE = "#1b130c"
+PLAQUE = "#3a2b1d"
+PLAQUE_INK = "#241a12"
+GLYPH_CORE = (143, 246, 255)
+GLYPH_GLOW = (57, 212, 255)
 
 
 def _rgba(color: str, alpha: int = 255) -> RGBA:
@@ -87,15 +126,6 @@ def _downsample(
     return img.resize(final_size, Image.Resampling.LANCZOS)
 
 
-def _font(size: int) -> ImageFont.ImageFont:
-    for name in ("DejaVuSans-Bold.ttf", "DejaVuSans.ttf"):
-        try:
-            return ImageFont.truetype(name, size=size)
-        except OSError:
-            continue
-    return ImageFont.load_default()
-
-
 def _polar(center: Point, radius: float, deg: float) -> Point:
     rad = math.radians(deg)
     return (center[0] + math.cos(rad) * radius, center[1] + math.sin(rad) * radius)
@@ -108,12 +138,6 @@ def _ring_bbox(radius: float) -> Tuple[float, float, float, float]:
         CENTER[0] + radius,
         CENTER[1] + radius,
     )
-
-
-def _paste_center(dst: Image.Image, src: Image.Image, center: Point) -> None:
-    x = int(round(center[0] - src.width / 2.0))
-    y = int(round(center[1] - src.height / 2.0))
-    dst.alpha_composite(src, (x, y))
 
 
 def _draw_rotated_polygon(
@@ -147,36 +171,17 @@ def _rune_glow(
     return max(0.0, min(1.0, base + amp * (0.5 + 0.5 * math.sin(phase))))
 
 
-def _center_layer_to(layer: Image.Image, dest_center: Point) -> Image.Image:
-    """Translate ``layer`` so the alpha-bbox center lands on ``dest_center``."""
-    alpha = layer.getchannel("A")
-    bbox = alpha.getbbox()
-    if bbox is None:
-        return layer
-    bx = (bbox[0] + bbox[2]) / 2.0
-    by = (bbox[1] + bbox[3]) / 2.0
-    dx = int(round(dest_center[0] - bx))
-    dy = int(round(dest_center[1] - by))
-    shifted = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-    shifted.alpha_composite(layer, (dx, dy))
-    return shifted
+def _plaque_angle(index: int) -> float:
+    """The direction of chevron ``index`` from the centre, in degrees
+    clockwise from 3 o'clock (y down): the first at the lower left, just
+    above the base, the last at the lower right."""
+    return 90.0 + BASE_GAP_DEG / 2.0 + index * GLYPH_STEP_DEG
 
 
-def _make_glyph_chevron(glyph: str, glow_strength: float) -> Image.Image:
-    """Build one upright icon tile, then rotate/translate it into place.
-
-    The glyph is rendered upright in its own local layer, centered from its
-    alpha bbox both horizontally and vertically, and only then embedded inside a
-    slightly oversized chevron icon. Later, the *whole* icon is rotated and
-    translated onto the ring.
-    """
-    tile_size = 40 * SUPER
-    tile = Image.new("RGBA", (tile_size, tile_size), (0, 0, 0, 0))
-    draw = blending_draw(tile)
-    cx = cy = tile_size / 2.0
-
-    # Slightly bigger border / housing to give the glyph more visual breathing
-    # room while keeping the glyph size itself unchanged.
+def _draw_plaque(draw: ImageDraw.ImageDraw, ang: float) -> None:
+    """One chevron's plaque: a bronze pentagon pointing at the aperture,
+    its dark face where the glyph is cut."""
+    center = _polar(CENTER, RING_MID_R, ang)
     outer = [
         (-8.35 * SUPER, -5.8 * SUPER),
         (8.35 * SUPER, -5.8 * SUPER),
@@ -184,74 +189,48 @@ def _make_glyph_chevron(glyph: str, glow_strength: float) -> Image.Image:
         (0.0, 12.2 * SUPER),
         (-12.7 * SUPER, 2.55 * SUPER),
     ]
-    inner = [
-        (-4.9 * SUPER, -3.2 * SUPER),
-        (4.9 * SUPER, -3.2 * SUPER),
-        (7.7 * SUPER, 1.95 * SUPER),
-        (0.0, 8.35 * SUPER),
-        (-7.7 * SUPER, 1.95 * SUPER),
-    ]
-    _draw_rotated_polygon(
-        draw,
-        (cx, cy),
-        outer,
-        0.0,
-        fill=_rgba("#765f3f"),
-        outline=_rgba("#151922"),
-        width=4,
-    )
-    _draw_rotated_polygon(
-        draw,
-        (cx, cy),
-        inner,
-        0.0,
-        fill=_rgba("#34261a"),
-        outline=_rgba("#97784e"),
-        width=2,
-    )
-
-    font = _font(12 * SUPER)
-
-    # Render the glyph on a temporary layer, then recentre it by its actual
-    # alpha bounds so the symbol center sits close to the icon center.
-    core_layer = Image.new("RGBA", tile.size, (0, 0, 0, 0))
-    core_draw = blending_draw(core_layer)
-    bbox = font.getbbox(glyph)
-    tx = int(round(cx - (bbox[0] + bbox[2]) / 2.0))
-    ty = int(round(cy - (bbox[1] + bbox[3]) / 2.0))
-    core_color = _rgba("#fff7e1", int(255 * min(1.0, 0.78 + 0.22 * glow_strength)))
-    core_draw.text((tx, ty), glyph, font=font, fill=core_color)
-    core_layer = _center_layer_to(core_layer, (cx, cy))
-
-    glow_layer = Image.new("RGBA", tile.size, (0, 0, 0, 0))
-    glow_draw = blending_draw(glow_layer)
-    glow_color = _rgba("#ff9f3d", int(245 * glow_strength))
-    alpha_bbox = core_layer.getchannel("A").getbbox()
-    if alpha_bbox is not None:
-        gx = int(round(cx - (alpha_bbox[0] + alpha_bbox[2]) / 2.0))
-        gy = int(round(cy - (alpha_bbox[1] + alpha_bbox[3]) / 2.0))
-        # Reuse the same nominal origin and recenter again to ensure the glow
-        # tracks the core glyph exactly.
-        glow_draw.text((tx, ty), glyph, font=font, fill=glow_color)
-        glow_layer = _center_layer_to(glow_layer, (cx, cy))
-    glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(radius=max(3, SUPER + 1)))
-    tile.alpha_composite(glow_layer)
-    tile.alpha_composite(core_layer)
-
-    ember = Image.new("RGBA", tile.size, (0, 0, 0, 0))
-    ember_draw = blending_draw(ember)
-    dot_r = 0.95 * SUPER
-    ember_draw.ellipse(
-        (cx - dot_r, cy + 4.7 * SUPER - dot_r, cx + dot_r, cy + 4.7 * SUPER + dot_r),
-        fill=_rgba("#ff9d43", int(170 * glow_strength)),
-    )
-    tile.alpha_composite(ember)
-    return tile
+    inner = PLAQUE_FACE
+    outer = [(x * PLAQUE_SCALE, y * PLAQUE_SCALE) for x, y in outer]
+    _draw_rotated_polygon(draw, center, outer, ang + 90.0, fill=_rgba(PLAQUE), outline=_rgba(OUTLINE), width=4)
+    _draw_rotated_polygon(draw, center, inner, ang + 90.0, fill=_rgba(PLAQUE_INK), outline=_rgba(BRONZE_LIGHT), width=2)
 
 
-def _draw_gate_ring_base(
-    rotation_deg: float, *, frame_index: int, nframes: int, idle_mode: bool
-) -> Image.Image:
+def _placement(index: int) -> Placement:
+    """Glyph ``index`` on its plaque. Turned by its ray's angle plus a
+    quarter turn, its up is the ray outward: its foot faces the centre."""
+    ang = _plaque_angle(index)
+    return Placement(GLYPHS[index], _polar(CENTER, RING_MID_R - GLYPH_INSET, ang), GLYPH_CAP, ang + 90.0)
+
+
+def _light_layer(core: np.ndarray, glow: np.ndarray, glow_radius: float, core_rgb=GLYPH_CORE) -> Image.Image:
+    """Light, from a core coverage and a glow strength per pixel (both 0..1):
+    the glow spread ``glow_radius`` pixels in cyan, the core over it."""
+    size = (core.shape[1], core.shape[0])
+    halo = Image.fromarray(np.clip(glow * 255.0, 0, 255).astype(np.uint8), "L")
+    halo = np.asarray(halo.filter(ImageFilter.GaussianBlur(glow_radius)), np.float32) / 255.0
+    halo = np.clip(halo * 2.2, 0.0, 1.0)
+    a = np.clip(core + halo * (1.0 - core), 0.0, 1.0)
+    w = np.where(a > 1e-6, core / np.maximum(a, 1e-6), 0.0)[..., None]
+    rgb = np.asarray(core_rgb, np.float32) * w + np.asarray(GLYPH_GLOW, np.float32) * (1.0 - w)
+    px = np.dstack([rgb, a * 255.0])
+    out = Image.fromarray(np.clip(px, 0, 255).astype(np.uint8), "RGBA")
+    assert out.size == size
+    return out
+
+
+def _ring_glyphs(levels: List[float]) -> Image.Image:
+    """Every glyph cut into its plaque, each lit at its own level (0..1)."""
+    size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
+    core = np.zeros((size[1], size[0]), np.float32)
+    glow = np.zeros_like(core)
+    for index, level in enumerate(levels):
+        m = glyphs_mask([_placement(index)], size)
+        core = np.maximum(core, m * (0.62 + 0.34 * level))
+        glow = np.maximum(glow, m * (0.18 + 0.4 * level))
+    return _light_layer(core, glow, 1.6 * SUPER, core_rgb=(104, 214, 232))
+
+
+def _draw_gate_ring_base(*, frame_index: int, nframes: int, idle_mode: bool) -> Image.Image:
     img = Image.new(
         "RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
@@ -261,51 +240,50 @@ def _draw_gate_ring_base(
     rd = blending_draw(ring)
 
     rd.ellipse(
-        _ring_bbox(OUTER_R), fill=_rgba("#454b57"), outline=_rgba("#1a1e28"), width=12
+        _ring_bbox(OUTER_R), fill=_rgba(BRONZE), outline=_rgba(OUTLINE), width=12
     )
-    rd.ellipse(_ring_bbox(OUTER_R - 5 * SUPER), outline=_rgba("#778091"), width=5)
-    rd.ellipse(_ring_bbox(OUTER_R - 9 * SUPER), outline=_rgba("#2c313b"), width=6)
+    rd.ellipse(_ring_bbox(OUTER_R - 5 * SUPER), outline=_rgba(BRONZE_LIGHT), width=5)
+    rd.ellipse(_ring_bbox(OUTER_R - 9 * SUPER), outline=_rgba(BRONZE_DARK), width=6)
     rd.ellipse(
         _ring_bbox(OUTER_R - 14 * SUPER),
-        fill=_rgba("#596170"),
-        outline=_rgba("#8790a1"),
+        fill=_rgba("#8a6842"),
+        outline=_rgba(BRONZE_LIGHT),
         width=3,
     )
     rd.ellipse(
         _ring_bbox(INNER_R + 7 * SUPER),
-        fill=_rgba("#353b46"),
-        outline=_rgba("#7f8797"),
+        fill=_rgba("#4d3824"),
+        outline=_rgba("#a07d55"),
         width=4,
     )
     rd.ellipse(
-        _ring_bbox(INNER_R), fill=(0, 0, 0, 0), outline=_rgba("#151922"), width=8
+        _ring_bbox(INNER_R), fill=(0, 0, 0, 0), outline=_rgba(OUTLINE), width=8
     )
 
     _shade_metal(ring)
 
     for i in range(30):
-        ang = rotation_deg + i * (360.0 / 30.0)
+        ang = i * (360.0 / 30.0)
         p1 = _polar(CENTER, INNER_R + 4.5 * SUPER, ang)
         p2 = _polar(CENTER, OUTER_R - 4.5 * SUPER, ang)
-        rd.line([p1, p2], fill=_rgba("#2a2f39", 115), width=2)
+        rd.line([p1, p2], fill=_rgba(BRONZE_DARK, 115), width=2)
 
     for i in range(10):
-        ang = rotation_deg + i * 36.0 + 6.0
+        ang = i * 36.0 + 6.0
         p1 = _polar(CENTER, INNER_R + 8.0 * SUPER, ang)
         p2 = _polar(CENTER, OUTER_R - 8.0 * SUPER, ang)
-        rd.line([p1, p2], fill=_rgba("#98a2b1", 92), width=2)
+        rd.line([p1, p2], fill=_rgba("#d2ab78", 80), width=2)
 
-    # Build each icon upright, then rotate and place it.  Rotation angle is
-    # chosen so the bottom of the glyph points toward the centre of the gate.
-    for idx, glyph in enumerate(INSCRIPTION):
-        ang = rotation_deg - 90.0 + idx * GLYPH_STEP_DEG
-        housing_center = _polar(CENTER, RING_MID_R, ang)
-        glow_strength = _rune_glow(frame_index, nframes, idx * 2, dim=idle_mode)
-        icon = _make_glyph_chevron(glyph, glow_strength)
-        rotated_icon = icon.rotate(
-            -(ang + 90.0), expand=True, resample=Image.Resampling.BICUBIC
-        )
-        _paste_center(ring, rotated_icon, housing_center)
+    # The plaques, then the glyphs cut into them, each foot toward the
+    # aperture: at rest breathing faintly out of step with its neighbours,
+    # charging lit by the pulse.
+    for index in range(len(GLYPHS)):
+        _draw_plaque(rd, _plaque_angle(index))
+    if idle_mode:
+        levels = [_rune_glow(frame_index, nframes, index * 2, dim=True) for index in range(len(GLYPHS))]
+    else:
+        levels = [_charge_level(index, frame_index, nframes) for index in range(len(GLYPHS))]
+    ring.alpha_composite(_ring_glyphs(levels))
 
     for lamp_index, ang in enumerate((-90, 30, 150)):
         cap_center = _polar(CENTER, OUTER_R + 4.0 * SUPER, ang)
@@ -319,8 +297,8 @@ def _draw_gate_ring_base(
                 (-8 * SUPER, 5.5 * SUPER),
             ],
             ang + 90.0,
-            fill=_rgba("#6d7581"),
-            outline=_rgba("#1a1e28"),
+            fill=_rgba("#6b5034"),
+            outline=_rgba(OUTLINE),
             width=4,
         )
         _draw_clamp_lamp(
@@ -336,16 +314,56 @@ def _draw_gate_ring_base(
     rim_draw = blending_draw(rim)
     rim_alpha = 78 if idle_mode else 106
     rim_draw.ellipse(
-        _ring_bbox(INNER_R + 2.5 * SUPER), outline=_rgba("#ff9d4b", rim_alpha), width=4
+        _ring_bbox(INNER_R + 2.5 * SUPER), outline=_rgba("#5fe2ff", rim_alpha), width=4
     )
     rim_draw.ellipse(
         _ring_bbox(INNER_R + 3.9 * SUPER),
-        outline=_rgba("#ffbe73", rim_alpha // 2),
+        outline=_rgba("#a8f2ff", rim_alpha // 2),
         width=2,
     )
     rim = rim.filter(ImageFilter.GaussianBlur(radius=2.5))
     img.alpha_composite(rim)
+    _draw_base(img, lit=0.55 if idle_mode else 0.55 + 0.45 * (frame_index + 1) / max(1, nframes))
     return img
+
+
+#: The base's steps, bottom up, in frame pixels: (half width, top). The top
+#: step meets the ring just under the aperture, so the base hides the band's
+#: bottom slice and nothing else; the bottom step stands on the floor.
+BASE_STEPS = ((74.0, 158.0), (62.0, 150.5), (50.0, 143.0))
+BASE_FLOOR = 168.0
+
+
+def _draw_base(img: Image.Image, lit: float) -> None:
+    """The stepped base the ring stands in, and the cyan line of the
+    threshold on its top step, ``lit`` (0..1) bright."""
+    draw = blending_draw(img)
+    cx = CENTER[0]
+    bottom = BASE_FLOOR * SUPER
+    for half, top in BASE_STEPS:
+        x0, x1, y0 = cx - half * SUPER, cx + half * SUPER, top * SUPER
+        draw.rectangle((x0, y0, x1, bottom), fill=_rgba("#5a4330"), outline=_rgba(OUTLINE), width=4)
+        draw.rectangle((x0 + 4, y0 + 4, x1 - 4, y0 + 2.2 * SUPER), fill=_rgba("#a58258"))
+        draw.rectangle((x0 + 4, y0 + 2.2 * SUPER, x1 - 4, y0 + 3.0 * SUPER), fill=_rgba(BRONZE_DARK))
+        bottom = y0 + 2
+    half, top = BASE_STEPS[-1]
+    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    gd = blending_draw(glow)
+    y = top * SUPER + 1.0 * SUPER
+    gd.rectangle((cx - (half - 14) * SUPER, y - 2, cx + (half - 14) * SUPER, y + 2), fill=_rgba("#7ff3ff", int(255 * lit)))
+    glow = glow.filter(ImageFilter.GaussianBlur(1.2 * SUPER))
+    img.alpha_composite(glow)
+    draw = blending_draw(img)
+    draw.rectangle((cx - (half - 14) * SUPER, y - 1, cx + (half - 14) * SUPER, y + 1), fill=_rgba("#e6fdff", int(230 * lit)))
+
+
+def _charge_level(index: int, frame_index: int, nframes: int) -> float:
+    """How lit chevron ``index`` is as a link opens: a pulse runs from the
+    first plaque to the last and leaves each it passes lit."""
+    head = (frame_index + 1) / max(1, nframes) * (len(GLYPHS) + 1.0)
+    passed = min(1.0, max(0.0, head - index)) * 0.7
+    pulse = math.exp(-((index - head + 0.5) ** 2) / 1.4) * 0.7
+    return min(1.0, 0.3 + passed + pulse)
 
 
 def _shade_metal(layer: Image.Image) -> None:
@@ -398,35 +416,50 @@ def _draw_clamp_lamp(layer: Image.Image, center: Point, level: float) -> None:
     gr = (4.5 + 5.5 * level) * SUPER
     gd.ellipse(
         (center[0] - gr, center[1] - gr, center[0] + gr, center[1] + gr),
-        fill=_rgba("#ffae45", int(150 * level)),
+        fill=_rgba("#45d6ff", int(150 * level)),
     )
     glow = glow.filter(ImageFilter.GaussianBlur(radius=3.0 * SUPER))
     layer.alpha_composite(glow)
     draw = blending_draw(layer)
     r = 2.8 * SUPER
-    dim = ImageColor.getrgb("#8a4f1f")
-    lit = ImageColor.getrgb("#fff0c8")
+    dim = ImageColor.getrgb("#1f5a6a")
+    lit = ImageColor.getrgb("#e6fdff")
     mix = max(0.0, min(1.0, level))
     core = tuple(int(_lerp(a, b, mix)) for a, b in zip(dim, lit)) + (255,)
     draw.ellipse(
         (center[0] - r, center[1] - r, center[0] + r, center[1] + r),
         fill=core,
-        outline=_rgba("#1a1e28"),
+        outline=_rgba(OUTLINE),
         width=3,
     )
 
 
 def render_ring_frame(animation: str, frame_index: int, nframes: int) -> Image.Image:
-    if animation == "spin":
-        rotation = 360.0 * (frame_index / max(1, nframes))
-        idle_glow = False
-    else:
-        rotation = 0.0
-        idle_glow = True
-    high = _draw_gate_ring_base(
-        rotation, frame_index=frame_index, nframes=nframes, idle_mode=idle_glow
-    )
+    if animation not in ("idle", "charge"):
+        raise ValueError(f"unknown animation: {animation}")
+    high = _draw_gate_ring_base(frame_index=frame_index, nframes=nframes, idle_mode=animation == "idle")
     return _downsample(high)
+
+
+def render_glyph_frame(animation: str, frame_index: int, nframes: int) -> Image.Image:
+    """Chevron ``frame_index`` dialed: its glyph blazing on its plaque at the
+    idle ring's place, and the plaque's face washed with its light."""
+    if animation != "lit":
+        raise ValueError(f"unknown animation: {animation}")
+    del nframes
+    size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
+    core = glyphs_mask([_placement(frame_index)], size)
+    wash = Image.new("L", size, 0)
+    ang = _plaque_angle(frame_index)
+    _draw_rotated_polygon(
+        ImageDraw.Draw(wash),
+        _polar(CENTER, RING_MID_R, ang),
+        PLAQUE_FACE,
+        ang + 90.0,
+        fill=255,
+    )
+    glow = np.maximum(core, np.asarray(wash, np.float32) / 255.0 * 0.32)
+    return _downsample(_light_layer(core, glow, 2.6 * SUPER, core_rgb=(236, 255, 255)))
 
 
 def _portal_mask(radius: float) -> Image.Image:
@@ -628,6 +661,12 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         render_fn=render_portal_frame,
         **shared,
     )
+    glyph_outputs = build_sheet(
+        target=GLYPHS_TARGET,
+        rows=GLYPH_ROWS,
+        render_fn=render_glyph_frame,
+        **shared,
+    )
     ordered = [
         ring_outputs["canonical"],
         ring_outputs["canonical_transparent"],
@@ -639,5 +678,10 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         portal_outputs["spritesheet"],
         portal_outputs["yaml"],
         portal_outputs["preview"],
+        glyph_outputs["canonical"],
+        glyph_outputs["canonical_transparent"],
+        glyph_outputs["spritesheet"],
+        glyph_outputs["yaml"],
+        glyph_outputs["preview"],
     ]
     return ordered

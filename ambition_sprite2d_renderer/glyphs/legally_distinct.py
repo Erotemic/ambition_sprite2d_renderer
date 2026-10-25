@@ -322,6 +322,51 @@ def render_glyph(glyph: GateGlyph, height_px: int, color: str = "#000000") -> Im
     return Image.open(io.BytesIO(bytes(png))).convert("RGBA")
 
 
+@dataclass(frozen=True)
+class Placement:
+    """A glyph set into a picture: the centre of its ink at ``center``
+    (pixels, y down), ``cap_px`` tall, turned ``angle_deg`` clockwise."""
+
+    glyph: GateGlyph
+    center: Point
+    cap_px: float
+    angle_deg: float = 0.0
+
+
+def _placed_path(placement: Placement, color: str) -> str:
+    glyph = placement.glyph
+    scale = placement.cap_px / CAP
+    cx, cy = placement.center
+    return (
+        f'<path fill="{color}" fill-rule="nonzero" transform="translate({cx:.3f} {cy:.3f}) '
+        f'rotate({placement.angle_deg:.4f}) scale({scale:.6f} {-scale:.6f}) '
+        f'translate({-glyph.width / 2.0:.3f} {-CAP / 2.0:.3f})" d="{_path_data(glyph)}"/>'
+    )
+
+
+def glyphs_mask(placements: Sequence[Placement], size: Tuple[int, int], *, transform: str = ""):
+    """Coverage (0..1, an ``(h, w)`` float array) of the placed glyphs on a
+    picture ``size`` pixels: the art's way to cut a glyph into metal or light
+    it, at any size and angle, from the same outlines as the font.
+    ``transform`` (SVG syntax) moves them all after placing, e.g. to
+    foreshorten a dial seen at a slant."""
+    import io
+
+    import numpy as np
+    import resvg_py
+
+    width, height = size
+    doc = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+        f'viewBox="0 0 {width} {height}"><g transform="{transform}">'
+        + "".join(_placed_path(p, "#ffffff") for p in placements)
+        + "</g></svg>"
+    )
+    png = resvg_py.svg_to_bytes(svg_string=doc)
+    alpha = Image.open(io.BytesIO(bytes(png))).convert("RGBA").getchannel("A")
+    return np.asarray(alpha, np.float32) / 255.0
+
+
 def _label_font(size: int) -> ImageFont.ImageFont:
     for name in ("DejaVuSans.ttf",):
         try:

@@ -16,6 +16,7 @@ groups:
     - creator
     - interdimensional_gate_ring
     - interdimensional_gate_portal
+    - interdimensional_gate_glyphs
     - news_board
 
 # The groups a runtime reader loads: their pages are the pack's runtime product
