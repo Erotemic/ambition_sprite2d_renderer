@@ -111,7 +111,7 @@ def _human(fig) -> HeadModel:
         "eye_f": 0.475, "brow_f": 0.395, "eye_alpha": 23.5 * s.face.eye_spacing, "eye_w": 0.142 * s.face.eye_size * F.eye,
         "iris": 0.56 * F.iris,
         "nose_tip_f": {"long": 0.655, "button": 0.6, "upturned": 0.605}.get(nose, 0.63), "mouth_f": 0.77,
-        "mouth_alpha": 16.5 * s.face.mouth_width * (0.95 if fig.female else 1.0), "nose": "human", "pupil": "round",
+        "mouth_alpha": 16.5 * s.face.mouth_width * (0.95 if fig.female else 1.0) * F.mouth, "nose": "human", "pupil": "round",
     }
     model = HeadModel("human", _rows(fig.fy, hh, out), [], layout)
     model.bumps = _human_bumps(fig, layout)

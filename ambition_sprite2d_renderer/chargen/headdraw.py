@@ -846,7 +846,7 @@ def _mouth(ctx: Ctx, pt: Paint, e: Expression) -> None:
         if e.teeth > 0.3 and fig.species == "human":
             lo2 = [ctx.p(hd.point(a, y + 0.02 * fig.hh, out)) for a, y in up]
             pt.region([line + list(reversed(lo2))], "#f2ece2", outline=0.2, smooth=True)
-        pt.line(line, mix(style().ink, lip, 0.3), 0.38)
+        pt.line(line, mix(style().ink, lip, 0.3), 0.38 * (family_of(fig.spec).face.lip if fig.species == "human" else 1.0))
     if fig.species == "human":
         ym = fig.fy(fig.face["mouth_f"])
         lower = [(a * 0.55, ym + 0.04 * fig.hh + 0.004 * fig.hh * (a / 9.0) ** 2 + 0.085 * e.open * fig.hh) for a in range(-9, 10, 3)]

@@ -80,6 +80,9 @@ class FaceStyle:
     brow: float = 1.0
     nose: float = 1.0
     nose_width: float = 1.0
+    #: The mouth's width, and the weight of its line.
+    mouth: float = 1.0
+    lip: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -105,7 +108,7 @@ FAMILIES: Dict[str, Family] = {
             hip=0.448,
             neck_base=0.3,
             shoulder_drop=0.52,
-            head=1.02,
+            head=1.12,
             # A crew head is about as wide as it is high (front: 20 px of 121).
             head_width=1.22,
             head_depth=1.08,
@@ -122,7 +125,8 @@ FAMILIES: Dict[str, Family] = {
             hand=1.28,
             foot=(0.98, 1.35, 1.3),
         ),
-        face=FaceStyle(eye=1.2, eye_open=1.5, pupil="dot", iris=0.62, brow=1.55, nose=1.45, nose_width=1.2),
+        # Large features, so that a face reads at game size (168 cm is 108 px).
+        face=FaceStyle(eye=1.75, eye_open=1.6, pupil="dot", iris=0.72, brow=2.4, nose=2.2, nose_width=1.4, mouth=1.25, lip=1.3),
         style=Style(key="crew", ink=CREW_INK, outline=1.9, fine=2.5, shade_tint="#281446", shade_mix=1.16, shade_band=1.7, rim=0.12,
                     rim_mix=0.3),
     ),
