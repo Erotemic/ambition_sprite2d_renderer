@@ -104,9 +104,10 @@ candidate commit of every lineage and writes `variations.yaml`: each run of
 identical pixels is a variation. A lineage is surveyed in tracks, its `ids`
 and then each generation or form target alone, because two generations are
 drawn at the same commits. A **holistic** look is the last variation of a
-burst of work (variations less than 8 hours apart), unless its still is
-almost the same as the previous holistic look (a refactor that redraws a
-look keeps the look's first author). The record keeps every variation and
+burst of work (variations less than 8 hours apart), or a variation that the
+next one redraws completely (Alice's white coat, replaced ten minutes later;
+Jon wants it), unless its still is almost the same as the previous holistic
+look (a refactor that redraws a look keeps the look's first author). The record keeps every variation and
 its distance, so the thresholds can change without a new render. The curated
 looks stay the `eras` of `lineages.yaml`.
 

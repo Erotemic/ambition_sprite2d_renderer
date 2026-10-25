@@ -386,7 +386,8 @@ def test_a_curated_author_outranks_the_commit_for_its_files_only(history_store, 
 
 def test_a_holistic_look_ends_a_burst_and_a_later_redraw_of_it_keeps_its_author(tmp_path):
     """Patches within hours are one burst: its last variation is the look. A
-    later burst that draws almost the same look (a refactor) is not a new one."""
+    look that the next commit redraws completely is a look too (Alice's white
+    coat). A later burst that draws almost the same look (a refactor) is not."""
     import importlib
 
     from PIL import Image, ImageDraw
@@ -410,9 +411,11 @@ def test_a_holistic_look_ends_a_burst_and_a_later_redraw_of_it_keeps_its_author(
         v("a1", "2026-05-21T00:00:00+00:00", still("a1", (200, 30, 30, 255))),
         v("a2", "2026-05-21T02:00:00+00:00", still("a2", (210, 30, 30, 255))),   # same burst: a patch
         v("b", "2026-07-12T00:00:00+00:00", still("b", (30, 30, 200, 255))),     # a new look
-        v("b2", "2026-10-03T00:00:00+00:00", still("b2", (30, 30, 200, 255), nub=True)),  # a refactor of it
+        v("w", "2026-09-05T13:48:00+00:00", still("w", (240, 240, 240, 255))),   # a look redrawn ten minutes later
+        v("t", "2026-09-05T13:58:00+00:00", still("t", (30, 160, 160, 255))),
+        v("t2", "2026-10-03T00:00:00+00:00", still("t2", (30, 160, 160, 255), nub=True)),  # a refactor of it
     ]
     variations.classify(found)
-    assert [x.commit for x in found if x.burst_end] == ["a2", "b", "b2"]
-    assert [x.commit for x in found if x.holistic] == ["a2", "b"]
-    assert found[3].change is not None and found[3].change < variations.SAME_LOOK
+    assert [x.commit for x in found if x.burst_end] == ["a2", "b", "t", "t2"]
+    assert [x.commit for x in found if x.holistic] == ["a2", "b", "w", "t"]
+    assert found[5].change is not None and found[5].change < variations.SAME_LOOK
