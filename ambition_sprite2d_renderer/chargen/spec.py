@@ -12,6 +12,11 @@ the field it names: the rest of the character stays the same.
 Bases: a body type (slim, average, broad, heavy) in each sex. A base gives the
 range each body number is drawn from and the odds of each style; it never
 limits what a hand-edited spec may say, only :data:`BOUNDS` does.
+
+Families (``family.py``): the look a spec is drawn in (``standard``, the
+default, or ``crew``). A family does not change what the seed draws: it
+changes how the body numbers become a drawing. A standard spec does not
+write its family, so its record (and its SVG) stays as it was.
 """
 
 from __future__ import annotations
@@ -182,13 +187,19 @@ class CharacterSpec:
     palette: Palette = field(default_factory=Palette)
     outfit: Outfit = field(default_factory=Outfit)
     head: Head = field(default_factory=Head)
+    #: The family the spec is drawn in (``family.FAMILIES``).
+    family: str = "standard"
 
     @property
     def sex(self) -> str:
         return BASES[self.base].sex
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"schema": SCHEMA, **asdict(self)}
+        d = {"schema": SCHEMA, **asdict(self)}
+        if d["family"] == "standard":
+            # The default is not written: a standard record stays as it was.
+            del d["family"]
+        return d
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2, sort_keys=False) + "\n"
@@ -320,6 +331,10 @@ def validate(spec: CharacterSpec) -> List[str]:
     errors: List[str] = []
     if spec.base not in BASES:
         errors.append(f"base {spec.base!r} is not one of {sorted(BASES)}")
+    from .family import FAMILIES
+
+    if spec.family not in FAMILIES:
+        errors.append(f"family {spec.family!r} is not one of {sorted(FAMILIES)}")
     for key, (lo, hi) in BOUNDS.items():
         v = _get(spec, key)
         if not isinstance(v, (int, float)) or isinstance(v, bool):
@@ -528,7 +543,8 @@ def _merge(dst: Dict[str, Any], src: Mapping[str, Any]) -> Dict[str, Any]:
 def generate(base: Optional[str] = None, seed: int = 0, overrides: Optional[Mapping[str, Any]] = None) -> CharacterSpec:
     """A character of ``base`` (one of :data:`BASES`; drawn from the seed when
     ``None``) for ``seed``, with ``overrides`` (a partial spec mapping) applied
-    on top. The same arguments always give the same spec."""
+    on top. The same arguments always give the same spec. The family
+    (``overrides["family"]``) does not change what the seed draws."""
     if base is None:
         base = sorted(BASES)[random.Random(f"{SCHEMA}:base:{seed}").randrange(len(BASES))]
     if base not in BASES:
@@ -559,15 +575,21 @@ def complete(data: Mapping[str, Any]) -> CharacterSpec:
     return generate(data.get("base"), int(data.get("seed", 0)), data)
 
 
-def crowd(count: int, seed: int = 0, bases: Optional[Sequence[str]] = None, species: Optional[str] = None) -> List[CharacterSpec]:
+def crowd(count: int, seed: int = 0, bases: Optional[Sequence[str]] = None, species: Optional[str] = None,
+          family: Optional[str] = None) -> List[CharacterSpec]:
     """``count`` characters, one per seed ``seed*1000 + i``, cycling through
     ``bases`` (every base by default) so a crowd has every body type; all of
-    ``species`` when it is given."""
+    ``species`` when it is given, all in ``family`` when it is given."""
     keys = list(bases) if bases else sorted(BASES, key=lambda k: (BASES[k].build != "average", k))
     out = []
     for i in range(count):
         s = int(seed) * 1000 + i
-        spec = generate(keys[i % len(keys)], s, {"head": {"species": species}} if species else None)
+        over: Dict[str, Any] = {}
+        if species:
+            over["head"] = {"species": species}
+        if family:
+            over["family"] = family
+        spec = generate(keys[i % len(keys)], s, over or None)
         spec.name = f"Townsfolk {i + 1:02d}"
         out.append(spec)
     return out

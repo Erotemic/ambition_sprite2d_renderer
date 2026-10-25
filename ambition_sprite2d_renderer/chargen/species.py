@@ -23,6 +23,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
+from .family import family_of
 from .geometry import Loft, RingKey, gauss, smoothstep, wrap180
 
 SPECIES = ("human", "horse", "dog", "cat", "bird", "sea_lion")
@@ -105,8 +106,10 @@ def _human(fig) -> HeadModel:
             rx *= 1.02
         out.append((f, rx, rzf, rzb, cz, 2.0))
     nose = s.face.nose
+    F = family_of(s).face
     layout = {
-        "eye_f": 0.475, "brow_f": 0.395, "eye_alpha": 23.5 * s.face.eye_spacing, "eye_w": 0.142 * s.face.eye_size, "iris": 0.56,
+        "eye_f": 0.475, "brow_f": 0.395, "eye_alpha": 23.5 * s.face.eye_spacing, "eye_w": 0.142 * s.face.eye_size * F.eye,
+        "iris": 0.56 * F.iris,
         "nose_tip_f": {"long": 0.655, "button": 0.6, "upturned": 0.605}.get(nose, 0.63), "mouth_f": 0.77,
         "mouth_alpha": 16.5 * s.face.mouth_width * (0.95 if fig.female else 1.0), "nose": "human", "pupil": "round",
     }
@@ -125,9 +128,10 @@ def _human_bumps(fig, a: Dict[str, float]) -> list:
     tip_f = a["nose_tip_f"]
     base_f = tip_f + 0.045
     bridge_f = a["brow_f"] + 0.035
-    length = {"straight": 0.105, "button": 0.08, "long": 0.13, "hooked": 0.12, "broad": 0.1, "upturned": 0.09}[nose] * size
+    F = family_of(s).face
+    length = {"straight": 0.105, "button": 0.08, "long": 0.13, "hooked": 0.12, "broad": 0.1, "upturned": 0.09}[nose] * size * F.nose
     curve = {"straight": 0.0, "button": -0.5, "long": 0.1, "hooked": 1.0, "broad": 0.0, "upturned": -0.7}[nose]
-    width = {"broad": 1.35, "button": 1.1}.get(nose, 1.0) * (0.9 + 0.2 * size)
+    width = {"broad": 1.35, "button": 1.1}.get(nose, 1.0) * (0.9 + 0.2 * size) * F.nose_width
     brow = (0.010 + (0.012 if male else 0.0)) * (0.8 + 0.4 * s.face.brow_weight)
     a["nose_width"] = width
 
@@ -357,7 +361,16 @@ _BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird":
 
 
 def head_model(fig) -> HeadModel:
-    return _BUILDERS[fig.spec.head.species](fig)
+    """The head of ``fig``'s species, made as wide and as deep as its family
+    says (``Proportions.head_width``, ``head_depth``)."""
+    from dataclasses import replace
+
+    model = _BUILDERS[fig.spec.head.species](fig)
+    P = family_of(fig.spec).body
+    if P.head_width != 1.0 or P.head_depth != 1.0:
+        model.keys = [replace(r, rx=r.rx * P.head_width, rzf=r.rzf * P.head_depth, rzb=r.rzb * P.head_depth, cz=r.cz * P.head_depth)
+                      for r in model.keys]
+    return model
 
 
 def skull_loft(model: HeadModel) -> Loft:

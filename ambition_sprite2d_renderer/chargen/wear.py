@@ -33,6 +33,7 @@ from .drawkit import (
     tube3,
     visible,
 )
+from .family import family_of
 from .geometry import Loft, RingKey, Vec3, add3, hull, lerp, loft_region, smoothstep, wrap180
 from .svgout import FINE, INK, Paint, light, shade
 
@@ -498,14 +499,16 @@ def legwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
 def foot_points(fig: Figure, side: str, k_size: float = 1.0) -> Tuple[List, List, List]:
     A = fig.joints[f"{side}_ankle"]
     k = fig.k * (0.95 if fig.female else 1.0) * k_size
+    # The family's foot: length, width and height multipliers.
+    FL, FW, FH = family_of(fig.spec).body.foot
     l0, z0 = A[0], A[2]
     ah = -A[1]
     sole, top = [], []
     for z, w, h in ((-5.2, 3.3, 0.72), (-2.0, 4.0, 0.95), (5.5, 4.6, 0.62), (11.5, 4.9, 0.45), (16.0, 4.3, 0.33), (18.6, 2.9, 0.26)):
         for s in (-1.0, 1.0):
-            sole.append((l0 + s * w * k, 0.0, z0 + z * k))
-            top.append((l0 + s * w * k * 0.92, -ah * h * 1.05, z0 + z * k))
-    collar = [(l0 + 4.0 * k * math.cos(t), -ah * 1.05, z0 + 3.6 * k * math.sin(t)) for t in (2 * math.pi * i / 10 for i in range(10))]
+            sole.append((l0 + s * w * k * FW, 0.0, z0 + z * k * FL))
+            top.append((l0 + s * w * k * FW * 0.92, -ah * h * FH * 1.05, z0 + z * k * FL))
+    collar = [(l0 + 4.0 * k * FW * math.cos(t), -ah * FH * 1.05, z0 + 3.6 * k * FW * math.sin(t)) for t in (2 * math.pi * i / 10 for i in range(10))]
     return sole, top, collar
 
 

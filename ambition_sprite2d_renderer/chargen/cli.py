@@ -21,6 +21,7 @@ import argparse
 from pathlib import Path
 from typing import Optional, Sequence
 
+from .family import FAMILIES
 from .spec import BASES, CharacterSpec, crowd, generate
 
 
@@ -29,7 +30,7 @@ def _cmd_cast(args) -> int:
     from .sheets import contact_sheet, turnaround
 
     out = Path(args.out)
-    specs = crowd(args.count, args.seed, args.bases or None)
+    specs = crowd(args.count, args.seed, args.bases or None, family=args.family)
     for spec in specs:
         if args.rigs:
             write_character(spec, out / slug(spec.name))
@@ -44,7 +45,7 @@ def _cmd_cast(args) -> int:
 
 
 def _cmd_new(args) -> int:
-    spec = generate(args.base, args.seed)
+    spec = generate(args.base, args.seed, {"family": args.family} if args.family else None)
     if args.name:
         spec.name = args.name
     if args.output:
@@ -119,6 +120,9 @@ def _cmd_bases(args) -> int:
         print(f"{key}: {base.display_name}")
         for name, (lo, hi) in sorted(base.ranges.items()):
             print(f"    {name:10s} {lo:g} .. {hi:g}")
+    print("families (spec field `family`):")
+    for key, fam in FAMILIES.items():
+        print(f"  {key}: {fam.description}")
     return 0
 
 
@@ -129,6 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--count", type=int, default=24)
     c.add_argument("--seed", type=int, default=0)
     c.add_argument("--bases", nargs="*", choices=sorted(BASES), help="cycle through these bases (default: all)")
+    c.add_argument("--family", choices=sorted(FAMILIES), help="draw all in this family (default: standard)")
     c.add_argument("--out", required=True)
     c.add_argument("--rigs", action="store_true", help="also bind every character to rigs (slower)")
     c.add_argument("--turnaround", type=int, default=0, metavar="N", help="also draw the turnaround of the first N")
@@ -136,6 +141,7 @@ def build_parser() -> argparse.ArgumentParser:
     n = sub.add_parser("new", help="write one generated spec, to edit by hand")
     n.add_argument("--base", choices=sorted(BASES))
     n.add_argument("--seed", type=int, default=0)
+    n.add_argument("--family", choices=sorted(FAMILIES))
     n.add_argument("--name")
     n.add_argument("-o", "--output")
     n.set_defaults(func=_cmd_new)
@@ -151,7 +157,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--seed", type=int, default=1)
     sp.add_argument("--out", required=True)
     sp.set_defaults(func=_cmd_species)
-    b = sub.add_parser("bases", help="list the bases and their body ranges")
+    b = sub.add_parser("bases", help="list the bases and their body ranges, and the families")
     b.set_defaults(func=_cmd_bases)
     return p
 

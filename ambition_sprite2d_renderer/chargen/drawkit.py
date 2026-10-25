@@ -15,7 +15,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from .body import Figure
 from .geometry import Loft, Point, Vec3, View, add3, capsule, capsule_band, column_bands, cross3, ellipse3, loft_region, norm3, scale3, sub3, tube, wrap180
-from .svgout import FINE, INK, OUTLINE, Canvas, El, Paint, luminance, mix, shade
+from .svgout import FINE, INK, OUTLINE, Canvas, El, Paint, luminance, mix, shade, style
 
 Margin = Callable[[float, float], float]
 #: (depth word, the character's side, the side's sign on ``l``)
@@ -72,13 +72,21 @@ def make_ctx(fig: Figure, view: View, cv: Canvas) -> Ctx:
 
 def shaded_region(ctx: Ctx, pt: Paint, loft: Loft, y0: float, y1: float, color: str, margin: Optional[Margin] = None, *,
                   ink: bool = True, shade_frac: float = 0.2, shade_cap: float = 3.0, lit: bool = False) -> bool:
+    """A region of ``loft`` in ``color``, shaded on its left edge; ``lit``
+    adds a light band on its right edge. A style with a ``rim`` puts its
+    light band on every shaded region."""
     polys = loft_region(ctx.view, loft, y0, y1, margin)
     if not polys:
         return False
+    st = style()
     pt.region(polys, color, ink=ink)
     if shade_frac > 0.0:
-        pt.flat(column_bands(ctx.view, loft, y0, y1, margin, side="left", frac=shade_frac, cap=shade_cap), shade(color))
-    if lit:
+        pt.flat(column_bands(ctx.view, loft, y0, y1, margin, side="left", frac=shade_frac * st.shade_band, cap=shade_cap * st.shade_band),
+                shade(color))
+    if st.rim > 0.0 and (lit or shade_frac > 0.0):
+        pt.flat(column_bands(ctx.view, loft, y0, y1, margin, side="right", frac=st.rim, cap=1.6 * st.rim / 0.08, y_from=0.03, y_to=0.85),
+                mix(color, "#fffaf0", st.rim_mix))
+    elif lit:
         pt.flat(column_bands(ctx.view, loft, y0, y1, margin, side="right", frac=0.08, cap=1.2, y_from=0.05, y_to=0.7),
                 mix(color, "#fffaf0", 0.18))
     return True
@@ -91,18 +99,21 @@ def tube3(ctx: Ctx, pt: Paint, a: Vec3, b: Vec3, r0: float, r1: float, color: st
     crease instead of a full outline, so an elbow or a knee reads as one
     limb bending, not two tubes stacked."""
     A, B = ctx.p(a), ctx.p(b)
+    st = style()
     if joint_b and round_a:
         n = 10
         full = capsule(A, B, r0, r1, n)
         b_arc, a_arc = full[: n + 1], full[n + 1:]
         open_path = [b_arc[-1]] + a_arc + [b_arc[0]]
-        pt.line(open_path, INK, 2 * OUTLINE, smooth=False)
+        pt.line(open_path, INK, 2 * st.outline, smooth=False, fixed=True)
         pt.flat([full], color)
         pt.line(b_arc[2:-2], shade(color, 0.45), FINE * 0.8)
     else:
         pt.region([tube(A, B, r0, r1, round_a=round_a, round_b=round_b)], color)
     if band:
-        pt.flat([capsule_band(A, B, r0, r1, 0.38 * min(r0, r1))], shade(color))
+        pt.flat([capsule_band(A, B, r0, r1, 0.38 * min(r0, r1) * st.shade_band)], shade(color))
+        if st.rim > 0.0:
+            pt.flat([capsule_band(A, B, r0, r1, 2.0 * st.rim * min(r0, r1), side="right")], mix(color, "#fffaf0", st.rim_mix))
 
 
 def segment(a: Vec3, b: Vec3, t0: float, t1: float) -> Tuple[Vec3, Vec3]:

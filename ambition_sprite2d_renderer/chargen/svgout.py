@@ -8,12 +8,20 @@ An outlined shape is drawn as INK then FILL: the ink is the shape stroked
 ``2 * OUTLINE`` wide in the ink colour, the fill is the shape in its colour on
 top. Several pieces of one region paint all their inks before any fill, so
 they read as one outlined silhouette with no seams inside it.
+
+A family (``family.py``) can draw in its own :class:`Style`: the ink, the
+outline weight, the inner line weight and the shading. ``using(style)`` makes
+a style the active one while a view is drawn; ``Paint`` and :func:`shade`
+read it. The standard style is the house style above, and its output does not
+change.
 """
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 from dataclasses import dataclass
-from typing import Iterable, List, Sequence, Tuple
+from typing import Iterable, Iterator, List, Optional, Sequence, Tuple
 
 from .geometry import Point
 
@@ -37,8 +45,55 @@ def mix(a: str, b: str, t: float) -> str:
     return _hex([x + (y - x) * t for x, y in zip(ra, rb)])
 
 
+@dataclass(frozen=True)
+class Style:
+    """How a family inks and shades. Widths are in cm.
+
+    ``outline``: the outline outside a silhouette. ``fine``: the multiplier on
+    every inner line and on the outline of a small inner region (a button, a
+    pocket, an open mouth). ``shade_tint``: when given, a shade is ``c``
+    mixed toward this colour (``shade_mix`` times ``k``); else it is the
+    standard warm shade. ``shade_band``: the multiplier on the width of the
+    shade band of a region or a limb. ``rim``: the width of a light band on
+    the lit (right) edge of every region and limb, as a part of the width;
+    0 is no band. ``rim_mix``: how far that band goes toward white."""
+
+    key: str = "standard"
+    ink: str = INK
+    outline: float = OUTLINE
+    fine: float = 1.0
+    shade_tint: Optional[str] = None
+    shade_mix: float = 1.0
+    shade_band: float = 1.0
+    rim: float = 0.0
+    rim_mix: float = 0.18
+
+
+STANDARD = Style()
+_STYLE: contextvars.ContextVar[Style] = contextvars.ContextVar("chargen_style", default=STANDARD)
+
+
+def style() -> Style:
+    """The active style."""
+    return _STYLE.get()
+
+
+@contextlib.contextmanager
+def using(st: Style) -> Iterator[Style]:
+    """Make ``st`` the active style in the block."""
+    token = _STYLE.set(st)
+    try:
+        yield st
+    finally:
+        _STYLE.reset(token)
+
+
 def shade(c: str, k: float = 0.22) -> str:
-    """The cel shade of ``c``: darker, a little toward warm violet."""
+    """The cel shade of ``c``: darker, a little toward warm violet (the
+    standard style), or toward the active style's ``shade_tint``."""
+    st = _STYLE.get()
+    if st.shade_tint is not None:
+        return mix(c, st.shade_tint, min(1.0, k * st.shade_mix))
     r, g, b = _rgb(c)
     return _hex([r * (1 - k) - 4 * k, g * (1 - k * 1.12), b * (1 - k * 0.9)])
 
@@ -157,15 +212,20 @@ class Paint:
         self.els: List[El] = []
 
     def region(self, polys: Iterable[Sequence[Point]], color: str, *, ink: bool = True, smooth: bool = False,
-               outline: float = OUTLINE) -> None:
+               outline: Optional[float] = None) -> None:
+        """An outlined region. Without ``outline`` it has the style's
+        silhouette outline; a given ``outline`` (a small inner region) is
+        multiplied by the style's ``fine``."""
         polys = [p for p in polys if len(p) >= 3]
         if not polys:
             return
+        st = _STYLE.get()
+        outline = st.outline if outline is None else outline * st.fine
         mk = self.cv.smooth_d if smooth else self.cv.poly_d
         ds = [mk(p) for p in polys]
         if ink:
             for d in ds:
-                self.els.append(El(d, fill=INK, stroke=INK, width=self.cv.w(2 * outline)))
+                self.els.append(El(d, fill=st.ink, stroke=st.ink, width=self.cv.w(2 * outline)))
         for d in ds:
             # A hairline of the fill's own colour closes the seams between
             # the pieces of one region.
@@ -178,9 +238,19 @@ class Paint:
             if len(p) >= 3:
                 self.els.append(El(mk(p), fill=color, opacity=opacity))
 
-    def line(self, pts: Sequence[Point], color: str = INK, width: float = FINE, *, smooth: bool = True, cap: str = "round") -> None:
+    def line(self, pts: Sequence[Point], color: str = INK, width: float = FINE, *, smooth: bool = True, cap: str = "round",
+             fixed: bool = False) -> None:
+        """A line. Its width is multiplied by the style's ``fine``, except a
+        ``fixed`` one (a width that is a size of the body: teeth, a tongue,
+        an outline already in the style's weight). ``INK`` is the style's
+        ink."""
         if len(pts) < 2:
             return
+        st = _STYLE.get()
+        if not fixed:
+            width = width * st.fine
+        if color == INK:
+            color = st.ink
         d = self.cv.smooth_d(pts, closed=False) if smooth and len(pts) >= 3 else self.cv.poly_d(pts, closed=False)
         self.els.append(El(d, stroke=color, width=self.cv.w(width), cap=cap))
 
@@ -201,4 +271,5 @@ def element_xml(el: El, eid: str) -> str:
     return "<path " + " ".join(attrs) + "/>"
 
 
-__all__ = ["Canvas", "El", "FINE", "INK", "OUTLINE", "Paint", "element_xml", "light", "luminance", "mix", "shade"]
+__all__ = ["Canvas", "El", "FINE", "INK", "OUTLINE", "Paint", "STANDARD", "Style", "element_xml", "light", "luminance", "mix", "shade", "style",
+           "using"]

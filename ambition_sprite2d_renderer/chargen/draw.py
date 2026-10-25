@@ -11,6 +11,9 @@ over the body and long hair hangs behind it (front) or over it (back); in the
 turned views the far arm and leg are behind the body and the near ones in
 front. The near side is always the character's RIGHT (``l < 0``).
 
+A view is drawn in the style of the spec's family (``family.py``,
+``svgout.using``).
+
 The hands are held-item ready: the part ``near_hand`` (``far_hand``) rides a
 grip bone whose pivot is the middle of the fist, and the fist is drawn so
 that, unturned, an item through it points forward and 24 degrees up: the
@@ -26,7 +29,8 @@ from typing import Dict, List, Tuple
 from .body import Figure
 from .drawkit import SIDES, Ctx, Part, make_ctx, shaded_region, tube3
 from .geometry import Point, Vec3, View, add3, capsule_band, hull, loft_region, norm3, scale3, sub3, wrap180
-from .svgout import FINE, Canvas
+from .family import family_of
+from .svgout import FINE, Canvas, using
 
 #: The angle (degrees above forward) an item takes in an unturned hand.
 ITEM_REST_ANGLE = 24.0
@@ -86,7 +90,7 @@ def draw_hand(ctx: Ctx, side: str) -> List:
     fig = ctx.fig
     pt = ctx.new()
     W, u, v, w, L = _hand_frame(fig, side)
-    k = fig.k * (0.94 if fig.female else 1.0) * (0.9 + 0.1 * fig.spec.body.limbs)
+    k = fig.k * (0.94 if fig.female else 1.0) * (0.9 + 0.1 * fig.spec.body.limbs) * family_of(fig.spec).body.hand
     pts3: List[Vec3] = []
     # A loose fist: the palm, the knuckles, the fingers curled back under.
     for t, half_v, half_w, curl in ((0.0, 2.6, 1.7, 0.0), (0.25, 4.1, 2.0, 0.0), (0.5, 4.5, 2.1, 0.2), (0.66, 4.2, 1.9, 1.0),
@@ -226,7 +230,13 @@ def _component_parts(ctx: Ctx, zmap: Dict[str, float], slots) -> List[Part]:
 
 def draw_view(fig: Figure, view: View, canvas: Canvas) -> List[Part]:
     """The rig parts of one view, in paint order, with the spec's wardrobe
-    alternates drawn hidden (``rig`` sets their features off)."""
+    alternates drawn hidden (``rig`` sets their features off), in the style
+    of the spec's family."""
+    with using(family_of(fig.spec).style):
+        return _draw_view(fig, view, canvas)
+
+
+def _draw_view(fig: Figure, view: View, canvas: Canvas) -> List[Part]:
     from . import headdraw, wear
     from .body import build
 

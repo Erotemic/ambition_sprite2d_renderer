@@ -10,6 +10,10 @@ Proportions are adult (about 7.5 heads tall). Two rulings are structural here
 (Jon, 2026-10-12/13): no big eyes on a human, and a man's chest never reads as
 a bust; a man's chest is as wide as the shoulders and tapers to the waist, and
 only a woman's torso carries the (modest) ``bust`` bump.
+
+The spec's family (``family.py``) gives the proportions the body numbers
+multiply (``Proportions``): the standard family's are the constants of this
+module.
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
 
+from .family import family_of
 from .geometry import Loft, RingKey, Vec3, add3, gauss, norm3, scale3, wrap180
 from .spec import CharacterSpec
 from .species import HEAD_SCALE, HeadModel, head_loft, head_model, skull_loft
@@ -74,16 +79,17 @@ class Figure:
 
 def build(spec: CharacterSpec) -> Figure:
     b = spec.body
+    P = family_of(spec).body
     female = spec.sex == "female"
     H = b.height_cm
     species = spec.head.species
-    hh = b.head * H * (1.05 if spec.face.jaw == "long" and species == "human" else 1.0) * HEAD_SCALE[species]
+    hh = b.head * H * (1.05 if spec.face.jaw == "long" and species == "human" else 1.0) * HEAD_SCALE[species] * P.head
     k = H / REF_H
     crown = -H
     chin = crown + hh
-    y_nb = chin + 0.17 * hh * b.neck
-    y_sh = chin + 0.4 * hh * b.neck
-    hip_h = 0.488 * H * b.legs
+    y_nb = chin + P.neck_base * hh * b.neck
+    y_sh = chin + P.shoulder_drop * hh * b.neck
+    hip_h = P.hip * H * b.legs
     y_hip = -hip_h
     T = y_hip - y_sh
     fig = Figure(
@@ -98,15 +104,15 @@ def build(spec: CharacterSpec) -> Figure:
     # ---- torso --------------------------------------------------------------------------
     sx = 0.9 if female else 1.0
     limbs = b.limbs
-    sh_hw = 17.2 * k * b.shoulders * sx
-    neck_r = (0.215 if female else 0.245) * b.head * H * (0.85 + 0.15 * limbs) * (1.0 + 0.25 * b.belly) * {"horse": 1.25, "dog": 1.1, "sea_lion": 1.55}.get(species, 1.0)
-    chest_rx = 15.2 * k * b.chest * (0.91 if female else 1.0)
+    sh_hw = 17.2 * k * b.shoulders * sx * P.shoulders
+    neck_r = (0.215 if female else 0.245) * b.head * H * (0.85 + 0.15 * limbs) * (1.0 + 0.25 * b.belly) * {"horse": 1.25, "dog": 1.1, "sea_lion": 1.55}.get(species, 1.0) * P.neck_r
+    chest_rx = 15.2 * k * b.chest * (0.91 if female else 1.0) * P.torso
     chest_rx = min(chest_rx, sh_hw + 1.0 * k)
     chest_rzf = 10.2 * k * b.chest * (0.95 if female else 1.0)
     chest_rzb = 9.6 * k * b.chest
-    waist_rx = 13.0 * k * b.waist * (0.86 if female else 1.0) + 2.0 * k * b.belly
+    waist_rx = (13.0 * k * b.waist * (0.86 if female else 1.0) + 2.0 * k * b.belly) * P.torso
     waist_rzf = 8.8 * k * b.waist + 4.5 * k * b.belly
-    hip_rx = 15.6 * k * b.hips * (1.08 if female else 1.0)
+    hip_rx = 15.6 * k * b.hips * (1.08 if female else 1.0) * P.torso
     hip_rzf = 9.4 * k * b.hips + 2.5 * k * b.belly
     hip_rzb = 10.4 * k * b.hips * (1.07 if female else 1.0)
     shoulder_cap = sh_hw + 2.2 * k * limbs
@@ -153,14 +159,15 @@ def build(spec: CharacterSpec) -> Figure:
 
     # ---- limbs --------------------------------------------------------------------------
     ma = 1.0 if female else 1.07
-    fig.arm_r = (4.5 * k * limbs * ma, 3.5 * k * limbs * ma, 2.5 * k * limbs * ma)
-    fig.leg_r = (7.4 * k * limbs * (1.04 if female else 1.0), 4.8 * k * limbs, 5.1 * k * limbs, 3.3 * k * limbs)
-    ua = 0.172 * H * b.arms
-    fa = 0.150 * H * b.arms
+    ar, lr = P.arm_r, P.leg_r
+    fig.arm_r = (4.5 * k * limbs * ma * ar[0], 3.5 * k * limbs * ma * ar[1], 2.5 * k * limbs * ma * ar[2])
+    fig.leg_r = (7.4 * k * limbs * (1.04 if female else 1.0) * lr[0], 4.8 * k * limbs * lr[1], 5.1 * k * limbs * lr[2], 3.3 * k * limbs * lr[3])
+    ua = 0.172 * H * b.arms * P.arms
+    fa = 0.150 * H * b.arms * P.arms
     hand = 0.104 * H
     ankle_h = 0.045 * H
     hip_l = 8.4 * k * b.hips * (1.05 if female else 1.0)
-    foot = 0.15 * H
+    foot = 0.15 * H * P.foot[0]
     j: Dict[str, Vec3] = {
         "waist": (0.0, fig.y_waist, 0.0),
         # The head turns about where it meets the neck: under the jaw for a
@@ -173,7 +180,7 @@ def build(spec: CharacterSpec) -> Figure:
         # The rest arm is bent a little in EVERY view: back and then forward
         # (seen from the side), out and then in (seen from the front). A
         # straight arm leaves the IK no elbow to bend.
-        splay = math.radians(10.0 + 3.0 * (b.belly + max(0.0, b.hips - 1.0)))
+        splay = math.radians(P.arm_splay + 3.0 * (b.belly + max(0.0, b.hips - 1.0)))
         du = norm3((sgn * math.sin(splay), 1.0, -0.09))
         E = add3(S, scale3(du, ua))
         df = norm3((sgn * math.sin(math.radians(-4.0)), 1.0, 0.42))

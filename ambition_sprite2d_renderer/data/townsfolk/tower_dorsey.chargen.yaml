@@ -3,6 +3,8 @@ schema: ambition-chargen-v1
 name: Dorsey
 base: slim_male
 seed: 62
+# Drawn in the look of the cryptography crew (chargen family `crew`).
+family: crew
 body:
   height_cm: 180
   age: 0.05

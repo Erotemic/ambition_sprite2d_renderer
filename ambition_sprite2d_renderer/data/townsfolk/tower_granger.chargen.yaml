@@ -3,6 +3,8 @@ schema: ambition-chargen-v1
 name: Granger
 base: heavy_male
 seed: 65
+# Drawn in the look of the cryptography crew (chargen family `crew`).
+family: crew
 body:
   height_cm: 176
   age: 0.65

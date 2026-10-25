@@ -780,6 +780,23 @@ symmetrically (`slim_female`, `slim_male`). A base gives the range each body
 number is drawn from and the odds of each hair and facial-hair style. To add a
 base, add its build to `BUILDS` and its ranges to `_ranges` in `spec.py`.
 
+**Families** (`chargen/family.py`, `spec.family`) are the looks a spec is
+drawn in. A family is a proportion profile (`Proportions`: hip height, neck,
+head width, shoulders, limb radii, fist, shoes), a face profile (`FaceStyle`:
+eye size and opening, iris or dot pupil, brow weight, nose) and a drawing
+style (`svgout.Style`: ink, outline weight, inner line weight, shade tint and
+band, light rim), made active while a view is drawn (`svgout.using`). The
+seed draws the same body numbers in every family; the family changes how they
+become a drawing. `standard` (the default, not written to a record) is the
+house look and draws byte-identical SVG to the generator before families.
+`crew` is the look of the cryptography crew (`crypto_crew.py`), measured from
+their sheets: a shorter leg, a longer neck, a wide round head with a large
+nose, a narrow body, thick limbs, large fists, heavy shoes, a heavy violet
+outline, a cool shade and a light rim. The Iron Bastion garrison
+(`data/townsfolk/tower_*.chargen.yaml`) is drawn in it. To add a family, add
+one row to `FAMILIES`; do not fork a drawing module. `chargen new --family`,
+`chargen cast --family`; `chargen bases` lists the families.
+
 **How a character is drawn.** `body.py` turns a spec into 3D joints and
 *lofts*: bodies of horizontal rings (torso, neck, head with the face's relief
 as radial bumps). `geometry.py` projects them: a loft's silhouette is the

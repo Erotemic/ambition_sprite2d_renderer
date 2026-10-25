@@ -214,7 +214,9 @@ def test_the_rig_derives_from_the_spec_for_many_seeds(tmp_path):
     S.crowd(2, 4, species="bird")[1],
     S.crowd(2, 5, species="sea_lion")[1],
     S.generate("broad_male", 7, {"outfit": {"outer": "field_jacket", "outer_open": False, "hat": "helmet", "accessories": ["webbing"]}}),
-], ids=["robe", "horse", "dog", "cat", "bird", "sea_lion", "soldier"])
+    S.generate("broad_female", 61, {"family": "crew", "hair": {"style": "bun"}, "outfit": {
+        "outer": "field_jacket", "outer_open": False, "hat": "campaign", "shoes": "boots", "accessories": ["webbing"], "wardrobe": ["hat:helmet"]}}),
+], ids=["robe", "horse", "dog", "cat", "bird", "sea_lion", "soldier", "crew_soldier"])
 def test_every_library_clip_poses_without_audit_errors_in_every_view(spec, tmp_path):
     from ambition_sprite2d_renderer.authoring.pose_audit import audit_document
     from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
@@ -459,6 +461,80 @@ def test_the_iron_bastion_soldiers_are_valid_and_distinct():
         spec, game = load(path)
         assert S.validate(spec) == [], path.name
         assert game["character_id"] == "npc_" + path.name.removesuffix(".chargen.yaml")
+        # The garrison is drawn in the look of the cryptography crew.
+        assert spec.family == "crew", path.name
         specs.append(spec)
     for a, b in itertools.combinations(specs, 2):
         assert (a.outfit.hat, a.outfit.hat_color, a.outfit.outer, a.base) != (b.outfit.hat, b.outfit.hat_color, b.outfit.outer, b.base)
+
+
+# ---- families ----------------------------------------------------------------------------------
+
+
+def test_a_family_is_a_spec_field_that_round_trips_and_changes_no_drawn_number(tmp_path):
+    crew = S.generate("average_male", 12, {"family": "crew"})
+    plain = S.generate("average_male", 12)
+    assert crew.family == "crew" and plain.family == "standard"
+    assert S.validate(crew) == []
+    # The seed draws the same person; the family only changes the drawing.
+    assert crew.body == plain.body and crew.face == plain.face and crew.outfit == plain.outfit
+    assert S.CharacterSpec.from_json(crew.to_json()) == crew
+    assert S.CharacterSpec.load(crew.save(tmp_path / "c.chargen.yaml")) == crew
+    # A standard record does not write its family, so it stays as it was.
+    assert "family" not in plain.to_dict() and crew.to_dict()["family"] == "crew"
+    with pytest.raises(ValueError, match="family"):
+        S.generate("average_male", 12, {"family": "nope"})
+    bad = S.generate("average_male", 12)
+    bad.family = "nope"
+    assert any(e.startswith("family") for e in S.validate(bad))
+    assert all(s.family == "crew" for s in S.crowd(3, 4, family="crew"))
+
+
+def test_the_standard_family_is_the_default_and_no_style_leaks_between_drawings():
+    from ambition_sprite2d_renderer.chargen.svgout import STANDARD, style
+
+    spec = S.generate("slim_female", 8)
+    before = character_svg(spec)
+    assert character_svg(S.generate("slim_female", 8, {"family": "standard"})) == before
+    crew = character_svg(S.generate("slim_female", 8, {"family": "crew"}))
+    assert crew != before
+    # The crew style is active only while a crew view is drawn.
+    assert style() is STANDARD
+    assert character_svg(spec) == before
+
+
+def test_the_crew_family_draws_its_look_in_every_view():
+    import re
+
+    from ambition_sprite2d_renderer.chargen.body import build
+    from ambition_sprite2d_renderer.chargen.family import CREW_INK, FAMILIES
+    from ambition_sprite2d_renderer.chargen.rig import UNIT, draw_views
+
+    plain = S.generate("average_male", 14, {"outfit": {"hat": "peaked_cap", "accessories": ["webbing"]}})
+    crew = S.generate("average_male", 14, {"family": "crew", "outfit": {"hat": "peaked_cap", "accessories": ["webbing"]}})
+    fp, fc = build(plain), build(crew)
+    # A shorter leg, a wider head and thicker limbs than the standard body.
+    assert fc.y_hip > fp.y_hip and fc.skull.section(fc.fy(0.4)).rx > fp.skull.section(fp.fy(0.4)).rx
+    assert fc.arm_r[2] > fp.arm_r[2]
+    _fig, drawn = draw_views(crew)
+    _fig, base = draw_views(plain)
+    outline = 2 * FAMILIES["crew"].style.outline * UNIT
+    for dv, dp in zip(drawn, base):
+        assert {p.name for p in dv.parts} == {p.name for p in dp.parts}, dv.view.key
+        inks = [el for p in dv.parts for el in p.els if el.stroke == CREW_INK]
+        assert inks and max(el.width for el in inks) >= outline - 1e-6, dv.view.key
+        assert _alpha_box(render_view(crew, dv.view, 0.5)) is not None
+    assert not re.search(CREW_INK, character_svg(plain))
+
+
+@pytest.mark.parametrize("species", S.SPECIES)
+def test_every_species_head_and_hat_draws_in_the_crew_family(species):
+    from ambition_sprite2d_renderer.chargen.rig import draw_views
+
+    for i, hat in enumerate(S.HATS):
+        spec = S.generate("average_female" if i % 2 else "broad_male", 70 + i, {"family": "crew", "head": {"species": species},
+                                                                                 "outfit": {"hat": hat}})
+        _fig, drawn = draw_views(spec)
+        for dv in drawn:
+            names = {p.name for p in dv.parts}
+            assert "head" in names and (hat == "none" or f"hat_{hat}" in names), (species, hat, dv.view.key)

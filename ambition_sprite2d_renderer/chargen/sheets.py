@@ -489,7 +489,8 @@ def actor_metadata(spec: CharacterSpec, *, character_id: Optional[str] = None, d
     return {
         "actor": {"character_id": character_id or f"npc_chargen_{name}", "display_name": spec.name},
         "authoring_description": description or (
-            f"A generated background townsperson ({spec.base.replace('_', ' ')}, seed {spec.seed}) from the character "
+            f"A generated background townsperson ({spec.base.replace('_', ' ')}, seed {spec.seed}"
+            f"{'' if spec.family == 'standard' else ', ' + spec.family + ' family'}) from the character "
             "generator (ambition_sprite2d_renderer.chargen). It parodies no one; its look is drawn from the spec."
         ),
         "body": {"body_plan": "HumanoidBiped", "body_kind": "Standard", "mass_class": "Medium", "traits": traits, "locomotion_hint": "Walk"},

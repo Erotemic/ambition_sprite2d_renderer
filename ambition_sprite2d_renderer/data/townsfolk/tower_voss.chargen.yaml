@@ -3,6 +3,8 @@ schema: ambition-chargen-v1
 name: Voss
 base: broad_female
 seed: 61
+# Drawn in the look of the cryptography crew (chargen family `crew`).
+family: crew
 body:
   height_cm: 175
   age: 0.5

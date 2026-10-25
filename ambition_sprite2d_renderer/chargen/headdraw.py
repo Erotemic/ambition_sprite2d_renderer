@@ -10,6 +10,9 @@ horse frowns with the same parameters as a person, in every view.
 The blink (``face_blink``) is its own part, shown by no row: it is for the
 engine to lay over whatever row the body is drawing (Jon, 2026-10-09: an
 effect of the body, not a row of the sheet).
+
+The spec's family (``family.FaceStyle``) sets the eyes' size and opening,
+the pupil (a coloured iris or a dark dot) and the brows' weight.
 """
 
 from __future__ import annotations
@@ -21,7 +24,8 @@ from .body import Figure
 from .drawkit import SIDES, Ctx, Part, all_of, dark_of, insignia, shaded_region, surface_line, visible
 from .face import EMOTIONS, FACES, TALKING, VISEMES, Expression, brows_part, eyes_part, mouth_part, with_viseme
 from .geometry import Loft, Point, RingKey, Vec3, add3, capsule, capsule_band, clip_convex, column_bands, ellipse3, hull, interp_knots, lerp, loft_region, norm3, scale3, smoothstep, sub3, wrap180
-from .svgout import FINE, INK, Paint, light, luminance, mix, shade
+from .family import family_of
+from .svgout import FINE, INK, Paint, light, luminance, mix, shade, style
 
 # ---- skull and ears ---------------------------------------------------------------------------
 
@@ -602,6 +606,8 @@ def _eye_geometry(fig: Figure, sgn: float, e: Expression) -> Dict[str, object]:
     shape = s.eye_shape if fig.species == "human" else {"horse": "almond", "dog": "round", "cat": "almond", "bird": "round",
                                                                 "sea_lion": "round"}[fig.species]
     ratio = {"almond": 0.42, "round": 0.56, "narrow": 0.3, "hooded": 0.36, "downturned": 0.42, "upturned": 0.42}[shape]
+    if fig.species == "human":
+        ratio *= family_of(fig.spec).face.eye_open
     ew = lay["eye_w"] * hh * (1.04 if shape == "almond" else 1.0)
     eh = ew * ratio
     ac = sgn * lay["eye_alpha"]
@@ -670,15 +676,20 @@ def _draw_eye(ctx: Ctx, pt: Paint, g: Dict[str, object], e: Expression) -> None:
         if len(cut) >= 3:
             eye_col = fig.spec.palette.eyes if fig.species == "human" else {"horse": "#3a261c", "dog": "#4a2e1e", "cat": "#9aa83a",
                                                                              "bird": "#2a2020", "sea_lion": "#1e1612"}[fig.species]
-            pt.flat([cut], eye_col)
-            pr = 0.5 * e.pupil
-            if fig.face.get("pupil") == "slit":
-                pupil = [(cx + rx * 0.16 * e.pupil * math.cos(a), cy + ry * 0.95 * math.sin(a)) for a in (2 * math.pi * i / 12 for i in range(12))]
+            if fig.species == "human" and family_of(fig.spec).face.pupil == "dot":
+                # A dark pupil with the iris' colour in it, and a catch-light.
+                pt.flat([cut], mix(eye_col, "#1a1412", 0.6))
+                pt.dot((cx - rx * 0.3, cy - ry * 0.35), max(0.12, ry * 0.3), "#f8f4ec")
             else:
-                pupil = [(cx + rx * pr * math.cos(a), cy + ry * pr * math.sin(a)) for a in (2 * math.pi * i / 12 for i in range(12))]
-            pc = clip_convex(pupil, clip)
-            if len(pc) >= 3:
-                pt.flat([pc], "#1a1412")
+                pt.flat([cut], eye_col)
+                pr = 0.5 * e.pupil
+                if fig.face.get("pupil") == "slit":
+                    pupil = [(cx + rx * 0.16 * e.pupil * math.cos(a), cy + ry * 0.95 * math.sin(a)) for a in (2 * math.pi * i / 12 for i in range(12))]
+                else:
+                    pupil = [(cx + rx * pr * math.cos(a), cy + ry * pr * math.sin(a)) for a in (2 * math.pi * i / 12 for i in range(12))]
+                pc = clip_convex(pupil, clip)
+                if len(pc) >= 3:
+                    pt.flat([pc], "#1a1412")
             if fig.species != "human":
                 pt.dot((cx + rx * 0.3, cy - ry * 0.35), max(0.12, ry * 0.18), "#f8f4ec")
     pt.line(sh["top"], INK, 0.44 if not fig.female else 0.5)
@@ -719,7 +730,7 @@ def _brow(ctx: Ctx, pt: Paint, g: Dict[str, object], sgn: float, e: Expression) 
         # Knit: the inner ends come in when they come down.
         a += inward * min(0.0, e.brow_inner) * -2.0 * (1.0 - t)
         pts.append((a, yb + dy))
-    w = 0.033 * hh * s.brow_weight * {"heavy": 1.4, "soft": 0.75}.get(kind, 1.0) * (1.12 if not fig.female else 0.9)
+    w = 0.033 * hh * s.brow_weight * {"heavy": 1.4, "soft": 0.75}.get(kind, 1.0) * (1.12 if not fig.female else 0.9) * family_of(fig.spec).face.brow
     col = dark_of(fig.spec.palette.hair) if fig.species == "human" else _brow_of_coat(ctx.skin)
     dark_skin = fig.species == "human" and luminance(ctx.skin) < 0.3
     for run in surface_line(ctx, fig.head, pts, out=0.08, thresh=0.12):
@@ -826,16 +837,16 @@ def _mouth(ctx: Ctx, pt: Paint, e: Expression) -> None:
         if e.teeth > 0.05:
             teeth = [ctx.p(hd.point(a, y + 0.012 * fig.hh * e.teeth, out)) for a, y in up[1:-1]]
             if len(teeth) >= 2:
-                pt.line(teeth, "#f2ece2", 0.014 * fig.hh * (1.0 + e.teeth), smooth=True)
+                pt.line(teeth, "#f2ece2", 0.014 * fig.hh * (1.0 + e.teeth), smooth=True, fixed=True)
         tongue = [ctx.p(hd.point(a * 0.5, y - 0.012 * fig.hh, out * 0.5)) for a, y in lo[2:-2]]
         if len(tongue) >= 2 and e.open > 0.4:
-            pt.line(tongue, "#b04a48", 0.012 * fig.hh * 2.0, smooth=True)
+            pt.line(tongue, "#b04a48", 0.012 * fig.hh * 2.0, smooth=True, fixed=True)
     else:
         line = [ctx.p(hd.point(a, y, out)) for a, y in up]
         if e.teeth > 0.3 and fig.species == "human":
             lo2 = [ctx.p(hd.point(a, y + 0.02 * fig.hh, out)) for a, y in up]
             pt.region([line + list(reversed(lo2))], "#f2ece2", outline=0.2, smooth=True)
-        pt.line(line, mix(INK, lip, 0.3), 0.38)
+        pt.line(line, mix(style().ink, lip, 0.3), 0.38)
     if fig.species == "human":
         ym = fig.fy(fig.face["mouth_f"])
         lower = [(a * 0.55, ym + 0.04 * fig.hh + 0.004 * fig.hh * (a / 9.0) ** 2 + 0.085 * e.open * fig.hh) for a in range(-9, 10, 3)]

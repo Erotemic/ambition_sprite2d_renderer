@@ -3,6 +3,8 @@ schema: ambition-chargen-v1
 name: Tanaka
 base: slim_female
 seed: 64
+# Drawn in the look of the cryptography crew (chargen family `crew`).
+family: crew
 body:
   height_cm: 160
   age: 0.15

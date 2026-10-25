@@ -3,6 +3,8 @@ schema: ambition-chargen-v1
 name: Ruiz
 base: average_female
 seed: 66
+# Drawn in the look of the cryptography crew (chargen family `crew`).
+family: crew
 body:
   height_cm: 166
   age: 0.35

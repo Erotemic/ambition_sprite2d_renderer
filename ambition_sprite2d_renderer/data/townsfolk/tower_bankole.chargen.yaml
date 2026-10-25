@@ -3,6 +3,8 @@ schema: ambition-chargen-v1
 name: Bankole
 base: average_male
 seed: 63
+# Drawn in the look of the cryptography crew (chargen family `crew`).
+family: crew
 body:
   height_cm: 183
   age: 0.3

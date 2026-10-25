@@ -3,6 +3,8 @@ schema: ambition-chargen-v1
 name: Brandt
 base: slim_female
 seed: 67
+# Drawn in the look of the cryptography crew (chargen family `crew`).
+family: crew
 body:
   height_cm: 176
   age: 0.55
