@@ -282,10 +282,13 @@ class Book:
     """The outputs of one background or terrain draw, by unit, with the
     callable that drew each. `write` records each unit."""
 
-    def __init__(self, family: str, dest: Path, command: str) -> None:
+    def __init__(self, family: str, dest: Path, command: str, package: str | None = None) -> None:
         self.family = family
         self.dest = Path(dest)
         self.command = command
+        #: The renderer subpackage that draws these files (`backgrounds`,
+        #: `terrain`): a plan record's inputs are its modules.
+        self.package = package
         self.units: dict[str, list[tuple[Path, dict[str, Any] | None]]] = {}
 
     def add(self, unit: str, path: Path, fn: Callable | None) -> None:
@@ -314,7 +317,10 @@ class Book:
             return []
 
     def _write_plan(self, directory: Path) -> list[Path]:
-        inputs = _inputs(renderer_modules(), hashed=False)
+        # Not a render: this process imported whatever the backfill needed,
+        # so the inputs are the drawing package's own modules.
+        files = sorted((_RENDERER / "ambition_sprite2d_renderer" / self.package).glob("*.py")) if self.package else renderer_modules()
+        inputs = _inputs(files, hashed=False)
         return [
             write_record(
                 directory,

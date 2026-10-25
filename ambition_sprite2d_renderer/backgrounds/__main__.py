@@ -58,7 +58,7 @@ def _drawn_by(theme: str, layer: str):
 def plan(dest: Path, themes: list[str]) -> provenance.Book:
     """What `draw` publishes into `dest`, by theme, and what draws each file:
     the record of a publish, and the plan of one that has not run here."""
-    book = provenance.Book("parallax_theme", dest, "./scripts/regen/backgrounds.sh  # theme {unit}")
+    book = provenance.Book("parallax_theme", dest, "./scripts/regen/backgrounds.sh  # theme {unit}", "backgrounds")
     for theme in _themes(themes):
         for layer in scenes.LAYERS:
             book.add(theme, dest / f"{theme}_{layer}.png", _drawn_by(theme, layer))
@@ -68,7 +68,7 @@ def plan(dest: Path, themes: list[str]) -> provenance.Book:
 
 def parts_plan(dest: Path) -> provenance.Book:
     """What `parts` publishes into `dest`, one unit for each part."""
-    book = provenance.Book("sky_part", dest, "./scripts/regen/backgrounds.sh  # sky part {unit}")
+    book = provenance.Book("sky_part", dest, "./scripts/regen/backgrounds.sh  # sky part {unit}", "backgrounds")
     for name in sky_parts.PARTS:
         book.add(name, dest / f"{name}.png", sky_parts.PARTS[name])
     return book
