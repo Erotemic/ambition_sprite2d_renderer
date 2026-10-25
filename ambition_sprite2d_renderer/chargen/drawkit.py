@@ -70,6 +70,18 @@ def make_ctx(fig: Figure, view: View, cv: Canvas) -> Ctx:
 # ---- painting -----------------------------------------------------------------------------
 
 
+#: Human skin darker than this gets a sheen on its lit edge: on deep skin a
+#: shade alone sinks into the outline and the form does not read at sprite
+#: size. The deepest tone before 2026-10-25 (``#4f2f1e``, 0.21) is above it,
+#: so the earlier art is unchanged.
+DEEP_SKIN = 0.2
+
+
+def sheen(ctx: Ctx, color: str) -> bool:
+    """Whether ``color`` is deep human skin, which shows its form by a sheen."""
+    return color == ctx.skin and ctx.fig.species == "human" and luminance(color) < DEEP_SKIN
+
+
 def shaded_region(ctx: Ctx, pt: Paint, loft: Loft, y0: float, y1: float, color: str, margin: Optional[Margin] = None, *,
                   ink: bool = True, shade_frac: float = 0.2, shade_cap: float = 3.0, lit: bool = False) -> bool:
     """A region of ``loft`` in ``color``, shaded on its left edge; ``lit``
@@ -86,7 +98,7 @@ def shaded_region(ctx: Ctx, pt: Paint, loft: Loft, y0: float, y1: float, color: 
     if st.rim > 0.0 and (lit or shade_frac > 0.0):
         pt.flat(column_bands(ctx.view, loft, y0, y1, margin, side="right", frac=st.rim, cap=1.6 * st.rim / 0.08, y_from=0.03, y_to=0.85),
                 mix(color, "#fffaf0", st.rim_mix))
-    elif lit:
+    elif lit or sheen(ctx, color):
         pt.flat(column_bands(ctx.view, loft, y0, y1, margin, side="right", frac=0.08, cap=1.2, y_from=0.05, y_to=0.7),
                 mix(color, "#fffaf0", 0.18))
     return True
@@ -114,6 +126,8 @@ def tube3(ctx: Ctx, pt: Paint, a: Vec3, b: Vec3, r0: float, r1: float, color: st
         pt.flat([capsule_band(A, B, r0, r1, 0.38 * min(r0, r1) * st.shade_band)], shade(color))
         if st.rim > 0.0:
             pt.flat([capsule_band(A, B, r0, r1, 2.0 * st.rim * min(r0, r1), side="right")], mix(color, "#fffaf0", st.rim_mix))
+        elif sheen(ctx, color):
+            pt.flat([capsule_band(A, B, r0, r1, 0.16 * min(r0, r1), side="right")], mix(color, "#fffaf0", 0.18))
 
 
 def segment(a: Vec3, b: Vec3, t0: float, t1: float) -> Tuple[Vec3, Vec3]:

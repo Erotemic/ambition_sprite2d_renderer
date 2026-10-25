@@ -134,6 +134,17 @@ def _cmd_studio(args) -> int:
     return 0
 
 
+def _cmd_applies(args) -> int:
+    from .studio import applies_cache, measure_applies
+
+    table = measure_applies(args.jobs)
+    for species, row in table.items():
+        inert = [k for k, v in row["fields"].items() if not v]
+        print(f"{species}: {len(inert)} knobs draw nothing: {', '.join(inert) or '-'}")
+    print(applies_cache())
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="chargen", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
@@ -171,6 +182,9 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--jobs", type=int, default=6, help="processes in all (at most 6): one poses, the rest draw")
     st.add_argument("--open", action="store_true", help="open the page in a browser")
     st.set_defaults(func=_cmd_studio)
+    ap = sub.add_parser("applies", help="measure which knobs each head species draws (the studio's cache)")
+    ap.add_argument("--jobs", type=int, default=6)
+    ap.set_defaults(func=_cmd_applies)
     b = sub.add_parser("bases", help="list the bases and their body ranges, and the families")
     b.set_defaults(func=_cmd_bases)
     return p

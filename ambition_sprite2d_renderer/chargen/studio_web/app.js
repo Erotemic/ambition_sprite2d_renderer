@@ -10,6 +10,9 @@
   // The eight views: the five drawn yaws, then the three left ones as mirrors.
   const EIGHT = [["front", false], ["front_3q", false], ["side", false], ["back_3q", false], ["back", false], ["back_3q", true], ["side", true], ["front_3q", true]];
   let S = null;                 // the schema
+  let A = null;                 // which knobs draw (`/api/applies`): by head species, and the REQUIRES rules
+  let showAll = false;
+  let game = null;              // a resident's `game` section: not drawn, written back to its YAML
   let spec = null;              // the current spec, as the server completed it
   let face = "neutral";
   let seq = 0, timer = 0;
@@ -46,6 +49,7 @@
 
   // A new base or seed draws every field anew; the family and species stay.
   async function regenerate(over) {
+    game = null;
     const body = { base: spec ? spec.base : "average_female", seed: spec ? spec.seed : 0,
       family: spec ? spec.family || "standard" : "standard", head: { species: spec ? spec.head.species : "human" }, ...over };
     const name = spec && spec.name;
@@ -70,15 +74,41 @@
     : dotted === "palette.eyes" ? Object.values(S.palettes.eyes) : dotted === "outfit.shoe_color" ? S.palettes.leather.concat(S.palettes.cloth.slice(0, 6))
     : S.palettes.cloth.concat(Object.values(S.palettes.uniform));
 
+  // A knob shows when it draws: its REQUIRES rule holds for this spec, and the
+  // head's species draws it (measured; see chargen/applies.py).
+  function requiresHold(dotted) {
+    const rule = A && A.requires[dotted];
+    if (!rule) return true;
+    const [other, values] = rule, have = get(other);
+    return other === "outfit.accessories" ? values.some((x) => (have || []).includes(x)) : values.includes(have);
+  }
+  function headDraws(dotted) {
+    const row = A && A.species[spec.head.species];
+    return !row || row.fields[dotted] !== false;
+  }
+  const visible = (dotted) => showAll || (requiresHold(dotted) && headDraws(dotted));
+  function choicesFor(dotted) {
+    const row = A && A.species[spec.head.species], all = S.choices[dotted];
+    if (showAll || !row || !row.values[dotted]) return all;
+    const kept = new Set(row.values[dotted]);
+    return all.filter((c) => kept.has(c) || c === get(dotted));
+  }
+  function why(dotted) {
+    if (!requiresHold(dotted)) { const [o, v] = A.requires[dotted]; return `needs ${o.split(".")[1]} ${v.length > 4 ? "set" : "= " + v.join(" / ")}`; }
+    return `a ${spec.head.species} head draws nothing for it`;
+  }
+
   function control(dotted) {
     const k = kind(dotted), name = dotted.split(".")[1], v = get(dotted);
+    const hidden = !visible(dotted);
+    if (hidden) return "";
     const sw = sweepable(dotted) ? `<button class="sw" data-sweep="${dotted}" type="button" title="sweep ${esc(name)}">⇶</button>` : "<span></span>";
     if (k === "range") {
       const [lo, hi] = S.bounds[dotted];
       return `<div class="field"><span class="k">${esc(name)}</span><input type="range" data-f="${dotted}" min="${lo}" max="${hi}" step="${(hi - lo) / 100}" value="${v}"><span class="v" data-v="${dotted}">${(+v).toFixed(dotted.endsWith("height_cm") ? 0 : 2)}</span>${sw}</div>`;
     }
     if (k === "choice") {
-      return `<div class="field"><span class="k">${esc(name)}</span><select data-f="${dotted}">${S.choices[dotted].map((c) => `<option${c === v ? " selected" : ""}>${esc(c)}</option>`).join("")}</select><span></span>${sw}</div>`;
+      return `<div class="field"><span class="k">${esc(name)}</span><select data-f="${dotted}">${choicesFor(dotted).map((c) => `<option${c === v ? " selected" : ""}>${esc(c)}</option>`).join("")}</select><span></span>${sw}</div>`;
     }
     if (k === "color") {
       const optional = S.optional_colors.includes(dotted);
@@ -87,15 +117,21 @@
     }
     if (k === "bool") return `<div class="field"><span class="k">${esc(name)}</span><label><input type="checkbox" data-f="${dotted}"${v ? " checked" : ""}> yes</label><span></span><span></span></div>`;
     if (k === "int") { const [lo, hi] = S.ints[dotted]; return `<div class="field"><span class="k">${esc(name)}</span><input type="number" data-f="${dotted}" min="${lo}" max="${hi}" value="${v}"><span></span><span></span></div>`; }
-    if (k === "accessories") return `<div class="k">accessories</div><div class="checks">${S.accessories.map((a) => `<label><input type="checkbox" data-acc="${a}"${(v || []).includes(a) ? " checked" : ""}> ${esc(a)}</label>`).join("")}</div>`;
+    if (k === "accessories") return `<div class="k">accessories</div><div class="checks">${S.accessories.filter((a) => showAll || (v || []).includes(a) || headDraws("accessory:" + a)).map((a) => `<label><input type="checkbox" data-acc="${a}"${(v || []).includes(a) ? " checked" : ""}> ${esc(a)}</label>`).join("")}</div>`;
     if (k === "wardrobe") return `<div class="field"><span class="k">wardrobe</span><input type="text" data-f="${dotted}" value="${esc((v || []).join(", "))}" title="slot:kind alternates, comma separated"><span></span><span></span></div>`;
     return `<div class="field"><span class="k">${esc(name)}</span><input type="text" data-f="${dotted}" value="${esc(v)}"><span></span><span></span></div>`;
   }
   function buildEditor() {
     const open = new Set([...document.querySelectorAll(".editor details[open]")].map((d) => d.dataset.s));
     if (!open.size) ["body", "face"].forEach((s) => open.add(s));
-    $("editor").innerHTML = SECTIONS.map((sec) => `<details data-s="${sec}"${open.has(sec) ? " open" : ""}><summary>${sec}</summary>${
-      Object.keys(spec[sec]).filter((n) => !(sec === "head" && n === "species")).map((n) => control(`${sec}.${n}`)).join("")}</details>`).join("");
+    const sections = SECTIONS.map((sec) => {
+      const names = Object.keys(spec[sec]).filter((n) => !(sec === "head" && n === "species"));
+      const off = names.map((n) => `${sec}.${n}`).filter((d) => !visible(d));
+      const note = off.length ? `<p class="hidden-note" title="${esc(off.map((d) => `${d.split(".")[1]}: ${why(d)}`).join("\n"))}">${off.length} hidden: ${esc(off.map((d) => d.split(".")[1]).join(", "))}</p>` : "";
+      return `<details data-s="${sec}"${open.has(sec) ? " open" : ""}><summary>${sec}${off.length ? ` <span class="n">(${off.length} hidden)</span>` : ""}</summary>${names.map((n) => control(`${sec}.${n}`)).join("")}${note}</details>`;
+    });
+    const measuring = A && !A.ready ? `<p class="hidden-note">Measuring which knobs each head draws (a few minutes, once per version of the generator)…</p>` : "";
+    $("editor").innerHTML = `<label class="showall"><input type="checkbox" id="showAll"${showAll ? " checked" : ""}> show every knob, even those that draw nothing here</label>${measuring}` + sections.join("");
   }
   function syncTop() {
     $("name").value = spec.name; $("base").value = spec.base; $("seed").value = spec.seed;
@@ -104,6 +140,8 @@
   function changed(dotted, value) {
     set(dotted, value);
     if (dotted === "head.species") delete spec.palette.skin;  // an animal's coat comes from its species
+    // A choice can show or hide other knobs (an outer garment, a species).
+    if (kind(dotted) !== "range" && kind(dotted) !== "color") buildEditor();
     schedule();
   }
   $("editor").addEventListener("input", (e) => {
@@ -113,6 +151,7 @@
   });
   $("editor").addEventListener("change", (e) => {
     const t = e.target, f = t.dataset.f;
+    if (t.id === "showAll") { showAll = t.checked; buildEditor(); return; }
     if (t.dataset.acc) { const list = new Set(get("outfit.accessories") || []); t.checked ? list.add(t.dataset.acc) : list.delete(t.dataset.acc); changed("outfit.accessories", S.accessories.filter((a) => list.has(a))); }
     else if (t.dataset.auto) { changed(t.dataset.auto, t.checked ? "" : $("editor").querySelector(`[data-f="${t.dataset.auto}"]`).value); }
     else if (!f || t.type === "range" || t.type === "color") return;
@@ -227,7 +266,7 @@
     if (typeof x === "string") return /^[#'"!&*@`|>%{}\[\],:?-]|^\s|\s$|: |^(true|false|null|yes|no|on|off|~)$|^[\d.+-]+$/i.test(x) || x === "" ? JSON.stringify(x) : x;
     return JSON.stringify(x);
   }
-  const yamlText = () => yaml(spec).replace(/^\n/, "") + "\n";
+  const yamlText = () => yaml(game ? { ...spec, game } : spec).replace(/^\n/, "") + "\n";
   function writeYaml() { if (document.activeElement !== $("yaml")) $("yaml").value = yamlText(); }
   // Reads JSON, or the plain YAML this page writes: maps by indent, and a key
   // whose block is "- item" lines is a list of scalars.
@@ -265,7 +304,7 @@
     return s;
   }
   $("yamlApply").addEventListener("click", () => {
-    try { spec = parseYaml($("yaml").value); buildEditor(); draw(); } catch (e) { status(e.message, true); }
+    try { const d = parseYaml($("yaml").value); game = d.game || null; delete d.game; spec = d; buildEditor(); draw(); } catch (e) { status(e.message, true); }
   });
   function slug(s) { return String(s || "character").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""); }
   $("copy").addEventListener("click", async () => {
@@ -290,14 +329,18 @@
   $("seed").addEventListener("change", () => regenerate({ seed: Math.max(0, parseInt($("seed").value, 10) || 0) }));
   $("seedDown").addEventListener("click", () => regenerate({ seed: Math.max(0, spec.seed - 1) }));
   $("seedUp").addEventListener("click", () => regenerate({ seed: spec.seed + 1 }));
-  $("reroll").addEventListener("click", () => regenerate({ seed: Math.floor(Math.random() * 100000) }));
+  // A random character: base, seed, family and species all drawn at random.
+  const pick = (list) => list[Math.floor(Math.random() * list.length)];
+  $("reroll").addEventListener("click", () => regenerate({
+    base: pick(Object.keys(S.bases)), seed: Math.floor(Math.random() * 100000),
+    family: pick(Object.keys(S.families)), head: { species: pick(S.choices["head.species"]) } }));
   $("family").addEventListener("change", () => { spec.family = $("family").value; draw(); });
-  $("species").addEventListener("change", () => { changed("head.species", $("species").value); buildEditor(); });
+  $("species").addEventListener("change", () => changed("head.species", $("species").value));
   $("face").addEventListener("change", () => { face = $("face").value; draw(); });
   $("zoom").addEventListener("input", (e) => $("views").style.setProperty("--tile", e.target.value + "px"));
   $("open").addEventListener("change", async () => {
     const path = $("open").value; if (!path) return;
-    spec = (await busy("opening " + path, () => api("/api/example", { path }))).spec;
+    ({ spec, game } = await busy("opening " + path, () => api("/api/example", { path })));
     $("open").value = ""; buildEditor(); draw(); tab("views");
   });
   $("sweepGo").addEventListener("click", runSweep);
@@ -314,6 +357,14 @@
   // ---- start ---------------------------------------------------------------------------
   (async function start() {
     S = await api("/api/schema");
+    // Which knobs draw: measured by the server, maybe still measuring.
+    const poll = async () => {
+      const was = A && A.ready;
+      A = await api("/api/applies");
+      if (spec && A.ready && !was) buildEditor();  // once, when the measure lands
+      if (!A.ready) setTimeout(poll, 5000);
+    };
+    await poll();
     const opts = (list, label) => list.map((k) => `<option value="${esc(k)}">${esc(label ? label(k) : k)}</option>`).join("");
     $("base").innerHTML = opts(Object.keys(S.bases), (k) => S.bases[k]);
     $("family").innerHTML = opts(Object.keys(S.families));
@@ -328,7 +379,7 @@
     // #crowd, #faces, #pose=<clip>, #yaml.
     const want = new URLSearchParams(location.hash.slice(1));
     const saved = recalled();
-    if (want.get("open")) { spec = (await api("/api/example", { path: want.get("open") })).spec; buildEditor(); await draw(); }
+    if (want.get("open")) { ({ spec, game } = await api("/api/example", { path: want.get("open") })); buildEditor(); await draw(); }
     else if (saved) { spec = saved; buildEditor(); await draw(); } else { spec = null; await regenerate({}); }
     if (want.has("sweep")) { if (want.get("sweep")) $("sweepField").value = want.get("sweep"); tab("sweep"); await runSweep(); }
     else if (want.has("crowd")) { tab("crowd"); await runCrowd(); }

@@ -9,7 +9,9 @@ mirrors. A sweep draws one character at every value of one field; a crowd
 draws many seeds of one base; a pose builds the character's rigs once and
 plays its clips. Nothing is written into the repository: specs are copied or
 downloaded from the page, and the rigs of a posed character are cached under
-the renderer's ``.cache/chargen_studio``.
+the renderer's ``.cache/chargen_studio``. The editor shows only the knobs
+that draw for the character's head and the rest of its spec (``applies.py``),
+measured once per version of the drawing code.
 
 The server is the standard library's; drawing runs on a pool of processes
 (at most six, the repository's limit), because one view takes about a second.
@@ -89,12 +91,21 @@ def examples() -> List[Dict[str, str]]:
 
 
 def load_example(rel: str) -> Dict[str, Any]:
+    """``{"spec", "game"}`` of a spec under the renderer's data. A resident's
+    file carries a ``game`` section (its catalog id, its clips) that is not
+    part of the drawing: it is set aside, and the page writes it back."""
     path = (DATA / rel).resolve()
     if DATA.resolve() not in path.parents or not path.name.endswith((".chargen.yaml", ".chargen.json")):
         raise ValueError(f"not a spec under the renderer's data: {rel}")
-    from .spec import CharacterSpec
+    text = path.read_text(encoding="utf8")
+    if path.name.endswith(".yaml"):
+        import yaml
 
-    return CharacterSpec.load(path).to_dict()
+        data = yaml.safe_load(text)
+    else:
+        data = json.loads(text)
+    game = data.pop("game", None)
+    return {"spec": complete(data).to_dict(), "game": game}
 
 
 # ---- drawing (in worker processes) ---------------------------------------------------
@@ -199,11 +210,59 @@ def _pose_frames(spec_dict: Mapping[str, Any], clip: str) -> Dict[str, Any]:
 # ---- the server -------------------------------------------------------------------------
 
 
+def applies_cache() -> Path:
+    from .applies import version
+
+    return CACHE / f"applies-{version()}.json"
+
+
+def measure_applies(jobs: int = MAX_JOBS, log=print) -> Dict[str, Any]:
+    """Measure which knobs every head species draws (``applies.py``) and
+    cache it for this version of the drawing code."""
+    from .applies import measure
+    from .spec import SPECIES
+
+    path = applies_cache()
+    if path.is_file():
+        return json.loads(path.read_text())
+    log(f"measuring which knobs each head draws ({len(SPECIES)} species, {min(jobs, MAX_JOBS)} processes)...")
+    with concurrent.futures.ProcessPoolExecutor(max_workers=min(jobs, MAX_JOBS)) as pool:
+        table = measure(SPECIES, lambda fn, items: pool.map(fn, items, chunksize=4))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    partial = path.with_suffix(".partial")
+    partial.write_text(json.dumps(table))
+    partial.replace(path)
+    log(f"knobs measured: {path}")
+    return table
+
+
 class Studio:
-    def __init__(self, jobs: int) -> None:
-        self.draw = concurrent.futures.ProcessPoolExecutor(max_workers=max(1, min(jobs - 1, MAX_JOBS - 1)))
+    def __init__(self, jobs: int, *, measure: bool = True) -> None:
+        jobs = max(2, min(jobs, MAX_JOBS))
+        self.applies: Optional[Dict[str, Any]] = None
+        cached = applies_cache()
+        if cached.is_file() or not measure:
+            self.applies = json.loads(cached.read_text()) if cached.is_file() else {}
+            measuring = 0
+        else:
+            # Measured on processes of their own, so drawing never waits behind it.
+            measuring = 2 if jobs >= 5 else 1
+            threading.Thread(target=self._measure, args=(measuring,), daemon=True).start()
+        self.draw = concurrent.futures.ProcessPoolExecutor(max_workers=max(1, jobs - 1 - measuring))
         self.pose = concurrent.futures.ProcessPoolExecutor(max_workers=1)
-        self.lock = threading.Lock()
+
+    def _measure(self, jobs: int) -> None:
+        try:
+            self.applies = measure_applies(jobs)
+        except Exception as ex:  # noqa: BLE001 - the page then shows every knob
+            print(f"could not measure the knobs: {type(ex).__name__}: {ex}", flush=True)
+            self.applies = {}
+
+    def applies_state(self) -> Dict[str, Any]:
+        from .applies import REQUIRES
+
+        return {"ready": self.applies is not None, "species": self.applies or {},
+                "requires": {k: [o, list(v)] for k, (o, v) in REQUIRES.items()}}
 
     def views(self, body: Mapping[str, Any]) -> Dict[str, Any]:
         spec = complete(body["spec"])  # raises on an invalid spec, before any drawing
@@ -250,7 +309,7 @@ def _handler(studio: Studio):
         "/api/pose": studio.posed,
         "/api/generate": lambda b: {"spec": generate(b).to_dict()},
         "/api/complete": lambda b: {"spec": complete(b["spec"]).to_dict()},
-        "/api/example": lambda b: {"spec": load_example(b["path"])},
+        "/api/example": lambda b: load_example(b["path"]),
     }
 
     class Handler(BaseHTTPRequestHandler):
@@ -271,6 +330,8 @@ def _handler(studio: Studio):
                 return self._send(HTTPStatus.OK, json.dumps(schema()).encode(), "application/json")
             if path == "/api/examples":
                 return self._send(HTTPStatus.OK, json.dumps(examples()).encode(), "application/json")
+            if path == "/api/applies":
+                return self._send(HTTPStatus.OK, json.dumps(studio.applies_state()).encode(), "application/json")
             name = "index.html" if path in ("/", "") else path.lstrip("/")
             file = (WEB / name).resolve()
             if WEB.resolve() not in file.parents or not file.is_file():

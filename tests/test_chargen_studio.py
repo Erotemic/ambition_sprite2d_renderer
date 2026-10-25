@@ -38,10 +38,14 @@ def test_an_example_must_be_a_spec_under_the_renderers_data():
     assert any(x["path"].endswith(".chargen.yaml") for x in studio.examples())
     with pytest.raises(ValueError):
         studio.load_example("../../../../pyproject.toml")
+    nagisa = [x for x in studio.examples() if x["path"].startswith("townsfolk/")]
+    if nagisa:
+        got = studio.load_example(nagisa[0]["path"])
+        assert "game" not in got["spec"] and got["game"] is not None
 
 
 def test_the_server_draws_a_spec_in_its_five_views():
-    st = studio.Studio(jobs=2)
+    st = studio.Studio(jobs=2, measure=False)
     server = studio.ThreadingHTTPServer(("127.0.0.1", 0), studio._handler(st))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:

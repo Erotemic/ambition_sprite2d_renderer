@@ -77,8 +77,10 @@ SLOTS = {"hat": HATS, "outer": OUTERS, "top": TOPS, "legwear": BOTTOMS, "footwea
 
 # ---- palettes ----------------------------------------------------------------------
 
-#: Skin tones, light to deep.
-SKIN_TONES = ("#f6d9c6", "#efc6a8", "#e6b592", "#d9a17b", "#c68b63", "#ae7451", "#94603f", "#7b4e32", "#643d26", "#4f2f1e")
+#: Skin tones, light to deep. The last three (2026-10-25) carry the range to
+#: the deepest human skin; deep skin is drawn with a sheen (``drawkit.sheen``).
+SKIN_TONES = ("#f6d9c6", "#efc6a8", "#e6b592", "#d9a17b", "#c68b63", "#ae7451", "#94603f", "#7b4e32", "#643d26", "#4f2f1e",
+              "#432819", "#382114", "#2d1a10")
 HAIR_COLORS = {
     "black": "#26201c", "dark_brown": "#3f2b1f", "brown": "#5f4029", "chestnut": "#7b4a2b", "auburn": "#8d3f23",
     "ginger": "#b4612d", "dark_blonde": "#9f7b47", "blonde": "#cfa964", "platinum": "#e2d2a6", "grey": "#9b9690", "white": "#dddad5",
