@@ -42,10 +42,11 @@ STEP_RUN, STEP_RISE = 8, 4
 STEPS = PLINTH_H // STEP_RISE
 STAIR_W = STEPS * STEP_RUN
 WIDTH = PLINTH_W + 2 * STAIR_W
-RING_R = 69.0
+#: The ring is 288 units (1.5 of its 192 design units: `interdimensional_gate`).
+RING_R = 69.0 * 1.5
 #: The ring's centre over the plinth top (the ring sheet's body bottom is 71
-#: units under its centre: the outer band and its two low clamps).
-RING_LIFT = 71.0
+#: design units under its centre: the outer band and its two low clamps).
+RING_LIFT = 71.0 * 1.5
 PYLON_TOP = PLINTH_H + RING_LIFT + 40.0
 HEIGHT = int(PYLON_TOP + 18)
 

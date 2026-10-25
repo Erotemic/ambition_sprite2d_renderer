@@ -69,7 +69,19 @@ PORTAL_ROWS: List[Tuple[str, int, int]] = [
 ]
 
 # `idle` is the sheet at rest, nothing lit (a sheet's loader wants one).
-GLYPH_ROWS: List[Tuple[str, int, int]] = [("idle", 1, 100), ("lit", len(GLYPHS), 100)]
+# `bit` and `used`: one frame per cell of each chevron's position grid
+# (chevron * 16 + row * 4 + column): a set bit ablaze, a used row's clear bit
+# dim. Row k is the chevron's k-th use in the address, the columns the bits
+# of its place, most significant first (Jon, 2026-10-24): the lit ring spells
+# the whole address.
+GRID_ROWS, GRID_COLS = 4, 4
+GRID_CELLS = GRID_ROWS * GRID_COLS
+GLYPH_ROWS: List[Tuple[str, int, int]] = [
+    ("idle", 1, 100),
+    ("lit", len(GLYPHS), 100),
+    ("bit", len(GLYPHS) * GRID_CELLS, 100),
+    ("used", len(GLYPHS) * GRID_CELLS, 100),
+]
 
 SHEET_FILES = [
     f"{RING_TARGET}_spritesheet.png",
@@ -90,6 +102,10 @@ TUNNEL_SIZE = 256
 # room for legible inscription detail and cleaner anti-aliased edges.
 FRAME_SIZE = (192, 192)
 SUPER = 4
+#: The sheets' frame: twice the design units, so the 288 world-unit ring
+#: (Jon, 2026-10-24: a bigger gate, to read the position grids) keeps its
+#: detail (`FRAME_SIZE` is the units the geometry is drawn in).
+OUT_SIZE = (FRAME_SIZE[0] * 2, FRAME_SIZE[1] * 2)
 CENTER = (FRAME_SIZE[0] * SUPER / 2.0, FRAME_SIZE[1] * SUPER / 2.0)
 OUTER_R = 69.0 * SUPER
 INNER_R = 45.0 * SUPER
@@ -97,18 +113,21 @@ PORTAL_R = 39.5 * SUPER
 RING_MID_R = (INNER_R + OUTER_R) / 2.0
 #: The bottom slice of the ring the base hides: no plaque there.
 BASE_GAP_DEG = ARCH_GAP_DEG
-#: The plaques shrink to fit the shorter arc.
-PLAQUE_SCALE = 0.78
-#: A plaque's dark face, about its centre, foot down (y down), where the
-#: glyph is cut and where a dialed glyph's light washes.
-PLAQUE_FACE = [
-    (x * PLAQUE_SCALE * SUPER, y * PLAQUE_SCALE * SUPER)
-    for x, y in ((-5.6, -4.0), (5.6, -4.0), (8.4, 1.95), (0.0, 8.8), (-8.4, 1.95))
-]
+#: A plaque about its centre on the band's middle, foot down (y down: toward
+#: the aperture): a tall pentagon pointing at the aperture, and its dark face
+#: where the glyph is cut (the inner half) and the position grid sits (the
+#: outer half), and where a dialed glyph's light washes.
+PLAQUE_OUTER = [(x * SUPER, y * SUPER) for x, y in ((-7.4, -10.2), (7.4, -10.2), (8.6, 3.6), (0.0, 10.6), (-8.6, 3.6))]
+PLAQUE_FACE = [(x * SUPER, y * SUPER) for x, y in ((-6.0, -8.9), (6.0, -8.9), (7.0, 3.0), (0.0, 8.8), (-7.0, 3.0))]
 #: A glyph's cap height, and how far its centre sits inward of the band's
-#: middle (the plaque's open face is nearer the aperture than its middle).
-GLYPH_CAP = 7.0 * SUPER
-GLYPH_INSET = 1.3 * SUPER
+#: middle.
+GLYPH_CAP = 5.8 * SUPER
+GLYPH_INSET = 3.6 * SUPER
+#: The position grid on the plaque's outer half: its centre (plaque y), the
+#: pitch of its cells and the radius of a cell's socket and light.
+GRID_Y = -4.3 * SUPER
+GRID_PITCH = 2.15 * SUPER
+GRID_DOT = 0.85 * SUPER
 
 # The palette of the concept (Jon, 2026-10-24): old bronze, cyan light.
 BRONZE = "#7a5b3a"
@@ -136,7 +155,7 @@ def _ease(t: float) -> float:
 
 
 def _downsample(
-    img: Image.Image, final_size: Tuple[int, int] = FRAME_SIZE
+    img: Image.Image, final_size: Tuple[int, int] = OUT_SIZE
 ) -> Image.Image:
     return img.resize(final_size, Image.Resampling.LANCZOS)
 
@@ -197,17 +216,29 @@ def _draw_plaque(draw: ImageDraw.ImageDraw, ang: float) -> None:
     """One chevron's plaque: a bronze pentagon pointing at the aperture,
     its dark face where the glyph is cut."""
     center = _polar(CENTER, RING_MID_R, ang)
-    outer = [
-        (-8.35 * SUPER, -5.8 * SUPER),
-        (8.35 * SUPER, -5.8 * SUPER),
-        (12.7 * SUPER, 2.55 * SUPER),
-        (0.0, 12.2 * SUPER),
-        (-12.7 * SUPER, 2.55 * SUPER),
-    ]
-    inner = PLAQUE_FACE
-    outer = [(x * PLAQUE_SCALE, y * PLAQUE_SCALE) for x, y in outer]
-    _draw_rotated_polygon(draw, center, outer, ang + 90.0, fill=_rgba(PLAQUE), outline=_rgba(OUTLINE), width=4)
-    _draw_rotated_polygon(draw, center, inner, ang + 90.0, fill=_rgba(PLAQUE_INK), outline=_rgba(BRONZE_LIGHT), width=2)
+    _draw_rotated_polygon(draw, center, PLAQUE_OUTER, ang + 90.0, fill=_rgba(PLAQUE), outline=_rgba(OUTLINE), width=4)
+    _draw_rotated_polygon(draw, center, PLAQUE_FACE, ang + 90.0, fill=_rgba(PLAQUE_INK), outline=_rgba(BRONZE_LIGHT), width=2)
+
+
+def _grid_cell(index: int, row: int, col: int) -> Point:
+    """The centre of cell (row, col) of chevron ``index``'s position grid:
+    row 0 the outermost, column 0 the left one as the plaque stands at the
+    top."""
+    ang = _plaque_angle(index)
+    turn = math.radians(ang + 90.0)
+    lx = (col - (GRID_COLS - 1) / 2.0) * GRID_PITCH
+    ly = GRID_Y + (row - (GRID_ROWS - 1) / 2.0) * GRID_PITCH
+    cx, cy = _polar(CENTER, RING_MID_R, ang)
+    return (cx + lx * math.cos(turn) - ly * math.sin(turn), cy + lx * math.sin(turn) + ly * math.cos(turn))
+
+
+def _draw_grid_sockets(draw: ImageDraw.ImageDraw, index: int) -> None:
+    """Chevron ``index``'s sixteen empty sockets."""
+    for row in range(GRID_ROWS):
+        for col in range(GRID_COLS):
+            x, y = _grid_cell(index, row, col)
+            r = GRID_DOT
+            draw.rectangle((x - r, y - r, x + r, y + r), fill=_rgba("#070a0c"))
 
 
 def _placement(index: int) -> Placement:
@@ -294,6 +325,7 @@ def _draw_gate_ring_base(*, frame_index: int, nframes: int, idle_mode: bool) -> 
     # charging lit by the pulse.
     for index in range(len(GLYPHS)):
         _draw_plaque(rd, _plaque_angle(index))
+        _draw_grid_sockets(rd, index)
     if idle_mode:
         levels = [_rune_glow(frame_index, nframes, index * 2, dim=True) for index in range(len(GLYPHS))]
     else:
@@ -460,12 +492,22 @@ def render_ring_frame(animation: str, frame_index: int, nframes: int) -> Image.I
 def render_glyph_frame(animation: str, frame_index: int, nframes: int) -> Image.Image:
     """Chevron ``frame_index`` dialed: its glyph blazing on its plaque at the
     idle ring's place, and the plaque's face washed with its light."""
-    if animation not in ("idle", "lit"):
+    if animation not in ("idle", "lit", "bit", "used"):
         raise ValueError(f"unknown animation: {animation}")
     del nframes
     size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
     if animation == "idle":
         return _downsample(Image.new("RGBA", size, (0, 0, 0, 0)))
+    if animation in ("bit", "used"):
+        index, cell = divmod(frame_index, GRID_CELLS)
+        x, y = _grid_cell(index, *divmod(cell, GRID_COLS))
+        dot = Image.new("L", size, 0)
+        r = GRID_DOT * (1.0 if animation == "bit" else 0.7)
+        ImageDraw.Draw(dot).rectangle((x - r, y - r, x + r, y + r), fill=255)
+        core = np.asarray(dot, np.float32) / 255.0
+        if animation == "bit":
+            return _downsample(_light_layer(core, core * 0.6, 0.5 * SUPER, core_rgb=(255, 255, 255)))
+        return _downsample(_light_layer(core, core * 0.0, 0.3 * SUPER, core_rgb=(48, 150, 184)))
     core = glyphs_mask([_placement(frame_index)], size)
     wash = Image.new("L", size, 0)
     ang = _plaque_angle(frame_index)
@@ -476,167 +518,17 @@ def render_glyph_frame(animation: str, frame_index: int, nframes: int) -> Image.
         ang + 90.0,
         fill=255,
     )
-    glow = np.maximum(core, np.asarray(wash, np.float32) / 255.0 * 0.32)
+    glow = np.maximum(core, np.asarray(wash, np.float32) / 255.0 * 0.2)
     return _downsample(_light_layer(core, glow, 2.6 * SUPER, core_rgb=(236, 255, 255)))
 
 
-def _portal_mask(radius: float) -> Image.Image:
-    mask = Image.new("L", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), 0)
-    md = blending_draw(mask)
-    md.ellipse(_ring_bbox(radius), fill=255)
-    return mask
-
-
-def _draw_star_specks(
-    draw: ImageDraw.ImageDraw, t: float, radius: float, opening: float
-) -> None:
-    for i in range(16):
-        ang = i * 137.5 + t * 180.0
-        rr = radius * (0.22 + ((i * 37) % 100) / 120.0)
-        x, y = _polar(CENTER, rr, ang)
-        spark = 1.1 + ((i * 13) % 7) * 0.22
-        alpha = int(_lerp(0, 165, opening) * (0.55 + 0.45 * math.sin(t * math.tau + i)))
-        draw.ellipse(
-            (
-                x - spark * SUPER,
-                y - spark * SUPER,
-                x + spark * SUPER,
-                y + spark * SUPER,
-            ),
-            fill=(255, 255, 255, max(0, alpha)),
-        )
-
-
-def _ease_out_back(t: float, overshoot: float = 1.35) -> float:
-    t = max(0.0, min(1.0, t)) - 1.0
-    return 1.0 + t * t * ((overshoot + 1.0) * t + overshoot)
-
-
-def _portal_surface(
-    radius: float, loop_t: float, alpha_scale: float, flash: float, splash: float = -1.0, outward: bool = False
-) -> Image.Image:
-    """The membrane: a deep, water-like surface with ripples moving outward.
-
-    ``loop_t`` in [0, 1) is the loop phase; every motion term is periodic in it,
-    so the stable row loops without a seam.
-
-    ``splash`` in [0, 1] is how far through a crossing the surface is (none
-    when negative): a ring runs out from the middle to the lip and dies. A
-    body going in (``outward`` false) dents the middle, dark, and the surface
-    closes over it; a body coming out (``outward``) swells it, bright, and the
-    swell falls back.
-    """
-    size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
-    ys, xs = np.mgrid[0 : size[1], 0 : size[0]].astype(np.float32)
-    dx = xs - CENTER[0]
-    dy = ys - CENTER[1]
-    dist = np.sqrt(dx * dx + dy * dy)
-    d = dist / max(radius, 1.0)
-    theta = np.arctan2(dy, dx)
-    tau = math.tau
-
-    deep = np.array([18, 34, 122], dtype=np.float32)
-    mid = np.array([44, 118, 232], dtype=np.float32)
-    edge = np.array([118, 226, 255], dtype=np.float32)
-    k = np.clip(d, 0.0, 1.0)[..., None]
-    base = deep * (1 - k) ** 2 + mid * 2 * k * (1 - k) + edge * k**2
-
-    # Ripples travelling outward, one wavelength per loop.
-    ripple = 0.5 + 0.5 * np.sin((d * 6.0 - loop_t) * tau)
-    ripple = ripple**4 * (0.25 + 0.75 * np.clip(d, 0.0, 1.0))
-    # A slow swirl, so the surface is not a static target.
-    swirl = 0.5 + 0.5 * np.sin(theta * 3.0 + d * 7.0 - loop_t * tau * 2.0)
-    swirl = swirl**6 * 0.35
-    # A specular highlight from the upper left, like a lit liquid surface.
-    hx = dx / max(radius, 1.0) + 0.38
-    hy = dy / max(radius, 1.0) + 0.42
-    spec = np.exp(-(hx * hx * 9.0 + hy * hy * 22.0)) * 0.55
-
-    light = ripple * 95.0 + swirl * 70.0 + spec * 255.0 + flash * 180.0
-    if splash >= 0.0:
-        u = float(splash)
-        fade = (1.0 - u) ** 1.3
-        # The ring that runs out to the lip, a smaller one behind it, and the
-        # surface between them pulled into folds.
-        # Each crest has its trough just behind it, so it reads as a wave.
-        front, back = u * 1.08, max(0.0, u - 0.3) * 1.08
-        lead = np.exp(-(((d - front) / 0.06) ** 2))
-        lead_trough = np.exp(-(((d - front + 0.1) / 0.06) ** 2)) * (d < front)
-        trail = np.exp(-(((d - back) / 0.045) ** 2)) * 0.7
-        trail_trough = np.exp(-(((d - back + 0.075) / 0.045) ** 2)) * (d < back) * 0.7
-        light = light + (lead * 300.0 + trail * 220.0) * fade
-        base = base * (1.0 - ((lead_trough + trail_trough) * 0.55 * fade)[..., None])
-        light = light - (lead_trough + trail_trough) * 120.0 * fade
-        # The middle: a dent, or a swell, that settles as the ring goes out.
-        middle = np.exp(-((d / (0.22 + 0.25 * u)) ** 2)) * (1.0 - _ease(u))
-        if outward:
-            light = light + middle * 260.0
-        else:
-            base = base * (1.0 - middle[..., None] * 0.75)
-            light = light - middle * 90.0
-    light = light[..., None]
-    rgb = base + light * np.array([0.78, 0.94, 1.0], dtype=np.float32)
-
-    # Bright lip at the edge of the membrane, with a soft glow past it.
-    lip = np.exp(-(((d - 0.965) / 0.035) ** 2))
-    rgb = rgb * (1 - lip[..., None] * 0.6) + np.array([220, 250, 255]) * lip[..., None] * 0.6
-    inside = np.clip((1.0 - d) * radius / (1.2 * SUPER), 0.0, 1.0)
-    halo = np.exp(-(((d - 1.0) / 0.07) ** 2)) * (d > 1.0)
-    alpha = np.clip(inside * 238.0 + halo * 150.0, 0.0, 255.0) * alpha_scale
-    halo_rgb = np.array([150, 236, 255], dtype=np.float32)
-    rgb = np.where((d > 1.0)[..., None], halo_rgb, rgb)
-
-    px = np.zeros((size[1], size[0], 4), dtype=np.float32)
-    px[..., :3] = np.clip(rgb, 0.0, 255.0)
-    px[..., 3] = alpha
-    return Image.fromarray(px.astype(np.uint8), "RGBA")
-
-
 def render_portal_frame(animation: str, frame_index: int, nframes: int) -> Image.Image:
-    img = Image.new(
-        "RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
-    )
-    t = frame_index / max(1, nframes - 1)
-    if animation == "opening":
-        # Bursts out slightly past the ring's aperture and settles back.
-        size = _ease_out_back(t)
-        alpha_scale = _ease(min(1.0, t * 2.2))
-        flash = max(0.0, 1.0 - abs(t - 0.55) / 0.3) * 0.4
-        loop_t = t
-    elif animation == "closing":
-        # Swells once, then collapses to a point.
-        size = (1.0 + 0.06 * math.sin(min(1.0, t * 2.5) * math.pi)) * (1.0 - _ease(t) ** 1.6)
-        alpha_scale = 1.0 - _ease(max(0.0, t - 0.55) / 0.45)
-        flash = max(0.0, 1.0 - abs(t - 0.8) / 0.2) * 0.6
-        loop_t = t
-    else:
-        size = 1.0
-        alpha_scale = 1.0
-        flash = 0.0
-        loop_t = frame_index / max(1, nframes)
-    splash = -1.0
-    if animation in ("swallow", "emit"):
-        # On the stable surface's own clock, so it cuts in from ``stable``.
-        splash = t
-        loop_t = (frame_index * 0.5 / max(1, nframes)) % 1.0
-        # The membrane gives a little where the body meets it.
-        dip = math.sin(min(1.0, t * 3.0) * math.pi) * (1.0 - t)
-        size = 1.0 + (0.035 if animation == "emit" else -0.025) * dip
-        flash = (0.35 if animation == "emit" else 0.15) * max(0.0, 1.0 - t * 4.0)
-    if size <= 0.01 or alpha_scale <= 0.01:
-        return _downsample(img)
+    """The wormhole: a triangle door (Jon, 2026-10-24: "triangle is better").
+    Three rays inscribe a triangle in the ring, it opens to a tunnel of
+    nested triangles, and closes into its centre (`_gate_wormhole_triangles`)."""
+    from ._gate_wormhole_triangles import render_portal_frame as triangle_door
 
-    radius = PORTAL_R * size
-    surface = _portal_surface(radius, loop_t, alpha_scale, flash, splash, animation == "emit")
-    draw = blending_draw(surface)
-    _draw_star_specks(draw, loop_t, radius, alpha_scale)
-
-    # The overshoot may pass the ring's aperture; the ring covers the rest.
-    mask = _portal_mask(PORTAL_R * 1.12)
-    clipped = Image.new("RGBA", surface.size, (0, 0, 0, 0))
-    clipped.paste(surface, (0, 0), mask)
-    img.alpha_composite(clipped)
-    return _downsample(img)
+    return triangle_door(animation, frame_index, nframes, out_size=OUT_SIZE[0])
 
 
 def render_glyph_icons() -> Image.Image:
@@ -670,32 +562,11 @@ def _periodic_noise(rng: np.random.Generator, size: int, falloff: float) -> np.n
 
 
 def render_tunnel_picture() -> Image.Image:
-    """The inside of the wormhole, tiling both ways (see the module)."""
-    n = TUNNEL_SIZE
-    rng = np.random.default_rng(1977)
-    cloud = _periodic_noise(rng, n, 1.6)
-    wisps = _periodic_noise(rng, n, 1.1)
-    deep = np.array([10, 22, 70], np.float32)
-    blue = np.array([40, 120, 230], np.float32)
-    cyan = np.array([120, 236, 255], np.float32)
-    violet = np.array([120, 70, 210], np.float32)
-    k = np.clip((cloud - 0.35) / 0.5, 0.0, 1.0)[..., None]
-    rgb = deep * (1 - k) + blue * k
-    rgb = rgb + (cyan - rgb) * (np.clip((wisps - 0.62) / 0.3, 0.0, 1.0) ** 2)[..., None]
-    rgb = rgb + (violet - rgb) * (np.clip((0.3 - cloud) / 0.3, 0.0, 1.0) * 0.6)[..., None]
-    # Streaks: stars stretched along the way in, wrapped at the edges.
-    ys, xs = np.mgrid[0:n, 0:n].astype(np.float32)
-    stars = np.zeros((n, n), np.float32)
-    for _ in range(150):
-        sx, sy = rng.uniform(0, n, 2)
-        length = rng.uniform(3.0, 11.0)
-        bright = rng.uniform(0.35, 1.0)
-        dx = (xs - sx + n / 2) % n - n / 2
-        dy = (ys - sy + n / 2) % n - n / 2
-        stars += bright * np.exp(-(dx * dx) / (2 * 0.7**2) - (dy * dy) / (2 * length**2))
-    rgb = rgb + np.clip(stars, 0.0, 1.4)[..., None] * np.array([210, 245, 255], np.float32)
-    px = np.dstack([np.clip(rgb, 0, 255), np.full((n, n), 255.0)])
-    return Image.fromarray(px.astype(np.uint8), "RGBA")
+    """The inside of the wormhole, tiling both ways: a lattice of Sierpinski
+    triangles (``_gate_wormhole_triangles``)."""
+    from ._gate_wormhole_triangles import render_tunnel_picture as triangle_tunnel
+
+    return triangle_tunnel(TUNNEL_SIZE)
 
 
 @functools.lru_cache(maxsize=1)
@@ -721,7 +592,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     # each frame's texture to its own ink.
     shared = dict(
         out_dir=out_dir,
-        frame_size=FRAME_SIZE,
+        frame_size=OUT_SIZE,
         label_width=128,
         auto_crop=False,
         body_metrics_fn=lambda _fw, _fh: _assembly_body_metrics(),
