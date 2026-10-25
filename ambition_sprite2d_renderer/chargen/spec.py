@@ -41,23 +41,37 @@ BROWS = ("straight", "arched", "angled", "soft", "heavy")
 NOSES = ("straight", "button", "long", "hooked", "broad", "upturned")
 MOUTHS = ("neutral", "smile", "frown", "smirk")
 JAWS = ("round", "square", "pointed", "long", "wide")
-HAIR_STYLES = ("bald", "balding", "buzz", "short", "side_part", "curly", "afro", "bob", "pixie", "long", "ponytail", "bun", "braid")
+#: ``nihongami`` is the geisha's wig-like up-do (a shimada): it is a worn
+#: thing, so it sits on any head, an animal's too.
+HAIR_STYLES = ("bald", "balding", "buzz", "short", "side_part", "curly", "afro", "bob", "pixie", "long", "ponytail", "bun", "braid",
+               "nihongami")
 FACIAL_HAIR = ("none", "stubble", "mustache", "goatee", "full_beard", "chops")
 
 TOPS = ("tshirt", "shirt", "tunic", "blouse", "sweater")
 SLEEVES = ("short", "long", "rolled")
 NECKLINES = ("crew", "v", "collar", "scoop")
-OUTERS = ("none", "vest", "jacket", "coat", "robe", "apron", "cardigan", "field_jacket")
+#: A ``kimono`` is ankle long, wrapped left over right, with wide hanging
+#: sleeves; ``outer_length`` does not apply to it.
+OUTERS = ("none", "vest", "jacket", "coat", "robe", "apron", "cardigan", "field_jacket", "kimono")
 OUTER_LENGTHS = ("hip", "knee", "ankle")
 BOTTOMS = ("trousers", "shorts", "skirt", "long_skirt")
-SHOES = ("shoes", "boots")
+#: ``geta``: tabi socks on raised wooden sandals (two teeth, a thong strap),
+#: ``outfit.geta_height`` tall. Geta raise the whole figure.
+SHOES = ("shoes", "boots", "geta")
 #: ``helmet``, ``beret``, ``garrison_cap``, ``peaked_cap`` and ``campaign`` (a
 #: drill instructor's brimmed hat with a pinched crown) are military.
 HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", "bowler", "helmet", "beret", "garrison_cap", "peaked_cap",
         "campaign")
-ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders", "webbing", "dog_tags")
-SPECIES = ("human", "horse", "dog", "cat", "bird", "sea_lion")
+#: ``obi``: the wide sash of a kimono, knotted at the back (``outfit.obi_knot``).
+ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders", "webbing", "dog_tags", "obi")
+SPECIES = ("human", "horse", "dog", "cat", "bird", "sea_lion", "alligator")
 EAR_STYLES = ("default", "floppy", "pointed")
+#: Face paint: ``geisha`` is white face paint (oshiroi) with red lips; on an
+#: animal, a pale painted face and red on the jaw line.
+MAKEUPS = ("none", "geisha")
+#: A drawn motif on a kimono, near its hem and on its sleeves.
+MOTIFS = ("none", "blossom", "dot")
+OBI_KNOTS = ("taiko", "bow")
 #: The slots a wardrobe item swaps in, and the kinds each slot takes.
 SLOTS = {"hat": HATS, "outer": OUTERS, "top": TOPS, "legwear": BOTTOMS, "footwear": SHOES, "hair": HAIR_STYLES, "acc": ACCESSORIES}
 
@@ -123,6 +137,8 @@ class Face:
     chin: float = 1.0
     ears: float = 1.0
     ear_angle: float = 0.3
+    #: Face paint (``MAKEUPS``).
+    makeup: str = "none"
 
 
 @dataclass
@@ -133,6 +149,10 @@ class Hair:
     volume: float = 0.5
     #: How long ``long`` / ``braid`` / ``ponytail`` hang: 0 shoulder .. 1 mid-back.
     length: float = 0.5
+    #: Hair ornaments (kanzashi) in a ``nihongami``: how many (0 .. 6), and
+    #: their colour ("": the outfit's accent colour).
+    ornaments: int = 0
+    ornament_color: str = ""
 
 
 @dataclass
@@ -174,6 +194,16 @@ class Outfit:
     #: Alternates drawn into the rig but hidden: ``"slot:kind"`` items
     #: (``"hat:bowler"``, ``"outer:coat"``) a clip or a game can swap in.
     wardrobe: List[str] = field(default_factory=list)
+    #: The outer garment's second colour: a kimono's collar, lining and hem
+    #: ("": a light tone of ``outer_color``).
+    trim_color: str = ""
+    #: A kimono's drawn motif (``MOTIFS``), in the trim colour.
+    motif: str = "none"
+    #: The obi's colour ("": the accent colour) and its knot at the back.
+    obi_color: str = ""
+    obi_knot: str = "taiko"
+    #: How tall geta are, in cm (sole of the foot to the ground).
+    geta_height: float = 9.0
 
 
 @dataclass
@@ -199,6 +229,9 @@ class CharacterSpec:
         if d["family"] == "standard":
             # The default is not written: a standard record stays as it was.
             del d["family"]
+        for (section, name), default in OPTIONAL_DEFAULTS.items():
+            if d[section][name] == default:
+                del d[section][name]
         return d
 
     def to_json(self) -> str:
@@ -255,6 +288,18 @@ class CharacterSpec:
 
 
 _SECTIONS = {"body": Body, "face": Face, "hair": Hair, "palette": Palette, "outfit": Outfit, "head": Head}
+#: Fields added after the first records: a record writes one only when it is
+#: not at its default, so an older record (and its SVG) stays as it was.
+OPTIONAL_DEFAULTS: Dict[Tuple[str, str], Any] = {
+    ("face", "makeup"): "none",
+    ("hair", "ornaments"): 0,
+    ("hair", "ornament_color"): "",
+    ("outfit", "trim_color"): "",
+    ("outfit", "motif"): "none",
+    ("outfit", "obi_color"): "",
+    ("outfit", "obi_knot"): "taiko",
+    ("outfit", "geta_height"): 9.0,
+}
 
 
 def _section_from_dict(kind, value: Mapping[str, Any], where: str):
@@ -296,6 +341,7 @@ BOUNDS: Dict[str, Tuple[float, float]] = {
     "hair.volume": (0.0, 1.0),
     "hair.length": (0.0, 1.0),
     "head.muzzle": (0.6, 1.4),
+    "outfit.geta_height": (3.0, 16.0),
 }
 
 CHOICES: Dict[str, Sequence[str]] = {
@@ -316,7 +362,12 @@ CHOICES: Dict[str, Sequence[str]] = {
     "outfit.hat": HATS,
     "head.species": SPECIES,
     "head.ears": EAR_STYLES,
+    "face.makeup": MAKEUPS,
+    "outfit.motif": MOTIFS,
+    "outfit.obi_knot": OBI_KNOTS,
 }
+#: Colours that may be "" (derived from another colour).
+OPTIONAL_COLORS = ("hair.ornament_color", "outfit.trim_color", "outfit.obi_color")
 COLORS = ("palette.skin", "palette.hair", "palette.eyes", "outfit.top_color", "outfit.outer_color", "outfit.bottom_color",
           "outfit.shoe_color", "outfit.hat_color", "outfit.accent_color")
 
@@ -361,6 +412,18 @@ def validate(spec: CharacterSpec) -> List[str]:
     for key in ("outfit.tucked", "outfit.outer_open"):
         if not isinstance(_get(spec, key), bool):
             errors.append(f"{key} must be true or false")
+    for key in OPTIONAL_COLORS:
+        v = _get(spec, key)
+        if v != "" and (not isinstance(v, str) or not _HEX.match(v)):
+            errors.append(f"{key}={v!r} is not a #rrggbb colour or empty")
+    n = spec.hair.ornaments
+    if not isinstance(n, int) or isinstance(n, bool) or not 0 <= n <= 6:
+        errors.append(f"hair.ornaments={n!r} is not a whole number in [0, 6]")
+    # Geta raise the whole figure, so the rig's bones differ from a figure in
+    # shoes: geta and other footwear cannot be swapped in one rig.
+    shoes = {spec.outfit.shoes} | {i.partition(":")[2] for i in spec.outfit.wardrobe if i.startswith("footwear:")}
+    if "geta" in shoes and len(shoes) > 1:
+        errors.append("outfit.wardrobe: geta and other footwear cannot be alternates of each other (geta raise the figure)")
     return errors
 
 

@@ -61,6 +61,8 @@ class Kit:
         self.A = self.rest.ua["right"] + self.rest.fa["right"]
         self.L = self.rest.th["right"] + self.rest.sh["right"]
         self.H = fig.H
+        #: How far the figure stands above the ground (on geta).
+        self.lift = -fig.sole_y
         r = self.rest.rest_hand("right").at
         self.rest_hand = (r[2] / self.A, r[1] / self.A, -r[0] / self.A)
 
@@ -96,8 +98,10 @@ class Kit:
 
     # whole poses
     def pose(self, *, root=(0.0, 0.0, 0.0), spin=0.0, lean=0.0, side=0.0, head=(0.0, 0.0), rh=None, lh=None, rf=None, lf=None,
-             face: str = "neutral", vis: str = "rest", blink: float = 0.0, **extra) -> Pose:
-        """A pose. ``root`` is (forward, UP, out) in parts of ``H``."""
+             face: str = "neutral", vis: str = "rest", blink: float = 0.0, ground: bool = False, **extra) -> Pose:
+        """A pose. ``root`` is (forward, UP, out) in parts of ``H``.
+        ``ground``: the body lies or sits on the ground, so a figure raised
+        on geta is lowered by their height (its feet stand on nothing)."""
         hands = {"right": rh or self.relax("right"), "left": lh or self.relax("left")}
         feet = {}
         if rf is not None:
@@ -105,6 +109,8 @@ class Kit:
         if lf is not None:
             feet["left"] = lf
         r = (root[2] * self.H, -root[1] * self.H, root[0] * self.H)
+        if ground and self.lift:
+            r = (r[0], r[1] + self.lift, r[2])
         return Pose(root=r, spin=spin, lean=lean, side=side, head=head, hands=hands, feet=feet,
                     face=face_channels(face, vis, blink=blink), extra=extra)
 
@@ -140,7 +146,7 @@ class Kit:
         s = -88.0 if face_up else 88.0
         base = dict(root=(-0.02 if face_up else 0.02, -0.4, 0.0), spin=s,
                     rh=self.hand("right", 0.05, 0.85, 0.35), lh=self.hand("left", -0.05, 0.85, 0.4),
-                    rf=self.bfoot("right", 0.05, 0.98, 0.06), lf=self.bfoot("left", 0.0, 0.98, 0.1))
+                    rf=self.bfoot("right", 0.05, 0.98, 0.06), lf=self.bfoot("left", 0.0, 0.98, 0.1), ground=True)
         base.update(kw)
         return self.pose(**base)
 
@@ -319,7 +325,7 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
                                                                     lf=k.foot(Lf, -0.2, 0.1), rh=k.hand(R, 0.6, 0.3, 0.4), lh=k.hand(Lf, 0.5, 0.2, 0.45),
                                                                     face="afraid"), k.guard()]), cat="locomotion"))
     slide = k.pose(root=(0.0, -0.33, 0.0), spin=-28, lean=-10, rf=k.bfoot(R, 0.75, 0.55), lf=k.bfoot(Lf, 0.25, 0.75),
-                   rh=k.hand(R, -0.3, 0.6, 0.3), lh=k.hand(Lf, -0.2, 0.75, 0.3), face="determined")
+                   rh=k.hand(R, -0.3, 0.6, 0.3), lh=k.hand(Lf, -0.2, 0.75, 0.3), face="determined", ground=True)
     add(_seq("slide", 6, 70, False, _even([run_pose(0.0), slide, slide, k.crouch(0.15)]), cat="locomotion"))
     crouch = k.crouch()
     add(_seq("crouch_start", 3, 60, False, _even([stand, crouch]), cat="locomotion"))
@@ -335,7 +341,7 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
 
     def crawl(ph: float) -> Pose:
         c = math.cos(ph)
-        return k.pose(root=(0.06, -0.33, 0.0), spin=72.0, lean=6.0, head=(-60, 0),
+        return k.pose(root=(0.06, -0.33, 0.0), spin=72.0, lean=6.0, head=(-60, 0), ground=True,
                       rh=k.hand(R, 0.62 + 0.14 * c, 0.42, 0.2, pole=(0.3, 0.0, -1.0)), lh=k.hand(Lf, 0.62 - 0.14 * c, 0.42, 0.2, pole=(0.3, 0.0, -1.0)),
                       rf=k.bfoot(R, -0.25 - 0.1 * c, 0.55, 0.06, pole=(0.0, 1.0, 0.3)), lf=k.bfoot(Lf, -0.25 + 0.1 * c, 0.55, 0.06, pole=(0.0, 1.0, 0.3)))
 
@@ -617,7 +623,7 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
     add(_seq("prone", 6, 120, True, _cycle([k.lying(face_up=True), k.lying(face_up=True, head=(-4, 0))]), cat="reaction"))
     add(_seq("prone_damage", 4, 70, False, _even([down_back, replace(down_back, root=(0.0, -0.03 * k.H, 0.0)), down_back]), cat="reaction"))
     sit_up = k.sitting(root=(-0.06, -0.36, 0.0), lean=-10, rf=k.foot(R, 0.4), lf=k.foot(Lf, 0.3), rh=k.hand(R, -0.1, 0.65, 0.3),
-                       lh=k.hand(Lf, -0.15, 0.65, 0.35))
+                       lh=k.hand(Lf, -0.15, 0.65, 0.35), ground=True)
     add(_seq("getup", 8, 70, False, _even([down_back, sit_up, k.crouch(0.22), stand]), cat="reaction"))
     add(_seq("getup_attack", 8, 55, False, _even([down_back, sit_up, sweep, k.crouch(0.18), guard]), cat="reaction"))
     add(_seq("getup_roll", 8, 55, False, _even([down_back, replace(ball, spin=-200), replace(ball, spin=-360), k.crouch(0.12)]), cat="reaction"))

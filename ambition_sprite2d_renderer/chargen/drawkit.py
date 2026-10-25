@@ -209,21 +209,27 @@ def outfit_plan(fig: Figure) -> Dict[str, object]:
     plan["top_hem"] = fig.y_waist + 0.04 * T if tucked else top_hem
     outer = o.outer
     knee_y = fig.joints["right_knee"][1]
-    hem = {"hip": fig.y_hipw + 0.12 * T, "knee": knee_y + 0.06 * T, "ankle": -0.075 * fig.H}[o.outer_length]
+    # Hems near the feet are measured from the soles (geta raise them).
+    sole = fig.sole_y
+    hem = {"hip": fig.y_hipw + 0.12 * T, "knee": knee_y + 0.06 * T, "ankle": sole - 0.075 * fig.H}[o.outer_length]
     if outer == "vest":
         hem = fig.y_waist + 0.16 * T
     if outer == "cardigan" and o.outer_length == "ankle":
         hem = knee_y + 0.06 * T
     if outer == "apron":
-        hem = knee_y + (0.06 * T if o.outer_length == "knee" else 0.5 * (-0.075 * fig.H - knee_y))
+        hem = knee_y + (0.06 * T if o.outer_length == "knee" else 0.5 * (sole - 0.075 * fig.H - knee_y))
     if outer == "robe":
-        hem = -0.06 * fig.H
+        hem = sole - 0.06 * fig.H
+    if outer == "kimono":
+        # A kimono's hem is at the ankles, over the top of the foot.
+        hem = sole - 0.042 * fig.H
     if outer == "field_jacket":
         # A field jacket always ends at the hips, on the torso.
         hem = fig.y_hipw + 0.08 * T
     plan["outer_hem"] = hem
-    plan["outer_t"] = {"vest": 0.6, "jacket": 0.95, "coat": 1.15, "robe": 1.1, "apron": 0.75, "cardigan": 0.8, "field_jacket": 1.0}.get(outer, 0.0)
-    plan["bottom_hem"] = {"skirt": knee_y + 0.04 * T, "long_skirt": -0.085 * fig.H}.get(o.bottom)
+    plan["outer_t"] = {"vest": 0.6, "jacket": 0.95, "coat": 1.15, "robe": 1.1, "apron": 0.75, "cardigan": 0.8, "field_jacket": 1.0,
+                       "kimono": 1.2}.get(outer, 0.0)
+    plan["bottom_hem"] = {"skirt": knee_y + 0.04 * T, "long_skirt": sole - 0.085 * fig.H}.get(o.bottom)
     return plan
 
 

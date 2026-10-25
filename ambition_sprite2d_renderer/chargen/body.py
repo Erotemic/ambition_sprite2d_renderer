@@ -67,6 +67,9 @@ class Figure:
     face: Dict[str, float] = field(default_factory=dict)
     species: str = "human"
     model: Optional[HeadModel] = None
+    #: The height of the soles of the feet: 0 on the ground; geta raise the
+    #: figure, so its soles are ``geta_height`` above it (negative ``y``).
+    sole_y: float = 0.0
 
     def fy(self, f: float) -> float:
         """The height of fraction ``f`` of the head (0 the crown, 1 the chin)."""
@@ -85,12 +88,14 @@ def build(spec: CharacterSpec) -> Figure:
     species = spec.head.species
     hh = b.head * H * (1.05 if spec.face.jaw == "long" and species == "human" else 1.0) * HEAD_SCALE[species] * P.head
     k = H / REF_H
-    crown = -H
+    # Geta raise the whole body: every height is measured from the soles.
+    sole = -spec.outfit.geta_height if spec.outfit.shoes == "geta" else 0.0
+    crown = sole - H
     chin = crown + hh
     y_nb = chin + P.neck_base * hh * b.neck
     y_sh = chin + P.shoulder_drop * hh * b.neck
     hip_h = P.hip * H * b.legs
-    y_hip = -hip_h
+    y_hip = sole - hip_h
     T = y_hip - y_sh
     fig = Figure(
         spec=spec, H=H, hh=hh, k=k, female=female, crown=crown, chin=chin, y_nb=y_nb, y_sh=y_sh,
@@ -98,6 +103,7 @@ def build(spec: CharacterSpec) -> Figure:
         y_crotch=y_hip + 0.036 * H,
     )
     fig.species = species
+    fig.sole_y = sole
     fig.model = head_model(fig)
     fig.face = fig.model.layout
 
@@ -105,7 +111,8 @@ def build(spec: CharacterSpec) -> Figure:
     sx = 0.9 if female else 1.0
     limbs = b.limbs
     sh_hw = 17.2 * k * b.shoulders * sx * P.shoulders
-    neck_r = (0.215 if female else 0.245) * b.head * H * (0.85 + 0.15 * limbs) * (1.0 + 0.25 * b.belly) * {"horse": 1.25, "dog": 1.1, "sea_lion": 1.55}.get(species, 1.0) * P.neck_r
+    neck_r = (0.215 if female else 0.245) * b.head * H * (0.85 + 0.15 * limbs) * (1.0 + 0.25 * b.belly) * {"horse": 1.25, "dog": 1.1, "sea_lion": 1.55,
+                                                                                                         "alligator": 1.15}.get(species, 1.0) * P.neck_r
     chest_rx = 15.2 * k * b.chest * (0.91 if female else 1.0) * P.torso
     chest_rx = min(chest_rx, sh_hw + 1.0 * k)
     chest_rzf = 10.2 * k * b.chest * (0.95 if female else 1.0)
@@ -187,12 +194,12 @@ def build(spec: CharacterSpec) -> Figure:
         W = add3(E, scale3(df, fa))
         dh = norm3((sgn * -0.04, 1.0, 0.34))
         Hp = (sgn * hip_l, y_hip, 0.3 * k)
-        A = (sgn * (hip_l + 0.8 * k), -ankle_h, -0.6 * k)
-        knee_y = -(ankle_h + 0.53 * (hip_h - ankle_h))
+        A = (sgn * (hip_l + 0.8 * k), sole - ankle_h, -0.6 * k)
+        knee_y = sole - (ankle_h + 0.53 * (hip_h - ankle_h))
         K = ((Hp[0] + A[0]) / 2.0, knee_y, 1.6 * k)
         j.update({
             f"{side}_shoulder": S, f"{side}_elbow": E, f"{side}_wrist": W, f"{side}_handtip": add3(W, scale3(dh, hand)),
-            f"{side}_hip": Hp, f"{side}_knee": K, f"{side}_ankle": A, f"{side}_toe": (A[0], 0.0, A[2] + foot * 0.7),
+            f"{side}_hip": Hp, f"{side}_knee": K, f"{side}_ankle": A, f"{side}_toe": (A[0], sole, A[2] + foot * 0.7),
         })
     fig.joints = j
     return fig

@@ -1,0 +1,43 @@
+# An example of the character generator (chargen), not a game character:
+# an alligator geisha. Draw it with
+#   chargen show data/chargen_examples/gator_geisha.chargen.yaml --out OUT
+# It uses the alligator head, face paint, the nihongami with kanzashi, a
+# kimono with its motif, an obi and geta. Fields left out are drawn from
+# the base and the seed.
+schema: ambition-chargen-v1
+name: Gator Geisha
+base: slim_female
+seed: 1
+body:
+  height_cm: 168
+  age: 0.35
+head:
+  species: alligator
+  muzzle: 1.0
+face:
+  makeup: geisha
+hair:
+  style: nihongami
+  ornaments: 6
+  ornament_color: '#c8323c'
+palette:
+  skin: '#3d4a2e'
+  hair: '#151214'
+outfit:
+  top: blouse
+  sleeves: long
+  neckline: crew
+  outer: kimono
+  outer_color: '#26345a'
+  trim_color: '#efc3c9'
+  motif: blossom
+  bottom: skirt
+  bottom_color: '#a8242c'
+  shoes: geta
+  shoe_color: '#c8a678'
+  geta_height: 9.0
+  hat: none
+  accessories: [obi]
+  accent_color: '#b8262f'
+  obi_color: '#c9a24a'
+  obi_knot: taiko

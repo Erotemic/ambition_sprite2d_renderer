@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import itertools
 import json
+from pathlib import Path
 
 import pytest
 from PIL import Image, ImageChops, ImageStat
@@ -19,6 +20,10 @@ from ambition_sprite2d_renderer.chargen import spec as S
 from ambition_sprite2d_renderer.chargen.geometry import VIEW_BY_KEY, VIEWS
 from ambition_sprite2d_renderer.chargen.rig import character_svg, write_character
 from ambition_sprite2d_renderer.chargen.sheets import RiggedCharacter, render_view
+
+
+#: The example spec of the alligator head and the geisha wardrobe (not a game target).
+GATOR_GEISHA = Path(S.__file__).resolve().parents[1] / "data" / "chargen_examples" / "gator_geisha.chargen.yaml"
 
 
 def _alpha_box(img: Image.Image):
@@ -178,7 +183,7 @@ def test_the_rig_derives_from_the_spec_for_many_seeds(tmp_path):
     from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
     from ambition_sprite2d_renderer.chargen.rig import CELL_H, CELL_W
 
-    specs = S.crowd(3, 31) + [S.crowd(1, 32 + i, species=sp)[0] for i, sp in enumerate(("horse", "dog", "cat", "bird", "sea_lion"))]
+    specs = S.crowd(3, 31) + [S.crowd(1, 32 + i, species=sp)[0] for i, sp in enumerate(("horse", "dog", "cat", "bird", "sea_lion", "alligator"))]
     for n, spec in enumerate(specs):
         rigs = _rest_rigs(spec, tmp_path / str(n))
         for view, path in rigs.items():
@@ -216,7 +221,8 @@ def test_the_rig_derives_from_the_spec_for_many_seeds(tmp_path):
     S.generate("broad_male", 7, {"outfit": {"outer": "field_jacket", "outer_open": False, "hat": "helmet", "accessories": ["webbing"]}}),
     S.generate("broad_female", 61, {"family": "crew", "hair": {"style": "bun"}, "outfit": {
         "outer": "field_jacket", "outer_open": False, "hat": "campaign", "shoes": "boots", "accessories": ["webbing"], "wardrobe": ["hat:helmet"]}}),
-], ids=["robe", "horse", "dog", "cat", "bird", "sea_lion", "soldier", "crew_soldier"])
+    S.CharacterSpec.load(GATOR_GEISHA),
+], ids=["robe", "horse", "dog", "cat", "bird", "sea_lion", "soldier", "crew_soldier", "gator_geisha"])
 def test_every_library_clip_poses_without_audit_errors_in_every_view(spec, tmp_path):
     from ambition_sprite2d_renderer.authoring.pose_audit import audit_document
     from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
@@ -538,3 +544,96 @@ def test_every_species_head_and_hat_draws_in_the_crew_family(species):
         for dv in drawn:
             names = {p.name for p in dv.parts}
             assert "head" in names and (hat == "none" or f"hat_{hat}" in names), (species, hat, dv.view.key)
+
+
+# ---- the alligator head and the geisha wardrobe --------------------------------------------------
+
+
+def test_the_alligator_head_draws_in_every_view_with_its_teeth_and_faces():
+    from ambition_sprite2d_renderer.chargen import face as F
+    from ambition_sprite2d_renderer.chargen.rig import draw_views
+
+    for base in ("slim_female", "broad_male"):
+        spec = S.generate(base, 5, {"head": {"species": "alligator"}, "outfit": {"hat": "none"}})
+        assert S.validate(spec) == []
+        _fig, drawn = draw_views(spec)
+        for dv in drawn:
+            names = {p.name for p in dv.parts}
+            assert "head" in names, (base, dv.view.key)
+            if dv.view.key != "back":
+                # Shut, the upper teeth show along the jaw line.
+                mouth = next(p for p in dv.parts if p.name == F.mouth_part("neutral", "rest"))
+                assert any(el.fill == "#efe8d2" for el in mouth.els), (base, dv.view.key)
+        side = VIEW_BY_KEY["side"]
+        neutral = render_view(spec, side, 2.0)
+        for f, vis in (("happy", "rest"), ("neutral", "a"), ("angry", "rest")):
+            assert _differs(neutral, render_view(spec, side, 2.0, state=F.face_channels(f, vis))), (base, f, vis)
+        assert _differs(neutral, render_view(spec, side, 2.0, state=F.face_channels("neutral", blink=1.0)))
+
+
+def test_the_geisha_wardrobe_draws_in_every_view_and_its_fields_are_optional(tmp_path):
+    from ambition_sprite2d_renderer.chargen.rig import draw_views
+
+    spec = S.CharacterSpec.load(GATOR_GEISHA)
+    assert S.validate(spec) == []
+    assert S.CharacterSpec.load(spec.save(tmp_path / "g.chargen.yaml")) == spec
+    _fig, drawn = draw_views(spec)
+    for dv in drawn:
+        feats = {p.feature for p in dv.parts if p.feature}
+        assert {"outer:kimono", "acc:obi", "hair:nihongami", "footwear:geta"} <= feats, dv.view.key
+        bones = {p.bone for p in dv.parts if p.feature == "outer:kimono"}
+        assert {"torso", "near_arm_u", "near_arm_l", "near_leg_u", "near_leg_l"} <= bones, dv.view.key
+        assert any(p.name == "torso__obi_knot" for p in dv.parts), dv.view.key
+    # The knot is under the body when the back is turned away.
+    z = {dv.view.key: next(p.z for p in dv.parts if p.name == "torso__obi_knot") for dv in drawn}
+    assert z["front"] < 2.0 < z["back"]
+    # Each part changes the drawing (worn against taken off).
+    plain = S.CharacterSpec.load(GATOR_GEISHA)
+    plain.outfit.outer, plain.outfit.accessories, plain.hair.style, plain.outfit.shoes = "none", [], "bald", "shoes"
+    plain.face.makeup = "none"
+    for key in ("front", "side", "back"):
+        assert _differs(render_view(spec, VIEW_BY_KEY[key], 0.8), render_view(plain, VIEW_BY_KEY[key], 0.8)), key
+    # A record writes the new fields only when they are not at their default.
+    d = S.generate("average_male", 3).to_dict()
+    assert "makeup" not in d["face"] and "ornaments" not in d["hair"] and "geta_height" not in d["outfit"]
+    assert spec.to_dict()["face"]["makeup"] == "geisha"
+    bad = S.CharacterSpec.load(GATOR_GEISHA)
+    bad.outfit.wardrobe = ["footwear:shoes"]
+    assert any("geta" in e for e in S.validate(bad))
+
+
+def test_geta_raise_the_figure_and_keep_the_feet_on_the_ground(tmp_path):
+    from functools import partial
+
+    from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
+    from ambition_sprite2d_renderer.chargen.body import build
+    from ambition_sprite2d_renderer.chargen.motion import library_clips
+    from ambition_sprite2d_renderer.chargen.rig import build_rigs
+
+    over = {"outer": "none", "bottom": "trousers", "hat": "none"}
+    shoes = S.generate("slim_female", 1, {"outfit": dict(over, shoes="shoes")})
+    geta = S.generate("slim_female", 1, {"outfit": dict(over, shoes="geta", geta_height=10.0)})
+    fs, fg = build(shoes), build(geta)
+    assert fg.sole_y == -10.0 and fg.crown == pytest.approx(fs.crown - 10.0)
+    for key in ("front", "side", "back"):
+        bs, bg = (_alpha_box(render_view(sp, VIEW_BY_KEY[key], 1.0)) for sp in (shoes, geta))
+        # The same ground line; the figure is the geta's height taller.
+        assert abs(bs[3] - bg[3]) <= 1, key
+        assert (bs[3] - bs[1]) + 10.0 - 2 <= bg[3] - bg[1] <= (bs[3] - bs[1]) + 10.0 + 2, key
+    names = ["idle", "walk", "crouch", "prone", "sit_down"]
+    lows = {}
+    for label, sp in (("shoes", shoes), ("geta", geta)):
+        svg = tmp_path / f"{label}.svg"
+        svg.write_text(character_svg(sp), encoding="utf8")
+        rigs = build_rigs(sp, svg, tmp_path / label, clips=partial(library_clips, names=names))
+        for view in ("side", "front"):
+            doc = RigDocument.load(rigs[view])
+            for n in names:
+                frames = int(doc.clips[n]["frames"])
+                lows[(label, view, n)] = [_alpha_box(doc.render_frame(n, i, frames))[3] for i in range(frames)]
+    # In every frame the geta stand where the shoes stand: on the ground, and
+    # a body on the ground lies on it, not on the geta's height.
+    for (label, view, n), bottoms in lows.items():
+        if label == "geta":
+            ref = lows[("shoes", view, n)]
+            assert max(abs(a - b) for a, b in zip(bottoms, ref)) <= 2, (view, n, bottoms, ref)

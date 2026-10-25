@@ -34,7 +34,7 @@ from .drawkit import (
     visible,
 )
 from .family import family_of
-from .geometry import Loft, RingKey, Vec3, add3, hull, lerp, loft_region, smoothstep, wrap180
+from .geometry import Loft, Point as Point2, RingKey, Vec3, add3, hull, lerp, loft_region, scale3, smoothstep, sub3, wrap180
 from .svgout import FINE, INK, Paint, light, shade
 
 #: How far above its segment each slot paints.
@@ -95,12 +95,13 @@ def skirt_loft(fig: Figure, y_top: float, hem: float, t: float, flare: float) ->
 
 def lobe_parts(ctx: Ctx, slot: str, feature: str, loft: Loft, y0: float, y1: float, color: str, margin=None, *,
                z: Tuple[float, float], lit: bool = True, extra: Optional[Callable[[Paint, str], None]] = None,
-               solid: bool = True) -> List[Part]:
+               solid: bool = True, piece_extra: Optional[Callable[[Paint, str, float, float], None]] = None) -> List[Part]:
     """A hanging garment as two halves, one on each leg: the right half (the
     near side) above the left one. A half that hangs well past the knee is
     cut there: the part above rides the thigh, the part below the shin, so a
     long skirt or robe bends with the stride instead of swinging out as one
-    rigid board."""
+    rigid board. ``piece_extra(paint, side, top, bottom)`` adds marks to
+    every piece (a hem band, an edge, a motif)."""
     out = []
     knee = ctx.fig.joints["right_knee"][1]
     split = y1 > knee + 0.12 * (knee - y0)
@@ -122,6 +123,8 @@ def lobe_parts(ctx: Ctx, slot: str, feature: str, loft: Loft, y0: float, y1: flo
             shaded_region(ctx, pt, loft, a, b, color, m, lit=lit, ink=False)
             if extra and not suffix:
                 extra(pt, side)
+            if piece_extra:
+                piece_extra(pt, side, a, b)
             p = _part(f"{depth}_skirt{suffix}__{slot}", f"{depth}_{bone}", zz + (0.05 if suffix else 0.0), pt,
                       f"Skirt{' (below the knee)' if suffix else ''} - {depth.title()} ({slot})", feature)
             if p:
@@ -138,7 +141,7 @@ def drape_color(ctx: Ctx, slot: str) -> Optional[Tuple[str, float]]:
         found = (o.bottom_color, plan["bottom_hem"])
     if slot == "top" and o.top == "tunic" and not plan["tucked"] and plan["top_hem"] > knee:
         found = (o.top_color, plan["top_hem"])
-    if slot == "outer" and o.outer in ("coat", "robe", "cardigan") and plan["outer_hem"] > knee:
+    if slot == "outer" and o.outer in ("coat", "robe", "cardigan", "kimono") and plan["outer_hem"] > knee:
         found = (o.outer_color, plan["outer_hem"])
     # Stop short of the hem: at rest the drape stays under the skirt, whose
     # hem curves up at the sides in a view from a little above.
@@ -285,6 +288,8 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     fig, o, plan = ctx.fig, ctx.fig.spec.outfit, ctx.plan
     if o.outer == "none":
         return []
+    if o.outer == "kimono":
+        return _kimono_parts(ctx, zmap)
     feature = f"outer:{o.outer}"
     T = fig.T
     t = plan["outer_t"]
@@ -502,18 +507,22 @@ def foot_points(fig: Figure, side: str, k_size: float = 1.0) -> Tuple[List, List
     # The family's foot: length, width and height multipliers.
     FL, FW, FH = family_of(fig.spec).body.foot
     l0, z0 = A[0], A[2]
-    ah = -A[1]
+    # The sole is on the ground, or on the geta (``Figure.sole_y``).
+    y0 = fig.sole_y
+    ah = y0 - A[1]
     sole, top = [], []
     for z, w, h in ((-5.2, 3.3, 0.72), (-2.0, 4.0, 0.95), (5.5, 4.6, 0.62), (11.5, 4.9, 0.45), (16.0, 4.3, 0.33), (18.6, 2.9, 0.26)):
         for s in (-1.0, 1.0):
-            sole.append((l0 + s * w * k * FW, 0.0, z0 + z * k * FL))
-            top.append((l0 + s * w * k * FW * 0.92, -ah * h * FH * 1.05, z0 + z * k * FL))
-    collar = [(l0 + 4.0 * k * FW * math.cos(t), -ah * FH * 1.05, z0 + 3.6 * k * FW * math.sin(t)) for t in (2 * math.pi * i / 10 for i in range(10))]
+            sole.append((l0 + s * w * k * FW, y0, z0 + z * k * FL))
+            top.append((l0 + s * w * k * FW * 0.92, y0 + -ah * h * FH * 1.05, z0 + z * k * FL))
+    collar = [(l0 + 4.0 * k * FW * math.cos(t), y0 + -ah * FH * 1.05, z0 + 3.6 * k * FW * math.sin(t)) for t in (2 * math.pi * i / 10 for i in range(10))]
     return sole, top, collar
 
 
 def footwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     fig, o = ctx.fig, ctx.fig.spec.outfit
+    if o.shoes == "geta":
+        return _geta_parts(ctx, zmap)
     feature = f"footwear:{o.shoes}"
     out: List[Part] = []
     j = fig.joints
@@ -607,6 +616,8 @@ def accessory_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         out.append(Part("torso__scarf", "torso", 34.0, pt.els, "Scarf", feature="acc:scarf"))
     if "webbing" in o.accessories:
         out += _webbing(ctx, zmap)
+    if "obi" in o.accessories:
+        out += _obi(ctx, zmap)
     if "dog_tags" in o.accessories:
         pt = ctx.new()
         shell = fig.torso.shell(0.35)
@@ -676,6 +687,339 @@ def _webbing(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         if visible(ctx, a, 0.2):
             pt.dot(ctx.p(corner(0.0, top + 0.3 * (bot - top), d + 0.3)), 0.32, UNIFORM["brass"])
     return [Part("torso__webbing", "torso", 33.6, pt.els, "Webbing", feature="acc:webbing")] if pt.els else []
+
+
+# ---- the kimono -------------------------------------------------------------------------------------
+
+#: The white under-collar (of the juban) that shows inside a kimono's collar.
+JUBAN = "#f3eee4"
+#: Where a kimono's front edge runs below the crossing: the left panel lies
+#: over the right one and its edge goes to the character's right side.
+KIMONO_EDGE = -40.0
+
+
+def trim_of(o) -> str:
+    """The outer garment's second colour (``outfit.trim_color``)."""
+    return o.trim_color or light(o.outer_color, 0.45)
+
+
+def _blossom(ctx: Ctx, pt: Paint, c: Vec3, n: Vec3, r: float, color: str) -> None:
+    """A five-petal blossom of radius ``r`` at ``c`` on a surface of normal
+    ``n``, in the plane of the surface."""
+    from .geometry import cross3, ellipse3, norm3
+
+    n = norm3(n)
+    u = norm3(cross3((0.0, -1.0, 0.0), n))
+    up = norm3(cross3(n, u))
+    for i in range(5):
+        a = math.pi / 2 + i * 2 * math.pi / 5
+        pc = add3(c, add3(scale3(u, 0.55 * r * math.cos(a)), scale3(up, 0.55 * r * math.sin(a))))
+        pt.flat([[ctx.p(q) for q in ellipse3(pc, u, up, 0.45 * r, 0.45 * r, 8)]], color)
+    pt.dot(ctx.p(add3(c, scale3(n, 0.05))), 0.22 * r, "#d9a73a")
+
+
+def _motif_mark(ctx: Ctx, pt: Paint, c: Vec3, n: Vec3, r: float, color: str) -> None:
+    kind = ctx.fig.spec.outfit.motif
+    if kind == "blossom":
+        _blossom(ctx, pt, c, n, r, color)
+    elif kind == "dot":
+        pt.dot(ctx.p(c), 0.38 * r, color)
+
+
+def _facing_normal(ctx: Ctx, n: Vec3, thresh: float) -> bool:
+    return n[2] * ctx.view.c - n[0] * ctx.view.s > thresh
+
+
+#: Where a kimono's motif sits on its skirt: (alpha, height from the hem up
+#: as a part of the skirt's length). Most of it is near the hem.
+_MOTIF_SPOTS = ((-150.0, 0.06), (-115.0, 0.2), (-75.0, 0.08), (-48.0, 0.3), (-20.0, 0.12), (5.0, 0.24), (32.0, 0.07), (58.0, 0.18),
+                (85.0, 0.32), (118.0, 0.1), (150.0, 0.22), (180.0, 0.08), (-95.0, 0.42), (40.0, 0.45), (140.0, 0.4))
+
+
+def _kimono_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
+    """A kimono: an ankle-long robe wrapped left over right (the edge of the
+    left panel runs from the left of the neck down to the right hip, a "y"
+    seen from the front), its collar (the trim colour) over a white
+    under-collar, pulled down at the nape; wide sleeves that hang from the
+    forearm as a deep pouch; the lining (the trim colour) at the hem and the
+    front edge; a motif near the hem. The wrap is not symmetric: a left view
+    (a mirror) shows it the other way."""
+    from .headdraw import PAINT
+
+    fig, o, plan = ctx.fig, ctx.fig.spec.outfit, ctx.plan
+    feature = "outer:kimono"
+    T = fig.T
+    t = plan["outer_t"]
+    shell = fig.torso.shell(t)
+    col = o.outer_color
+    trim = trim_of(o)
+    top = fig.torso.top
+    hem = plan["outer_hem"]
+    bottom = fig.y_waist + 0.06 * T
+    y0 = fig.y_nb + 0.4
+
+    def vee(a: float, d: float, w: float) -> float:
+        return d * max(0.0, 1.0 - abs(wrap180(a)) / w)
+
+    def drop(a: float) -> float:
+        # The collar is pulled down at the back of the neck (nuki-emon).
+        return 0.08 * T * smoothstep(100.0, 180.0, abs(wrap180(a)))
+
+    def neck_k(a: float) -> float:
+        return y0 + vee(a, 0.2 * T, 26.0) + drop(a)
+
+    def neck_j(a: float) -> float:
+        return y0 - 0.3 + vee(a, 0.12 * T, 15.0) + 0.55 * drop(a)
+
+    pt = ctx.new()
+    skin = PAINT if fig.spec.face.makeup == "geisha" else ctx.skin
+    # Skin in the collar's V and at the nape, the white under-collar, then
+    # the kimono: each over what is under it.
+    shaded_region(ctx, pt, fig.torso.shell(t - 0.5), top, y0 + 0.22 * T, skin, lambda a, y: neck_k(a) + 0.6 - y, shade_frac=0.15)
+    pt.region(loft_region(ctx.view, fig.torso.shell(t - 0.25), top, y0 + 0.22 * T, lambda a, y: min(y - neck_j(a), neck_k(a) + 0.6 - y)), JUBAN,
+              outline=FINE)
+    shaded_region(ctx, pt, shell, top, bottom, col, lambda a, y: y - neck_k(a), lit=True)
+    # The collar (eri): along both edges of the V, and on along the left
+    # panel's edge to the right hip.
+    collar = shell.shell(0.25)
+    for sgn in (1.0, -1.0):
+        path = [(sgn * a, neck_k(sgn * a) + 0.9) for a in range(180, -1, -6)]
+        if sgn > 0:
+            yv = neck_k(0.0) + 0.9
+            path += [(lerp(0.0, KIMONO_EDGE, i / 8.0), lerp(yv, bottom, i / 8.0)) for i in range(1, 9)]
+        for run in surface_line(ctx, collar, path, out=0.1, thresh=0.0):
+            pt.line(run, INK, 2.3, smooth=True)
+            pt.line(run, trim, 1.7, smooth=True)
+    out: List[Part] = [Part("torso__outer", "torso", 33.0, pt.els, "Outer", feature=feature)]
+    out += _kimono_sleeves(ctx, zmap, feature)
+    lo = skirt_loft(fig, fig.y_waist, hem, t + 0.6, 1.02)
+    y_top = fig.y_waist
+
+    def piece(p: Paint, side: str, a: float, b: float) -> None:
+        m = half_of(side)
+        if b >= hem - 1e-6:
+            # The lining shows as a band at the hem.
+            p.flat(loft_region(ctx.view, lo.shell(0.05), hem - 0.03 * T, hem, m, solid=True), trim)
+        if side == "right" and visible(ctx, KIMONO_EDGE, 0.0):
+            edge = [(KIMONO_EDGE + 2.0 * (y - y_top) / (hem - y_top), y) for y in (lerp(max(a, y_top), b, i / 8.0) for i in range(9))]
+            for run in surface_line(ctx, lo, edge, out=0.12, thresh=0.0):
+                p.line(run, trim, 0.7, smooth=True)
+                p.line(run, INK, FINE, smooth=True)
+        if o.motif != "none":
+            r = 0.035 * T
+            for al, h in _MOTIF_SPOTS:
+                y = hem - h * (hem - y_top)
+                if not (a <= y <= b) or m(al, y) < 0.0 or not visible(ctx, al, 0.25):
+                    continue
+                ra = math.radians(al)
+                _motif_mark(ctx, p, lo.point(al, y, 0.15), (math.sin(ra), 0.0, math.cos(ra)), r, trim)
+
+    out += lobe_parts(ctx, "outer", feature, lo, fig.y_waist, hem, col, None, z=(32.0, 32.5), piece_extra=piece)
+    out += drape_parts(ctx, "outer", feature, zmap)
+    return out
+
+
+def _kimono_sleeves(ctx: Ctx, zmap: Dict[str, float], feature: str) -> List[Part]:
+    """Wide sleeves: a wide tube round each arm, and the sleeve's deep pouch
+    (tamoto) that hangs from the upper arm. At rest the pouch hangs behind
+    the arm down past the elbow, so the forearm comes forward out of it;
+    when the arm is raised it hangs below the arm. Its lower back corner is
+    round; the lining (the trim colour) shows at the cuff."""
+    from .geometry import cross3, norm3
+
+    fig, o = ctx.fig, ctx.fig.spec.outfit
+    col = o.outer_color
+    trim = trim_of(o)
+    j = fig.joints
+    rs, re, rw = fig.arm_r
+    T = fig.T
+    out: List[Part] = []
+    for depth, side, sgn in SIDES:
+        S, E, W = (j[f"{side}_{n}"] for n in ("shoulder", "elbow", "wrist"))
+        pu = ctx.new()
+        u = norm3(sub3(E, S))
+        n = norm3(cross3(u, (1.0, 0.0, 0.0)))
+        if n[2] > 0.0:
+            n = scale3(n, -1.0)
+        # Let the pouch fall a little: back and a little down.
+        n = norm3(add3(n, (0.0, 0.3, 0.0)))
+        ua = math.dist(S, E)
+        D = 0.34 * T
+        th = re + 2.0
+        prof = [(0.12, 0.0), (1.62, 0.0), (1.72, 0.3), (1.68, 0.7), (1.52, 1.0), (0.3, 1.0), (0.12, 0.6)]
+        face = (sgn, 0.0, 0.0)
+
+        def at(s_: float, d: float, x: float = 0.0) -> Vec3:
+            return add3(add3(add3(S, scale3(u, s_ * ua)), scale3(n, d * D)), (x, 0.0, 0.0))
+
+        pts = [at(s_, d, x * th * (1.0 - 0.25 * d)) for s_, d in prof for x in (-1.0, 1.0)]
+        pu.region([hull(ctx.p(q) for q in pts)], shade(col, 0.05))
+        # The pouch's outer face carries the motif.
+        if o.motif != "none" and _facing_normal(ctx, face, 0.3):
+            for s_, d in ((1.45, 0.72), (1.2, 0.35), (0.95, 0.8)):
+                _motif_mark(ctx, pu, at(s_, d, sgn * (th * (1.0 - 0.25 * d) + 0.1)), face, 0.03 * T, trim)
+        tube3(ctx, pu, S, E, rs * 0.86 + 1.6, re + 2.8, col, round_b=True, joint_b=True)
+        p = _part(f"{depth}_arm_u__outer", f"{depth}_arm_u", zmap[f"{depth}_arm_u"] + LAYER["outer"], pu, f"Sleeve - {depth} upper", feature)
+        if p:
+            out.append(p)
+        pl = ctx.new()
+        tube3(ctx, pl, E, W, re + 2.8, rw + 3.2, col, round_b=False)
+        ca, cb = segment(E, W, 0.9, 1.0)
+        tube3(ctx, pl, ca, cb, lerp(re, rw, 0.9) + 2.9, rw + 3.2, trim, band=False, round_a=False, round_b=False)
+        p = _part(f"{depth}_arm_l__outer", f"{depth}_arm_l", zmap[f"{depth}_arm_l"] + LAYER["outer"], pl, f"Sleeve - {depth} lower", feature)
+        if p:
+            out.append(p)
+    return out
+
+
+# ---- the obi -------------------------------------------------------------------------------------------
+
+
+def _obi(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
+    """An obi: a wide sash from under the bust to below the waist, with the
+    obiage (a soft band) along its top in front, the obijime (a cord) round
+    its middle with a small clasp in front, and its knot at the back
+    (``outfit.obi_knot``): a ``taiko`` (a square drum) or a ``bow``. The knot
+    is its own part, under the body when the back is turned away."""
+    fig, o, plan = ctx.fig, ctx.fig.spec.outfit, ctx.plan
+    T = fig.T
+    t = (plan["outer_t"] if o.outer != "none" else 0.45) + 0.7
+    shell = fig.torso.shell(t)
+    col = o.obi_color or o.accent_color
+    trim = trim_of(o)
+    cord = o.accent_color if o.obi_color else trim
+    ya, yb = fig.y_sh + 0.38 * T, fig.y_sh + 0.72 * T
+    ym = (ya + yb) / 2 + 0.03 * T
+    pt = ctx.new()
+    shaded_region(ctx, pt, shell, ya, yb, col, lit=True)
+    pt.region(loft_region(ctx.view, shell.shell(0.15), ya - 0.03 * T, ya + 0.012 * T, lambda a, y: (62.0 - abs(wrap180(a))) * 0.2),
+              light(trim, 0.25), outline=FINE * 0.8)
+    for run in surface_line(ctx, shell, [(a, ym) for a in range(-180, 181, 10)], out=0.35, thresh=0.0):
+        pt.line(run, INK, 1.0, smooth=True)
+        pt.line(run, cord, 0.6, smooth=True)
+    if visible(ctx, 0.0, 0.3):
+        c = shell.point(0.0, ym, 0.6)
+        q = [ctx.p(add3(c, (1.3 * math.cos(a), 0.9 * math.sin(a), 0.0))) for a in (2 * math.pi * i / 12 for i in range(12))]
+        pt.region([q], "#d4b04a", outline=FINE * 0.7)
+    out = [Part("torso__obi", "torso", 33.4, pt.els, "Obi", feature="acc:obi")]
+    kn = ctx.new()
+    sec = fig.torso.section(fig.y_waist)
+    w = 0.62 * sec.rx
+
+    def back(y: float) -> float:
+        return shell.point(180.0, y, 0.0)[2]
+
+    def box(x0: float, x1: float, y0: float, y1: float, d0: float, d1: float) -> List[Point2]:
+        pts = [(x, y, back(y) - dd) for x in (x0, x1) for y, d in ((y0, d0), (y1, d1)) for dd in (0.0, d)]
+        return hull(ctx.p(q) for q in pts)
+
+    if o.obi_knot == "taiko":
+        # The drum: from the shoulder blades to below the obi, deep at its
+        # rounded top; the hanging end (tare) at its foot; the cord across.
+        y0, y1 = ya - 0.08 * T, yb + 0.07 * T
+        top = [(x * w * f, y0 + 0.025 * T * (1.0 - f) * 2.0, back(y0) - 0.11 * T) for x in (-1.0, 1.0) for f in (0.8, 1.0)]
+        rest = [(x * w, y, back(y) - d) for x in (-1.0, 1.0) for y, d in ((y0 + 0.05 * T, 0.11 * T), (y1, 0.05 * T), (y1, 0.0), (y0 + 0.05 * T, 0.0))]
+        kn.region([hull(ctx.p(q) for q in top + rest)], col)
+        kn.region([box(-w * 1.02, w * 1.02, y1 - 0.09 * T, y1 + 0.025 * T, 0.0, 0.065 * T)], shade(col, 0.1), outline=FINE)
+        if ctx.view.c < 0.3:
+            yc = lerp(y0, y1, 0.55)
+            a, b = ctx.p((-w, yc, back(yc) - 0.085 * T)), ctx.p((w, yc, back(yc) - 0.085 * T))
+            kn.line([a, b], INK, 1.0)
+            kn.line([a, b], cord, 0.6)
+    else:
+        # A bow: two wide loops out to the sides, a knot, two hanging ends.
+        for sx in (-1.0, 1.0):
+            tail = [(sx * w * f, y, back(y) - d) for f, y in ((0.05, ym), (0.45, ym), (0.6, ym + 0.3 * T), (0.15, ym + 0.3 * T))
+                    for d in (0.0, 0.04 * T)]
+            kn.region([hull(ctx.p(q) for q in tail)], shade(col, 0.08))
+        for sx in (-1.0, 1.0):
+            wing = [(sx * w * f, ym + dy * T, back(ym) - d) for f, dy in ((0.1, -0.03), (0.1, 0.03), (1.35, -0.1), (1.35, 0.1), (1.0, -0.12),
+                                                                          (1.0, 0.12)) for d in (0.02 * T, 0.07 * T)]
+            kn.region([hull(ctx.p(q) for q in wing)], col)
+        kn.region([box(-0.16 * w, 0.16 * w, ym - 0.06 * T, ym + 0.06 * T, 0.09 * T, 0.09 * T)], shade(col, 0.12), outline=FINE)
+    if kn.els:
+        out.append(Part("torso__obi_knot", "torso", 1.0 if ctx.view.c > 0.3 else 36.0, kn.els, "Obi - Knot", feature="acc:obi"))
+    return out
+
+
+# ---- geta ----------------------------------------------------------------------------------------------
+
+#: White tabi socks.
+TABI = "#f2efe8"
+
+
+def _geta_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
+    """Geta: on each foot a white tabi sock (split at the big toe, up over
+    the ankle), on a wooden board (dai) with two teeth (ha) under it down to
+    the ground, held by a thong strap (hanao, the accent colour) from between
+    the first two toes to each side of the board. The board is
+    ``outfit.geta_height`` minus the teeth below the sole; the figure stands
+    on the teeth (``Figure.sole_y``). Wood is ``shoe_color``."""
+    fig, o = ctx.fig, ctx.fig.spec.outfit
+    feature = "footwear:geta"
+    j = fig.joints
+    k = fig.k * (0.95 if fig.female else 1.0)
+    FL, FW, _FH = family_of(fig.spec).body.foot
+    y0 = fig.sole_y
+    dai_t = min(2.2 * k, 0.35 * -y0)
+    wood, strap = o.shoe_color, o.accent_color
+    rt, rk, rc, ra = fig.leg_r
+    out: List[Part] = []
+    for depth, side, sgn in SIDES:
+        A = j[f"{side}_ankle"]
+        l0, z0 = A[0], A[2]
+        hw = 4.7 * k * FW
+        zf, zh = z0 + 17.5 * k * FL, z0 - 4.6 * k * FL
+
+        def block(za: float, zb: float, ya: float, yb: float, wx: float) -> List[Vec3]:
+            return [(l0 + sx * wx, y, z) for sx in (-1.0, 1.0) for y in (ya, yb) for z in (za, zb)]
+
+        pt = ctx.new()
+        teeth = [block(zc - 1.4 * k, zc + 1.4 * k, y0 + dai_t - 0.2, 0.0, hw * 0.96) for zc in (z0 + 11.0 * k * FL, z0 - 0.5 * k * FL)]
+        teeth.sort(key=lambda b: ctx.view.depth(b[0]))
+        for b in teeth:
+            pt.region([hull(ctx.p(q) for q in b)], shade(wood, 0.14))
+        dai = block(zh, zf, y0, y0 + dai_t, hw)
+        pt.region([hull(ctx.p(q) for q in dai)], wood)
+        pt.flat([hull(ctx.p(q) for q in block(zh, zf, y0, y0 + 0.35 * dai_t, hw))], light(wood, 0.1))
+        sole, top, collar = foot_points(fig, side)
+        ah = y0 - A[1]
+        inner = -sgn
+        post = (l0 + inner * 1.2 * k * FW, y0 - 0.32 * ah, z0 + 14.5 * k * FL)
+        legs = []
+        for sx in (-1.0, 1.0):
+            legs.append([post, (l0 + sx * 3.4 * k * FW, y0 - 0.66 * ah, z0 + 7.5 * k * FL), (l0 + sx * hw, y0 - 0.05, z0 + 4.5 * k * FL)])
+        # A strap leg on the far side of the foot, or any leg seen from
+        # behind, goes under the sock; the others over it.
+        back_view = ctx.view.c < -0.25
+        over = [not back_view and ctx.view.depth(sub3(path[-1], A)) > -0.5 * hw for path in legs]
+
+        def thong(path: List[Vec3]) -> None:
+            q = [ctx.p(v) for v in path]
+            pt.line(q, INK, 1.25, smooth=True)
+            pt.line(q, strap, 0.75, smooth=True)
+
+        for path, o_ in zip(legs, over):
+            if not o_:
+                thong(path)
+        split = [(l0 + inner * 1.1 * k * FW, y0 - 0.34 * ah, z0 + 14.0 * k * FL), (l0 + inner * 1.25 * k * FW, y0 - 0.12 * ah, z0 + 18.0 * k * FL)]
+        pt.region([hull(ctx.p(q) for q in sole + top + collar)], TABI, smooth=True)
+        if not back_view:
+            pt.line([ctx.p(q) for q in split], shade(TABI, 0.3), FINE)
+        for path, o_ in zip(legs, over):
+            if o_:
+                thong(path)
+        p = _part(f"{depth}_foot__footwear", f"{depth}_leg_foot", zmap[f"{depth}_leg_foot"] + LAYER["footwear"], pt, f"Geta - {depth}", feature)
+        if p:
+            out.append(p)
+        K = j[f"{side}_knee"]
+        pc = ctx.new()
+        aa, bb = segment(K, A, 0.84, 1.0)
+        tube3(ctx, pc, aa, bb, lerp(rc, ra, 0.84) + 0.5, ra + 0.6, TABI, round_a=False)
+        p = _part(f"{depth}_leg_l__footwear", f"{depth}_leg_l", zmap[f"{depth}_leg_l"] + LAYER["footwear"], pc, f"Tabi - {depth}", feature)
+        if p:
+            out.append(p)
+    return out
 
 
 __all__ = ["accessory_parts", "drape_color", "foot_points", "footwear_parts", "legwear_parts", "outer_parts", "skirt_loft", "top_parts"]

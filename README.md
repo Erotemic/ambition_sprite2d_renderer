@@ -856,7 +856,7 @@ look (`look_left`…). Each face's eyes, brows and each talking mouth (visemes
 body, not a sheet row).
 
 **Species heads** (`species.py`, `head.species`: `human`, `horse`, `dog`,
-`cat`, `bird`, `sea_lion`) are fresh anthropomorphic heads on the same humanoid body,
+`cat`, `bird`, `sea_lion`, `alligator`) are fresh anthropomorphic heads on the same humanoid body,
 each a head model (rows, relief, face layout, ears, mane/tuft/crest or none). They
 wear every hat, take every expression and pose like any other spec. Never
 trace or adapt an existing animal sprite for one. A species head says where
@@ -867,6 +867,32 @@ human's, `pose3d.SPECIES_HEAD_TURN`), and the neck's upper part
 body carries. Every rig declares that join to `pose_audit` (`continuity`:
 `head_on_neck`, `neck_under_head`), so a head that floats or a neck that
 opens is an audit error.
+
+The `alligator` head is a low skull with the eyes high on bony bumps, a long
+broad snout with a round U-shaped end (not a crocodile's V), nostrils on a
+knob at its tip, the jaw line along each side with the upper teeth showing
+when it is shut, and a pale lower jaw and throat (`HeadModel.muzzle_alpha`,
+`throat`). Its jaw opens on a hinge at the back (`headdraw._jaw_line`).
+
+**The geisha wardrobe** is in the same vocabulary: `outer: kimono` (ankle
+long, wrapped left over right, the collar over a white under-collar and
+pulled down at the nape, wide sleeves whose pouch hangs from the upper arm;
+`outer_color`, `trim_color` for the collar, lining and hem, `motif`:
+`none`/`blossom`/`dot`), the accessory `obi` (`obi_color`, `obi_knot`:
+`taiko`/`bow`), `hair.style: nihongami` (a wig-like shimada that sits on any
+head, with `hair.ornaments` kanzashi, 0..6, in `hair.ornament_color`),
+`face.makeup: geisha` (white face paint, red lips and eye corners; on an
+animal a pale face and red on the front of the jaw line) and
+`shoes: geta` (tabi on wooden sandals with two teeth and a thong strap,
+`geta_height` cm). Geta raise the whole figure (`Figure.sole_y`): every
+height is measured from the soles, planted feet stay on the ground, and a
+pose on the ground (`Kit.pose(ground=True)`) is lowered by the geta. So geta
+and other footwear cannot be wardrobe alternates of each other. The kimono's
+wrap and the kanzashi are not symmetric; a left view (a mirror) shows them
+the other way. These fields are written to a record only when they are not
+at their default, so older records and their SVGs do not change. The
+example spec `data/chargen_examples/gator_geisha.chargen.yaml` (not a game
+target; `chargen show` draws it) puts them on the alligator head.
 
 **Components** (`wear.py`): legwear, top, outer layer, footwear, hair, hat
 and accessories are separate parts tagged `slot:kind` (`data-rig-feature`),

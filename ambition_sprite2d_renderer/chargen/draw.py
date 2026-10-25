@@ -141,6 +141,20 @@ def draw_hand(ctx: Ctx, side: str) -> List:
     return pt.els
 
 
+def _throat(ctx: Ctx, pt, y0: float, y1: float) -> None:
+    """The front of the neck in a second colour: an animal's pale throat
+    (``HeadModel.throat``), or face paint, which goes down the neck."""
+    from .headdraw import PAINT, coat_colors
+
+    fig = ctx.fig
+    paint = fig.spec.face.makeup == "geisha"
+    if not (paint or fig.model.throat):
+        return
+    col = PAINT if paint else coat_colors(ctx)[1]
+    reach = 80.0 if paint else 55.0
+    pt.flat(loft_region(ctx.view, fig.neck.shell(0.02), y0, y1, lambda a, y: (reach - abs(wrap180(a))) * 0.02), col)
+
+
 def body_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     fig = ctx.fig
     out: List[Part] = []
@@ -163,6 +177,7 @@ def body_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     nk = fig.neck
     shaded_region(ctx, pt, nk, nk.top, nk.bottom, ctx.skin, shade_frac=0.25)
     pt.flat(loft_region(ctx.view, nk, nk.top, nk.top + (nk.bottom - nk.top) * 0.55), ctx.skin_sh)
+    _throat(ctx, pt, nk.top, nk.bottom)
     out.append(Part("neck", "torso", zmap["neck"], pt.els, "Neck"))
     # The neck's upper half again, on the HEAD: when the head turns about the
     # top of the neck it carries this with it over the neck below, so a tilt
@@ -173,6 +188,7 @@ def body_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     pt.region(loft_region(ctx.view, nk, nk.top, y_s), ctx.skin)
     shaded_region(ctx, pt, nk, nk.top, y_s + 0.9, ctx.skin, ink=False, shade_frac=0.25)
     pt.flat(loft_region(ctx.view, nk, nk.top, nk.top + (nk.bottom - nk.top) * 0.55), ctx.skin_sh)
+    _throat(ctx, pt, nk.top, y_s)
     out.append(Part("neck_upper", "head", NECK_UPPER_Z, pt.els, "Neck - Upper (turns with the head)"))
     j = fig.joints
     rs, re, rw = fig.arm_r
