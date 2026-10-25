@@ -39,7 +39,7 @@ def lineage_view(
 
                 timeline = blamer.timeline if blamer is not None else from_store(store, ledger or {}, cache)
             pin = attribute(info, ledger or {}, timeline)
-            drawn = sorted({a.models[0] for (c, _), a in curated().items() if c == sha})
+            drawn = sorted({a.models[0] for (c, _), a in curated().items() if c == sha})  # a commit-pinned drawing
             if drawn:
                 row["drawn_by"] = drawn
             row.update({

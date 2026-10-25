@@ -440,3 +440,19 @@ def test_a_config_brings_the_generator_it_runs_but_not_other_characters(tmp_path
     files, how = authorship.generator_files(repo, sha, "", "foo", aliases=[], others={"foo", "bar", "robot"})
     assert how == "named"
     assert sorted(files) == [pkg + "configs/review/foo.yaml", pkg + "targets/toon_side.py"], files
+
+
+def test_a_curated_file_is_the_persons_whole_whoever_rewrote_its_lines(history_store, tmp_path, monkeypatch):
+    """`commit: "*"`: every line of the file is the person's (a session that
+    rigs or reformats a drawing changes its lines, not who drew it)."""
+    import importlib
+
+    attribution = importlib.import_module("design_history.attribution")
+    authorship = importlib.import_module("design_history.authorship")
+    repo, head = history_store
+    foo = "ambition_sprite2d_renderer/targets/characters/foo.py"
+    authors = tmp_path / "authors.yaml"
+    authors.write_text(f'authors:\n  - commit: "*"\n    paths: [{foo}]\n    who: A Person\n')
+    monkeypatch.setattr(attribution, "AUTHORS", authors)
+    got = {s.who: s.lines for s in authorship.Blamer(repo, tmp_path / "cache").authorship(head, [foo]).shares}
+    assert got == {"A Person": 5}, got

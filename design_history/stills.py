@@ -95,10 +95,10 @@ def package_of(root: Path) -> str | None:
     return next((name for name in PACKAGES if (root / name).is_dir()), None)
 
 
-def _run(python: str, root: Path, args: list[str], timeout: int = 600):
+def _run(python: str, root: Path, args: list[str], timeout: int = 600, *, module: bool = True):
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONPATH="")
     return subprocess.run(
-        [python, "-m", package_of(root), *args],
+        [python, *(["-m", package_of(root)] if module else []), *args],
         cwd=root, env=env, capture_output=True, text=True, errors="replace", timeout=timeout,
     )
 
@@ -118,6 +118,86 @@ def _png_in(directory: Path, target_id: str) -> Path | None:
     pngs = sorted(directory.glob("*.png"))
     exact = [p for p in pngs if p.stem.startswith(target_id)]
     return (exact or pngs or [None])[0]
+
+
+#: The fast still, run in the commit's own tree: a character-generator target
+#: draws its front three-quarter view (what its canonical would build a whole
+#: rig for, about a minute); any other target draws its canonical with
+#: ``canonical_render_only`` (no sheet: Wolfenstein 13 s, not 11 minutes).
+#: Exit 3: this commit has neither, and the slower rungs run.
+_FAST = r"""
+import sys
+from pathlib import Path
+target_id, out, root = sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3]).resolve()
+import ambition_sprite2d_renderer as package
+if not Path(package.__file__).resolve().is_relative_to(root):
+    sys.exit(5)
+try:
+    from ambition_sprite2d_renderer.registry.discovery import discover_all_targets
+    from ambition_sprite2d_renderer.authoring.sheet_build import canonical_render_only
+    from ambition_sprite2d_renderer.authoring.canonical import draw_canonical_of
+except ImportError:
+    sys.exit(3)
+try:
+    from ambition_sprite2d_renderer.cli.commands import _ALL_TARGETS as targets  # the CLI's own lookup
+except Exception:
+    report = discover_all_targets()
+    targets = getattr(report, "targets", report)
+target = targets.get(target_id)
+if target is None:
+    sys.exit(4)
+specs = [Path(p) for p in (getattr(target, "data_sources", None) or getattr(target, "data", None) or []) if str(p).endswith(".chargen.yaml")]
+if specs:
+    try:
+        from ambition_sprite2d_renderer.chargen.spec import CharacterSpec
+        from ambition_sprite2d_renderer.chargen.sheets import render_view
+        from ambition_sprite2d_renderer.chargen.geometry import VIEW_BY_KEY
+    except ImportError:
+        specs = []
+if specs:
+    import yaml
+    from ambition_sprite2d_renderer.chargen.spec import complete
+    data = yaml.safe_load(specs[0].read_text())
+    data.pop("game", None)  # a townsperson's game settings are not the drawing
+    image = render_view(complete(data), VIEW_BY_KEY["front_3q"], px_per_cm=2.0)
+    image.crop(image.getbbox()).save(out / f"{target_id}_chargen_front_3q.png")
+else:
+    with canonical_render_only():
+        draw_canonical_of(target, out)
+"""
+
+
+def _rung_fast(python: str, root: Path, target_id: str, out: Path) -> str:
+    if package_of(root) != "ambition_sprite2d_renderer":
+        return "no fast still at this commit"
+    result = _run(python, root, ["-c", _FAST, target_id, str(out), str(root)], module=False)
+    if result.returncode == 0 and _png_in(out, target_id):
+        return ""
+    return {3: "no fast still at this commit", 4: f"no target {target_id} at this commit",
+            5: "the interpreter imports a different renderer than this commit's"}.get(result.returncode, _tail(result))
+
+
+def _words(target_id: str) -> list[str]:
+    """The id and its tails (``village_daichi``: ``daichi``): a target id can
+    be built from a file's name, so the whole id need not be written."""
+    parts = target_id.split("_")
+    return [target_id, *("_".join(parts[i:]) for i in range(1, len(parts)) if len("_".join(parts[i:])) >= 4)]
+
+
+def named_at(root: Path, target_ids: list[str]) -> bool:
+    """Whether the tree names one of ``target_ids`` (in a file's name or its
+    text, any case): a target nothing names cannot be drawn, so its rungs
+    need not run."""
+    pkg = root / (package_of(root) or "")
+    base = pkg if pkg.exists() else root
+    words = sorted({w.lower() for tid in target_ids for w in _words(tid)})
+    for path in base.rglob("*"):
+        if any(w in path.name.lower() for w in words):
+            return True
+    args = ["grep", "-rqiF", "--include=*.py", "--include=*.yaml", "--include=*.yml", "--include=*.json"]
+    for w in words:
+        args += ["-e", w]
+    return subprocess.run([*args, str(base)]).returncode == 0
 
 
 def _rung_canonical(python: str, root: Path, target_id: str, out: Path) -> str:
@@ -215,14 +295,23 @@ def _first_frame(out: Path, sheet: str, animation: str) -> Path | None:
     return frame
 
 
-def _pick(python: str, root: Path, target_id: str, pick: str) -> tuple[Path | None, str]:
+def _pick(python: str, root: Path, target_id: str, pick: str, kept: Path | None = None) -> tuple[Path | None, str]:
     """``file:<name>`` takes a named output; ``frame:<animation>[@<sheet>]``
-    takes the first frame of an animation of one of the target's sheets."""
+    takes the first frame of an animation of one of the target's sheets.
+    ``kept`` keeps the target's whole render at this commit, so another pick
+    of it (the giant gnu and the rider are sheets of one boss) reuses it."""
     out = Path(tempfile.mkdtemp(prefix="dh-pick-"))
-    try:
-        failure = _outputs_of(python, root, target_id, out)
-    except subprocess.TimeoutExpired:
-        failure = "timed out"
+    failure = ""
+    if kept is not None and (kept / ".done").exists():
+        shutil.copytree(kept, out, dirs_exist_ok=True)
+    else:
+        try:
+            failure = _outputs_of(python, root, target_id, out)
+        except subprocess.TimeoutExpired:
+            failure = "timed out"
+        if kept is not None and not failure:
+            shutil.copytree(out, kept, dirs_exist_ok=True)
+            (kept / ".done").write_text("")
     kind, _, spec = pick.partition(":")
     if kind == "file":
         hit = next(out.rglob(spec), None)
@@ -248,19 +337,34 @@ def scratch_root(png: Path) -> Path:
 
 
 def render_still(
-    python: str, root: Path, target_ids: list[str], pick: str | None = None
+    python: str, root: Path, target_ids: list[str], pick: str | None = None, kept: Path | None = None
 ) -> tuple[Path | None, str | None, str]:
     """Try each id, newest name first, and each command, until one draws.
     Returns the PNG (in a temporary directory the caller must move), the id and
     a failure note."""
     if package_of(root) is None:
         return None, None, "the renderer package does not exist at this commit"
+    if not named_at(root, target_ids):
+        return None, None, f"no file names {'/'.join(target_ids)} at this commit"
+    if not pick:
+        for target_id in target_ids:
+            out = Path(tempfile.mkdtemp(prefix="dh-still-"))
+            try:
+                failure = _rung_fast(python, root, target_id, out)
+            except subprocess.TimeoutExpired:
+                failure = "timed out"
+            png = _png_in(out, target_id)
+            if not failure and png is not None:
+                return png, target_id, ""
+            shutil.rmtree(out, ignore_errors=True)
+            if failure.startswith("the interpreter imports"):
+                return None, None, failure
     if not _imports_this_tree(python, root):
         return None, None, "the interpreter imports a different renderer than this commit's"
     notes: list[str] = []
     if pick:
         for target_id in target_ids:
-            png, failure = _pick(python, root, target_id, pick)
+            png, failure = _pick(python, root, target_id, pick, kept / target_id if kept else None)
             if png is not None:
                 return png, target_id, ""
             notes.append(f"{target_id}/{pick}: {failure}")
@@ -314,7 +418,7 @@ def still_for(
     if miss.exists():
         return Still(None, None, None, miss.read_text())
     root = worktrees.at(seg, sha)
-    png, used, failure = render_still(python, root, target_ids, pick)
+    png, used, failure = render_still(python, root, target_ids, pick, kept=cache / "outputs" / sha[:12])
     if png is None:
         miss.write_text(failure)
         return Still(None, None, None, failure)

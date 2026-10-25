@@ -189,6 +189,7 @@ def curated(path: Path | None = None) -> dict[tuple[str, str], Attribution]:
         return {}
     import yaml  # noqa: PLC0415
 
+    # `commit: "*"` covers every commit's lines of the file: the key is ("*", path).
     out: dict[tuple[str, str], Attribution] = {}
     for row in (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("authors") or []:
         for file in row.get("paths") or []:

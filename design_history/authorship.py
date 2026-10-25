@@ -257,7 +257,7 @@ class Blamer:
     def who(self, sha: str) -> Attribution:
         if sha.startswith("curated:"):
             _, commit, path = sha.split(":", 2)
-            return self.curated[(commit, path)]
+            return self.curated.get((commit, path)) or self.curated[("*", path)]
         if sha not in self._who:
             if sha in self.roots():
                 self._who[sha] = Attribution((), "unknown", "an import commit: the line was not found before it")
@@ -275,7 +275,7 @@ class Blamer:
             if not commits:
                 continue
             # The lines of a curated (commit, file) are the person's.
-            commits = [f"curated:{c}:{path}" if (c, path) in self.curated else c for c in commits]
+            commits = [f"curated:{c}:{path}" if (c, path) in self.curated or ("*", path) in self.curated else c for c in commits]
             files[path] = len(commits)
             part = "art" if path.endswith(ART_SUFFIXES) else "code"
             groups["all"].update(commits)

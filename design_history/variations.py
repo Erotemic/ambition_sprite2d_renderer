@@ -119,14 +119,23 @@ def render_all(tasks: list[tuple], *, python: str, store: Path, cache: Path, job
     log(f"{len(tasks)} stills, {len(tasks) - len(todo)} cached, {len(todo)} to draw on {jobs} process(es)")
     if not todo:
         return
+    # Every still of one commit goes to one process: its worktree checks the
+    # commit out once, and a whole render that several picks cut (the GNU-ton
+    # boss's sheets) is drawn once.
+    commits = sorted({(t[0].name, t[1]) for t in todo})
+    worker = {c: i % jobs for i, c in enumerate(commits)}
     todo.sort(key=lambda t: (t[0].name, t[1]))
-    chunks = [todo[i::jobs] for i in range(jobs)]
+    chunks = [[t for t in todo if worker[(t[0].name, t[1])] == i] for i in range(jobs)]
     with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as pool:
         futures = [pool.submit(_draw_chunk, chunk, python, str(store), str(cache), f"w{i}") for i, chunk in enumerate(chunks) if chunk]
         done = 0
         for fut in concurrent.futures.as_completed(futures):
             done += fut.result()
             log(f"  a worker finished: {done}/{len(todo)} drawn")
+    # The whole renders kept for picks are large and serve this run only.
+    import shutil
+
+    shutil.rmtree(cache / "outputs", ignore_errors=True)
 
 
 def _key(task) -> str:

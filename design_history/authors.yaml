@@ -1,7 +1,7 @@
 # Who drew what where the commits cannot say: a person's drawing committed by
 # an agent session, or Jon's hand work committed from his account. Each entry
-# names a commit (full id) and the renderer-relative paths whose lines it
-# covers. It outranks every basis of attribution.py: the person said so.
+# names a commit (full id, or "*" for every commit) and the renderer-relative
+# paths whose lines it covers. It outranks every basis of attribution.py: the person said so.
 #
 # `who`    the author to show
 # `paths`  the files whose lines (blamed to `commit`) the entry covers
@@ -11,12 +11,51 @@
 # the colors." A fill in its own commit keeps that commit's author (GPT by
 # Jon's rule when unsigned); an entry here covers only the lines of the
 # commit it names.
+#
+# Jon, 2026-10-25: the only characters he had a hand in drawing are the
+# Director, the Performer, the Officer, the Medic, Stargan, the Patent Clerk,
+# Noether, the PCA and Mary-O, and he traced the gamepad. Everything else is
+# a model's: Claude always signs, so an unsigned commit is the GPT of its
+# date. Each entry is the commit that brought his drawing in, under every
+# path the file has had (a rename changes the path an era's blame sees).
 authors:
-  - commit: dc09e88d89c0856efa6ab59b61eaf8b322a8f491
-    paths: [assets/mary_o_v2.svg]
-    who: Jon Crall (drawn by hand)
-    note: "Jon, 2026-10-25: he drew most of Mary-O v2. The commit (a Claude Opus 5 session) says it carries Jon's art pass. Colors may be a model's (see the header)."
-  - commit: 36fb44d79da39e29ab4245f4058e779718fb8c4f
+  - commit: "*"
+    paths: [assets/medic.svg, ambition_sprite2d_renderer/data/characters/medic/medic.svg]
+    who: Jon Crall (drawn by hand; GPT often filled the colours)
+    note: "Jon, 2026-10-25: he drew the Medic."
+  - commit: "*"
+    paths: [assets/actor.svg, assets/performer.svg, ambition_sprite2d_renderer/data/characters/actor/actor.svg, ambition_sprite2d_renderer/data/characters/performer/performer.svg]
+    who: Jon Crall (drawn by hand; GPT often filled the colours)
+    note: "Jon, 2026-10-25: he drew the Performer (the Actor before its rename)."
+  - commit: "*"
+    paths: [assets/officer.svg, ambition_sprite2d_renderer/data/characters/officer/officer.svg]
+    who: Jon Crall (drawn by hand; GPT often filled the colours)
+    note: "Jon, 2026-10-25: he drew the Officer."
+  - commit: "*"
+    paths: [assets/author-rig-labels-joints.svg, assets/director-rig-labels-joints.svg, ambition_sprite2d_renderer/data/characters/author/author.svg, ambition_sprite2d_renderer/data/characters/director/director.svg]
+    who: Jon Crall (drawn by hand; GPT often filled the colours)
+    note: "Jon, 2026-10-25: he drew the Director (the Author before its rename)."
+  - commit: "*"
+    paths: [assets/carl-stargan.svg]
+    who: Jon Crall (drawn by hand; GPT often filled the colours)
+    note: "Jon, 2026-10-25: he drew Carl Stargan."
+  - commit: "*"
+    paths: [assets/patent-clerk.svg]
+    who: Jon Crall (drawn by hand; GPT often filled the colours)
+    note: "Jon, 2026-10-25: he drew the Patent Clerk."
+  - commit: "*"
     paths: [assets/noether.svg]
-    who: Jon Crall (traced by hand)
-    note: "The commit, from Jon's account, says: hand traced noether svg with part labels."
+    who: Jon Crall (drawn by hand; GPT often filled the colours)
+    note: "Jon, 2026-10-25: he drew Noether."
+  - commit: "*"
+    paths: [assets/perfect-cellular-automaton/PCA-multiview.svg, assets/perfect-cellular-automaton/PCA-multiview_updated_v4_canvas_fixed.svg]
+    who: Jon Crall (drawn by hand; GPT often filled the colours)
+    note: "Jon, 2026-10-25: he drew the PCA."
+  - commit: "*"
+    paths: [assets/mary_o_v2.svg]
+    who: Jon Crall (drawn by hand; GPT often filled the colours)
+    note: "Jon, 2026-10-25: he drew Mary-O v2."
+  - commit: "*"
+    paths: [assets/gamepad-draft.svg]
+    who: Jon Crall (drawn by hand; GPT often filled the colours)
+    note: "Jon, 2026-10-25: he drew the gamepad (traced)."
