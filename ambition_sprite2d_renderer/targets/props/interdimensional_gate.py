@@ -20,7 +20,14 @@ Three sheets of one assembly, on one canvas:
 - ``_glyphs``: ``lit``, one frame per chevron, that glyph alone blazing on
   its plaque where the ring draws it. Laid over the ring, frame k lights
   chevron k as it is dialed.
+
+And one picture, ``_tunnel.png``: the inside of the wormhole for the Ultra
+layer over the membrane (``gate_portal_fx.wgsl``), which streams it down a
+twisting tunnel. It tiles both ways: across it is the way round the tunnel,
+down it the way in. Stars drawn as streaks along the way in, and a nebula of
+the membrane's blues with a little violet.
 """
+
 
 from __future__ import annotations
 
@@ -34,7 +41,7 @@ from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import alpha_bbox_metrics, build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
-from ambition_sprite2d_renderer.glyphs.legally_distinct import GLYPHS, Placement, glyphs_mask
+from ambition_sprite2d_renderer.glyphs.legally_distinct import ARCH_GAP_DEG, GLYPHS, Placement, arch_angle, glyphs_mask
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -68,7 +75,10 @@ SHEET_FILES = [
     f"{PORTAL_TARGET}_spritesheet.yaml",
     f"{GLYPHS_TARGET}_spritesheet.png",
     f"{GLYPHS_TARGET}_spritesheet.yaml",
+    f"{TARGET_NAME}_tunnel.png",
 ]
+
+TUNNEL_SIZE = 256
 
 # Use a larger canvas than the default character sheets so the gate has more
 # room for legible inscription detail and cleaner anti-aliased edges.
@@ -80,8 +90,7 @@ INNER_R = 45.0 * SUPER
 PORTAL_R = 39.5 * SUPER
 RING_MID_R = (INNER_R + OUTER_R) / 2.0
 #: The bottom slice of the ring the base hides: no plaque there.
-BASE_GAP_DEG = 96.0
-GLYPH_STEP_DEG = (360.0 - BASE_GAP_DEG) / (len(GLYPHS) - 1)
+BASE_GAP_DEG = ARCH_GAP_DEG
 #: The plaques shrink to fit the shorter arc.
 PLAQUE_SCALE = 0.78
 #: A plaque's dark face, about its centre, foot down (y down), where the
@@ -172,10 +181,10 @@ def _rune_glow(
 
 
 def _plaque_angle(index: int) -> float:
-    """The direction of chevron ``index`` from the centre, in degrees
-    clockwise from 3 o'clock (y down): the first at the lower left, just
-    above the base, the last at the lower right."""
-    return 90.0 + BASE_GAP_DEG / 2.0 + index * GLYPH_STEP_DEG
+    """The direction of chevron ``index`` from the centre (``arch_angle``):
+    the first at the lower left, just above the base, the last at the lower
+    right."""
+    return arch_angle(index)
 
 
 def _draw_plaque(draw: ImageDraw.ImageDraw, ang: float) -> None:
@@ -622,6 +631,47 @@ def render_portal_frame(animation: str, frame_index: int, nframes: int) -> Image
     return _downsample(img)
 
 
+def _periodic_noise(rng: np.random.Generator, size: int, falloff: float) -> np.ndarray:
+    """Noise that tiles: random phases under a power-law spectrum, 0..1."""
+    fy = np.fft.fftfreq(size)[:, None]
+    fx = np.fft.fftfreq(size)[None, :]
+    freq = np.sqrt(fx * fx + fy * fy)
+    freq[0, 0] = 1.0
+    spectrum = (rng.normal(size=(size, size)) + 1j * rng.normal(size=(size, size))) / freq**falloff
+    spectrum[0, 0] = 0.0
+    field = np.real(np.fft.ifft2(spectrum))
+    return (field - field.min()) / max(1e-6, field.max() - field.min())
+
+
+def render_tunnel_picture() -> Image.Image:
+    """The inside of the wormhole, tiling both ways (see the module)."""
+    n = TUNNEL_SIZE
+    rng = np.random.default_rng(1977)
+    cloud = _periodic_noise(rng, n, 1.6)
+    wisps = _periodic_noise(rng, n, 1.1)
+    deep = np.array([10, 22, 70], np.float32)
+    blue = np.array([40, 120, 230], np.float32)
+    cyan = np.array([120, 236, 255], np.float32)
+    violet = np.array([120, 70, 210], np.float32)
+    k = np.clip((cloud - 0.35) / 0.5, 0.0, 1.0)[..., None]
+    rgb = deep * (1 - k) + blue * k
+    rgb = rgb + (cyan - rgb) * (np.clip((wisps - 0.62) / 0.3, 0.0, 1.0) ** 2)[..., None]
+    rgb = rgb + (violet - rgb) * (np.clip((0.3 - cloud) / 0.3, 0.0, 1.0) * 0.6)[..., None]
+    # Streaks: stars stretched along the way in, wrapped at the edges.
+    ys, xs = np.mgrid[0:n, 0:n].astype(np.float32)
+    stars = np.zeros((n, n), np.float32)
+    for _ in range(150):
+        sx, sy = rng.uniform(0, n, 2)
+        length = rng.uniform(3.0, 11.0)
+        bright = rng.uniform(0.35, 1.0)
+        dx = (xs - sx + n / 2) % n - n / 2
+        dy = (ys - sy + n / 2) % n - n / 2
+        stars += bright * np.exp(-(dx * dx) / (2 * 0.7**2) - (dy * dy) / (2 * length**2))
+    rgb = rgb + np.clip(stars, 0.0, 1.4)[..., None] * np.array([210, 245, 255], np.float32)
+    px = np.dstack([np.clip(rgb, 0, 255), np.full((n, n), 255.0)])
+    return Image.fromarray(px.astype(np.uint8), "RGBA")
+
+
 @functools.lru_cache(maxsize=1)
 def _assembly_body_metrics() -> dict:
     """The gate's one body: the ring's idle frame, on the shared canvas.
@@ -668,7 +718,10 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         render_fn=render_glyph_frame,
         **shared,
     )
+    tunnel = out_dir / f"{TARGET_NAME}_tunnel.png"
+    render_tunnel_picture().save(tunnel)
     ordered = [
+        tunnel,
         ring_outputs["canonical"],
         ring_outputs["canonical_transparent"],
         ring_outputs["spritesheet"],

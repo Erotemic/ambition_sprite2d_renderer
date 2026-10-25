@@ -240,6 +240,20 @@ def _build() -> Tuple[GateGlyph, ...]:
 GLYPHS: Tuple[GateGlyph, ...] = _build()
 BY_ID = {glyph.id: glyph for glyph in GLYPHS}
 
+#: The bottom slice of a ring that holds no glyph: on the gate, the base it
+#: stands in; on a dial, the Δ press that engages it.
+ARCH_GAP_DEG = 96.0
+ARCH_STEP_DEG = (360.0 - ARCH_GAP_DEG) / (len(GLYPHS) - 1)
+
+
+def arch_angle(index: int) -> float:
+    """Where glyph ``index`` sits round a ring: degrees clockwise from 3
+    o'clock (y down), clockwise from the lower left over the top to the lower
+    right, so LEGALLY DISTINCT reads left to right and Δ is at 12 o'clock.
+    Every ring of glyphs (the gate, its console, the dial wheel) uses it; a
+    glyph there stands on the ray from the centre, turned ``angle + 90``."""
+    return 90.0 + ARCH_GAP_DEG / 2.0 + index * ARCH_STEP_DEG
+
 
 # --- outlines -----------------------------------------------------------------
 

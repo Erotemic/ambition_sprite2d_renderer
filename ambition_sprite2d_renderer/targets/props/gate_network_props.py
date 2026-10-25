@@ -2,9 +2,10 @@
 keeps a ring running.
 
 - ``gate_dialer``: the console a traveller dials from, in the ring's bronze.
-  A pedestal with a sloped top holding a round dial: the ring's fifteen
-  glyphs (``glyphs.legally_distinct``) lit cyan round a dark centre with a
-  solid Δ in it, seen at the slant. A small screen stands behind it. The game draws the terminal's
+  A pedestal with a sloped top holding a round dial, laid out as the ring
+  is: the fifteen glyphs (``glyphs.legally_distinct``) lit cyan over the
+  arch, Δ at the top, and in the bottom slice, where the gate has its base,
+  a big solid Δ: the press that engages a dial. Seen at the slant. A small screen stands behind it. The game draws the terminal's
   press button over the brass plate on the front. Every dialed ring has one
   beside it.
 - ``gate_power_cabinet``: the ring's power: a grey cabinet with a meter, a
@@ -35,7 +36,7 @@ import numpy as np
 from PIL import Image
 
 from ...authoring.sheet_build import build_sheet
-from ...glyphs.legally_distinct import BY_ID, GLYPHS, Placement, glyphs_mask, spell
+from ...glyphs.legally_distinct import ARCH_GAP_DEG, GLYPHS, Placement, arch_angle, glyphs_mask, spell
 from ._town_kit import Canvas, box
 from .castle_godwin import lettering
 
@@ -65,13 +66,13 @@ SCREEN = (16, 42, 52)
 
 def _dial_glyphs(c: Canvas, cx: float, cy: float, radius: float, cap: float, slant: float) -> np.ndarray:
     """The coverage of the fifteen glyphs round a dial centred at (cx, cy)
-    (units): Λ at the top, each foot toward the centre, and a solid Δ in the
-    middle (the press that engages a dial), all seen at a slant that shortens
-    the dial to ``slant`` of its height."""
+    (units), laid out as the gate's ring (``arch_angle``), each foot toward
+    the centre, seen at a slant that shortens the dial to ``slant`` of its
+    height."""
     px, py, k = (cx - c.o[0]) * c.k, (cy - c.o[1]) * c.k, c.k
-    placements = [Placement(BY_ID["delta"], (px, py), 1.6 * cap * k)]
+    placements = []
     for glyph in GLYPHS:
-        ang = -90.0 + glyph.index * 360.0 / len(GLYPHS)
+        ang = arch_angle(glyph.index)
         rad = math.radians(ang)
         placements.append(Placement(glyph, (px + radius * k * math.cos(rad), py + radius * k * math.sin(rad)), cap * k, ang + 90.0))
     squash = f"translate({px:.3f} {py:.3f}) scale(1 {slant}) translate({-px:.3f} {-py:.3f})"
@@ -112,6 +113,17 @@ def _dialer(c: Canvas) -> None:
     glyphs = _dial_glyphs(c, cx, cy, 12.6, 3.6, slant)
     c.put(c.soften(glyphs, 0.5), CYAN_GLOW, 0.55)
     c.put(glyphs, CYAN)
+    # The accept press, in the slice the glyphs leave open: a solid Δ that
+    # bites into the band and the hub, raised on a bronze bezel.
+    half = 12.6 * math.sin(math.radians(ARCH_GAP_DEG / 2.0)) * 0.62
+    top, foot = cy + 3.2 * slant * 2.0 - 4.4, cy + 15.2 * slant
+    press = [(cx, top), (cx + half, foot), (cx - half, foot)]
+    bezel = [(cx, top - 1.6), (cx + half + 1.9, foot + 1.0), (cx - half - 1.9, foot + 1.0)]
+    c.put(c.mask(lambda p: p.poly([(x, y + 0.8) for x, y in bezel])), WOOD_DARK)
+    c.put(c.mask(lambda p: p.poly(bezel)), BRASS)
+    c.put(c.mask(lambda p: p.poly(press), blur=0.9), CYAN_GLOW, 0.6)
+    c.put(c.mask(lambda p: p.poly(press)), CYAN)
+    c.put(c.mask(lambda p: p.poly([(cx, top + 1.2), (cx + half * 0.45, foot - 2.2), (cx - half * 0.45, foot - 2.2)]), blur=0.3), (225, 255, 255), 0.7)
     # A brass plate on the front, where the press button sits.
     c.put(c.mask(box(w * 0.5 - 9, 37, w * 0.5 + 9, h - 9)), BRASS_DARK)
     c.put(c.mask(box(w * 0.5 - 8, 38, w * 0.5 + 8, h - 10)), BRASS, 0.55)
