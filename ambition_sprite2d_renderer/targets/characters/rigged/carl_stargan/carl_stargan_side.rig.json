@@ -479,13 +479,12 @@
       "svg_source_order": 17
     },
     {
-      "name": "near_hand",
+      "name": "near_thumb",
       "bone": "near_arm_hand",
       "z": 18.0,
       "kind": "sprite",
       "include": [
-        "path2133",
-        "path2131"
+        "near-thumb"
       ],
       "pivot": [
         744.5,
@@ -495,24 +494,9 @@
       "svg_source_order": 18
     },
     {
-      "name": "near_arm_l",
-      "bone": "near_arm_l",
-      "z": 19.0,
-      "kind": "sprite",
-      "include": [
-        "path2072"
-      ],
-      "pivot": [
-        700.5,
-        377.5
-      ],
-      "rest_angle": 72.2553,
-      "svg_source_order": 19
-    },
-    {
       "name": "sword",
       "bone": "near_arm_hand",
-      "z": 20.0,
+      "z": 19.0,
       "kind": "sprite",
       "include": [
         "path2783",
@@ -550,7 +534,45 @@
         515.0
       ],
       "rest_angle": 75.7526,
+      "svg_source_order": 19
+    },
+    {
+      "name": "near_hand",
+      "bone": "near_arm_hand",
+      "z": 20.0,
+      "kind": "sprite",
+      "include": [
+        "near-fist",
+        "near-fist-crease-0",
+        "near-fist-crease-1",
+        "near-fist-crease-2",
+        "near-fist-knuckle-0",
+        "near-fist-knuckle-1",
+        "near-fist-knuckle-2",
+        "near-fist-knuckle-3",
+        "near-fist-cuff"
+      ],
+      "pivot": [
+        744.5,
+        515.0
+      ],
+      "rest_angle": 75.7526,
       "svg_source_order": 20
+    },
+    {
+      "name": "near_arm_l",
+      "bone": "near_arm_l",
+      "z": 21.0,
+      "kind": "sprite",
+      "include": [
+        "path2072"
+      ],
+      "pivot": [
+        700.5,
+        377.5
+      ],
+      "rest_angle": 72.2553,
+      "svg_source_order": 21
     }
   ],
   "ik_legs": [
@@ -14734,6 +14756,50 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.142857,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.285714,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.428571,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.714286,
+              -15.0,
+              "smooth"
+            ],
+            [
+              0.857143,
+              -5.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -20560,6 +20626,35 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              -35.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              -25.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -21074,6 +21169,45 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              20.0,
+              "smooth"
+            ],
+            [
+              0.166667,
+              -20.0,
+              "smooth"
+            ],
+            [
+              0.333333,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.666667,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.833333,
+              -15.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -21580,6 +21714,45 @@
             [
               0.833333,
               -1.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              10.0,
+              "smooth"
+            ],
+            [
+              0.166667,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.333333,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.666667,
+              -20.0,
+              "smooth"
+            ],
+            [
+              0.833333,
+              -10.0,
               "smooth"
             ],
             [
@@ -22232,6 +22405,55 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.125,
+              15.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              25.0,
+              "smooth"
+            ],
+            [
+              0.375,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              -35.0,
+              "smooth"
+            ],
+            [
+              0.875,
+              -20.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -22811,6 +23033,50 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.142857,
+              15.0,
+              "smooth"
+            ],
+            [
+              0.285714,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.428571,
+              -20.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.714286,
+              -20.0,
+              "smooth"
+            ],
+            [
+              0.857143,
+              -10.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -23382,6 +23648,50 @@
             [
               0.857143,
               -2.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.142857,
+              -20.0,
+              "smooth"
+            ],
+            [
+              0.285714,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.428571,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.714286,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.857143,
+              -15.0,
               "smooth"
             ],
             [
@@ -24261,6 +24571,55 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.125,
+              15.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              25.0,
+              "smooth"
+            ],
+            [
+              0.375,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              -35.0,
+              "smooth"
+            ],
+            [
+              0.875,
+              -20.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -24897,6 +25256,55 @@
             [
               0.875,
               0.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.125,
+              15.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              20.0,
+              "smooth"
+            ],
+            [
+              0.375,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -25.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              -20.0,
+              "smooth"
+            ],
+            [
+              0.875,
+              -10.0,
               "smooth"
             ],
             [
@@ -25549,6 +25957,55 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.125,
+              -10.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.375,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              -35.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              -25.0,
+              "smooth"
+            ],
+            [
+              0.875,
+              -10.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -26172,6 +26629,50 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.142857,
+              -20.0,
+              "smooth"
+            ],
+            [
+              0.285714,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.428571,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              -20.0,
+              "smooth"
+            ],
+            [
+              0.714286,
+              -10.0,
+              "smooth"
+            ],
+            [
+              0.857143,
+              0.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -26678,6 +27179,45 @@
             [
               0.833333,
               -1.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.166667,
+              10.0,
+              "smooth"
+            ],
+            [
+              0.333333,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.666667,
+              -35.0,
+              "smooth"
+            ],
+            [
+              0.833333,
+              -20.0,
               "smooth"
             ],
             [
@@ -27200,6 +27740,45 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.166667,
+              10.0,
+              "smooth"
+            ],
+            [
+              0.333333,
+              20.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              25.0,
+              "smooth"
+            ],
+            [
+              0.666667,
+              15.0,
+              "smooth"
+            ],
+            [
+              0.833333,
+              5.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -27714,6 +28293,45 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.166667,
+              -10.0,
+              "smooth"
+            ],
+            [
+              0.333333,
+              -35.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.666667,
+              -35.0,
+              "smooth"
+            ],
+            [
+              0.833333,
+              -20.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -28220,6 +28838,45 @@
             [
               0.833333,
               2.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.166667,
+              10.0,
+              "smooth"
+            ],
+            [
+              0.333333,
+              20.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.666667,
+              -20.0,
+              "smooth"
+            ],
+            [
+              0.833333,
+              -10.0,
               "smooth"
             ],
             [
@@ -38170,6 +38827,50 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.142857,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.285714,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.428571,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.714286,
+              -15.0,
+              "smooth"
+            ],
+            [
+              0.857143,
+              -5.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -41643,6 +42344,50 @@
               "smooth"
             ]
           ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.142857,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.285714,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.428571,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.714286,
+              -15.0,
+              "smooth"
+            ],
+            [
+              0.857143,
+              -5.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -44452,6 +45197,45 @@
             [
               0.875,
               0.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_arm_hand": {
+          "keys": [
+            [
+              0.0,
+              20.0,
+              "smooth"
+            ],
+            [
+              0.166667,
+              10.0,
+              "smooth"
+            ],
+            [
+              0.333333,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -40.0,
+              "smooth"
+            ],
+            [
+              0.666667,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.833333,
+              -15.0,
               "smooth"
             ],
             [
@@ -47923,12 +48707,12 @@
   },
   "build_provenance": {
     "schema": "canonical-svg-rig-v3",
-    "builder_version": 20,
+    "builder_version": 21,
     "renderer": "resvg_py",
-    "renderer_version": "0.4.0",
+    "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",
-    "renderer_origin": "/home/agent/.local/uv/envs/uvpy3.13.2/lib/python3.13/site-packages/resvg_py/resvg_py.abi3.so",
-    "svg_sha256": "3391f9261d359ee5625e412e1086da97bac30f198dc6726a7211e454021298a7",
+    "renderer_origin": "/home/joncrall/code/ambition/tools/ambition_sprite2d_renderer/.venv/lib/python3.12/site-packages/resvg_py/resvg_py.cpython-312-x86_64-linux-gnu.so",
+    "svg_sha256": "bca63d810cc9da085241f6e31a60b21cb3c8aae59f72b78f2031709f4a4a6db5",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }

@@ -37358,11 +37358,11 @@
   },
   "build_provenance": {
     "schema": "canonical-svg-rig-v3",
-    "builder_version": 20,
+    "builder_version": 21,
     "renderer": "resvg_py",
-    "renderer_version": "0.4.0",
+    "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",
-    "renderer_origin": "/home/agent/.cache/ambition-tool-venvs/ambition_sprite2d_renderer/lib/python3.12/site-packages/resvg_py/resvg_py.abi3.so",
+    "renderer_origin": "/home/joncrall/code/ambition/tools/ambition_sprite2d_renderer/.venv/lib/python3.12/site-packages/resvg_py/resvg_py.cpython-312-x86_64-linux-gnu.so",
     "svg_sha256": "13aa6f341ee0c9ca647b1813ece071392af7d13be8c73abaf147a55c3355b974",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"

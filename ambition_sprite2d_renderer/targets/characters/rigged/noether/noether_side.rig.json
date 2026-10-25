@@ -41211,11 +41211,11 @@
   },
   "build_provenance": {
     "schema": "canonical-svg-rig-v3",
-    "builder_version": 20,
+    "builder_version": 21,
     "renderer": "resvg_py",
-    "renderer_version": "0.4.0",
+    "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",
-    "renderer_origin": "/home/agent/.local/uv/envs/uvpy3.13.2/lib/python3.13/site-packages/resvg_py/resvg_py.abi3.so",
+    "renderer_origin": "/home/joncrall/code/ambition/tools/ambition_sprite2d_renderer/.venv/lib/python3.12/site-packages/resvg_py/resvg_py.cpython-312-x86_64-linux-gnu.so",
     "svg_sha256": "521cadaf179d23c7323cb213c51e273aa3e8fd737596c021634010c9739eb1f6",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"

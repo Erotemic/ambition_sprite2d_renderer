@@ -36,7 +36,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-BUILDER_VERSION = 20
+BUILDER_VERSION = 21
 
 
 def _is_extension_path(path: Path) -> bool:
@@ -1512,7 +1512,7 @@ def _stargan_strike_clips(r: Mapping[str, float], rows: Mapping[str, tuple[int, 
     ``[k/f, (k+1)/f)``), so each extension sits on the frames that overlap the
     move's Active window in ``carl_stargan.ron``; the frame-index comment on
     each row names them. Forward is west (negative x), up is negative y. The
-    telescope follows the forearm. Before these he struck from one planted
+    wrist that turns the telescope is keyed in ``CARL_SWORD_WRIST``. Before these he struck from one planted
     stance with only the near arm moving, and peaked a frame or two after
     the hit.
     """
@@ -1654,6 +1654,51 @@ def _stargan_strike_clips(r: Mapping[str, float], rows: Mapping[str, tuple[int, 
         kw.update(feet(f, [-6] * f, [6] * f, lift, [v + 2 for v in lift]))
         out[name] = _pose(r, f, d, compact=False, **kw)
     return out
+
+
+#: Carl's sword wrist, one value per frame, in degrees about the grip the SVG
+#: draws. The fist in ``carl-stargan.svg`` holds the telescope with its blade
+#: about 59 degrees from the forearm, toward the thumb: a relaxed guard. A
+#: negative value turns the hand toward the little finger and brings the blade
+#: in line with the forearm (a thrust); a positive value cocks it back. The
+#: hand stays inside ``CARL_WRIST_RANGE``. A clip not listed holds the drawn
+#: guard.
+CARL_WRIST_RANGE = (-40.0, 30.0)
+CARL_SWORD_WRIST: dict[str, tuple[float, ...]] = {
+    "jab": (0, -35, -40, -25, 0),
+    "punch": (20, -20, -40, -40, -30, -15, 0),
+    "dash_attack": (10, -40, -40, -30, -20, -10, 0),
+    "planetary_orbit": (0, 15, 25, 0, -30, -40, -35, -20, 0),
+    "attack_up": (0, 15, 0, -20, -30, -20, -10, 0),
+    "attack_down": (0, -20, -40, -40, -40, -30, -15, 0),
+    "smash_forward": (0, 15, 25, 0, -30, -40, -35, -20, 0),
+    "smash_up": (0, 15, 20, 0, -25, -30, -20, -10, 0),
+    "smash_down": (0, -10, -30, -40, -40, -35, -25, -10, 0),
+    "air_neutral": (0, -20, -30, -30, -20, -10, 0, 0),
+    "air_forward": (0, 10, -30, -40, -35, -20, 0),
+    "air_back": (0, 10, 20, 25, 15, 5, 0),
+    "air_down": (0, -10, -35, -40, -35, -20, 0),
+    "air_up": (0, 10, 20, 0, -20, -10, 0),
+    "getup_attack": (0, 0, -30, -40, -30, -15, -5, 0),
+    "ledge_attack": (0, 0, -30, -40, -30, -15, -5, 0),
+    "trip_attack": (0, 0, -30, -40, -30, -15, -5, 0),
+    "item_swing": (20, 10, -30, -40, -30, -15, 0),
+}
+
+
+def _key_carl_wrist(clips: dict[str, dict]) -> None:
+    """Key ``near_arm_hand`` (the wrist, relative to the forearm) per frame."""
+    low, high = CARL_WRIST_RANGE
+    for name, values in CARL_SWORD_WRIST.items():
+        clip = clips.get(name)
+        if clip is None:
+            continue
+        if len(values) != int(clip["frames"]):
+            raise ValueError(
+                f"Carl's {name} wrist has {len(values)} values for {clip['frames']} frames"
+            )
+        clamped = [max(low, min(high, float(v))) for v in values]
+        clip["channels"]["near_arm_hand"] = keys(clamped, loop=bool(clip["loop"]))
 
 
 def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, dict]:
@@ -1910,6 +1955,7 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
     for name in ("prone", "sleep", "trip_idle"):
         if name in clips:
             clips[name] = _retarget_clip_arms_to_torso(doc, clips, name, reach_scale=0.76)
+    _key_carl_wrist(clips)
     return clips
 
 
