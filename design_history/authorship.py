@@ -356,10 +356,31 @@ def generator_files(
             if not any(names(rel, o) for o in strangers) and set(_VERSION.findall(rel)) <= set(_VERSION.findall(target)):
                 helpers.append(rel)
     if named_files:
-        return named_files + helpers, "named"
+        return named_files + helpers + _config_generators(store, sha, prefix, listed, named_files, words, strangers), "named"
     if helpers:
         return helpers, "helper"
     return (matched, "pattern") if matched else ([], "none")
+
+
+def _config_generators(store: Path, sha: str, prefix: str, listed: list[str], named: list[str],
+                       words: list[str], strangers: set[str]) -> list[str]:
+    """The modules of the generator that a named config runs (`target: toon`
+    in `configs/review/alice.yaml` draws Alice on the toon rig, whose code is
+    half her look), except the files of another character."""
+    generators = set()
+    for rel in named:
+        if rel.endswith((".yaml", ".yml")):
+            text = git(store, "show", f"{sha}:{prefix}{rel}", check=False)
+            m = re.search(r"^target:\s*['\"]?([a-z0-9_]+)", text, re.MULTILINE)
+            if m and m.group(1) not in words:
+                generators.add(m.group(1))
+    out = []
+    for name in listed:
+        rel = name[len(prefix):] if prefix and name.startswith(prefix) else name
+        if (rel.endswith(".py") and rel not in named and not _NOT_GENERATOR.search(rel)
+                and any(names(rel, g) for g in generators) and not any(names(rel, o) for o in strangers)):
+            out.append(rel)
+    return out
 
 
 def specific_inputs(records: dict[str, dict], unit: str, *, at_most: int = 3) -> list[str]:

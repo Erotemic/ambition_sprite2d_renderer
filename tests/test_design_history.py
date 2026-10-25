@@ -419,3 +419,24 @@ def test_a_holistic_look_ends_a_burst_and_a_later_redraw_of_it_keeps_its_author(
     assert [x.commit for x in found if x.burst_end] == ["a2", "b", "t", "t2"]
     assert [x.commit for x in found if x.holistic] == ["a2", "b", "w", "t"]
     assert found[5].change is not None and found[5].change < variations.SAME_LOOK
+
+
+def test_a_config_brings_the_generator_it_runs_but_not_other_characters(tmp_path):
+    """`configs/review/alice.yaml` says `target: toon`: the toon rig drew her,
+    so its modules count, but another character's preset does not."""
+    import importlib
+
+    authorship = importlib.import_module("design_history.authorship")
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    pkg = "ambition_sprite2d_renderer/"
+    sha = _commit_files(repo, {
+        pkg + "configs/review/foo.yaml": "target: toon\nname: Foo\n",
+        pkg + "targets/toon_side.py": "rig\n",
+        pkg + "targets/_toon_presets/bar.py": "bar\n",
+        pkg + "targets/robot.py": "robot\n",
+    }, "agent", "x", "2026-05-21T00:00:00+00:00")
+    files, how = authorship.generator_files(repo, sha, "", "foo", aliases=[], others={"foo", "bar", "robot"})
+    assert how == "named"
+    assert sorted(files) == [pkg + "configs/review/foo.yaml", pkg + "targets/toon_side.py"], files
