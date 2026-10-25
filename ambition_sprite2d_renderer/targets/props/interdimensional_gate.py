@@ -549,18 +549,6 @@ def render_glyph_icons() -> Image.Image:
     return strip
 
 
-def _periodic_noise(rng: np.random.Generator, size: int, falloff: float) -> np.ndarray:
-    """Noise that tiles: random phases under a power-law spectrum, 0..1."""
-    fy = np.fft.fftfreq(size)[:, None]
-    fx = np.fft.fftfreq(size)[None, :]
-    freq = np.sqrt(fx * fx + fy * fy)
-    freq[0, 0] = 1.0
-    spectrum = (rng.normal(size=(size, size)) + 1j * rng.normal(size=(size, size))) / freq**falloff
-    spectrum[0, 0] = 0.0
-    field = np.real(np.fft.ifft2(spectrum))
-    return (field - field.min()) / max(1e-6, field.max() - field.min())
-
-
 def render_tunnel_picture() -> Image.Image:
     """The inside of the wormhole, tiling both ways: a lattice of Sierpinski
     triangles (``_gate_wormhole_triangles``)."""
