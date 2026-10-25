@@ -9,6 +9,9 @@
 # `paths`  regexes over renderer-relative paths; a commit touching one is a
 #          candidate for `survey`
 # `eras`   the curated looks, oldest first (empty until surveyed and judged)
+# `forms`  the other looks the character has at one time (a power-up, a
+#          transformation), each a list of targets oldest generation first:
+#          `tall: [super_mary_o_tall, mary_o_v2_tall]`
 lineages:
   alice:
     name: Alice

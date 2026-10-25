@@ -42,9 +42,11 @@ def asset_root(repo: Path) -> Path:
 
 
 def lineage_targets(spec: dict) -> list[str]:
-    """Every target a lineage claims: its `ids`, then each era's `id`, once."""
+    """Every target a lineage claims: its `ids`, each era's `id`, then the
+    targets of its `forms`, once."""
     out: list[str] = []
-    for ident in [*(spec.get("ids") or []), *(era.get("id") for era in spec.get("eras") or [])]:
+    forms = [t for targets in (spec.get("forms") or {}).values() for t in targets]
+    for ident in [*(spec.get("ids") or []), *(era.get("id") for era in spec.get("eras") or []), *forms]:
         if ident and ident not in out:
             out.append(str(ident))
     return out
