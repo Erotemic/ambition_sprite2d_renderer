@@ -148,8 +148,15 @@ def _draw_chunk(chunk, python: str, store: str, cache: str, slot: str) -> int:
     trees = Worktrees(Path(store), Path(cache), slot=slot)
     try:
         for n, (seg, sha, ids, pick) in enumerate(chunk, 1):
-            still = still_for(python=python, worktrees=trees, cache=Path(cache), seg=seg, sha=sha, target_ids=list(ids), pick=pick)
-            print(f"  [{slot} {n}/{len(chunk)}] {sha[:9]} {'+'.join(ids)} {still.pixel_hash or 'FAILED'}", flush=True)
+            try:
+                still = still_for(python=python, worktrees=trees, cache=Path(cache), seg=seg, sha=sha, target_ids=list(ids), pick=pick)
+                mark = still.pixel_hash or "FAILED"
+            except Exception as ex:  # noqa: BLE001 - one still that cannot be drawn is a failed still, not a failed survey
+                from .stills import still_key
+
+                (Path(cache) / "stills" / f"{still_key(sha, list(ids), pick)}.failed").write_text(f"{type(ex).__name__}: {ex}")
+                mark = f"FAILED ({type(ex).__name__})"
+            print(f"  [{slot} {n}/{len(chunk)}] {sha[:9]} {'+'.join(ids)} {mark}", flush=True)
     finally:
         trees.remove()
     return len(chunk)

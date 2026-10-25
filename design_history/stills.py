@@ -20,6 +20,14 @@ from pathlib import Path
 from .store import SEGMENTS, Segment, git
 
 
+def _allow_large_images() -> None:
+    """Our own renders can be large (the GNU-ton boss's sheet is 180
+    megapixels): Pillow's guard against hostile files does not apply."""
+    from PIL import Image
+
+    Image.MAX_IMAGE_PIXELS = None
+
+
 def default_cache() -> Path:
     override = os.environ.get("AMBITION_DESIGN_HISTORY_CACHE")
     if override:
@@ -75,6 +83,8 @@ class Worktrees:
 
 def pixel_hash(png: Path) -> str:
     from PIL import Image
+
+    _allow_large_images()
 
     with Image.open(png) as image:
         from .progression import character_bbox
@@ -271,6 +281,7 @@ def _first_frame(out: Path, sheet: str, animation: str) -> Path | None:
 
     from PIL import Image
 
+    _allow_large_images()
     png, ron = out / f"{sheet}_spritesheet.png", out / f"{sheet}_spritesheet.ron"
     if not (png.exists() and ron.exists()):
         return None
