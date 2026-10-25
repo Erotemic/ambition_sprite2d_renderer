@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from ambition_sprite2d_renderer.terrain import decor, fixtures, motes, ornaments, skins
+from ambition_sprite2d_renderer.terrain import decor, fixtures, motes, ornaments, skins, water_backdrops
 
 
 @pytest.mark.parametrize("skin", skins.SKINS, ids=lambda skin: skin.key)
@@ -81,6 +81,17 @@ def test_each_door_has_the_shape_of_the_door_of_the_entity_sheet() -> None:
         alpha = image[:, :, 3]
         assert alpha[-1].min() == 255, f"{theme}: the step at the foot goes from side to side"
         assert alpha[doors.HEIGHT_PX // 2].min() == 255, f"{theme}: a door has no hole in its middle"
+
+
+def test_water_backdrops_are_opaque_and_stay_in_their_authored_frame() -> None:
+    # A volume fills the whole frame with the scene. Any transparent pixel
+    # would reveal the parallax town that the scene must cover.
+    for key, render in water_backdrops.BACKDROPS.items():
+        image = np.asarray(render())
+        assert image.shape[:2] == water_backdrops.SIZES[key][::-1]
+        assert image.shape[2] == 4
+        assert image[:, :, 3].min() == 255, key
+        assert np.ptp(image[:, :, :3]) > 0, key
 
 
 FIXTURES = {

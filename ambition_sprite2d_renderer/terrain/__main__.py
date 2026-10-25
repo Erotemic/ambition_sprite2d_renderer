@@ -8,7 +8,9 @@ ornaments of a skin that has them, `ornaments.py`), and the mote
 picture, the decor picture and the door of each biome (`<biome>_motes.png`,
 `<biome>_decor.png`, `<biome>_decor_glow.png`, `<biome>_door.png`, and its
 opening `<biome>_door_opening.png`), and the
-shimmer of a biome that has one (`<biome>_shimmer.png`). `preview`
+shimmer of a biome that has one (`<biome>_shimmer.png`), and the opaque
+scene behind the water of a biome that has one
+(`<biome>_water_backdrop.png`, `water_backdrops.py`). `preview`
 writes one picture with a small made-up room in each skin. It does not run
 the game. `draw` records which callable drew each file (`provenance.py`).
 """
@@ -22,7 +24,7 @@ from typing import Callable
 from PIL import Image
 
 from .. import provenance
-from . import decor, doors, fixtures, motes, ornaments, shimmer, skins, two_state
+from . import decor, doors, fixtures, motes, ornaments, shimmer, skins, two_state, water_backdrops
 
 #: One published file: its skin or biome, its name, the callable that draws
 #: it (for the provenance record) and the call that draws it.
@@ -58,9 +60,13 @@ def jobs(names: list[str]) -> list[Job]:
     out += [(key, "shimmer", shimmer.picture, lambda key=key: shimmer.picture(key)) for key in keyed(shimmer.SHIMMERS)]
     for skin in chosen:
         out.append((skin.key, "ladder", fixtures.ladder, lambda key=skin.key: fixtures.ladder(key)))
+        # The water, the blink walls and the spikes are the same in each
+        # biome: each one has its copy, so the game finds it by the theme of
+        # the room as each other part.
         for part in _WATER:
             fn = getattr(fixtures, part)
             out.append((skin.key, part, fn, fn))
+    out += [(key, "water_backdrop", render, render) for key, render in water_backdrops.BACKDROPS.items() if wanted is None or key in wanted]
     for key in keyed(doors.DOORS):
         out.append((key, "door", doors.door, lambda key=key: doors.door(key)))
         out.append((key, "door_opening", doors.opening, lambda key=key: doors.opening(key)))
@@ -69,7 +75,7 @@ def jobs(names: list[str]) -> list[Job]:
 
 def plan(dest: Path, names: list[str]) -> provenance.Book:
     """What `draw` publishes into `dest`, by skin or biome, and what draws each file."""
-    book = provenance.Book("terrain_skin", dest, "./scripts/regen/backgrounds.sh  # terrain skin {unit}")
+    book = provenance.Book("terrain_skin", dest, "./scripts/regen/backgrounds.sh  # terrain skin {unit}", "terrain")
     for unit, part, fn, _draw in jobs(names):
         book.add(unit, dest / f"{unit}_{part}.png", fn)
     return book
@@ -99,6 +105,8 @@ def main(argv: list[str] | None = None) -> int:
         plan(args.out_dir, args.skins).write()
         return 0
     chosen = [known[name] for name in args.skins] or list(skins.SKINS)
+    # The two-state hub draws its own parts (`two_state.py`); each other skin
+    # is drawn by the parts of `skins.py`.
     drawn = {
         skin.key: {part: two_state.paint(skin.key, part) or make(skin) for part, make in skins.PARTS.items()}
         for skin in chosen
