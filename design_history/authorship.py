@@ -57,8 +57,8 @@ _IMPORTS = {
 class Share:
     """Lines of the generator that one author made."""
 
-    who: str          # "Claude Opus 5.5", "GPT (inferred)", "unknown"
-    kind: str         # model | curated (a person, authors.yaml) | inferred | unknown
+    who: str          # "Claude Opus 5.5", "GPT-5.6 (no trailer)", "unknown"
+    kind: str         # model | curated (a person, authors.yaml) | unsigned | unknown
     basis: str        # the strongest `attribution` basis among its commits
     lines: int
     commits: tuple[str, ...]
@@ -114,17 +114,17 @@ class Authorship:
         }
 
 
-_BASIS_RANK = {"curated": -1, "measured": 0, "declared": 1, "message": 2, "inferred": 3, "unknown": 4}
+_BASIS_RANK = {"curated": -1, "measured": 0, "declared": 1, "message": 2, "unsigned": 3, "unknown": 4}
 
 
 def describe(who: Attribution) -> tuple[str, str]:
     """`(name, kind)` of one commit's author for a share."""
     if who.basis == "curated":
         return ", ".join(who.models), "curated"
-    if who.basis == "inferred":
+    if who.basis == "unsigned":
         # No model signed the commit (see `attribution.py`): the share says
         # so in its name, apart from the GPT commits that name themselves.
-        return ", ".join(who.models) + " (inferred)", "inferred"
+        return ", ".join(who.models) + " (no trailer)", "unsigned"
     if who.models:
         return ", ".join(who.models), "model"
     return "unknown", "unknown"

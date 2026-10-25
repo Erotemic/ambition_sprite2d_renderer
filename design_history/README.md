@@ -47,7 +47,7 @@ defaults to a sibling `ambition-history` checkout, else a cache directory
 | `measured` | the resource ledger (`.llm_resource_tally`), keyed by commit id; from about August 2026 |
 | `declared` | a `Co-Authored-By` trailer |
 | `message` | the subject or body names a model ("Big GPT 5.6 Alice improvement") |
-| `inferred` | none of the above, from Jon's account or an agent's: **GPT** (Jon's rule, 2026-10-25) |
+| `unsigned` | none of the above, from Jon's account or an agent's: **GPT** (Jon's rule, 2026-10-25: "100% GPT") |
 | `unknown` | nothing says |
 
 A model named without its version ("Codex", "Claude Code", Jon's rule's
@@ -60,8 +60,8 @@ Jon's rule: a commit that no model signed is likely GPT's. Claude Code adds a
 `Co-Authored-By` trailer and GPT mostly does not. The ledger agrees: of its
 measured commits, 42 of 908 Claude-only commits have no trailer, and 10 of 11
 GPT-only commits have none. Jon's own hand commits (a pointer bump, a format
-run) look the same, so the basis says `inferred` and the share is named
-`GPT (inferred)`.
+run) look the same; the basis says `unsigned` and the share is named
+`GPT-5.6 (no trailer)`, with the version of its date.
 
 A commit is evidence about a *session*, not proof that one model drew every
 pixel, and an era's commit may be a polish over earlier art. The basis is shown
@@ -83,7 +83,7 @@ documents).
   renderer package to a stretch: the root of `R1`, and in `R0` the
   "Initial commit" after the host's LICENSE root. A line that is not found
   there counts as `unknown`.
-* A commit that no model signed is `GPT (inferred)` (see above).
+* A commit that no model signed is GPT, `(no trailer)` (see above).
 * The confidence is `high` when the files name the target, at least 90% of
   the lines have a named author and the main author is declared or measured;
   `medium` when at least half do; else `low`. The blames are cached under

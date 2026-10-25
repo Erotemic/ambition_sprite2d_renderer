@@ -367,9 +367,9 @@ lineages:
     paths: ['_pirate_common', '_pirate_rig', 'pirate_raider']
     summary: "one of five pirates on one thin body, then a character of his own"
     eras:
-      - commit: "3b3209c"
+      - commit: "4cf45af6a"
         label: "One thin body in five palettes"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-05-10)."
       - commit: "333e716"
         label: "Five characters"
         note: "Full bodies, a look for each pirate, the head on the chest, each pose made again. Jon: redo them completely, the posing too. Claude Opus 5.5 declared."
@@ -391,9 +391,9 @@ lineages:
     paths: ['pirate_heavy', '_pirate_heavy_rig']
     summary: "one body in three palettes, then three women from one template"
     eras:
-      - commit: "943fa10"
+      - commit: "535fd90c3"
         label: "One body in three palettes"
-        note: "The last commit with the first design: stick arms, a cleaver that floats behind the body. Jon: not very good, but it has something. The commit that introduced it is not surveyed."
+        note: "The first design: stick arms, a cleaver that floats behind the body. Jon: not very good, but it has something. Pinned at the commit that introduced it (2026-05-23)."
       - commit: "35b6aee"
         label: "Three women from one template"
         note: "A build, a head, a mark and a blade for each; arms on a skeleton; a chop with a windup and a step. Jon: a heavy woman, a round face, fierce eyes, a bandana over a head of hair. Claude Opus 5.5 declared."
@@ -475,9 +475,9 @@ lineages:
     paths: ['ramen_nujan', '_ai_era_kit', '_solo_shape_rig']
     summary: "a front-facing scholar in an aubergine coat, then a round young dreamer with a noodle scarf, then the same man grown up"
     eras:
-      - commit: "121f793"
+      - commit: "0cc1204a3"
         label: "Aubergine coat and a stole"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-17)."
       - commit: "7ce2ed4"
         label: "The dreamer with the noodle scarf"
         note: "Three quarters view, large eyes, a night-blue coat with a constellation, a scarf that trails; chalk-gold mathematics. Jon: redesign the Ramen-Nujan character. Claude Opus 5.5 declared."
@@ -490,9 +490,9 @@ lineages:
     paths: ['erdish', '_ai_era_kit']
     summary: "a stiff puppet in a slate jacket with round glasses, then a gaunt grey-haired rig that reads as Paul Erdos"
     eras:
-      - commit: "476e96f"
+      - commit: "0cce56e13"
         label: "The puppet with round glasses"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-05-16)."
       - commit: "ab4590f"
         label: "A rig, and the man himself"
         note: "Iron-grey hair on top of his head, square black glasses, a grey suit, an open collar, socks in sandals; chalk mathematics. Jon: please redo the erdish sprite; and of the drafts, he had no beard, and he must read as Paul Erdos and not as Bernie Sanders. Claude Opus 5.5 declared."
@@ -514,9 +514,9 @@ lineages:
     paths: ['girdle', '_person_rig']
     summary: "a first design, then a person of the shared rig: a cream suit and round glasses, his hands behind his back; he reads as Kurt Goedel"
     eras:
-      - commit: "aaa2d8a"
+      - commit: "952b80dc1"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-05-23)."
       - commit: "d37754c"
         label: "A person of the shared rig"
         note: "A cream suit and round glasses, his hands behind his back; he reads as Kurt Goedel. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
@@ -526,9 +526,9 @@ lineages:
     paths: ['neil_ongras_turfson', '_person_rig']
     summary: "a first design, then a person of the shared rig: tall and upright with a moustache and a star waistcoat"
     eras:
-      - commit: "aaa2d8a"
+      - commit: "3654b060a"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-20)."
       - commit: "d37754c"
         label: "A person of the shared rig"
         note: "Tall and upright with a moustache and a star waistcoat. Jon: he should stand up straight and be very slightly more portly. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
@@ -538,9 +538,9 @@ lineages:
     paths: ['m_leblanc', '_person_rig']
     summary: "a first design, then a person of the shared rig: an Empire gown, a green sash and shawl, her hair up"
     eras:
-      - commit: "aaa2d8a"
+      - commit: "8ac96fd28"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-17)."
       - commit: "d37754c"
         label: "A person of the shared rig"
         note: "An Empire gown, a green sash and shawl, her hair up. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
@@ -550,9 +550,9 @@ lineages:
     paths: ['python_goras', '_person_rig']
     summary: "a first design, then a person of the shared rig: a chiton, a beard, a headband, and a live python"
     eras:
-      - commit: "aaa2d8a"
+      - commit: "32aec19c8"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-26)."
       - commit: "d37754c"
         label: "A person of the shared rig"
         note: "A chiton, a beard, a headband, and a live python. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
@@ -562,9 +562,9 @@ lineages:
     paths: ['galwah', '_person_rig']
     summary: "a first design, then a person of the shared rig: a young man of 1832 in a green coat"
     eras:
-      - commit: "aaa2d8a"
+      - commit: "9047f03cf"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-05-23)."
       - commit: "d37754c"
         label: "A person of the shared rig"
         note: "A young man of 1832 in a green coat. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
@@ -574,9 +574,9 @@ lineages:
     paths: ['marie_curry', '_person_rig']
     summary: "a first design, then a person of the shared rig: a dark dress, her hair up, a glow in her hands"
     eras:
-      - commit: "aaa2d8a"
+      - commit: "32aec19c8"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-26)."
       - commit: "d37754c"
         label: "A person of the shared rig"
         note: "A dark dress, her hair up, a glow in her hands. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
@@ -586,9 +586,9 @@ lineages:
     paths: ['leib_knives', '_person_rig']
     summary: "a first design, then a person of the shared rig: a great wig and a long red coat; his knives are in his hands only in their rows"
     eras:
-      - commit: "aaa2d8a"
+      - commit: "32aec19c8"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-26)."
       - commit: "d37754c"
         label: "A person of the shared rig"
         note: "A great wig and a long red coat; his knives are in his hands only in their rows. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
@@ -761,9 +761,9 @@ lineages:
     paths: ['mami_marzakhani', 'mary_marzakhani', '_person_rig']
     summary: "a first design, then a person of the shared rig: short dark hair, a garnet jacket; she reads as a woman"
     eras:
-      - commit: "d37754c"
+      - commit: "199178ab6"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-20)."
       - commit: "1b708df"
         label: "A person of the shared rig"
         note: "Short dark hair, a garnet jacket; she reads as a woman. Claude Opus 5.5 declared."
@@ -773,9 +773,9 @@ lineages:
     paths: ['anne_druid', '_person_rig']
     summary: "a first design, then a person of the shared rig: a druid of a high fantasy"
     eras:
-      - commit: "d37754c"
+      - commit: "32aec19c8"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-26)."
       - commit: "1b708df"
         label: "A person of the shared rig"
         note: "A druid of a high fantasy: a circlet of leaves with antlers, a moss-green robe with a leaf hem, a cloak lined with the night sky, a staff. Jon: Anne Druid needs to read as a high fantasy druid; and she needs a modest bust. Claude Opus 5.5 declared."
@@ -785,9 +785,9 @@ lineages:
     paths: ['davy_hylbert', '_person_rig']
     summary: "a first design, then a person of the shared rig: a pale summer hat, round glasses, a white beard, a blue three-piece suit"
     eras:
-      - commit: "d37754c"
+      - commit: "3654b060a"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-20)."
       - commit: "1b708df"
         label: "A person of the shared rig"
         note: "A pale summer hat, round glasses, a white beard, a blue three-piece suit. Claude Opus 5.5 declared."
@@ -797,9 +797,9 @@ lineages:
     paths: ['pipi_tau', '_person_rig']
     summary: "a first design, then a person of the shared rig: side-swept black hair, rectangular glasses, a teal jacket"
     eras:
-      - commit: "d37754c"
+      - commit: "95c4c0a1a"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-17)."
       - commit: "1b708df"
         label: "A person of the shared rig"
         note: "Side-swept black hair, rectangular glasses, a teal jacket. Claude Opus 5.5 declared."
@@ -809,9 +809,9 @@ lineages:
     paths: ['paradox_barber', '_person_rig']
     summary: "a first design, then a person of the shared rig: a tall thin barber in an apron with the stripes of the pole; lather on his cheek and a beard on his chin"
     eras:
-      - commit: "d37754c"
+      - commit: "3654b060a"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-20)."
       - commit: "1b708df"
         label: "A person of the shared rig"
         note: "A tall thin barber in an apron with the stripes of the pole; lather on his cheek and a beard on his chin. Claude Opus 5.5 declared."
@@ -821,9 +821,9 @@ lineages:
     paths: ['data_lovelace', '_person_rig']
     summary: "a first design, then a person of the shared rig: a Victorian automaton lady"
     eras:
-      - commit: "d37754c"
+      - commit: "3654b060a"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-20)."
       - commit: "1b708df"
         label: "A person of the shared rig"
         note: "A Victorian automaton lady: an enamel face, cast copper hair, brass hoops, a hem of punched card. Claude Opus 5.5 declared."
@@ -833,9 +833,9 @@ lineages:
     paths: ['georg_canter', '_person_rig']
     summary: "a first design, then a person of the shared rig: a bearded professor of the 1880s on a bay horse, a blanket of sets inside sets"
     eras:
-      - commit: "d37754c"
+      - commit: "32aec19c8"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-26)."
       - commit: "1b708df"
         label: "A person of the shared rig"
         note: "A bearded professor of the 1880s on a bay horse, a blanket of sets inside sets. Claude Opus 5.5 declared."
@@ -845,9 +845,9 @@ lineages:
     paths: ['admiral_grass_hopper', '_person_rig']
     summary: "a first design, then a person of the shared rig: a small old grasshopper lady in admiral's blues, her knees behind her"
     eras:
-      - commit: "d37754c"
+      - commit: "32aec19c8"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-26)."
       - commit: "1b708df"
         label: "A person of the shared rig"
         note: "A small old grasshopper lady in admiral's blues, her knees behind her. Claude Opus 5.5 declared."
@@ -857,9 +857,9 @@ lineages:
     paths: ['joseph_furrier', '_person_rig']
     summary: "a first design, then a person of the shared rig: a man of fifty in a great blanket with fur at each edge, his nose pink with the cold"
     eras:
-      - commit: "d37754c"
+      - commit: "32aec19c8"
         label: "The first design"
-        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+        note: "The commit that introduced the first design (2026-07-26)."
       - commit: "1b708df"
         label: "A person of the shared rig"
         note: "A man of fifty in a great blanket with fur at each edge, his nose pink with the cold. Claude Opus 5.5 declared."
@@ -933,9 +933,9 @@ lineages:
     paths: ['absurd_general']
     summary: "a preset of the toon template, then a box of a coat on stick legs under an officer's cap"
     eras:
-      - commit: "5525f9a"
+      - commit: "300775d85"
         label: "Toon-template general"
-        note: "The last commit with the first design: a preset of the shared toon rig. The commit that introduced it is not surveyed."
+        note: "The first design: a preset of the shared toon rig. Pinned at the commit that introduced it (2026-05-09)."
       - commit: "8cf95a5"
         label: "Box coat, stick legs, a chest of medals"
         note: "An SVG rig of his own. Jon gave a cartoon general as inspiration, not to copy; he refused the tall leaning hat of the first draft for a normal officer's cap, and asked for more medals. Claude Opus 5.5 declared."

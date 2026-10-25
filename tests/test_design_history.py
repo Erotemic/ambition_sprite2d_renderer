@@ -62,11 +62,11 @@ def test_a_trailer_outranks_a_mention_and_a_human_author_names_no_model():
     assert (declared.basis, declared.models) == ("declared", ("Claude Opus 5.5",))
     mentioned = attribution.attribute(make("agent", "Big GPT 5.6 Alice improvement"), {})
     assert mentioned.basis == "message"
-    # Jon's rule: no model signed it, so GPT, inferred.
+    # Jon's rule: no model signed it, so GPT.
     human = attribution.attribute(make("joncrall", "tune a hurtbox"), {})
-    assert (human.basis, human.models) == ("inferred", ("GPT",))
+    assert (human.basis, human.models) == ("unsigned", ("GPT",))
     unsigned = attribution.attribute(make("agent (main)", "Add rigged companion dog"), {})
-    assert (unsigned.basis, unsigned.models) == ("inferred", ("GPT",))
+    assert (unsigned.basis, unsigned.models) == ("unsigned", ("GPT",))
     measured = attribution.attribute(make("agent", "x"), {"a" * 40: [{"m": ["claude-opus-5-5"]}]})
     assert (measured.basis, measured.models) == ("measured", ("Claude Opus 5.5",))
 
@@ -118,7 +118,7 @@ def test_trailers_are_read_the_way_git_writes_them():
     only_human = attribution.attribute(
         _commit(store, "agent", "x", "Co-Authored-By: Jane Doe <jane@example.com>"), {}
     )
-    assert only_human.basis == "inferred", only_human
+    assert only_human.basis == "unsigned", only_human
     stranger = attribution.attribute(_commit(store, "someone", "x"), {})
     assert stranger.basis == "unknown", stranger
 
@@ -360,7 +360,7 @@ def test_a_model_named_without_its_version_takes_the_newest_on_its_date():
     assert timeline.resolve("GPT-6 Astra", "2026-09-05") == ("GPT-6 Astra", False)
     assert timeline.resolve("Jane Doe", "2026-09-05") == ("Jane Doe", False)
     unsigned = attribution.attribute(_commit(store, "joncrall", "tune", date="2026-07-12T00:00:00+00:00"), {}, timeline)
-    assert (unsigned.models, unsigned.basis) == (("GPT-5.6",), "inferred"), unsigned
+    assert (unsigned.models, unsigned.basis) == (("GPT-5.6",), "unsigned"), unsigned
     assert "2026-07-12" in unsigned.note
 
 

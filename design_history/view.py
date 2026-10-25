@@ -22,6 +22,7 @@ def lineage_view(
     not in it, the era keeps its commit and label only (`in_store: false`).
     With no `blamer`, no generator authorship is measured."""
     eras = []
+    timeline = None
     for era in spec.get("eras") or []:
         row = {
             "commit": str(era["commit"]),
@@ -33,7 +34,11 @@ def lineage_view(
         sha = git(store, "rev-parse", "--verify", "-q", f"{era['commit']}^{{commit}}", check=False).strip() if store else ""
         if sha:
             info = commit_info(store, sha)
-            pin = attribute(info, ledger or {}, blamer.timeline if blamer is not None else None)
+            if timeline is None:
+                from .models import from_store
+
+                timeline = blamer.timeline if blamer is not None else from_store(store, ledger or {}, cache)
+            pin = attribute(info, ledger or {}, timeline)
             drawn = sorted({a.models[0] for (c, _), a in curated().items() if c == sha})
             if drawn:
                 row["drawn_by"] = drawn

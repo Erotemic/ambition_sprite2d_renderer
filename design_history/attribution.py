@@ -10,7 +10,7 @@ Three kinds of evidence, strongest first:
 ``curated``   `authors.yaml` says who drew the lines of a file at a commit (a
               person's drawing committed by an agent session). It outranks
               everything below, for those files only.
-``inferred``  no ledger row, no model trailer and no model named, from Jon's
+``unsigned``  no ledger row, no model trailer and no model named, from Jon's
               account or an agent's: GPT (Jon's rule, 2026-10-25). Claude Code
               signs its commits and GPT mostly does not: of the ledger's
               measured commits, 42 of 908 Claude-only ones have no trailer and
@@ -48,12 +48,13 @@ _HUMAN_AUTHORS = {"joncrall", "jon crall", "jon.crall"}
 @dataclasses.dataclass(frozen=True)
 class Attribution:
     models: tuple[str, ...]
-    basis: str  # measured | declared | message | inferred | unknown
+    basis: str  # curated | measured | declared | message | unsigned | unknown
     note: str = ""
 
     def label(self) -> str:
         if self.models:
-            return ", ".join(self.models) + ("" if self.basis == "measured" else f" ({self.basis})")
+            how = "no trailer" if self.basis == "unsigned" else self.basis
+            return ", ".join(self.models) + ("" if self.basis == "measured" else f" ({how})")
         return self.note or self.basis
 
 
@@ -174,7 +175,7 @@ def _raw(commit: Commit, ledger: dict[str, list[dict]]) -> Attribution:
         return Attribution((_clean(commit.author),), "message")
     author = commit.author.lower()
     if author in _HUMAN_AUTHORS or author.split(" ")[0] == "agent":
-        return Attribution(("GPT",), "inferred", "no model trailer: GPT by Jon's rule, or a hand commit")
+        return Attribution(("GPT",), "unsigned", "no model trailer: GPT (Jon's rule)")
     return Attribution((), "unknown", "nothing names a model")
 
 
