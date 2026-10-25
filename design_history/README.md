@@ -54,6 +54,39 @@ A commit is evidence about a *session*, not proof that one model drew every
 pixel, and an era's commit may be a polish over earlier art. The basis is shown
 so a reader can discount it. Where it says nothing, the sheet says nothing.
 
+### Who wrote the generator (`authorship.py`)
+
+The commit that pins an era is often not the commit that made the look: it can
+be the last commit before a redesign, a refactor, a merge, or the import that
+started an epoch. So `authorship.py` measures the generator itself. It finds
+the files that draw the era's target at the era's commit (by name, see
+`generator_files`), runs `git blame` on each, attributes the commit of each
+line as above, and counts lines. It keeps two parts apart, because an SVG is
+many lines: **art** (the `.svg` drawings) and **code** (modules, configs, rig
+documents).
+
+* A line that blame gives to an import commit (the first commit of `R0` or
+  `R1`) is found by its text in the same file before the import. A line that
+  is not found there counts as `unknown`.
+* A commit from Jon's account that names no model is
+  `Jon's account (no model named)`. Jon writes code and art himself, and he
+  has also committed the work of models he ran outside an agent session. The
+  share says whose account it is, not who wrote it.
+* The confidence is `high` when the files name the target, at least 90% of
+  the lines have a named author and the main author is declared or measured;
+  `medium` when at least half do; else `low`. The blames are cached under
+  `<cache>/blame`; a blame of a fixed commit never changes.
+
+## From a character to its lineage (`characters.py`)
+
+A character has three names: a lineage (here), a renderer target, and a
+catalog id (a row of a game's `character_catalog.ron`, or `boss:<key>` of
+`boss_art_keys.ron`). A lineage claims the targets in its `ids` and in the
+`id` of each era. A catalog row names its sheet; the sheet's provenance record
+names its target; a row with `form_of` is a look of another row and finds that
+row's lineage. A `<base>_vN` target beside `<base>` is a new generation of the
+same character: one lineage names both, and the old target stays published.
+
 ## Use
 
 Run from `tools/ambition_sprite2d_renderer/`, with the renderer's interpreter:
@@ -66,7 +99,9 @@ python -m design_history survey alice --sweep 25   # also every 25th commit (sha
 python -m design_history build alice           # the curated progression sheet
 python -m design_history build --all
 python -m design_history attribution <commit>
-python -m pytest tests/test_design_history.py   # the wall and the curated shape
+python -m design_history character npc_paul_diracula   # catalog id, target or lineage: eras and authorship
+python -m design_history census                # coverage of the cast, authorship per era, sheet cost
+python -m pytest tests/test_design_history.py   # the wall, the curated shape, the census guard
 ```
 
 `survey` finds commits touching a lineage's `paths`, draws each (cached), and
@@ -100,6 +135,13 @@ Oiler. `boss_chest` is surveyed and has one look, shown under `treasure_chest`.
   split; the giant and the scholar then have sheets of their own. The Hall of
   Characters does not draw the scholar standalone (observed, not changed).
 * A model name shown with a commit is the session's, not proof about each pixel.
+* Generator files are found by name. A shared helper that no path and no
+  lineage `paths` pattern names is not counted, and a script that wrote an SVG
+  counts through the commit that wrote the SVG.
+
+The art inspector (`python3 scripts/art_inspector.py build`) shows each
+character's lineages, with the cached stills, and the authorship of its
+current generator on the character's asset page.
 
 ## Limits
 

@@ -11,13 +11,17 @@ from pathlib import Path
 
 import yaml
 
+from . import census as census_mod
+from . import characters as characters_mod
 from . import survey as survey_mod
 from .attribution import attribute
+from .authorship import Blamer
 from .progression import Tile, compose, stack
 from .store import (
     SEGMENTS, commit_info, default_store, fetch, git, load_ledger,
 )
 from .stills import Worktrees, default_cache, still_for
+from .view import lineage_view
 
 HERE = Path(__file__).resolve().parent
 LINEAGES = HERE / "lineages.yaml"
@@ -117,7 +121,7 @@ def cmd_build(args) -> int:
             tiles: list[Tile] = []
             for era in spec.get("eras", []):
                 commit, seg = _resolve(store, index, str(era["commit"]))
-                ids = [era["id"]] if era.get("id") else spec.get("ids", [name])
+                ids = characters_mod.era_ids(name, spec, era)
                 still = still_for(
                     python=_python(args), worktrees=worktrees, cache=cache,
                     seg=seg, sha=commit.sha, target_ids=ids,
@@ -163,6 +167,93 @@ def cmd_attribution(args) -> int:
     return 0
 
 
+def _store_or_none(args) -> Path | None:
+    store, _, _ = _context(args)
+    return store if git(store, "for-each-ref", "refs/active", check=False).strip() else None
+
+
+def cmd_character(args) -> int:
+    """The lineages of a catalog id, a target or a lineage name, with each
+    era's commit, target and authorship."""
+    lineages = load_lineages()
+    join = characters_mod.join(lineages)
+    hits = join.find(args.name)
+    if not hits:
+        print(f"{args.name}: no lineage claims it (not a lineage, a lineage target or a catalog row that draws one)")
+        return 1
+    store = _store_or_none(args)
+    if store is None:
+        print("note: no history store; run `python -m design_history fetch` for commits and authorship", file=sys.stderr)
+    ledger = load_ledger(store) if store else {}
+    blamer = Blamer(store, default_cache(), ledger) if store and not args.no_blame else None
+    current = set(census_mod.registry(_python(args)))
+    views = []
+    for name, via in hits:
+        view = lineage_view(name, lineages[name], store=store, cache=default_cache(), blamer=blamer, current=current, ledger=ledger)
+        view["found_via"] = via
+        views.append(view)
+    if args.json:
+        print(json.dumps(views, indent=2))
+        return 0
+    for view in views:
+        print(f"{view['name']} [{view['lineage']}] — found via {view['found_via']}")
+        print(f"  targets: {', '.join(view['targets'])} (current: {', '.join(view['current_targets']) or 'none'})")
+        catalog = sorted({row for t in view["targets"] for row in join.target_rows.get(t, [])})
+        if catalog:
+            print(f"  catalog: {', '.join(catalog)}")
+        for era in view["eras"]:
+            date = era.get("date", "")[:10]
+            print(f"  - {date or '?':10s} {era['commit']:12s} {era.get('target') or '/'.join(era['ids'])}: {era['label']}")
+            if era.get("pin"):
+                print(f"      commit made by: {era['pin']['label']}")
+            gen = era.get("generator")
+            if gen:
+                print(f"      generator: {len(gen['files'])} files, {gen['lines']} lines, found {gen['found_by']}, confidence {gen['confidence']}")
+                for part, shares in gen["parts"].items():
+                    total = sum(s["lines"] for s in shares)
+                    if total:
+                        text = ", ".join(f"{s['who']} {100 * s['lines'] / total:.0f}%" for s in shares[:3])
+                        print(f"        {part}: {text}")
+            if era.get("still"):
+                print(f"      still: {era['still']}")
+    return 0
+
+
+def cmd_census(args) -> int:
+    lineages = load_lineages()
+    targets = census_mod.registry(_python(args))
+    repo = characters_mod.repo_root()
+    out = {"coverage": census_mod.coverage(lineages, targets, repo),
+           "skin_cost": census_mod.skin_cost(lineages, set(targets), repo)}
+    store = _store_or_none(args)
+    if store is not None:
+        out["authorship"] = census_mod.authorship_census(lineages, set(targets), store, default_cache(), blame=not args.no_blame)
+    if args.json:
+        print(json.dumps(out, indent=2))
+        return 0
+    cov, cost = out["coverage"], out["skin_cost"]
+    print(f"lineages {cov['lineages']}, eras {cov['eras']}")
+    print(f"character targets with a lineage: {cov['character_targets_with_lineage']} of {cov['character_targets']}")
+    print(f"catalog rows (with a sheet) with a lineage: {cov['catalog_rows_with_lineage']} of {cov['catalog_rows_with_a_sheet']} {cov['catalog_rows_with_lineage_by_kind']}")
+    print(f"versioned targets (<base>_vN beside <base>): {len(cov['versioned_pairs'])}; not in one lineage with their base: {len(cov['versioned_gaps'])}")
+    for gap in cov["versioned_gaps"]:
+        print(f"  {gap['target']} (base {gap['base']}){' — in progress, untracked' if gap['in_progress'] else ''}")
+    b = cost["bytes_all_tiers"]
+    print(f"published bytes per lineage target, all four tiers ({cost['targets_measured']} measured): "
+          f"median {b['median'] / 1e6:.1f} MB, mean {b['mean'] / 1e6:.1f} MB, max {b['max'] / 1e6:.1f} MB")
+    print(f"eras beyond one per lineage: {cost['eras_beyond_one_per_lineage']}")
+    auth = out.get("authorship")
+    if auth:
+        print(f"eras in the history store: {auth['eras_in_store']} (missing {auth['eras_missing_from_store']})")
+        print(f"commit that pins each era, by basis: {auth['pin_commit_basis']}")
+        if "generator_top_author_kind" in auth:
+            print(f"generator main author per era, by kind: {auth['generator_top_author_kind']}")
+            print(f"generator confidence per era: {auth['generator_confidence']}; files found by: {auth['generator_found_by']}")
+            for part, lines in auth["generator_lines_by_author"].items():
+                print(f"{part} lines by author: " + ", ".join(f"{k} {v}" for k, v in list(lines.items())[:8]))
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="design_history", description=__doc__)
     parser.add_argument("--store", help="the ambition-history store (default: sibling checkout or cache)")
@@ -183,6 +274,15 @@ def main(argv=None) -> int:
     p.add_argument("--all", action="store_true")
     p.add_argument("--per-row", type=int, default=6, help="tiles per row unless a lineage sets per_row")
     p.set_defaults(fn=cmd_build)
+    p = sub.add_parser("character", help="a character's lineage, eras and authorship (a catalog id, target or lineage)")
+    p.add_argument("name")
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--no-blame", action="store_true", help="skip the generator authorship (git blame)")
+    p.set_defaults(fn=cmd_character)
+    p = sub.add_parser("census", help="lineage coverage of the cast, era authorship and sheet cost")
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--no-blame", action="store_true", help="skip the generator authorship (git blame)")
+    p.set_defaults(fn=cmd_census)
     p = sub.add_parser("attribution", help="which model(s) a commit's evidence names")
     p.add_argument("commit")
     p.set_defaults(fn=cmd_attribution)

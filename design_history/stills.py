@@ -281,6 +281,21 @@ def render_still(
     return None, None, "; ".join(notes)
 
 
+def still_key(sha: str, target_ids: list[str], pick: str | None = None) -> str:
+    """The cache name of one still: a commit, the ids tried and the pick."""
+    key = f"{sha[:12]}-{'+'.join(target_ids)}"
+    if pick:
+        key += "-" + pick.replace(":", "_").replace("@", "_at_").replace("/", "_")
+    return key
+
+
+def cached_still(cache: Path, sha: str, target_ids: list[str], pick: str | None = None) -> Path | None:
+    """The still of ``target_ids`` at ``sha`` if it was drawn before. Never
+    renders: a reader (the art inspector) shows what the cache has."""
+    hit = cache / "stills" / f"{still_key(sha, target_ids, pick)}.png"
+    return hit if hit.is_file() else None
+
+
 def still_for(
     *, python: str, worktrees: Worktrees, cache: Path, seg: Segment, sha: str,
     target_ids: list[str], pick: str | None = None,
@@ -288,9 +303,7 @@ def still_for(
     """The cached still of ``target_ids`` at ``sha``, rendering it if needed."""
     stills = cache / "stills"
     stills.mkdir(parents=True, exist_ok=True)
-    key = f"{sha[:12]}-{'+'.join(target_ids)}"
-    if pick:
-        key += "-" + pick.replace(":", "_").replace("@", "_at_").replace("/", "_")
+    key = still_key(sha, target_ids, pick)
     hit = stills / f"{key}.png"
     miss = stills / f"{key}.failed"
     if hit.exists():

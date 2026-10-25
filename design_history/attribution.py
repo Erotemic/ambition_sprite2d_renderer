@@ -27,7 +27,7 @@ from .store import Commit
 _TRAILER = re.compile(r"^co-authored-by:\s*([^<\r\n]+?)\s*(?:<[^>]*>)?\s*$", re.IGNORECASE | re.MULTILINE)
 # A trailer names a MODEL only if it says so; a human co-author is not one.
 _AI_NAME = re.compile(
-    r"\b(claude|anthropic|gpt|openai|codex|gemini|copilot|opus|sonnet|haiku|fable)\b", re.IGNORECASE
+    r"\b(claude|anthropic|gpt|openai|codex|gemini|copilot|opus|sonnet|haiku|fable|qwen|llama|mistral|deepseek)", re.IGNORECASE
 )
 _MENTION = re.compile(
     r"\b(GPT[- ]?\d+(?:\.\d+)?(?:\s+(?:Sol|Astra|Thinking))?|Claude\s+(?:Opus|Sonnet|Haiku|Fable)\s*[\d.]*|"
@@ -55,7 +55,20 @@ def _clean(name: str) -> str:
     name = re.sub(r"\s*\((?:\d+\w*\s*)?context\)", "", name)
     # "Claude Opus 4.8 [1M]": the bracketed window is the same deployment detail.
     name = re.sub(r"\s*\[\d+\w*\]", "", name)
-    return re.sub(r"\s+", " ", name).strip()
+    # "GPT-5.6 Thinking [noreply@openai.com](mailto:...)": an email written as
+    # a Markdown link is not part of the name; nor is the model's id in
+    # parentheses ("Claude Opus 5 (claude-opus-5)").
+    name = re.sub(r"\s*\[[^\]]*\]\(mailto:[^)]*\)", "", name)
+    name = re.sub(r"\s*\((?:claude|gpt)-[^)]*\)", "", name, flags=re.IGNORECASE)
+    return normal(name)
+
+
+def normal(name: str) -> str:
+    """One spelling per model: "OpenAI GPT-5.6 Thinking" and "GPT 5.6
+    Thinking" are "GPT-5.6 Thinking"."""
+    name = re.sub(r"\s+", " ", name).strip()
+    name = re.sub(r"^(?:OpenAI|Anthropic) ", "", name)
+    return re.sub(r"^GPT[ -]?(?=\d)", "GPT-", name, flags=re.IGNORECASE)
 
 
 def _add(seen: list[str], name: str) -> None:
@@ -83,6 +96,8 @@ def attribute(commit: Commit, ledger: dict[str, list[dict]]) -> Attribution:
         models: list[str] = []
         for row in rows:
             for model in row.get("m", []):
+                if model.startswith("<"):
+                    continue  # "<synthetic>": a ledger placeholder, not a model
                 model = pretty(model)
                 if model not in models:
                     models.append(model)
@@ -97,7 +112,7 @@ def attribute(commit: Commit, ledger: dict[str, list[dict]]) -> Attribution:
         return Attribution(tuple(trailers), "declared")
     mentioned: list[str] = []
     for hit in _MENTION.findall(commit.subject + "\n" + commit.body):
-        _add(mentioned, re.sub(r"\s+", " ", hit).strip())
+        _add(mentioned, normal(hit))
     if mentioned:
         return Attribution(tuple(mentioned), "message")
     if commit.author.lower() in _HUMAN_AUTHORS:

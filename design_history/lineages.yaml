@@ -1303,3 +1303,22 @@ lineages:
         id: exploding_mite_v2
         label: "The bomb"
         note: "A new target beside the old one: a gunmetal shell with a hazard belt, a valve and a lit fuse; in death the fuse burns down while the shell swells and goes white hot. Jon saw three looks and did not pick; A was cast when he asked for the art in the game. Claude Opus 5.5 declared."
+  stochastic_parrot:
+    # Two targets of one character: `stochastic_parrot` (the first parrot) stays
+    # published beside `stochastic_parrot_v2`, which the catalog row
+    # `stochastic_parrot` draws. Before its 2026-10-05 redraw the v2 target was a
+    # procedural macaw (014c056581, Jul 16) that looks almost the same as the
+    # first parrot; it is not a major redesign, so it is not an era.
+    name: Stochastic Parrot
+    ids: [stochastic_parrot_v2, stochastic_parrot]
+    paths: ['stochastic_parrot', 'rigbuild/bird\.py']
+    summary: "a procedural parrot, then a scarlet macaw as an SVG rig"
+    eras:
+      - commit: "8f5f2f3dce"
+        id: stochastic_parrot
+        label: "The first parrot"
+        note: "Added from Jon's account (\"add stochastic parrot\"), no model named. The target stays published as the lineage of v2."
+      - commit: "f0ada62"
+        id: stochastic_parrot_v2
+        label: "v2: the SVG-rigged macaw"
+        note: "The v2 target redrawn, same rows: the bare white face patch, the hooked pale beak, wings that spread from folded to open. Claude Opus 5.5 declared."
