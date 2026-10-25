@@ -17,11 +17,13 @@ Three sheets of one assembly, on one canvas:
   locking one by one; the band does not turn, the base holds it);
 - ``_portal``: the wormhole membrane, layered over the ring while a link is
   open;
-- ``_glyphs``: ``lit``, one frame per chevron, that glyph alone blazing on
+- ``_glyphs``: ``idle``, nothing lit; ``lit``, one frame per chevron, that glyph alone blazing on
   its plaque where the ring draws it. Laid over the ring, frame k lights
   chevron k as it is dialed.
 
-And one picture, ``_tunnel.png``: the inside of the wormhole for the Ultra
+And two pictures. ``_glyph_icons.png``: the fifteen glyphs in a row, white,
+upright, each centred in its own ``GLYPH_ICON``-pixel cell, for a terminal's
+dial wheel to tint. ``_tunnel.png``: the inside of the wormhole for the Ultra
 layer over the membrane (``gate_portal_fx.wgsl``), which streams it down a
 twisting tunnel. It tiles both ways: across it is the way round the tunnel,
 down it the way in. Stars drawn as streaks along the way in, and a nebula of
@@ -66,7 +68,8 @@ PORTAL_ROWS: List[Tuple[str, int, int]] = [
     ("emit", 12, 55),
 ]
 
-GLYPH_ROWS: List[Tuple[str, int, int]] = [("lit", len(GLYPHS), 100)]
+# `idle` is the sheet at rest, nothing lit (a sheet's loader wants one).
+GLYPH_ROWS: List[Tuple[str, int, int]] = [("idle", 1, 100), ("lit", len(GLYPHS), 100)]
 
 SHEET_FILES = [
     f"{RING_TARGET}_spritesheet.png",
@@ -76,7 +79,10 @@ SHEET_FILES = [
     f"{GLYPHS_TARGET}_spritesheet.png",
     f"{GLYPHS_TARGET}_spritesheet.yaml",
     f"{TARGET_NAME}_tunnel.png",
+    f"{TARGET_NAME}_glyph_icons.png",
 ]
+
+GLYPH_ICON = 96
 
 TUNNEL_SIZE = 256
 
@@ -454,10 +460,12 @@ def render_ring_frame(animation: str, frame_index: int, nframes: int) -> Image.I
 def render_glyph_frame(animation: str, frame_index: int, nframes: int) -> Image.Image:
     """Chevron ``frame_index`` dialed: its glyph blazing on its plaque at the
     idle ring's place, and the plaque's face washed with its light."""
-    if animation != "lit":
+    if animation not in ("idle", "lit"):
         raise ValueError(f"unknown animation: {animation}")
     del nframes
     size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
+    if animation == "idle":
+        return _downsample(Image.new("RGBA", size, (0, 0, 0, 0)))
     core = glyphs_mask([_placement(frame_index)], size)
     wash = Image.new("L", size, 0)
     ang = _plaque_angle(frame_index)
@@ -631,6 +639,24 @@ def render_portal_frame(animation: str, frame_index: int, nframes: int) -> Image
     return _downsample(img)
 
 
+def render_glyph_icons() -> Image.Image:
+    """The fifteen glyphs in a row of ``GLYPH_ICON`` cells, white and upright,
+    each centred by its ink, a stroke of air round the tallest."""
+    from ambition_sprite2d_renderer.glyphs.legally_distinct import CAP, STROKE, render_glyph
+
+    strip = Image.new("RGBA", (GLYPH_ICON * len(GLYPHS), GLYPH_ICON), (0, 0, 0, 0))
+    height = int(round(GLYPH_ICON * 0.78 * (CAP + 2 * STROKE) / CAP))
+    for glyph in GLYPHS:
+        tile = render_glyph(glyph, height, "#ffffff")
+        box = tile.getchannel("A").getbbox()
+        if box is None:
+            continue
+        ink = tile.crop(box)
+        x = glyph.index * GLYPH_ICON + (GLYPH_ICON - ink.width) // 2
+        strip.alpha_composite(ink, (x, (GLYPH_ICON - ink.height) // 2))
+    return strip
+
+
 def _periodic_noise(rng: np.random.Generator, size: int, falloff: float) -> np.ndarray:
     """Noise that tiles: random phases under a power-law spectrum, 0..1."""
     fy = np.fft.fftfreq(size)[:, None]
@@ -720,8 +746,11 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     )
     tunnel = out_dir / f"{TARGET_NAME}_tunnel.png"
     render_tunnel_picture().save(tunnel)
+    icons = out_dir / f"{TARGET_NAME}_glyph_icons.png"
+    render_glyph_icons().save(icons)
     ordered = [
         tunnel,
+        icons,
         ring_outputs["canonical"],
         ring_outputs["canonical_transparent"],
         ring_outputs["spritesheet"],
