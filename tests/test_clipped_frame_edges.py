@@ -72,23 +72,22 @@ def test_a_degenerate_frame_answers_rather_than_raising():
 
 
 def test_super_sanics_raised_spikes_fit_inside_their_frame():
-    """Super Sanic's raised spikes must fit without changing base Sanic.
+    """Super Sanic's raised quills must fit without changing base Sanic.
 
-    Check representative idle/walk/run frames rather than the full sheet. Base
-    Sanic is the control so shrinking all spikes or globally growing the frame
-    cannot satisfy the regression test.
-    checked.
+    Check representative idle/walk/run/sprint frames rather than the full
+    sheet. Base Sanic is the control, so shrinking every quill or growing the
+    frame for both cannot satisfy the regression test.
     """
     from ambition_sprite2d_renderer.targets.characters import sanic
 
     rows = {name: count for name, count, *_ in sanic.ROWS}
     for skin_name, skin in (("sanic", sanic.NORMAL), ("super_sanic", sanic.SUPER_SKIN)):
-        for anim in ("idle", "walk", "run"):
+        for anim in ("idle", "walk", "run", "sprint"):
             frame = sanic._draw_sanic(skin, anim, 0, rows[anim])
             assert clipped_frame_edges(frame) == [], (
                 f"{skin_name} {anim}#0 is CUT at {clipped_frame_edges(frame)}. "
                 "Art drawn past the logical frame is lost at draw time, not "
-                "shrunk — see `SUPER_SPIKE_FIT` for the measured reach that fits."
+                "shrunk; the frame (`FRAME_SIZE`, `GROUND_Y`) or the pose must fit it."
             )
 
 

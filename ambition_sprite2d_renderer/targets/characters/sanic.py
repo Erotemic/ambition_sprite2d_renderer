@@ -1,928 +1,737 @@
-"""Procedural "Sanic" sprite sheets — the crudely-drawn Sonic meme, authored as
-a full dual-purpose fighter/platformer body, plus its **Super Sanic**
-transformation.
+"""Sanic and Super Sanic: the crude "Sanic" meme, drawn as a rig of SVG parts.
 
-The whole joke is that Sanic is Sonic drawn *badly* in a paint program: a
-small lumpy blue head on a neck over a big round body, two mismatched beady
-eyes with a fat black nose wedged between them, thick ugly head spikes, ONE
-huge weird spike off the middle of the back, stick arms, long awful legs, and
-oversized red shoes. Every silhouette is a hand-jittered polygon (`_blob` /
-`_wobble`) so the outline visibly wobbles; the jitter is deterministic
-(seeded off vertex index) so the sheet is reproducible across regen runs.
+The look follows Jon's reference (2026-10-25), the meme drawing made in MS
+Paint: the stock Paint palette (blue ``#3F48CC``, cream ``#EFE4B0``, red
+``#ED1C24``), flat fills, a thin wobbly ink line. The body is a 3/4 view (the
+belly and the face turn to the camera) on legs that run in profile, facing
+east. A big blocky head with two derpy eyes and a cream grin, a fan of fat
+quills swept back, thin stick limbs, one huge trailing glove and red shoe
+blobs.
 
-The sheet is deliberately over-authored so the Ambition engine can express
-*two* classic games from one body's data:
+Each part is an SVG drawing in the reference's own pixels (a 447 px canvas),
+rasterized once and placed per frame (``shape_rig.place``), so a part never
+boils and the part flipbook records it by name. The wobble of a part is
+seeded. A pose (:class:`Pose`) moves the parts: the torso leans about the
+hips, the head turns on the neck, the quills sway, and each limb is two
+strokes solved to a target (:func:`_ik`).
 
-  * a Sonic-style platformer — run / spin-dash / rolling ball / ledge grab
-    / wall cling, with the jump and every curled pose in BALL form; and
-  * a Smash-style fighter — jab/punch, side/up/down tilts, the five aerials
-    (nair/fair/bair/uair/dair), a spin special, shield, dodge-roll, and the
-    ledge/getup-attack options.
+Rows:
 
-Two render paths compose everything:
+* the jump and every curled pose are the BALL, and the ball turns a whole
+  number of turns across its row so the row loops (Jon);
+* ``sprint`` is the run at top speed: the feet run round a figure 8
+  (Jon, 2026-10-25: "for running when the character gets up to speed, I do
+  want circular fast moving feet animation"). The engine draws ``run`` for a
+  sheet without it.
 
-  * `_render_humanoid` — the posed body. Each animation hands it concrete limb
-    targets (front/back hand + ankle, offsets from the hips), a lean/crouch, a
-    face, and an optional effect (swoosh / shield / stars / dust).
-  * `_ball_frame` / `_draw_spin_ball` — the curled ball. Per Jon: the jump and
-    every curled pose are the ball, and the ball SPINS COMPLETELY AROUND — the
-    spin angle sweeps a whole number of full turns across the row so it loops
-    seamlessly, and an asymmetric highlight quill + red streak make the full
-    rotation actually read.
+Super Sanic is the same rig in another :class:`Skin`: gold, quills raised,
+red pupils and a glow. Both forms register from this module (``TARGETS``).
 
-Super Sanic is the same body, same moveset, same geometry — re-skinned. All
-drawing is parameterized by a `Skin` (palette + `spikes_up` + `aura`), so the
-transformation is literally a different skin: gold palette, spikes standing UP,
-red eyes, and a golden aura. Both forms register as targets from this one module
-(`TARGETS`), sharing every pose and every hurt/hitbox.
-
-Per-pose hurtboxes and per-attack hitboxes are authored into each sheet RON via
-`animation_key_map` + `attack_hitboxes`, so the body is usable as a real
-fighter, not just an animated picture.
+The hit area of each strike is measured from the drawn pose: where the glove,
+the shoe or the ball is on the frames of the move's Active window
+(:func:`_measured_hitboxes`), grown by ``HITBOX_GROWTH``.
 """
 
 from __future__ import annotations
 
+import io
 import math
-from dataclasses import dataclass
+import random
+from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
-from PIL import Image, ImageColor, ImageDraw, ImageFilter
+import numpy as np
+from PIL import Image
 
 from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
-from ambition_sprite2d_renderer.core.draw import blending_draw
 
-RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
-FRAME_SIZE = (128, 128)
+FRAME_SIZE = (160, 144)
 SUPER = 4
 W, H = FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER
-BASE_X = 60.0
-GROUND_Y = 112.0
 
-INK = "#0b0b0b"     # heavy wobbly outline — shared by both forms
+#: Frame pixels per reference pixel, and where the reference's body sits in
+#: the frame: its middle (``REF_CX``) at ``CX``, the soles (``REF_GROUND``)
+#: on ``GROUND_Y``.
+K = 0.29
+CX, GROUND_Y = 74.0, 132.0
+REF_CX, REF_GROUND = 246.0, 395.0
 
-#: How much of the raised spikes' authored reach actually fits the frame.
-#:
-#: The drawing canvas is the logical frame, so raised spikes drawn past `y = 0`
-#: are clipped. This factor was selected with `clipped_frame_edges`:
-#:
-#:     x1.00   61 of 181 frames cut        x0.80    2 cut
-#:     x0.85    4 of 181 cut               x0.76    0 cut
-#:
-#:  base Sanic is the control and is clean at 0 of 181 — same body, same
-#: canvas, spikes swept BACK instead of up. So this is the raised fan's reach and
-#: nothing else, which is why one factor on one branch is the whole fix.
-#:
-#:  not a round number and not a taste call: 0.76 is the largest value
-#: measured that leaves every frame whole, and anything above it cuts something.
-#:
-#:  and it is NOT fixable by moving the body down or growing the frame.
-#: `auto_crop` is off for this sheet precisely so `ATTACK_HITBOXES` coordinates
-#: match draw space, so shifting the art or resizing the frame silently moves
-#: every authored hitbox with respect to the drawing. The spikes are the only
-#: thing here that can give.
-SUPER_SPIKE_FIT = 0.76
-
-
-# --- Skins --------------------------------------------------------------------
+INK = "#141414"
+#: Ink width in reference pixels. The reference's line is ~2 px at 447 px;
+#: drawn at ~0.3 of that it would vanish, so it is thicker here.
+INK_W = 3.4
 
 
 @dataclass(frozen=True)
 class Skin:
-    """A palette + a couple of transformation flags. Everything the drawing
-    reads about colour/silhouette comes from here, so a new form is just a new
-    Skin (no drawing code changes)."""
-
-    body: str          # main blue/gold
-    body_dk: str       # spikes + lower body
-    muzzle: str        # muzzle + arms + belly
-    muzzle_dk: str
-    eye: str           # eye white / gloves
-    pupil: str         # pupil colour (black normally, red for super)
-    shoe: str
-    shoe_dk: str
-    buckle: str
-    accent: str        # impact stars / sparkles
-    shield: str = "#7fd8ff"
-    nose: str = "#141414"
-    spikes_up: bool = False       # raise the head + back spikes (super)
-    aura: Optional[str] = None    # golden glow behind the body (super)
+    name: str
+    body: str            # MS Paint blue
+    crease: str          # the darker line down each quill
+    cream: str           # MS Paint cream: belly, muzzle
+    glove: str = "#ffffff"
+    shoe: str = "#ed1c24"  # MS Paint red
+    eye: str = "#ffffff"
+    pupil: str = INK
+    quills_up: bool = False
+    aura: Optional[str] = None
 
 
-NORMAL = Skin(
-    body="#2f6fd0", body_dk="#245aad",
-    muzzle="#f0c08a", muzzle_dk="#d99f63",
-    eye="#fbfbfb", pupil=INK,
-    shoe="#d5342c", shoe_dk="#a5211c", buckle="#f2f2f2",
-    accent="#e7c53a",
-)
-
-SUPER_SKIN = Skin(
-    body="#ffe24a", body_dk="#eeb70e",
-    muzzle="#ffeec2", muzzle_dk="#e6c877",
-    eye="#fbfbfb", pupil="#d81f1f",       # red eyes
-    shoe="#d5342c", shoe_dk="#a5211c", buckle="#f2f2f2",   # red shoes stay
-    accent="#fff6b0",
-    spikes_up=True,
-    aura="#ffe36b",
-)
+NORMAL = Skin(name="sanic", body="#3f48cc", crease="#232a8a", cream="#efe4b0")
+SUPER_SKIN = Skin(name="super", body="#ffd93b", crease="#c98f0c", cream="#fff3c4",
+                  pupil="#d0101a", quills_up=True, aura="#fff0a0")
 
 
-# --- Curled poses (rendered as the spinning ball) -----------------------------
-BALL_ANIMS: Dict[str, float] = {
-    # anim -> number of FULL turns across the row (integer => seamless loop).
-    "jump": 1.0,
-    "dash": 2.0,
-    "dash_startup": 1.0,
-    "ball": 2.0,
-    "air_neutral": 1.0,
-    "air_down": 2.0,
-    "special": 2.0,
-}
+# --- The body at rest (reference pixels, facing east) -----------------------
+
+TORSO_C = (246.0, 252.0)
+LEAN_PIVOT = (246.0, 302.0)      # the torso leans about the hips
+NECK = (238.0, 176.0)
+SHOULDER_BACK = (192.0, 214.0)
+SHOULDER_FRONT = (316.0, 208.0)
+HIP_BACK = (214.0, 312.0)
+HIP_FRONT = (268.0, 318.0)
+ARM = (58.0, 54.0)               # upper, lower
+LEG = (54.0, 54.0)
+BALL_C = (246.0, 323.0)          # a ball on the ground: its bottom on the soles
+BALL_R = 72.0
+#: The sprint's feet run round a sideways figure 8 (a lemniscate) under the
+#: hips: its middle, half-width and tilt.
+EIGHT_C = (272.0, 346.0)
+EIGHT_A = 92.0
+EIGHT_TILT = -12.0
+
+#: Rest limb targets: a hand from its shoulder, a foot from its hip.
+REST_HAND_BACK = (-112.0, 30.0)
+REST_HAND_FRONT = (74.0, 6.0)
+REST_FOOT_BACK = (-100.0, 62.0)
+REST_FOOT_FRONT = (66.0, 66.0)
+
+#: Each quill: its root, its tip swept back, its tip raised (super), width.
+#: The first four grow from the head, the rest from the back.
+QUILLS = [
+    ((226, 80), (160, 44), (232, -26), 40),
+    ((210, 96), (110, 70), (186, -14), 46),
+    ((204, 118), (88, 112), (140, 14), 44),
+    ((208, 140), (82, 152), (104, 56), 40),
+    ((198, 190), (66, 186), (76, 108), 46),
+    ((192, 216), (58, 226), (66, 160), 40),
+    ((196, 240), (96, 262), (90, 220), 30),
+]
+HEAD_QUILLS = 4
 
 
-# --- Primitives ---------------------------------------------------------------
+@dataclass
+class Pose:
+    """One drawn moment. Limb targets: hands from their shoulder, feet from
+    their hip (``planted``: the feet stay on the ground when the body sinks or
+    rises)."""
+
+    root: Point = (0.0, 0.0)
+    lean: float = 0.0
+    head: float = 0.0
+    quill_sway: float = 0.0
+    hand_back: Point = REST_HAND_BACK
+    hand_front: Point = REST_HAND_FRONT
+    foot_back: Point = REST_FOOT_BACK
+    foot_front: Point = REST_FOOT_FRONT
+    glove_back: float = 1.0
+    glove_front: float = 1.0
+    shoe_back_tilt: float = 0.0
+    shoe_front_tilt: float = 0.0
+    knee_forward: float = 0.0      # 0: the reference's dropped knee; 1: bent forward
+    planted: bool = True
+    eyes: str = "derp"             # derp | wide | squint | closed | dead
+    mouth: str = "grin"            # grin | open | flat | ouch
+    ball: bool = False
+    ball_at: Point = (0.0, 0.0)    # the ball's offset from BALL_C
+    turn: float = 0.0              # the ball's turn, in turns
+    eight: bool = False            # the sprint's figure-8 trail behind the feet
+    eight_u: float = 0.0           # where the back foot is on it (turns)
+    fx: Tuple[str, ...] = ()       # speed | dust
 
 
-def _rgba(color: str, alpha: int = 255) -> RGBA:
-    r, g, b = ImageColor.getrgb(color)
-    return (r, g, b, alpha)
+# --- Geometry -----------------------------------------------------------------
 
 
-def _s(v: float) -> int:
-    return int(round(v * SUPER))
+def _rot(p: Point, degrees: float, c: Point = (0.0, 0.0)) -> Point:
+    r = math.radians(degrees)
+    x, y = p[0] - c[0], p[1] - c[1]
+    return (c[0] + x * math.cos(r) - y * math.sin(r), c[1] + x * math.sin(r) + y * math.cos(r))
 
 
-def _pt(x: float, y: float) -> Tuple[int, int]:
-    return (_s(x), _s(y))
+def _add(a: Point, b: Point) -> Point:
+    return (a[0] + b[0], a[1] + b[1])
 
 
-def _box(x1: float, y1: float, x2: float, y2: float) -> Tuple[int, int, int, int]:
-    return (_s(x1), _s(y1), _s(x2), _s(y2))
+def _frame(p: Point) -> Point:
+    """A reference point in frame pixels."""
+    return (CX + (p[0] - REF_CX) * K, GROUND_Y + (p[1] - REF_GROUND) * K)
+
+
+def _two_bone(root: Point, target: Point, l1: float, l2: float, side: float) -> Tuple[Point, Point]:
+    d = (target[0] - root[0], target[1] - root[1])
+    dist = max(abs(l1 - l2) + 1e-3, min(math.hypot(*d), (l1 + l2) * 0.999))
+    a = math.atan2(d[1], d[0])
+    b = math.acos(max(-1.0, min(1.0, (l1 * l1 + dist * dist - l2 * l2) / (2 * l1 * dist))))
+    joint = (root[0] + l1 * math.cos(a - side * b), root[1] + l1 * math.sin(a - side * b))
+    end = (root[0] + dist * math.cos(a), root[1] + dist * math.sin(a))
+    return joint, end
+
+
+def _ik(root: Point, target: Point, lengths: Tuple[float, float], hint: Point) -> Tuple[Point, Point]:
+    """The middle joint and end of a two-bone limb, on the side of its line
+    that lies further along ``hint``."""
+    a = _two_bone(root, target, *lengths, 1.0)
+    b = _two_bone(root, target, *lengths, -1.0)
+    da = (a[0][0] - root[0]) * hint[0] + (a[0][1] - root[1]) * hint[1]
+    db = (b[0][0] - root[0]) * hint[0] + (b[0][1] - root[1]) * hint[1]
+    return a if da >= db else b
+
+
+@dataclass
+class Solved:
+    """Where everything is in one pose (reference pixels)."""
+
+    torso: Point
+    pivot: Point
+    neck: Point
+    shoulder_back: Point
+    elbow_back: Point
+    hand_back: Point
+    shoulder_front: Point
+    elbow_front: Point
+    hand_front: Point
+    hip_back: Point
+    knee_back: Point
+    foot_back: Point
+    hip_front: Point
+    knee_front: Point
+    foot_front: Point
+    ball: Point
+
+
+def _solve(pose: Pose) -> Solved:
+    def body(p: Point) -> Point:
+        return _add(_rot(p, pose.lean, LEAN_PIVOT), pose.root)
+
+    sb, sf, hb, hf = body(SHOULDER_BACK), body(SHOULDER_FRONT), body(HIP_BACK), body(HIP_FRONT)
+    if pose.planted:
+        fb_target = _add(_add(HIP_BACK, pose.foot_back), (pose.root[0], 0.0))
+        ff_target = _add(_add(HIP_FRONT, pose.foot_front), (pose.root[0], 0.0))
+    else:
+        fb_target, ff_target = _add(hb, pose.foot_back), _add(hf, pose.foot_front)
+    knee_hint = (0.3 + 0.7 * pose.knee_forward, 1.0 - 1.2 * pose.knee_forward)
+    kb, fb = _ik(hb, fb_target, LEG, knee_hint)
+    kf, ff = _ik(hf, ff_target, LEG, knee_hint)
+    eb, wb = _ik(sb, _add(sb, pose.hand_back), ARM, (0.2, 1.0))
+    ef, wf = _ik(sf, _add(sf, pose.hand_front), ARM, (0.2, -1.0))
+    return Solved(
+        torso=body(TORSO_C), pivot=body(LEAN_PIVOT), neck=body(NECK),
+        shoulder_back=sb, elbow_back=eb, hand_back=wb,
+        shoulder_front=sf, elbow_front=ef, hand_front=wf,
+        hip_back=hb, knee_back=kb, foot_back=fb,
+        hip_front=hf, knee_front=kf, foot_front=ff,
+        ball=_add(_add(BALL_C, pose.ball_at), pose.root),
+    )
+
+
+# --- SVG drawing helpers (reference pixels) -----------------------------------
+
+
+def _wobble_blob(cx, cy, rx, ry, seed, n=16, amp=0.06, tilt=0.0):
+    """A closed lumpy ellipse, the way a mouse draws one, fixed by its seed."""
+    rng = random.Random(seed)
+    pts = []
+    for i in range(n):
+        t = 2 * math.pi * i / n
+        k = 1.0 + rng.uniform(-amp, amp)
+        pts.append(_rot((cx + rx * k * math.cos(t), cy + ry * k * math.sin(t)), tilt, (cx, cy)))
+    return pts
+
+
+def _smooth(pts, closed=True) -> str:
+    """A Catmull-Rom curve through ``pts`` as SVG path data."""
+    n = len(pts)
+    P = [np.array(p, float) for p in pts]
+    d = [f"M {P[0][0]:.2f},{P[0][1]:.2f}"]
+    for i in range(n if closed else n - 1):
+        p0 = P[(i - 1) % n] if (closed or i > 0) else P[i]
+        p1, p2 = P[i], P[(i + 1) % n]
+        p3 = P[(i + 2) % n] if (closed or i + 2 < n) else p2
+        c1, c2 = p1 + (p2 - p0) / 6, p2 - (p3 - p1) / 6
+        d.append(f"C {c1[0]:.2f},{c1[1]:.2f} {c2[0]:.2f},{c2[1]:.2f} {p2[0]:.2f},{p2[1]:.2f}")
+    if closed:
+        d.append("Z")
+    return " ".join(d)
+
+
+def _fill(pts, color, ink=INK_W) -> str:
+    return f'<path d="{_smooth(pts)}" fill="{color}" stroke="{INK}" stroke-width="{ink}" stroke-linejoin="round"/>'
+
+
+def _line(pts, color=INK, width=2.4) -> str:
+    return (f'<path d="{_smooth(pts, closed=False)}" fill="none" stroke="{color}" '
+            f'stroke-width="{width}" stroke-linecap="round" stroke-linejoin="round"/>')
+
+
+def _quill_svg(base, tip, width, seed, skin: Skin) -> str:
+    """A long tapered spike, bowed a little, with a dark crease down it."""
+    rng = random.Random(seed)
+    b, t = np.array(base, float), np.array(tip, float)
+    axis = t - b
+    length = float(np.linalg.norm(axis))
+    u = axis / length
+    nrm = np.array([-u[1], u[0]])
+    mid = b + axis * 0.5 + nrm * length * 0.18
+    pts = [b + nrm * width / 2, mid + nrm * width * 0.28 + nrm * rng.uniform(-1, 1), t,
+           mid - nrm * width * 0.22, b - nrm * width / 2]
+    crease = [b + axis * 0.15, mid + nrm * rng.uniform(-1.5, 1.5), b + axis * 0.85 + nrm * length * 0.054]
+    return (_fill([tuple(p) for p in pts], skin.body, INK_W * 0.9)
+            + _line([tuple(p) for p in crease], skin.crease, 2.0))
+
+
+# --- Pieces: each drawn once, placed per frame --------------------------------
+
+_PIECES: Dict[tuple, Optional[Tuple[Image.Image, Point]]] = {}
+_DEFS = ('<defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%">'
+         '<feGaussianBlur stdDeviation="22"/></filter></defs>')
+
+
+def _piece(key: tuple, svg: Callable[[], str], anchor: Point, reach: float = 260.0):
+    """The raster of ``svg()`` (reference pixels) about ``anchor``, cut to its
+    paint, and the anchor in it (super pixels); ``None`` when it paints
+    nothing. ``key`` names everything ``svg`` reads."""
+    if key not in _PIECES:
+        import resvg_py
+
+        px = int(round(2 * reach * K * SUPER))
+        doc = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{anchor[0] - reach} {anchor[1] - reach} '
+               f'{2 * reach} {2 * reach}" width="{px}" height="{px}">{_DEFS}{svg()}</svg>')
+        img = Image.open(io.BytesIO(bytes(resvg_py.svg_to_bytes(svg_string=doc)))).convert("RGBA")
+        box = img.getchannel("A").getbbox()
+        _PIECES[key] = None if box is None else (img.crop(box), (px / 2 - box[0], px / 2 - box[1]))
+    return _PIECES[key]
+
+
+def _put(img: Image.Image, key: tuple, svg, anchor: Point, at: Point, degrees: float, name: str, reach=260.0) -> None:
+    """Place the piece ``key`` with its anchor at the reference point ``at``."""
+    part = _piece(key, svg, anchor, reach)
+    if part is not None:
+        fx, fy = _frame(at)
+        shape_rig.place(img, part, (fx * SUPER, fy * SUPER), degrees, name)
+
+
+def _limb(img, skin: Skin, points: Sequence[Point], width: float, name: str) -> None:
+    """A two-segment Paint limb: both inks first, then both colours, so the
+    joint shows no ink across it."""
+    segs = list(zip(points[:-1], points[1:]))
+    for layer, (stroke_w, color) in (("ink", (width + 2 * INK_W, INK)), ("", (width, skin.body))):
+        for k, (a, b) in enumerate(segs):
+            length = round(math.hypot(b[0] - a[0], b[1] - a[1]))
+            degrees = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+            svg = (lambda L=length, w=stroke_w, c=color:
+                   f'<path d="M 0,0 L {L},0" stroke="{c}" stroke-width="{w}" stroke-linecap="round" fill="none"/>')
+            _put(img, ("seg", length, stroke_w, color), svg, (0.0, 0.0), a, degrees, f"{name}_{k}{layer}")
+
+
+def _glove(img, skin, at, size, seed, rx, ry, name):
+    s = round(size, 1)
+    _put(img, ("glove", skin.glove, s, seed),
+         lambda: _fill(_wobble_blob(0, 0, rx * s, ry * s, seed), skin.glove), (0.0, 0.0), at, 0.0, name)
+
+
+def _shoe(img, skin, ankle, facing, tilt, size, seed, name):
+    """A red blob of a shoe, its toe out ahead of the ankle."""
+    _put(img, ("shoe", skin.shoe, facing, size, seed),
+         lambda: _fill(_wobble_blob(facing * 14 * size, 6 * size, 34 * size, 13 * size, seed, amp=0.08), skin.shoe),
+         (0.0, 0.0), ankle, tilt, name)
+
+
+def _head_svg(skin: Skin) -> str:
+    # the reference's head is nearly a rounded box
+    head = [(204, 96), (228, 74), (270, 70), (300, 84), (306, 118), (300, 150), (272, 168), (232, 166), (206, 148), (198, 120)]
+    muzzle = [(236, 138), (262, 134), (290, 137), (294, 148), (284, 158), (262, 161), (240, 158), (232, 148)]
+    return "".join([
+        f'<path d="M {NECK[0]},{NECK[1]} L 242,156" stroke="{INK}" stroke-width="{20 + 2 * INK_W}" stroke-linecap="round"/>',
+        f'<path d="M {NECK[0]},{NECK[1]} L 242,156" stroke="{skin.body}" stroke-width="20" stroke-linecap="round"/>',
+        _fill(head, skin.body),
+        _fill(muzzle, skin.cream, INK_W * 0.85),
+        f'<circle cx="252" cy="128" r="4.6" fill="{INK}"/>',
+        _line([(210, 95), (236, 92)], INK, 2.4),
+    ])
+
+
+EYES = [((228, 108), 19, 13, -6), ((276, 112), 25, 14, 4)]
+
+
+def _eyes_svg(skin: Skin, kind: str) -> str:
+    out = []
+    pupils = {"derp": [(236, 108), (268, 113)], "wide": [(228, 106), (280, 110)], "squint": [(232, 110), (276, 112)]}
+    for k, (c, rx, ry, tilt) in enumerate(EYES):
+        if kind in ("closed", "dead"):
+            if kind == "closed":  # squeezed shut: a > and a <
+                s = 1 if k == 0 else -1
+                out.append(_line([(c[0] - s * rx * 0.6, c[1] - 8), (c[0] + s * rx * 0.5, c[1]), (c[0] - s * rx * 0.6, c[1] + 8)], INK, 3.0))
+            else:  # an X
+                out.append(_line([(c[0] - 9, c[1] - 8), (c[0] + 9, c[1] + 8)], INK, 3.0))
+                out.append(_line([(c[0] + 9, c[1] - 8), (c[0] - 9, c[1] + 8)], INK, 3.0))
+            continue
+        sy = 0.45 if kind == "squint" else 1.0
+        out.append(_fill(_wobble_blob(c[0], c[1], rx, ry * sy, 500 + rx, amp=0.04, tilt=tilt), skin.eye, INK_W * 0.8))
+        p = pupils[kind][k]
+        out.append(f'<circle cx="{p[0]}" cy="{p[1]}" r="4.2" fill="{skin.pupil}"/>')
+    return "".join(out)
+
+
+def _mouth_svg(kind: str) -> str:
+    if kind == "grin":
+        return _line([(242, 149), (264, 154), (286, 147)], INK, 2.6)
+    if kind == "open":
+        return _fill([(244, 146), (282, 145), (276, 158), (252, 160)], "#7a1010", 2.4)
+    if kind == "ouch":
+        return _line([(242, 152), (250, 147), (258, 153), (266, 147), (274, 153), (282, 148)], INK, 2.4)
+    return _line([(244, 151), (282, 150)], INK, 2.6)
+
+
+def _torso_svg(skin: Skin) -> str:
+    belly = [(214, 210), (260, 200), (290, 214), (292, 262), (272, 284), (226, 282), (210, 254)]
+    hairs = [((180, 270), (172, 282)), ((186, 292), (180, 304)), ((300, 290), (308, 300))]
+    return "".join([_fill(_wobble_blob(*TORSO_C, 74, 80, 7, amp=0.05), skin.body, INK_W * 1.1),
+                    _fill(belly, skin.cream, INK_W * 0.9)]
+                   + [_line([a, b], INK, 1.8) for a, b in hairs])
+
+
+def _ball_svg(skin: Skin) -> str:
+    """The spin ball about ``BALL_C``: a lumpy ball with quill tips round it,
+    one eye and one shoe peeking out so a whole turn reads."""
+    cx, cy = BALL_C
+    out = []
+    for k in range(7):
+        a = math.radians(-150 + k * 34)
+        base = (cx + 60 * math.cos(a), cy + 60 * math.sin(a))
+        tip = (cx + 104 * math.cos(a - 0.5), cy + 104 * math.sin(a - 0.5))
+        out.append(_quill_svg(base, tip, 34, 600 + k, skin))
+    out.append(_fill(_wobble_blob(cx, cy, BALL_R, BALL_R * 0.97, 9, amp=0.06), skin.body, INK_W * 1.1))
+    out.append(_fill(_wobble_blob(cx + 22, cy + 18, 30, 26, 10, amp=0.08), skin.cream, INK_W * 0.9))
+    out.append(_fill(_wobble_blob(cx + 34, cy - 26, 15, 11, 11, amp=0.05), skin.eye, INK_W * 0.8))
+    out.append(f'<circle cx="{cx + 38}" cy="{cy - 25}" r="4" fill="{skin.pupil}"/>')
+    out.append(_fill(_wobble_blob(cx - 40, cy + 50, 22, 10, 12, amp=0.08, tilt=-30), skin.shoe, INK_W * 0.8))
+    return "".join(out)
+
+
+def _eight_point(u: float) -> Point:
+    """The point at ``u`` (turns) round the sprint's figure 8."""
+    t = 2 * math.pi * u
+    d = 1 + math.sin(t) ** 2
+    p = (EIGHT_A * math.cos(t) / d, EIGHT_A * 0.9 * math.sin(t) * math.cos(t) / d)
+    return _add(_rot(p, EIGHT_TILT), EIGHT_C)
+
+
+def _eight_svg(skin: Skin) -> str:
+    """The blur the feet leave round the figure 8."""
+    pts = [_eight_point(u) for u in np.linspace(0, 1, 33)[:-1]]
+    return (f'<path d="{_smooth(pts)}" fill="none" stroke="{skin.body}" stroke-width="26" opacity="0.4"/>'
+            f'<path d="{_smooth(pts)}" fill="none" stroke="{skin.shoe}" stroke-width="8" opacity="0.5"/>')
+
+
+#: The ghosts each sprinting shoe leaves behind it on the figure 8:
+#: (how far back, in turns; opacity).
+SHOE_GHOSTS = ((0.07, 0.45), (0.14, 0.22))
+
+
+def _aura_svg(skin: Skin) -> str:
+    return (f'<ellipse cx="{TORSO_C[0]}" cy="{TORSO_C[1] - 40}" rx="170" ry="210" '
+            f'fill="{skin.aura}" opacity="0.55" filter="url(#glow)"/>')
+
+
+def _speed_svg(skin: Skin) -> str:
+    out = []
+    for k, (y, length) in enumerate([(170, 110), (215, 160), (262, 130), (310, 90)]):
+        out.append(_line([(40 - length, y), (40, y)], skin.body if k % 2 else "#9aa4ff", 4.5))
+    return "".join(out)
+
+
+def _dust_svg() -> str:
+    return "".join(_fill(_wobble_blob(140 - k * 34, 390 - 4 * k, 16 - 2 * k, 10 - k, 900 + k), "#d8d2c4", 2.2)
+                   for k in range(4))
+
+
+# --- Drawing one pose -----------------------------------------------------------
+
+
+def _draw_pose(skin: Skin, pose: Pose) -> Image.Image:
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    s = _solve(pose)
+    sk = skin.name
+    if "speed" in pose.fx:
+        _put(img, ("speed", sk), lambda: _speed_svg(skin), (0.0, 240.0), _add((0.0, 240.0), pose.root), 0.0, "speed_lines")
+    if "dust" in pose.fx:
+        _put(img, ("dust",), _dust_svg, (90.0, 380.0), (90.0 + pose.root[0], 380.0), 0.0, "dust")
+
+    if pose.ball:
+        if skin.aura:
+            _put(img, ("ball_aura", sk), lambda: f'<circle cx="{BALL_C[0]}" cy="{BALL_C[1]}" r="125" fill="{skin.aura}" '
+                 'opacity="0.55" filter="url(#glow)"/>', BALL_C, s.ball, 0.0, "aura")
+        _put(img, ("ball", sk), lambda: _ball_svg(skin), BALL_C, s.ball, 360.0 * pose.turn, "ball")
+        return _downsample(img)
+
+    if skin.aura:
+        _put(img, ("aura", sk), lambda: _aura_svg(skin), TORSO_C, s.torso, 0.0, "aura", reach=300.0)
+
+    # the quills, back to front: the back's, then the head's
+    head_turn = pose.lean + pose.head
+    for k in reversed(range(len(QUILLS))):
+        base, tip_back, tip_up, width = QUILLS[k]
+        tip = tip_up if skin.quills_up else tip_back
+        on_head = k < HEAD_QUILLS
+        at = _add(_rot(_add(_rot(base, pose.lean, LEAN_PIVOT), pose.root), pose.head, s.neck), (0, 0)) if on_head \
+            else _add(_rot(base, pose.lean, LEAN_PIVOT), pose.root)
+        degrees = (head_turn if on_head else pose.lean) + pose.quill_sway * (1 + 0.3 * k)
+        _put(img, ("quill", sk, k), lambda b=base, t=tip, w=width, k=k: _quill_svg(b, t, w, 100 + k, skin),
+             base, at, degrees, f"quill_{k}")
+
+    # the back leg and arm, behind the body
+    if pose.eight:
+        _put(img, ("eight", sk), lambda: _eight_svg(skin), EIGHT_C, _add(EIGHT_C, (pose.root[0], 0.0)), 0.0, "eight")
+        for foot, (back, alpha) in [(f, g) for f in ("back", "front") for g in SHOE_GHOSTS]:
+            u = pose.eight_u + (0.5 if foot == "front" else 0.0) + back
+            at = _add(_eight_point(-u), (pose.root[0], 0.0))
+            _put(img, ("ghost_shoe", skin.shoe, alpha),
+                 lambda a=alpha: f'<g opacity="{a}">' + _fill(_wobble_blob(14, 6, 32, 12, 301, amp=0.08), skin.shoe) + "</g>",
+                 (0.0, 0.0), at, 0.0, f"ghost_{foot}_{back}")
+    _limb(img, skin, [s.hip_back, s.knee_back, s.foot_back], 15, "leg_back")
+    _shoe(img, skin, s.foot_back, -1, pose.shoe_back_tilt, 1.25, 300, "shoe_back")
+    _limb(img, skin, [s.shoulder_back, s.elbow_back, s.hand_back], 15, "arm_back")
+    _glove(img, skin, s.hand_back, pose.glove_back, 401, 27, 23, "glove_back")
+
+    _put(img, ("torso", sk), lambda: _torso_svg(skin), LEAN_PIVOT, s.pivot, pose.lean, "torso")
+
+    _limb(img, skin, [s.hip_front, s.knee_front, s.foot_front], 15, "leg_front")
+    _shoe(img, skin, s.foot_front, 1, pose.shoe_front_tilt, 0.9, 301, "shoe_front")
+
+    _put(img, ("head", sk), lambda: _head_svg(skin), NECK, s.neck, head_turn, "head")
+    _put(img, ("mouth", pose.mouth), lambda: _mouth_svg(pose.mouth), NECK, s.neck, head_turn, "mouth")
+    _put(img, ("eyes", sk, pose.eyes), lambda: _eyes_svg(skin, pose.eyes), NECK, s.neck, head_turn, "eyes")
+
+    # the front arm last: it crosses the body when it swings
+    _limb(img, skin, [s.shoulder_front, s.elbow_front, s.hand_front], 14, "arm_front")
+    _glove(img, skin, s.hand_front, pose.glove_front, 402, 17, 11, "glove_front")
+    return _downsample(img)
 
 
 def _downsample(img: Image.Image) -> Image.Image:
     return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
-def _jitter(i: int, salt: float) -> Tuple[float, float]:
-    """Deterministic per-vertex offset in [-1, 1]^2 — a cheap hash of the vertex
-    index so the hand-drawn wobble is stable across regen runs (no RNG)."""
-    a = math.sin(i * 12.9898 + salt * 3.17) * 43758.5453
-    b = math.sin(i * 78.2330 + salt * 1.71) * 12543.1234
-    return ((a - math.floor(a)) * 2.0 - 1.0, (b - math.floor(b)) * 2.0 - 1.0)
-
-
-def _wobble(pts: Sequence[Point], amp: float, salt: float) -> List[Point]:
-    out: List[Point] = []
-    for i, (x, y) in enumerate(pts):
-        jx, jy = _jitter(i, salt)
-        out.append((x + jx * amp, y + jy * amp))
-    return out
-
-
-def _blob(cx: float, cy: float, rx: float, ry: float, salt: float, amp: float = 1.6, n: int = 22) -> List[Point]:
-    """A wobbly closed ellipse-ish polygon — a mouse-drawn circle."""
-    pts: List[Point] = []
-    for i in range(n):
-        ang = math.tau * i / n
-        jx, jy = _jitter(i, salt)
-        pts.append((cx + math.cos(ang) * (rx + jx * amp), cy + math.sin(ang) * (ry + jy * amp)))
-    return pts
-
-
-def _poly(draw: ImageDraw.ImageDraw, pts: Sequence[Point], fill: RGBA, outline: Optional[RGBA] = None, width: float = 2.0) -> None:
-    scaled = [_pt(x, y) for x, y in pts]
-    draw.polygon(scaled, fill=fill, outline=outline, width=_s(width) if outline else 0)
-
-
-def _spike(cx: float, cy: float, dx: float, dy: float, length: float, width: float, salt: float, wob: float = 2.6) -> List[Point]:
-    """A fat, tapering, wobbly quill from `(cx, cy)` along direction `(dx, dy)`:
-    a wide wobbly base bulging at ~45% then tapering to the tip. Direction-based
-    so a form can aim its spikes anywhere (back for Sanic, up for Super Sanic)."""
-    L = math.hypot(dx, dy) or 1.0
-    ux, uy = dx / L, dy / L
-    px, py = -uy, ux
-
-    def along(t: float, w: float) -> Point:
-        return (cx + ux * length * t + px * w, cy + uy * length * t + py * w)
-
-    pts = [
-        (cx + px * width, cy + py * width),
-        along(0.45, width * 0.85),
-        (cx + ux * length, cy + uy * length),
-        along(0.45, -width * 0.85),
-        (cx - px * width, cy - py * width),
-    ]
-    return _wobble(pts, wob, salt)
-
-
-# --- Effects (translucent overlays, each one piece) ---------------------------
-
-
-def _draw_speed_lines(img: Image.Image, skin: Skin, cx: float, cy: float, phase: float, intensity: float, direction: Point = (-1.0, 0.0), name: str = "speed_lines") -> None:
-    """Six speed lines trailing along ``direction``: painted along +x and
-    turned to it."""
-    pattern = int(phase * 3) % 12
-    hx, hy = HOME
-
-    def paint(canvas, d) -> None:
-        for i in range(6):
-            off = (i - 2.5) * 10.0
-            length = 26.0 + 18.0 * intensity + ((i * 7 + pattern) % 12)
-            x0, y0 = hx + 18.0, hy + off
-            col = _rgba(skin.eye if i % 2 == 0 else skin.body, int(150 * intensity))
-            d.line(_box(x0, y0, x0 + length, y0), fill=col, width=_s(2.2))
-
-    degrees = math.degrees(math.atan2(direction[1], direction[0]))
-    _put(img, ("speed_lines", skin, intensity, pattern), paint, (cx, cy), name, degrees)
-
-
-def _swoosh(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, a0: float, a1: float) -> None:
-    hx, hy = HOME
-
-    def paint(canvas, d) -> None:
-        d.arc(_box(hx - r, hy - r, hx + r, hy + r), a0, a1, fill=_rgba(skin.eye, 225), width=_s(3.2))
-        d.arc(_box(hx - r + 2.2, hy - r + 2.2, hx + r - 2.2, hy + r - 2.2), a0 + 8, a1 - 8, fill=_rgba(skin.body, 180), width=_s(1.6))
-
-    _put(img, ("swoosh", skin, r, a0, a1), paint, (cx, cy), "swoosh")
-
-
-def _stars(img: Image.Image, skin: Skin, cx: float, cy: float, salt: float, n: int = 4) -> None:
-    hx, hy = HOME
-
-    def paint(canvas, d) -> None:
-        for i in range(n):
-            jx, jy = _jitter(i, salt)
-            sx, sy = hx + jx * 7.0, hy + jy * 7.0
-            r = 2.4 + (i % 2) * 1.2
-            d.line(_box(sx - r, sy, sx + r, sy), fill=_rgba(skin.accent, 235), width=_s(1.4))
-            d.line(_box(sx, sy - r, sx, sy + r), fill=_rgba(skin.accent, 235), width=_s(1.4))
-
-    _put(img, ("stars", skin, salt, n), paint, (cx, cy), "stars")
-
-
-def _shield_bubble(img: Image.Image, skin: Skin, cx: float, cy: float, r: float) -> None:
-    hx, hy = HOME
-
-    def paint(canvas, d) -> None:
-        d.ellipse(_box(hx - r, hy - r, hx + r, hy + r), fill=_rgba(skin.shield, 70), outline=_rgba("#c8f2ff", 170), width=_s(1.6))
-
-    _put(img, ("shield", skin, r), paint, (cx, cy), "shield")
-
-
-def _dust(img: Image.Image, cx: float, cy: float, salt: float) -> None:
-    hx, hy = HOME
-
-    def paint(canvas, d) -> None:
-        for i in range(4):
-            jx, _ = _jitter(i, salt)
-            px = hx + (i - 1.5) * 8.0 + jx * 2.0
-            r = 3.0 + (i % 2) * 1.5
-            d.ellipse(_box(px - r, hy - r * 0.6, px + r, hy + r * 0.6), fill=_rgba("#d8d8d8", 150))
-
-    _put(img, ("dust", salt), paint, (cx, cy), "dust")
-
-
-def _aura(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, salt: float) -> None:
-    """Super Sanic's golden glow + drifting sparkles, drawn behind the body.
-    A no-op for skins without an aura. The glow is one piece; each sparkle is
-    one piece, moved each frame (seeded by ``salt``)."""
-    if not skin.aura:
-        return
-    hx, hy = HOME
-
-    def glow(canvas, d) -> None:
-        layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-        gd = blending_draw(layer)
-        gd.ellipse(_box(hx - r, hy - r * 1.15, hx + r, hy + r * 1.15), fill=_rgba(skin.aura, 95))
-        canvas.alpha_composite(layer.filter(ImageFilter.GaussianBlur(radius=SUPER * 3.2)))
-
-    _put(img, ("aura", skin.aura, r), glow, (cx, cy), "aura")
-    for i in range(7):
-        jx, jy = _jitter(i, salt + 3)
-        rr = 1.6 + (i % 2) * 1.3
-
-        def sparkle(canvas, d, rr=rr) -> None:
-            d.line(_box(hx - rr, hy, hx + rr, hy), fill=_rgba("#fffbe0", 235), width=_s(1.2))
-            d.line(_box(hx, hy - rr, hx, hy + rr), fill=_rgba("#fffbe0", 235), width=_s(1.2))
-
-        _put(img, ("sparkle", rr), sparkle, (cx + jx * (r * 0.95), cy + jy * (r * 1.05)), f"sparkle_{i}")
-
-
-# --- Body parts ---------------------------------------------------------------
-
-
-def _draw_shoe(draw: ImageDraw.ImageDraw, skin: Skin, cx: float, cy: float, salt: float, tilt: float = 0.0) -> None:
-    """One oversized red shoe pointing right, with the white sock stripe."""
-    toe, heel, sole = cx + 12.0, cx - 9.0, cy + 6.0
-    pts = [
-        (heel, cy - 4.0), (cx - 2.0, cy - 6.0 + tilt), (cx + 6.0, cy - 5.0 + tilt),
-        (toe, cy - 1.0 + tilt), (toe + 1.5, cy + 2.5 + tilt), (toe - 3.0, sole),
-        (heel + 1.0, sole), (heel - 1.5, cy + 1.0),
-    ]
-    _poly(draw, _wobble(pts, 1.2, salt), _rgba(skin.shoe), _rgba(INK), 2.0)
-    draw.line(_box(heel + 3.0, cy + 1.0, toe - 3.0, cy + 1.5 + tilt), fill=_rgba(skin.buckle), width=_s(2.2))
-    draw.line(_box(heel + 1.0, sole - 0.5, toe - 3.0, sole - 0.5), fill=_rgba(skin.shoe_dk), width=_s(1.4))
-
-
-def _draw_leg(draw: ImageDraw.ImageDraw, hip: Point, ankle: Point, shade: str, salt: float, bend: float = 0.0) -> None:
-    """One long, awful, spindly leg: a thin wobbly two-segment line with a
-    knobbly kicked-out knee."""
-    hpx, hpy = hip
-    apx, apy = ankle
-    kx, ky = (hpx + apx) / 2.0 + bend, (hpy + apy) / 2.0 + 1.0
-    pts = _wobble([hip, (kx, ky), ankle], 1.6, salt)
-    scaled = [_pt(x, y) for x, y in pts]
-    draw.line(scaled, fill=_rgba(shade), width=_s(2.6), joint="curve")
-    draw.line(scaled, fill=_rgba(INK), width=_s(0.8), joint="curve")
-    _poly(draw, _blob(kx, ky, 2.2, 2.2, salt + 1, amp=0.6, n=8), _rgba(shade), _rgba(INK), 1.0)
-
-
-def _arm_to(draw: ImageDraw.ImageDraw, skin: Skin, shoulder: Point, hand: Point, salt: float, bend: float = 3.0) -> None:
-    """A thin tan arm from `shoulder` to `hand` with an auto-computed elbow (a
-    perpendicular kick of `bend`), capped by a crude white glove blob."""
-    sx, sy = shoulder
-    hx, hy = hand
-    mx, my = (sx + hx) / 2.0, (sy + hy) / 2.0
-    dx, dy = hx - sx, hy - sy
-    length = math.hypot(dx, dy) or 1.0
-    px, py = -dy / length, dx / length
-    ex, ey = mx + px * bend, my + py * bend
-    draw.line([_pt(sx, sy), _pt(ex, ey), _pt(hx, hy)], fill=_rgba(skin.muzzle), width=_s(3.2), joint="curve")
-    draw.line([_pt(sx, sy), _pt(ex, ey), _pt(hx, hy)], fill=_rgba(INK), width=_s(0.9), joint="curve")
-    _poly(draw, _blob(hx, hy, 3.2, 2.9, salt, amp=0.7, n=10), _rgba(skin.eye), _rgba(INK), 1.3)
-
-
-def _put_shoe(img: Image.Image, skin: Skin, at: Point, salt: float, tilt: float, name: str) -> None:
-    """One shoe as a piece, one per (whole-pixel) toe tilt."""
-    tilt = float(round(tilt))
-    hx, hy = HOME
-    _put(img, ("shoe", skin, salt, tilt), lambda canvas, d: _draw_shoe(d, skin, hx, hy, salt, tilt=tilt), at, name)
-
-
-def _put_leg(img: Image.Image, hip: Point, ankle: Point, shade: str, salt: float, bend: float, name: str) -> None:
-    """One spindly leg: two strokes and the knobbly knee piece."""
-    kx, ky = (hip[0] + ankle[0]) / 2.0 + bend, (hip[1] + ankle[1]) / 2.0 + 1.0
-    a, k, b = _wobble([hip, (kx, ky), ankle], 1.6, salt)
-    _limb(img, a, k, b, shade, 2.6, 0.8, name)
-    hx, hy = HOME
-    _put(img, ("knee", shade, salt), lambda canvas, d: _poly(d, _blob(hx, hy, 2.2, 2.2, salt + 1, amp=0.6, n=8), _rgba(shade), _rgba(INK), 1.0), (kx, ky), f"{name}_knee")
-
-
-def _put_arm(img: Image.Image, skin: Skin, shoulder: Point, hand: Point, salt: float, bend: float, name: str) -> None:
-    """One stick arm (``_arm_to``): two strokes to an elbow kicked out by
-    ``bend``, and the glove piece."""
-    sx, sy = shoulder
-    hx, hy = hand
-    dx, dy = hx - sx, hy - sy
-    length = math.hypot(dx, dy) or 1.0
-    px, py = -dy / length, dx / length
-    elbow = ((sx + hx) / 2.0 + px * bend, (sy + hy) / 2.0 + py * bend)
-    _limb(img, shoulder, elbow, hand, skin.muzzle, 3.2, 0.9, name)
-    ox, oy = HOME
-    _put(img, ("glove", skin, salt), lambda canvas, d: _poly(d, _blob(ox, oy, 3.2, 2.9, salt, amp=0.7, n=10), _rgba(skin.eye), _rgba(INK), 1.3), hand, f"{name}_glove")
-
-
-def _draw_head_spikes(draw: ImageDraw.ImageDraw, skin: Skin, hx: float, hy: float, tr: float, salt: float) -> None:
-    """Three thick head spikes. Sanic sweeps them back; Super Sanic raises them
-    UP (the transformation's signature).
-
-    ⚠ the raised fan is scaled by [`SUPER_SPIKE_FIT`]; read it before retuning
-    these lengths, because the authored numbers do not fit the frame.
-    """
-    if skin.spikes_up:
-        # rooted on top of the head, standing up (fanned).
-        specs = [((hx - 6, hy - 8), (-0.5, -1.0), 24.0, 5.0),
-                 ((hx - 1, hy - 11), (0.0, -1.1), 28.0, 5.4),
-                 ((hx + 4, hy - 9), (0.5, -1.0), 24.0, 5.0)]
-        ext = tr * 0.4
-        fit = SUPER_SPIKE_FIT
-    else:
-        # rooted on the back of the head, swept back-left.
-        specs = [((hx - 4, hy - 8), (-0.92, -0.45), 24.0, 5.0),
-                 ((hx - 6, hy - 1), (-1.0, 0.05), 26.0, 5.4),
-                 ((hx - 4, hy + 7), (-0.75, 0.5), 22.0, 5.0)]
-        ext = tr
-        fit = 1.0
-    for i, ((rx, ry), (dx, dy), length, wdt) in enumerate(specs):
-        _poly(draw, _spike(rx, ry, dx, dy, (length + ext) * fit, wdt, salt + i * 3), _rgba(skin.body_dk), _rgba(INK), 2.6)
-
-
-def _draw_back_spike(draw: ImageDraw.ImageDraw, skin: Skin, torso_cx: float, torso_cy: float, tr: float, salt: float) -> None:
-    """The one big weird spike off the MIDDLE OF THE BACK. Sanic sweeps it
-    back-and-up; Super Sanic stands it straight UP off the upper back."""
-    if skin.spikes_up:
-        reach = (48.0 + tr * 0.5) * SUPER_SPIKE_FIT
-        _poly(draw, _spike(torso_cx - 4.0, torso_cy - 14.0, 0.05, -1.0, reach, 10.0, salt, wob=3.0), _rgba(skin.body_dk), _rgba(INK), 2.8)
-    else:
-        _poly(draw, _spike(torso_cx - 8.0, torso_cy - 4.0, -0.95, -0.28, 44.0 + tr, 9.5, salt, wob=3.0), _rgba(skin.body_dk), _rgba(INK), 2.8)
-
-
-def _draw_face(draw: ImageDraw.ImageDraw, skin: Skin, hx: float, hy: float, salt: float, look: float, mouth: str) -> None:
-    """Beady, close-set, mostly-pupil eyes with the fat nose wedged *between*
-    them. `look` shifts the pupils (-1 back .. +1 forward)."""
-    _poly(draw, _blob(hx + 7.0, hy + 6.0, 9.0, 8.0, salt + 5, amp=1.4, n=18), _rgba(skin.muzzle), _rgba(INK), 2.0)
-
-    lx, ly, lr = hx + 2.5, hy - 3.0, 3.8
-    rx, ry, rr = hx + 8.5, hy - 4.0, 3.3
-    _poly(draw, _blob(lx, ly, lr, lr, salt + 1, amp=0.6, n=12), _rgba(skin.eye), _rgba(INK), 1.6)
-    _poly(draw, _blob(rx, ry, rr, rr, salt + 2, amp=0.6, n=12), _rgba(skin.eye), _rgba(INK), 1.6)
-    _poly(draw, _blob(hx + 5.2, hy - 1.0, 3.0, 2.8, salt + 9, amp=0.7, n=12), _rgba(skin.nose), None)
-
-    if mouth == "dead":
-        for (ex, ey, er) in ((lx, ly, lr), (rx, ry, rr)):
-            draw.line(_box(ex - er, ey - er, ex + er, ey + er), fill=_rgba(INK), width=_s(1.4))
-            draw.line(_box(ex - er, ey + er, ex + er, ey - er), fill=_rgba(INK), width=_s(1.4))
-    else:
-        pdx = look * 1.2
-        draw.ellipse(_box(lx - 2.0 + pdx, ly - 2.0, lx + 2.0 + pdx, ly + 2.0), fill=_rgba(skin.pupil))
-        draw.ellipse(_box(rx - 1.8 + pdx, ry - 1.8, rx + 1.8 + pdx, ry + 1.8), fill=_rgba(skin.pupil))
-        draw.ellipse(_box(lx - 1.2 + pdx, ly - 1.2, lx - 0.2 + pdx, ly - 0.2), fill=_rgba(skin.eye))
-
-    if mouth == "grin":
-        draw.arc(_box(hx + 1.0, hy + 4.0, hx + 14.0, hy + 13.0), 10, 150, fill=_rgba(INK), width=_s(1.6))
-    elif mouth == "open":
-        _poly(draw, _wobble([(hx + 3.0, hy + 7.0), (hx + 12.0, hy + 6.0), (hx + 11.0, hy + 12.0), (hx + 4.0, hy + 12.0)], 0.8, salt), _rgba("#7a2b2b"), _rgba(INK), 1.2)
-    elif mouth == "hurt":
-        draw.arc(_box(hx + 2.0, hy + 8.0, hx + 13.0, hy + 15.0), 190, 350, fill=_rgba(INK), width=_s(1.6))
-    else:  # flat little smirk
-        draw.line(_box(hx + 2.5, hy + 9.0, hx + 11.0, hy + 8.0), fill=_rgba(INK), width=_s(1.4))
-
-
-# --- Pieces -------------------------------------------------------------------
-#
-# Sanic is drawn as a rig: each rigid thing (the head with its face and
-# spikes, the torso, the back spike, a shoe, a glove, a knee, a quill, an
-# effect) is painted ONCE by its old painter on a scratch canvas with its
-# anchor at ``HOME``, cut to what it covers, and placed (and turned) through
-# ``shape_rig``. Arms and legs are strokes: one piece per (quarter-pixel)
-# length, turned to the bone. A part flipbook stores each once. Things rigid
-# to each other (the six quills, the two shoe smudges) are ONE piece.
-#
-# The old sheet boiled: every polygon's wobble was seeded by the frame index,
-# so every frame was a new picture. A piece's wobble is seeded by ``SALT``
-# instead (the hand-drawn wobble stays, the boil goes). Super Sanic's
-# sparkles still drift: each sparkle is one piece moved per frame.
-
-SALT = 1.0
-#: Where a piece's anchor is painted on the scratch canvas (frame pixels).
-HOME = (float(FRAME_SIZE[0]), float(FRAME_SIZE[1]))
-_PIECES: Dict[tuple, Optional[Tuple[Image.Image, Point]]] = {}
-
-
-def _piece(key: tuple, paint) -> Optional[Tuple[Image.Image, Point]]:
-    """The raster ``paint(canvas, draw)`` paints with its anchor at ``HOME``,
-    cut to its box, and the anchor in it (super pixels); ``None`` when it
-    paints nothing. ``key`` must name everything ``paint`` reads."""
-    if key not in _PIECES:
-        canvas = Image.new("RGBA", (2 * W, 2 * H), (0, 0, 0, 0))
-        paint(canvas, blending_draw(canvas))
-        box = canvas.getchannel("A").getbbox()
-        _PIECES[key] = None if box is None else (canvas.crop(box), (HOME[0] * SUPER - box[0], HOME[1] * SUPER - box[1]))
-    return _PIECES[key]
-
-
-def _put(img: Image.Image, key: tuple, paint, at: Point, name: str, degrees: float = 0.0) -> None:
-    """Place the piece ``key`` with its anchor at ``at`` (frame pixels)."""
-    part = _piece(key, paint)
-    if part is not None:
-        shape_rig.place(img, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
-
-
-def _stroke(img: Image.Image, a: Point, b: Point, color: str, width: float, ink_width: float, name: str, start_cap: bool = True) -> None:
-    """A limb segment from ``a`` to ``b``: a ``color`` stroke with an ink line
-    down its middle, as one piece turned to the segment. Without
-    ``start_cap`` it starts square, so it does not cover the ink of the
-    segment before it at the joint."""
-    length = round(math.hypot(b[0] - a[0], b[1] - a[1]) * 4) / 4
-    hx, hy = HOME
-
-    def paint(canvas, draw) -> None:
-        r = width / 2
-        draw.line([_pt(hx, hy), _pt(hx + length, hy)], fill=_rgba(color), width=_s(width))
-        if start_cap:
-            draw.ellipse(_box(hx - r, hy - r, hx + r, hy + r), fill=_rgba(color))
-        draw.ellipse(_box(hx + length - r, hy - r, hx + length + r, hy + r), fill=_rgba(color))
-        draw.line([_pt(hx, hy), _pt(hx + length, hy)], fill=_rgba(INK), width=_s(ink_width))
-
-    degrees = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
-    _put(img, ("stroke", length, color, width, ink_width, start_cap), paint, a, name, degrees)
-
-
-def _limb(img: Image.Image, root: Point, joint: Point, end: Point, color: str, width: float, ink_width: float, name: str) -> None:
-    _stroke(img, root, joint, color, width, ink_width, f"{name}_upper")
-    _stroke(img, joint, end, color, width, ink_width, f"{name}_lower", start_cap=False)
-
-
-# --- The spinning ball (jump + every curled pose) -----------------------------
-
-
-def _draw_spin_ball(
-    img: Image.Image,
-    draw: ImageDraw.ImageDraw,
-    skin: Skin,
-    cx: float,
-    cy: float,
-    spin: float,
-    salt: float,
-    lines: Optional[str] = None,
-    dust: bool = False,
-    emphasize: bool = False,
-    r: float = 16.0,
-) -> None:
-    """Sanic curled into a spinning ball. `spin` is the absolute rotation angle;
-    an asymmetric highlight quill + the red streak both ride it, so a full turn
-    actually reads as a full turn (not a symmetric blur). `lines` picks the
-    motion context: trail / radial / down / up. Each quill, the streak, the
-    shoe smudges, the face smear and the halo are painted at angle 0 and
-    turned by the spin."""
-    del draw
-    hx, hy = HOME
-    _aura(img, skin, cx, cy, r + 8.0, salt)
-
-    if lines == "trail":
-        _draw_speed_lines(img, skin, cx, cy, spin, 1.0, direction=(-1.0, -0.12))
-    elif lines == "radial":
-        # Six turned copies of one set (a fan painted as one piece holds
-        # 20 times the texels).
-        for k in range(6):
-            a = k * math.tau / 6.0
-            _draw_speed_lines(img, skin, cx + math.cos(a) * 2, cy + math.sin(a) * 2, spin, 0.5, direction=(math.cos(a), math.sin(a)), name=f"speed_lines_{k}")
-    elif lines == "down":
-        _draw_speed_lines(img, skin, cx, cy + r, spin, 1.0, direction=(0.0, 1.0))
-    elif lines == "up":
-        _draw_speed_lines(img, skin, cx, cy - r, spin, 0.9, direction=(0.0, -1.0))
-
-    if dust:
-        _dust(img, cx, cy + r + 2.0, SALT)
-
-    # Radiating quill blur (6-fold, symmetric — the motion smear) and ONE
-    # dominant highlight quill (asymmetric — marks the rotation): one piece,
-    # painted at spin 0 and turned by the spin.
-    def quills(canvas, d) -> None:
-        for k in range(6):
-            ang = k * math.tau / 6.0
-            tip = (hx + math.cos(ang) * (r + 8.0), hy + math.sin(ang) * (r + 8.0))
-            b1 = (hx + math.cos(ang - 0.30) * r, hy + math.sin(ang - 0.30) * r)
-            b2 = (hx + math.cos(ang + 0.30) * r, hy + math.sin(ang + 0.30) * r)
-            _poly(d, _wobble([b1, tip, b2], 1.0, SALT + k), _rgba(skin.body_dk), _rgba(INK), 1.4)
-        tip = (hx + (r + 12.0), hy)
-        b1 = (hx + math.cos(-0.42) * r, hy + math.sin(-0.42) * r)
-        b2 = (hx + math.cos(0.42) * r, hy + math.sin(0.42) * r)
-        _poly(d, _wobble([b1, tip, b2], 1.2, SALT + 20), _rgba(skin.body), _rgba(INK), 1.8)
-
-    _put(img, ("ball_quills", skin, r), quills, (cx, cy), "quills", math.degrees(spin))
-
-    # Ball body.
-    _put(img, ("ball_body", skin, r), lambda canvas, d: _poly(d, _blob(hx, hy, r, r, SALT, amp=2.2, n=20), _rgba(skin.body), _rgba(INK), 2.4), (cx, cy), "ball")
-
-    # Red streak wrapping the ball, starting at `spin` (rotates with the spin).
-    def streak(canvas, d) -> None:
-        d.arc(_box(hx - r + 1, hy - r + 1, hx + r - 1, hy + r - 1), 0, 250 if emphasize else 200, fill=_rgba(skin.shoe, 215), width=_s(3.2))
-
-    _put(img, ("ball_streak", skin, r, emphasize), streak, (cx, cy), "streak", int(math.degrees(spin)) % 360)
-
-    # Two shoe smudges caught mid-spin (one piece, turned by the spin) + a
-    # pale face smear so the whirl reads.
-    def smudges(canvas, d) -> None:
-        for k in range(2):
-            a = k * math.pi
-            _poly(d, _blob(hx + math.cos(a) * r * 0.55, hy + math.sin(a) * r * 0.55, 4.5, 3.0, SALT + k, amp=0.8, n=10), _rgba(skin.shoe), _rgba(INK), 1.2)
-
-    _put(img, ("ball_smudges", skin, r), smudges, (cx, cy), "smudges", math.degrees(spin))
-
-    def smear(canvas, d) -> None:
-        d.arc(_box(hx - r * 0.7, hy - r * 0.7, hx + r * 0.7, hy + r * 0.7), 0, 70, fill=_rgba(skin.muzzle, 150), width=_s(1.6))
-
-    _put(img, ("ball_smear", skin, r), smear, (cx, cy), "smear", int(math.degrees(spin + 0.6)) % 360)
-
-    if emphasize:
-        def halo(canvas, d) -> None:
-            for k in range(8):
-                a = k * math.tau / 8.0
-                x0, y0 = hx + math.cos(a) * (r + 6), hy + math.sin(a) * (r + 6)
-                x1, y1 = hx + math.cos(a) * (r + 16), hy + math.sin(a) * (r + 16)
-                d.line(_box(x0, y0, x1, y1), fill=_rgba(skin.shoe, 150), width=_s(1.6))
-
-        _put(img, ("ball_halo", skin, r), halo, (cx, cy), "halo", math.degrees(spin * 1.5))
-
-
-def _ball_frame(skin: Skin, anim: str, frame_idx: int, nframes: int) -> Image.Image:
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = blending_draw(img)
-    t = frame_idx / max(1, nframes)
-    salt = float(frame_idx + 1)
-    turns = BALL_ANIMS[anim]
-    spin = math.tau * t * turns  # completes `turns` FULL rotations across the row
-
-    if anim == "jump":
-        cx, cy = BASE_X + 2.0, GROUND_Y - 46.0
-        _draw_spin_ball(img, draw, skin, cx, cy, spin, salt, lines="up", r=15.0)
-    elif anim == "dash":
-        cx, cy = BASE_X + 4.0, GROUND_Y - 14.0
-        _draw_spin_ball(img, draw, skin, cx, cy, spin, salt, lines="trail", dust=True, r=16.0)
-    elif anim == "dash_startup":
-        cx, cy = BASE_X, GROUND_Y - 14.0
-        _draw_spin_ball(img, draw, skin, cx, cy, spin, salt, lines="trail", dust=True, r=15.0)
-    elif anim == "ball":
-        cx, cy = BASE_X + 2.0, GROUND_Y - 13.0
-        _draw_spin_ball(img, draw, skin, cx, cy, spin, salt, lines="trail", dust=True, r=15.0)
-    elif anim == "air_neutral":
-        cx, cy = BASE_X + 2.0, GROUND_Y - 42.0
-        _draw_spin_ball(img, draw, skin, cx, cy, spin, salt, lines="radial", r=15.0)
-    elif anim == "air_down":
-        cx, cy = BASE_X + 2.0, GROUND_Y - 34.0
-        _draw_spin_ball(img, draw, skin, cx, cy, spin, salt, lines="down", r=15.0)
-    else:  # special — the spin attack
-        cx, cy = BASE_X + 2.0, GROUND_Y - 30.0
-        _draw_spin_ball(img, draw, skin, cx, cy, spin, salt, lines="radial", emphasize=True, r=17.0)
-
-    return _downsample(img)
-
-
-# --- The posed humanoid body --------------------------------------------------
-
-
-def _render_humanoid(
-    img: Image.Image,
-    draw: ImageDraw.ImageDraw,
-    skin: Skin,
-    salt: float,
-    *,
-    bob: float = 0.0,
-    hips_dx: float = 0.0,
-    lean: float = 0.0,
-    crouch: float = 0.0,
-    look: float = 0.4,
-    mouth: str = "smirk",
-    fh: Optional[Point] = None,   # front-hand offset (dx, dy) from hips
-    bh: Optional[Point] = None,   # back-hand offset
-    fa: Optional[Point] = None,   # front-ankle offset
-    ba: Optional[Point] = None,   # back-ankle offset
-    airborne: bool = False,
-    fell: bool = False,
-    leg_blur: bool = False,
-    fx: Optional[str] = None,
-    fx_t: float = 0.0,
-) -> None:
-    del draw
-    hx0, hy0 = HOME
-    hips_x = BASE_X + hips_dx
-    hips_y = GROUND_Y - 42.0 + bob
-    head_cx = hips_x + 4.0 + lean
-    head_cy = hips_y - 44.0 + crouch * 16.0 + bob * 0.4
-    torso_cx = hips_x + 1.0 + lean * 0.3
-    torso_cy = hips_y - 6.0 + crouch * 5.0
-    tr = round(lean * 0.5, 2)
-
-    if fell:
-        head_cx = hips_x - 16.0
-        head_cy = hips_y + 6.0
-
-    # Golden aura behind the whole body (super only).
-    _aura(img, skin, (head_cx + torso_cx) / 2.0, (head_cy + torso_cy) / 2.0 + 4.0, 30.0, salt)
-
-    # Default limb targets (offsets from the hips). ground contact ≈ hips_y+38.
-    gy = GROUND_Y - 4.0 - hips_y
-    if fh is None:
-        fh = (18.0, 2.0)
-    if bh is None:
-        bh = (-12.0, 2.0)
-    if fa is None:
-        fa = (7.0, gy) if not airborne else (9.0, 30.0)
-    if ba is None:
-        ba = (-3.0, gy) if not airborne else (-2.0, 32.0)
-
-    if fx == "speed":
-        _draw_speed_lines(img, skin, head_cx, head_cy + 6.0, fx_t, 1.0)
-
-    # ---- Legs + shoes ----
-    if leg_blur:
-        bcx, bcy = hips_x + 2.0, GROUND_Y - 8.0
-
-        def blur(canvas, d) -> None:
-            d.ellipse(_box(hx0 - 15, hy0 - 14, hx0 + 15, hy0 + 12), fill=_rgba(skin.shoe, 150))
-            d.ellipse(_box(hx0 - 11, hy0 - 18, hx0 + 11, hy0 + 16), fill=_rgba(skin.shoe, 110))
-
-        _put(img, ("leg_blur", skin), blur, (bcx, bcy), "leg_blur")
-        for k in range(3):
-            ang = fx_t * 3.0 + k * math.tau / 3.0
-            _put_shoe(img, skin, (bcx + math.cos(ang) * 12.0, bcy + math.sin(ang) * 11.0), SALT + k, math.sin(ang) * 2.0, f"shoe_{k}")
-    elif fell:
-        for i, (dx, dy) in enumerate(((14.0, -4.0), (20.0, -12.0))):
-            ankle = (hips_x + dx, hips_y + dy)
-            _put_leg(img, (hips_x + 2.0, hips_y + 2.0), ankle, skin.muzzle if i else skin.muzzle_dk, SALT + i, 6.0, f"leg_{i}")
-            _put_shoe(img, skin, (ankle[0] + 3.0, ankle[1]), SALT + i, 6.0, f"shoe_{i}")
-    else:
-        back_ankle = (hips_x + ba[0], hips_y + ba[1])
-        front_ankle = (hips_x + fa[0], hips_y + fa[1])
-        _put_leg(img, (hips_x - 1.0, hips_y + 5.0), back_ankle, skin.muzzle_dk, SALT, -3.0 + ba[0] * 0.2, "leg_0")
-        _put_leg(img, (hips_x + 3.0, hips_y + 5.0), front_ankle, skin.muzzle, SALT + 3, 2.0 + fa[0] * 0.2, "leg_1")
-        _put_shoe(img, skin, (back_ankle[0] + 2.0, back_ankle[1]), SALT, 0.0, "shoe_0")
-        _put_shoe(img, skin, (front_ankle[0] + 2.0, front_ankle[1]), SALT + 3, 0.0, "shoe_1")
-
-    # ---- Back arm (behind body) ----
-    _put_arm(img, skin, (hips_x + 2.0, hips_y - 6.0), (hips_x + bh[0], hips_y + bh[1]), SALT + 7, -3.0, "back_arm")
-
-    # ---- Big back spike (off the mid-back, behind torso) ----
-    _put(img, ("back_spike", skin, tr), lambda canvas, d: _draw_back_spike(d, skin, hx0, hy0, tr, SALT + 4), (torso_cx, torso_cy), "back_spike")
-
-    # ---- Neck (connects the separated head to the body): one piece per
-    # (whole-pixel) length, turned from the head to the torso ----
-    if not fell:
-        nt = (head_cx - 1.0, head_cy + 9.0)
-        nb = (torso_cx + 1.0, torso_cy - 14.0)
-        length = round(math.hypot(nb[0] - nt[0], nb[1] - nt[1]))
-
-        def neck(canvas, d) -> None:
-            pts = [(hx0 - 6.0, hy0), (hx0 + 6.0, hy0), (hx0 + 9.0, hy0 + length), (hx0 - 9.0, hy0 + length)]
-            _poly(d, _wobble(pts, 1.0, SALT + 12), _rgba(skin.body), _rgba(INK), 2.0)
-
-        degrees = math.degrees(math.atan2(nb[1] - nt[1], nb[0] - nt[0])) - 90.0
-        _put(img, ("neck", skin, length), neck, nt, "neck", degrees)
-
-    # ---- Torso + belly circle ----
-    def torso(canvas, d) -> None:
-        _poly(d, _blob(hx0, hy0, 17.0, 18.0, SALT + 6, amp=2.0, n=20), _rgba(skin.body), _rgba(INK), 2.4)
-        _poly(d, _blob(hx0 + 4.0, hy0 + 4.0, 6.0, 6.5, SALT + 11, amp=1.0, n=14), _rgba(skin.muzzle), _rgba(INK), 1.4)
-
-    _put(img, ("torso", skin), torso, (torso_cx, torso_cy), "torso")
-
-    # ---- Head spikes + small head + face: one piece per look ----
-    look = round(look, 1)
-
-    def head(canvas, d) -> None:
-        _draw_head_spikes(d, skin, hx0, hy0, tr, SALT + 4)
-        _poly(d, _blob(hx0, hy0, 14.0, 13.0, SALT, amp=1.8, n=20), _rgba(skin.body), _rgba(INK), 2.4)
-        _draw_face(d, skin, hx0, hy0, SALT, look, mouth)
-
-    _put(img, ("head", skin, tr, look, mouth), head, (head_cx, head_cy), "head")
-
-    # ---- Front arm (over body) ----
-    _put_arm(img, skin, (hips_x + 6.0, hips_y - 6.0), (hips_x + fh[0], hips_y + fh[1]), SALT + 8, 3.0, "front_arm")
-
-    # ---- Attack / state effects rendered over the body ----
-    if fx == "arc_fwd":
-        _swoosh(img, skin, hips_x + 22.0, hips_y - 2.0, 16.0, -70, 70)
-    elif fx == "arc_up":
-        _swoosh(img, skin, hips_x + 8.0, head_cy - 6.0, 15.0, 200, 340)
-    elif fx == "arc_down":
-        _swoosh(img, skin, hips_x + 16.0, hips_y + 26.0, 15.0, 20, 160)
-    elif fx == "kick_fwd":
-        _swoosh(img, skin, hips_x + 24.0, hips_y + 10.0, 14.0, -50, 90)
-    elif fx == "kick_back":
-        _swoosh(img, skin, hips_x - 22.0, hips_y + 8.0, 14.0, 90, 230)
-    elif fx == "stars":
-        _stars(img, skin, hips_x + fh[0] + 2.0, hips_y + fh[1], SALT + 30)
-    elif fx == "shield":
-        _shield_bubble(img, skin, torso_cx + 1.0, torso_cy - 2.0, 26.0)
-    elif fx == "dust":
-        _dust(img, hips_x, GROUND_Y - 4.0, SALT + 40)
-
-
-# --- Per-animation pose dispatch ----------------------------------------------
-
-
-def _draw_sanic(skin: Skin, anim: str, frame_idx: int, nframes: int) -> Image.Image:
-    if anim in BALL_ANIMS:
-        return _ball_frame(skin, anim, frame_idx, nframes)
-
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = blending_draw(img)
-    t = frame_idx / max(1, nframes)
-    cyc = math.tau * t
-    salt = float(frame_idx + 1)
-    p: dict = {}
-
-    if anim == "idle":
-        sw = math.sin(cyc) * 2.0
-        p = dict(bob=math.sin(cyc) * 1.6, look=0.2 + math.sin(cyc * 0.5) * 0.3,
-                 fh=(18.0, 2.0 + sw), bh=(-12.0, 2.0 - sw))
-    elif anim == "walk":
-        step = math.sin(cyc)
-        p = dict(bob=abs(math.sin(cyc)) * 2.2, look=0.5,
-                 fh=(18.0, 2.0 + step * 4.0), bh=(-12.0, 2.0 - step * 4.0),
-                 fa=(7.0 + step * 8.0, GROUND_Y - 4.0 - (GROUND_Y - 42.0)),
-                 ba=(-3.0 - step * 7.0, GROUND_Y - 4.0 - (GROUND_Y - 42.0)))
-    elif anim == "run":
-        p = dict(bob=abs(math.sin(cyc * 2)) * 1.6, lean=9.0, look=0.9, mouth="grin",
-                 leg_blur=True, fx="speed", fx_t=cyc,
-                 fh=(20.0, -2.0 + math.sin(cyc * 2) * 6.0), bh=(-14.0, -1.0 - math.sin(cyc * 2) * 6.0))
-    elif anim == "crouch":
-        p = dict(crouch=1.0, look=0.3, fh=(11.0, 8.0), bh=(-8.0, 8.0),
-                 fa=(11.0, GROUND_Y - 4.0 - (GROUND_Y - 42.0)), ba=(-9.0, GROUND_Y - 4.0 - (GROUND_Y - 42.0)))
-    elif anim == "fall":
-        p = dict(bob=2.0 + math.sin(cyc) * 1.0, lean=-3.0, airborne=True, look=-0.2, mouth="hurt",
-                 fh=(16.0, -6.0), bh=(-14.0, -6.0), fa=(9.0, 30.0), ba=(-2.0, 32.0))
-    elif anim == "land_hard":
-        p = dict(crouch=0.9, look=0.3, mouth="open", fx="dust",
-                 fh=(16.0, 7.0), bh=(-14.0, 7.0))
-    elif anim == "land_recovery":
-        rise = 1.0 - t
-        p = dict(crouch=0.5 * rise, look=0.4, fh=(16.0, 4.0 * rise + 2.0), bh=(-13.0, 4.0 * rise + 2.0))
-    elif anim == "skid":  # braking against travel — lean back hard, dig the heels in
-        j = math.sin(cyc * 2) * 1.5
-        p = dict(crouch=0.3, lean=-14.0, look=0.6, mouth="open", fx="dust",
-                 fh=(18.0, -8.0 + j), bh=(-16.0, 4.0 - j),
-                 fa=(16.0, GROUND_Y - 4.0 - (GROUND_Y - 42.0)), ba=(-10.0, GROUND_Y - 4.0 - (GROUND_Y - 42.0)))
-    elif anim == "slash":  # jab
-        ext = math.sin(min(1.0, t * 1.6) * math.pi)
-        p = dict(look=0.7, mouth="grin", fx="arc_fwd" if ext > 0.4 else None,
-                 fh=(16.0 + ext * 10.0, -2.0), bh=(-12.0, 2.0))
-    elif anim == "punch":
-        ext = math.sin(min(1.0, t * 1.8) * math.pi)
-        p = dict(look=0.8, mouth="open", fx="stars" if ext > 0.6 else None,
-                 fh=(16.0 + ext * 14.0, 0.0), bh=(-12.0, 3.0))
-    elif anim == "attack_side":  # forward tilt — big swipe
-        ext = math.sin(min(1.0, t * 1.5) * math.pi)
-        p = dict(lean=3.0, look=0.8, mouth="grin", fx="arc_fwd" if ext > 0.35 else None,
-                 fh=(18.0 + ext * 12.0, -4.0 + ext * 2.0), bh=(-12.0, 3.0))
-    elif anim == "attack_up":
-        ext = math.sin(min(1.0, t * 1.5) * math.pi)
-        p = dict(look=0.4, mouth="grin", fx="arc_up" if ext > 0.35 else None,
-                 fh=(8.0, -22.0 - ext * 8.0), bh=(-11.0, 2.0))
-    elif anim == "attack_down":  # low sweeping kick
-        ext = math.sin(min(1.0, t * 1.5) * math.pi)
-        p = dict(crouch=0.5, look=0.6, mouth="grin", fx="arc_down" if ext > 0.35 else None,
-                 fh=(10.0, 8.0), bh=(-8.0, 8.0),
-                 fa=(14.0 + ext * 12.0, 36.0), ba=(-8.0, 38.0))
-    elif anim == "air_forward":
-        ext = math.sin(min(1.0, t * 1.5) * math.pi)
-        p = dict(airborne=True, lean=4.0, look=0.8, mouth="grin", fx="kick_fwd" if ext > 0.35 else None,
-                 fh=(14.0, -4.0), bh=(-12.0, -4.0), fa=(16.0 + ext * 12.0, 8.0), ba=(-4.0, 26.0))
-    elif anim == "air_back":
-        ext = math.sin(min(1.0, t * 1.5) * math.pi)
-        p = dict(airborne=True, lean=-4.0, look=-0.4, mouth="grin", fx="kick_back" if ext > 0.35 else None,
-                 fh=(12.0, -4.0), bh=(-14.0, -4.0), fa=(6.0, 24.0), ba=(-14.0 - ext * 10.0, 6.0))
-    elif anim == "air_up":
-        ext = math.sin(min(1.0, t * 1.5) * math.pi)
-        p = dict(airborne=True, look=0.3, mouth="grin", fx="arc_up" if ext > 0.35 else None,
-                 fh=(10.0, -18.0), bh=(-10.0, -14.0), fa=(6.0, -18.0 - ext * 8.0), ba=(-3.0, 26.0))
-    elif anim == "block":  # shield
-        p = dict(crouch=0.25, look=0.2, mouth="smirk", fx="shield",
-                 fh=(10.0, 6.0), bh=(-8.0, 6.0))
-    elif anim == "wall_grab":  # cling to a wall on the right
-        p = dict(lean=6.0, look=0.6, mouth="smirk", airborne=True,
-                 fh=(20.0, -8.0), bh=(16.0, 2.0), fa=(18.0, 20.0), ba=(14.0, 32.0))
-    elif anim == "wall_jump":  # push off the wall, launch away
-        p = dict(lean=-6.0, look=-0.3, mouth="open", airborne=True, fx="dust",
-                 fh=(-16.0, -6.0), bh=(-18.0, 2.0), fa=(-10.0, 24.0), ba=(4.0, 28.0))
-    elif anim == "ledge_grab":  # hanging from a ledge above
-        p = dict(bob=10.0, airborne=True, look=0.2, mouth="smirk",
-                 fh=(14.0, -14.0), bh=(6.0, -14.0), fa=(6.0, 34.0), ba=(-2.0, 36.0))
-    elif anim == "ledge_climb":
-        pull = t
-        p = dict(bob=10.0 - pull * 10.0, airborne=True, look=0.4, mouth="grin",
-                 fh=(12.0, -12.0 + pull * 8.0), bh=(4.0, -12.0 + pull * 8.0),
-                 fa=(8.0, 30.0 - pull * 6.0), ba=(-2.0, 34.0 - pull * 6.0))
-    elif anim == "ledge_getup":
-        rise = t
-        p = dict(crouch=0.8 * (1.0 - rise), look=0.4, mouth="smirk",
-                 fh=(14.0, 4.0), bh=(-10.0, 4.0))
-    elif anim == "ledge_getup_attack":
-        ext = math.sin(min(1.0, t * 1.6) * math.pi)
-        p = dict(crouch=0.3, lean=3.0, look=0.8, mouth="grin",
-                 fx="arc_fwd" if ext > 0.4 else ("stars" if ext > 0.2 else None),
-                 fh=(18.0 + ext * 12.0, -2.0), bh=(-10.0, 4.0))
-    elif anim == "ledge_roll":
-        p = dict(crouch=0.6, lean=6.0, look=0.4, mouth="open",
-                 fh=(12.0, 8.0), bh=(-6.0, 8.0),
-                 fa=(12.0, 34.0), ba=(-6.0, 36.0))
-    elif anim == "hit":
-        j = math.sin(cyc * 3) * 2.0
-        p = dict(bob=j, lean=-6.0, look=-0.6, mouth="hurt",
-                 fh=(14.0, -6.0 + j), bh=(-16.0, -4.0 - j))
-    elif anim == "death":
-        prog = min(1.0, t * 1.4)
-        p = dict(bob=prog * 6.0, lean=-14.0 * prog, look=0.0, mouth="dead",
-                 fell=prog > 0.55, fh=(14.0, -6.0), bh=(-16.0, -4.0))
-    elif anim == "taunt":  # smug victory
-        p = dict(bob=math.sin(cyc * 2) * 2.6, look=0.8, mouth="grin",
-                 fh=(20.0, -24.0), bh=(-12.0, 2.0))
-    elif anim == "interact":
-        reach = math.sin(min(1.0, t * 1.4) * math.pi)
-        p = dict(look=0.5, mouth="smirk", fh=(16.0 + reach * 8.0, 4.0), bh=(-11.0, 3.0))
-    else:  # safety fallback
-        p = dict()
-
-    _render_humanoid(img, draw, skin, salt, **p)
-    return _downsample(img)
-
-
-# ---- Rows ---------------------------------------------------------------------
-# (name, frame_count, frame_duration_ms). Names are the canonical CharacterAnim
-# aliases (crates/.../character_sprites/anim/mod.rs::from_name) so the runtime
-# resolves each pose; unlisted poses fall back through `base_pose`.
+# --- The moves ------------------------------------------------------------------
+
+
+def _lerp(a, b, u):
+    if isinstance(a, bool) or isinstance(a, str) or isinstance(a, tuple) and a and isinstance(a[0], str):
+        return a if u < 0.5 else b
+    if isinstance(a, tuple):
+        return tuple(x + (y - x) * u for x, y in zip(a, b))
+    return a + (b - a) * u
+
+
+def _between(a: Pose, b: Pose, u: float) -> Pose:
+    e = 0.5 - 0.5 * math.cos(math.pi * u)  # ease in and out
+    return Pose(**{f.name: _lerp(getattr(a, f.name), getattr(b, f.name), e) for f in fields(Pose)})
+
+
+def _keyed(keys: Sequence[Tuple[float, Pose]], t: float) -> Pose:
+    """The pose at ``t`` between key poses ``(t, Pose)``."""
+    if t <= keys[0][0]:
+        return keys[0][1]
+    for (t0, a), (t1, b) in zip(keys, keys[1:]):
+        if t <= t1:
+            return _between(a, b, (t - t0) / max(1e-6, t1 - t0))
+    return keys[-1][1]
+
+
+P = Pose
+
+
+def _gait(t: float, stride: float, lift: float, lean: float, arm: float, bob: float, fx=()) -> Pose:
+    a = 2 * math.pi * t
+    s, c = math.sin(a), math.cos(a)
+    return P(root=(0, -bob * abs(s)), lean=lean, head=-lean * 0.5, quill_sway=-lean * 0.4 + 3 * s,
+             foot_back=(-40 + stride * s, 62 - lift * max(0.0, c)),
+             foot_front=(10 - stride * s, 66 - lift * max(0.0, -c)),
+             hand_back=(-90 - arm * s, 24 + arm * 0.6 * s), hand_front=(50 + arm * s, 14 - arm * 0.8 * s),
+             shoe_back_tilt=-10 * s, shoe_front_tilt=10 * s, fx=fx)
+
+
+def _sprint(t: float) -> Pose:
+    """Top speed: the feet run round a figure 8, half a lap apart, and leave
+    its blur behind them. The shoe tilts with the way it travels."""
+    s = math.sin(2 * math.pi * t)
+    feet = []
+    for phase in (0.0, 0.5):
+        u = -(t + phase)
+        here, ahead = _eight_point(u), _eight_point(u - 0.02)
+        tilt = math.degrees(math.atan2(ahead[1] - here[1], ahead[0] - here[0]))
+        feet.append((here, max(-30.0, min(30.0, ((tilt + 90) % 180) - 90))))
+    (fb, tb), (ff, tf) = feet
+    return P(root=(0, -4 * abs(s)), lean=26, head=-14, quill_sway=-14 + 2 * s,
+             foot_back=(fb[0] - HIP_BACK[0], fb[1] - HIP_BACK[1]), foot_front=(ff[0] - HIP_FRONT[0], ff[1] - HIP_FRONT[1]),
+             shoe_back_tilt=tb, shoe_front_tilt=tf, knee_forward=1.0,
+             hand_back=(-110 + 30 * s, 10 + 20 * s), hand_front=(60 - 40 * s, 10 - 30 * s),
+             eight=True, eight_u=t, eyes="wide", fx=("speed",))
+
+
+def _ball(t: float, turns: float, at: Point = (0, 0), fx=()) -> Pose:
+    return P(ball=True, turn=turns * t, ball_at=at, fx=fx)
+
+
+HANG = P(root=(0, -16), hand_front=(24, -108), hand_back=(70, -100), foot_back=(-30, 70), foot_front=(10, 74),
+         planted=False, eyes="wide", mouth="flat", quill_sway=6)
+CROUCH = P(root=(0, 36), lean=10, head=6, foot_back=(-60, 62), foot_front=(40, 66), knee_forward=1.0,
+           hand_front=(30, 50), hand_back=(-60, 60))
+
+
+def _row_poses(anim: str, n: int) -> List[Pose]:
+    """The ``n`` poses of a row."""
+    loop = anim in LOOPS
+    ts = [i / n if loop else (i / (n - 1) if n > 1 else 0.0) for i in range(n)]
+    key = ROW_KEYS.get(anim)
+    if key is not None:
+        return [_keyed(key, t) for t in ts]
+    return [ROW_FUNCS[anim](t) for t in ts]
+
+
+LOOPS = {"idle", "walk", "run", "sprint", "dash", "ball", "jump", "fall", "special", "crouch",
+         "block", "wall_grab", "ledge_grab", "air_neutral", "air_down"}
+
+#: Rows drawn by a function of the row's time.
+ROW_FUNCS: Dict[str, Callable[[float], Pose]] = {
+    "idle": lambda t: P(root=(0, 4 * math.sin(math.pi * t) ** 2), quill_sway=2 * math.sin(2 * math.pi * t),
+                        hand_front=(74, 6 + 4 * math.sin(2 * math.pi * t)), hand_back=(-112, 30 + 3 * math.sin(2 * math.pi * t)),
+                        eyes="closed" if 0.6 < t < 0.75 else "derp"),
+    "walk": lambda t: _gait(t, 46, 18, 5, 18, 4),
+    "run": lambda t: _gait(t, 82, 34, 18, 34, 7, fx=("speed",)),
+    "sprint": _sprint,
+    "crouch": lambda t: replace(CROUCH, root=(0, 36 + 2 * math.sin(2 * math.pi * t))),
+    "dash_startup": lambda t: _ball(t, 2.0, fx=("dust",)),
+    "dash": lambda t: _ball(t, 2.0, fx=("speed",)),
+    "ball": lambda t: _ball(t, 2.0),
+    "jump": lambda t: _ball(t, 1.0, at=(0, -60)),
+    "air_neutral": lambda t: _ball(t, 1.0, at=(0, -60)),
+    "air_down": lambda t: _ball(t, 2.0, at=(0, -40)),
+    "special": lambda t: _ball(t, 2.0, at=(0, -30)),
+    "ledge_roll": lambda t: _ball(t, 1.0, at=(-60 + 120 * t, -40 * math.sin(math.pi * t))),
+    "fall": lambda t: P(root=(0, -20), hand_front=(30, -90 + 12 * math.sin(2 * math.pi * t)),
+                        hand_back=(-50, -84 - 12 * math.sin(2 * math.pi * t)), foot_back=(-40, 74), foot_front=(24, 76),
+                        planted=False, eyes="wide", mouth="open", quill_sway=10),
+    "block": lambda t: P(root=(0, 12), lean=-4, hand_front=(30, -4), hand_back=(110, -10), glove_front=1.2,
+                         knee_forward=0.6, eyes="squint", mouth="flat"),
+    "wall_grab": lambda t: P(lean=-4, hand_front=(78, -40), hand_back=(60, -60), foot_front=(92, 30),
+                             foot_back=(-6, 76 + 2 * math.sin(2 * math.pi * t)), planted=False, eyes="derp", mouth="flat"),
+    "ledge_grab": lambda t: replace(HANG, quill_sway=6 + 2 * math.sin(2 * math.pi * t)),
+}
+
+#: Rows drawn between key poses ``(t, Pose)``.
+ROW_KEYS: Dict[str, List[Tuple[float, Pose]]] = {
+    "land_hard": [(0.0, P(root=(0, 24), knee_forward=1, hand_front=(80, -20), hand_back=(-100, -10), eyes="squint", mouth="open")),
+                  (0.5, P(root=(0, 40), knee_forward=1, lean=10, hand_front=(70, 20), hand_back=(-100, 20), eyes="squint", mouth="open")),
+                  (1.0, replace(CROUCH, root=(0, 30)))],
+    "land_recovery": [(0.0, replace(CROUCH, root=(0, 30))), (1.0, P())],
+    "skid": [(0.0, P(lean=-12, foot_front=(96, 66), foot_back=(-24, 62), hand_front=(30, -60), hand_back=(-80, -30),
+                      eyes="wide", mouth="open", fx=("dust",))),
+             (1.0, P(lean=-18, root=(4, 4), foot_front=(104, 66), foot_back=(-20, 62), hand_front=(40, -70),
+                     hand_back=(-70, -40), eyes="wide", mouth="open", fx=("dust",)))],
+    "slash": [(0.0, P(hand_front=(-30, -60), lean=-4, eyes="squint")),
+              (0.4, P(hand_front=(80, -60), lean=6, glove_front=1.3, mouth="open", eyes="squint")),
+              (0.6, P(hand_front=(110, 0), lean=10, glove_front=1.4, mouth="open", eyes="wide")),
+              (1.0, P(hand_front=(70, 20), lean=4))],
+    "punch": [(0.0, P(hand_front=(40, 16), lean=2)),
+              (0.4, P(hand_front=(116, 2), lean=10, head=-4, glove_front=1.5, mouth="open", eyes="wide")),
+              (0.6, P(hand_front=(116, 2), lean=10, head=-4, glove_front=1.5, mouth="open", eyes="wide")),
+              (1.0, P(hand_front=(70, 8), glove_front=1.1))],
+    "attack_side": [(0.0, P(lean=-6, foot_front=(30, 40))),
+                    (0.3, P(lean=-14, foot_front=(116, 0), shoe_front_tilt=-20, mouth="open", eyes="squint")),
+                    (0.6, P(lean=-14, foot_front=(118, -4), shoe_front_tilt=-20, mouth="open", eyes="squint")),
+                    (1.0, P(lean=-6, foot_front=(60, 40)))],
+    "attack_up": [(0.0, P(root=(0, 10), hand_front=(40, 40), knee_forward=0.6)),
+                  (0.35, P(root=(0, -6), lean=-10, head=-14, hand_front=(10, -118), glove_front=1.4, quill_sway=8,
+                           eyes="wide", mouth="open")),
+                  (0.6, P(root=(0, -6), lean=-10, head=-14, hand_front=(16, -116), glove_front=1.4, quill_sway=8,
+                          eyes="wide", mouth="open")),
+                  (1.0, P(hand_front=(40, -40)))],
+    "attack_down": [(0.0, replace(CROUCH, foot_front=(20, 66))),
+                    (0.35, replace(CROUCH, root=(0, 40), lean=18, foot_front=(132, 60), shoe_front_tilt=-6,
+                                   eyes="squint", mouth="open")),
+                    (0.6, replace(CROUCH, root=(0, 40), lean=18, foot_front=(132, 60), shoe_front_tilt=-6,
+                                  eyes="squint", mouth="open")),
+                    (1.0, replace(CROUCH, foot_front=(40, 66)))],
+    "air_forward": [(0.0, P(root=(0, -40), lean=-6, foot_front=(20, 40), foot_back=(-40, 60), planted=False)),
+                    (0.35, P(root=(0, -40), lean=-22, foot_front=(110, 10), foot_back=(30, 60), shoe_front_tilt=-25,
+                             planted=False, eyes="squint", mouth="open")),
+                    (0.6, P(root=(0, -40), lean=-22, foot_front=(112, 8), foot_back=(30, 60), shoe_front_tilt=-25,
+                            planted=False, eyes="squint", mouth="open")),
+                    (1.0, P(root=(0, -40), foot_front=(30, 60), foot_back=(-40, 60), planted=False))],
+    "air_back": [(0.0, P(root=(0, -40), lean=6, foot_back=(-30, 60), planted=False)),
+                 (0.35, P(root=(0, -40), lean=20, head=-6, foot_back=(-124, 6), foot_front=(20, 50), shoe_back_tilt=20,
+                          planted=False, eyes="squint", mouth="open")),
+                 (0.6, P(root=(0, -40), lean=20, head=-6, foot_back=(-126, 4), foot_front=(20, 50), shoe_back_tilt=20,
+                         planted=False, eyes="squint", mouth="open")),
+                 (1.0, P(root=(0, -40), foot_back=(-40, 60), foot_front=(20, 60), planted=False))],
+    "air_up": [(0.0, P(root=(0, -40), lean=0, foot_front=(20, 60), foot_back=(-30, 60), planted=False)),
+               (0.35, P(root=(0, -10), lean=-40, head=10, foot_front=(30, -96), foot_back=(-10, -90), hand_front=(40, 60),
+                        hand_back=(-60, 70), planted=False, eyes="wide", mouth="open")),
+               (0.6, P(root=(0, -10), lean=-40, head=10, foot_front=(36, -94), foot_back=(-4, -92), hand_front=(40, 60),
+                       hand_back=(-60, 70), planted=False, eyes="wide", mouth="open")),
+               (1.0, P(root=(0, -40), foot_front=(20, 60), foot_back=(-30, 60), planted=False))],
+    "wall_jump": [(0.0, P(lean=-4, hand_front=(78, -40), foot_front=(80, 40), foot_back=(-6, 76), planted=False, knee_forward=1)),
+                  (0.4, P(root=(-20, -30), lean=-20, hand_front=(-20, -100), hand_back=(-80, -80), foot_front=(80, 60),
+                          foot_back=(40, 70), planted=False, eyes="wide", mouth="open")),
+                  (1.0, P(root=(-40, -50), lean=-10, hand_front=(10, -100), hand_back=(-60, -90), foot_front=(20, 70),
+                          foot_back=(-30, 70), planted=False, eyes="wide"))],
+    "ledge_climb": [(0.0, HANG),
+                    (0.5, P(root=(20, -10), lean=20, hand_front=(30, 40), hand_back=(30, 50), foot_front=(20, 10),
+                            foot_back=(-40, 60), planted=False, knee_forward=1, eyes="squint", mouth="flat")),
+                    (1.0, P(root=(40, 0)))],
+    "ledge_getup": [(0.0, HANG),
+                    (0.5, P(root=(20, -10), lean=20, hand_front=(30, 40), hand_back=(30, 50), foot_front=(20, 10),
+                            foot_back=(-40, 60), planted=False, knee_forward=1, eyes="squint", mouth="flat")),
+                    (1.0, P(root=(40, 0)))],
+    "ledge_getup_attack": [(0.0, HANG),
+                           (0.4, P(root=(30, -10), lean=10, foot_front=(30, 30), planted=False, knee_forward=1)),
+                           (0.6, P(root=(40, 0), lean=-14, foot_front=(118, -2), shoe_front_tilt=-20, eyes="squint", mouth="open")),
+                           (1.0, P(root=(40, 0)))],
+    "hit": [(0.0, P(lean=-10, eyes="closed", mouth="ouch")),
+            (0.4, P(root=(-12, -6), lean=-24, head=-12, hand_front=(40, -90), hand_back=(-60, -90), quill_sway=10,
+                    eyes="closed", mouth="ouch", knee_forward=0.6)),
+            (1.0, P(root=(-6, 0), lean=-12, hand_front=(70, -30), hand_back=(-90, -30), eyes="closed", mouth="ouch"))],
+    "death": [(0.0, P(lean=-12, eyes="dead", mouth="ouch")),
+              (0.35, P(root=(0, -50), lean=-20, hand_front=(30, -100), hand_back=(-50, -100), foot_back=(-30, 70),
+                       foot_front=(20, 70), planted=False, eyes="dead", mouth="ouch")),
+              (0.75, P(root=(56, -24), lean=-75, head=10, hand_front=(60, -60), hand_back=(-20, -90), foot_back=(30, -80),
+                       foot_front=(70, -70), planted=False, eyes="dead", mouth="ouch")),
+              (1.0, P(root=(64, -36), lean=-84, head=12, hand_front=(80, -20), hand_back=(-10, -60), foot_back=(40, -90),
+                      foot_front=(80, -76), planted=False, eyes="dead", mouth="ouch"))],
+    "taunt": [(0.0, P(hand_front=(50, -60), eyes="squint", mouth="grin")),
+              (0.25, P(hand_front=(70, -64), eyes="squint", mouth="grin", foot_front=(66, 56))),
+              (0.5, P(hand_front=(46, -60), eyes="squint", mouth="grin")),
+              (0.75, P(hand_front=(70, -64), eyes="squint", mouth="grin", foot_front=(66, 56))),
+              (1.0, P(hand_front=(50, -60), eyes="squint", mouth="grin"))],
+    "interact": [(0.0, P()), (0.5, P(lean=8, hand_front=(100, 4), glove_front=1.1, eyes="wide")), (1.0, P())],
+}
+
+
+# The row names the runtime knows (crates/.../sprite_sheet/src/character/anim.rs
+# `from_name`); an unlisted pose falls back through `base_pose`. `sprint` is the
+# run at top speed; a sheet without it draws `run`.
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 6, 140),
     ("walk", 8, 90),
     ("run", 8, 70),
+    ("sprint", 8, 45),
     ("crouch", 2, 160),
     ("dash_startup", 6, 70),
     ("dash", 6, 60),
@@ -958,12 +767,12 @@ ROWS: List[Tuple[str, int, int]] = [
 ]
 
 # Generic gameplay keys for per-pose combat metadata (hurtboxes auto-derived per
-# key; hitboxes authored below). Keyed row -> generic key (== row name).
+# key; hitboxes measured below). Keyed row -> generic key (== row name).
 ANIMATION_KEY_MAP: Dict[str, str] = {
     name: name
     for name, _n, _ms in ROWS
     if name in {
-        "idle", "walk", "run", "crouch", "jump", "fall", "dash", "ball", "skid",
+        "idle", "walk", "run", "sprint", "crouch", "jump", "fall", "dash", "ball", "skid",
         "slash", "punch", "attack_side", "attack_up", "attack_down",
         "air_neutral", "air_forward", "air_back", "air_up", "air_down",
         "special", "block", "wall_grab", "ledge_grab", "ledge_getup_attack",
@@ -971,31 +780,36 @@ ANIMATION_KEY_MAP: Dict[str, str] = {
     }
 }
 
-# Authored strike volumes, in frame pixel coords (auto_crop=False keeps these in
-# the same space we draw in). Approximate first-pass geometry — tune later.
-_DRAWN_HITBOXES: Dict[str, dict] = {
-    "slash": {"bbox": {"x": 78, "y": 56, "w": 30, "h": 26}},
-    "punch": {"bbox": {"x": 80, "y": 58, "w": 30, "h": 24}},
-    "attack_side": {"bbox": {"x": 80, "y": 54, "w": 34, "h": 28}},
-    "attack_up": {"bbox": {"x": 54, "y": 8, "w": 30, "h": 36}},
-    "attack_down": {"bbox": {"x": 66, "y": 92, "w": 36, "h": 20}},
-    "air_neutral": {"bbox": {"x": 44, "y": 52, "w": 40, "h": 40}},
-    "air_forward": {"bbox": {"x": 78, "y": 64, "w": 32, "h": 26}},
-    "air_back": {"bbox": {"x": 22, "y": 60, "w": 32, "h": 26}},
-    "air_up": {"bbox": {"x": 52, "y": 14, "w": 30, "h": 32}},
-    "air_down": {"bbox": {"x": 44, "y": 70, "w": 38, "h": 44}},
-    "special": {"bbox": {"x": 38, "y": 58, "w": 46, "h": 46}},
-    "ledge_getup_attack": {"bbox": {"x": 74, "y": 56, "w": 34, "h": 28}},
+
+def _draw_sanic(skin: Skin, anim: str, frame_idx: int, nframes: int) -> Image.Image:
+    return _draw_pose(skin, _row_poses(anim, nframes)[frame_idx])
+
+
+# --- Hit areas, measured from the drawn strikes --------------------------------
+
+#: Each strike's Active window (fraction of the row) and what lands.
+STRIKES: Dict[str, Tuple[float, float, Tuple[str, ...]]] = {
+    "slash": (0.34, 0.62, ("hand_front",)),
+    "punch": (0.40, 0.60, ("hand_front",)),
+    "attack_side": (0.30, 0.60, ("foot_front",)),
+    "attack_up": (0.32, 0.58, ("hand_front",)),
+    "attack_down": (0.34, 0.60, ("foot_front",)),
+    "air_neutral": (0.15, 0.85, ("ball",)),
+    "air_forward": (0.30, 0.58, ("foot_front",)),
+    "air_back": (0.30, 0.58, ("foot_back",)),
+    "air_up": (0.32, 0.58, ("foot_front", "foot_back")),
+    "air_down": (0.20, 0.80, ("ball",)),
+    "special": (0.10, 0.92, ("ball",)),
+    "ledge_getup_attack": (0.36, 0.64, ("foot_front",)),
 }
+#: The reach of each striking part about its point (reference pixels).
+_STRIKE_R = {"hand_front": 24.0, "hand_back": 30.0, "foot_front": 30.0, "foot_back": 34.0, "ball": BALL_R + 20.0}
 
-
-#: Where each blow is DRAWN reaches a sliver of the body: pixel-true, these were
-#: about a third of the area the rest of the Smash roster's volumes cover (a
-#: forward tilt 0.30 x 0.24 of his height, against ~0.6 x 0.5). The game's
-#: volumes are about 1.6x the drawn reach, so each grows by this much, and grows
-#: away from his middle (the blow's end), not into his body.
+#: The drawn reach of a blow is a sliver of the body; the game's volumes are
+#: about 1.6x the drawn reach, so each grows by this much, away from his middle
+#: (the blow's end), not into his body.
 HITBOX_GROWTH = 1.8
-_BODY_MIDDLE = (64.0, 70.0)
+_BODY_MIDDLE = _frame(TORSO_C)
 
 
 def _generous(bbox: dict) -> dict:
@@ -1013,9 +827,29 @@ def _generous(bbox: dict) -> dict:
     return {"x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0}
 
 
-ATTACK_HITBOXES: Dict[str, dict] = {
-    row: {**box, "bbox": _generous(box["bbox"])} for row, box in _DRAWN_HITBOXES.items()
-}
+def _measured_hitboxes() -> Dict[str, dict]:
+    counts = {name: n for name, n, _ms in ROWS}
+    out: Dict[str, dict] = {}
+    for row, (t0, t1, parts) in STRIKES.items():
+        n = counts[row]
+        poses = _row_poses(row, n)
+        live = [p for i, p in enumerate(poses) if t0 <= (i / n if row in LOOPS else i / max(1, n - 1)) <= t1] or poses
+        xs, ys = [], []
+        for pose in live:
+            solved = _solve(pose)
+            for part in parts:
+                c = solved.ball if part == "ball" else getattr(solved, part)
+                r = _STRIKE_R[part]
+                for corner in ((c[0] - r, c[1] - r), (c[0] + r, c[1] + r)):
+                    fx, fy = _frame(corner)
+                    xs.append(fx)
+                    ys.append(fy)
+        box = {"x": round(min(xs)), "y": round(min(ys)), "w": round(max(xs) - min(xs)), "h": round(max(ys) - min(ys))}
+        out[row] = {"bbox": _generous(box)}
+    return out
+
+
+ATTACK_HITBOXES: Dict[str, dict] = _measured_hitboxes()
 
 
 def _melee_events(active_from: float, active_to: float, source: str) -> List[dict]:
@@ -1026,6 +860,11 @@ def _melee_events(active_from: float, active_to: float, source: str) -> List[dic
     ]
 
 
+def _strike(row: str, source: str) -> dict:
+    t0, t1, _parts = STRIKES[row]
+    return {"animation": row, "events": _melee_events(t0, t1, source)}
+
+
 def _animation_bindings(source: str) -> dict:
     """Bindings for BOTH game styles: platformer locomotion + a full Smash-style
     melee/aerial/special/ledge kit, with active-frame windows on each strike."""
@@ -1034,6 +873,7 @@ def _animation_bindings(source: str) -> dict:
         # platformer locomotion
         "locomotion.walk": {"animation": "walk", "events": []},
         "locomotion.run": {"animation": "run", "events": []},
+        "locomotion.sprint": {"animation": "sprint", "events": []},
         "locomotion.crouch": {"animation": "crouch", "events": []},
         "locomotion.jump": {"animation": "jump", "events": []},
         "locomotion.fall": {"animation": "fall", "events": []},
@@ -1045,26 +885,26 @@ def _animation_bindings(source: str) -> dict:
         "locomotion.ledge_grab": {"animation": "ledge_grab", "events": []},
         "locomotion.ledge_climb": {"animation": "ledge_climb", "events": []},
         # ground melee
-        "action.melee.primary": {"animation": "slash", "events": _melee_events(0.34, 0.62, source)},
-        "action.melee.punch": {"animation": "punch", "events": _melee_events(0.40, 0.60, source)},
-        "action.melee.side": {"animation": "attack_side", "events": _melee_events(0.30, 0.60, source)},
-        "action.melee.up": {"animation": "attack_up", "events": _melee_events(0.32, 0.58, source)},
-        "action.melee.down": {"animation": "attack_down", "events": _melee_events(0.34, 0.60, source)},
+        "action.melee.primary": _strike("slash", source),
+        "action.melee.punch": _strike("punch", source),
+        "action.melee.side": _strike("attack_side", source),
+        "action.melee.up": _strike("attack_up", source),
+        "action.melee.down": _strike("attack_down", source),
         # aerials
-        "action.air.neutral": {"animation": "air_neutral", "events": _melee_events(0.15, 0.85, source)},
-        "action.air.forward": {"animation": "air_forward", "events": _melee_events(0.30, 0.58, source)},
-        "action.air.back": {"animation": "air_back", "events": _melee_events(0.30, 0.58, source)},
-        "action.air.up": {"animation": "air_up", "events": _melee_events(0.32, 0.58, source)},
-        "action.air.down": {"animation": "air_down", "events": _melee_events(0.20, 0.80, source)},
+        "action.air.neutral": _strike("air_neutral", source),
+        "action.air.forward": _strike("air_forward", source),
+        "action.air.back": _strike("air_back", source),
+        "action.air.up": _strike("air_up", source),
+        "action.air.down": _strike("air_down", source),
         # specials (the spin)
-        "action.special.spin": {"animation": "special", "events": _melee_events(0.10, 0.92, source)},
+        "action.special.spin": _strike("special", source),
         "action.special.dash": {"animation": "dash", "events": [{"t": 0.30, "event": "dash_commit", "source": source}]},
         "action.special.dash_charge": {"animation": "dash_startup", "events": []},
         # defense / ledge options
         "action.defense.block": {"animation": "block", "events": []},
         "action.defense.roll": {"animation": "ball", "events": [{"t": 0.15, "event": "iframes_start", "source": source}, {"t": 0.75, "event": "iframes_end", "source": source}]},
         "action.ledge.getup": {"animation": "ledge_getup", "events": []},
-        "action.ledge.getup_attack": {"animation": "ledge_getup_attack", "events": _melee_events(0.36, 0.64, source)},
+        "action.ledge.getup_attack": _strike("ledge_getup_attack", source),
         "action.ledge.roll": {"animation": "ledge_roll", "events": []},
         # reactions / emotes
         "reaction.hit": {"animation": "hit", "events": []},
@@ -1097,7 +937,10 @@ ACTOR_METADATA_SANIC.update(
         "authoring_description": (
             "Sanic is the deliberately crude internet-meme mutation of Sonic the "
             "Hedgehog: frantic, badly proportioned, overconfident, and defined by the "
-            "demand to go fast rather than by polished mascot heroism."
+            "demand to go fast rather than by polished mascot heroism. He is drawn "
+            "after the meme's MS Paint picture: a 3/4 body with a cream belly, a "
+            "blocky head with derpy eyes and a cream grin, fat swept quills, stick "
+            "limbs, one huge white glove and red shoe blobs."
         ),
         "gameplay_description": (
             "Use as an absurdly fast runner, rival, playable fighter, or unstable speed "
@@ -1140,7 +983,8 @@ ACTOR_METADATA_SUPER.update(
         "authoring_description": (
             "Super Sanic is the golden, airborne transformation of the Sanic meme, "
             "combining the crude Sonic parody with the invincible super-form spectacle "
-            "of collected power and impossible speed."
+            "of collected power and impossible speed: the same MS Paint body in gold, "
+            "quills raised, red pupils and a glow."
         ),
         "gameplay_description": (
             "Use as a temporary transformation, boss phase, or overpowered unlock. He "
@@ -1174,7 +1018,7 @@ def _render_form(target_name: str, skin: Skin, actor_metadata: dict, out_dir: st
         out_dir=out_dir,
         frame_size=FRAME_SIZE,
         label_width=118,
-        # Keep frames uncropped so authored hitbox coords match our draw space.
+        # Keep frames uncropped so measured hitbox coords match our draw space.
         auto_crop=False,
         actor_metadata=actor_metadata,
         animation_key_map=ANIMATION_KEY_MAP,
@@ -1203,6 +1047,5 @@ TARGETS = {
 }
 
 
-# Backwards-compatible module-level entry (some callers import `render_frame`).
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     return _draw_sanic(NORMAL, animation, frame_idx, nframes)

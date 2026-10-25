@@ -1366,9 +1366,14 @@ lineages:
     name: Sanic
     ids: [sanic]
     paths: ['characters/sanic\.py']
+    summary: "a procedural side-view Sanic, then the meme's MS Paint picture drawn as SVG parts"
     forms:
       super: [super_sanic]
-    eras: []
+    eras:
+      - commit: "7f901c3f8a"
+        id: sanic
+        label: "Procedural side view"
+        note: "Added with Mary-O (\"sanic and super mary-o sprites\") from Jon's account; no trailer. Last drawn this way at renderer e0782b6."
   wolfenstein:
     name: Wolfenstein
     ids: [wolfenstein]
