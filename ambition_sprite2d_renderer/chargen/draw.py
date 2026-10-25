@@ -267,12 +267,18 @@ def _draw_view(fig: Figure, view: View, canvas: Canvas) -> List[Part]:
     zmap = zmap_for(view, ctx.plan["tucked"])
     parts: List[Part] = []
     parts += body_parts(ctx, zmap)
-    parts += headdraw.head_parts(ctx)
-    parts += headdraw.face_parts(ctx)
+    fam = family_of(fig.spec)
+    with using(replace(fam.style, ink=fam.face.ink) if fam.face.ink else fam.style):
+        parts += headdraw.head_parts(ctx)
+        parts += headdraw.face_parts(ctx)
     parts += headdraw.facial_hair_parts(ctx)
     parts += headdraw.glasses_parts(ctx)
     parts += wear.accessory_parts(ctx, zmap)
     parts += _component_parts(ctx, zmap, ("legwear", "top", "outer", "footwear", "hair", "hat"))
+    # A target's own gear (``extras.using``): none unless a target asks.
+    from .extras import extra_parts
+
+    parts += extra_parts(ctx, zmap)
     for item in fig.spec.outfit.wardrobe:
         slot, _, kind = item.partition(":")
         alt_spec = _with_slot(fig.spec, slot, kind)

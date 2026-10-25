@@ -83,6 +83,20 @@ class FaceStyle:
     #: The mouth's width, and the weight of its line.
     mouth: float = 1.0
     lip: float = 1.0
+    #: A woman's upper lash line and its outer flick: a multiplier of their
+    #: weight and length.
+    lash: float = 1.0
+    #: The colour of the mouth line (human), with a light line on the lower
+    #: lip under it. ``None``: the standard lines.
+    lip_color: Optional[str] = None
+    #: ``outlined``: the eye has one thin line all round it, no outer flick,
+    #: and a tall pupil in the iris. ``standard``: a lash line on top.
+    eye_style: str = "standard"
+    #: ``line``: the nose is one line down its shadow side and a short foot.
+    nose_style: str = "standard"
+    #: The ink of the head and the face (the skin's outline, the eye lines).
+    #: ``None``: the style's ink.
+    ink: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -129,6 +143,19 @@ FAMILIES: Dict[str, Family] = {
         face=FaceStyle(eye=1.75, eye_open=1.6, pupil="dot", iris=0.72, brow=2.4, nose=2.2, nose_width=1.4, mouth=1.25, lip=1.3),
         style=Style(key="crew", ink=CREW_INK, outline=1.9, fine=2.5, shade_tint="#281446", shade_mix=1.16, shade_band=1.7, rim=0.12,
                     rim_mix=0.3),
+    ),
+    # Alice v2 (``targets/characters/alice_v2.py``) stands beside Bob, who is
+    # drawn by hand (``data/characters/bob/bob.svg``): his warm near-black
+    # ink at about his line weight, and a face as large as the first Alice's
+    # at game size.
+    "cast": Family(
+        "cast",
+        "The look of the hand-drawn cast beside Bob: a larger head with large features that read on a phone (an adult's, not a "
+        "mascot's), a heavy warm near-black outline.",
+        body=Proportions(head=1.22, head_width=0.95),
+        face=FaceStyle(eye=1.7, eye_open=1.0, pupil="iris", iris=1.2, brow=0.95, nose=0.85, nose_width=0.8, mouth=1.1, lip=1.8, lash=1.25,
+                       lip_color="#9e535a", eye_style="outlined", nose_style="line", ink="#5a3d44"),
+        style=Style(key="cast", ink="#14110f", outline=1.1, fine=1.45),
     ),
 }
 

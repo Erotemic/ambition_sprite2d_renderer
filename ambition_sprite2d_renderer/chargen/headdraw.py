@@ -1079,6 +1079,10 @@ def _eye_shapes(ctx: Ctx, g: Dict[str, object]) -> Optional[Dict[str, List[Point
     hd = ctx.fig.head
     if not _eye_shown(ctx, g, 0.18):
         return None
+    if ctx.fig.species == "human" and family_of(ctx.fig.spec).face.eye_style == "outlined":
+        # A large outlined far eye is pressed inside the head's outline.
+        lim = 78.0
+        g = dict(g, **{k: (max(-lim, min(lim, wrap180(g[k][0] + ctx.view.yaw))) - ctx.view.yaw, g[k][1]) for k in ("inner", "outer", "top", "bottom")})
     P = {k: ctx.p(_wrapped(ctx, g, _eye_point(ctx.fig, g, *g[k], 0.06))) for k in ("inner", "outer", "top", "bottom")}
     top = _quad_curve(P["inner"], P["top"], P["outer"])
     bot = _quad_curve(P["outer"], P["bottom"], P["inner"])
@@ -1087,6 +1091,7 @@ def _eye_shapes(ctx: Ctx, g: Dict[str, object]) -> Optional[Dict[str, List[Point
 
 def _draw_eye(ctx: Ctx, pt: Paint, g: Dict[str, object], e: Expression) -> None:
     fig = ctx.fig
+    outlined = fig.species == "human" and family_of(fig.spec).face.eye_style == "outlined"
     sh = _eye_shapes(ctx, g)
     if sh is None:
         return
@@ -1116,7 +1121,9 @@ def _draw_eye(ctx: Ctx, pt: Paint, g: Dict[str, object], e: Expression) -> None:
             else:
                 pt.flat([cut], eye_col)
                 pr = 0.5 * e.pupil
-                if fig.face.get("pupil") == "slit":
+                if outlined:
+                    pupil = [(cx + rx * 0.36 * e.pupil * math.cos(a), cy + ry * 0.7 * math.sin(a)) for a in (2 * math.pi * i / 12 for i in range(12))]
+                elif fig.face.get("pupil") == "slit":
                     pupil = [(cx + rx * 0.16 * e.pupil * math.cos(a), cy + ry * 0.95 * math.sin(a)) for a in (2 * math.pi * i / 12 for i in range(12))]
                 else:
                     pupil = [(cx + rx * pr * math.cos(a), cy + ry * pr * math.sin(a)) for a in (2 * math.pi * i / 12 for i in range(12))]
@@ -1125,10 +1132,14 @@ def _draw_eye(ctx: Ctx, pt: Paint, g: Dict[str, object], e: Expression) -> None:
                     pt.flat([pc], "#1a1412")
             if fig.species != "human":
                 pt.dot((cx + rx * 0.3, cy - ry * 0.35), max(0.12, ry * 0.18), "#f8f4ec")
-    pt.line(sh["top"], INK, 0.44 if not fig.female else 0.5)
+    lash = family_of(fig.spec).face.lash if fig.female else 1.0
+    if outlined and not shut:
+        pt.line(eye + eye[:1], INK, 0.36 * lash)
+        return
+    pt.line(sh["top"], INK, (0.44 if not fig.female else 0.5) * lash)
     if fig.female and fig.species == "human" and not shut:
         o, p = sh["top"][-1], sh["top"][-2]
-        pt.line([o, (o[0] + (o[0] - p[0]) * 0.9, o[1] - abs(o[0] - p[0]) * 0.5)], INK, 0.3)
+        pt.line([o, (o[0] + (o[0] - p[0]) * 0.9 * lash, o[1] - abs(o[0] - p[0]) * 0.5 * lash)], INK, 0.3 * lash)
     if not shut:
         pt.line(sh["bottom"][2:-2], ctx.skin_dk, FINE * (0.55 + 0.6 * g["squint"]))
     if g["shape"] == "hooded" or g["lid"] > 0.3:
@@ -1190,9 +1201,26 @@ def _brow(ctx: Ctx, pt: Paint, g: Dict[str, object], sgn: float, e: Expression) 
         pt.flat([left + list(reversed(right))], col, smooth=True)
 
 
+def _line_nose(ctx: Ctx, pt: Paint) -> None:
+    """A family's ``line`` nose: one line down the nose's shadow side, then a
+    short foot under its tip."""
+    fig = ctx.fig
+    hd = fig.head
+    tip = fig.face["nose_tip_f"]
+    w = fig.face.get("nose_width", 1.0)
+    sgn = -1.0 if ctx.view.project(hd.point(-10.0, fig.fy(tip), 0))[0] < ctx.view.project(hd.point(10.0, fig.fy(tip), 0))[0] else 1.0
+    pts = [(sgn * lerp(3.0, 6.5 * w, t), fig.fy(lerp(tip - 0.1, tip + 0.025, t))) for t in (0.0, 0.25, 0.5, 0.75, 1.0)]
+    pts.append((-sgn * 2.0 * w, fig.fy(tip + 0.04)))
+    for run in surface_line(ctx, hd, pts, out=0.05, thresh=0.1):
+        pt.line(run, ctx.skin_dk, FINE * 1.1, smooth=False)
+
+
 def _human_nose(ctx: Ctx, pt: Paint) -> None:
     fig = ctx.fig
     hd = fig.head
+    if family_of(fig.spec).face.nose_style == "line":
+        _line_nose(ctx, pt)
+        return
     tip = fig.face["nose_tip_f"]
     width = fig.face.get("nose_width", 1.0)
     y_under = fig.fy(tip + 0.035)
@@ -1268,6 +1296,7 @@ def _mouth(ctx: Ctx, pt: Paint, e: Expression) -> None:
     if lips:
         _painted_lips(ctx, pt, e)
     lip = mix(ctx.skin, "#9c3c3c", 0.32) if fig.species == "human" else shade(ctx.skin, 0.5)
+    tint = family_of(fig.spec).face.lip_color if fig.species == "human" and not lips else None
     up = [q for q in _mouth_points(fig, e, False) if ctx.view.facing(q[0]) > 0.04]
     lo = [q for q in _mouth_points(fig, e, True) if ctx.view.facing(q[0]) > 0.04]
     if len(up) < 2:
@@ -1288,12 +1317,12 @@ def _mouth(ctx: Ctx, pt: Paint, e: Expression) -> None:
         if e.teeth > 0.3 and fig.species == "human":
             lo2 = [ctx.p(hd.point(a, y + 0.02 * fig.hh, out)) for a, y in up]
             pt.region([line + list(reversed(lo2))], "#f2ece2", outline=0.2, smooth=True)
-        pt.line(line, mix(style().ink, lip, 0.3), 0.38 * (family_of(fig.spec).face.lip if fig.species == "human" else 1.0))
+        pt.line(line, tint or mix(style().ink, lip, 0.3), 0.38 * (family_of(fig.spec).face.lip if fig.species == "human" else 1.0))
     if fig.species == "human" and not lips:
         ym = fig.fy(fig.face["mouth_f"])
         lower = [(a * 0.55, ym + 0.04 * fig.hh + 0.004 * fig.hh * (a / 9.0) ** 2 + 0.085 * e.open * fig.hh) for a in range(-9, 10, 3)]
         for run in surface_line(ctx, hd, lower, out=0.05, thresh=0.1):
-            pt.line(run, mix(ctx.skin_sh, lip, 0.4), 0.26 + 0.12 * fig.spec.face.lips)
+            pt.line(run, light(ctx.skin, 0.55) if tint else mix(ctx.skin_sh, lip, 0.4), 0.26 + 0.12 * fig.spec.face.lips)
 
 
 def _painted_lips(ctx: Ctx, pt: Paint, e: Expression) -> None:

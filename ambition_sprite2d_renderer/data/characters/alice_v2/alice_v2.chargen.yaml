@@ -1,0 +1,62 @@
+# Alice, v2: the cryptographer who sends, drawn by the character generator
+# (chargen) in all eight views. Her own gear (her swept bob and its gold band,
+# the satchel, the tie, the cipher wheel, the boot cuffs, the range pole, the
+# letter) is drawn by targets/characters/_alice_v2_gear.py; the target is
+# targets/characters/alice_v2.py. Her spec hair is `bald` because the gear
+# draws her hair.
+schema: ambition-chargen-v1
+name: Alice
+base: slim_female
+seed: 540
+# Bob's ink, and a head and face that read on a phone (chargen/family.py, `cast`).
+family: cast
+body:
+  height_cm: 165
+  head: 0.16
+  shoulders: 0.98
+  waist: 0.94
+  hips: 1.02
+  bust: 0.25
+  legs: 1.03
+  limbs: 0.95
+  age: 0.3
+face:
+  eye_shape: almond
+  eye_size: 1.0
+  eye_spacing: 1.12
+  brow: arched
+  brow_weight: 0.75
+  nose: straight
+  nose_size: 0.8
+  mouth: neutral
+  mouth_width: 0.95
+  lips: 1.2
+  jaw: round
+  jaw_width: 0.88
+  chin: 0.8
+  ears: 1.0
+  ear_angle: 0.25
+hair:
+  style: bald
+  facial: none
+palette:
+  skin: '#e2aa86'
+  hair: '#1f2a44'
+  eyes: '#3f7f78'
+outfit:
+  top: shirt
+  sleeves: long
+  neckline: collar
+  top_color: '#6a2333'
+  tucked: true
+  outer: coat
+  outer_length: knee
+  outer_color: '#1d6e78'
+  outer_open: true
+  bottom: trousers
+  bottom_color: '#323a49'
+  shoes: boots
+  shoe_color: '#6e2a30'
+  hat: none
+  accessories: [belt]
+  accent_color: '#bf443c'
