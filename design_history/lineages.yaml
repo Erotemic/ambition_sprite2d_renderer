@@ -1374,6 +1374,10 @@ lineages:
         id: sanic
         label: "Procedural side view"
         note: "Added with Mary-O (\"sanic and super mary-o sprites\") from Jon's account; no trailer. Last drawn this way at renderer e0782b6."
+      - commit: "218b2d6"
+        id: sanic
+        label: "The MS Paint meme, as SVG parts"
+        note: "Redrawn after the reference Jon gave (2026-10-25), with a top-speed `sprint` row; Claude Opus 5.5 declared."
   wolfenstein:
     name: Wolfenstein
     ids: [wolfenstein]
