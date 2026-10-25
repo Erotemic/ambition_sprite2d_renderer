@@ -244,9 +244,11 @@ lineages:
     ids: [gnu_ton_boss]
     paths: ['gnu_ton']
     pick: 'frame:rest@giant_gnu'
-    summary: "the fused giant, then the giant alone once the scholar was split off"
+    summary: "the fused giant, then the giant alone once the scholar was split off, then a giant that is almost a centaur"
     tile_w: 300
     per_row: 4
+    # The last two eras were a second `giant_gnu` key (2026-10-11), which YAML
+    # let replace this entry; they are joined here.
     eras:
       - commit: "018b65d2d"
         label: "Fused with the scholar"
@@ -257,6 +259,12 @@ lineages:
       - commit: "506317748"
         label: "A lone-fist sheet and a scholar-sized rider sheet"
         note: "The giant is drawn on its own, large. Commit marked <synthetic>; Claude Opus 5.5 and GPT-6 sol credited."
+      - commit: "a18c282"
+        label: "A wildebeest of polygons, with a spiked hump"
+        note: "The last commit with the first design. Its face was liked: goofy, and not on purpose."
+      - commit: "a6e2ab1"
+        label: "A giant like a gnu, almost a centaur"
+        note: "Jon chose it in rounds of stills: a mythical giant, a slope for a back, a gnu's horns, a plain face. Claude Opus 5.5 declared."
   gnu_ton_scholar:
     name: The scholar (GNU-ton), alone
     ids: [gnu_ton_boss]
@@ -279,7 +287,8 @@ lineages:
         note: "A smooth, outlined redraw. Claude Opus 5.5 declared."
   gnu_ton_scholar_rig:
     name: The scholar (GNU-ton), as an SVG rig
-    ids: [gnu_ton_scholar_fighter, gnu_ton_scholar_villain]
+    # `gnu_ton_scholar_boss` is the boss sheet: the same SVG and bones, its own rows.
+    ids: [gnu_ton_scholar_fighter, gnu_ton_scholar_villain, gnu_ton_scholar_boss]
     paths: ['gnu_ton_scholar']
     summary: "a round face with a blush, then an old stern man in a full wig"
     # This is the scholar the game draws (the fighter and the boss sheets). The
@@ -349,18 +358,6 @@ lineages:
       - commit: "739addd"
         label: "Euler after the 1753 pastel"
         note: "Redesigned with Jon over seven rounds: rumpled silk cap, teal banyan over the workshop clothes, the failing right eye in every view (left-facing views drawn, not flipped), eight faces."
-  giant_gnu:
-    name: Giant GNU (GNU-ton's mount)
-    ids: [gnu_ton_boss]
-    paths: ['gnu_ton_boss']
-    summary: "from a wildebeest of flat polygons to a giant that is almost a centaur"
-    eras:
-      - commit: "a18c282"
-        label: "A wildebeest of polygons, with a spiked hump"
-        note: "The last commit with the first design. Its face was liked: goofy, and not on purpose."
-      - commit: "a6e2ab1"
-        label: "A giant like a gnu, almost a centaur"
-        note: "Jon chose it in rounds of stills: a mythical giant, a slope for a back, a gnu's horns, a plain face. Claude Opus 5.5 declared."
   pirate_raider:
     name: Pirate crew (the raider stands for the five)
     ids: [pirate_raider]
@@ -1330,3 +1327,691 @@ lineages:
         id: stochastic_parrot_v2
         label: "v2: the SVG-rigged macaw"
         note: "The v2 target redrawn, same rows: the bare white face patch, the hooked pale beak, wings that spread from folded to open. Claude Opus 5.5 declared."
+
+  # ---- every character with art has a lineage (2026-10-25) ----
+  # `eras: []` until a survey shows the looks.
+  mary_o:
+    # Two generations: `super_mary_o` (R0, 2026-07-05) and `mary_o_v2`. A procedural
+    # `mary_o_v2` came first (a2e104aea9, 2026-08-03); the authored SVG replaced it.
+    # The cosmic form arrived in R1 2fd0172 (2026-10-11; Claude Opus 5.5 declared).
+    # `super_mary_o_cosmic_quasar` is her pickup (a prop), not a form.
+    name: Mary-O
+    ids: [super_mary_o]
+    paths: ['characters/super_mary_o\.py', 'super_mary_o_common', '(characters|assets)/_?mary_o_v2']
+    summary: "the original Super Mary-O, then a v2 that Jon drew by hand"
+    forms:
+      tall: [super_mary_o_tall, mary_o_v2_tall]
+      fire: [super_mary_o_fire, mary_o_v2_fire]
+      cosmic: [mary_o_v2_cosmic]
+    eras:
+      - commit: "7f901c3f8a"
+        id: super_mary_o
+        label: "Super Mary-O"
+        note: "Added with Sanic (\"sanic and super mary-o sprites\") from Jon's account; no trailer."
+      - commit: "dc09e88d89"
+        id: mary_o_v2
+        label: "v2: drawn by Jon by hand"
+        note: "Her authored SVG becomes the source of her sprites. Jon drew it; the commit is an agent's (Claude Opus 5 declared)."
+  sanic:
+    name: Sanic
+    ids: [sanic]
+    paths: ['characters/sanic\.py']
+    forms:
+      super: [super_sanic]
+    eras: []
+  wolfenstein:
+    name: Wolfenstein
+    ids: [wolfenstein]
+    paths: ['characters/wolfenstein', '_evil_faction']
+    forms:
+      inugami: [wolfenstein_inugami]
+    eras: []
+  clockwork_warden:
+    # Until 2026-10-18 this boss wore the generic `boss` look (see `sentinel_bosses`).
+    name: The Clockwork Warden
+    ids: [clockwork_warden_boss]
+    paths: ['clockwork_warden', '/_sentinel_boss\.py', 'sentinel_boss_rigs', 'svg_art/sentinel_boss_art']
+    eras: []
+  mode_collapse:
+    # Until 2026-10-18 this boss wore the generic `boss` look (see `sentinel_bosses`).
+    name: Mode Collapse (the Hooded Sentinel)
+    ids: [hooded_sentinel_boss]
+    paths: ['hooded_sentinel', '/_sentinel_boss\.py', 'sentinel_boss_rigs', 'svg_art/sentinel_boss_art']
+    eras: []
+  flying_spaghetti_monster:
+    name: Flying Spaghetti Monster
+    ids: [flying_spaghetti_monster_boss]
+    paths: ['flying_spaghetti_monster', '_solo_shape_rig']
+    eras: []
+  fsm_noodling:
+    name: Noodling
+    ids: [fsm_noodling]
+    paths: ['fsm_noodling', '_solo_shape_rig']
+    eras: []
+  smirking_behemoth:
+    name: Smirking Behemoth
+    ids: [smirking_behemoth_boss]
+    paths: ['smirking_behemoth']
+    eras: []
+  trex:
+    name: T. rex (enemy and boss)
+    ids: [trex_enemy]
+    paths: ['trex_enemy']
+    eras: []
+  pointed_polygon:
+    # Named `fighting_polygon_sword` until 69ad36f2eb (2026-08-20).
+    name: Pointed Polygon
+    ids: [pointed_polygon, fighting_polygon_sword]
+    paths: ['(characters|rigged|review)/(pointed_polygon|fighting_polygon_sword)', 'humanoid/fighting_polygon_v1']
+    eras: []
+  pugnacious_polygon:
+    # Named `fighting_polygon_brawler` until 69ad36f2eb (2026-08-20).
+    name: Pugnacious Polygon
+    ids: [pugnacious_polygon, fighting_polygon_brawler]
+    paths: ['(characters|rigged|review)/(pugnacious_polygon|fighting_polygon_brawler)', 'humanoid/fighting_brawler_v1']
+    eras: []
+  projectile_polygon:
+    name: Projectile Polygon
+    ids: [projectile_polygon]
+    paths: ['(characters|rigged)/projectile_polygon', 'humanoid/projectile_beast_v1']
+    eras: []
+  director:
+    # Named `author` until 1694b068c0 (2026-09-18).
+    name: The Director
+    ids: [director, author]
+    paths: ['characters/(director|author)[/.]', 'rigbuild/(build|pen|sidearm|sword)_(director|author)\.py', 'humanoid/(director|author)_', 'assets/(director|author)-rig', '_authored_swing_fighter']
+    eras: []
+  officer:
+    name: The Officer
+    ids: [officer]
+    paths: ['characters/officer[/.]', 'rigbuild/build_officer', 'humanoid/officer_', 'assets/officer\.svg', '_authored_swing_fighter']
+    eras: []
+  medic:
+    name: The Medic
+    ids: [medic]
+    paths: ['characters/medic[/.]', 'rigbuild/build_medic', 'humanoid/medic_', 'assets/medic\.svg', '_authored_swing_fighter']
+    eras: []
+  performer:
+    # Named `actor` until aa768e69bf (2026-08-29).
+    name: The Performer
+    ids: [performer, actor]
+    paths: ['characters/(performer|actor)[/.]', 'rigbuild/build_(performer|actor)\.py', 'humanoid/(performer|actor)_stage', 'assets/performer\.svg', '_authored_swing_fighter']
+    eras: []
+  patent_clerk:
+    name: Patent Clerk
+    ids: [patent_clerk]
+    paths: ['(characters|rigged)/patent_clerk']
+    eras: []
+  george_booul:
+    name: George Booul
+    ids: [george_booul]
+    paths: ['characters/george_booul']
+    eras: []
+  le_beast:
+    name: Le Beast
+    ids: [le_beast]
+    paths: ['characters/le_beast']
+    eras: []
+  perfect_cellular_automaton:
+    # The catalog keeps the perfect and the imperfect one apart, so two lineages.
+    name: Perfect Cellular Automaton
+    ids: [perfect_cellular_automaton]
+    paths: ['(characters|rigged)/(perfect_cellular_automaton|pca_)', 'assets/perfect-cellular-automaton/', 'svg_art/pca_']
+    eras: []
+  bear_mauler:
+    name: Bear Mauler
+    ids: [bear_mauler]
+    paths: ['bear_mauler']
+    eras: []
+  busy_beaver:
+    name: Busy Beaver
+    ids: [busy_beaver]
+    paths: ['busy_beaver', '_solo_shape_rig']
+    eras: []
+  carl_stargan:
+    name: Carl Stargan
+    ids: [carl_stargan]
+    paths: ['carl_stargan']
+    eras: []
+  charley_beagle:
+    name: Charley Beagle
+    ids: [charley_beagle_svg]
+    paths: ['charley_beagle']
+    eras: []
+  companion_dog:
+    name: Companion Dog
+    ids: [companion_dog]
+    paths: ['companion_dog']
+    eras: []
+  dog_bezoar:
+    name: Bezoar
+    ids: [dog_bezoar]
+    paths: ['dog_bezoar', '_house_dog', 'house_dogs_art']
+    eras: []
+  dog_honey:
+    name: Honey
+    ids: [dog_honey]
+    paths: ['dog_honey', '_house_dog', 'house_dogs_art']
+    eras: []
+  dog_roadie:
+    name: Roadie
+    ids: [dog_roadie]
+    paths: ['dog_roadie', '_house_dog', 'house_dogs_art']
+    eras: []
+  evil_attack_hound:
+    name: Attack Hound
+    ids: [evil_attack_hound]
+    paths: ['evil_attack_hound', '_evil_faction']
+    eras: []
+  evil_failed_prototype:
+    name: Failed Prototype
+    ids: [evil_failed_prototype]
+    paths: ['evil_failed_prototype', '_evil_faction']
+    eras: []
+  evil_heavy:
+    name: Iron Trooper
+    ids: [evil_heavy]
+    paths: ['evil_heavy', '_evil_faction', '_person_rig']
+    eras: []
+  evil_spectral_wolf:
+    name: Spectral Wolf
+    ids: [evil_spectral_wolf]
+    paths: ['evil_spectral_wolf']
+    eras: []
+  evil_zombie:
+    name: Risen Conscript
+    ids: [evil_zombie]
+    paths: ['evil_zombie', '_evil_faction', '_person_rig']
+    eras: []
+  kernel_guide:
+    name: Kernel Guide (also the Gate Janitor)
+    ids: [kernel_guide]
+    paths: ['kernel_guide', '_pirate_common', '_pirate_rig']
+    eras: []
+  niels_boar:
+    name: Niels Boar
+    ids: [niels_boar]
+    paths: ['niels_boar', '_solo_shape_rig']
+    eras: []
+  ninja_kagero:
+    name: Kagero
+    ids: [ninja_kagero]
+    paths: ['ninja_kagero', '_person_rig']
+    eras: []
+  richard_duckling:
+    name: Richard Duckling
+    ids: [richard_duckling]
+    paths: ['richard_duckling']
+    eras: []
+  searchlight_crawler:
+    name: Searchlight Crawler
+    ids: [searchlight_crawler]
+    paths: ['searchlight_crawler']
+    eras: []
+  shock_warden:
+    name: Shock Warden
+    ids: [shock_warden]
+    paths: ['shock_warden']
+    eras: []
+  smart_house:
+    name: Smart House
+    ids: [smart_house]
+    paths: ['smart_house']
+    eras: []
+  snake_plant:
+    name: Snake Plant
+    ids: [snake_plant]
+    paths: ['snake_plant']
+    eras: []
+  snakes_on_a_cartesian_plane:
+    name: Snakes on a Cartesian Plane
+    ids: [snakes_on_a_cartesian_plane]
+    paths: ['snakes_on_a_cartesian_plane', '_snakes_on_planes_common']
+    eras: []
+  snakes_on_a_paper_plane:
+    name: Snakes on a Paper Plane
+    ids: [snakes_on_a_paper_plane]
+    paths: ['snakes_on_a_paper_plane', '_snakes_on_planes_common']
+    eras: []
+  solid_snake:
+    name: Solid Snake
+    ids: [solid_snake]
+    paths: ['solid_snake']
+    eras: []
+  vera_ruin:
+    name: Vera Ruin
+    ids: [vera_ruin]
+    paths: ['vera_ruin', '_solo_shape_rig']
+    eras: []
+  void_lizard:
+    name: Void Lizard
+    ids: [void_lizard]
+    paths: ['void_lizard']
+    eras: []
+  void_star:
+    name: Void Star
+    ids: [void_star]
+    paths: ['void_star']
+    eras: []
+  yuclid:
+    name: Yuclid
+    ids: [yuclid]
+    paths: ['yuclid']
+    eras: []
+  puppy_slug_velvet:
+    name: Velvet Puppy Slug
+    ids: [puppy_slug_velvet]
+    paths: ['puppy_slug_velvet']
+    eras: []
+  bad_apple:
+    name: Bad Apple
+    ids: [bad_apple]
+    paths: ['bad_apple', '_apple_enemy_family']
+    eras: []
+  gravity_apple:
+    name: Gravity Apple
+    ids: [gravity_apple]
+    paths: ['gravity_apple', '_apple_enemy_family']
+    eras: []
+  robot_heavy:
+    name: Heavy robot
+    ids: [robot_heavy]
+    paths: ['robot_heavy']
+    eras: []
+  sandbag:
+    # The infinite sandbag draws this sheet too. The two `sandbag_*_review`
+    # sheets are review sheets, not looks of the character.
+    name: Sandbag
+    ids: [sandbag]
+    paths: ['sandbag(?!_(armored|full)_review)']
+    eras: []
+  puppy_slug_variant2:
+    # Another drawing of a puppy slug; the catalog keeps it as its own character.
+    name: Puppy Slug Variant2
+    ids: [puppy_slug_variant2]
+    paths: ['ai_era_enemies', 'puppy_slug_variant2']
+    eras: []
+  steel_man:
+    name: The Steel Man
+    ids: [steel_man]
+    paths: ['steel_man', 'steel_and_straw']
+    eras: []
+  straw_man:
+    name: The Straw Man
+    ids: [straw_man]
+    paths: ['straw_man']
+    eras: []
+  pirate_admiral:
+    name: Pirate Admiral
+    ids: [pirate_admiral]
+    paths: ['_pirate_common', '_pirate_rig', '(targets|characters)/_?pirate_admiral(_moves)?\.py']
+    eras: []
+  pirate_lookout:
+    name: Pirate Lookout
+    ids: [pirate_lookout]
+    paths: ['_pirate_common', '_pirate_rig', '(targets|characters)/pirate_lookout\.py']
+    eras: []
+  pirate_navigator:
+    name: Pirate Navigator
+    ids: [pirate_navigator]
+    paths: ['_pirate_common', '_pirate_rig', '(targets|characters)/pirate_navigator\.py']
+    eras: []
+  pirate_quartermaster:
+    # Named `pirate_corsair` until 13b9c28358 (2026-05-21).
+    name: Pirate Quartermaster
+    ids: [pirate_quartermaster, pirate_corsair]
+    paths: ['_pirate_common', '_pirate_rig', '(targets|characters)/pirate_(quartermaster|corsair)\.py']
+    eras: []
+  raid_enforcer:
+    # Named `fascist_enforcer` until 6aa2985a90 (2026-05-28). That id was later
+    # given to another character (the `fascist_enforcer` lineage), so it is a
+    # fallback only, and only the old files are paths here.
+    name: Raid Enforcer
+    ids: [raid_enforcer, fascist_enforcer]
+    paths: ['raid_enforcer', '_toon_presets/fascist_enforcer', 'configs/fascist_enforcer\.yaml']
+    eras: []
+  african_swallow:
+    name: African Swallow (also the Laden Swallow)
+    ids: [african_swallow]
+    paths: ['african_swallow', 'swallows_art']
+    eras: []
+  european_swallow:
+    name: European Swallow
+    ids: [european_swallow]
+    paths: ['european_swallow', 'swallows_art']
+    eras: []
+  cassowary:
+    name: Cassowary Solver
+    ids: [cassowary]
+    paths: ['cassowary']
+    eras: []
+  chicken:
+    name: Game Chicken (Male)
+    ids: [chicken]
+    paths: ['chicken(?!_hen)']
+    eras: []
+  chicken_hen:
+    name: Game Chicken (Female)
+    ids: [chicken_hen]
+    paths: ['chicken_hen']
+    eras: []
+  emu:
+    name: Emu-lator
+    ids: [emu]
+    paths: ['(^|/)emu[/._]']
+    eras: []
+  kiwi:
+    name: Kiwi Solver
+    ids: [kiwi]
+    paths: ['(^|/)kiwi[/._]']
+    eras: []
+  ostrich:
+    name: Ostrich Algorithm (Male)
+    ids: [ostrich]
+    paths: ['ostrich(?!_hen)']
+    eras: []
+  ostrich_hen:
+    name: Ostrich Algorithm (Female)
+    ids: [ostrich_hen]
+    paths: ['ostrich_hen']
+    eras: []
+  owl:
+    name: Ontology Owl
+    ids: [owl]
+    paths: ['(^|/)(build_)?owl[/._]']
+    eras: []
+  penguin:
+    name: Open-Source Penguin
+    ids: [penguin]
+    paths: ['penguin']
+    eras: []
+  shoebill:
+    name: Lazy Shoebill
+    ids: [shoebill]
+    paths: ['shoebill']
+    eras: []
+  vulture:
+    name: Vulture Capitalist
+    ids: [vulture]
+    paths: ['vulture']
+    eras: []
+  compsognathus:
+    name: CompSci-gnathus
+    ids: [compsognathus]
+    paths: ['compsognathus']
+    eras: []
+  dilophosaurus:
+    name: Dial-up Dilophosaurus
+    ids: [dilophosaurus]
+    paths: ['dilophosaurus']
+    eras: []
+  pachycephalosaurus:
+    name: Patchy-cephalosaurus
+    ids: [pachycephalosaurus]
+    paths: ['pachycephalosaurus']
+    eras: []
+  triceratops:
+    name: Try-ceratops
+    ids: [triceratops]
+    paths: ['triceratops']
+    eras: []
+  goblin_raider:
+    name: Goblin (Raider)
+    ids: [goblin_raider]
+    paths: ['goblin_raider', 'goblin_side', '_goblin_look']
+    eras: []
+  goblin_squat:
+    name: Goblin (Squat)
+    ids: [goblin_squat]
+    paths: ['goblin_squat', 'goblin_side', '_goblin_look']
+    eras: []
+  goblin_bruiser_club:
+    name: Goblin Bruiser
+    ids: [goblin_bruiser_club]
+    paths: ['goblin_bruiser_club', 'goblin_side', '_goblin_look']
+    eras: []
+  goblin_cave_dagger:
+    name: Cave goblin (dagger)
+    ids: [goblin_cave_dagger]
+    paths: ['goblin_cave_dagger', 'goblin_side', '_goblin_look']
+    eras: []
+  goblin_desert_bow:
+    name: Desert goblin (bow)
+    ids: [goblin_desert_bow]
+    paths: ['goblin_desert_bow', 'goblin_side', '_goblin_look']
+    eras: []
+  goblin_forest_spear:
+    name: Forest goblin (spear)
+    ids: [goblin_forest_spear]
+    paths: ['goblin_forest_spear', 'goblin_side', '_goblin_look']
+    eras: []
+  goblin_frost_sword:
+    name: Frost goblin (sword)
+    ids: [goblin_frost_sword]
+    paths: ['goblin_frost_sword', 'goblin_side', '_goblin_look']
+    eras: []
+  goblin_shaman_staff:
+    name: Goblin shaman (staff)
+    ids: [goblin_shaman_staff]
+    paths: ['goblin_shaman_staff', 'goblin_side', '_goblin_look']
+    eras: []
+  ranged_skirmisher:
+    name: Desert goblin skirmisher (bow)
+    ids: [ranged_skirmisher]
+    paths: ['ranged_skirmisher', 'goblin_side', '_goblin_look']
+    eras: []
+  goblin_cantina_bard:
+    name: Cantina Bard
+    ids: [goblin_cantina_bard]
+    paths: ['music_factions', 'goblin_side', '_goblin_look']
+    eras: []
+  lofi_radio_host:
+    name: Mx. Drift, Radio Host
+    ids: [lofi_radio_host]
+    paths: ['music_factions', 'robot_side']
+    eras: []
+  sandbox_guide_npc:
+    name: Sandbox Guide
+    ids: [sandbox_guide_npc]
+    paths: ['music_factions', 'robot_side']
+    eras: []
+  shop_stub_clerk:
+    name: Prototype Shop Clerk
+    ids: [shop_stub_clerk]
+    paths: ['music_factions', 'robot_side']
+    eras: []
+  dinosaur_liberator_frontbot:
+    name: Sauria Freebird
+    ids: [dinosaur_liberator_frontbot]
+    paths: ['music_factions', 'robot_side']
+    eras: []
+  watershed_advocate:
+    name: Solace Reed
+    ids: [watershed_advocate]
+    paths: ['music_factions', 'robot_side']
+    eras: []
+  iron_resolve_marshal:
+    name: Marshal Downbeat
+    ids: [iron_resolve_marshal]
+    paths: ['music_factions', 'robot_side']
+    eras: []
+  glasswood_warden:
+    name: Old-Light Warden
+    ids: [glasswood_warden]
+    paths: ['music_factions', 'robot_side']
+    eras: []
+  moonlit_canal_keeper:
+    name: Canal Keeper Noct
+    ids: [moonlit_canal_keeper]
+    paths: ['music_factions', 'robot_side']
+    eras: []
+  robot_archivist:
+    name: "Robot family: archivist"
+    ids: [robot_archivist]
+    paths: ['configs/(review/)?robot_archivist\.yaml', 'robot_side']
+    eras: []
+  robot_caster:
+    name: "Robot family: caster"
+    ids: [robot_caster]
+    paths: ['configs/(review/)?robot_caster\.yaml', 'robot_side']
+    eras: []
+  robot_diver:
+    name: "Robot family: diver"
+    ids: [robot_diver]
+    paths: ['configs/(review/)?robot_diver\.yaml', 'robot_side']
+    eras: []
+  robot_engineer:
+    name: "Robot family: engineer"
+    ids: [robot_engineer]
+    paths: ['configs/(review/)?robot_engineer\.yaml', 'robot_side']
+    eras: []
+  robot_guardian:
+    name: "Robot family: guardian"
+    ids: [robot_guardian]
+    paths: ['configs/(review/)?robot_guardian\.yaml', 'robot_side']
+    eras: []
+  robot_medic:
+    name: "Robot family: medic"
+    ids: [robot_medic]
+    paths: ['configs/(review/)?robot_medic\.yaml', 'robot_side']
+    eras: []
+  robot_miner:
+    name: "Robot family: miner"
+    ids: [robot_miner]
+    paths: ['configs/(review/)?robot_miner\.yaml', 'robot_side']
+    eras: []
+  robot_runner:
+    name: "Robot family: runner"
+    ids: [robot_runner]
+    paths: ['configs/(review/)?robot_runner\.yaml', 'robot_side']
+    eras: []
+  armsmith_odile:
+    name: Odile
+    ids: [armsmith_odile]
+    paths: ['townsfolk/armsmith_odile\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  port_agnes:
+    name: Agnes
+    ids: [port_agnes]
+    paths: ['townsfolk/port_agnes\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  port_bram:
+    name: Bram
+    ids: [port_bram]
+    paths: ['townsfolk/port_bram\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  port_ines:
+    name: Ines
+    ids: [port_ines]
+    paths: ['townsfolk/port_ines\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  port_jory:
+    name: Jory
+    ids: [port_jory]
+    paths: ['townsfolk/port_jory\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  port_tomas:
+    name: Tomas
+    ids: [port_tomas]
+    paths: ['townsfolk/port_tomas\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  port_wren:
+    name: Wren
+    ids: [port_wren]
+    paths: ['townsfolk/port_wren\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  station_lindqvist:
+    name: Bo Lindqvist
+    ids: [station_lindqvist]
+    paths: ['townsfolk/station_lindqvist\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  station_okafor:
+    name: Officer Okafor
+    ids: [station_okafor]
+    paths: ['townsfolk/station_okafor\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  station_pell:
+    name: Gus Pell
+    ids: [station_pell]
+    paths: ['townsfolk/station_pell\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  station_rahimi:
+    name: Hamid Rahimi
+    ids: [station_rahimi]
+    paths: ['townsfolk/station_rahimi\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  station_reyes:
+    name: Captain Reyes
+    ids: [station_reyes]
+    paths: ['townsfolk/station_reyes\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  station_wen:
+    name: Wen Liang
+    ids: [station_wen]
+    paths: ['townsfolk/station_wen\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  tower_bankole:
+    name: Corporal Bankole
+    ids: [tower_bankole]
+    paths: ['townsfolk/tower_bankole\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  tower_brandt:
+    name: Major Brandt
+    ids: [tower_brandt]
+    paths: ['townsfolk/tower_brandt\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  tower_dorsey:
+    name: Private Dorsey
+    ids: [tower_dorsey]
+    paths: ['townsfolk/tower_dorsey\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  tower_granger:
+    name: Quartermaster Granger
+    ids: [tower_granger]
+    paths: ['townsfolk/tower_granger\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  tower_ruiz:
+    name: Corporal Ruiz
+    ids: [tower_ruiz]
+    paths: ['townsfolk/tower_ruiz\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  tower_tanaka:
+    name: Private Tanaka
+    ids: [tower_tanaka]
+    paths: ['townsfolk/tower_tanaka\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  tower_voss:
+    name: Drill Sergeant Voss
+    ids: [tower_voss]
+    paths: ['townsfolk/tower_voss\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  village_daichi:
+    name: Daichi
+    ids: [village_daichi]
+    paths: ['townsfolk/village_daichi\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  village_hayashi:
+    name: Sensei Hayashi
+    ids: [village_hayashi]
+    paths: ['townsfolk/village_hayashi\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  village_kenji:
+    name: Kenji
+    ids: [village_kenji]
+    paths: ['townsfolk/village_kenji\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  village_ren:
+    name: Ren
+    ids: [village_ren]
+    paths: ['townsfolk/village_ren\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  village_sato:
+    name: Sato
+    ids: [village_sato]
+    paths: ['townsfolk/village_sato\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
+  village_ume:
+    name: Ume
+    ids: [village_ume]
+    paths: ['townsfolk/village_ume\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
