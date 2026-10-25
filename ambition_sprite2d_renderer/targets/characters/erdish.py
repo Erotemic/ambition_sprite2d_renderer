@@ -1388,23 +1388,46 @@ _BACK = (FAR_SHOULDER[0] + BEHIND[0] * U, FAR_SHOULDER[1] + BEHIND[1] * U)
 WRISTS3 = {"r": ((-1.0, _seen(_CHIN)[1], O.lift(_seen(_CHIN)[0], -1.0)), (-0.4, 1.0, 0.1), str(_REST["nh"])),
            "l": ((3.0, _seen(_BACK)[1], O.lift(_seen(_BACK)[0], 3.0)), (1.0, 0.2, -0.4), str(_REST["fh"]))}
 
+#: His hair: the mass on top of his head, and what goes round behind his ears.
+_HAIR_TOP = ((0.0, -8.8, -0.6), (7.8, 4.8, 8.4))
+_HAIR_BACK = ((0.0, 1.0, -6.0), (7.0, 5.2, 3.6))
+
+
+def _strands() -> List[object]:
+    """The lines in his hair, as his three-quarter view draws them, all round
+    his head: light strands over the top that curl back, dark ones down the
+    back and the sides of what is behind his ears."""
+    out = []
+    for k, u in enumerate(range(-160, 180, 40)):
+        u0 = float(u) + (7.0 if k % 2 else -5.0)
+        pts = [O.on_ellipsoid(*_HAIR_TOP, u0 + 22.0 * t, -13.2 + 5.0 * t + 0.8 * math.sin(3.0 * t), 0.2)[0] for t in (0.0, 0.25, 0.5, 0.75, 1.0)]
+        out.append(O.curve(pts, HAIR_LIGHT, 0.6))
+    for u in (-150.0, -120.0, -95.0, 95.0, 120.0, 150.0, 180.0):
+        pts = [O.on_ellipsoid(*_HAIR_BACK, u + 10.0 * t, -3.4 + 7.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)]
+        out.append(O.curve(pts, HAIR_SHADE, 0.6))
+    for u in (-60.0, 60.0):
+        pts = [O.on_ellipsoid(*_HAIR_TOP, u, -6.6 - 2.4 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)]
+        out.append(O.curve(pts, HAIR_SHADE, 0.6))
+    return out
+
+
 #: His head in 3D, from his three-quarter view: a long skull, a thin jaw well
 #: forward of it, a long nose, large ears, grey hair on top that stands up,
 #: high over the forehead and down behind the ears; large square black
 #: glasses; no beard.
 HEAD_3D = O.Head3D(
     skin=SKIN, shade=SKIN_SHADE, deep=SKIN_DEEP,
-    skull=((0.0, -2.4, 0.0), (7.4, 9.0, 8.2)), jaw=((0.0, 4.2, 3.7), (5.0, 7.6, 3.8)), nose=((0.0, 2.2, 9.8), (1.2, 3.0, 3.2)),
+    skull=((0.0, -2.4, 0.0), (7.4, 9.0, 8.2)), jaw=((0.0, 4.2, 3.7), (5.0, 7.6, 3.8)), nose=((0.0, 1.4, 8.0), (0.9, 2.6, 1.9)), nose_tip=((0.0, 3.8, 9.4), (1.2, 1.3, 1.3)),
     ear=((-7.6, 1.2, 0.5), (1.8, 3.7, 2.5)), eye=(36.0, -0.1), eye_size=0.95, ink=INK, lid=SKIN_DEEP, brow=(HAIR_SHADE, None, -4.6, 1.1),
     hair=lambda u, v: (v < -8.4 + 2.4 * np.abs(u) / 180.0) | ((np.abs(u) > 80.0) & (v < 5.0)),
     hair_colour=HAIR, hair_shade=HAIR_SHADE,
-    volumes=[((0.0, -8.8, -0.6), (7.8, 4.8, 8.4)), ((0.0, 1.0, -6.0), (7.0, 5.2, 3.6)),
+    volumes=[_HAIR_TOP, _HAIR_BACK,
              ((-3.4, -13.0, 1.0), (2.2, 2.4, 2.2)), ((1.0, -13.8, -1.6), (2.2, 2.6, 2.2)), ((3.6, -12.8, 2.6), (2.0, 2.2, 2.0))],
     glasses=O.Glasses("square", (3.1, 2.9), FRAME, LENS, 0.9, top=0.5),
     lines=[O.curve([(-2.4, 8.0, 6.4), (0.0, 8.4, 7.0), (2.4, 8.0, 6.4)], MOUTH, 0.8),
            O.curve([(-3.4, 4.4, 8.0), (-3.8, 6.6, 7.0), (-3.6, 9.2, 6.0)], SKIN_DEEP, 0.6),
            O.curve([(3.4, 4.4, 8.0), (3.8, 6.6, 7.0), (3.6, 9.2, 6.0)], SKIN_DEEP, 0.6),
-           O.curve([(-2.2, -6.6, 7.0), (0.0, -7.0, 7.4), (2.2, -6.6, 7.0)], mix(SKIN, SKIN_DEEP, 0.55), 0.45)],
+           O.curve([(-2.2, -6.6, 7.0), (0.0, -7.0, 7.4), (2.2, -6.6, 7.0)], mix(SKIN, SKIN_DEEP, 0.55), 0.45)] + _strands(),
 )
 
 

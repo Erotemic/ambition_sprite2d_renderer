@@ -18,6 +18,10 @@ The rows that a character has stay as they are. This draws only the views
 that it does not have, and ``turnaround`` puts the character's own art beside
 the same views drawn from 3D, so the fit can be judged.
 
+The back views (back, back three quarters) are not polished: the game seldom
+shows a person from behind, so a weaker back is acceptable for now (Jon,
+2026-10-25). Polish them later.
+
 Body space is in frame pixels, from the middle of the hips: ``l`` to the
 person's left, ``y`` down, ``z`` forward. A ``View`` turns the camera round
 the person (``yaw`` 0 is the front, 90 sees the person face right, 180 is the
@@ -526,6 +530,9 @@ class Head3D:
     mouth: Optional[Tuple[float, float, float, RGBA]] = None
     glasses: Optional[Glasses] = None
     lines: Sequence[Line] = ()
+    #: A nose that slants down to a small round tip: the tip, as an
+    #: ellipsoid (``nose`` is then its bridge).
+    nose_tip: Optional[Tuple[Vec, Vec]] = None
     #: Where the far side of the face is in shade (``lit`` under it).
     shade_at: float = -0.45
 
@@ -553,6 +560,8 @@ def head_part(h: Head3D, at: Vec, name: str = "head") -> Part:
 
     skull_c, skull_r = h.skull
     surfaces = [ellipsoid(skull_c, skull_r, scalp), ellipsoid(h.jaw[0], h.jaw[1], flat_skin), ellipsoid(h.nose[0], h.nose[1], flat_skin)]
+    if h.nose_tip is not None:
+        surfaces.append(ellipsoid(h.nose_tip[0], h.nose_tip[1], flat_skin))
     surfaces += [ellipsoid(c, r, flat(h.hair_colour, shade=hair_shade, at=-0.6)) for c, r in h.volumes]
     (el, ey_, ez), er = h.ear
     for side in (-1.0, 1.0):
@@ -592,7 +601,8 @@ def head_part(h: Head3D, at: Vec, name: str = "head") -> Part:
         right = on_ellipsoid(skull_c, skull_r, eu, ev)[0] + [0.0, 0.0, 1.0]
         bridge_z = h.nose[0][2] - h.nose[1][2] * 0.2
         lines.append(curve([left + [h.glasses.size[0], -0.2, 0.2], (0.0, ev - 0.4, bridge_z), right + [-h.glasses.size[0], -0.2, 0.2]], h.glasses.frame, 0.6))
-    tip = np.asarray(h.nose[0]) + [0.0, h.nose[1][1] * 0.8, h.nose[1][2] * 0.5]
+    nose_c, nose_r = h.nose_tip if h.nose_tip is not None else h.nose
+    tip = np.asarray(nose_c) + [0.0, nose_r[1] * 0.8, nose_r[2] * 0.5]
     lines.append(curve([tip + [-1.2, -0.5, -0.6], tip + [0.0, 0.0, 0.2], tip + [1.2, -0.5, -0.6]], h.deep, 0.6))
     lines += list(h.lines)
     return Part(name, [s.moved(at) for s in surfaces], [ln.moved(at) for ln in lines], base=h.skin, shade_colour=h.deep, anchor=at)
