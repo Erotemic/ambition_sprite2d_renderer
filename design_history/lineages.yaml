@@ -12,7 +12,7 @@
 lineages:
   alice:
     name: Alice
-    ids: [alice, alice_cryptographer]
+    ids: [alice_v2, alice, alice_cryptographer]
     paths: ['alice']
     summary: "from a jointed-puppet placeholder to an SVG-rigged courier"
     eras:
@@ -35,8 +35,13 @@ lineages:
         label: "Teal jacket and short dark hair, restored"
         note: "Jon asked for the jacket and hair back; poses refined."
       - commit: "d64c64d9a"
+        id: alice
         label: "A rig: props, effects, faces are pieces"
-        note: "Current design."
+        note: "The GPT 6 Alice; kept renderable as `alice`."
+      - commit: "0d2b365"
+        id: alice_v2
+        label: "v2: chargen body, the old face, bag and letters"
+        note: "Character generator body and poses (cast family), the GPT 6 face, bright teal lapels. Current design."
   bob:
     name: Bob
     ids: [bob, bob_engineer]
