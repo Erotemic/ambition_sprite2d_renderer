@@ -392,14 +392,22 @@ def _jitter(i: int, amp: float, seed: float = 0.0) -> float:
 
 #: The rows the fight draws while its ward is lit: each is its plain row
 #: with the hitodama round it.
-WARD_OF = {f"ward_{name}": name for name in ("idle", "hunt", "crash", "howl", "bite_tell", "bite", "bite_miss")}
+#: It turns round (Jon, 2026-10-25: it flipped): its head whips over, its
+#: ears flat, and the fire streaming from its neck swings from the way it
+#: was going, up over it, to behind it. The fight draws the row facing the
+#: new way.
+TURN_FROM = P(at=(-6.0, 0.0), rot=-4.0, sq=0.97, mouth="grit", eyes="squint", ears=-34.0, flame=1.3, trail=350.0)
+TURN_OVER = P(at=(-3.0, -3.0), rot=-12.0, sq=1.03, mouth="grit", eyes="pin", ears=-30.0, flame=1.4, trail=265.0)
 
 
 def _pose(anim: str, i: int, n: int) -> Pose:
-    if anim in WARD_OF:
-        return _pose(WARD_OF[anim], i, n)
     u = R.shot(i, n)
     _ph, s, c = R.loop(i, n)
+    if anim in RING_ROWS:
+        # The ward's own rows draw only its spirits, about the head at rest.
+        return FLOAT
+    if anim == "turn":
+        return keys(u, [(0.0, TURN_FROM), (0.45, TURN_OVER, "out"), (1.0, FLOAT, "io")])
     if anim == "storm_tell":
         pose = keys(u, [(0.0, FLOAT), (0.4, HOWL_DRAW, "out"), (0.6, STORM_UP, "snap"), (1.0, STORM_UP, "hold")])
         return dict(pose, rot=float(pose["rot"]) + (_jitter(i, 2.5) if u > 0.6 else 0.0))  # type: ignore[arg-type]
@@ -508,11 +516,15 @@ ROWS: List[Tuple[str, int, int]] = [
     ("howl_tell", 10, 48), ("howl", 20, 44), ("storm_tell", 14, 57),
     ("hunt", 16, 35), ("crash", 8, 25),
     ("leash_tell", 14, 57), ("leash_whip", 14, 43), ("leash_slack", 14, 71),
-    ("gutter", 14, 57), ("guttered", 12, 80), ("rekindle", 9, 40),
-    # The ward: it kindles, the rows of the chase with the hitodama round it,
-    # her spell holds it, and it breaks.
-    ("ward_kindle", 12, 75), ("ward_idle", 16, 70), ("ward_hunt", 16, 35), ("ward_crash", 8, 25), ("ward_howl", 20, 44),
-    ("ward_bite_tell", 12, 47), ("ward_bite", 12, 33), ("ward_bite_miss", 18, 47), ("ward_bound", 10, 60), ("dispel", 12, 75),
+    ("gutter", 14, 57), ("guttered", 12, 80), ("rekindle", 9, 40), ("turn", 8, 30),
+    # The ward: it kindles, her spell holds it, and it breaks.
+    ("ward_kindle", 12, 75), ("ward_bound", 10, 60), ("dispel", 12, 75),
+    # The ward's hitodama, a layer over whatever row the head is drawn in, on
+    # the ward's own clock (Jon, 2026-10-25: the ring jumped where one warded
+    # row handed over to the next): they catch, they circle, and they are
+    # blown out. Each is `SPIRIT_TURN_S` a turn from its first frame, so the
+    # ring circles on through the hand-over from one to the next.
+    ("ward_ring_kindle", 26, 35), ("ward_ring", 32, 35), ("ward_ring_dispel", 26, 35),
     # Nothing: it is still his head on his body (before it tears off).
     ("unseen", 1, 100),
 ]
@@ -521,16 +533,17 @@ ROWS: List[Tuple[str, int, int]] = [
 
 #: The blue spirits of its ward (Jon, 2026-10-20: "the Japanese ghost
 #: spirits around him to be blue"): how many, their ring (frame pixels, a
-#: tilted ellipse: the far half of it is behind the head). They turn at
-#: `SPIRIT_TURN_S` a turn, by the row's own time, so a looping row comes back
-#: to where it began only when its length is a whole number of turns.
+#: tilted ellipse about the head at rest: the far half of it is behind the
+#: head). They turn at `SPIRIT_TURN_S` a turn from the first frame of each
+#: ring row, which the fight starts on the ward's clock; `ward_ring` is one
+#: whole turn, so it loops without a jump.
 SPIRITS = 4
 SPIRIT_RING = (104.0, 40.0)
 SPIRIT_TILT = -12.0
 #: How long the ward's spirits take to go round once, s.
 SPIRIT_TURN_S = 1.12
-#: The rows the ward's spirits circle in.
-WARD_ROWS = tuple(WARD_OF) + ("ward_kindle", "ward_bound", "dispel")
+#: The ward's rows: its spirits only, drawn over the head's row.
+RING_ROWS = ("ward_ring_kindle", "ward_ring", "ward_ring_dispel")
 #: Each row's frames and milliseconds, by name.
 ROW_MS = {name: (frames, ms) for name, frames, ms in ROWS}
 #: Where the leash goes in its rows: the chain from its neck (frame pixels
@@ -578,34 +591,31 @@ def _licks(img: Image.Image, pose: Pose, i: int) -> None:
                 float(pose["trail"]) + 30.0 * (1 if k else -1) + 8.0 * f)  # type: ignore[arg-type]
 
 
-def _spirits(img: Image.Image, anim: str, pose: Pose, i: int, n: int, behind: bool) -> None:
-    """The blue spirits of its ward circling it: the half of the ring behind
-    the head (``behind``) or in front of it. In ``ward_kindle`` they catch one
-    by one, in ``ward_bound`` the talismans pull them in tight, and in
-    ``dispel`` they are blown out of the ring and go out."""
-    if anim not in WARD_ROWS or float(pose["spirit"]) < 0.5:  # type: ignore[arg-type]
+def _spirits(img: Image.Image, anim: str, i: int, behind: bool) -> None:
+    """The blue spirits of its ward circling the head at rest: the half of the
+    ring behind the head (``behind``, on tracks named so, which the game draws
+    under the head) or in front of it. In ``ward_ring_kindle`` they catch one
+    by one, and in ``ward_ring_dispel`` they are blown out of the ring and go
+    out."""
+    if anim not in RING_ROWS:
         return
-    u = R.shot(i, n)
-    centre = _head_point(pose, (2.0, -8.0))
+    frames, ms = ROW_MS[anim]
+    seconds = i * ms / 1000.0
+    u = seconds / (frames * ms / 1000.0)
+    centre = _head_point(FLOAT, (2.0, -8.0))
     rx, ry = SPIRIT_RING
-    frames, ms = ROW_MS.get(anim, (n, 70))
-    loops = anim in ("ward_idle", "ward_hunt", "ward_crash", "ward_bound")
-    # A looping row makes whole turns, so it loops without a jump.
-    turns = max(1, round(frames * ms / 1000.0 / SPIRIT_TURN_S)) if loops else frames * ms / 1000.0 / SPIRIT_TURN_S
-    turn = math.tau * turns * i / max(1, n)
+    turn = math.tau * seconds / SPIRIT_TURN_S
     tilt = math.radians(SPIRIT_TILT)
     for k in range(SPIRITS):
         a = turn + math.tau * k / SPIRITS
         if (math.sin(a) < 0.0) != behind:
             continue
         grow, out = 1.0, 1.0
-        if anim == "ward_kindle":
+        if anim == "ward_ring_kindle":
             grow = min(1.0, max(0.0, (u - 0.2 - 0.12 * k) / 0.2))
             if grow <= 0.0:
                 continue
-        if anim == "ward_bound":
-            out = 0.7
-        if anim == "dispel":
+        if anim == "ward_ring_dispel":
             # Blown out of the ring, no further than the frame's margin (its
             # hit flash is drawn in an impostor cell of its frame and margin).
             out = 1.0 + 0.3 * u
@@ -617,7 +627,7 @@ def _spirits(img: Image.Image, anim: str, pose: Pose, i: int, n: int, behind: bo
         dx, dy = -rx * math.sin(a), ry * math.cos(a)
         heading = math.degrees(math.atan2(dx * math.sin(tilt) + dy * math.cos(tilt), dx * math.cos(tilt) - dy * math.sin(tilt)))
         size = (9.0 + 2.0 * math.sin(a) + 0.8 * _flicker(i, k)) * (0.35 + 0.65 * grow)
-        K.place(img, _hitodama(size), at, f"spirit_{k}", heading)
+        K.place(img, _hitodama(size), at, f"spirit_{k}_behind" if behind else f"spirit_{k}", heading)
 
 
 def _effects_over(img: Image.Image, anim: str, pose: Pose, i: int, n: int) -> None:
@@ -669,6 +679,11 @@ def _effects_over(img: Image.Image, anim: str, pose: Pose, i: int, n: int) -> No
 def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if anim == "unseen":
         return K.downsample(K.new_frame())
+    if anim in RING_ROWS:
+        img = K.new_frame()
+        _spirits(img, anim, frame_idx, behind=True)
+        _spirits(img, anim, frame_idx, behind=False)
+        return K.downsample(rigdoc.faded_canvas(img, SPIRIT_OPACITY))
     pose = _pose(anim, frame_idx, nframes)
     spirit = float(pose["spirit"]) >= 0.5  # type: ignore[arg-type]
     head = SPIRIT_HEAD if spirit else LIVING_HEAD
@@ -682,7 +697,6 @@ def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         links, bend, turn_from_down = leash
         if links > 0.0:
             K.place(img, _chain(CHAIN_LONG, bend, links), _head_point(pose, NECK), "leash", 90.0 + turn_from_down)
-    _spirits(img, anim, pose, frame_idx, nframes, behind=True)
     turn, sq = float(pose["rot"]), float(pose["sq"])  # type: ignore[arg-type]
     at = _head_point(pose, (0.0, 0.0))
     for part, name in head.layers(pose):
@@ -690,7 +704,6 @@ def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if spirit:
         K.place(img, _torn_threads(-float(pose["trail"]) + 180.0 - turn), at, "torn", turn, sq)  # type: ignore[arg-type]
         _licks(img, pose, frame_idx)
-    _spirits(img, anim, pose, frame_idx, nframes, behind=False)
     _effects_over(img, anim, pose, frame_idx, nframes)
     fade = float(pose["fade"]) * (SPIRIT_OPACITY if spirit else 1.0)  # type: ignore[arg-type]
     if fade < 0.999:
