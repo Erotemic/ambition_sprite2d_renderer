@@ -145,7 +145,36 @@ def sheet_owners(repo: Path) -> dict[str, str]:
             m = re.fullmatch(r"(.+)_spritesheet\.(?:ron|png)", row.get("path", ""))
             if m:
                 out.setdefault(m.group(1), unit)
+    # A target with no record yet (`gnu_ton_boss` publishes the giant gnu's
+    # sheets) is found by the outputs the renderer registry declares.
+    for unit, outputs in registry_outputs().items():
+        for rel in outputs:
+            m = re.fullmatch(r"(.+)_spritesheet\.(?:ron|png)", rel)
+            if m:
+                out.setdefault(m.group(1), unit)
     return out
+
+
+_REGISTRY: dict[str, list[str]] | None = None
+
+
+def registry_outputs() -> dict[str, list[str]]:
+    """Target -> the outputs the renderer registry declares
+    (`ambition-sprite2d-renderer list --json`); empty when it cannot run."""
+    global _REGISTRY
+    if _REGISTRY is None:
+        import subprocess  # noqa: PLC0415
+        import sys  # noqa: PLC0415
+
+        renderer = Path(__file__).resolve().parents[1]
+        done = subprocess.run([sys.executable, "-m", "ambition_sprite2d_renderer", "list", "--json"],
+                              cwd=renderer, capture_output=True, text=True)
+        try:
+            targets = json.loads(done.stdout).get("targets") or {}
+        except ValueError:
+            targets = {}
+        _REGISTRY = {tid: list(row.get("outputs") or []) for tid, row in targets.items() if isinstance(row, dict)}
+    return _REGISTRY
 
 
 def sidecar_characters(repo: Path, owners: dict[str, str] | None = None) -> dict[str, str]:

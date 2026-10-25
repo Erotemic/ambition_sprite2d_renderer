@@ -6,12 +6,17 @@
 # `who`    the author to show
 # `paths`  the files whose lines (blamed to `commit`) the entry covers
 # `note`   where the statement comes from
+#
+# Jon, 2026-10-25: "for the art that I traced, often I would have GPT fill in
+# the colors." A fill in its own commit keeps that commit's author (GPT by
+# Jon's rule when unsigned); an entry here covers only the lines of the
+# commit it names.
 authors:
   - commit: dc09e88d89c0856efa6ab59b61eaf8b322a8f491
     paths: [assets/mary_o_v2.svg]
     who: Jon Crall (drawn by hand)
-    note: "Jon, 2026-10-25: he drew most of Mary-O v2. The commit (a Claude Opus 5 session) says it carries Jon's art pass."
+    note: "Jon, 2026-10-25: he drew most of Mary-O v2. The commit (a Claude Opus 5 session) says it carries Jon's art pass. Colors may be a model's (see the header)."
   - commit: 36fb44d79da39e29ab4245f4058e779718fb8c4f
     paths: [assets/noether.svg]
-    who: Jon Crall (drawn by hand)
+    who: Jon Crall (traced by hand)
     note: "The commit, from Jon's account, says: hand traced noether svg with part labels."
