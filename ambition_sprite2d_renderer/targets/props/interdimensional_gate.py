@@ -280,7 +280,6 @@ def _draw_gate_ring_base(*, frame_index: int, nframes: int, idle_mode: bool) -> 
     img = Image.new(
         "RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
-    draw = blending_draw(img)
 
     ring = Image.new("RGBA", img.size, (0, 0, 0, 0))
     rd = blending_draw(ring)
