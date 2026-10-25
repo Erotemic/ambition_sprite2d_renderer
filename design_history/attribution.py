@@ -94,29 +94,76 @@ def pretty(model: str) -> str:
     return model
 
 
-def attribute(commit: Commit, ledger: dict[str, list[dict]]) -> Attribution:
-    rows = ledger.get(commit.sha)
-    if rows:
-        models: list[str] = []
-        for row in rows:
-            for model in row.get("m", []):
-                if model.startswith("<"):
-                    continue  # "<synthetic>": a ledger placeholder, not a model
-                model = pretty(model)
-                if model not in models:
-                    models.append(model)
-        if models:
-            return Attribution(tuple(models), "measured")
+def _measured(commit: Commit, ledger: dict[str, list[dict]]) -> list[str]:
+    models: list[str] = []
+    for row in ledger.get(commit.sha) or []:
+        for model in row.get("m", []):
+            if model.startswith("<") or model == "?":
+                continue  # "<synthetic>": a ledger placeholder, not a model
+            model = pretty(model)
+            if model not in models:
+                models.append(model)
+    return models
+
+
+def _trailers(commit: Commit) -> list[str]:
     trailers: list[str] = []
     for name in _TRAILER.findall(commit.body):
         name = _clean(name)
         if _AI_NAME.search(name):
             _add(trailers, name)
-    if trailers:
-        return Attribution(tuple(trailers), "declared")
+    return trailers
+
+
+def _mentions(commit: Commit) -> list[str]:
     mentioned: list[str] = []
     for hit in _MENTION.findall(commit.subject + "\n" + commit.body):
         _add(mentioned, normal(hit))
+    return mentioned
+
+
+def signed_models(commit: Commit, ledger: dict[str, list[dict]]) -> list[str]:
+    """The models that signed `commit`: its ledger rows and trailers."""
+    out: list[str] = []
+    for name in [*_measured(commit, ledger), *_trailers(commit)]:
+        _add(out, name)
+    return out
+
+
+def named_models(commit: Commit, ledger: dict[str, list[dict]]) -> list[str]:
+    """Every model `commit` names: its ledger rows, trailers and mentions."""
+    out: list[str] = []
+    for name in [*_measured(commit, ledger), *_trailers(commit), *_mentions(commit)]:
+        _add(out, name)
+    return out
+
+
+def attribute(commit: Commit, ledger: dict[str, list[dict]], timeline=None) -> Attribution:
+    """Who made `commit`. With a `timeline` (`models.Timeline`), a model named
+    without its version takes the newest version of its family on the
+    commit's date, and the note says so."""
+    found = _raw(commit, ledger)
+    if timeline is None or not found.models:
+        return found
+    named, by_date = [], False
+    for model in found.models:
+        name, dated = timeline.resolve(model, commit.date)
+        by_date |= dated
+        _add(named, name)
+    if not by_date:
+        return found
+    note = "; ".join(x for x in (found.note, f"version from the date {commit.date[:10]}") if x)
+    return Attribution(tuple(named), found.basis, note)
+
+
+def _raw(commit: Commit, ledger: dict[str, list[dict]]) -> Attribution:
+    models = _measured(commit, ledger)
+    if models:
+        return Attribution(tuple(models), "measured")
+    trailers = _trailers(commit)
+    if trailers:
+        return Attribution(tuple(trailers), "declared")
+    mentioned = _mentions(commit)
     if mentioned:
         return Attribution(tuple(mentioned), "message")
     if _AI_NAME.search(commit.author):

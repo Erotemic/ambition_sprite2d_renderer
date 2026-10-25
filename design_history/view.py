@@ -33,7 +33,7 @@ def lineage_view(
         sha = git(store, "rev-parse", "--verify", "-q", f"{era['commit']}^{{commit}}", check=False).strip() if store else ""
         if sha:
             info = commit_info(store, sha)
-            pin = attribute(info, ledger or {})
+            pin = attribute(info, ledger or {}, blamer.timeline if blamer is not None else None)
             row.update({
                 "in_store": True,
                 "sha": sha,

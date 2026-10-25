@@ -50,6 +50,12 @@ defaults to a sibling `ambition-history` checkout, else a cache directory
 | `inferred` | none of the above, from Jon's account or an agent's: **GPT** (Jon's rule, 2026-10-25) |
 | `unknown` | nothing says |
 
+A model named without its version ("Codex", "Claude Code", Jon's rule's
+"GPT") takes the newest version of its family on the commit's date
+(`models.py`): the newest version that a ledger row or trailer signs with,
+dated by the first commit that names it. Before the first known version it
+is "GPT before 5.5".
+
 Jon's rule: a commit that no model signed is likely GPT's. Claude Code adds a
 `Co-Authored-By` trailer and GPT mostly does not. The ledger agrees: of its
 measured commits, 42 of 908 Claude-only commits have no trailer, and 10 of 11

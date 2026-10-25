@@ -18,9 +18,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import characters
+from . import characters, models
 from .attribution import attribute
 from .authorship import Blamer, era_generator
+from .stills import default_cache
 from .store import commit_info, git, load_ledger
 
 RENDERER = Path(__file__).resolve().parents[1]
@@ -83,6 +84,7 @@ def authorship_census(lineages: dict, current: set[str], store: Path, cache: Pat
     """Per era: who made the commit that pins it, and who wrote the lines of
     its generator at that commit."""
     ledger = load_ledger(store)
+    timeline = models.from_store(store, ledger, default_cache())
     blamer = Blamer(store, cache, ledger)
     pin_basis: collections.Counter = collections.Counter()
     top_kind = {"code": collections.Counter(), "art": collections.Counter()}
@@ -98,7 +100,7 @@ def authorship_census(lineages: dict, current: set[str], store: Path, cache: Pat
             if not sha:
                 missing += 1
                 continue
-            pin = attribute(commit_info(store, sha), ledger)
+            pin = attribute(commit_info(store, sha), ledger, timeline)
             pin_basis[pin.basis] += 1
             pin_models.update(pin.models)
             row = {"lineage": name, "commit": sha[:12], "label": era["label"], "pin": {"models": list(pin.models), "basis": pin.basis}}

@@ -332,3 +332,31 @@ def test_every_committed_versioned_target_is_in_one_lineage_with_the_target_it_r
     cov = census.coverage(_lineages(), targets, characters.repo_root())
     gaps = [g for g in cov["versioned_gaps"] if not g["in_progress"]]
     assert gaps == [], gaps
+
+
+def test_a_model_named_without_its_version_takes_the_newest_on_its_date():
+    """Jon's rule: the version is the newest of the family on the commit's
+    date. A version is known once a ledger row or a trailer signs with it; a
+    mention dates it earlier but never makes one up (a typo "GPT56")."""
+    import importlib
+
+    attribution, store = _modules()
+    models = importlib.import_module("design_history.models")
+    sign = lambda date, body, subject="x", author="agent": store.Commit("b" * 40, "", date, author, subject, body)
+    timeline = models.measure([
+        sign("2026-05-19T00:00:00+00:00", "", "plan the GPT-5.5 port"),
+        sign("2026-08-03T00:00:00+00:00", "Co-Authored-By: GPT-5.5 <x@y>"),
+        sign("2026-07-10T00:00:00+00:00", "Co-Authored-By: GPT-5.6 Thinking <x@y>"),
+        sign("2026-07-19T00:00:00+00:00", "", "GPT56 notes"),
+        sign("2026-07-24T00:00:00+00:00", "Co-Authored-By: Claude Opus 5 <x@y>"),
+    ], {})
+    assert timeline.resolve("GPT", "2026-05-25") == ("GPT-5.5", True)
+    assert timeline.resolve("GPT", "2026-10-01") == ("GPT-5.6", True)
+    assert timeline.resolve("Codex", "2026-07-12") == ("GPT-5.6", True)
+    assert timeline.resolve("GPT", "2026-05-01") == ("GPT before 5.5", True)
+    assert timeline.resolve("Claude Code", "2026-09-01") == ("Claude Opus 5", True)
+    assert timeline.resolve("GPT-6 Astra", "2026-09-05") == ("GPT-6 Astra", False)
+    assert timeline.resolve("Jane Doe", "2026-09-05") == ("Jane Doe", False)
+    unsigned = attribution.attribute(_commit(store, "joncrall", "tune", date="2026-07-12T00:00:00+00:00"), {}, timeline)
+    assert (unsigned.models, unsigned.basis) == (("GPT-5.6",), "inferred"), unsigned
+    assert "2026-07-12" in unsigned.note

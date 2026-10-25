@@ -29,6 +29,7 @@ import json
 import re
 from pathlib import Path
 
+from . import models
 from .attribution import Attribution, attribute
 from .store import commit_info, git
 
@@ -138,6 +139,8 @@ class Blamer:
         self.repos = [store, *([local] if local else [])]
         self.cache = cache / "blame" if cache else None
         self.ledger = ledger or {}
+        # A model named without its version takes the newest on the commit's date.
+        self.timeline = models.from_store(store, self.ledger, cache)
         self._who: dict[str, Attribution] = {}
         self._roots: dict[str, str] | None = None
         self._repo_of: dict[str, Path | None] = {}
@@ -252,7 +255,7 @@ class Blamer:
             if sha in self.roots():
                 self._who[sha] = Attribution((), "unknown", "an import commit: the line was not found before it")
             else:
-                self._who[sha] = attribute(commit_info(self.repo(sha) or self.store, sha), self.ledger)
+                self._who[sha] = attribute(commit_info(self.repo(sha) or self.store, sha), self.ledger, self.timeline)
         return self._who[sha]
 
     def authorship(self, sha: str, paths: list[str], found_by: str = "named") -> Authorship:

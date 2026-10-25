@@ -12,6 +12,7 @@ from pathlib import Path
 import yaml
 
 from . import census as census_mod
+from . import models
 from . import characters as characters_mod
 from . import survey as survey_mod
 from .attribution import attribute
@@ -82,7 +83,7 @@ def cmd_survey(args) -> int:
             found = survey_mod.eras(cands)
             tiles = []
             for cand in found:
-                who = attribute(cand.commit, ledger).label()
+                who = attribute(cand.commit, ledger, models.from_store(store, ledger, default_cache())).label()
                 tiles.append(Tile(
                     cand.still.path,
                     [f"{cand.commit.date[:10]} {cand.commit.sha[:9]}",
@@ -127,7 +128,7 @@ def cmd_build(args) -> int:
                     seg=seg, sha=commit.sha, target_ids=ids,
                     pick=era.get("pick", spec.get("pick")),
                 )
-                who = attribute(commit, ledger)
+                who = attribute(commit, ledger, models.from_store(store, ledger, default_cache()))
                 lines = [era["label"], f"{commit.date[:10]} · {commit.sha[:9]}"]
                 if era.get("as"):
                     lines.insert(1, f"called: {era['as']}")
@@ -161,7 +162,7 @@ def cmd_attribution(args) -> int:
     store, _, _ = _context(args)
     ledger = load_ledger(store)
     commit = commit_info(store, git(store, "rev-parse", args.commit).strip())
-    who = attribute(commit, ledger)
+    who = attribute(commit, ledger, models.from_store(store, ledger, default_cache()))
     print(json.dumps({"commit": commit.sha, "date": commit.date, "models": who.models,
                       "basis": who.basis, "note": who.note}, indent=2))
     return 0
