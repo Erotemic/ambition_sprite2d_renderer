@@ -324,6 +324,7 @@ class Target:
         self.kind = kind
         # Module-authored fields.
         self.module_path: Optional[str] = None
+        self.data_sources: Tuple[Path, ...] = ()
         self._render_fn: Optional[Callable] = None
         self._render_canonical_fn: Optional[Callable] = None
         self._render_portraits_fn: Optional[Callable] = None
@@ -498,12 +499,13 @@ class Target:
         )
         if self._install_fn is not None:
             copied = list(self._install_fn(render_dir, dest_root))
-            copied.extend(
-                _copy_sheet_files(self.portrait_files, render_dir, portrait_dest)
-            )
-            return copied
-        copied = _copy_sheet_files(self.sheet_files, render_dir, sheet_dest)
+        else:
+            copied = _copy_sheet_files(self.sheet_files, render_dir, sheet_dest)
         copied.extend(_copy_sheet_files(self.portrait_files, render_dir, portrait_dest))
+        # The record of which generator made these files (`provenance.py`).
+        from .. import provenance
+
+        provenance.record_target_install(self, dest_root, copied)
         return copied
 
     # -- claimed install surface ------------------------------------------
@@ -813,24 +815,27 @@ def _build_module_targets(
             "portrait_install_subdir",
             getattr(mod, "PORTRAIT_INSTALL_SUBDIR", None),
         )
-        results.append(
-            Target.from_module(
-                name=sub_name,
-                category=category,
-                module_path=dotted,
-                render=render,
-                sheet_files=sheet_files,
-                install=install_fn,
-                render_canonical=render_canonical_fn,
-                render_portraits=render_portraits_fn,
-                portrait_files=portrait_files,
-                install_subdir=install_subdir,
-                portrait_install_subdir=portrait_install_subdir,
-                actor_metadata=merge_actor_metadata(
-                    getattr(mod, "ACTOR_METADATA", None), spec.get("actor_metadata")
-                ),
-            )
+        built = Target.from_module(
+            name=sub_name,
+            category=category,
+            module_path=dotted,
+            render=render,
+            sheet_files=sheet_files,
+            install=install_fn,
+            render_canonical=render_canonical_fn,
+            render_portraits=render_portraits_fn,
+            portrait_files=portrait_files,
+            install_subdir=install_subdir,
+            portrait_install_subdir=portrait_install_subdir,
+            actor_metadata=merge_actor_metadata(
+                getattr(mod, "ACTOR_METADATA", None), spec.get("actor_metadata")
+            ),
         )
+        # The data files this one target is made of, when the module makes
+        # many targets from data (a chargen spec each): the provenance names
+        # them as the target's source.
+        built.data_sources = tuple(Path(path) for path in spec.get("data", ()))
+        results.append(built)
     return results
 
 

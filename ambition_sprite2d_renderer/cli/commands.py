@@ -604,7 +604,30 @@ def _cmd_audit_installed(args: argparse.Namespace) -> int:
     return 1 if result.orphans else 0
 
 
+def _targets_json() -> dict:
+    """Each registered target as data: its generator (`provenance.target_generator`)
+    and the files under the sprite root it claims, plus the procedural
+    generators and the discovery warnings."""
+    from .. import provenance
+
+    targets = {}
+    for name, tgt in sorted(_ALL_TARGETS.items()):
+        row = provenance.target_generator(tgt)
+        row["outputs"] = tgt.claimed_install_names()
+        row["runtime_review"] = tgt.category == "characters" and name in RUNTIME_REVIEW_NPCS
+        targets[name] = row
+    return {
+        "schema": "ambition.sprite_targets.v1",
+        "targets": targets,
+        "generators": {name: get_generator(name).default_animations() for name in sorted(GENERATORS)},
+        "warnings": list(_REPORT.warnings),
+    }
+
+
 def _cmd_list_targets(args: argparse.Namespace) -> int:
+    if getattr(args, "json", False):
+        print(json.dumps(_targets_json(), indent=1, sort_keys=True))
+        return 0
     print(
         "# procedural generators (driven by configs/*.yaml — renders via draw-character / draw-all):"
     )

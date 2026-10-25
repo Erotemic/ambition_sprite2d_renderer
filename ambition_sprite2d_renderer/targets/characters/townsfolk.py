@@ -63,7 +63,7 @@ def _targets() -> Dict[str, dict]:
     out: Dict[str, dict] = {}
     for path in sorted(SPECS.glob("*.chargen.yaml")):
         target, render = _make(path)
-        out[target] = {"render": render, "actor_metadata": _metadata(path)}
+        out[target] = {"render": render, "actor_metadata": _metadata(path), "data": [path]}
     return out
 
 

@@ -10,17 +10,69 @@ picture, the decor picture and the door of each biome (`<biome>_motes.png`,
 opening `<biome>_door_opening.png`), and the
 shimmer of a biome that has one (`<biome>_shimmer.png`). `preview`
 writes one picture with a small made-up room in each skin. It does not run
-the game.
+the game. `draw` records which callable drew each file (`provenance.py`).
 """
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from typing import Callable
 
 from PIL import Image
 
+from .. import provenance
 from . import decor, doors, fixtures, motes, ornaments, shimmer, skins, two_state
+
+#: One published file: its skin or biome, its name, the callable that draws
+#: it (for the provenance record) and the call that draws it.
+Job = tuple[str, str, Callable, Callable[[], Image.Image]]
+
+_WATER = ("water_clear", "water_murky", "water_surface", "blink_soft", "blink_hard", "blink_edge", "hazard_fill", "hazard_edge")
+
+
+def _skin_part(skin: skins.Skin, part: str) -> Job:
+    make = skins.PARTS[part]
+    painter = two_state.PAINTERS.get((skin.key, part))
+    return (skin.key, part, painter or make, lambda: two_state.paint(skin.key, part) or make(skin))
+
+
+def jobs(names: list[str]) -> list[Job]:
+    """Every file `draw` publishes for the skins `names` (every skin when
+    empty), in the order it draws them."""
+    chosen = [skin for skin in skins.SKINS if not names or skin.key in names]
+    out: list[Job] = []
+    for skin in chosen:
+        out += [_skin_part(skin, part) for part in skins.PARTS]
+        out += [(skin.key, part, paint, paint) for (owner, part), paint in ornaments.PAINTERS.items() if owner == skin.key]
+    wanted = [key for key in names] if names else None
+
+    def keyed(table) -> list[str]:
+        return [key for key in table if wanted is None or key in wanted]
+
+    out += [(key, "motes", motes.strip, lambda key=key: motes.strip(key)) for key in keyed(motes.MOTES)]
+    out += [(key, "shadow", motes.shadow, lambda key=key: motes.shadow(key)) for key in keyed(motes.SHADOWS)]
+    for key in keyed(decor.DECOR):
+        out.append((key, "decor", decor.strip, lambda key=key: decor.strip(key)))
+        out.append((key, "decor_glow", decor.glow_strip, lambda key=key: decor.glow_strip(key)))
+    out += [(key, "shimmer", shimmer.picture, lambda key=key: shimmer.picture(key)) for key in keyed(shimmer.SHIMMERS)]
+    for skin in chosen:
+        out.append((skin.key, "ladder", fixtures.ladder, lambda key=skin.key: fixtures.ladder(key)))
+        for part in _WATER:
+            fn = getattr(fixtures, part)
+            out.append((skin.key, part, fn, fn))
+    for key in keyed(doors.DOORS):
+        out.append((key, "door", doors.door, lambda key=key: doors.door(key)))
+        out.append((key, "door_opening", doors.opening, lambda key=key: doors.opening(key)))
+    return out
+
+
+def plan(dest: Path, names: list[str]) -> provenance.Book:
+    """What `draw` publishes into `dest`, by skin or biome, and what draws each file."""
+    book = provenance.Book("terrain_skin", dest, "./scripts/regen/backgrounds.sh  # terrain skin {unit}")
+    for unit, part, fn, _draw in jobs(names):
+        book.add(unit, dest / f"{unit}_{part}.png", fn)
+    return book
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -38,84 +90,19 @@ def main(argv: list[str] | None = None) -> int:
     unknown = [name for name in args.skins if name not in known]
     if unknown:
         raise SystemExit(f"no skin named {unknown}; the skins are {sorted(known)}")
+    if args.command == "draw":
+        args.out_dir.mkdir(parents=True, exist_ok=True)
+        for unit, part, _fn, draw_one in jobs(args.skins):
+            path = args.out_dir / f"{unit}_{part}.png"
+            draw_one().save(path)
+            print(path)
+        plan(args.out_dir, args.skins).write()
+        return 0
     chosen = [known[name] for name in args.skins] or list(skins.SKINS)
-    # The two-state hub draws its own parts (`two_state.py`); each other skin
-    # is drawn by the parts of `skins.py`.
     drawn = {
         skin.key: {part: two_state.paint(skin.key, part) or make(skin) for part, make in skins.PARTS.items()}
         for skin in chosen
     }
-    if args.command == "draw":
-        args.out_dir.mkdir(parents=True, exist_ok=True)
-        for key, parts in drawn.items():
-            for part, image in parts.items():
-                path = args.out_dir / f"{key}_{part}.png"
-                image.save(path)
-                print(path)
-            for part, image in ornaments.parts(key).items():
-                path = args.out_dir / f"{key}_{part}.png"
-                image.save(path)
-                print(path)
-        for key in motes.MOTES:
-            if args.skins and key not in args.skins:
-                continue
-            path = args.out_dir / f"{key}_motes.png"
-            motes.strip(key).save(path)
-            print(path)
-        for key in motes.SHADOWS:
-            if args.skins and key not in args.skins:
-                continue
-            path = args.out_dir / f"{key}_shadow.png"
-            motes.shadow(key).save(path)
-            print(path)
-        for key in decor.DECOR:
-            if args.skins and key not in args.skins:
-                continue
-            path = args.out_dir / f"{key}_decor.png"
-            decor.strip(key).save(path)
-            print(path)
-            path = args.out_dir / f"{key}_decor_glow.png"
-            decor.glow_strip(key).save(path)
-            print(path)
-        for key in shimmer.SHIMMERS:
-            if args.skins and key not in args.skins:
-                continue
-            path = args.out_dir / f"{key}_shimmer.png"
-            shimmer.picture(key).save(path)
-            print(path)
-        water = {
-            "water_clear": fixtures.water_clear(),
-            "water_murky": fixtures.water_murky(),
-            "water_surface": fixtures.water_surface(),
-            "blink_soft": fixtures.blink_soft(),
-            "blink_hard": fixtures.blink_hard(),
-            "blink_edge": fixtures.blink_edge(),
-            "hazard_fill": fixtures.hazard_fill(),
-            "hazard_edge": fixtures.hazard_edge(),
-        }
-        for skin in skins.SKINS:
-            if args.skins and skin.key not in args.skins:
-                continue
-            path = args.out_dir / f"{skin.key}_ladder.png"
-            fixtures.ladder(skin.key).save(path)
-            print(path)
-            # The water, the blink walls and the spikes are the same in each
-            # biome: each one has its copy, so the game finds it by the theme of the room
-            # as each other part.
-            for part, image in water.items():
-                path = args.out_dir / f"{skin.key}_{part}.png"
-                image.save(path)
-                print(path)
-        for key in doors.DOORS:
-            if args.skins and key not in args.skins:
-                continue
-            path = args.out_dir / f"{key}_door.png"
-            doors.door(key).save(path)
-            print(path)
-            path = args.out_dir / f"{key}_door_opening.png"
-            doors.opening(key).save(path)
-            print(path)
-        return 0
     rooms = [skins.mockup(skin, drawn[skin.key]) for skin in chosen]
     columns = 2 if len(rooms) > 1 else 1
     rows = (len(rooms) + columns - 1) // columns

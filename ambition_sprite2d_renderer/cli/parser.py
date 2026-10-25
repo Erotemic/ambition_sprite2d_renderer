@@ -287,6 +287,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser(
         "list", help="Show every registered target, grouped by category."
     )
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help="one JSON document: each target's generator (source, command) and the files it publishes",
+    )
     p.set_defaults(func=_cmd_list_targets)
     sub.add_parser("list-targets", help="alias of `list`").set_defaults(
         func=_cmd_list_targets

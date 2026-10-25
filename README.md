@@ -135,6 +135,23 @@ same string in local ``ACTOR_METADATA``; YAML jobs use a top-level
 ``authoring_description:`` field. The actor sidecar publishes it so review tools
 and future catalogs do not have to recover design intent from filenames.
 
+### Provenance records
+
+Each publish records which generator made which file (`provenance.py`). A
+target install, a `backgrounds draw` / `parts` and a `terrain draw` write one
+JSON record per unit (target, theme, skin) into
+`crates/ambition_platformer2d_actor_monolith/asset_provenance/<root>/`, beside
+the runtime asset root and never in it. A record names the generator (source
+file, module, command), each output with its sha256 (and, for backgrounds and
+terrain, the callable that drew it) and the inputs the render read. A module
+that makes many targets from data files names each target's file with a
+`"data": [path]` key in `TARGETS` (as `townsfolk.py` does).
+`python -m ambition_sprite2d_renderer.provenance backfill` records art that
+was published before records existed, from `.cache/sheets` digests and the
+generators' plans. `list --json` exports the registry with each target's
+generator and outputs. The art inspector (`tools/art_inspector` in the game
+repository) reads both.
+
 ## Choosing an authoring family
 
 Choose the method that best expresses the sprite:

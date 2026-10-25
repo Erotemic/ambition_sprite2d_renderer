@@ -13,6 +13,8 @@ bottom. It does not run the game.
 `parts` publishes the parts of the Mockingbird's space, `<part>.png`
 (`sky_parts.py`). `parts-preview` writes one labelled sheet with a row for
 each look of them, at three moments of the climb, as the game poses them.
+
+`draw` and `parts` record which callable drew each file (`provenance.py`).
 """
 
 from __future__ import annotations
@@ -23,7 +25,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import scenes, sky_parts
+from .. import provenance
+from . import foregrounds, room_look_sky, scenes, sky_parts
 
 # A shared machine: this is the most jobs a publish starts.
 MAX_JOBS = 6
@@ -41,6 +44,34 @@ def _render_all(themes: list[str]) -> dict[str, dict[str, Image.Image]]:
         for theme, layer, image in pool.map(_render, jobs):
             out[theme][layer] = image
     return out
+
+
+def _drawn_by(theme: str, layer: str):
+    """The callable that draws one layer of one scene (`scenes.render`)."""
+    if layer == scenes.FOREGROUND:
+        return foregrounds.render
+    if theme in room_look_sky.THEME_KEYS:
+        return room_look_sky.render_look_layer
+    return scenes.SCENES[theme]
+
+
+def plan(dest: Path, themes: list[str]) -> provenance.Book:
+    """What `draw` publishes into `dest`, by theme, and what draws each file:
+    the record of a publish, and the plan of one that has not run here."""
+    book = provenance.Book("parallax_theme", dest, "./scripts/regen/backgrounds.sh  # theme {unit}")
+    for theme in _themes(themes):
+        for layer in scenes.LAYERS:
+            book.add(theme, dest / f"{theme}_{layer}.png", _drawn_by(theme, layer))
+        book.add(theme, dest / f"{theme}_flat.png", scenes.flat)
+    return book
+
+
+def parts_plan(dest: Path) -> provenance.Book:
+    """What `parts` publishes into `dest`, one unit for each part."""
+    book = provenance.Book("sky_part", dest, "./scripts/regen/backgrounds.sh  # sky part {unit}")
+    for name in sky_parts.PARTS:
+        book.add(name, dest / f"{name}.png", sky_parts.PARTS[name])
+    return book
 
 
 def _themes(names: list[str]) -> list[str]:
@@ -74,6 +105,7 @@ def main(argv: list[str] | None = None) -> int:
             path = args.out_dir / f"{name}.png"
             sky_parts.render(name, args.look).save(path)
             print(path)
+        parts_plan(args.out_dir).write()
         return 0
     if args.command == "parts-preview":
         backdrop = scenes.view(_render_all(["open_sky"])["open_sky"], (1280, 720))
@@ -99,6 +131,7 @@ def main(argv: list[str] | None = None) -> int:
             path = args.out_dir / f"{theme}_flat.png"
             scenes.flat(layers).save(path)
             print(path)
+        plan(args.out_dir, themes).write()
         return 0
     cameras = [float(part) for part in args.cameras.split(",")]
     w, h = 1280, 720

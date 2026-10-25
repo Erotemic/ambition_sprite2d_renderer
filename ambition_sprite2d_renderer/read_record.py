@@ -139,6 +139,14 @@ def _modules() -> set[str]:
     return out
 
 
+def recorded() -> list[str] | None:
+    """The files this process has recorded so far, as absolute paths, or
+    None when it does not record (`provenance` keeps them as the render's inputs)."""
+    if _files is None:
+        return None
+    return sorted(os.path.join(_root, rel) for rel in _files | _modules())
+
+
 def write(path: Path) -> None:
     """Write the record: `f <file>` and `d <directory>` lines, relative to the
     repository, sorted. Written whole, then moved into place."""
