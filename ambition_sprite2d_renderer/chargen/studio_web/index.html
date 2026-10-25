@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chargen Studio</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <span class="brand">Chargen Studio</span>
+  <label>name <input id="name" type="text" size="16"></label>
+  <label>base <select id="base"></select></label>
+  <label>seed <button id="seedDown" type="button" title="previous seed">‹</button><input id="seed" type="number" min="0" step="1"><button id="seedUp" type="button" title="next seed">›</button></label>
+  <label>family <select id="family"></select></label>
+  <label>species <select id="species"></select></label>
+  <button id="reroll" type="button" title="a new seed, keeping base, family and species">new character</button>
+  <label>open <select id="open"><option value="">a spec in the renderer's data…</option></select></label>
+  <span class="grow"></span>
+  <button id="copy" type="button">copy YAML</button>
+  <button id="download" type="button">download</button>
+  <button id="theme" class="ghost" type="button" title="light / dark">◐</button>
+</header>
+<div class="layout">
+  <aside id="editor" class="editor" aria-label="Spec fields"></aside>
+  <main>
+    <nav class="tabs" id="tabs">
+      <button data-tab="views" class="on" type="button">Eight views</button>
+      <button data-tab="faces" type="button">Expressions</button>
+      <button data-tab="sweep" type="button">Sweep a field</button>
+      <button data-tab="crowd" type="button">Crowd</button>
+      <button data-tab="pose" type="button">Pose</button>
+      <button data-tab="yaml" type="button">YAML</button>
+      <span id="status" class="status"></span>
+    </nav>
+    <section id="tab-views" class="tab on">
+      <div class="bar"><label>expression <select id="face"></select></label>
+        <label>size <input id="zoom" type="range" min="110" max="420" value="160"></label>
+        <span class="note">Left views are mirrors of the right ones (marked ⇋): the generator draws five yaws.</span></div>
+      <div id="views" class="views"></div>
+    </section>
+    <section id="tab-faces" class="tab">
+      <div class="bar"><label>view <select id="faceView"></select></label><button id="facesGo" type="button">draw every expression</button></div>
+      <div id="faces" class="grid"></div>
+    </section>
+    <section id="tab-sweep" class="tab">
+      <div class="bar"><label>field <select id="sweepField"></select></label>
+        <label>view <select id="sweepView"></select></label>
+        <button id="sweepGo" type="button">sweep</button>
+        <span class="note">Every value of one field on this character; click a tile to keep it.</span></div>
+      <div id="sweep" class="grid"></div>
+    </section>
+    <section id="tab-crowd" class="tab">
+      <div class="bar"><label>count <input id="crowdCount" type="number" min="1" max="48" value="12"></label>
+        <label>crowd seed <input id="crowdSeed" type="number" min="0" value="0"></label>
+        <label><input id="crowdBase" type="checkbox"> this base only</label>
+        <label><input id="crowdFamily" type="checkbox" checked> this family</label>
+        <label><input id="crowdSpecies" type="checkbox" checked> this species</label>
+        <label>view <select id="crowdView"></select></label>
+        <button id="crowdGo" type="button">draw a crowd</button>
+        <span class="note">Click a tile to edit that character.</span></div>
+      <div id="crowd" class="grid"></div>
+    </section>
+    <section id="tab-pose" class="tab">
+      <div class="bar"><button id="poseGo" type="button">build the rig</button>
+        <label>clip <select id="clip" disabled></select></label>
+        <label>speed <select id="poseSpeed"><option>0.5</option><option selected>1</option><option>2</option></select></label>
+        <span class="note">The first rig of a character takes about 40 s; its clips are then quick.</span></div>
+      <div class="posebox"><img id="poseImg" alt=""><div id="poseStrip" class="strip"></div></div>
+    </section>
+    <section id="tab-yaml" class="tab">
+      <p class="note">The whole spec. Edit and apply, or copy it into a <code>.chargen.yaml</code> under the renderer's <code>data/</code>.</p>
+      <textarea id="yaml" spellcheck="false"></textarea>
+      <div class="bar"><button id="yamlApply" type="button">apply JSON</button><span class="note">The box shows YAML; apply reads JSON or the simple YAML it shows.</span></div>
+    </section>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

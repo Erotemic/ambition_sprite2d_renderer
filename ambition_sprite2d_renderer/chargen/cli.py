@@ -10,6 +10,7 @@
     chargen wardrobe SPEC --out DIR                 # the wardrobe-swap sheet
     chargen species --seed 1 --out DIR              # a head of every species
     chargen bases                                   # the bases and their ranges
+    chargen studio [--port 8765]                    # a local page: edit, sweep, crowd, pose
 
 A SPEC is a ``.json`` or ``.yaml`` file; fields it leaves out are drawn from
 its ``base`` and ``seed``.
@@ -126,6 +127,13 @@ def _cmd_bases(args) -> int:
     return 0
 
 
+def _cmd_studio(args) -> int:
+    from .studio import serve
+
+    serve(port=args.port, jobs=args.jobs, host=args.host, open_browser=args.open)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="chargen", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
@@ -157,6 +165,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--seed", type=int, default=1)
     sp.add_argument("--out", required=True)
     sp.set_defaults(func=_cmd_species)
+    st = sub.add_parser("studio", help="a local page to make characters and see every view, sweep and pose")
+    st.add_argument("--port", type=int, default=8765)
+    st.add_argument("--host", default="127.0.0.1", help="0.0.0.0 to reach it from another machine")
+    st.add_argument("--jobs", type=int, default=6, help="processes in all (at most 6): one poses, the rest draw")
+    st.add_argument("--open", action="store_true", help="open the page in a browser")
+    st.set_defaults(func=_cmd_studio)
     b = sub.add_parser("bases", help="list the bases and their body ranges, and the families")
     b.set_defaults(func=_cmd_bases)
     return p
