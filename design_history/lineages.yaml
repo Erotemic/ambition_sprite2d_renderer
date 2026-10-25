@@ -12,7 +12,7 @@
 lineages:
   alice:
     name: Alice
-    ids: [alice_v2, alice, alice_cryptographer]
+    ids: [alice, alice_cryptographer]
     paths: ['alice']
     summary: "from a jointed-puppet placeholder to an SVG-rigged courier"
     eras:

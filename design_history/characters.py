@@ -146,8 +146,13 @@ def sheet_owners(repo: Path) -> dict[str, str]:
     return out
 
 
-def sidecar_characters(repo: Path) -> dict[str, str]:
-    """Target -> the catalog id its published actor sidecar names."""
+def sidecar_characters(repo: Path, owners: dict[str, str] | None = None) -> dict[str, str]:
+    """Target -> the catalog id its published actor sidecar names. The target
+    is the one whose provenance record publishes the sheet (`owners`); the
+    sidecar's `renderer_target` only when no record does, because an old
+    sidecar can name the rig it was built on (the first dividing mite names
+    `robot`)."""
+    owners = sheet_owners(repo) if owners is None else owners
     out: dict[str, str] = {}
     sprites = asset_root(repo) / "sprites"
     for path in sorted(sprites.glob("*_actor.ron")) if sprites.is_dir() else []:
@@ -155,7 +160,8 @@ def sidecar_characters(repo: Path) -> dict[str, str]:
         cid = re.search(r'\bcharacter_id:\s*(?:Some\()?"([^"]+)"', text)
         target = re.search(r'\brenderer_target:\s*(?:Some\()?"([^"]+)"', text)
         if cid:
-            out.setdefault(target.group(1) if target else path.name[: -len("_actor.ron")], cid.group(1))
+            sheet = path.name[: -len("_actor.ron")]
+            out.setdefault(owners.get(sheet) or (target.group(1) if target else sheet), cid.group(1))
     return out
 
 
@@ -203,7 +209,7 @@ def join(lineages: dict, repo: Path | None = None) -> Join:
             row_targets.setdefault(ident, [])
             if target not in row_targets[ident]:
                 row_targets[ident].append(target)
-    for target, cid in sidecar_characters(repo).items():
+    for target, cid in sidecar_characters(repo, owners).items():
         if cid in rows and target not in row_targets.setdefault(cid, []):
             row_targets[cid].append(target)
     target_rows: dict[str, list[str]] = {}
