@@ -356,6 +356,26 @@ class Kit:
         else:
             body = Image.new("RGBA", mask.size, fill)
             base = fill
+        self.light(mask, body, base, rim=rim, shade=shade, shade_colour=shade_colour, light=light, dark=dark)
+        if detail is not None:
+            layer = self.scratch()
+            detail(blending_draw(layer))
+            body.alpha_composite(layer.crop(region))
+        body.putalpha(mask)
+        out = Image.new("RGBA", mask.size, self.ink)
+        out.putalpha(mask.filter(ImageFilter.MaxFilter(2 * self.s(outline) + 1)) if outline > 0.0 else mask)
+        out.alpha_composite(body)
+        part = (out, (self.home[0] * self.scale - region[0], self.home[1] * self.scale - region[1]))
+        self._pieces[key] = part
+        return part
+
+    def light(self, mask: Image.Image, body: Image.Image, base: Sequence[int], *, rim: float, shade: float, shade_colour: Optional[RGBA],
+              light: Point = (3.0, -4.0), dark: Point = (-4.0, 5.5)) -> None:
+        """Light ``body`` (an image the size of ``mask``, the silhouette) in
+        place, as ``solid`` lights a thing: a rim of light on the edge that
+        faces ``light`` and a shade on the edge that faces ``dark``. ``base``
+        is the body's colour (the shade is made from it when there is no
+        ``shade_colour``)."""
 
         def edge(dx: float, dy: float) -> Image.Image:
             """The part of it that has nothing of it ``(dx, dy)`` away."""
@@ -370,17 +390,6 @@ class Kit:
             dim = Image.new("RGBA", mask.size, colour)
             dim.putalpha(edge(*dark).point(lambda a: int(a * shade)))
             body.alpha_composite(dim)
-        if detail is not None:
-            layer = self.scratch()
-            detail(blending_draw(layer))
-            body.alpha_composite(layer.crop(region))
-        body.putalpha(mask)
-        out = Image.new("RGBA", mask.size, self.ink)
-        out.putalpha(mask.filter(ImageFilter.MaxFilter(2 * self.s(outline) + 1)) if outline > 0.0 else mask)
-        out.alpha_composite(body)
-        part = (out, (self.home[0] * self.scale - region[0], self.home[1] * self.scale - region[1]))
-        self._pieces[key] = part
-        return part
 
     #: ``(colour, strength)``: each part placed is shaded with it, but not the
     #: parts named in ``tint_skip``. A change of form sets it for a frame (the
