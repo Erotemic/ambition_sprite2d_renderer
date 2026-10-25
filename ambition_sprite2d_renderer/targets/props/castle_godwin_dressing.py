@@ -816,6 +816,91 @@ def _cracked_floor(c: Canvas) -> None:
     _cracked_masonry(c, 96, 96, "drain_floor", upright=False)
 
 
+def _cracked_niche(c: Canvas) -> None:
+    """The cage of the drain's lever: a niche of the same cracked stone,
+    walled up over the lever until the Inugami is dead."""
+    _cracked_masonry(c, 56, 64, "drain_niche", upright=True)
+
+
+#: How a cracked stone look breaks when its lock wall opens (Jon,
+#: 2026-10-25: the wall "CRUMBLES when it opens"): its row `break`. The first
+#: frame draws it already broken, its blocks parted with dark between them,
+#: because the way is open from that frame; then they fall and tip and land
+#: at the foot of the frame, and fade into the breach the room draws behind.
+BREAK_FRAMES, BREAK_MS, BREAK_FADE = 14, 45, 4
+
+
+def _chunks(img: Image.Image, course_px: int, tag: str):
+    """`img` cut into blocks along its courses, each `course_px` tall and
+    two or three across: (crop, left, top)."""
+    import random as _random
+
+    rng = _random.Random(tag)
+    w, h = img.size
+    out = []
+    y = h
+    row = 0
+    while y > 0:
+        top = max(0, y - course_px)
+        cuts = sorted({0, w, *[rng.randint(int(w * 0.25), int(w * 0.75)) for _ in range(1 if w < 150 else 2)]})
+        if row % 2:
+            cuts = sorted({0, w, *[c + rng.randint(-8, 8) for c in cuts[1:-1]]})
+        for x0, x1 in zip(cuts, cuts[1:]):
+            if x1 - x0 > 4:
+                out.append((img.crop((x0, top, x1, y)), x0, top))
+        y = top
+        row += 1
+    return out
+
+
+def _break_frame(name: str, frame: int, n: int, course_world: float) -> Image.Image:
+    """Frame `frame` of the `break` row of the cracked look `name`."""
+    import random as _random
+
+    whole = draw(name, 0)
+    w, h = whole.size
+    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    rng = _random.Random(f"{name}:break")
+    pieces = _chunks(whole, int(round(course_world * PX)), name)
+    t = frame * BREAK_MS / 1000.0
+    fade_from = (n - BREAK_FADE) * BREAK_MS / 1000.0
+    alpha = 1.0 if t < fade_from else max(0.0, 1.0 - (t - fade_from) / (BREAK_FADE * BREAK_MS / 1000.0))
+    g = 3600.0  # frame px / s / s
+    for crop, x0, y0 in pieces:
+        cw, ch = crop.size
+        cx = x0 + cw / 2.0
+        # Out from the crack, a little up, and a turn.
+        # Out from the crack, but within the opening: the frame is the box
+        # of the wall, and what goes past it is cut.
+        vx = (cx - w / 2.0) * rng.uniform(0.5, 0.9) + rng.uniform(-12, 12)
+        vy = -rng.uniform(20, 90) * (1.0 - y0 / h)
+        spin = rng.uniform(-300, 300)
+        # From the first frame the blocks are parted.
+        t0 = t + 0.035
+        x = x0 + vx * t0
+        y = y0 + vy * t0 + 0.5 * g * t0 * t0
+        rest = h - ch - rng.uniform(0, 4)
+        landed = y >= rest
+        if landed:
+            y = rest
+        angle = spin * min(t0, 0.25) * (0.3 if landed else 1.0)
+        piece = crop.rotate(angle, resample=Image.BICUBIC, expand=True)
+        if alpha < 1.0:
+            a = piece.getchannel("A").point(lambda v: int(v * alpha))
+            piece.putalpha(a)
+        px = int(round(min(max(x, 0.0), w - cw) - (piece.width - cw) / 2))
+        py = int(round(y - (piece.height - ch) / 2))
+        layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        layer.paste(piece, (px, py), piece)
+        out = Image.alpha_composite(out, layer)
+    return out
+
+
+#: The cracked looks that break, and the height of a course of each (world
+#: units: the cut follows the courses of its blocks).
+BREAKS = {"castle_cracked_wall": 24.0, "castle_cracked_floor": 16.0, "castle_cracked_niche": 24.0}
+
+
 def _drain_breach(c: Canvas) -> None:
     """The wall broken through: a heap of its blocks at the foot of the
     opening, and the broken ends of the courses at its sides. As wide as
@@ -875,6 +960,7 @@ PROPS: Dict[str, Tuple[float, float, Callable, int, int, List[str]]] = {
     # left when it is broken through.
     "castle_cracked_wall": (64, 160, lambda c, f: _cracked_wall(c), 1, 400, ["prop", "door", "castle", "secret"]),
     "castle_cracked_floor": (96, 96, lambda c, f: _cracked_floor(c), 1, 400, ["prop", "door", "castle", "secret"]),
+    "castle_cracked_niche": (56, 64, lambda c, f: _cracked_niche(c), 1, 400, ["prop", "door", "castle", "secret"]),
     "castle_drain_breach": (72, 48, lambda c, f: _drain_breach(c), 1, 400, ["prop", "scenery", "castle", "rubble"]),
 }
 
@@ -898,7 +984,8 @@ def _renderer(name: str):
     frames, ms = PROPS[name][3], PROPS[name][4]
 
     def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
-        del nframes
+        if anim == "break" and name in BREAKS:
+            return _break_frame(name, frame_idx, nframes, BREAKS[name])
         if anim != "idle":
             raise ValueError(f"unknown animation: {anim}")
         return draw(name, frame_idx)
@@ -914,7 +1001,7 @@ def _renderer(name: str):
         out_dir.mkdir(parents=True, exist_ok=True)
         outputs = build_sheet(
             target=name,
-            rows=[("idle", frames, ms)],
+            rows=[("idle", frames, ms)] + ([("break", BREAK_FRAMES, BREAK_MS)] if name in BREAKS else []),
             render_fn=render_frame,
             out_dir=out_dir,
             frame_size=_frame_size(name),

@@ -1181,12 +1181,28 @@ HIGH_DOWN = P(hip=(16.0, 10.0), lean=40.0, sq=0.9, shrug=(1.0, 2.0), head=(4.0, 
               nf=(-8.0, 0.0, 0.0), ff=(22.0, 0.0, -8.0), mouth="big", eyes="pin", ears=-20.0, hem=(3.0, 0.0))
 
 
+#: KEY POSES (Jon, 2026-10-25: new poses where he only had in-betweens, so
+#: the anticipation and the follow-through read). Each move's tell ends in a
+#: LOAD, the coil pushed past the cock just before it goes; each strike goes
+#: through an ARC (the breakdown between the cock and the contact) and past
+#: the contact to an OVERSHOOT before it settles.
+RAKE_LOAD = dict(RAKE_COCK, hip=(-6.0, 5.0), lean=-12.0, sq=1.07, shrug=(-1.0, -3.0), head=(-1.0, 0.0, -2.0), na=(-17.0, -26.0), fa=(12.0, 9.0),
+                 ff=(8.0, 0.0, 14.0))
+RAKE_ARC = P(hip=(3.0, 2.0), lean=8.0, sq=1.05, shrug=(0.0, -2.0), head=(2.0, 0.0, -10.0), na=(8.0, -20.0), nab=-1.0, fa=(6.0, 14.0), nh="claw", fh="claw",
+             nf=(-10.0, 0.0, 0.0), ff=(12.0, 0.0, 0.0), mouth="gape", eyes="pin", ears=-26.0, hem=(2.0, 2.0))
+RAKE_OVER = dict(RAKE_PAST, hip=(10.0, 8.0), lean=36.0, sq=0.93, na=(2.0, 33.0), head=(4.0, 3.0, -2.0))
+BACK_ARC = P(hip=(9.0, 5.0), lean=20.0, sq=1.0, head=(3.0, 1.0, -8.0), na=(4.0, 25.0), fa=(14.0, 8.0), fab=-1.0, nh="claw", fh="claw",
+             nf=(-10.0, 0.0, 0.0), ff=(16.0, 0.0, 0.0), mouth="gape", eyes="pin", ears=-24.0, hem=(3.0, 3.0))
+BACK_OVER = dict(BACK_THROUGH, hip=(12.0, 0.0), lean=-4.0, sq=1.08, fa=(18.0, -26.0), head=(2.0, -1.0, -20.0))
+
+
 @X.row
 def rake_tell(i: int, n: int):
     # The coil: back on his heels and up, the claw cocked. Then he holds it,
-    # trembling, and the whole fight reads the hold.
-    pose = keyed(i, n, [(0.0, X.full(P())), (0.55, RAKE_COCK, "out"), (1.0, RAKE_COCK)])
-    if i >= n // 2:
+    # trembling, and the whole fight reads the hold; at its end he loads,
+    # further back.
+    pose = keyed(i, n, [(0.0, X.full(P())), (0.5, RAKE_COCK, "out"), (0.82, RAKE_COCK), (1.0, RAKE_LOAD, "in")])
+    if n // 2 <= i < n - 2:
         pose = dict(pose, na=(pose["na"][0] + jitter(i, 0.8), pose["na"][1] + jitter(i, 0.8, 1.0)), head=(pose["head"][0], pose["head"][1], pose["head"][2] + jitter(i, 2.0, 2.0)))
     return pose
 
@@ -1195,22 +1211,28 @@ def rake_tell(i: int, n: int):
 def rake_a(i: int, n: int):
     # Blow one: the near claw comes over and down across you, snaps through,
     # follows on past, and is caught low with the far claw cocked.
-    return keyed(i, n, [(0.0, RAKE_COCK), (0.3, RAKE_THROUGH, "snap"), (0.55, RAKE_PAST, "out"), (1.0, BACK_COCK, "io")])
+    return keyed(i, n, [(0.0, RAKE_LOAD), (0.14, RAKE_ARC, "in"), (0.28, RAKE_THROUGH, "snap"), (0.45, RAKE_OVER, "out"),
+                        (0.62, RAKE_PAST, "back"), (1.0, BACK_COCK, "io")])
 
 
 @X.row
 def rake_b(i: int, n: int):
     # Blow two: the backhand, the far claw up across his face and yours.
-    return keyed(i, n, [(0.0, BACK_COCK), (0.3, BACK_THROUGH, "snap"), (0.6, dict(BACK_THROUGH, fa=(20.0, -20.0), lean=0.0), "out"),
-                        (1.0, dict(RAKE_COCK, hip=(11.0, 3.0), lean=-2.0), "io")])
+    return keyed(i, n, [(0.0, BACK_COCK), (0.14, BACK_ARC, "in"), (0.28, BACK_THROUGH, "snap"), (0.45, BACK_OVER, "out"),
+                        (0.65, dict(BACK_THROUGH, fa=(20.0, -20.0), lean=0.0), "back"), (1.0, dict(RAKE_COCK, hip=(11.0, 3.0), lean=-2.0), "io")])
 
 
 @X.row
 def rake_c(i: int, n: int):
     # Blow three (unleashed): up tall with both claws over his head, a held
     # frame at the top, and down on you with all his weight.
-    return keyed(i, n, [(0.0, dict(RAKE_COCK, hip=(11.0, 3.0))), (0.3, HIGH_UP, "out"), (0.42, HIGH_UP, "hold"), (0.58, HIGH_DOWN, "snap"),
-                        (1.0, dict(HIGH_DOWN, sq=0.94, head=(4.0, 3.0, 2.0)), "out")], drag=HEAVY)
+    return keyed(i, n, [(0.0, dict(RAKE_COCK, hip=(11.0, 3.0))), (0.3, HIGH_UP, "out"), (0.46, HIGH_LOAD, "in"), (0.6, HIGH_DOWN, "snap"),
+                        (0.74, HIGH_OVER, "out"), (1.0, dict(HIGH_DOWN, sq=0.94, head=(4.0, 3.0, 2.0)), "back")], drag=HEAVY)
+
+
+#: The top of blow three, stretched past HIGH_UP; and its bottom, past HIGH_DOWN.
+HIGH_LOAD = dict(HIGH_UP, hip=(8.0, -5.0), lean=-20.0, sq=1.12, shrug=(-1.0, -4.0), head=(2.0, -1.0, 2.0))
+HIGH_OVER = dict(HIGH_DOWN, hip=(18.0, 14.0), lean=46.0, sq=0.86, shrug=(2.0, 3.0), head=(5.0, 4.0, -2.0))
 
 
 @X.row
@@ -1234,13 +1256,18 @@ HAMMER_DOWN = P(hip=(5.0, 18.0), lean=44.0, sq=0.86, shrug=(2.0, 3.0), head=(4.0
 HAMMER_DOWN = planted(HAMMER_DOWN, 1.0, 0.0)
 
 
+HAMMER_LOAD = dict(HAMMER_UP, hip=(-3.0, -5.0), lean=-22.0, sq=1.12, shrug=(-1.0, -4.0), head=(1.0, -1.0, 4.0), na=(-14.0, -34.0), fa=(-11.0, -35.0))
+HAMMER_ARC = P(hip=(2.0, 4.0), lean=18.0, sq=1.04, shrug=(1.0, -1.0), head=(3.0, 1.0, -12.0), na=(17.0, -10.0), nab=-1.0, fa=(15.0, -12.0), fab=-1.0,
+               nh="fist", fh="fist", nf=(-10.0, 0.0, 0.0), ff=(11.0, 0.0, 0.0), mouth="gape", eyes="pin", ears=-22.0, hem=(2.0, 3.0))
+
+
 @X.row
 def hammer_tell(i: int, n: int):
     # He rises: up on his toes, the fists up and together, higher, and the
-    # held top shakes.
+    # held top shakes; at its end he arches back further still.
     pose = keyed(i, n, [(0.0, X.full(P())), (0.2, dict(CROUCHED, sq=0.94, na=(12.0, 20.0), fa=(14.0, 20.0), nh="fist", fh="fist"), "out"),
-                        (0.65, HAMMER_UP, "out"), (1.0, HAMMER_UP)], drag=HEAVY)
-    if i >= n * 2 // 3:
+                        (0.6, HAMMER_UP, "out"), (0.82, HAMMER_UP), (1.0, HAMMER_LOAD, "in")], drag=HEAVY)
+    if n * 2 // 3 <= i < n - 2:
         pose = dict(pose, hip=(pose["hip"][0] + jitter(i, 0.6), pose["hip"][1]), na=(pose["na"][0] + jitter(i, 0.7, 3.0), pose["na"][1]))
     return pose
 
@@ -1248,7 +1275,7 @@ def hammer_tell(i: int, n: int):
 @X.row
 def hammer_slam(i: int, n: int):
     # Down in one frame, a held contact, and the floor gives him a bounce.
-    return keyed(i, n, [(0.0, HAMMER_UP), (0.2, HAMMER_DOWN, "snap"), (0.5, HAMMER_DOWN, "hold"),
+    return keyed(i, n, [(0.0, HAMMER_LOAD), (0.1, HAMMER_ARC, "in"), (0.2, HAMMER_DOWN, "snap"), (0.5, HAMMER_DOWN, "hold"),
                         (0.75, dict(HAMMER_DOWN, sq=0.92, hip=(5.0, 16.0)), "out"), (1.0, HAMMER_DOWN, "io")], drag=HEAVY)
 
 
@@ -1288,12 +1315,17 @@ STAB_THRUST = P(hip=(12.0, 18.0), lean=40.0, sq=1.0, shrug=(2.0, 0.0), head=(5.0
 STAB_PAST = dict(STAB_THRUST, hip=(14.0, 21.0), lean=46.0, sq=0.95, head=(6.0, 4.0, -6.0), na=(28.0, 20.0), mouth="open", eyes="open", ears=-10.0)
 
 
+STAB_LOAD = dict(STAB_COCK, hip=(-8.0, 10.0), lean=0.0, sq=0.95, na=(-3.0, 23.0), fa=(24.0, 6.0), head=(1.0, 2.0, 0.0), ff=(9.0, 0.0, 4.0))
+STAB_ARC = P(hip=(3.0, 13.0), lean=22.0, sq=1.03, shrug=(1.0, 0.0), head=(3.0, 2.0, -12.0), na=(15.0, 19.0), nab=-1.0, fa=(4.0, 6.0), nh="knife", fh="open",
+             nf=(-17.0, 0.0, 0.0), ff=(17.0, 0.0, -4.0), mouth="gape", eyes="pin", ears=-26.0, hem=(2.0, 2.0))
+
+
 @X.row
 def stab_tell(i: int, n: int):
     # He draws the knife hand back to his hip and sights along the other;
-    # then he holds it, trembling.
-    pose = keyed(i, n, [(0.0, X.full(P())), (0.45, STAB_COCK, "out"), (1.0, STAB_COCK)])
-    if i >= n // 2:
+    # then he holds it, trembling, and loads back on his heel.
+    pose = keyed(i, n, [(0.0, X.full(P())), (0.42, STAB_COCK, "out"), (0.82, STAB_COCK), (1.0, STAB_LOAD, "in")])
+    if n // 2 <= i < n - 2:
         pose = dict(pose, na=(pose["na"][0] + jitter(i, 0.6), pose["na"][1] + jitter(i, 0.6, 2.0)), ears=pose["ears"] + jitter(i, 3.0, 1.0))
     return pose
 
@@ -1301,7 +1333,8 @@ def stab_tell(i: int, n: int):
 @X.row
 def stab(i: int, n: int):
     # It goes: the step and the arm at once, straight in, and he is past.
-    return keyed(i, n, [(0.0, STAB_COCK), (0.25, STAB_THRUST, "snap"), (1.0, STAB_PAST, "out")])
+    return keyed(i, n, [(0.0, STAB_LOAD), (0.12, STAB_ARC, "in"), (0.25, STAB_THRUST, "snap"), (0.5, dict(STAB_PAST, lean=48.0, hip=(15.0, 22.0)), "out"),
+                        (1.0, STAB_PAST, "back")])
 
 
 @X.row
@@ -1332,13 +1365,19 @@ POUNCE_COIL = dict(FOURS, hip=(-4.0, 10.0), lean=58.0, sq=0.9, head=(5.0, 4.0, -
                    ff=(2.0, 0.0, 0.0), mouth="grit", ears=-34.0)
 
 
+LUNGE_LOAD = dict(POUNCE_COIL, hip=(-7.0, 13.0), sq=0.86, head=(5.0, 5.0, -8.0), ears=-38.0)
+#: The push: the legs driving, the body coming up long off the floor.
+BOUND_PUSH = P(hip=(2.0, 6.0), lean=48.0, sq=1.02, shrug=(2.0, 0.0), head=(5.0, 2.0, -18.0), na=(22.0, 8.0), fa=(20.0, 12.0), nh="claw", fh="claw",
+               nf=(-18.0, 0.0, 0.0), ff=(6.0, -4.0, 20.0), mouth="gape", eyes="pin", ears=-32.0, hem=(3.0, 0.0))
+
+
 @X.row
 def lunge_tell(i: int, n: int):
     # He drops onto his hands, coils on all fours, and shivers on the spot
-    # like a dog that has seen you.
+    # like a dog that has seen you; at its end he sinks lower to spring.
     pose = keyed(i, n, [(0.0, X.full(P())), (0.3, dict(CROUCHED, na=(14.0, 28.0), fa=(18.0, 27.0)), "out"), (0.55, planted(POUNCE_COIL), "out"),
-                        (1.0, planted(POUNCE_COIL))])
-    if i >= n // 2:
+                        (0.82, planted(POUNCE_COIL)), (1.0, planted(LUNGE_LOAD), "in")])
+    if n // 2 <= i < n - 2:
         pose = dict(pose, hip=(pose["hip"][0] + jitter(i, 0.9), pose["hip"][1] + jitter(i, 0.5, 4.0)), ears=pose["ears"] + jitter(i, 4.0, 1.0))
     return pose
 
@@ -1355,8 +1394,9 @@ def lunge(i: int, n: int):
 def lunge_skid(i: int, n: int):
     # He lands running and digs in: the heels plough, he leans back with his
     # arms flung behind him, and he stops.
-    return keyed(i, n, [(0.0, dict(LUNGE_FLY, off=(0.0, 0.0))), (0.2, SKID, "snap"), (0.6, dict(SKID, lean=-10.0, hip=(-4.0, 8.0)), "out"),
-                        (1.0, dict(CROUCHED, lean=14.0), "io")])
+    # His weight carries on past the stop: he pitches forward, then settles.
+    return keyed(i, n, [(0.0, dict(LUNGE_FLY, off=(0.0, 0.0))), (0.2, SKID, "snap"), (0.5, dict(SKID, lean=-10.0, hip=(-4.0, 8.0)), "out"),
+                        (0.75, dict(CROUCHED, lean=26.0, sq=0.92, hip=(3.0, 13.0)), "io"), (1.0, dict(CROUCHED, lean=14.0), "back")])
 
 
 #: On the wall: crouched against it, turned to come back, gathered.
@@ -1367,7 +1407,7 @@ ON_WALL = P(hip=(-6.0, 6.0), lean=20.0, rot=-24.0, sq=0.9, head=(2.0, 2.0, 6.0),
 @X.row
 def bound_rise(i: int, n: int):
     # Up off the floor and long, toward the wall behind you.
-    return keyed(i, n, [(0.0, POUNCE_COIL), (0.35, LUNGE_FLY, "snap"), (1.0, dict(LUNGE_FLY, lean=40.0, head=(4.0, 0.0, -16.0)), "out")])
+    return keyed(i, n, [(0.0, LUNGE_LOAD), (0.18, BOUND_PUSH, "in"), (0.38, LUNGE_FLY, "snap"), (1.0, dict(LUNGE_FLY, lean=40.0, head=(4.0, 0.0, -16.0)), "out")])
 
 
 @X.row
@@ -1440,11 +1480,17 @@ SLUMP = P(hip=(1.0, 14.0), lean=56.0, sq=0.92, shrug=(2.0, 4.0), head=(4.0, 7.0,
           nf=(-10.0, 0.0, 0.0), ff=(6.0, 0.0, 0.0), mouth="big", eyes="roll", ears=-34.0, brows=1.0, hem=(0.0, 0.0))
 
 
+#: He curls in on the charge before it throws him open.
+GALV_LOAD = dict(ON_BOLTS, hip=(0.0, 6.0), lean=14.0, sq=0.93, shrug=(1.0, 1.0), head=(1.0, 2.0, 10.0), na=(11.0, -6.0), fa=(8.0, -5.0), eyes="closed")
+THROWN_OVER = dict(THROWN, sq=1.13, lean=-15.0, na=(32.0, -13.0), fa=(-23.0, -17.0), head=(1.0, -1.0, -26.0))
+
+
 @X.row
 def galvanize_tell(i: int, n: int):
     # He takes hold of his bolts and the charge comes up through him: he
-    # shakes with it, faster.
-    pose = keyed(i, n, [(0.0, X.full(P())), (0.3, dict(ON_BOLTS, charge=1.0), "out"), (0.6, ON_BOLTS, "hold"), (1.0, ON_BOLTS)], loop_=False)
+    # shakes with it, faster, and curls in on it.
+    pose = keyed(i, n, [(0.0, X.full(P())), (0.3, dict(ON_BOLTS, charge=1.0), "out"), (0.6, ON_BOLTS, "hold"), (0.82, ON_BOLTS), (1.0, GALV_LOAD, "in")],
+                 loop_=False)
     if i >= 2:
         pose = dict(pose, hip=(jitter(i, 0.8), jitter(i, 0.6, 1.0)), head=(jitter(i, 0.6, 2.0), 0.0, -14.0 + jitter(i, 4.0, 3.0)),
                     na=(12.0 + jitter(i, 1.0, 4.0), -10.0 + jitter(i, 1.0, 5.0)), fa=(9.0 + jitter(i, 1.0, 6.0), -9.0), ears=-14.0 + jitter(i, 8.0, 7.0))
@@ -1454,7 +1500,7 @@ def galvanize_tell(i: int, n: int):
 @X.row
 def galvanize(i: int, n: int):
     # The current goes out of him: thrown open, and shaking.
-    pose = keyed(i, n, [(0.0, ON_BOLTS), (0.2, THROWN, "snap"), (1.0, dict(THROWN, sq=1.06, head=(-2.0, -1.0, -30.0)), "io")])
+    pose = keyed(i, n, [(0.0, GALV_LOAD), (0.18, THROWN, "snap"), (0.34, THROWN_OVER, "out"), (1.0, dict(THROWN, sq=1.06, head=(-2.0, -1.0, -30.0)), "io")])
     return dict(pose, hip=(pose["hip"][0] + jitter(i, 1.0), pose["hip"][1]), rot=jitter(i, 2.0, 1.0))
 
 
@@ -1469,11 +1515,16 @@ LASH_THROW = P(hip=(6.0, 3.0), lean=16.0, sq=0.97, shrug=(1.0, 0.0), head=(3.0, 
                charge=2.0)
 
 
+LASH_LOAD = dict(LASH_AIM, hip=(-5.0, 3.0), lean=-9.0, sq=1.05, fa=(25.0, -15.0), head=(0.0, 0.0, -6.0), shrug=(-1.0, -2.4))
+LASH_OVER = dict(LASH_THROW, hip=(8.0, 4.0), lean=22.0, sq=0.95, fa=(35.0, -7.0), head=(4.0, 1.0, -8.0))
+
+
 @X.row
 def lash_tell(i: int, n: int):
-    # He takes hold of his bolt and points at you; the charge climbs his arm.
-    pose = keyed(i, n, [(0.0, X.full(P())), (0.4, LASH_AIM, "out"), (1.0, LASH_AIM)])
-    if i >= 3:
+    # He takes hold of his bolt and points at you; the charge climbs his arm,
+    # and he draws back on it.
+    pose = keyed(i, n, [(0.0, X.full(P())), (0.4, LASH_AIM, "out"), (0.82, LASH_AIM), (1.0, LASH_LOAD, "in")])
+    if 3 <= i < n - 2:
         pose = dict(pose, fa=(pose["fa"][0] + jitter(i, 0.6), pose["fa"][1] + jitter(i, 0.6, 2.0)), hip=(pose["hip"][0] + jitter(i, 0.4, 3.0), pose["hip"][1]))
     return pose
 
@@ -1481,7 +1532,7 @@ def lash_tell(i: int, n: int):
 @X.row
 def lash(i: int, n: int):
     # It goes: a kick back through him, then held while it burns.
-    pose = keyed(i, n, [(0.0, LASH_AIM), (0.2, LASH_THROW, "snap"), (1.0, dict(LASH_THROW, lean=10.0, sq=1.0), "out")])
+    pose = keyed(i, n, [(0.0, LASH_LOAD), (0.18, LASH_THROW, "snap"), (0.36, LASH_OVER, "out"), (1.0, dict(LASH_THROW, lean=10.0, sq=1.0), "back")])
     return dict(pose, hip=(pose["hip"][0] + jitter(i, 0.8), pose["hip"][1]))
 
 
