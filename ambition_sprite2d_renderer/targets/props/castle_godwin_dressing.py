@@ -803,10 +803,10 @@ def _cracked_masonry(c: Canvas, w: float, h: float, tag: str, upright: bool) -> 
 
 
 def _cracked_wall(c: Canvas) -> None:
-    _cracked_masonry(c, 48, 160, "drain_wall", upright=True)
+    _cracked_masonry(c, 64, 160, "drain_wall", upright=True)
     # Grit at its foot, fallen out of the crack.
     rng = c.rand("drain_wall", "grit")
-    grit = c.mask(lambda p: [p.ellipse(rng.uniform(4, 44), 160 - rng.uniform(1.0, 3.0), rng.uniform(1.0, 2.4), rng.uniform(0.8, 1.6)) for _ in range(9)])
+    grit = c.mask(lambda p: [p.ellipse(rng.uniform(4, 60), 160 - rng.uniform(1.0, 3.0), rng.uniform(1.0, 2.4), rng.uniform(0.8, 1.6)) for _ in range(11)])
     solid(c, grit, STONE_DARK, w=0.4)
 
 
@@ -816,13 +816,14 @@ def _cracked_floor(c: Canvas) -> None:
 
 def _drain_breach(c: Canvas) -> None:
     """The wall broken through: a heap of its blocks at the foot of the
-    opening, and the broken ends of the courses at its sides."""
-    w, h = 112, 48
+    opening, and the broken ends of the courses at its sides. As wide as
+    the wall and a little more: the shut wall is drawn over it and hides it."""
+    w, h = 72, 48
     rng = c.rand("drain_breach")
     # The broken ends of the courses, low, at each side: blocks in steps,
     # the top one snapped off.
     for side in (0, 1):
-        for k, (bw, bh) in enumerate(((16.0, 12.0), (12.0, 12.0), (7.0, 10.0))):
+        for k, (bw, bh) in enumerate(((12.0, 12.0), (9.0, 12.0), (5.0, 10.0))):
             x0 = 0.0 if side == 0 else w - bw
             x1 = x0 + bw
             y1 = h - 12.0 * k
@@ -832,18 +833,18 @@ def _drain_breach(c: Canvas) -> None:
             edge(c, m, "top", STONE_LIGHT, 1.0, 0.6)
     # The heap: blocks of the wall, fallen and tipped, the biggest at the
     # bottom, smaller ones over them.
-    for k in range(14):
-        bw = rng.uniform(10, 20) * (1.0 if k < 6 else 0.7)
+    for k in range(9):
+        bw = rng.uniform(9, 16) * (1.0 if k < 4 else 0.7)
         bh = bw * rng.uniform(0.45, 0.65)
-        cx = rng.uniform(16, w - 16)
-        cy = h - bh * 0.5 - (0.0 if k < 6 else rng.uniform(4, 12))
+        cx = rng.uniform(15, w - 15)
+        cy = h - bh * 0.5 - (0.0 if k < 4 else rng.uniform(4, 12))
         a = math.radians(rng.uniform(-25, 25))
         ca, sa = math.cos(a), math.sin(a)
         pts = [(cx + dx * ca - dy * sa, cy + dx * sa + dy * ca) for dx, dy in ((-bw / 2, -bh / 2), (bw / 2, -bh / 2), (bw / 2, bh / 2), (-bw / 2, bh / 2))]
         m = solid(c, lambda p: p.poly(pts), scale(STONE, rng.uniform(0.85, 1.08)), w=0.7)
         edge(c, m, "top", STONE_LIGHT, 1.0, 0.7)
         edge(c, m, "bottom", STONE_DARK, 1.2, 0.5)
-    grit = c.mask(lambda p: [p.ellipse(rng.uniform(2, w - 2), h - rng.uniform(0.6, 2.4), rng.uniform(0.8, 2.0), rng.uniform(0.6, 1.4)) for _ in range(22)])
+    grit = c.mask(lambda p: [p.ellipse(rng.uniform(2, w - 2), h - rng.uniform(0.6, 2.4), rng.uniform(0.8, 2.0), rng.uniform(0.6, 1.4)) for _ in range(14)])
     solid(c, grit, STONE_DARK, w=0.3)
 
 
@@ -870,9 +871,9 @@ PROPS: Dict[str, Tuple[float, float, Callable, int, int, List[str]]] = {
     "castle_iron_throne": (160, 192, lambda c, f: _iron_throne(c), 1, 400, ["prop", "scenery", "castle", "throne_room", "furniture"]),
     # The old drain: a `LockWall` look of each way it is shut, and what is
     # left when it is broken through.
-    "castle_cracked_wall": (48, 160, lambda c, f: _cracked_wall(c), 1, 400, ["prop", "door", "castle", "secret"]),
+    "castle_cracked_wall": (64, 160, lambda c, f: _cracked_wall(c), 1, 400, ["prop", "door", "castle", "secret"]),
     "castle_cracked_floor": (96, 32, lambda c, f: _cracked_floor(c), 1, 400, ["prop", "door", "castle", "secret"]),
-    "castle_drain_breach": (112, 48, lambda c, f: _drain_breach(c), 1, 400, ["prop", "scenery", "castle", "rubble"]),
+    "castle_drain_breach": (72, 48, lambda c, f: _drain_breach(c), 1, 400, ["prop", "scenery", "castle", "rubble"]),
 }
 
 
