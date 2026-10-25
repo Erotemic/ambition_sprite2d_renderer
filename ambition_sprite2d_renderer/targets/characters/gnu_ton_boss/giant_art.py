@@ -3,9 +3,11 @@
 A giant that is like a gnu and is not one, almost a centaur: a beast on four
 long legs in a coat of long locks, a chest that stands up at its front to two
 broad shoulders, the horns of a gnu, and a plain face whose parts make its
-expression. Its back is a slope from a low rump to the left shoulder. Jon
-chose the design in stills (2026-10-11); `docs/planning/game/bosses.md` has
-the fight it is for.
+expression. Its back is a low HUMP from the rump to the foot of an upright,
+centaur-like torso (Jon, 2026-10-25: a long slope to the shoulder moved with
+the torso and looked wrong). The torso leans over the hump; the hump does not
+lean with it. Jon chose the design in stills (2026-10-11);
+`docs/planning/game/bosses.md` has the fight it is for.
 
 The drawing is SVG made here (`_svg.py` is the kit) and rasterized by resvg.
 A frame is a POSE: a stance (where the body's points are), an expression,
@@ -18,7 +20,7 @@ design point to a pixel of the published frame.
 
 What the drawing shows and does not build:
 
-* where an actor can stand has moss on it (the slope of the back, the level
+* where an actor can stand has moss on it (the hump of the back, the level
   part of each horn), and each shoulder has an epaulet;
 * it has no bird, and no portal: those are the game's.
 """
@@ -222,19 +224,50 @@ def tail():
          outlined(brush, C["mane"], strands(286, 330, 850, 950, 3, C["mane_light"]), "clip-brush"))
 
 
-def beast(st):
-    """The body of the beast: one shape. Its top is the slope from the rump to
-    the left shoulder, and the mane comes down over the front of it."""
+#: Where the top of the beast goes in under the left side of the torso
+#: (before a stance lifts it). The torso stands up from here and leans over
+#: it; the hump ends under the torso, so a lean does not show its end.
+JOIN = (844.0, 594.0)
+#: The crest of the hump: the part of the way from the rump to the join it
+#: is at, and how far it is over the join.
+HUMP_CREST = (0.7, 6.0)
+#: The points of the top line of the beast, from the rump to the join.
+HUMP_POINTS = 20
+
+
+def hump_top(st):
+    """The top of the beast in stance ``st``, from the rump to the join: up
+    from the rump to the crest (steep first, then level), and down a little
+    to the join. Moss is on it: an actor stands on it."""
     lx, ly = st["lift"]
     rx, ry = st["rump"]
-    sx, sy = SHOULDER_L[0] + lx - 8, SHOULDER_L[2] + ly + 4
+    jx, jy = JOIN[0] + lx, JOIN[1] + ly
+    u, over = HUMP_CREST
+    cx, cy = rx + (jx - rx) * u, jy - over
+    out = []
+    for k in range(HUMP_POINTS + 1):
+        x = rx + (jx - rx) * k / HUMP_POINTS
+        if x <= cx:
+            y = ry + (cy - ry) * math.sin(0.5 * math.pi * (x - rx) / (cx - rx))
+        else:
+            y = cy + (jy - cy) * ((x - cx) / (jx - cx)) ** 2
+        out.append((x, y))
+    return out
+
+
+def beast(st):
+    """The body of the beast: one shape. Its top is the hump from the rump to
+    the join (`hump_top`), and the mane comes down over the front of it."""
+    lx, ly = st["lift"]
+    rx, ry = st["rump"]
+    jx, jy = JOIN[0] + lx, JOIN[1] + ly
     b0, b1 = st["belly"]
-    n = 20
-    top = [(rx + (sx - rx) * k / n, ry + (sy - ry) * (k / n) ** 1.35) for k in range(n + 1)]
+    top = hump_top(st)
+    n = len(top) - 1
     bottom = locks_line(b1, b0, 12, 40.0)
-    sil = smooth(top + [(sx + 70, sy + 30), (sx + 130, sy + 260), (b1[0] + 14, b1[1] - 120)] + bottom +
+    sil = smooth(top + [(jx + 60, jy + 16), (jx + 120, jy + 80), (b1[0] + 14, b1[1] - 120)] + bottom +
                  [(rx - 14, b0[1] - 26), (rx - 30, ry + 96), (rx - 14, ry + 26)])
-    k0 = 7
+    k0 = 13
     # The edge of the mane: from the slope down to the chest, in locks.
     a, b = (b1[0] - 150.0, b1[1] + 10.0), top[k0]
     edge = []
@@ -247,15 +280,15 @@ def beast(st):
         t0, t1 = i / teeth, (i + 0.5) / teeth
         edge += [(a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0, True),
                  (a[0] + (b[0] - a[0]) * t1 + nx * 44 - 8, a[1] + (b[1] - a[1]) * t1 + ny * 44 + 30, True)]
-    mane = smooth([(x, y - 30) for x, y in top[k0:]] + [(sx + 400, sy), (b1[0] + 200, b1[1] + 200), (a[0], a[1] + 200, True)] + edge)
+    mane = smooth([(x, y - 30) for x, y in top[k0:]] + [(jx + 340, jy), (b1[0] + 200, b1[1] + 200), (a[0], a[1] + 200, True)] + edge)
     items = [
         # The pale of the back near the rump, and the dark of the belly.
-        path(smooth([(x, y - 20) for x, y in top[:k0 + 3]] + [(x + 20, y + 60) for x, y in top[:k0 + 3]][::-1]), C["light"]),
+        path(smooth([(x, y - 20) for x, y in top[:k0]] + [(x + 20, y + 60) for x, y in top[:k0]][::-1]), C["light"]),
         path(svg.poly([(b0[0] - 120, b0[1] - 40), (b1[0] + 80, b1[1] - 40), (b1[0] + 80, b1[1] + 120), (b0[0] - 120, b0[1] + 120)]),
              C["dark"]),
     ]
     # Brindle on the flank.
-    for i, k in enumerate((2, 4, 6)):
+    for i, k in enumerate((2, 5, 8, 11)):
         x, y = top[k]
         h = 110 + 20 * math.sin(i * 1.3)
         items.append(path(smooth([(x - 7, y + 34, True), (x + 9, y + 38), (x + 4, y + 34 + h * 0.7), (x - 4, y + 34 + h, True),
@@ -270,7 +303,7 @@ def beast(st):
         items.append(line([(x, y - 70), (x - 4, y - 20), (x - 2, y + 20)], C["deep"], 2.6))
     part("beast", "Beast", "beast", "torso", 30, outlined(sil, C["fur"], items, "clip-beast"))
 
-    # Moss along the top of the slope: where the moss is, you can stand.
+    # Moss along the top of the hump: where the moss is, you can stand.
     ridge = top[1:]
     under = []
     for k, (x, y) in enumerate(ridge):
@@ -279,11 +312,11 @@ def beast(st):
     moss = smooth([(x, y - 2) for x, y in ridge] + under[::-1])
     light = smooth([(x, y - 2) for x, y in ridge] + [(x + 1, y + 6) for x, y in ridge[::-1]])
     body = outlined(moss, C["moss"], [path(light, "#9cc46a")], "clip-beast-moss", width=3.0)
-    for k in (2, 5):
+    for k in (3, 9):
         x, y = ridge[k]
         for dx, h in ((-7, 13), (0, 18), (7, 12)):
             body.append(line([(x + dx, y), (x + dx * 1.6 - 4, y - h)], C["moss_dark"], 3.0))
-    part("beast-moss", "Moss on the slope", "beast_moss", "torso", 32, body)
+    part("beast-moss", "Moss on the hump", "beast_moss", "torso", 32, body)
 
 
 def chest():
@@ -1254,6 +1287,31 @@ def blow_lines_world():
 #: World units of a pixel of the published frame (the catalog's `posed_body`).
 WORLD_PER_PIXEL = 1.3
 
+#: Where the left side of the torso covers the hump at rest (final): the walk
+#: line ends there, and a body goes up from it to the shoulders.
+TORSO_EDGE_X = 824.0
+#: How far over the top line the top of the moss is drawn (its edge and ink).
+MOSS_OVER = 3.5
+
+
+def hump_line_world(points: int = 11):
+    """The walk line of the hump at rest, from the rump to the torso's edge,
+    in world units about the middle of the giant's body (+y down): the
+    numbers the game types (`mount.slope` of `npc_giant_gnu`)."""
+    top = hump_top(_SLOPED)
+    cx = BODY_BBOX[0] + BODY_BBOX[2] * 0.5
+    cy = BODY_BBOX[1] + BODY_BBOX[3] * 0.5
+    x0 = top[0][0]
+    out = []
+    for k in range(points):
+        x = x0 + (TORSO_EDGE_X - x0) * k / (points - 1)
+        i = min(len(top) - 2, max(0, int((x - x0) / (top[1][0] - x0))))
+        (ax, ay), (bx, by) = top[i], top[i + 1]
+        y = ay + (by - ay) * (x - ax) / (bx - ax) - MOSS_OVER
+        px, py = to_frame((x, y))
+        out.append((round((px - cx) * WORLD_PER_PIXEL, 1), round((py - cy) * WORLD_PER_PIXEL, 1)))
+    return out
+
 
 def _between(keys, phase):
     """``keys``: (until, key) in order. The pose at ``phase``, eased from each
@@ -1707,11 +1765,12 @@ def _cut_arm_piece(spec):
                     reach=900.0)
 
 
-#: Where the barrel of the beast turns: its rump, and the top of the slope at
-#: the left shoulder (of the stance it is drawn in).
+#: Where the barrel of the beast turns: its rump, and the join under the
+#: torso (of the stance it is drawn in). The join follows the lift, not the
+#: lean: the torso leans over the hump.
 def _barrel_ends(st):
     lx, ly = st["lift"]
-    return st["rump"], (SHOULDER_L[0] + lx - 8, SHOULDER_L[2] + ly + 4)
+    return st["rump"], (JOIN[0] + lx, JOIN[1] + ly)
 
 
 _BARREL_REST = _barrel_ends(_SLOPED)
