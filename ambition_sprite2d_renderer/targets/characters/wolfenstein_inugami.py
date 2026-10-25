@@ -606,8 +606,10 @@ def _spirits(img: Image.Image, anim: str, pose: Pose, i: int, n: int, behind: bo
         if anim == "ward_bound":
             out = 0.7
         if anim == "dispel":
-            out = 1.0 + 1.6 * u
-            grow = max(0.0, 1.0 - u * 1.3)
+            # Blown out of the ring, no further than the frame's margin (its
+            # hit flash is drawn in an impostor cell of its frame and margin).
+            out = 1.0 + 0.3 * u
+            grow = max(0.0, 1.0 - u * 1.6)
             if grow <= 0.05:
                 continue
         x, y = rx * out * math.cos(a), ry * out * math.sin(a)
