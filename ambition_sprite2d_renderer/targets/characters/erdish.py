@@ -1352,6 +1352,7 @@ def main(argv: list[str] | None = None) -> int:
 import numpy as np  # noqa: E402
 
 from . import _person_round as O  # noqa: E402
+from . import _round_wear as W  # noqa: E402
 
 #: As he rests (``idle``, its first frame): thinking, his chin on his near
 #: hand, his far hand behind his back.
@@ -1431,43 +1432,23 @@ HEAD_3D = O.Head3D(
 )
 
 
-def _round_jacket(u, v, lit, far):
-    """His jacket open on his cardigan and his shirt (no tie, the collar
-    open); a pocket on his chest with chalk and two pens in it, a pocket low
-    on each side, a seam down his round back."""
-    a = np.abs(u)
-    x = O.arc(u, 8.8)
-    out = O.fill(TWEED, len(u))
-    O.put(out, (a < 30.0) & (v > -34.0), CARDIGAN)
-    for k in range(4):
-        O.put(out, x ** 2 + (v - lerp(-23.0, 2.0, k / 3.0)) ** 2 < 0.9 ** 2, CARDIGAN_DARK)
-    O.put(out, (v < -26.5) & (a < 24.0 * (-26.5 - v) / 12.5), SHIRT)
-    O.put(out, (v < -32.6) & (a < 12.0 * (-32.6 - v) / 6.4), SKIN_SHADE)
-    lapel = (v < -20.0) & (a >= 30.0 - 12.0 * (v + 20.0) / (-38.0 + 20.0)) & (a < 32.0)
-    O.put(out, lapel, TWEED_LIGHT)
-    O.put(out, (np.abs(np.abs(x) - O.arc(30.0, 8.8)) < 0.35) & (v > -20.0), TWEED_DARK)
-    # The pocket on his (right) chest, and what is in it.
-    O.put(out, (u > -62.0) & (u < -28.0) & (np.abs(v + 21.4) < 0.35), TWEED_DARK)
-    O.put(out, (np.abs(u + 54.0) < 4.0) & (v > -25.0) & (v < -21.6), CHALK)
-    O.put(out, (np.abs(u + 40.0) < 2.0) & (v > -24.4) & (v < -21.6), CHALK_BLUE)
-    O.put(out, (np.abs(u + 33.0) < 2.0) & (v > -24.0) & (v < -21.4), CARDIGAN)
-    O.put(out, (a > 50.0) & (a < 85.0) & (np.abs(v + 3.0) < 0.35), TWEED_DARK)
-    O.put(out, (np.abs(O.arc(180.0 - a, 8.8)) < 0.35) & (v > -26.0), TWEED_DARK)
-    O.put(out, lit < -0.45, TWEED_DARK)
-    return out
-
-
-def _round_trunk() -> O.Part:
-    """His jacket in 3D: narrow, its back round (the rings go back at the
-    shoulders), its hem a little wider."""
-    jacket = O.loft([O.Ring(-38.5, 0.0, 2.6, 4.0, 3.4), O.Ring(-35.0, 0.0, 1.4, 7.8, 6.4), O.Ring(-30.0, 0.0, 0.0, 8.6, 7.8),
-                     O.Ring(-24.0, 0.0, 0.0, 8.8, 7.4), O.Ring(-14.0, 0.0, 0.4, 8.4, 6.4), O.Ring(-4.0, 0.0, 0.4, 8.4, 6.2),
-                     O.Ring(0.0, 0.0, 0.2, 8.8, 6.4), O.Ring(8.0, 0.0, 0.2, 9.6, 7.0)], _round_jacket, cols=64)
-    tweed = O.flat(TWEED, shade=TWEED_DARK, at=-0.45)
-    collar = O.loft([O.Ring(-40.0, 0.0, 3.0, 2.9, 2.7), O.Ring(-38.4, 0.0, 2.8, 3.6, 3.4), O.Ring(-36.6, 0.0, 3.0, 4.2, 4.0, droop=1.2)],
-                    lambda u, v, lit, far: O.put(O.fill(SHIRT, len(u)), np.abs(u) < 16.0, SKIN_SHADE))
-    return O.Part("trunk", [jacket, O.ellipsoid((-6.6, -30.4, 0.6), (4.6, 5.4, 4.6), tweed), O.ellipsoid((6.6, -30.4, 0.6), (4.6, 5.4, 4.6), tweed), collar],
-                  base=TWEED, shade_colour=TWEED_DARK, anchor=(0.0, -20.0, 0.4))
+#: His jacket: narrow, its back round (the rings go back at the shoulders),
+#: open on his cardigan (four buttons) and his shirt (no tie, the collar open);
+#: lapels; a pocket on his right chest with a stick of chalk and two pens in
+#: it, a pocket low on each side, a seam down his back.
+JACKET_3D = W.Trunk(
+    rings=[O.Ring(-38.5, 0.0, 2.6, 4.0, 3.4), O.Ring(-35.0, 0.0, 1.4, 7.8, 6.4), O.Ring(-30.0, 0.0, 0.0, 8.6, 7.8), O.Ring(-24.0, 0.0, 0.0, 8.8, 7.4),
+           O.Ring(-14.0, 0.0, 0.4, 8.4, 6.4), O.Ring(-4.0, 0.0, 0.4, 8.4, 6.2), O.Ring(0.0, 0.0, 0.2, 8.8, 6.4), O.Ring(8.0, 0.0, 0.2, 9.6, 7.0)],
+    garment=W.Garment(TWEED, TWEED_DARK, radius=8.8, features=[
+        W.Opening(30.0, CARDIGAN, top=-34.0), W.Buttons(0.0, -23.0, 2.0, 4, 0.9, CARDIGAN_DARK), W.Neckline(-39.0, -26.5, 24.0, SHIRT),
+        W.Neckline(-39.0, -32.6, 12.0, SKIN_SHADE), W.Lapels(30.0, -38.0, -20.0, 12.0, TWEED_LIGHT, line=TWEED_DARK),
+        W.Across(-62.0, -28.0, -21.4, TWEED_DARK), W.Patch(-58.0, -50.0, -25.0, -21.6, CHALK), W.Patch(-42.0, -38.0, -24.4, -21.6, CHALK_BLUE),
+        W.Patch(-35.0, -31.0, -24.0, -21.4, CARDIGAN), W.Across(50.0, 85.0, -3.0, TWEED_DARK, both=True), W.Down(180.0, -26.0, 20.0, TWEED_DARK),
+        W.Shade()]),
+    shoulder=((-6.6, -30.4, 0.6), (4.6, 5.4, 4.6)),
+    collar=([O.Ring(-40.0, 0.0, 3.0, 2.9, 2.7), O.Ring(-38.4, 0.0, 2.8, 3.6, 3.4), O.Ring(-36.6, 0.0, 3.0, 4.2, 4.0, droop=1.2)],
+            W.Garment(SHIRT, SHIRT_DARK, features=[W.Opening(16.0, SKIN_SHADE)])),
+)
 
 
 def _front_sandal():
@@ -1541,7 +1522,7 @@ def _round_leg(side: str) -> List[object]:
 
 def round_figure() -> O.Figure:
     """Erdish in the round, as he rests."""
-    head, trunk = O.head_part(HEAD_3D, HEAD3), _round_trunk()
+    head, trunk = O.head_part(HEAD_3D, HEAD3), JACKET_3D.part()
     turn = _LEAN * 0.35 + _TILT
     layers = lambda: O.composed(K, [(_head(), "head"), (_eyes(str(_REST["eyes"])), "eyes"), (_glasses(), "glasses"),  # noqa: E731
                                     (_brows(1 if float(_REST["brows"]) > 0.5 else 0), "brows"), (_mouth(str(_REST["mouth"])), "mouth")], turn)

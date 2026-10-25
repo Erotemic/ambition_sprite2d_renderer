@@ -499,6 +499,7 @@ def render_portraits(out_dir, **opts):
 import numpy as np  # noqa: E402
 
 from . import _person_round as O  # noqa: E402
+from . import _round_wear as W  # noqa: E402
 
 #: The middle of his head, and of his trunk.
 HEAD = (0.0, BUILD.neck[1] - 12.4, 1.6)
@@ -549,71 +550,31 @@ HEAD_3D = O.Head3D(
 )
 
 
-def _round_jacket(u, v, lit, far):
-    """The jacket open over the waistcoat: the lapels, the shirt and the bow
-    tie at the top, three buttons, the watch chain; a seam down the back and
-    a pocket on each side."""
-    a = np.abs(u)
-    x = O.arc(u, 9.6)
-    out = O.fill(SUIT, len(u))
-    O.put(out, (a < 34.0) & (v > TOP + 1.0), VEST)
-    O.put(out, (np.abs(x - np.sign(x) * O.arc(34.0, 9.6)) < 0.35) & (v > -20.0), SUIT_DARK)
-    lapel = (v < -20.0) & (a >= 34.0 - 14.0 * (v + 20.0) / (TOP + 20.0)) & (a < 34.0 + 2.0)
-    O.put(out, lapel & (v > TOP - 1.0), SUIT_LIGHT)
-    O.put(out, (v < -27.0) & (a < 20.0 * (-27.0 - v) / (-27.0 - TOP)), SHIRT)
-    for y in (-18.0, -12.0, -6.0):
-        O.put(out, x ** 2 + (v - y) ** 2 < 0.8 ** 2, SUIT_DARK)
-    # The watch chain: from a pocket on his right, down across the front, up
-    # to a pocket on his left.
-    reach = np.where(x < 0.0, O.arc(25.0, 9.6), O.arc(28.0, 9.6))
-    sag = -7.6 - np.where(x < 0.0, 2.4, 2.0) * (x / reach) ** 2
-    on = np.abs(x) < reach
-    O.put(out, on & (np.abs(v - sag) < 0.7), CHAIN_DARK)
-    O.put(out, on & (np.abs(v - sag) < 0.35), CHAIN)
-    # The tie under the wing collar, as his front view has it, down into
-    # the waistcoat.
-    O.put(out, (v < -23.6) & (np.abs(x) < 1.0 + 0.2 * (v - TOP) / (-23.6 - TOP)), TIE)
-    O.put(out, (v < TOP + 2.2) & (np.abs(x) < 1.2), mix(TIE, INK, 0.3))
-    O.put(out, (np.abs(O.arc(180.0 - a, 9.6)) < 0.35) & (v > -24.0), SUIT_DARK)
-    O.put(out, (a > 45.0) & (a < 75.0) & (np.abs(v + 3.2) < 0.35), SUIT_DARK)
-    O.put(out, lit < -0.45, SUIT_DARK)
-    return out
-
-
-def _round_hat(u, v, lit, far):
-    out = O.fill(HAT, len(u))
-    O.put(out, (v > -11.4) & (v < -8.6), BAND)
-    O.put(out, lit < -0.4, HAT_DARK)
-    return out
-
-
-def _round_brim(u, v, lit, far):
-    """The top of the brim is the hat's colour, its edge and its underside
-    darker."""
-    out = O.fill(HAT, len(u))
-    O.put(out, v > 1.5, HAT_DARK)
-    return out
-
-
-def _round_hat_part() -> O.Part:
-    crown = O.loft([O.Ring(-7.0, 0.0, 0.4, 8.2, 8.0), O.Ring(-11.8, 0.0, 0.4, 8.0, 7.8), O.Ring(-15.4, 0.0, 0.3, 7.4, 7.2),
-                    O.Ring(-16.4, 0.0, 0.2, 6.6, 6.0, lift=1.2), O.Ring(-15.4, 0.0, 0.2, 0.0, 0.0)], _round_hat)
-    brim = O.loft([O.Ring(-7.4, 0.0, 0.4, 8.0, 7.8, v=0.0), O.Ring(-7.2, 0.0, 0.8, 12.8, 13.0, droop=1.0, v=1.0),
-                   O.Ring(-6.4, 0.0, 0.8, 12.8, 13.0, droop=1.0, v=2.0), O.Ring(-6.6, 0.0, 0.4, 8.0, 7.8, v=3.0)], _round_brim)
-    crease = O.curve([(0.0, -16.3, 5.6), (0.0, -15.6, 2.0), (0.0, -15.6, -1.6), (0.0, -16.3, -5.4)], HAT_DARK, 0.7)
-    return O.Part("hat", [crown.moved(HEAD), brim.moved(HEAD)], [crease.moved(HEAD)], base=HAT,
-                  outline=1.2, shade=0.35, shade_colour=HAT_DARK, anchor=(HEAD[0], HEAD[1] - 10.0, HEAD[2]))
-
-
-def _round_trunk() -> O.Part:
-    jacket = O.loft([O.Ring(TOP - 0.5, 0.0, 0.3, 4.4, 3.6), O.Ring(-35.0, 0.0, 0.4, 9.0, 6.0), O.Ring(-31.0, 0.0, 0.5, 9.6, 6.6),
-                     O.Ring(-24.0, 0.0, 0.6, 9.8, 6.8), O.Ring(-14.0, 0.0, 0.5, 9.6, 6.4), O.Ring(-6.0, 0.0, 0.3, 9.6, 6.2),
-                     O.Ring(0.0, 0.0, 0.0, 9.8, 6.4), O.Ring(9.5, 0.0, 0.0, 10.3, 6.8)], _round_jacket, cols=64)
-    suit = O.flat(SUIT, shade=SUIT_DARK, at=-0.45)
-    collar = O.loft([O.Ring(TOP - 2.6, 0.0, 0.6, 2.9, 2.7), O.Ring(TOP - 0.2, 0.0, 0.5, 3.4, 3.2), O.Ring(TOP + 1.2, 0.0, 0.8, 3.6, 3.6, droop=0.8)],
-                    O.flat(SHIRT, shade=(214, 214, 220, 255), at=-0.4))
-    return O.Part("trunk", [jacket, O.ellipsoid((-7.0, -31.2, 0.4), (4.8, 5.2, 4.8), suit), O.ellipsoid((7.0, -31.2, 0.4), (4.8, 5.2, 4.8), suit), collar],
-                  base=SUIT, shade_colour=SUIT_DARK, anchor=TRUNK)
+#: His suit: the jacket open on the waistcoat, lapels, the shirt and the tie
+#: under the wing collar, three buttons, the watch chain from pocket to
+#: pocket, a seam down the back, a pocket each side.
+SUIT_3D = W.Trunk(
+    rings=[O.Ring(TOP - 0.5, 0.0, 0.3, 4.4, 3.6), O.Ring(-35.0, 0.0, 0.4, 9.0, 6.0), O.Ring(-31.0, 0.0, 0.5, 9.6, 6.6), O.Ring(-24.0, 0.0, 0.6, 9.8, 6.8),
+           O.Ring(-14.0, 0.0, 0.5, 9.6, 6.4), O.Ring(-6.0, 0.0, 0.3, 9.6, 6.2), O.Ring(0.0, 0.0, 0.0, 9.8, 6.4), O.Ring(9.5, 0.0, 0.0, 10.3, 6.8)],
+    garment=W.Garment(SUIT, SUIT_DARK, radius=9.6, features=[
+        W.Opening(34.0, VEST, top=TOP + 1.0), W.Lapels(34.0, TOP, -20.0, 14.0, SUIT_LIGHT, line=SUIT_DARK), W.Neckline(TOP, -27.0, 20.0, SHIRT),
+        W.Buttons(0.0, -18.0, -6.0, 3, 0.8, SUIT_DARK), W.Swag(-25.0, 28.0, -7.6, (2.4, 2.0), CHAIN, CHAIN_DARK),
+        W.Strip(0.0, TOP, -23.6, 1.0, TIE, flare=0.2), W.Strip(0.0, TOP - 4.0, TOP + 2.2, 1.2, mix(TIE, INK, 0.3)),
+        W.Down(180.0, -24.0, 20.0, SUIT_DARK), W.Across(45.0, 75.0, -3.2, SUIT_DARK, both=True), W.Shade()]),
+    shoulder=((-7.0, -31.2, 0.4), (4.8, 5.2, 4.8)),
+    collar=([O.Ring(TOP - 2.6, 0.0, 0.6, 2.9, 2.7), O.Ring(TOP - 0.2, 0.0, 0.5, 3.4, 3.2), O.Ring(TOP + 1.2, 0.0, 0.8, 3.6, 3.6, droop=0.8)],
+            W.Garment(SHIRT, (214, 214, 220, 255), features=[W.Shade(-0.4)])),
+)
+#: His summer hat: a crown pinched from front to back with a dark band, a
+#: brim that comes down a little in front, and the crease along its top.
+HAT_3D = W.Hat(
+    crown=[O.Ring(-7.0, 0.0, 0.4, 8.2, 8.0), O.Ring(-11.8, 0.0, 0.4, 8.0, 7.8), O.Ring(-15.4, 0.0, 0.3, 7.4, 7.2), O.Ring(-16.4, 0.0, 0.2, 6.6, 6.0, lift=1.2),
+           O.Ring(-15.4, 0.0, 0.2, 0.0, 0.0)],
+    brim=[O.Ring(-7.4, 0.0, 0.4, 8.0, 7.8, v=0.0), O.Ring(-7.2, 0.0, 0.8, 12.8, 13.0, droop=1.0, v=1.0), O.Ring(-6.4, 0.0, 0.8, 12.8, 13.0, droop=1.0, v=2.0),
+          O.Ring(-6.6, 0.0, 0.4, 8.0, 7.8, v=3.0)],
+    garment=W.Garment(HAT, HAT_DARK, features=[W.Band(-11.4, -8.6, BAND), W.Shade(-0.4)]), under=HAT_DARK,
+    lines=[O.curve([(0.0, -16.3, 5.6), (0.0, -15.6, 2.0), (0.0, -15.6, -1.6), (0.0, -16.3, -5.4)], HAT_DARK, 0.7)],
+)
 
 
 def round_figure(pose: str = "rest") -> O.Figure:
@@ -621,7 +582,7 @@ def round_figure(pose: str = "rest") -> O.Figure:
     pieces draw him: his head and trunk where he has them (three quarters,
     its mirror, the front), his sleeves, hands, neck, trousers and shoes in
     every view; the head and trunk in 3D draw the other views."""
-    head, hat, trunk = O.head_part(HEAD_3D, HEAD), _round_hat_part(), _round_trunk()
+    head, hat, trunk = O.head_part(HEAD_3D, HEAD), HAT_3D.part(HEAD), SUIT_3D.part(TRUNK)
     rest = X.full(X.rest)
     own_trunk = O.own_art("own_trunk", (0.0, 0.0, 0.0), lambda: X.torso(0, 0), X.front_torso, lead=0.4)
     own_head = O.own_art("own_head", HEAD, lambda: O.composed(K, X.head_layers(rest)), lambda: O.composed(K, X.front_head_layers(dict(R.FRONT_REST))),

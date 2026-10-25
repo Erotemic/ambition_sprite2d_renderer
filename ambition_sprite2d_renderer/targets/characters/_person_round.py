@@ -39,6 +39,8 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+from types import SimpleNamespace
+
 from ._ai_era_kit import Kit, RGBA
 
 Vec = Tuple[float, float, float]
@@ -230,10 +232,11 @@ class Ring:
     v: Optional[float] = None
 
 
-def loft(rings: Sequence[Ring], paint: Paint, cols: int = 48) -> Surface:
+def loft(rings: Sequence[Ring], paint: Paint, cols: int = 48, turns: Tuple[float, float] = (-180.0, 180.0)) -> Surface:
     """The surface through ``rings``, in order. A ring of no size closes it
-    (a cap, or the point of a beard)."""
-    u = np.linspace(-180.0, 180.0, cols + 1)
+    (a cap, or the point of a beard). ``turns``: the part of each ring it
+    goes round, in degrees (a cloak goes round the back only)."""
+    u = np.linspace(turns[0], turns[1], cols + 1)
     ur = np.radians(u)
     pts, uv = [], []
     for r in rings:
@@ -514,7 +517,7 @@ class Head3D:
     skull: Tuple[Vec, Vec]
     jaw: Tuple[Vec, Vec]
     nose: Tuple[Vec, Vec]
-    ear: Tuple[Vec, Vec]
+    ear: Optional[Tuple[Vec, Vec]]
     eye: Tuple[float, float]
     eye_size: float = 1.0
     ink: RGBA = (28, 24, 32, 255)
@@ -563,9 +566,10 @@ def head_part(h: Head3D, at: Vec, name: str = "head") -> Part:
     if h.nose_tip is not None:
         surfaces.append(ellipsoid(h.nose_tip[0], h.nose_tip[1], flat_skin))
     surfaces += [ellipsoid(c, r, flat(h.hair_colour, shade=hair_shade, at=-0.6)) for c, r in h.volumes]
-    (el, ey_, ez), er = h.ear
-    for side in (-1.0, 1.0):
-        surfaces.append(ellipsoid((side * abs(el), ey_, ez), er, flat(h.skin, shade=h.shade)))
+    if h.ear is not None:
+        (el, ey_, ez), er = h.ear
+        for side in (-1.0, 1.0):
+            surfaces.append(ellipsoid((side * abs(el), ey_, ez), er, flat(h.skin, shade=h.shade)))
     if h.beard is not None:
         surfaces.append(loft(h.beard, beard))
     if h.moustache is not None:
@@ -591,11 +595,12 @@ def head_part(h: Head3D, at: Vec, name: str = "head") -> Part:
             lines.append(curve(brow, colour, weight))
         if g is not None:
             lines.append(_lens(lens, face, g, g.frame))
-            ear_top = (side * (abs(el) - 0.3), ey_ - 1.6, ez)
+            ear_top = (side * (skull_r[0] - 0.3), ev - 0.6, skull_c[2])
             lines.append(curve([lens + [side * g.size[0], -0.2, -0.4], (side * (skull_r[0] - 0.4), ev - 0.3, lens[2] - 4.0), ear_top], g.frame, 0.6))
-        ear = np.array([side * (abs(el) + er[0]), ey_, ez])
-        lines.append(circle(ear, (side, 0.0, 0.0), min(er[1], er[2]) * 0.85, (34, 22, 48, 255), 0.6, slack=0.6))
-        lines.append(curve([ear + [0.0, -1.4, 0.6], ear + [0.0, 0.0, -0.2], ear + [0.0, 1.4, 0.4]], h.deep, 0.45, slack=0.6))
+        if h.ear is not None:
+            ear = np.array([side * (abs(el) + er[0]), ey_, ez])
+            lines.append(circle(ear, (side, 0.0, 0.0), min(er[1], er[2]) * 0.85, (34, 22, 48, 255), 0.6, slack=0.6))
+            lines.append(curve([ear + [0.0, -1.4, 0.6], ear + [0.0, 0.0, -0.2], ear + [0.0, 1.4, 0.4]], h.deep, 0.45, slack=0.6))
     if h.glasses is not None:
         left = on_ellipsoid(skull_c, skull_r, -eu, ev)[0] + [0.0, 0.0, 1.0]
         right = on_ellipsoid(skull_c, skull_r, eu, ev)[0] + [0.0, 0.0, 1.0]
@@ -646,6 +651,60 @@ def _seg_bones(K: Kit, tag: str, a: Tuple[float, float], b: Tuple[float, float],
         out.append((_between(a, b, t0), _between(a, b, t1),
                     lambda edge, length, w0=w0, w1=w1, colour=colour: bone(K, tag, length, w0, w1, colour, edge)))
     return out
+
+
+def person_joints(person, *, stagger: float = 0.0) -> SimpleNamespace:
+    """The joints of ``person`` standing at rest, in 3D, lifted from its
+    two views: its three-quarter view (``Build``, the feet of its rest pose)
+    says where each is drawn across, its front view (``front_span``, the feet
+    of ``FRONT_REST``) how far to the side, and ``lift`` how far forward.
+    ``stagger``: the near foot back and the far foot forward by this much, so
+    a side view shows both. ``wrist(near, l)`` lifts the rest pose's wrist,
+    put ``l`` to the side; ``frame(p)`` is a frame point in body space."""
+    from ._person_rig import FRONT_REST
+
+    b, U = person.b, person.U
+    sw, hw = person.front_span
+    rest = person.full(person.rest)
+    foot = hw + FRONT_REST["lf"][0] * U
+    up = b.hip_up - b.ankle_up
+    neck = (0.0, b.neck[1], lift(b.neck[0], 0.0))
+    head = (0.0, b.neck[1] + b.head_up[1], lift(b.neck[0] + b.head_up[0], 0.0))
+
+    def frame(p: Sequence[float]) -> Tuple[float, float]:
+        return (p[0] - person.cx, p[1] - person.ground + b.hip_up)
+
+    def wrist(near: bool, l: float) -> Vec:
+        x, y = frame(person.arm_joints(rest, near)[2])
+        return (l, y, lift(x, l))
+
+    return SimpleNamespace(
+        shoulders={"r": (-sw, b.near_shoulder[1], lift(b.near_shoulder[0], -sw)), "l": (sw, b.far_shoulder[1], lift(b.far_shoulder[0], sw))},
+        hips={"r": (-hw, 0.0, lift(b.near_hip[0], -hw)), "l": (hw, 0.0, lift(b.far_hip[0], hw))},
+        ankles={"r": (-foot, up, lift(rest["nf"][0] * U, -foot) - stagger), "l": (foot, up, lift(rest["ff"][0] * U, foot) + stagger)},
+        neck=neck, head=head, throat=tuple(np.asarray(head) + [0.0, 4.0, -0.4]), rest=rest, wrist=wrist, frame=frame)
+
+
+def own_layers(person, layers: Sequence[str], *, anim: str = "idle", lead: float = -12.0) -> Sprite:
+    """What a ``Person`` paints in its own ``layers`` (``back``: a cloak,
+    hair down the back, a staff across it) in the first frame of ``anim``,
+    in its three-quarter view only: these are seldom the same on both sides,
+    so a mirror would put them wrong. The pieces 3D places draw the other
+    views."""
+    K = person.K
+    count = {name: n for name, n, _ms in person.rows}[anim]
+
+    def draw(view: View, far: bool):
+        ctx = person.frame_context(anim, 0, count)
+        canvas = K.scratch()
+        home = K.home
+        for layer in layers:
+            for fn in person.layers[layer]:
+                for piece, at, name, degrees in fn(ctx):
+                    K.place(canvas, piece, (home[0] + at[0] - person.cx, home[1] + at[1] - person.ground + person.b.hip_up), name, degrees)
+        return K._cut(canvas), 0.0, False
+
+    return Sprite("own_" + "_".join(layers), (0.0, 0.0, 0.0), draw, when=near_turn(45.0), lead=lead)
 
 
 def person_arm(person, name: str, shoulder: Sequence[float], elbow: Sequence[float], wrist: Sequence[float], hand: str, *,
@@ -976,5 +1035,5 @@ def turnaround(K: Kit, figure: Figure, path: Path, *, title: str = "", own: Opti
     return path
 
 
-__all__ = ["not_in", "own_art", "own_turns", "person_arm", "person_leg", "person_neck", "shoes", "Drawn", "Glasses", "Head3D", "head_part", "place_bones", "composed", "near_turn", "lift", "Sprite", "facing", "Cheat", "both", "from_above", "profile_push", "Figure", "Line", "Paint", "Part", "Ring", "Surface", "VIEWS", "VIEW_BY_KEY", "View", "arc", "circle", "curve", "draw", "ellipsoid", "fill",
+__all__ = ["own_layers", "person_joints", "not_in", "own_art", "own_turns", "person_arm", "person_leg", "person_neck", "shoes", "Drawn", "Glasses", "Head3D", "head_part", "place_bones", "composed", "near_turn", "lift", "Sprite", "facing", "Cheat", "both", "from_above", "profile_push", "Figure", "Line", "Paint", "Part", "Ring", "Surface", "VIEWS", "VIEW_BY_KEY", "View", "arc", "circle", "curve", "draw", "ellipsoid", "fill",
            "flat", "limb", "loft", "on_ellipsoid", "put", "turnaround", "two_bone"]

@@ -1657,12 +1657,14 @@ class Person:
 
         return arm_points(True), arm_points(False)
 
-    def render_frame(self, anim: str, i: int, n: int) -> Image.Image:
-        if anim in self.front_poses:
-            return self.render_front(anim, i, n)
-        K, b, U = self.K, self.b, self.U
+    def frame_context(self, anim: str, i: int, n: int) -> SimpleNamespace:
+        """The ``ctx`` of a frame of a row that is not a front row: where its
+        joints, its head and its trunk are, in frame pixels, as the layers and
+        the effects read them (see the class). ``ctx.frame`` holds what
+        ``render_frame`` reads besides: the trunk's own lean and squash, the
+        joints of the arms and the legs, and the throat."""
+        b, U = self.b, self.U
         pose = self.full(self.poses[anim](i, n))
-        img = K.new_frame()
         rot = float(pose["rot"])  # type: ignore[arg-type]
         lean = float(pose["lean"])  # type: ignore[arg-type]
         hx, hy = pose["hip"]  # type: ignore[misc]
@@ -1705,11 +1707,24 @@ class Person:
         turn = lean * 0.35 + tilt + rot
         head = W(head_local)
         throat = turned(b.throat, lean * 0.35 + tilt)
-        ctx = SimpleNamespace(
+        return SimpleNamespace(
             anim=anim, i=i, n=n, u=shot(i, n), phase=math.tau * i / max(1, n), pose=pose, hip=W(hip), neck=W(neck_local), head=head, hand=n_wr,
             far_hand=f_wr, elbow=n_el, far_elbow=f_el, shoulder=n_sh, far_shoulder=f_sh, foot=n_an, far_foot=f_an, knee=n_kn, far_knee=f_kn,
             lean=lean + rot, turn=turn, rot=rot, trunk=lambda x, y: W(trunk_local(x, y)), ground=self.ground, person=self,
+            frame=SimpleNamespace(lean=lean, sq=sq, arms=((n_sh, n_el, n_wr), (f_sh, f_el, f_wr)), legs=((n_hp, n_kn, n_an, n_toe), (f_hp, f_kn, f_an, f_toe)),
+                                  throat=throat),
         )
+
+    def render_frame(self, anim: str, i: int, n: int) -> Image.Image:
+        if anim in self.front_poses:
+            return self.render_front(anim, i, n)
+        K, U = self.K, self.U
+        ctx = self.frame_context(anim, i, n)
+        pose, rot, head, turn = ctx.pose, ctx.rot, ctx.head, ctx.turn
+        lean, sq, throat = ctx.frame.lean, ctx.frame.sq, ctx.frame.throat
+        (n_sh, n_el, n_wr), (f_sh, f_el, f_wr) = ctx.frame.arms
+        (n_hp, n_kn, n_an, n_toe), (f_hp, f_kn, f_an, f_toe) = ctx.frame.legs
+        img = K.new_frame()
 
         def stamps(layer: str) -> None:
             for fn in self.layers[layer]:

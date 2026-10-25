@@ -759,6 +759,111 @@ render_frame = X.render_frame
 ROWS = X.rows
 _render_frame = X.render_frame
 render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
+
+
+# ---- In the round (``_person_round``, ``_round_wear``) ------------------------
+#
+# Her pieces placed in 3D. Her own art draws her where she has it: her head
+# and robe in her three-quarter view (and its mirror; her hair is parted at
+# the side, so the left one shows the part on the other side) and in her front
+# view, her cloak, hair and staff in her three-quarter view; her sleeves,
+# hands, boots and neck in every view. What 3D draws is data: a head, a robe,
+# a cloak, the circlet and the antlers. Her rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+J = O.person_joints(X, stagger=2.0)
+#: Her near hand flat at her belt, her far hand at her side.
+HANDS = {"r": (J.wrist(True, -4.4), (-1.0, 0.3, -0.6)), "l": (J.wrist(False, 8.6), (1.0, 0.0, -0.2))}
+
+HEAD_3D = O.Head3D(
+    skin=SKIN, shade=SKIN_SHADE, deep=SKIN_DEEP,
+    skull=((0.0, -2.2, 0.0), (7.8, 8.6, 7.8)), jaw=((0.0, 3.6, 3.1), (6.4, 6.8, 3.6)), nose=((0.0, 2.0, 8.0), (1.0, 2.2, 2.2)), ear=None,
+    eye=(24.0, -0.3), eye_size=0.95, ink=INK, lid=INK, brow=(HAIR, None, -4.2, 0.9),
+    # Her hair: all of her head but her face, long down her back and to her
+    # shoulders each side of her face.
+    hair=lambda u, v: (v < -8.2 + 1.4 * (u / 60.0) ** 2) | (np.abs(u) > 56.0),
+    hair_colour=HAIR, hair_shade=mix(HAIR, INK, 0.4), volumes=[((0.0, 3.0, -2.6), (9.0, 12.0, 8.4)), ((0.0, -6.4, -0.8), (8.6, 5.6, 8.4))],
+    lines=[O.curve([(-2.4, 7.4, 6.0), (0.0, 7.9, 6.3), (2.4, 7.4, 6.0)], (196, 96, 100, 255), 1.2),
+           O.curve([(-2.4, 7.4, 6.1), (0.0, 7.7, 6.4), (2.4, 7.4, 6.1)], (128, 54, 62, 255), 0.6),
+           O.curve([(0.0, -12.6, 2.4), (0.0, -9.0, 5.4)], (30, 26, 34, 255), 0.5)]
+    + [O.curve([O.on_ellipsoid((0.0, 3.0, -2.6), (9.0, 12.0, 8.4), u + 6.0 * t, -2.0 + 12.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_LIGHT, 0.7)
+       for u in (-150.0, -110.0, -80.0, 80.0, 110.0, 150.0)],
+)
+
+#: Her robe: to her ankles, open at the neck, light on her bust and in shade
+#: under it, belted with the record for its buckle, folds down the skirt, and
+#: its hem cut like leaves.
+ROBE = W.Trunk(
+    rings=[O.Ring(TOP, 0.0, 0.6, 3.6, 3.2), O.Ring(-33.4, 0.0, 0.6, 7.6, 6.1), O.Ring(-24.5, 0.0, 1.4, 9.0, 8.0), O.Ring(-13.0, 0.0, 0.2, 6.4, 6.0),
+           O.Ring(0.0, 0.0, 0.0, 8.6, 7.6), O.Ring(20.0, 0.0, 0.0, 10.4, 9.0), O.Ring(FRONT_HEM, 0.0, 0.0, 12.4, 10.3)],
+    garment=W.Garment(COAT, COAT_DARK, radius=8.6, features=[
+        W.Neckline(TOP - 1.0, TOP + 7.0, 24.0, SKIN_SHADE),
+        W.Glow(28.0, TOP + 12.7, 2.6, 2.0, mix(COAT, COAT_LIGHT, 0.45), both=True),
+        W.Across(-70.0, 70.0, TOP + 18.2, COAT_DARK, width=1.2),
+        W.Band(-14.4, -11.2, SCARF), W.Dot(0.0, -12.8, 2.6, GOLD, ring=GOLD_DARK), W.Strip(0.0, -10.4, 2.0, 1.0, SCARF),
+        W.Down(20.0, -9.0, FRONT_HEM - 7.0, COAT_DARK, spread=8.0), W.Down(-20.0, -9.0, FRONT_HEM - 7.0, COAT_DARK, spread=8.0),
+        W.Down(55.0, -9.0, FRONT_HEM - 7.0, COAT_DARK, spread=10.0), W.Down(-55.0, -9.0, FRONT_HEM - 7.0, COAT_DARK, spread=10.0),
+        W.PointedHem(FRONT_HEM - 7.0, FRONT_HEM - 0.6, 3.4, COAT_LIGHT, under=COAT_DARK), W.Shade()]),
+    shoulder=((-6.0, -30.2, 0.4), (3.8, 4.2, 3.8)),
+)
+#: Her cloak, from her shoulders to her calves, round her back only, its hem
+#: cut like leaves.
+CLOAK_3D = W.Cloak(
+    rings=[O.Ring(-36.0, 0.0, -0.6, 6.8, 5.8), O.Ring(-31.0, 0.0, -1.0, 10.4, 8.4), O.Ring(-12.0, 0.0, -1.4, 10.8, 8.6), O.Ring(10.0, 0.0, -1.8, 11.6, 9.4),
+           O.Ring(30.0, 0.0, -2.2, 12.6, 10.2)],
+    garment=W.Garment(CLOAK, CLOAK_DARK, radius=10.0, features=[W.PointedHem(24.0, 30.0, 4.0, CLOAK_DARK), W.Down(160.0, -28.0, 24.0, CLOAK_DARK)]),
+    turns=(115.0, 245.0),
+)
+#: The circlet of leaves round her head, a gold leaf in front; her antlers.
+CIRCLET = W.Hat(crown=[O.Ring(-8.6, 0.0, 0.0, 8.5, 8.5), O.Ring(-6.2, 0.0, 0.0, 8.7, 8.7)], brim=None, under=LEAF_DARK,
+                garment=W.Garment(LEAF_DARK, LEAF_DARK, radius=8.6, features=[W.Glow(float(u), -7.4, 1.9, 1.3, LEAF) for u in range(-165, 180, 30)]
+                                  + [W.Dot(0.0, -7.3, 1.1, GOLD)]))
+#: Each antler is her front view's (across and up); its beam sweeps back and
+#: its tines go forward, so it branches from the side as well.
+ANTLERS = [[(s * 3.4, -8.0, 2.0), (s * 4.6, -13.6, 0.8), (s * 7.0, -18.0, -1.6)] for s in (-1.0, 1.0)] + \
+          [[(s * 4.6, -13.6, 0.8), (s * 1.6, -16.6, 3.6)] for s in (-1.0, 1.0)] + [[(s * 5.8, -15.8, -0.2), (s * 9.4, -15.4, 1.6)] for s in (-1.0, 1.0)]
+_BACK_SHOE = R.make_back_shoe(K, BOOT, BOOT_DARK, BUILD.ankle_up, wide=0.9)
+
+
+def round_figure() -> O.Figure:
+    """Anne Druid in the round, as she rests."""
+    head = np.asarray(J.head)
+    own_trunk = O.own_art("own_robe", (0.0, 0.0, 0.0), lambda: X.torso(0, 0), X.front_torso, lead=0.4)
+    own_head = O.own_art("own_head", J.head, lambda: O.composed(K, X.head_layers(J.rest)), lambda: O.composed(K, X.front_head_layers(dict(R.FRONT_REST))),
+                         lead=9.0)
+    own_back = O.own_layers(X, ["back"])
+    not_head, not_back = O.not_in(own_head.when), O.not_in(own_back.when)
+    trunk, head3d, cloak, circlet = ROBE.part(), O.head_part(HEAD_3D, J.head), CLOAK_3D.part(), CIRCLET.part(J.head)
+    trunk.when, head3d.when, circlet.when, cloak.when = O.not_in(own_trunk.when), not_head, not_head, not_back
+    hair = W.mane(K, [tuple(head + d) for d in ((0.0, -1.0, -7.4), (0.0, 5.0, -9.2), (0.0, 11.0, -10.2), (0.0, 17.0, -10.8), (0.0, 23.0, -11.2),
+                                               (0.0, 28.0, -11.4))], 5.4, HAIR, HAIR_LIGHT, back_width=12.0, lead=1.0)
+    hair.when = not_back
+    parts = [trunk, head3d, cloak, circlet, own_trunk, own_head, own_back, hair,
+             W.prop(K, "staff", (-7.4, 14.0, -12.0), (11.0, -44.0, -10.0), _staff, when=not_back),
+             W.strokes(K, "antlers", [[tuple(head + p) for p in ln] for ln in ANTLERS], 1.8, ANTLER, ANTLER_DARK, tuple(head + (0.0, -12.0, 2.0)), lead=2.0,
+                       when=not_head),
+             O.person_neck(X, J.neck, J.throat)]
+    for side, hand in zip(("r", "l"), ("nh", "fh")):
+        target, pole = HANDS[side]
+        elbow, wrist = O.two_bone(J.shoulders[side], target, BUILD.upper, BUILD.fore, pole)
+        knee, ankle = O.two_bone(J.hips[side], J.ankles[side], BUILD.thigh, BUILD.shin, (0.0, 0.0, 1.0))
+        parts += [O.person_arm(X, f"{side}_arm", J.shoulders[side], elbow, wrist, str(J.rest[hand])), O.person_leg(X, f"{side}_leg", J.hips[side], knee, ankle),
+                  O.shoes(f"{side}_boot", ankle, X.shoe, X.front_shoe, _BACK_SHOE)]
+    return O.Figure(parts, X.frame, X.cx, X.ground, BUILD.hip_up, trunk=(0.0, -20.0, 0.4))
+
+
+def render_turnaround(path):
+    """Her eight views, with her own art (three quarters and the front) under
+    the views it draws."""
+    rows = {name: n for name, n, _ms in X.rows}
+    own = {"front_3q": X.render_frame("idle", 0, rows["idle"]), "front": X.render_frame("front", 0, rows["front"])}
+    return O.turnaround(K, round_figure(), path, title=f"{DISPLAY_NAME} in the round", own=own)
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 
