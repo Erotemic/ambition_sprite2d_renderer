@@ -2170,17 +2170,16 @@ def headless(i: int, n: int):
     return on_the_floor(dict(PRONE, headless=1.0), 0, 1)
 
 
-X.rows = [("idle", 16, 90), ("walk", 16, 75), ("prowl", 16, 52), ("run", 12, 57), ("jump", 6, 100), ("fall", 6, 100), ("land_hard", 8, 70),
-          ("rake_tell", 12, 55), ("rake_a", 6, 50), ("rake_b", 6, 50), ("rake_c", 8, 55), ("rake_recover", 10, 50),
-          ("hammer_tell", 14, 70), ("hammer_slam", 6, 50), ("hammer_stuck", 8, 80), ("hammer_pull", 10, 40),
-          ("lunge_tell", 12, 60), ("lunge", 6, 60), ("lunge_skid", 12, 35),
-          ("bound_rise", 6, 60), ("bound_wall", 4, 70), ("bound_dive", 4, 60), ("winded", 12, 90),
-          ("howl_tell", 8, 100), ("howl", 12, 70), ("taunt", 12, 100),
-          ("galvanize_tell", 10, 60), ("galvanize", 8, 60), ("lash_tell", 8, 80), ("lash", 6, 60), ("flatline", 16, 110), ("recharge", 8, 50),
-          ("awaken", 14, 70), ("shock", 8, 50), ("hit", 6, 60), ("death", 28, 90),
-          ("throne_dead", 12, 120), ("throne_wake", 20, 85), ("serum_tell", 10, 80), ("serum_inject", 10, 80), ("serum_surge", 20, 80),
-          ("stab_tell", 8, 80), ("stab", 6, 60), ("stab_recover", 12, 55),
-          ("unsewn", 14, 80), ("headless", 8, 120), ("turn", 6, 40)]
+# Each row as long as before, many in more frames (Jon, 2026-10-24:
+# "Animations are not smooth enough"): his fight times his moves by them.
+X.rows = [("idle", 16, 90), ("walk", 16, 75), ("prowl", 16, 52), ("run", 16, 43), ("jump", 10, 60), ("fall", 10, 60),
+          ("land_hard", 8, 70), ("rake_tell", 12, 55), ("rake_a", 9, 33), ("rake_b", 9, 33), ("rake_c", 8, 55), ("rake_recover", 10, 50),
+          ("hammer_tell", 14, 70), ("hammer_slam", 9, 33), ("hammer_stuck", 8, 80), ("hammer_pull", 10, 40), ("lunge_tell", 12, 60), ("lunge", 9, 40),
+          ("lunge_skid", 12, 35), ("bound_rise", 9, 40), ("bound_wall", 7, 40), ("bound_dive", 8, 30), ("winded", 12, 90), ("howl_tell", 12, 67),
+          ("howl", 12, 70), ("taunt", 12, 100), ("galvanize_tell", 10, 60), ("galvanize", 12, 40), ("lash_tell", 12, 53), ("lash", 9, 40),
+          ("flatline", 16, 110), ("recharge", 12, 33), ("awaken", 14, 70), ("shock", 12, 33), ("hit", 9, 40), ("death", 28, 90),
+          ("throne_dead", 12, 120), ("throne_wake", 20, 85), ("serum_tell", 10, 80), ("serum_inject", 10, 80), ("serum_surge", 20, 80), ("stab_tell", 12, 53),
+          ("stab", 9, 40), ("stab_recover", 12, 55), ("unsewn", 14, 80), ("headless", 8, 120), ("turn", 8, 30)]
 
 # ---- What his blows do -------------------------------------------------------
 

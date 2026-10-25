@@ -20,8 +20,11 @@ The rows are the ones her visit plays: ``idle``, ``jump``, ``fall``,
 ``dash`` (she goes at it), three cuts that are one string (``slash``
 forward, ``slash_up`` up through it, ``cleave`` down on it), ``hang`` (she
 holds her line over her head; the engine draws the line), ``hit``,
-``death``, and the two poses of a blink: ``blink_out`` and ``blink_in``
-(she comes in low, in her smoke). The warp of a blink is the engine's.
+``death``, the two poses of a blink: ``blink_out`` and ``blink_in``
+(she comes in low, in her smoke), and ``cast`` (2026-10-24, Jon: "The ninja
+uses a spell to dispel the blue flames protecting the boss"): she makes the
+seal with her far hand, her talismans fan out of it, and she throws them.
+The warp of a blink is the engine's.
 
 She is a person of ``_person_rig``. Her trunk is a woman's
 (``make_figure``); the head, the clothes, the blade and how she stands are
@@ -247,7 +250,7 @@ X.collar = _scarf_wrap
 
 #: Where each row sends the ends of her scarf and the tail of her hair, and
 #: how much they wave: 90 hangs, 180 is out behind her, 270 is up.
-FLOW = {"dash": (188.0, 6.0), "jump": (128.0, 6.0), "fall": (236.0, 8.0), "slash": (166.0, 8.0), "slash_up": (120.0, 9.0), "cleave": (210.0, 9.0),
+FLOW = {"cast": (150.0, 7.0), "dash": (188.0, 6.0), "jump": (128.0, 6.0), "fall": (236.0, 8.0), "slash": (166.0, 8.0), "slash_up": (120.0, 9.0), "cleave": (210.0, 9.0),
         "hang": (112.0, 10.0), "hit": (30.0, 6.0), "blink_in": (204.0, 8.0), "blink_out": (136.0, 6.0)}
 
 
@@ -504,6 +507,22 @@ LOW = P(hip=(0.0, 14.0), lean=26.0, head=(1.0, 0.6, -14.0), na=(-12.0, 13.0), fa
         blade=172.0, hem=(3.0, 2.0))
 
 
+#: Her spell: the seal at her face, eyes shut, the blade down at her side;
+#: then her far arm flung out at it, and the talismans go.
+SEAL_UP = P(hip=(0.0, 3.0), lean=-2.0, head=(0.0, 0.2, 6.0), na=(4.0, 18.0), fa=(7.0, -6.0), fh="point", nf=(-9.0, 0.0, 0.0), ff=(9.0, 0.0, 0.0),
+            blade=100.0, eyes="closed")
+THROW = P(hip=(3.0, 3.0), lean=16.0, head=(1.0, 0.2, -6.0), na=(-6.0, 16.0), fa=(25.0, -3.0), fh="flat", nf=(-12.0, 0.0, 0.0), ff=(10.0, 0.0, 0.0),
+          blade=150.0, eyes="wide", hem=(3.0, 1.0))
+
+
+@X.row
+def cast(i: int, n: int):
+    _, s, _c = loop(i, n)
+    pose = X.keys(shot(i, n), [(0.0, X.full(P())), (0.2, SEAL_UP), (0.42, dict(SEAL_UP, head=(0.0, 0.4, 8.0))), (0.5, THROW), (0.8, THROW),
+                               (1.0, dict(THROW, lean=8.0, fa=(18.0, 2.0), eyes="open"))])
+    return dict(pose, hip=(pose["hip"][0], pose["hip"][1] + 0.4 * s))
+
+
 @X.row
 def blink_out(i: int, n: int):
     ready = X.full(P())
@@ -516,7 +535,7 @@ def blink_in(i: int, n: int):
 
 
 X.rows = [("idle", 8, 120), ("jump", 6, 95), ("fall", 6, 95), ("dash", 4, 60), ("slash", 8, 40), ("slash_up", 8, 40), ("cleave", 9, 46), ("hang", 8, 90),
-          ("hit", 5, 90), ("death", 8, 110), ("blink_out", 6, 62), ("blink_in", 6, 62)]
+          ("hit", 5, 90), ("death", 8, 110), ("blink_out", 6, 62), ("blink_in", 6, 62), ("cast", 16, 75)]
 
 # ---- What the blade does, and her smoke --------------------------------------
 
@@ -568,8 +587,50 @@ def _smoke(radius: float, alpha: int):
     return K.piece(("kagero_smoke", round(radius, 1), alpha), paint)
 
 
+def _slip(glow: int):
+    """One talisman: a white slip with its red seal; charged (``glow`` over
+    128), its edge is red. Along +y."""
+
+    def shape(d) -> None:
+        edge = SEAL if glow > 128 else OUTLINE
+        K.poly(d, [K.at(-1.8, 0.0), K.at(1.8, 0.0), K.at(1.8, 9.0), K.at(-1.8, 9.0)], PAPER, edge, 0.6)
+        K.line(d, [K.at(0.0, 1.4), K.at(0.0, 4.4)], SEAL, 0.8)
+        K.oval(d, K.at(0.0, 6.2), 0.9, 0.9, SEAL)
+
+    return K.piece(("kagero_slip", glow), shape)
+
+
+#: Her talismans in the seal: a fan over her far hand. Five of them.
+SPELL_SLIPS = 5
+
+
+def _spell(ctx) -> List[Stamp]:
+    """Her talismans: they fan out of her far hand in the seal and glow, and
+    at the throw they fly out ahead of her (the game carries them on to the
+    head)."""
+    u, hand = ctx.u, ctx.far_hand
+    out: List[Stamp] = []
+    if 0.12 <= u < 0.5:
+        f = min(1.0, (u - 0.12) / 0.2)
+        glow = int(255 * min(1.0, max(0.0, (u - 0.25) / 0.2)))
+        for k in range(SPELL_SLIPS):
+            a = -90.0 + (k - (SPELL_SLIPS - 1) / 2.0) * 26.0 * f
+            r = 5.0 + 9.0 * f
+            at = (hand[0] + r * math.cos(math.radians(a)), hand[1] + r * math.sin(math.radians(a)))
+            out.append((_slip(glow), pin(at), f"spell_{k}", a - 90.0))
+    elif 0.5 <= u < 0.7:
+        t = (u - 0.5) / 0.2
+        for k in range(SPELL_SLIPS):
+            spread = (k - (SPELL_SLIPS - 1) / 2.0) * 7.0 * (1.0 - 0.5 * t)
+            at = (hand[0] + 8.0 + 34.0 * t + 3.0 * k * t, hand[1] + spread - 4.0 * math.sin(math.pi * t))
+            out.append((_slip(220), pin(at), f"spell_{k}", -90.0 + spread * 2.0))
+    return out
+
+
 def _effects(ctx) -> List[Stamp]:
     out: List[Stamp] = []
+    if ctx.anim == "cast":
+        out += _spell(ctx)
     if ctx.anim in CUTS and ctx.i > 0:
         trail = _trail(ctx)
         if trail is not None:

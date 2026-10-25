@@ -10,8 +10,8 @@ neck pop, the head tears itself off the body, and the ghost fire of an
 inugami (the dog spirit of the old stories, made from a dog's severed head)
 catches in it. It is a hunting dog of the regime, set free (Jon, 2026-10-22:
 "it just doesn't have a strong boss identity"): it stalks you, it lunges, it
-pounces, its blue spirits run the floor at you as its pack, and the leash they
-kept it on is a ghost chain it cracks along the floor.
+pounces, it calls his lightning down on the floor, and the leash they kept
+it on is a ghost chain it cracks along the floor.
 
 The look. It is HIS head: the same skull, jaw, ears, eyes and brain in a jar
 (``wolfenstein.WolfHead``), drawn in the ink of a spirit (``SPIRIT``): a red
@@ -24,11 +24,18 @@ on the floor is his head again, in its own colours.
 It faces right. There is no drop shadow. The glow round it is part of the
 spirit, not a shadow on a floor.
 
+Its ward (Jon, 2026-10-24: "default inugami should not have ghost fire around
+its head, we should add them only during the chase where the wolf is
+effectively invincible"): the four blue hitodama circle it only in the
+``ward_`` rows, which the fight draws while the ward is lit (the chase). The
+ward kindles in ``ward_kindle``, Kagero's talismans hold it in ``ward_bound``,
+and it breaks in ``dispel``. His lightning is still in it: ``storm_tell``.
+
 Rows: the rise (the head comes off the body; it is his own head until the
 fire catches), the float, the drift and the hunt, its crash out of the arena,
 and a tell and a strike row for each move of its fight
 (``ambition_content_modules::inugami`` draws them by name). The chain's tip
-and the wisps of the pack are the game's (sparks and shots); a row draws the
+and the lightning's bolts are the game's (sparks and rays); a row draws the
 chain from the neck to the bottom of its frame.
 """
 
@@ -47,7 +54,7 @@ from . import _person_rig as R
 from . import wolfenstein as W
 
 TARGET_NAME = "wolfenstein_inugami"
-DISPLAY_NAME = "Inugami"
+DISPLAY_NAME = "Inugami Wolfenstein"
 
 #: The frame, in its own pixels. The head is drawn ``ZOOM`` frame pixels to a
 #: pixel of his head (his head kit draws it 1.2 to one of his 320 px frame).
@@ -198,6 +205,49 @@ def _hitodama(size: float):
     return K.piece(("hitodama", size), paint)
 
 
+def _arc(p0: Point, p1: Point, seed: int):
+    """His lightning from ``p0`` to ``p1`` (frame points): a jagged line,
+    blue-white, in a glow, about ``home`` at ``p0``: place it at ``p0``."""
+    p0 = (_r(p0[0], 2.0), _r(p0[1], 2.0))
+    p1 = (_r(p1[0], 2.0), _r(p1[1], 2.0))
+    seed = seed % 12
+
+    def paint(d) -> None:
+        pts = []
+        steps = 7
+        dx, dy = p1[0] - p0[0], p1[1] - p0[1]
+        length = max(1.0, math.hypot(dx, dy))
+        nx, ny = -dy / length, dx / length
+        for k in range(steps + 1):
+            t = k / steps
+            off = 0.0 if k in (0, steps) else 7.0 * math.sin(seed * 1.7 + k * 2.9)
+            pts.append((dx * t + nx * off, dy * t + ny * off))
+        K.line(d, [K.at(*q) for q in pts], W.ARC_GLOW[:3] + (150,), 5.0)
+        K.line(d, [K.at(*q) for q in pts], W.ARC_CORE, 1.8)
+
+    return K.piece(("arc", p0, p1, seed), paint)
+
+
+def _ofuda(left: float):
+    """Kagero's paper talisman, stuck on it: a white slip with a red seal,
+    along +y. ``left`` (0-1) is how much is not yet burnt away."""
+    left = _r(left, 0.125)
+
+    def paint(d) -> None:
+        tall = 22.0 * left
+        if tall < 1.0:
+            return
+        K.poly(d, [K.at(-4.0, 0.0), K.at(4.0, 0.0), K.at(4.0, tall), K.at(-4.0, tall)], (244, 240, 228, 255), INK, 1.0)
+        if tall > 8.0:
+            K.line(d, [K.at(0.0, 2.5), K.at(0.0, min(tall - 2.0, 10.0))], (196, 36, 42, 255), 1.6)
+        if tall > 14.0:
+            K.oval(d, K.at(0.0, 15.0), 2.0, 2.0, (196, 36, 42, 255))
+        if left < 1.0:
+            K.line(d, [K.at(-4.0, tall), K.at(4.0, tall)], FIRE_MID, 2.0)
+
+    return K.piece(("ofuda", left), paint)
+
+
 def _glow(radius: float):
     """The cold light round the spirit: rings that fade outward."""
     radius = _r(radius, 2.0)
@@ -315,10 +365,6 @@ SPENT = P(at=(0.0, 10.0), rot=16.0, sq=0.95, mouth="loll", eyes="heavy", ears=-3
 HUNT = P(at=(4.0, 6.0), rot=12.0, sq=0.97, mouth="open", eyes="pin", ears=-42.0, look=(1.0, 0.2), flame=1.6, trail=178.0)
 #: Its crash out of the arena: jaws first at the wall, everything flat back.
 CRASH = P(at=(12.0, 0.0), rot=4.0, sq=0.92, mouth="big", eyes="pin", ears=-46.0, brows=1.0, look=(1.0, 0.0), flame=1.9, trail=180.0)
-#: THE PACK: chin down, it growls its spirits down to the floor; then it
-#: barks one out at a time.
-GROWL = P(at=(-4.0, 8.0), rot=14.0, sq=0.98, mouth="grit", eyes="pin", ears=-30.0, look=(1.0, 0.5), flame=1.2, trail=120.0)
-BARK = P(at=(8.0, 4.0), rot=2.0, sq=1.03, mouth="big", eyes="pin", ears=-38.0, look=(1.0, 0.3), flame=1.5, trail=170.0)
 #: THE LEASH: it rears and strains at its neck, the stitches burning.
 STRAIN = P(at=(-8.0, -4.0), rot=-22.0, sq=1.03, mouth="grit", eyes="pin", ears=-20.0, brows=1.0, look=(1.0, -0.2), flame=1.4, trail=100.0)
 #: It throws its head round and the chain with it.
@@ -326,6 +372,11 @@ WHIP_BACK = P(at=(-10.0, -2.0), rot=-30.0, sq=1.04, mouth="gape", eyes="pin", ea
 WHIP_THROUGH = P(at=(12.0, 4.0), rot=28.0, sq=0.95, mouth="big", eyes="pin", ears=-40.0, look=(1.0, 0.4), flame=1.7, trail=190.0)
 #: The chain fallen slack, it pants: chin low, tongue out.
 SLACK = P(at=(0.0, 8.0), rot=10.0, sq=0.97, mouth="loll", eyes="heavy", ears=-10.0, brows=1.0, look=(0.6, 0.4), flame=0.7, trail=230.0)
+#: THE STORM: head back to the vault, jaws open, eyes rolled up; his
+#: lightning crawls over it.
+STORM_UP = P(at=(-4.0, -2.0), rot=-34.0, sq=1.04, mouth="big", eyes="roll", ears=-26.0, brows=1.0, look=(0.4, -1.0), flame=1.3, trail=110.0)
+#: Held by her talismans: it strains against them, its fire beaten low.
+BOUND = P(at=(-2.0, 2.0), rot=-8.0, sq=0.97, mouth="grit", eyes="wince", ears=-40.0, brows=1.0, look=(0.0, 0.0), flame=0.8, trail=150.0)
 #: Struck.
 STRUCK = P(at=(-6.0, -2.0), rot=-14.0, mouth="big", eyes="wince", ears=-20.0, brows=1.0, flame=1.2, trail=140.0)
 
@@ -339,9 +390,31 @@ def _jitter(i: int, amp: float, seed: float = 0.0) -> float:
     return amp * math.sin(i * 7.3 + seed * 3.1)
 
 
+#: The rows the fight draws while its ward is lit: each is its plain row
+#: with the hitodama round it.
+WARD_OF = {f"ward_{name}": name for name in ("idle", "hunt", "crash", "howl", "bite_tell", "bite", "bite_miss")}
+
+
 def _pose(anim: str, i: int, n: int) -> Pose:
+    if anim in WARD_OF:
+        return _pose(WARD_OF[anim], i, n)
     u = R.shot(i, n)
     _ph, s, c = R.loop(i, n)
+    if anim == "storm_tell":
+        pose = keys(u, [(0.0, FLOAT), (0.4, HOWL_DRAW, "out"), (0.6, STORM_UP, "snap"), (1.0, STORM_UP, "hold")])
+        return dict(pose, rot=float(pose["rot"]) + (_jitter(i, 2.5) if u > 0.6 else 0.0))  # type: ignore[arg-type]
+    if anim == "ward_kindle":
+        # It howls as the blue fire catches round it.
+        pose = keys(u, [(0.0, FLOAT), (0.2, HOWL_DRAW, "out"), (0.35, HOWL, "snap"), (0.85, HOWL, "hold"), (1.0, dict(HOWL, rot=-30.0))])
+        return dict(pose, rot=float(pose["rot"]) + (_jitter(i, 2.0) if 0.35 <= u < 0.85 else 0.0))  # type: ignore[arg-type]
+    if anim == "ward_bound":
+        # It strains against the talismans: a shake, side to side.
+        return dict(BOUND, rot=-8.0 + 6.0 * s, at=(2.0 * c, 2.0 + 1.5 * abs(s)), mouth="grit" if i % 4 < 2 else "big")
+    if anim == "dispel":
+        # The ward breaks: it is thrown back, then shakes itself and faces you.
+        pose = keys(u, [(0.0, BOUND), (0.15, dict(STRUCK, rot=-24.0, at=(-10.0, -4.0)), "snap"), (0.45, STRUCK, "back"), (0.7, DAZED, "io"),
+                        (1.0, FLOAT, "out")])
+        return dict(pose, rot=float(pose["rot"]) + (8.0 * math.sin(i * 2.6) if 0.5 <= u < 0.8 else 0.0))  # type: ignore[arg-type]
     if anim == "idle":
         pose = keys(R.cycle(i, n), [(0.0, FLOAT), (0.5, FLOAT_OPEN), (1.0, FLOAT)])
         return dict(pose, at=(pose["at"][0], pose["at"][1] + 3.0 * s), rot=2.0 * c, ears=float(pose["ears"]) + 4.0 * c)  # type: ignore[index]
@@ -385,13 +458,6 @@ def _pose(anim: str, i: int, n: int) -> Pose:
         return dict(pose, mouth="open" if i % 4 < 2 else "big", ears=-42.0 + 4.0 * abs(s))
     if anim == "crash":
         return dict(CRASH, rot=4.0 + _jitter(i, 2.0), at=(12.0 + _jitter(i, 1.5, 1.0), 0.0))
-    if anim == "pack_tell":
-        # Chin down, it growls: a shiver, its spirits sinking to the floor.
-        pose = keys(u, [(0.0, FLOAT), (0.35, GROWL, "out"), (1.0, dict(GROWL, at=(-4.0, 10.0), rot=18.0))])
-        return dict(pose, rot=float(pose["rot"]) + (_jitter(i, 1.6) if u > 0.35 else 0.0))  # type: ignore[arg-type]
-    if anim == "pack":
-        # One bark: a wisp goes. The fight loops it, a bark a wisp.
-        return keys(u, [(0.0, GROWL), (0.3, BARK, "snap"), (0.6, BARK, "hold"), (1.0, GROWL, "io")])
     if anim == "leash_tell":
         # It rears and strains: the stitches burn, the chain unrolls.
         pose = keys(u, [(0.0, FLOAT), (0.4, STRAIN, "out"), (0.8, dict(STRAIN, rot=-26.0)), (1.0, WHIP_BACK, "in")])
@@ -434,31 +500,39 @@ def _pose(anim: str, i: int, n: int) -> Pose:
 
 #: Rows: name, frames, milliseconds a frame. The fight draws them by name.
 ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 16, 70), ("drift", 8, 80), ("rise", 22, 80), ("hit", 6, 60), ("death", 26, 90),
-    ("bite_tell", 8, 70), ("bite", 8, 50), ("bite_miss", 12, 70),
-    ("dive_tell", 8, 80), ("dive", 4, 50), ("buried", 12, 70), ("pull_free", 6, 70),
-    ("howl_tell", 6, 80), ("howl", 16, 55),
-    ("hunt", 8, 70), ("crash", 4, 50),
-    ("pack_tell", 10, 80), ("pack", 7, 50),
-    ("leash_tell", 10, 80), ("leash_whip", 10, 60), ("leash_slack", 10, 100),
-    ("gutter", 10, 80), ("guttered", 8, 120), ("rekindle", 6, 60),
+    # Each row as long as it was, in more frames (Jon, 2026-10-24:
+    # "Animations are not smooth enough"): the fight times its moves by them.
+    ("idle", 24, 47), ("drift", 12, 53), ("rise", 30, 59), ("hit", 9, 40), ("death", 34, 69),
+    ("bite_tell", 12, 47), ("bite", 12, 33), ("bite_miss", 18, 47),
+    ("dive_tell", 12, 53), ("dive", 8, 25), ("buried", 16, 52), ("pull_free", 10, 42),
+    ("howl_tell", 10, 48), ("howl", 20, 44), ("storm_tell", 14, 57),
+    ("hunt", 16, 35), ("crash", 8, 25),
+    ("leash_tell", 14, 57), ("leash_whip", 14, 43), ("leash_slack", 14, 71),
+    ("gutter", 14, 57), ("guttered", 12, 80), ("rekindle", 9, 40),
+    # The ward: it kindles, the rows of the chase with the hitodama round it,
+    # her spell holds it, and it breaks.
+    ("ward_kindle", 12, 75), ("ward_idle", 16, 70), ("ward_hunt", 16, 35), ("ward_crash", 8, 25), ("ward_howl", 20, 44),
+    ("ward_bite_tell", 12, 47), ("ward_bite", 12, 33), ("ward_bite_miss", 18, 47), ("ward_bound", 10, 60), ("dispel", 12, 75),
     # Nothing: it is still his head on his body (before it tears off).
     ("unseen", 1, 100),
 ]
 
 # ---- The frame -----------------------------------------------------------------
 
-#: The blue spirits that circle it always (Jon, 2026-10-20: "the Japanese
-#: ghost spirits around him to be blue"): how many, their ring (frame pixels,
-#: a tilted ellipse: the far half of it is behind the head), and how many
-#: turns a row's frames make (a looping row comes back to where it began).
+#: The blue spirits of its ward (Jon, 2026-10-20: "the Japanese ghost
+#: spirits around him to be blue"): how many, their ring (frame pixels, a
+#: tilted ellipse: the far half of it is behind the head). They turn at
+#: `SPIRIT_TURN_S` a turn, by the row's own time, so a looping row comes back
+#: to where it began only when its length is a whole number of turns.
 SPIRITS = 4
 SPIRIT_RING = (104.0, 40.0)
 SPIRIT_TILT = -12.0
-#: Rows in which the spirits are not circling: while they sink to the floor
-#: as its pack, and while they run it.
-NO_SPIRITS = ("pack_tell", "pack")
-
+#: How long the ward's spirits take to go round once, s.
+SPIRIT_TURN_S = 1.12
+#: The rows the ward's spirits circle in.
+WARD_ROWS = tuple(WARD_OF) + ("ward_kindle", "ward_bound", "dispel")
+#: Each row's frames and milliseconds, by name.
+ROW_MS = {name: (frames, ms) for name, frames, ms in ROWS}
 #: Where the leash goes in its rows: the chain from its neck (frame pixels
 #: long; the world's chain is longer, and its tip is the game's sparks), how
 #: much of it is drawn, and how far its end bends, by row and ``u``.
@@ -505,51 +579,68 @@ def _licks(img: Image.Image, pose: Pose, i: int) -> None:
 
 
 def _spirits(img: Image.Image, anim: str, pose: Pose, i: int, n: int, behind: bool) -> None:
-    """The blue spirits circling it: the half of the ring behind the head
-    (``behind``) or in front of it."""
-    if anim in NO_SPIRITS or float(pose["spirit"]) < 0.5 or float(pose["flame"]) < 0.3:  # type: ignore[arg-type]
+    """The blue spirits of its ward circling it: the half of the ring behind
+    the head (``behind``) or in front of it. In ``ward_kindle`` they catch one
+    by one, in ``ward_bound`` the talismans pull them in tight, and in
+    ``dispel`` they are blown out of the ring and go out."""
+    if anim not in WARD_ROWS or float(pose["spirit"]) < 0.5:  # type: ignore[arg-type]
         return
+    u = R.shot(i, n)
     centre = _head_point(pose, (2.0, -8.0))
     rx, ry = SPIRIT_RING
-    turn = math.tau * i / max(1, n)
+    frames, ms = ROW_MS.get(anim, (n, 70))
+    loops = anim in ("ward_idle", "ward_hunt", "ward_crash", "ward_bound")
+    # A looping row makes whole turns, so it loops without a jump.
+    turns = max(1, round(frames * ms / 1000.0 / SPIRIT_TURN_S)) if loops else frames * ms / 1000.0 / SPIRIT_TURN_S
+    turn = math.tau * turns * i / max(1, n)
     tilt = math.radians(SPIRIT_TILT)
     for k in range(SPIRITS):
         a = turn + math.tau * k / SPIRITS
         if (math.sin(a) < 0.0) != behind:
             continue
-        x, y = rx * math.cos(a), ry * math.sin(a)
+        grow, out = 1.0, 1.0
+        if anim == "ward_kindle":
+            grow = min(1.0, max(0.0, (u - 0.2 - 0.12 * k) / 0.2))
+            if grow <= 0.0:
+                continue
+        if anim == "ward_bound":
+            out = 0.7
+        if anim == "dispel":
+            out = 1.0 + 1.6 * u
+            grow = max(0.0, 1.0 - u * 1.3)
+            if grow <= 0.05:
+                continue
+        x, y = rx * out * math.cos(a), ry * out * math.sin(a)
         at = (centre[0] + x * math.cos(tilt) - y * math.sin(tilt), centre[1] + x * math.sin(tilt) + y * math.cos(tilt))
-        # It goes round the ring: its tail points back along it.
         dx, dy = -rx * math.sin(a), ry * math.cos(a)
         heading = math.degrees(math.atan2(dx * math.sin(tilt) + dy * math.cos(tilt), dx * math.cos(tilt) - dy * math.sin(tilt)))
-        # Nearer is bigger.
-        size = 9.0 + 2.0 * math.sin(a) + 0.8 * _flicker(i, k)
+        size = (9.0 + 2.0 * math.sin(a) + 0.8 * _flicker(i, k)) * (0.35 + 0.65 * grow)
         K.place(img, _hitodama(size), at, f"spirit_{k}", heading)
 
 
 def _effects_over(img: Image.Image, anim: str, pose: Pose, i: int, n: int) -> None:
-    """What the moves throw: the spirits sinking as the pack, the howl's
-    rings, the stitches burning, the fire catching."""
+    """What the moves throw: his lightning over it, her talismans on it,
+    the howl's rings, the stitches burning, the fire catching."""
     u = R.shot(i, n)
     centre = _head_point(pose, (2.0, -6.0))
-    if anim == "pack_tell":
-        # Its circling spirits sink round it to the floor, and swell.
-        rx, ry = SPIRIT_RING
-        for k in range(SPIRITS):
-            a = math.tau * k / SPIRITS + 0.6
-            start = (centre[0] + rx * math.cos(a), centre[1] + ry * math.sin(a))
-            floor = (centre[0] + (k - 1.5) * 44.0, FRAME_SIZE[1] - 18.0)
-            f = min(1.0, u / 0.8)
-            f = f * f * (3.0 - 2.0 * f)
-            at = (start[0] + (floor[0] - start[0]) * f, start[1] + (floor[1] - start[1]) * f)
-            K.place(img, _hitodama(9.0 + 3.0 * f + 0.6 * _flicker(i, k)), at, f"pack_{k}", 180.0 if k < 2 else 0.0)
-    if anim == "pack":
-        # A wisp drops from its jaws to the floor at each bark.
-        mouth = _head_point(pose, (18.0, 6.0))
-        if u >= 0.3:
-            t = (u - 0.3) / 0.7
-            at = (mouth[0] + 30.0 * t, mouth[1] + (FRAME_SIZE[1] - 18.0 - mouth[1]) * t)
-            K.place(img, _hitodama(10.0 + 2.0 * t), at, "pack_wisp", 90.0 - 70.0 * t)
+    if anim == "storm_tell" and u >= 0.3:
+        # His lightning crawls over it: from ear to ear, and down to its
+        # stitches.
+        for k, (p0, p1) in enumerate((((-12.0, -34.0), (12.0, -32.0)), ((-8.0, -30.0), (-4.0, 14.0)), ((8.0, -30.0), (6.0, 13.0)))):
+            if (i + k) % 3 != 2:
+                a0 = _head_point(pose, p0)
+                K.place(img, _arc(a0, _head_point(pose, p1), i * 7 + k), a0, f"arc_{k}")
+    if anim in ("ward_bound", "dispel"):
+        # Her talismans, stuck on its brow and its jaw; they burn away as
+        # the ward breaks.
+        burn = 0.0 if anim == "ward_bound" else min(1.0, u / 0.4)
+        if burn < 1.0:
+            for k, (p0, a) in enumerate((((-6.0, -30.0), -20.0), ((6.0, -26.0), 12.0), ((14.0, -6.0), 40.0), ((-14.0, -10.0), -50.0))):
+                K.place(img, _ofuda(1.0 - burn), _head_point(pose, p0), f"ofuda_{k}", a + float(pose["rot"]))  # type: ignore[arg-type]
+    if anim == "dispel" and u < 0.3:
+        K.place(img, R.burst(K, 44.0, ONIBI_CORE, ONIBI_OUT, 12), centre, "ward_breaks")
+    if anim == "ward_kindle" and 0.2 <= u < 0.4:
+        K.place(img, R.burst(K, 36.0, ONIBI_CORE, ONIBI_OUT, 10), centre, "ward_catches")
     if anim == "leash_tell" and 0.3 <= u:
         # The stitches burn as the chain comes out of them.
         for k, p in enumerate(((-8.0, 15.2), (-1.0, 16.4), (6.4, 14.4))):
@@ -646,9 +737,10 @@ ACTOR_METADATA = {
     ),
     "gameplay_description": (
         "A floating boss that hunts: it stalks you at your height, lunges, pounces with a shock "
-        "both ways along the floor, sends its pack of wisps running the floor at you, howls a "
-        "ring that pushes, and cracks its broken leash along the floor. Its fire gutters out "
-        "once in a long cycle."
+        "both ways along the floor, calls lightning down on marks on the floor, howls a ring "
+        "that pushes, and cracks its broken leash along the floor. Its fire gutters out once in "
+        "a long cycle. In the chase a ward of blue hitodama makes it unhurtable, until Kagero's "
+        "spell breaks it."
     ),
 }
 
