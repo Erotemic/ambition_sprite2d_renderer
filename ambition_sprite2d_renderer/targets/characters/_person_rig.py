@@ -36,7 +36,7 @@ from ._ai_era_kit import OUTLINE, WHITE, Kit, Point, Pose, RGBA, angle, blend, e
 __all__ = [
     "AIR", "APEX", "Build", "CROUCH", "DASH", "FALL", "FP", "FRONT_REST", "GUARD", "HALF_UP", "HANG", "LANDED", "LIBRARY", "MAIN_ROWS", "P", "PERCH", "Person", "REST",
     "RISE", "SAT", "STRUCK", "SUPINE", "TUCK", "UP", "Seg", "Stamp", "bone", "burst", "chain", "chalk", "cycle", "dust", "glyph", "loop", "make_brows",
-    "brow_mood", "entry_points", "front_arms", "make_eyes", "make_figure", "make_front_shoe", "make_hand", "make_head", "make_mouth", "make_neck", "make_shoe", "make_torso", "ribbon", "shot", "stride", "swoosh", "tick",
+    "brow_mood", "entry_points", "front_arms", "make_back_shoe", "make_eyes", "make_figure", "make_front_shoe", "make_hand", "make_head", "make_mouth", "make_neck", "make_shoe", "make_torso", "ribbon", "shot", "stride", "swoosh", "tick",
 ]
 
 #: A part of a bone: from and to (as parts of its length), how wide it is at
@@ -819,6 +819,27 @@ def make_front_shoe(K: Kit, colour: RGBA, dark: RGBA, ankle_up: float = 3.0, wid
             K.line(d, [K.at(-1.8 * wide, 0.0), K.at(1.8 * wide, 0.0)], mix(colour, WHITE, 0.35), 0.8)
 
         return K.solid(("front_shoe", colour, wide), shape, colour, detail, outline=1.2, rim=0.25, shade=0.3, shade_colour=dark)
+
+    return shoe
+
+
+def make_back_shoe(K: Kit, colour: RGBA, dark: RGBA, ankle_up: float = 3.0, wide: float = 1.0):
+    """``shoe()``: a shoe seen from its heel, from its ankle at ``home``: the
+    silhouette of ``make_front_shoe``, with the heel block and no shine on a
+    toe (the toe is behind it)."""
+
+    def shoe():
+        h = K.home
+
+        def shape(d) -> None:
+            K.oval(d, K.at(0.0, 1.6), 4.0 * wide, 3.2, WHITE)
+            K.rrect(d, h[0] - 4.0 * wide, h[1] + 0.6, h[0] + 4.0 * wide, h[1] + ankle_up + 0.4, 1.4, WHITE)
+
+        def detail(d) -> None:
+            K.rrect(d, h[0] - 6.0, h[1] + ankle_up - 0.8, h[0] + 6.0, h[1] + ankle_up + 2.0, 0.0, dark)
+            K.rrect(d, h[0] - 2.6 * wide, h[1] + ankle_up - 1.8, h[0] + 2.6 * wide, h[1] + ankle_up - 0.6, 0.4, mix(colour, dark, 0.5))
+
+        return K.solid(("back_shoe", colour, wide), shape, colour, detail, outline=1.2, rim=0.25, shade=0.3, shade_colour=dark)
 
     return shoe
 

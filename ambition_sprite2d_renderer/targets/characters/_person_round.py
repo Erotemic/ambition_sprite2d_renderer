@@ -34,7 +34,6 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
-from scipy import ndimage
 
 from ._ai_era_kit import Kit, RGBA
 
@@ -45,9 +44,10 @@ Vec = Tuple[float, float, float]
 #: ``far`` is true when the part is a far limb in this view.
 Paint = Callable[[np.ndarray, np.ndarray, np.ndarray, bool], np.ndarray]
 
-#: How far the camera looks down, in degrees. The cast's front view draws a
-#: brim 12.6 px wide as an ellipse 2.6 px high (Davy Hylbert's hat): about 12.
-PITCH = 10.0
+#: How far the camera looks down, in degrees. The cast's views are level; a
+#: part that the cast draws as if seen from a little above (a brim) says so
+#: with a cheat (``from_above``).
+PITCH = 0.0
 
 
 @dataclass(frozen=True)
@@ -85,6 +85,45 @@ VIEWS: Tuple[View, ...] = (
     View("front_3q_left", -45.0, "front 3/4 (left)"),
 )
 VIEW_BY_KEY = {v.key: v for v in VIEWS}
+
+
+# ---- Cheats ------------------------------------------------------------------
+#
+# The cast's views are drawn, not projected, and that is their character: in
+# the three-quarter view the face is turned further than the skull (the nose,
+# the beard and the far eye go out toward the profile), and a brim is an oval
+# from the front. A cheat gives a surface its own view, and the surface is
+# placed so that its ``pivot`` is where the true view puts it.
+
+Cheat = Callable[[View], View]
+
+
+def profile_push(degrees: float) -> Cheat:
+    """Turn a surface ``degrees`` further toward the profile than the view
+    is: the most at three quarters, none at the front, the side or the back."""
+
+    def cheat(view: View) -> View:
+        return replace(view, yaw=view.yaw + degrees * math.sin(math.radians(2.0 * view.yaw)))
+
+    return cheat
+
+
+def from_above(pitch: float) -> Cheat:
+    """See a surface from ``pitch`` degrees above, whatever the view's tilt."""
+
+    def cheat(view: View) -> View:
+        return replace(view, pitch=pitch)
+
+    return cheat
+
+
+def both(*cheats: Cheat) -> Cheat:
+    def cheat(view: View) -> View:
+        for c in cheats:
+            view = c(view)
+        return view
+
+    return cheat
 
 
 # ---- Paint -------------------------------------------------------------------
@@ -133,9 +172,19 @@ class Surface:
     uv: np.ndarray
     tris: np.ndarray
     paint: Paint
+    #: How this surface is cheated (``Cheat``), about ``pivot``.
+    cheat: Optional[Callable[[View], View]] = None
+    pivot: Vec = (0.0, 0.0, 0.0)
 
     def moved(self, by: Vec) -> "Surface":
-        return replace(self, verts=self.verts + np.asarray(by, float))
+        return replace(self, verts=self.verts + np.asarray(by, float), pivot=tuple(np.asarray(self.pivot, float) + np.asarray(by, float)))
+
+    def scaled(self, k: float) -> "Surface":
+        """``k`` times as large, about body-space zero."""
+        return replace(self, verts=self.verts * k, pivot=tuple(np.asarray(self.pivot, float) * k))
+
+    def cheated(self, cheat: Callable[[View], View], pivot: Vec) -> "Surface":
+        return replace(self, cheat=cheat, pivot=pivot)
 
 
 def _grid(points: np.ndarray, uv: np.ndarray, paint: Paint, middle: Optional[np.ndarray] = None) -> Surface:
@@ -249,6 +298,14 @@ def limb(a: Vec, b: Vec, r0: float, r1: float, paint: Paint, rows: int = 10, col
     return s
 
 
+def lift(x: float, l: float, yaw: float = 45.0) -> float:
+    """How far forward (``z``) a point is that a level view at ``yaw`` draws
+    ``x`` across from the middle, when it is ``l`` to the side (from a front
+    view). Two views of a cast member give a point in 3D this way."""
+    t = math.radians(yaw)
+    return (x - l * math.cos(t)) / math.sin(t)
+
+
 def two_bone(root: Vec, target: Vec, first: float, second: float, pole: Vec) -> Tuple[np.ndarray, np.ndarray]:
     """The middle joint and the end of a limb of two bones from ``root``
     toward ``target``, bent toward ``pole``."""
@@ -279,6 +336,17 @@ class Line:
     fill: Optional[RGBA] = None
     #: A point this far behind the surface in front of it still shows.
     slack: float = 0.8
+    cheat: Optional[Callable[[View], View]] = None
+    pivot: Vec = (0.0, 0.0, 0.0)
+
+    def moved(self, by: Vec) -> "Line":
+        return replace(self, points=self.points + np.asarray(by, float), pivot=tuple(np.asarray(self.pivot, float) + np.asarray(by, float)))
+
+    def scaled(self, k: float) -> "Line":
+        return replace(self, points=self.points * k, pivot=tuple(np.asarray(self.pivot, float) * k))
+
+    def cheated(self, cheat: Callable[[View], View], pivot: Vec) -> "Line":
+        return replace(self, cheat=cheat, pivot=pivot)
 
 
 def curve(points: Sequence[Vec], colour: Optional[RGBA], width: float = 0.6, *, fill: Optional[RGBA] = None, slack: float = 0.8) -> Line:
@@ -317,14 +385,61 @@ class Part:
     #: painted as a far limb when it is behind the trunk.
     anchor: Vec = (0.0, 0.0, 0.0)
     dims: bool = False
+    #: The views it is drawn in (default: all); another piece draws the rest.
+    when: Optional[Callable[[View], bool]] = None
+
+
+@dataclass
+class Sprite:
+    """A piece drawn in 2D, as the cast draws it, at a place 3D gives it:
+    ``draw(view, far)`` returns the piece (a ``Kit`` part, outline and all),
+    its turn in degrees, and whether it is mirrored; it is placed at
+    ``anchor`` and is as near as ``anchor`` is. The 3D says where a thing is
+    and how it is turned; the drawing is the cast's."""
+
+    name: str
+    anchor: Vec
+    draw: Callable[[View, bool], Optional[Tuple[object, float, bool]]]
+    dims: bool = False
+    when: Optional[Callable[[View], bool]] = None
+    #: How far in front of its anchor the piece counts as being (a head is
+    #: drawn over the collar under it, as the cast paints it).
+    lead: float = 0.0
+
+
+def near_turn(*turns: float, within: float = 10.0) -> Callable[[View], bool]:
+    """``when``: the views that face the person within ``within`` degrees of
+    one of ``turns`` (``facing``)."""
+
+    def when(view: View) -> bool:
+        return any(abs((facing(view) - t + 180.0) % 360.0 - 180.0) <= within for t in turns)
+
+    return when
+
+
+def composed(K: Kit, layers: Sequence[Tuple[object, str]], degrees: float = 0.0) -> Optional[object]:
+    """Pieces of the cast placed one over another at ``home``, as one piece:
+    a head and what is on it (``Person.head_layers``)."""
+    canvas = K.scratch()
+    for piece, name in layers:
+        K.place(canvas, piece, K.home, name, degrees)  # type: ignore[arg-type]
+    return K._cut(canvas)
+
+
+def facing(view: View, heading: float = 0.0) -> float:
+    """The turn of a thing that points ``heading`` (degrees, 0 forward, 90 to
+    the person's left), as this view sees it: 0 toward the viewer, 90 to the
+    right of the picture, 180 away, -90 to the left."""
+    return (view.yaw - heading + 180.0) % 360.0 - 180.0
 
 
 @dataclass
 class Figure:
-    """A person in the round: its parts in body space, and the frame of the
-    character's sheet (``Person``) they are drawn in."""
+    """A person in the round: its parts (a ``Part`` of 3D surfaces, or a
+    ``Sprite``) in body space, and the frame of the character's sheet
+    (``Person``) they are drawn in."""
 
-    parts: List[Part]
+    parts: List[object]
     frame: Tuple[int, int]
     cx: float
     ground: float
@@ -334,6 +449,18 @@ class Figure:
 
 
 # ---- Drawing -----------------------------------------------------------------
+
+
+def _project(points: np.ndarray, view: View, cheat: Optional[Callable[[View], View]], pivot: Vec) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Screen x, screen y and depth of ``points`` in ``view``; a cheated
+    thing is seen in its own view, with its pivot where ``view`` puts it."""
+    ex, ey, ed = view.basis()
+    if cheat is None:
+        return points @ ex, points @ ey, points @ ed
+    cx, cy, cd = cheat(view).basis()
+    q = np.asarray(pivot, float)
+    p = points - q
+    return p @ cx + q @ ex, p @ cy + q @ ey, p @ cd + q @ ed
 
 
 @dataclass
@@ -352,12 +479,10 @@ def _rasterize(surfaces: Sequence[Surface], view: View, size: Tuple[int, int], t
     depth = np.full((h, w), -np.inf, np.float32)
     sid = np.full((h, w), -1, np.int32)
     uu, vv, ll = (np.zeros((h, w), np.float32) for _ in range(3))
-    ex, ey, ed = view.basis()
-    light = view.key_light()
     for k, s in enumerate(surfaces):
-        sx, sy = to_canvas(s.verts @ ex, s.verts @ ey)
-        dz = s.verts @ ed
-        lit = s.normals @ light
+        x, y, dz = _project(s.verts, view, s.cheat, s.pivot)
+        sx, sy = to_canvas(x, y)
+        lit = s.normals @ (view if s.cheat is None else s.cheat(view)).key_light()
         for i0, i1, i2 in s.tris:
             x0, y0, x1, y1, x2, y2 = sx[i0], sy[i0], sx[i1], sy[i1], sx[i2], sy[i2]
             area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
@@ -417,12 +542,30 @@ def _draw_part(K: Kit, part: Part, view: View, to_canvas: Callable, far: bool) -
     out.putalpha(grown)
     out.alpha_composite(body_img)
     near = np.where(mask, buf.depth, -1e9).astype(np.float32)
-    depth = np.where(mask, near, ndimage.grey_dilation(near, size=(reach, reach)))
+    grown_depth = np.asarray(Image.fromarray(near, "F").filter(ImageFilter.MaxFilter(reach)))
+    depth = np.where(mask, near, grown_depth)
     return np.asarray(out), depth
 
 
+def _draw_sprite(K: Kit, sprite: Sprite, view: View, to_canvas: Callable, far: bool) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    made = sprite.draw(view, far)
+    if made is None or made[0] is None:
+        return None
+    piece, degrees, mirrored = made
+    if mirrored:
+        img, (ax, ay) = piece  # type: ignore[misc]
+        piece = (img.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (img.width - ax, ay))
+        degrees = -degrees
+    a = np.asarray(sprite.anchor, float)[None, :]
+    x, y, dz = _project(a, view, None, (0.0, 0.0, 0.0))
+    sx, sy = to_canvas(x, y)
+    img = K.new_frame()
+    K.place(img, piece, (float(sx[0]) / K.scale, float(sy[0]) / K.scale), sprite.name, degrees)
+    rgba = np.asarray(img)
+    return rgba, np.where(rgba[..., 3] > 0, float(dz[0]) + sprite.lead, -np.inf).astype(np.float32)
+
+
 def _draw_lines(K: Kit, d: ImageDraw.ImageDraw, lines: Sequence[Line], view: View, to_canvas: Callable, depth: np.ndarray) -> None:
-    ex, ey, ed = view.basis()
     h, w = depth.shape
     for line in lines:
         pts = line.points
@@ -431,9 +574,8 @@ def _draw_lines(K: Kit, d: ImageDraw.ImageDraw, lines: Sequence[Line], view: Vie
         for a, b in zip(pts[:-1], pts[1:]):
             n = max(1, int(math.ceil(np.linalg.norm(b - a) / 0.4)))
             steps.extend(a + (b - a) * (k / n) for k in range(1, n + 1))
-        p = np.array(steps)
-        sx, sy = to_canvas(p @ ex, p @ ey)
-        dz = p @ ed
+        x, y, dz = _project(np.array(steps), view, line.cheat, line.pivot)
+        sx, sy = to_canvas(x, y)
         xi, yi = np.clip(sx.astype(int), 0, w - 1), np.clip(sy.astype(int), 0, h - 1)
         seen = (dz + line.slack >= depth[yi, xi]) & np.isfinite(depth[yi, xi])
         if line.fill is not None and seen.mean() > 0.5:
@@ -468,8 +610,10 @@ def draw(K: Kit, figure: Figure, view: View) -> Image.Image:
     best = np.full((h, w), -np.inf, np.float32)
     out = np.zeros((h, w, 4), np.uint8)
     for part in figure.parts:
+        if part.when is not None and not part.when(view):
+            continue
         far = part.dims and float(np.asarray(part.anchor) @ ed) < trunk - 1.5
-        layer = _draw_part(K, part, view, to_canvas, far)
+        layer = _draw_sprite(K, part, view, to_canvas, far) if isinstance(part, Sprite) else _draw_part(K, part, view, to_canvas, far)
         if layer is None:
             continue
         rgba, depth = layer
@@ -527,5 +671,5 @@ def turnaround(K: Kit, figure: Figure, path: Path, *, title: str = "", own: Opti
     return path
 
 
-__all__ = ["Figure", "Line", "Paint", "Part", "Ring", "Surface", "VIEWS", "VIEW_BY_KEY", "View", "arc", "circle", "curve", "draw", "ellipsoid", "fill",
+__all__ = ["composed", "near_turn", "lift", "Sprite", "facing", "Cheat", "both", "from_above", "profile_push", "Figure", "Line", "Paint", "Part", "Ring", "Surface", "VIEWS", "VIEW_BY_KEY", "View", "arc", "circle", "curve", "draw", "ellipsoid", "fill",
            "flat", "limb", "loft", "on_ellipsoid", "put", "turnaround", "two_bone"]

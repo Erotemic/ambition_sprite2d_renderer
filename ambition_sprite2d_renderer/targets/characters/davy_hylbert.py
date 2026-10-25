@@ -503,13 +503,31 @@ from . import _person_round as O  # noqa: E402
 #: The middle of his head, and of his trunk.
 HEAD = (0.0, BUILD.neck[1] - 12.4, 1.6)
 TRUNK = (0.0, -20.0, 0.4)
-#: His joints, standing as he rests: the near (right) thumb in his waistcoat
-#: pocket, the far (left) hand behind his back.
-SHOULDERS = {"r": (-8.0, -31.0, 0.6), "l": (8.0, -31.0, 0.6)}
-WRISTS = {"r": (-3.6, -12.8, 7.6), "l": (2.0, -4.0, -7.6)}
-ELBOW_POLES = {"r": (-0.6, 0.3, -1.0), "l": (0.5, 0.3, -1.0)}
-HIPS = {"r": (-4.6, 0.0, 0.0), "l": (4.6, 0.0, 0.0)}
-ANKLES = {"r": (-5.0, BUILD.hip_up - BUILD.ankle_up, -1.0), "l": (5.0, BUILD.hip_up - BUILD.ankle_up, 2.0)}
+
+# His joints, lifted from his two views: his three-quarter view draws a joint
+# ``x`` across, his front view says how far to the side it is (``X.front_span``
+# and ``FRONT_REST``), and ``O.lift`` gives how far forward it is.
+_U = BUILD.hip_up / 37.0
+_SW, _HW = X.front_span
+_FOOT = _HW + R.FRONT_REST["lf"][0] * _U
+SHOULDERS = {"r": (-_SW, BUILD.near_shoulder[1], O.lift(BUILD.near_shoulder[0], -_SW)),
+             "l": (_SW, BUILD.far_shoulder[1], O.lift(BUILD.far_shoulder[0], _SW))}
+HIPS = {"r": (-_HW, 0.0, O.lift(BUILD.near_hip[0], -_HW)), "l": (_HW, 0.0, O.lift(BUILD.far_hip[0], _HW))}
+#: The feet are staggered, the near (right) one back and the far one forward,
+#: as his three-quarter view stands them, so that a side view shows both.
+_STAGGER = 3.0
+ANKLES = {"r": (-_FOOT, BUILD.hip_up - BUILD.ankle_up, O.lift(X.rest["nf"][0] * _U, -_FOOT) - _STAGGER),
+          "l": (_FOOT, BUILD.hip_up - BUILD.ankle_up, O.lift(X.rest["ff"][0] * _U, _FOOT) + _STAGGER)}
+#: Where his hands are, and which way each elbow goes. At rest
+#: (``set_rest``): the near (right) thumb in his waistcoat pocket, 5 to his
+#: right of the middle, and the far (left) hand behind his back. In his front
+#: rows (``front_arms``, clasped): the two hands meet low in front.
+_POCKET = (BUILD.near_shoulder[0] + IN_POCKET[0] * _U, BUILD.near_shoulder[1] + IN_POCKET[1] * _U)
+_CLASP = (_SW - (_SW - 5.0) * _U, BUILD.far_shoulder[1] + 0.56 * (BUILD.upper + BUILD.fore) * _U)
+POSES = {
+    "rest": {"r": ((-5.0, _POCKET[1], O.lift(_POCKET[0], -5.0)), (-0.6, 0.3, -1.0)), "l": ((2.0, -4.0, -7.6), (0.5, 0.3, -1.0))},
+    "front": {"r": ((-_CLASP[0], _CLASP[1], 7.4), (-1.0, 0.0, -0.2)), "l": ((_CLASP[0], _CLASP[1], 7.4), (1.0, 0.0, -0.2))},
+}
 
 #: The skull and the jaw, from the middle of the head (his front view: 7.8 and
 #: 6.4 wide; his three-quarter view: the jaw 2.6 forward of the skull).
@@ -583,12 +601,6 @@ def _round_brim(u, v, lit, far):
     return out
 
 
-def _round_shoe(u, v, lit, far):
-    out = O.fill(mix(SHOE, SHOE_DARK, 0.6) if far else SHOE, len(u))
-    O.put(out, v > BUILD.hip_up - 0.8, SHOE_DARK)
-    return out
-
-
 def _round_head() -> O.Part:
     skull_c, skull_r = SKULL
     head = [
@@ -596,15 +608,15 @@ def _round_head() -> O.Part:
         # The hair stands off the back of his head a little.
         O.ellipsoid((0.0, 1.2, -5.4), (6.8, 6.0, 4.4), O.flat(BEARD, shade=BEARD_DARK, at=-0.6)),
         O.ellipsoid(JAW[0], JAW[1], O.flat(SKIN, shade=mix(SKIN, SKIN_SHADE, 0.7), at=-0.45)),
-        O.ellipsoid((0.0, 2.0, 9.2), (1.1, 2.4, 2.8), O.flat(SKIN, shade=mix(SKIN, SKIN_SHADE, 0.7), at=-0.45)),
-        O.ellipsoid((-7.5, 1.0, -0.4), (1.2, 3.0, 2.1), O.flat(SKIN, shade=SKIN_SHADE)),
-        O.ellipsoid((7.5, 1.0, -0.4), (1.2, 3.0, 2.1), O.flat(SKIN, shade=SKIN_SHADE)),
+        O.ellipsoid((0.0, 2.0, 10.0), (1.1, 2.4, 3.4), O.flat(SKIN, shade=mix(SKIN, SKIN_SHADE, 0.7), at=-0.45)),
+        O.ellipsoid((-8.2, 1.0, -0.6), (1.6, 3.0, 2.0), O.flat(SKIN, shade=SKIN_SHADE)),
+        O.ellipsoid((8.2, 1.0, -0.6), (1.6, 3.0, 2.0), O.flat(SKIN, shade=SKIN_SHADE)),
         # The beard: as wide as his face under the cheeks (his front view:
         # 7 each side at the moustache), to a point at his collar.
         O.loft([O.Ring(2.4, 0.0, 3.8, 7.2, 4.7), O.Ring(4.6, 0.0, 4.2, 7.0, 4.7), O.Ring(8.0, 0.0, 4.8, 6.4, 4.0), O.Ring(12.0, 0.0, 5.0, 5.0, 3.4),
                 O.Ring(14.6, 0.0, 4.8, 3.0, 2.4), O.Ring(16.8, 0.0, 4.5, 0.5, 0.5)], _round_beard),
         # The moustache, wide, over his lip.
-        O.ellipsoid((0.0, 5.9, 8.0), (5.2, 1.5, 2.1), O.flat(BEARD, shade=BEARD_DARK, at=-0.4)),
+        O.ellipsoid((0.0, 5.9, 8.8), (5.2, 1.5, 2.1), O.flat(BEARD, shade=BEARD_DARK, at=-0.4)),
     ]
     lines: List[O.Line] = []
     for side in (-1.0, 1.0):
@@ -623,14 +635,15 @@ def _round_head() -> O.Part:
         # The rims of the glasses, and their arms back to the ears.
         lines.append(O.circle(lens, face, 2.9, FRAME, 0.8))
         lines.append(O.curve([lens + [side * 2.8, -0.2, -0.4], (side * 7.4, -0.8, 3.0), (side * 7.9, -0.6, -0.6)], FRAME, 0.6))
-        ear = np.array([side * 8.5, 1.0, -0.4])
+        ear = np.array([side * 9.6, 1.0, -0.6])
+        lines.append(O.circle(ear, (side, 0.0, 0.0), 1.8, OUTLINE, 0.6, slack=0.6))
         lines.append(O.curve([ear + [0.0, -1.4, 0.6], ear + [0.0, 0.0, -0.2], ear + [0.0, 1.4, 0.4]], SKIN_DEEP, 0.45, slack=0.6))
         # Strands in the beard.
         lines.append(O.curve([(side * 2.0, 9.6, 8.0), (side * 1.8, 13.0, 6.8)], BEARD_DARK, 0.5))
     left = O.on_ellipsoid(skull_c, skull_r, -EYE_U, EYE_V)[0] + [0.0, 0.0, 1.0]
     right = O.on_ellipsoid(skull_c, skull_r, EYE_U, EYE_V)[0] + [0.0, 0.0, 1.0]
     lines.append(O.curve([left + [2.8, -0.2, 0.2], (0.0, -0.9, 9.2), right + [-2.8, -0.2, 0.2]], FRAME, 0.6))
-    lines.append(O.curve([(-1.2, 4.0, 10.0), (0.0, 4.5, 10.8), (1.2, 4.0, 10.0)], SKIN_DEEP, 0.6))
+    lines.append(O.curve([(-1.2, 4.0, 10.6), (0.0, 4.6, 11.6), (1.2, 4.0, 10.6)], SKIN_DEEP, 0.6))
     lines.append(O.curve([(-4.0, 6.6, 9.6), (0.0, 7.0, 10.0), (4.0, 6.6, 9.6)], BEARD_DARK, 0.6))
     return O.Part("head", [s.moved(HEAD) for s in head], [O.Line(ln.points + HEAD, ln.colour, ln.width, ln.fill, ln.slack) for ln in lines],
                   base=SKIN, shade_colour=SKIN_DEEP, anchor=HEAD)
@@ -642,7 +655,7 @@ def _round_hat_part() -> O.Part:
     brim = O.loft([O.Ring(-7.4, 0.0, 0.4, 8.0, 7.8, v=0.0), O.Ring(-7.2, 0.0, 0.8, 12.8, 13.0, droop=1.0, v=1.0),
                    O.Ring(-6.4, 0.0, 0.8, 12.8, 13.0, droop=1.0, v=2.0), O.Ring(-6.6, 0.0, 0.4, 8.0, 7.8, v=3.0)], _round_brim)
     crease = O.curve([(0.0, -16.3, 5.6), (0.0, -15.6, 2.0), (0.0, -15.6, -1.6), (0.0, -16.3, -5.4)], HAT_DARK, 0.7)
-    return O.Part("hat", [crown.moved(HEAD), brim.moved(HEAD)], [O.Line(crease.points + HEAD, crease.colour, crease.width)], base=HAT,
+    return O.Part("hat", [crown.moved(HEAD), brim.moved(HEAD)], [crease.moved(HEAD)], base=HAT,
                   outline=1.2, shade=0.35, shade_colour=HAT_DARK, anchor=(HEAD[0], HEAD[1] - 10.0, HEAD[2]))
 
 
@@ -662,8 +675,9 @@ def _round_neck() -> O.Part:
                   outline=1.1, rim=0.0, shade=0.0, anchor=(0.0, -38.0, 0.4))
 
 
-def _round_arm(side: str) -> List[O.Part]:
-    elbow, wrist = O.two_bone(SHOULDERS[side], WRISTS[side], BUILD.upper, BUILD.fore, ELBOW_POLES[side])
+def _round_arm(side: str, pose: str) -> List[O.Part]:
+    target, pole = POSES[pose][side]
+    elbow, wrist = O.two_bone(SHOULDERS[side], target, BUILD.upper, BUILD.fore, pole)
     cloth = O.flat(SUIT, SUIT_DARK, shade=SUIT_DARK, at=-0.5)
     sleeve = O.Part(f"{side}_arm", [O.limb(SHOULDERS[side], elbow, 3.4, 2.9, cloth), O.limb(elbow, wrist, 2.9, 2.5, cloth)], base=SUIT, outline=1.2,
                     rim=0.0, shade=0.0, anchor=tuple(elbow), dims=True)
@@ -677,22 +691,52 @@ def _round_arm(side: str) -> List[O.Part]:
 
 def _round_leg(side: str) -> List[O.Part]:
     hip, ankle = np.asarray(HIPS[side]), np.asarray(ANKLES[side])
-    knee = (hip * BUILD.shin + ankle * BUILD.thigh) / (BUILD.thigh + BUILD.shin) + [0.0, 0.0, 0.6]
+    knee, ankle = O.two_bone(tuple(hip), tuple(ankle), BUILD.thigh, BUILD.shin, (0.0, 0.0, 1.0))
     cloth = O.flat(SUIT, SUIT_DARK, shade=SUIT_DARK, at=-0.5)
     leg = O.Part(f"{side}_leg", [O.limb(tuple(hip), tuple(knee), 3.6, 3.0, cloth), O.limb(tuple(knee), tuple(ankle), 3.0, 2.7, cloth)], base=SUIT,
                  outline=1.2, rim=0.0, shade=0.0, anchor=tuple(knee), dims=True)
-    a = ankle
-    shoe = O.Part(f"{side}_shoe", [O.ellipsoid(tuple(a + [0.0, 0.4, 3.4]), (3.1, 2.6, 6.0), _round_shoe),
-                                   O.ellipsoid(tuple(a + [0.0, 0.8, -0.6]), (2.9, 2.2, 3.0), _round_shoe)], base=SHOE, outline=1.2, rim=0.25,
-                  shade=0.3, shade_colour=SHOE_DARK, anchor=tuple(a + [0.0, 1.0, 1.5]), dims=True)
-    return [leg, shoe]
+    return [leg, O.Sprite(f"{side}_shoe", tuple(ankle), _round_shoe_sprite, dims=True, lead=3.0)]
 
 
-def round_figure() -> O.Figure:
-    """Davy Hylbert in the round, standing as he rests."""
-    parts = [_round_trunk(), _round_neck(), _round_head(), _round_hat_part()]
+_BACK_SHOE = R.make_back_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)
+
+
+def _round_shoe_sprite(view, far):
+    """His own shoes: seen from the toe, the shoe of his front view; from the
+    heel, that shoe from behind; from any other side, the shoe of his
+    three-quarter view, its toe to the side the foot points."""
+    turn = O.facing(view)
+    toward = math.cos(math.radians(turn))
+    if toward > 0.85:
+        return X.front_shoe(), 0.0, False
+    if toward < -0.85:
+        return _BACK_SHOE(), 0.0, False
+    return X.shoe(not far), 0.0, turn < 0.0
+
+
+#: The turns his own head is drawn at: his three-quarter view (and, mirrored,
+#: its left), and his front view.
+_OWN_HEAD = O.near_turn(45.0, -45.0, 0.0)
+
+
+def _round_own_head(view, far):
+    """His own head, hat and face, where he has them: the three-quarter
+    view's (mirrored for the left) and the front view's."""
+    turn = O.facing(view)
+    if abs(turn) <= 10.0:
+        return O.composed(K, X.front_head_layers(dict(R.FRONT_REST))), 0.0, False
+    return O.composed(K, X.head_layers(X.full(X.rest))), 0.0, turn < 0.0
+
+
+def round_figure(pose: str = "rest") -> O.Figure:
+    """Davy Hylbert in the round, his hands as ``POSES`` has them. His own
+    head is drawn where he has one; the head in 3D draws the other views."""
+    other = lambda view: not _OWN_HEAD(view)  # noqa: E731
+    head, hat = _round_head(), _round_hat_part()
+    head.when, hat.when = other, other
+    parts = [_round_trunk(), _round_neck(), head, hat, O.Sprite("own_head", HEAD, _round_own_head, when=_OWN_HEAD, lead=9.0)]
     for side in ("r", "l"):
-        parts += _round_arm(side) + _round_leg(side)
+        parts += _round_arm(side, pose) + _round_leg(side)
     return O.Figure(parts, X.frame, X.cx, X.ground, BUILD.hip_up, trunk=TRUNK)
 
 

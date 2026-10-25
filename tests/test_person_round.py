@@ -32,5 +32,8 @@ def test_a_true_left_view_is_not_the_mirror_of_the_right():
     figure = H.round_figure()
     right = O.draw(H.K, figure, O.VIEW_BY_KEY["front_3q"])
     left = O.draw(H.K, figure, O.VIEW_BY_KEY["front_3q_left"])
-    mirrored = np.asarray(ImageOps.mirror(right).getchannel("A"), float)
-    assert np.abs(np.asarray(left.getchannel("A"), float) - mirrored).mean() > 1.0
+    mirrored = np.asarray(ImageOps.mirror(right), float)
+    differs = np.abs(np.asarray(left, float) - mirrored).max(axis=-1) > 60.0
+    body = np.asarray(right.getchannel("A")) > 16
+    # Measured 2026-10-25: 417 of his 2658 pixels.
+    assert differs.sum() > 0.05 * body.sum()
