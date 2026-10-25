@@ -1909,10 +1909,12 @@ lineages:
     ids: [armsmith_odile]
     paths: ['townsfolk/armsmith_odile\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
-  gator_geisha:
-    name: Gator Geisha
-    ids: [gator_geisha]
-    paths: ['(townsfolk|chargen_examples)/gator_geisha\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+  village_nagisa:
+    # The gator geisha example (2026-10-24), then a resident; named Nagisa the
+    # Gatekeeper by Jon (2026-10-25).
+    name: Nagisa the Gatekeeper
+    ids: [village_nagisa]
+    paths: ['(townsfolk|chargen_examples)/(gator_geisha|village_nagisa)\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   port_agnes:
     name: Agnes

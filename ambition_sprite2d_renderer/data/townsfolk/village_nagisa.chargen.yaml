@@ -1,10 +1,11 @@
 # A resident made by the character generator; see targets/characters/townsfolk.py.
-# An albino alligator geisha: the alligator head, face paint, the nihongami
+# Nagisa the Gatekeeper, keeper of the Ninja Village's dimension gate: an
+# albino alligator geisha. The alligator head, face paint, the nihongami
 # with kanzashi, a kimono with its motif, an obi and geta. Fields left out are
 # drawn from the base and the seed. Her kanzashi and kimono wrap are not
 # symmetric, so a mirrored left view shows them the other way.
 schema: ambition-chargen-v1
-name: Gator Geisha
+name: Nagisa
 base: slim_female
 seed: 1
 body:
@@ -41,7 +42,7 @@ outfit:
   obi_color: '#c9a24a'
   obi_knot: taiko
 game:
-  character_id: npc_gator_geisha
-  description: An albino alligator geisha in a blossom kimono, an obi and tall geta, made by the character generator. She parodies
-    no one.
+  character_id: npc_village_nagisa
+  description: Nagisa the Gatekeeper, keeper of the Ninja Village's dimension gate, an albino alligator geisha in a blossom kimono,
+    an obi and tall geta, made by the character generator. She parodies no one.
   rows: full

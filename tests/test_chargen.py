@@ -22,8 +22,8 @@ from ambition_sprite2d_renderer.chargen.rig import character_svg, write_characte
 from ambition_sprite2d_renderer.chargen.sheets import RiggedCharacter, render_view
 
 
-#: The resident who wears the alligator head and the geisha wardrobe.
-GATOR_GEISHA = Path(S.__file__).resolve().parents[1] / "data" / "townsfolk" / "gator_geisha.chargen.yaml"
+#: The resident who wears the alligator head and the geisha wardrobe: Nagisa.
+GATOR_GEISHA = Path(S.__file__).resolve().parents[1] / "data" / "townsfolk" / "village_nagisa.chargen.yaml"
 
 
 def _gator_geisha() -> "S.CharacterSpec":
