@@ -305,8 +305,10 @@ def test_a_catalog_row_a_look_and_a_boss_key_each_find_their_lineage(tmp_path):
     (tmp_path / "game" / "ambition_content" / "assets" / "data" / "boss_art_keys.ron").write_text(
         '(\n    sprite_filenames: {\n        "big_foo": "foo_v2_spritesheet.png",\n    },\n)\n'
     )
-    lineages = {"foo": {"ids": ["foo_v2", "foo"], "eras": [{"commit": "aaaaaaa", "label": "x", "id": "foo"}]}}
+    # The base target is the lineage's `ids`; its v2 is named by the era that is its look.
+    lineages = {"foo": {"ids": ["foo"], "eras": [{"commit": "aaaaaaa", "label": "x", "id": "foo_v2"}]}}
     join = characters.join(lineages, tmp_path)
+    assert [lineage for lineage, _ in join.find("foo_v2")] == ["foo"]
     assert set(join.rows) == {"npc_foo", "npc_foo_armored", "boss:big_foo"}
     assert [lineage for lineage, _ in join.find("npc_foo")] == ["foo"]
     assert [lineage for lineage, _ in join.find("npc_foo_armored")] == ["foo"]

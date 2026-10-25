@@ -183,7 +183,7 @@ lineages:
         note: "The four vikings redrawn (Oct 4). Current design."
   mockingbird:
     name: Mockingbird
-    ids: [mockingbird_boss_v2, mockingbird_boss]
+    ids: [mockingbird_boss]
     paths: ['mockingbird']
     summary: "a long grey flier to a rocket-and-rotor songbird"
     tile_w: 300
@@ -195,11 +195,14 @@ lineages:
       - commit: "bafa83591"
         label: "Actor contract sidecars"
       - commit: "5c0fb55a9"
+        id: mockingbird_boss_v2
         label: "Candidate v2: SVG-rigged"
         note: "Oct 6 redraw begins."
       - commit: "296272f77"
+        id: mockingbird_boss_v2
         label: "Jet wings, slender beak"
       - commit: "ced13c003"
+        id: mockingbird_boss_v2
         label: "Hooded skull head"
         note: "Current design."
   raptor_stalker:
@@ -359,10 +362,10 @@ lineages:
         label: "Euler after the 1753 pastel"
         note: "Redesigned with Jon over seven rounds: rumpled silk cap, teal banyan over the workshop clothes, the failing right eye in every view (left-facing views drawn, not flipped), eight faces."
   pirate_raider:
-    name: Pirate crew (the raider stands for the five)
+    name: Pirate Raider
     ids: [pirate_raider]
     paths: ['_pirate_common', '_pirate_rig', 'pirate_raider']
-    summary: "five pirates on one thin body, then five characters"
+    summary: "one of five pirates on one thin body, then a character of his own"
     eras:
       - commit: "3b3209c"
         label: "One thin body in five palettes"
@@ -604,7 +607,8 @@ lineages:
   eve:
     name: Eve
     ids: [eve]
-    paths: ['crypto_crew', '_person_rig']
+    # `eve_eavesdropper` was the generator of the target `eve` (its config named it), not a target id.
+    paths: ['crypto_crew', '_person_rig', '(_toon_presets|configs/review)/eve\.', 'eve_eavesdropper']
     summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
     eras:
       - commit: "aaa2d8a"
@@ -628,7 +632,8 @@ lineages:
   mallory:
     name: Mallory
     ids: [mallory]
-    paths: ['crypto_crew', '_person_rig']
+    # `mallory_interceptor` was the generator of the target `mallory` (its config named it), not a target id.
+    paths: ['crypto_crew', '_person_rig', '(_toon_presets|configs/review)/mallory\.', 'mallory_interceptor']
     summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
     eras:
       - commit: "aaa2d8a"
@@ -676,7 +681,8 @@ lineages:
   trent:
     name: Trent
     ids: [trent]
-    paths: ['crypto_crew', '_person_rig']
+    # `trent_elder` was the generator of the target `trent` (its config named it), not a target id.
+    paths: ['crypto_crew', '_person_rig', '(_toon_presets|configs/review)/trent\.', 'trent_elder']
     summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
     eras:
       - commit: "aaa2d8a"
@@ -750,8 +756,9 @@ lineages:
         note: "The person of jeff_hinter in dark plates with a lit circuit; the change is a surface that closes on his outline. Jon: two sides of the same character; a manifold shrinkwrapping to fit his body; more cyber-techno. Claude Opus 5.5 declared."
   mami_marzakhani:
     name: Mami Marzakhani
-    ids: [mami_marzakhani]
-    paths: ['mami_marzakhani', '_person_rig']
+    # Named `mary_marzakhani` until 174813c5fa (2026-07-20).
+    ids: [mami_marzakhani, mary_marzakhani]
+    paths: ['mami_marzakhani', 'mary_marzakhani', '_person_rig']
     summary: "a first design, then a person of the shared rig: short dark hair, a garnet jacket; she reads as a woman"
     eras:
       - commit: "d37754c"
@@ -899,7 +906,7 @@ lineages:
   ninja_shadow_oni_leader:
     name: Shadow Oni Leader
     ids: [ninja_shadow_oni_leader]
-    paths: ['ninja_shadow_oni_leader', 'ninja_side', '_person_rig']
+    paths: ['ninja_shadow_oni_leader', 'ninja_side', 'configs/ninja_leader\.yaml', '_person_rig']
     summary: "the duelist's doll of grey capsules with horns and a banner, then a warlord in a horned helmet and a mask of bone"
     eras:
       - commit: "e11f755"
@@ -911,7 +918,7 @@ lineages:
   puppy_slug:
     name: Puppy Slug
     ids: [puppy_slug]
-    paths: ['puppy_slug', '_ai_era_kit']
+    paths: ['(^|/)puppy_slug\.py', '_ai_era_kit']
     summary: "a brown worm with a flat dog face at each end, then a plump slug with the head of a puppy and a second face on its back"
     eras:
       - commit: "b0f7ffc"
@@ -947,7 +954,10 @@ lineages:
   fascist_enforcer:
     name: Fascist Enforcer
     ids: [fascist_enforcer]
-    paths: ['fascist_enforcer', '_person_rig']
+    # Until 2026-05-28 the id drew the raid enforcer's first look; those files
+    # are not paths here. One commit (dcb0e493c3) still matches: it added
+    # `configs/review/fascist_enforcer.yaml`, the file the new character reused.
+    paths: ['(characters|configs/review)/fascist_enforcer\.', '_person_rig']
     summary: "a toon-template puppet in a charcoal uniform with T-pose arms, then a heavy-set soldier of the shared person rig who fights with fists and boots"
     eras:
       - commit: "c24b727"
@@ -1101,10 +1111,10 @@ lineages:
         label: "The Federalist orator"
         note: "Side view: a bottle-green coat, buff waistcoat and breeches, a queue with a black bow, his speech; he draws a rapier to lunge and a flintlock to fire. Jon chose A of three. Claude Opus 5.5 declared."
   sentinel_bosses:
-    name: The Sentinel Bosses
+    name: The generic boss, then the Gradient Sentinel
     ids: [gradient_sentinel_boss, boss]
-    paths: ['boss_side', 'sentinel_boss']
-    summary: "one generic floating wraith worn by every boss without art, then three sentinels on one skeleton, one per boss"
+    paths: ['boss_side', 'gradient_sentinel', '/_sentinel_boss\.py', 'sentinel_boss_rigs', 'svg_art/sentinel_boss_art']
+    summary: "one generic floating wraith worn by every boss without art, then the Gradient Sentinel, the fallback look; the Clockwork Warden and Mode Collapse have lineages of their own"
     eras:
       - commit: "2c82625"
         label: "The generic boss"
@@ -1126,7 +1136,7 @@ lineages:
         note: "Silver crown braid and lit circlet, a lined face, plate over a blue himation and ivory chiton, Greek-key circuitry, an armillary ring on her back and an armillary tech-lance. Jon first chose A (a literal Alexandrian Hypatia, kept), then asked for an old woman in future armour. Claude Opus 5.5 declared."
   genghis_can:
     name: Genghis Can
-    ids: [genghis_can_v2, genghis_can]
+    ids: [genghis_can]
     paths: ['genghis_can', '_genghis_pair', 'genghis_pair']
     summary: "a procedural conqueror in red lamellar, then Genghis Khan in a winter deel and a fox-fur hat, pointing the way"
     eras:
@@ -1139,7 +1149,7 @@ lineages:
         note: "Look C of three: a teal winter deel crossed to the right, an orange sash, a quiver, the fox-fur flaps tied up; he stands tall and points the way. Jon asked for a redesign of the pair (2026-10-23); look C was decided after round 1. Claude Opus 5.5 declared."
   genghis_cant:
     name: Genghis Can't
-    ids: [genghis_cant_v2, genghis_cant]
+    ids: [genghis_cant]
     paths: ['genghis_cant', '_genghis_pair', 'genghis_pair']
     summary: "a procedural conqueror in slate lamellar, then Genghis Khan in a winter deel and a fox-fur hat, cupping his chin"
     eras:
@@ -1177,7 +1187,7 @@ lineages:
         note: "A new target beside the old one: planks on two drain pipes under a pitched tin roof, notices whose news is pictures, a PA horn that kicks when it talks. Jon saw three looks and did not pick; A was cast because the board stands in the Drain Market. Claude Opus 5.5 declared."
   carl_runga:
     name: Carl Runga
-    ids: [carl_runga_v2, carl_runga]
+    ids: [carl_runga]
     paths: ['carl_runga', 'runge_kutta']
     summary: "a procedural numerical operator in a heavy apron, then Carl Runge as a Goettingen professor, an SVG rig"
     eras:
@@ -1190,7 +1200,7 @@ lineages:
         note: "Bald dome, full grizzled beard, a black frock coat over a wine waistcoat and watch chain; 183 cm and heavy. Look A of three; Jon did not pick and asked for the new art in the game. Claude Opus 5.5 declared."
   martin_cutta:
     name: Martin Cutta
-    ids: [martin_cutta_v2, martin_cutta]
+    ids: [martin_cutta]
     paths: ['martin_cutta', 'runge_kutta']
     summary: "a procedural numerical operator, then Martin Kutta as the coefficient clerk, an SVG rig"
     eras:
@@ -1203,7 +1213,7 @@ lineages:
         note: "Upright, dark hair and a moustache, a dove-grey lounge suit with a high collar, pince-nez on a cord, the green ledger of coefficients; 173 cm. Look A of three. Claude Opus 5.5 declared."
   paul_diracula:
     name: Paul Diracula
-    ids: [paul_diracula_v2, paul_diracula]
+    ids: [paul_diracula]
     paths: ['paul_diracula']
     summary: "a procedural gothic scientist, then Dirac's lean face and side parting on Lugosi's Count, an SVG rig"
     eras:
@@ -1217,7 +1227,7 @@ lineages:
         note: "A new target beside the old one: a black tailcoat and white tie, the psi medallion, an opera cape lined in crimson; Dirac's long face and side parting under a small widow's peak. Jon saw three looks and did not pick; A was cast when he asked for the art in the game. Claude Opus 5.5 declared."
   architect:
     name: Architect
-    ids: [architect_v2, architect]
+    ids: [architect]
     paths: ['architect']
     summary: "a purple toon in a long coat with a blueprint, then a modernist in a dark suit with the roll of drawings under his arm"
     eras:
@@ -1240,7 +1250,7 @@ lineages:
         note: "His first art of his own (he wore the Architect's sheet): a stooped old clerk in a long cardigan coat, half-moon glasses, black oversleeves, the fanfold manifest from his fist to a heap on the floor. Jon saw three looks and did not pick; C was cast. Claude Opus 5.5 declared."
   vault_keeper:
     name: Vault Keeper
-    ids: [vault_keeper_v2, vault_keeper]
+    ids: [vault_keeper]
     paths: ['vault_keeper']
     summary: "a toon keeper, then the keeper of the vault in a wine-red robe with the key-headed staff"
     eras:
@@ -1254,7 +1264,7 @@ lineages:
         note: "A new target beside the old one, a side-view SVG rig: a wine-red robe, bald, a black beard, a gold earring, the key-headed vault staff, a combination dial on a chain. Jon saw three looks and did not pick; C was cast. Claude Opus 5.5 declared."
   merchant_prototype:
     name: Merchant Prototype
-    ids: [merchant_prototype_v2, merchant_prototype]
+    ids: [merchant_prototype]
     paths: ['merchant_prototype']
     summary: "a toon merchant, then a travelling pedlar with the whole shop on her back"
     eras:
@@ -1268,7 +1278,7 @@ lineages:
         note: "A new target beside the old one, a side-view SVG rig: a pack frame with an axe, a bomb and a health cell, a polka-dot headscarf, gold hoops, a shawl, an apron over a blue skirt. Jon saw three looks and did not pick; B was cast. Claude Opus 5.5 declared."
   general_hero:
     name: General Hero
-    ids: [general_hero_v2, general_hero]
+    ids: [general_hero]
     paths: ['general_hero']
     summary: "the toon rig's generic sword hero, then a knight come back from the war, standing watch on his sword"
     eras:
@@ -1282,7 +1292,7 @@ lineages:
         note: "A new target beside the old one, a side-view SVG rig: a breastplate over a blue gambeson, a blue cape, a blond beard, his medals, both hands on his planted sword; he cuts two-handed and raises it to the sky. Jon saw three looks and did not pick; B was cast. Claude Opus 5.5 declared."
   dividing_mite:
     name: Dividing Mite
-    ids: [dividing_mite_v2, dividing_mite]
+    ids: [dividing_mite]
     paths: ['dividing_mite', 'mites_art', 'mite_v2']
     summary: "a white robot-toon biped with a sword, then a teal cell halfway through dividing on eight legs, an SVG rig"
     eras:
@@ -1296,7 +1306,7 @@ lineages:
         note: "A new target beside the old one: two teal lobes with a nucleus, a feeler and four legs each, cinched by a cleavage ring; in death the lobes pull apart. Jon saw three looks and did not pick; A was cast when he asked for the art in the game. Claude Opus 5.5 declared."
   exploding_mite:
     name: Exploding Mite
-    ids: [exploding_mite_v2, exploding_mite]
+    ids: [exploding_mite]
     paths: ['exploding_mite', 'mites_art', 'mite_v2']
     summary: "a robot-toon biped with a sword, then a round bomb with a lit fuse on eight legs, an SVG rig"
     eras:
@@ -1315,7 +1325,7 @@ lineages:
     # procedural macaw (014c056581, Jul 16) that looks almost the same as the
     # first parrot; it is not a major redesign, so it is not an era.
     name: Stochastic Parrot
-    ids: [stochastic_parrot_v2, stochastic_parrot]
+    ids: [stochastic_parrot]
     paths: ['stochastic_parrot', 'rigbuild/bird\.py']
     summary: "a procedural parrot, then a scarlet macaw as an SVG rig"
     eras:
