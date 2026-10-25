@@ -7,8 +7,12 @@ Three kinds of evidence, strongest first:
 ``declared``  a ``Co-Authored-By`` trailer in the commit message.
 ``message``   no trailer, but the subject or body names a model ("Big GPT 5.6
               Alice improvement"). Weaker: it may be a plan, not a signature.
-``author``    no model is named, and the author field says who committed:
-              Jon's accounts mean a human commit OR an unattributed agent one.
+``inferred``  no ledger row, no model trailer and no model named, from Jon's
+              account or an agent's: GPT (Jon's rule, 2026-10-25). Claude Code
+              signs its commits and GPT mostly does not: of the ledger's
+              measured commits, 42 of 908 Claude-only ones have no trailer and
+              10 of 11 GPT-only ones have none. Jon's own hand commits (a
+              pointer bump, a format run) look the same, so it stays a guess.
 ``unknown``   nothing says.
 
 A commit is evidence about the session that made it, not proof that one model
@@ -40,7 +44,7 @@ _HUMAN_AUTHORS = {"joncrall", "jon crall", "jon.crall"}
 @dataclasses.dataclass(frozen=True)
 class Attribution:
     models: tuple[str, ...]
-    basis: str  # measured | declared | author | unknown
+    basis: str  # measured | declared | message | inferred | unknown
     note: str = ""
 
     def label(self) -> str:
@@ -115,8 +119,9 @@ def attribute(commit: Commit, ledger: dict[str, list[dict]]) -> Attribution:
         _add(mentioned, normal(hit))
     if mentioned:
         return Attribution(tuple(mentioned), "message")
-    if commit.author.lower() in _HUMAN_AUTHORS:
-        return Attribution((), "author", "no model named; committed from Jon's account")
-    if commit.author.lower() == "agent":
-        return Attribution((), "unknown", "an agent commit that names no model")
+    if _AI_NAME.search(commit.author):
+        return Attribution((_clean(commit.author),), "message")
+    author = commit.author.lower()
+    if author in _HUMAN_AUTHORS or author.split(" ")[0] == "agent":
+        return Attribution(("GPT",), "inferred", "no model trailer: GPT by Jon's rule, or a hand commit")
     return Attribution((), "unknown", "nothing names a model")

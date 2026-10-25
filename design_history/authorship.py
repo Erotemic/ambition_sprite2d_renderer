@@ -8,8 +8,10 @@ generator file at the era's commit, attribute the commit of each line, and
 count lines.
 
 The history crosses two imports. The first commit of the active renderer
-(`R1`, "Start git epoch 1") is a copy of the tip of `R0`, and the first commit
-of `R0` is a copy of the renderer subdirectory of the main repository (`A0`).
+(`R1`, "Start git epoch 1") is a copy of the tip of `R0`, and the commit that
+brought the renderer package into `R0` ("Initial commit", after the
+repository host's LICENSE commit) is a copy of the renderer subdirectory of
+the main repository (`A0`).
 A line that blame gives to an import commit is looked up, by its text, in the
 blame of the same file at the commit before the import. A line that is not
 found there stays with the import commit and counts as unknown.
@@ -38,6 +40,11 @@ _NOT_GENERATOR = re.compile(r"(^|/)(tests?|docs|generated|design_history|\.cache
 
 #: Where the renderer root is in each history stretch, newest first.
 _PREFIXES = ("", "tools/ambition_sprite2d_renderer/", "tools/generators/gen2d/")
+#: The renderer package: the commit that first adds it to a stretch is that stretch's import.
+_PACKAGE = "ambition_sprite2d_renderer"
+#: Part of each cached blame's name: a change to how imports are followed
+#: (`roots`) changes the lines, so it changes this.
+_LINES_VERSION = "v2"
 _IMPORTS = {
     # first commit of the stretch -> (ref of the stretch it copies, prefix there)
     "R1": ("refs/epochs/ambition_sprite2d_renderer/000/heads/main", ""),
@@ -49,8 +56,8 @@ _IMPORTS = {
 class Share:
     """Lines of the generator that one author made."""
 
-    who: str          # "Claude Opus 5.5", JON_ACCOUNT, "unknown"
-    kind: str         # model | jon_account | unknown
+    who: str          # "Claude Opus 5.5", "GPT (inferred)", "unknown"
+    kind: str         # model | inferred | unknown
     basis: str        # the strongest `attribution` basis among its commits
     lines: int
     commits: tuple[str, ...]
@@ -106,22 +113,17 @@ class Authorship:
         }
 
 
-#: The author of a share committed from Jon's account that names no model.
-JON_ACCOUNT = "Jon's account (no model named)"
-
-_BASIS_RANK = {"measured": 0, "declared": 1, "message": 2, "author": 3, "unknown": 4}
+_BASIS_RANK = {"measured": 0, "declared": 1, "message": 2, "inferred": 3, "unknown": 4}
 
 
 def describe(who: Attribution) -> tuple[str, str]:
     """`(name, kind)` of one commit's author for a share."""
+    if who.basis == "inferred":
+        # No model signed the commit (see `attribution.py`): the share says
+        # so in its name, apart from the GPT commits that name themselves.
+        return ", ".join(who.models) + " (inferred)", "inferred"
     if who.models:
         return ", ".join(who.models), "model"
-    if who.basis == "author":
-        # Jon's account and no model named. Jon writes code and art himself,
-        # and he also commits the work of models he ran outside an agent
-        # session (bulk commits such as "Update sprites"). Neither is proved,
-        # so the share says whose account it is, not who wrote it.
-        return JON_ACCOUNT, "jon_account"
     return "unknown", "unknown"
 
 
@@ -158,15 +160,18 @@ class Blamer:
         return None
 
     def roots(self) -> dict[str, str]:
-        """Import commit -> the name of the stretch it starts."""
+        """Import commit -> the name of the stretch it starts. The import is
+        the commit that brought the renderer package into the repository: the
+        root of `R1`, and in `R0` the commit after the host's LICENSE root."""
         if self._roots is None:
             self._roots = {}
             starts = [("R1", self.store, "refs/active/ambition_sprite2d_renderer/main"),
                       ("R0", self.store, "refs/epochs/ambition_sprite2d_renderer/000/heads/main"),
                       *(("R1", repo, "HEAD") for repo in self.repos[1:])]
             for name, repo, ref in starts:
-                for sha in git(repo, "rev-list", "--max-parents=0", ref, check=False).split():
-                    self._roots.setdefault(sha, name)
+                first = git(repo, "rev-list", "--reverse", ref, "--", _PACKAGE, check=False).split()
+                if first:
+                    self._roots.setdefault(first[0], name)
         return self._roots
 
     def before_import(self, root: str, path: str) -> tuple[str, str] | None:
@@ -203,7 +208,7 @@ class Blamer:
         sha = self.last_change(sha, full)
         key = None
         if self.cache:
-            key = self.cache / f"{sha[:16]}-{hashlib.sha1(full.encode()).hexdigest()[:16]}.json"
+            key = self.cache / f"{_LINES_VERSION}-{sha[:16]}-{hashlib.sha1(full.encode()).hexdigest()[:16]}.json"
             if key.exists():
                 return json.loads(key.read_text())
         raw = self._raw(sha, full)

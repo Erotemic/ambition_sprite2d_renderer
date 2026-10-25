@@ -47,8 +47,15 @@ defaults to a sibling `ambition-history` checkout, else a cache directory
 | `measured` | the resource ledger (`.llm_resource_tally`), keyed by commit id; from about August 2026 |
 | `declared` | a `Co-Authored-By` trailer |
 | `message` | the subject or body names a model ("Big GPT 5.6 Alice improvement") |
-| `author` | none of the above, committed from Jon's account: a human commit or an unattributed one |
+| `inferred` | none of the above, from Jon's account or an agent's: **GPT** (Jon's rule, 2026-10-25) |
 | `unknown` | nothing says |
+
+Jon's rule: a commit that no model signed is likely GPT's. Claude Code adds a
+`Co-Authored-By` trailer and GPT mostly does not. The ledger agrees: of its
+measured commits, 42 of 908 Claude-only commits have no trailer, and 10 of 11
+GPT-only commits have none. Jon's own hand commits (a pointer bump, a format
+run) look the same, so the basis says `inferred` and the share is named
+`GPT (inferred)`.
 
 A commit is evidence about a *session*, not proof that one model drew every
 pixel, and an era's commit may be a polish over earlier art. The basis is shown
@@ -65,17 +72,17 @@ line as above, and counts lines. It keeps two parts apart, because an SVG is
 many lines: **art** (the `.svg` drawings) and **code** (modules, configs, rig
 documents).
 
-* A line that blame gives to an import commit (the first commit of `R0` or
-  `R1`) is found by its text in the same file before the import. A line that
-  is not found there counts as `unknown`.
-* A commit from Jon's account that names no model is
-  `Jon's account (no model named)`. Jon writes code and art himself, and he
-  has also committed the work of models he ran outside an agent session. The
-  share says whose account it is, not who wrote it.
+* A line that blame gives to an import commit is found by its text in the
+  same file before the import. An import is the commit that first adds the
+  renderer package to a stretch: the root of `R1`, and in `R0` the
+  "Initial commit" after the host's LICENSE root. A line that is not found
+  there counts as `unknown`.
+* A commit that no model signed is `GPT (inferred)` (see above).
 * The confidence is `high` when the files name the target, at least 90% of
   the lines have a named author and the main author is declared or measured;
   `medium` when at least half do; else `low`. The blames are cached under
-  `<cache>/blame`; a blame of a fixed commit never changes.
+  `<cache>/blame`; a blame of a fixed commit never changes, and a change to how
+  imports are followed changes the cache's version (`_LINES_VERSION`).
 
 ## From a character to its lineage (`characters.py`)
 

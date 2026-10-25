@@ -62,8 +62,11 @@ def test_a_trailer_outranks_a_mention_and_a_human_author_names_no_model():
     assert (declared.basis, declared.models) == ("declared", ("Claude Opus 5.5",))
     mentioned = attribution.attribute(make("agent", "Big GPT 5.6 Alice improvement"), {})
     assert mentioned.basis == "message"
+    # Jon's rule: no model signed it, so GPT, inferred.
     human = attribution.attribute(make("joncrall", "tune a hurtbox"), {})
-    assert (human.basis, human.models) == ("author", ())
+    assert (human.basis, human.models) == ("inferred", ("GPT",))
+    unsigned = attribution.attribute(make("agent (main)", "Add rigged companion dog"), {})
+    assert (unsigned.basis, unsigned.models) == ("inferred", ("GPT",))
     measured = attribution.attribute(make("agent", "x"), {"a" * 40: [{"m": ["claude-opus-5-5"]}]})
     assert (measured.basis, measured.models) == ("measured", ("Claude Opus 5.5",))
 
@@ -115,7 +118,9 @@ def test_trailers_are_read_the_way_git_writes_them():
     only_human = attribution.attribute(
         _commit(store, "agent", "x", "Co-Authored-By: Jane Doe <jane@example.com>"), {}
     )
-    assert only_human.basis == "unknown", only_human
+    assert only_human.basis == "inferred", only_human
+    stranger = attribution.attribute(_commit(store, "someone", "x"), {})
+    assert stranger.basis == "unknown", stranger
 
 
 def test_commits_sort_by_their_instant_not_by_their_date_text():
@@ -213,7 +218,9 @@ def history_store(tmp_path_factory):
     a0 = "tools/ambition_sprite2d_renderer/"
     _commit_files(repo, {a0 + foo: "one\ntwo\n"}, "agent", "Foo\n\nCo-Authored-By: Claude Opus 4.7 <x@y>", "2026-05-01T00:00:00+00:00")
     _git(repo, "update-ref", "refs/epochs/ambition/000/heads/main", "HEAD")
-    _commit_files(repo, {foo: "one\ntwo\n"}, "joncrall", "Initial commit", "2026-06-25T00:00:00+00:00", orphan="r0")
+    # R0 starts with the repository host's LICENSE commit; the import is the next one.
+    _commit_files(repo, {"LICENSE": "license\n"}, "Jon Crall", "Initial commit", "2026-06-25T00:00:00+00:00", orphan="r0")
+    _commit_files(repo, {foo: "one\ntwo\n"}, "joncrall", "Initial commit", "2026-06-25T01:00:00+00:00")
     _commit_files(repo, {foo: "one\ntwo\nthree\n"}, "agent", "Three\n\nCo-authored-by: GPT-6 <x@y>", "2026-07-01T00:00:00+00:00")
     _git(repo, "update-ref", "refs/epochs/ambition_sprite2d_renderer/000/heads/main", "HEAD")
     # The import adds a line that no earlier commit has: its author is unknown.
