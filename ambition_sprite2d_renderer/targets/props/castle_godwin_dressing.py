@@ -781,12 +781,12 @@ def _cracked_masonry(c: Canvas, w: float, h: float, tag: str, upright: bool) -> 
             side = -1 if k % 2 else 1
             paths.append(_crack_path(rng, x, y, x + side * w * rng.uniform(0.35, 0.55), y + rng.uniform(6, 16), 4, 2.0))
     else:
-        # Across the slab, and two short ones off it.
-        trunk = _crack_path(rng, 0, h * 0.5, w, h * 0.45, 12, 3.0)
+        # Across its top, where it is walked on, and down from that into it.
+        trunk = _crack_path(rng, 0, 9.0, w, 7.0, 12, 3.0)
         paths.append(trunk)
-        for k in (3, 7, 10):
+        for k in (3, 6, 10):
             x, y = trunk[k]
-            paths.append(_crack_path(rng, x, y, x + rng.uniform(-10, 10), (0.0 if k % 2 else h), 3, 2.0))
+            paths.append(_crack_path(rng, x, y, x + rng.uniform(-14, 14), h * rng.uniform(0.55, 0.95), 6, 4.0))
     _cracks(c, wall, paths, 1.6)
     # Chips out of the block edges along the crack: the mortar shows.
     chips = c.mask(lambda p: [p.poly([(x - 2.4, y), (x + rng.uniform(-0.6, 0.6), y - rng.uniform(1.6, 2.6)), (x + 2.4, y)]) for pts in paths[:1] for x, y in pts[2:-1:3]])
@@ -811,7 +811,9 @@ def _cracked_wall(c: Canvas) -> None:
 
 
 def _cracked_floor(c: Canvas) -> None:
-    _cracked_masonry(c, 96, 32, "drain_floor", upright=False)
+    """The drain's mouth in a floor, shut: a block of the floor's masonry,
+    cracked across where it is walked on and down into it."""
+    _cracked_masonry(c, 96, 96, "drain_floor", upright=False)
 
 
 def _drain_breach(c: Canvas) -> None:
@@ -872,7 +874,7 @@ PROPS: Dict[str, Tuple[float, float, Callable, int, int, List[str]]] = {
     # The old drain: a `LockWall` look of each way it is shut, and what is
     # left when it is broken through.
     "castle_cracked_wall": (64, 160, lambda c, f: _cracked_wall(c), 1, 400, ["prop", "door", "castle", "secret"]),
-    "castle_cracked_floor": (96, 32, lambda c, f: _cracked_floor(c), 1, 400, ["prop", "door", "castle", "secret"]),
+    "castle_cracked_floor": (96, 96, lambda c, f: _cracked_floor(c), 1, 400, ["prop", "door", "castle", "secret"]),
     "castle_drain_breach": (72, 48, lambda c, f: _drain_breach(c), 1, 400, ["prop", "scenery", "castle", "rubble"]),
 }
 
