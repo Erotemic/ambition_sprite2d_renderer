@@ -1,9 +1,8 @@
-# An example of the character generator (chargen), not a game character:
-# an alligator geisha. Draw it with
-#   chargen show data/chargen_examples/gator_geisha.chargen.yaml --out OUT
-# It uses the alligator head, face paint, the nihongami with kanzashi, a
-# kimono with its motif, an obi and geta. Fields left out are drawn from
-# the base and the seed.
+# A resident made by the character generator; see targets/characters/townsfolk.py.
+# An albino alligator geisha: the alligator head, face paint, the nihongami
+# with kanzashi, a kimono with its motif, an obi and geta. Fields left out are
+# drawn from the base and the seed. Her kanzashi and kimono wrap are not
+# symmetric, so a mirrored left view shows them the other way.
 schema: ambition-chargen-v1
 name: Gator Geisha
 base: slim_female
@@ -41,3 +40,8 @@ outfit:
   accent_color: '#b8262f'
   obi_color: '#c9a24a'
   obi_knot: taiko
+game:
+  character_id: npc_gator_geisha
+  description: An albino alligator geisha in a blossom kimono, an obi and tall geta, made by the character generator. She parodies
+    no one.
+  rows: full

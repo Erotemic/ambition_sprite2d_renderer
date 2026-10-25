@@ -22,8 +22,14 @@ from ambition_sprite2d_renderer.chargen.rig import character_svg, write_characte
 from ambition_sprite2d_renderer.chargen.sheets import RiggedCharacter, render_view
 
 
-#: The example spec of the alligator head and the geisha wardrobe (not a game target).
-GATOR_GEISHA = Path(S.__file__).resolve().parents[1] / "data" / "chargen_examples" / "gator_geisha.chargen.yaml"
+#: The resident who wears the alligator head and the geisha wardrobe.
+GATOR_GEISHA = Path(S.__file__).resolve().parents[1] / "data" / "townsfolk" / "gator_geisha.chargen.yaml"
+
+
+def _gator_geisha() -> "S.CharacterSpec":
+    from ambition_sprite2d_renderer.targets.characters import townsfolk
+
+    return townsfolk.load(GATOR_GEISHA)[0]
 
 
 def _alpha_box(img: Image.Image):
@@ -221,7 +227,7 @@ def test_the_rig_derives_from_the_spec_for_many_seeds(tmp_path):
     S.generate("broad_male", 7, {"outfit": {"outer": "field_jacket", "outer_open": False, "hat": "helmet", "accessories": ["webbing"]}}),
     S.generate("broad_female", 61, {"family": "crew", "hair": {"style": "bun"}, "outfit": {
         "outer": "field_jacket", "outer_open": False, "hat": "campaign", "shoes": "boots", "accessories": ["webbing"], "wardrobe": ["hat:helmet"]}}),
-    S.CharacterSpec.load(GATOR_GEISHA),
+    _gator_geisha(),
 ], ids=["robe", "horse", "dog", "cat", "bird", "sea_lion", "soldier", "crew_soldier", "gator_geisha"])
 def test_every_library_clip_poses_without_audit_errors_in_every_view(spec, tmp_path):
     from ambition_sprite2d_renderer.authoring.pose_audit import audit_document
@@ -574,7 +580,7 @@ def test_the_alligator_head_draws_in_every_view_with_its_teeth_and_faces():
 def test_the_geisha_wardrobe_draws_in_every_view_and_its_fields_are_optional(tmp_path):
     from ambition_sprite2d_renderer.chargen.rig import draw_views
 
-    spec = S.CharacterSpec.load(GATOR_GEISHA)
+    spec = _gator_geisha()
     assert S.validate(spec) == []
     assert S.CharacterSpec.load(spec.save(tmp_path / "g.chargen.yaml")) == spec
     _fig, drawn = draw_views(spec)
@@ -588,7 +594,7 @@ def test_the_geisha_wardrobe_draws_in_every_view_and_its_fields_are_optional(tmp
     z = {dv.view.key: next(p.z for p in dv.parts if p.name == "torso__obi_knot") for dv in drawn}
     assert z["front"] < 2.0 < z["back"]
     # Each part changes the drawing (worn against taken off).
-    plain = S.CharacterSpec.load(GATOR_GEISHA)
+    plain = _gator_geisha()
     plain.outfit.outer, plain.outfit.accessories, plain.hair.style, plain.outfit.shoes = "none", [], "bald", "shoes"
     plain.face.makeup = "none"
     for key in ("front", "side", "back"):
@@ -597,7 +603,7 @@ def test_the_geisha_wardrobe_draws_in_every_view_and_its_fields_are_optional(tmp
     d = S.generate("average_male", 3).to_dict()
     assert "makeup" not in d["face"] and "ornaments" not in d["hair"] and "geta_height" not in d["outfit"]
     assert spec.to_dict()["face"]["makeup"] == "geisha"
-    bad = S.CharacterSpec.load(GATOR_GEISHA)
+    bad = _gator_geisha()
     bad.outfit.wardrobe = ["footwear:shoes"]
     assert any("geta" in e for e in S.validate(bad))
 

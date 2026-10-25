@@ -1900,6 +1900,11 @@ lineages:
     ids: [armsmith_odile]
     paths: ['townsfolk/armsmith_odile\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
+  gator_geisha:
+    name: Gator Geisha
+    ids: [gator_geisha]
+    paths: ['(townsfolk|chargen_examples)/gator_geisha\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
+    eras: []
   port_agnes:
     name: Agnes
     ids: [port_agnes]

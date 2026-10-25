@@ -899,8 +899,8 @@ and other footwear cannot be wardrobe alternates of each other. The kimono's
 wrap and the kanzashi are not symmetric; a left view (a mirror) shows them
 the other way. These fields are written to a record only when they are not
 at their default, so older records and their SVGs do not change. The
-example spec `data/chargen_examples/gator_geisha.chargen.yaml` (not a game
-target; `chargen show` draws it) puts them on the alligator head.
+resident `data/townsfolk/gator_geisha.chargen.yaml` (the game's
+`npc_gator_geisha`) puts them on the alligator head.
 
 **Components** (`wear.py`): legwear, top, outer layer, footwear, hair, hat
 and accessories are separate parts tagged `slot:kind` (`data-rig-feature`),
