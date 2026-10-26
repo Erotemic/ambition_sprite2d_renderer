@@ -31,15 +31,16 @@ from typing import Dict, List, Tuple
 from ...authoring.rigdoc import RigDocument
 from ...authoring.skeleton import two_bone_ik
 from .player_robot_v3_body import FACE_SWITCHES, SCALE_RESTS, Arm, RigBody, WorldPose, rot, write_frames
+from .player_robot_v3_swim import ROW as SWIM_ROW
 from .player_robot_v3_wall_climb import ROW as WALL_CLIMB_ROW
 from .player_robot_v3_wall_climb import WALL_X, climb_channels, climb_pose
 
 ROW = "crouch_walk"
 #: From the crouch hold to the crawl's first frame (`author_crawl_start`).
 START_ROW = "crawl_start"
-#: The rows drawn from the pure side view: the climb, the crawl, and the way
-#: into it.
-PURE_SIDE_ROWS: Tuple[str, ...] = (WALL_CLIMB_ROW, ROW, START_ROW)
+#: The rows drawn from the pure side view: the climb, the crawl, the way into
+#: it, and the swim (``player_robot_v3_swim``).
+PURE_SIDE_ROWS: Tuple[str, ...] = (WALL_CLIMB_ROW, ROW, START_ROW, SWIM_ROW)
 
 Point = Tuple[float, float]
 
