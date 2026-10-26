@@ -584,6 +584,7 @@ from . import _round_wear as W  # noqa: E402
 
 
 _WRAPPED = dict(wrap=1.0, na=IN_NEAR, fa=IN_FAR)
+_NOT_FRONT = C.not_in(O.near_turn(0.0))
 #: The garment's radius: a turn ``u`` of the wrap is ``x / _R`` radians.
 _R = 13.0
 #: The edge of the flap that is on top, from his far shoulder down across
@@ -652,8 +653,11 @@ ROUND = C.Round(
                            for u, v in [(sx * 56.0, y) for sx in (-1.0, 1.0) for y in (-6.0, -2.0, 2.0, 6.0)] + [(u, -11.0) for u in (-40.0, -15.0, 15.0, 40.0)]]),
         C.auto_trunk(X),
         pieces=[("front", WRAP_3D), ("front", ROLL_3D), ("front", HAND_3D)]),
-    # His arms are inside the blanket, his hands at his chest.
-    C.Stance(hands={"r": C.Hand(inside=True), "l": C.Hand(inside=True)}, stagger=1.6))
+    # His arms are inside the blanket; from the front, as his front art has
+    # them, they come out of it: each upper arm hangs at his side, each
+    # forearm comes forward to his chest, the fur at their cuffs.
+    C.Stance(hands={"r": C.Hand(at=(1.0, -15.0, 17.0), pole=(0.0, 1.0, -0.6), mode="fist", inside=_NOT_FRONT),
+                    "l": C.Hand(at=(4.0, -16.4, 15.6), pole=(0.0, 1.0, -0.6), mode="fist", inside=_NOT_FRONT)}, stagger=1.6))
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}

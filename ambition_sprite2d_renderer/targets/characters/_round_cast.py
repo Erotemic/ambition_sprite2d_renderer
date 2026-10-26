@@ -581,13 +581,14 @@ class Hand:
     the side (``at`` None), or the 3D point ``at``; its elbow goes toward
     ``pole``; ``mode`` is what the hand does (default: as at rest).
     ``inside``: the arm is inside what the person wears (a blanket wrapped
-    round it), and is not drawn."""
+    round it), and is not drawn: in all views, or in the views ``inside``
+    says (its own front art may have the arms out)."""
 
     l: float = 0.0
     pole: Vec = (0.0, 0.3, -1.0)
     at: Optional[Vec] = None
     mode: Optional[str] = None
-    inside: bool = False
+    inside: Union[bool, Callable[[O.View], bool]] = False
 
 
 @dataclass
@@ -638,8 +639,10 @@ class Round:
             target = hand.at if hand.at is not None else J.wrist(near, hand.l)
             elbow, wrist = O.two_bone(J.shoulders[side], target, body.upper, body.fore, hand.pole)
             knee, ankle = O.two_bone(J.hips[side], J.ankles[side], body.thigh, body.shin, (0.0, 0.0, 1.0))
-            if not hand.inside:
-                parts.append(body.arm(f"{side}_arm", J.shoulders[side], elbow, wrist, hand.mode or body.hand_mode(near)))
+            if hand.inside is not True:
+                arm = body.arm(f"{side}_arm", J.shoulders[side], elbow, wrist, hand.mode or body.hand_mode(near))
+                arm.when = not_in(hand.inside or None)
+                parts.append(arm)
             parts += [body.leg(f"{side}_leg", J.hips[side], knee, ankle), body.shoes(f"{side}_shoe", ankle)]
         return O.Figure(parts, body.frame, body.cx, body.ground, body.hip_up, trunk=(0.0, -20.0, 0.4))
 
