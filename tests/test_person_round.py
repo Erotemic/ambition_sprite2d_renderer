@@ -1,5 +1,5 @@
 """People of the cast in the round (``_round_cast.Round``): Davy Hylbert,
-Erdish and Anne Druid draw in the views they have no art for, inside their
+Erdish, Anne Druid and Ramen-nujan draw in the views they have no art for, inside their
 frames, standing where their own rows stand; and a true left view is not the
 mirror of the right one (each rests with the two hands doing different
 things)."""
@@ -13,7 +13,7 @@ from PIL import ImageOps
 
 from ambition_sprite2d_renderer.targets.characters import _person_round as O
 
-PEOPLE = ("anne_druid", "davy_hylbert", "erdish")
+PEOPLE = ("anne_druid", "davy_hylbert", "erdish", "ramen_nujan")
 
 
 def _round(who):

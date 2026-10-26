@@ -144,8 +144,8 @@ class Body:
     ``wrist(near, l)``, the wrist of its rest pose put ``l`` to the side);
     ``hand_mode(near)``; ``arm``, ``leg``, ``neck``, ``shoes``: its own
     pieces placed at 3D joints; ``own(J)``: its own art (``own_art``,
-    ``own_layers``) as ``{"head": ..., "trunk": ..., "back": ..., "extra":
-    [...]}``, any of them missing."""
+    ``own_layers``) by name: ``"head"``, ``"trunk"``, ``"back"`` and any
+    other (a collar, a scarf), any of them missing."""
 
     K: Kit
     frame: Tuple[int, int]
@@ -291,6 +291,102 @@ class PersonBody(Body):
         return out
 
 
+@dataclass(eq=False)
+class RigBody(Body):
+    """A rig drawn by hand on ``_ai_era_kit`` (not a ``Person``: Erdish,
+    Ramen-nujan) as a body, from its parts. ``rest_joints``: its joints at
+    rest in 3D, as ``Body.joints`` returns them (the stagger is put on
+    here); ``arm_bones(pts, near)`` and ``leg_bones(pts, near)``: its bones
+    between the projected joints (shoulder, elbow, wrist; hip, knee, ankle;
+    see ``place_bones``); ``hand(mode, near)``; ``arm_extra(side, img, pts,
+    near)``: what else is on an arm (a patch on an elbow); ``neck(length)``:
+    its neck, or none (a scarf hides it); its shoes; ``own(J)`` and
+    ``own_frames()`` as ``Body`` has them."""
+
+    K: Kit
+    frame: Tuple[int, int]
+    cx: float
+    ground: float
+    hip_up: float
+    upper: float
+    fore: float
+    thigh: float
+    shin: float
+    rest_joints: SimpleNamespace
+    hand_modes: Tuple[str, str]
+    arm_bones: Callable
+    leg_bones: Callable
+    hand: Callable
+    shoe: Callable
+    front_shoe: Callable
+    back_shoe: Callable
+    own_pieces: Callable = lambda J: {}
+    frames: Callable = lambda: {}
+    neck_piece: Optional[Callable] = None
+    arm_extra: Optional[Callable] = None
+
+    def joints(self, stagger=0.0):
+        J = self.rest_joints
+        ankles = {"r": tuple(np.asarray(J.ankles["r"]) - [0.0, 0.0, stagger]), "l": tuple(np.asarray(J.ankles["l"]) + [0.0, 0.0, stagger])}
+        return SimpleNamespace(**{**vars(J), "ankles": ankles})
+
+    def hand_mode(self, near):
+        return self.hand_modes[0 if near else 1]
+
+    def arm(self, name, shoulder, elbow, wrist, mode):
+        extra = None if self.arm_extra is None else (lambda img, pts, near: self.arm_extra(name[0], img, pts, near))
+        return limb_piece(self.K, name, [shoulder, elbow, wrist], self.arm_bones, hand=lambda near: self.hand(mode, near), extra=extra, lead=3.0)
+
+    def leg(self, name, hip, knee, ankle):
+        # A leg goes under the trunk, as the cast paints a leg that does not kick.
+        return limb_piece(self.K, name, [hip, knee, ankle], self.leg_bones, anchor=knee, lead=-12.0)
+
+    def neck(self, base, top):
+        K, make = self.K, self.neck_piece
+
+        def draw(view, far, at):
+            if make is None:
+                return None
+            a, b = at(base), at(top)
+            img = K.new_frame()
+            K.place(img, make(round(math.dist(a, b))), a, "neck", O._angle(a, b))
+            return img
+
+        return O.Drawn("neck", tuple(base), draw)
+
+    def shoes(self, name, ankle):
+        return shoes(name, ankle, self.shoe, self.front_shoe, self.back_shoe)
+
+    def own(self, J):
+        return self.own_pieces(J)
+
+    def own_frames(self):
+        return self.frames()
+
+
+def lifted_joints(*, shoulders: Tuple[Point, Point], hips: Tuple[Point, Point], feet: Tuple[float, float], neck: Point, head: Point,
+                  widths: Tuple[float, float, float], hip_up: float, ankle_up: float, wrists: Tuple[Point, Point], throat: Vec = (0.0, 4.0, -0.6)) -> SimpleNamespace:
+    """The joints at rest of a rig with only a three-quarter view: each joint
+    where that view draws it (``(x, y)`` from the hips; ``feet``: how far
+    across each foot is), ``widths`` how far to the side the shoulders, the
+    hips and the feet are from the front (read from the build: there is no
+    front view), and ``lift`` how far forward. ``wrists``: where the view
+    draws the near and the far wrist (``wrist(near, l)`` puts one ``l`` to the
+    side)."""
+    sw, hw, fw = widths
+
+    def wrist(near: bool, l: float) -> Vec:
+        x, y = wrists[0 if near else 1]
+        return (l, y, O.lift(x, l))
+
+    head3 = (0.0, head[1], O.lift(head[0], 0.0))
+    return SimpleNamespace(
+        shoulders={"r": (-sw, shoulders[0][1], O.lift(shoulders[0][0], -sw)), "l": (sw, shoulders[1][1], O.lift(shoulders[1][0], sw))},
+        hips={"r": (-hw, 0.0, O.lift(hips[0][0], -hw)), "l": (hw, 0.0, O.lift(hips[1][0], hw))},
+        ankles={"r": (-fw, hip_up - ankle_up, O.lift(feet[0], -fw)), "l": (fw, hip_up - ankle_up, O.lift(feet[1], fw))},
+        neck=(0.0, neck[1], O.lift(neck[0], 0.0)), head=head3, throat=tuple(np.asarray(head3) + throat), wrist=wrist)
+
+
 def own_layers(person, layers: Sequence[str], *, anim: str = "idle", lead: float = -12.0) -> O.Sprite:
     """What a ``Person`` paints in its own ``layers`` (``back``: a cloak,
     hair down the back, a staff across it) in the first frame of ``anim``,
@@ -326,6 +422,10 @@ class Look:
     trunk: object
     head_pieces: Sequence[object] = ()
     back_pieces: Sequence[object] = ()
+    #: ``(name, piece)``: drawn in the views where the body's own art has no
+    #: piece of that name (``Body.own``: a scarf for its scarf, a collar for
+    #: its collar), or in every view when it has none.
+    pieces: Sequence[Tuple[str, object]] = ()
     #: Where the head is drawn, if not at the body's ``J.head``.
     head_at: Optional[Vec] = None
 
@@ -362,9 +462,12 @@ class Round:
         body, look, stance = self.body, self.look, self.stance
         J = body.joints(stance.stagger)
         own = body.own(J)
-        head_when, back_when = not_in(getattr(own.get("head"), "when", None)), not_in(getattr(own.get("back"), "when", None))
+        def unless(name: str):
+            return not_in(getattr(own.get(name), "when", None))
+
+        head_when, back_when = unless("head"), unless("back")
         trunk = look.trunk.part()
-        trunk.when = not_in(getattr(own.get("trunk"), "when", None))
+        trunk.when = unless("trunk")
         head = O.head_part(look.head, look.head_at or J.head)
         head.when = head_when
         parts: List[object] = [trunk, head]
@@ -376,7 +479,11 @@ class Round:
             made = piece.piece(body.K, J, look.head_at or J.head)
             made.when = back_when
             parts.append(made)
-        parts += [v for k, v in own.items() if k != "extra"] + list(own.get("extra", []))
+        for name, piece in look.pieces:
+            made = piece.piece(body.K, J, look.head_at or J.head)
+            made.when = unless(name)
+            parts.append(made)
+        parts += list(own.values())
         parts.append(body.neck(J.neck, J.throat))
         for side, near in (("r", True), ("l", False)):
             hand = stance.hands.get(side, Hand(l=-6.0 if near else 6.0))
@@ -405,7 +512,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     return 0
 
 
-__all__ = ["Body", "Hand", "Look", "PersonBody", "Round", "Stance", "limb_piece", "not_in", "own_art", "own_layers", "own_turns", "seg_bones", "shoes"]
+__all__ = ["RigBody", "lifted_joints", "Body", "Hand", "Look", "PersonBody", "Round", "Stance", "limb_piece", "not_in", "own_art", "own_layers", "own_turns", "seg_bones", "shoes"]
 
 
 if __name__ == "__main__":

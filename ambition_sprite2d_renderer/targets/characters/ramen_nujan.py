@@ -1575,6 +1575,114 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# Ramen-nujan in the round: his own art where he has it (his head, coat and
+# the scarf round his neck in his three-quarter view; his sleeves, hands,
+# trousers, shoes and the tails of his scarf in every view), placed by 3D;
+# and what 3D draws for the other views, as data. He has no front view, so how
+# wide he is from the front is read from his build. His rows do not use this.
+
+from types import SimpleNamespace  # noqa: E402
+
+import numpy as np  # noqa: E402
+
+from . import _person_rig as R  # noqa: E402
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+#: As he rests (``idle``, its first frame): his hands behind his back, his
+#: head tilted back, looking up.
+_REST = ROW_POSES["idle"](0, dict((n, k) for n, k, _ in ROWS)["idle"])
+_TILT = float(_REST["head"][2])
+_up = turned(HEAD_UP, _TILT * 0.3)
+_HEAD = (0.8 + _up[0] + float(_REST["head"][0]) * U, -NECK + _up[1])
+
+
+def _drawn_wrist(shoulder: Point, reach: Point) -> Point:
+    return (shoulder[0] + reach[0] * U, shoulder[1] + reach[1] * U)
+
+
+JOINTS = C.lifted_joints(shoulders=(NEAR_SHOULDER, FAR_SHOULDER), hips=(NEAR_HIP, FAR_HIP),
+                         feet=(float(_REST["nf"][0]) * U, float(_REST["ff"][0]) * U), neck=(0.8, -NECK), head=_HEAD,
+                         widths=(7.6, 4.4, 4.4 + 2.2 * U), hip_up=HIP_UP, ankle_up=ANKLE_UP,
+                         wrists=(_drawn_wrist(NEAR_SHOULDER, _REST["na"]), _drawn_wrist(FAR_SHOULDER, _REST["fa"])))
+#: His hands behind his back, at its small: his three-quarter view draws them
+#: out past his back so that they show; from behind they are together.
+STANCE = C.Stance(hands={"r": C.Hand(at=(-2.6, -8.0, -9.4), pole=(-1.0, 0.2, -0.3)), "l": C.Hand(at=(2.6, -8.4, -9.6), pole=(1.0, 0.2, -0.3))},
+                  stagger=1.0)
+
+#: His head in 3D: a full face, short neat black hair parted on his right and
+#: combed across, an ear each side, small dark eyes with whites, strong brows.
+HEAD_3D = O.Head3D(
+    skin=SKIN, shade=SKIN_SHADE, deep=SKIN_DEEP,
+    skull=((0.0, -1.6, 0.0), (8.4, 9.6, 8.4)), jaw=((0.0, 3.4, 2.5), (7.0, 8.0, 5.0)), nose=((0.0, 1.6, 8.4), (1.2, 2.0, 1.8)),
+    ear=((-8.0, 1.6, -1.0), (1.4, 3.0, 2.2)), eye=(30.0, 0.0), eye_size=0.95, ink=INK, eye_white=EYE_WHITE, iris=IRIS, lid=INK,
+    brow=(HAIR, None, -3.6, 1.3),
+    hair=lambda u, v: (v < -8.6 + 3.0 * np.clip(np.abs(u) / 45.0, 0.0, 1.0)) | ((np.abs(u) > 72.0) & (v < 2.0)) | ((np.abs(u) > 100.0) & (v < 8.4)),
+    hair_colour=HAIR, hair_shade=mix(HAIR, INK, 0.5), volumes=[((0.0, -5.0, -0.6), (8.8, 7.4, 8.8))],
+    lines=[O.curve([(-2.2, 6.4, 7.0), (0.0, 6.9, 7.3), (2.2, 6.3, 7.0)], MOUTH, 0.8)]
+    + [O.curve([O.on_ellipsoid((0.0, -5.0, -0.6), (8.8, 7.4, 8.8), u0 + 70.0 * t, -11.6 + 1.6 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_LIGHT, 0.7)
+       for u0 in (-40.0, -60.0, -150.0)]
+    + [O.curve([O.on_ellipsoid((0.0, -5.0, -0.6), (8.8, 7.4, 8.8), -38.0, v, 0.2)[0] for v in (-12.2, -10.0)], HAIR_LIGHT, 0.5)],
+)
+
+#: His coat: long, to the middle of his thighs, buttoned to the neck with
+#: carrot buttons, its green lining where it opens under the last one, a gold
+#: band at the hem, and gold dots joined like a constellation on his right.
+COAT_3D = W.Trunk(
+    rings=[O.Ring(-39.0, 0.0, 0.4, 4.6, 4.2), O.Ring(-35.0, 0.0, 0.3, 8.4, 6.8), O.Ring(-28.0, 0.0, 0.3, 9.2, 7.4), O.Ring(-17.0, 0.0, 0.2, 9.0, 7.2),
+           O.Ring(-4.0, 0.0, 0.0, 9.2, 7.2), O.Ring(10.0, 0.0, 0.0, 10.6, 8.2)],
+    garment=W.Garment(COAT, COAT_DARK, radius=9.0, features=[
+        W.Down(6.0, -38.0, -4.0, COAT_LIGHT, width=0.45), W.Strip(0.0, -4.0, 10.0, 0.2, LINING, flare=3.0),
+        W.Buttons(0.0, -31.5, -7.0, 5, 1.4, CARROT), W.Band(7.4, 11.0, SESAME),
+        W.Path([(-55.0, -24.0), (-30.0, -15.5), (-62.0, -8.5), (-25.0, -2.0), (-55.0, 4.0)], mix(COAT, SESAME, 0.4), width=0.25),
+        *[W.Glow(u, v, r, r, SESAME) for u, v, r in ((-55.0, -24.0, 1.1), (-30.0, -15.5, 0.8), (-62.0, -8.5, 1.1), (-25.0, -2.0, 0.8), (-55.0, 4.0, 1.1))],
+        W.Shade()]),
+    shoulder=((-6.4, -32.4, 0.3), (5.0, 5.6, 5.0)),
+)
+#: His scarf, wound round his neck, the tails of it trailing down his back
+#: from the knot (``_tails``: each tail ends in loose noodles).
+WRAP_3D = W.Worn("scarf", [O.Ring(-39.6, 0.0, 0.6, 5.2, 4.8), O.Ring(-37.4, 0.0, 0.6, 7.6, 6.6), O.Ring(-35.2, 0.0, 0.6, 7.4, 6.4)],
+                 W.Garment(NOODLE, NOODLE_DARK, features=[W.Across(-180.0, 180.0, -38.2, NOODLE_DARK), W.Across(-180.0, 180.0, -36.4, NOODLE_DARK),
+                                                          W.Shade(-0.45)]))
+_KNOT = np.array([-1.4, -38.4, -5.6])
+TAILS = W.Chains("scarf_tails", [[tuple(_KNOT + k * np.array([0.0, 5.6, -1.4])) for k in range(8)],
+                                 [tuple(_KNOT + k * np.array([0.5, 5.2, -2.2])) for k in range(7)]], _tails, lead=0.5)
+
+
+def _arm_bones(pts, near):
+    colour = COAT if near else COAT_DARK
+    return [(pts[0], pts[1], lambda edge, n: _bone("upper", n, 7.4, 6.2, colour, COAT_DARK, edge)),
+            (pts[1], pts[2], lambda edge, n: _bone("fore", n, 6.2, 5.4, colour, COAT_DARK, edge))]
+
+
+def _leg_bones(pts, near):
+    colour = TROUSER if near else TROUSER_DARK
+    return [(pts[0], pts[1], lambda edge, n: _bone("thigh", n, 7.8, 6.4, colour, TROUSER_DARK, edge)),
+            (pts[1], pts[2], lambda edge, n: _bone("shin", n, 6.4, 5.2, colour, TROUSER_DARK, edge))]
+
+
+def _own(J):
+    """His own head, coat and scarf in his three-quarter view. His coat is
+    not mirrored (the constellation is on his right); his scarf is."""
+    turn = _TILT
+    layers = lambda: O.composed(K, [(_head(), "head"), (_eyes(str(_REST["eyes"])), "eyes"),  # noqa: E731
+                                    (_brows(1 if float(_REST["brows"]) > 0.5 else 0), "brows"), (_mouth(str(_REST["mouth"])), "mouth")], turn)
+    return {"trunk": C.own_art("own_coat", (0.0, 0.0, 0.0), lambda: _coat(0, 0), lead=0.4, mirror=False),
+            "head": C.own_art("own_head", J.head, layers, lead=9.0),
+            "scarf": C.own_art("own_scarf", J.neck, _wrap, lead=9.5)}
+
+
+BODY = C.RigBody(
+    K, FRAME_SIZE, CX, GROUND, HIP_UP, UPPER, FORE, THIGH, SHIN, rest_joints=SimpleNamespace(**vars(JOINTS), rest=_REST),
+    hand_modes=(str(_REST["nh"]), str(_REST["fh"])), arm_bones=_arm_bones, leg_bones=_leg_bones, hand=_hand, shoe=_shoe,
+    front_shoe=R.make_front_shoe(K, SHOE, SHOE_DARK, ANKLE_UP), back_shoe=R.make_back_shoe(K, SHOE, SHOE_DARK, ANKLE_UP), own_pieces=_own,
+    frames=lambda: {"front_3q": _render_frame("idle", 0, dict((n, k) for n, k, _ in ROWS)["idle"])})
+ROUND = C.Round("Ramen-nujan", BODY, C.Look(HEAD_3D, COAT_3D, pieces=[("scarf", WRAP_3D)], back_pieces=[TAILS]), STANCE)
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 

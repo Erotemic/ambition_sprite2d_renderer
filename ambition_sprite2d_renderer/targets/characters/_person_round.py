@@ -520,6 +520,9 @@ class Head3D:
     eye: Tuple[float, float]
     eye_size: float = 1.0
     ink: RGBA = (28, 24, 32, 255)
+    #: An eye with a white (and an iris in it) instead of a dark dot.
+    eye_white: Optional[RGBA] = None
+    iris: Optional[RGBA] = None
     lid: Optional[RGBA] = None
     #: ``(colour, under, height, weight)``: the brows over the eyes.
     brow: Optional[Tuple[RGBA, Optional[RGBA], float, float]] = None
@@ -582,7 +585,13 @@ def head_part(h: Head3D, at: Vec, name: str = "head") -> Part:
         face = np.array([0.25 * side, 0.0, 1.0])
         if g is not None and g.lens is not None:
             lines.append(_lens(lens, face, g, None, fill_colour=g.lens))
-        lines.append(circle(eye + n * 0.4, n, h.eye_size, None, fill=h.ink, slack=1.6))
+        if h.eye_white is not None:
+            lines.append(circle(eye + n * 0.3, n, 1.9 * h.eye_size, None, fill=h.eye_white, slack=1.6))
+            if h.iris is not None:
+                lines.append(circle(eye + n * 0.4, n, 1.3 * h.eye_size, None, fill=h.iris, slack=1.6))
+            lines.append(circle(eye + n * 0.5, n, 0.8 * h.eye_size, None, fill=h.ink, slack=1.6))
+        else:
+            lines.append(circle(eye + n * 0.4, n, h.eye_size, None, fill=h.ink, slack=1.6))
         if h.lid is not None:
             lid = [on_ellipsoid(skull_c, skull_r, side * eu + du, ev - 1.6 + 0.02 * du * du, 0.1)[0] for du in (-14.0, -6.0, 0.0, 6.0, 14.0)]
             lines.append(curve(lid, h.lid, 0.5))

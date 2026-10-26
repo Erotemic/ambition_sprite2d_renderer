@@ -237,6 +237,25 @@ class Glow:
 
 
 @dataclass(frozen=True)
+class Path:
+    """A line through ``points`` (``(u, v)``), ``width`` pixels each side:
+    stitching, a constellation of dots joined."""
+
+    points: Sequence[Tuple[float, float]]
+    colour: RGBA
+    width: float = 0.3
+
+    def apply(self, g, out, u, v, x, lit):
+        pts = [(O.arc(pu, g.radius), pv) for pu, pv in self.points]
+        near = np.full(len(u), np.inf)
+        for (ax, ay), (bx, by) in zip(pts[:-1], pts[1:]):
+            dx, dy = bx - ax, by - ay
+            t = np.clip(((x - ax) * dx + (v - ay) * dy) / max(1e-9, dx * dx + dy * dy), 0.0, 1.0)
+            near = np.minimum(near, np.hypot(x - (ax + t * dx), v - (ay + t * dy)))
+        O.put(out, near < self.width, self.colour)
+
+
+@dataclass(frozen=True)
 class PointedHem:
     """A hem cut in points (leaves): from ``top`` to ``bottom`` a row of
     points ``period`` pixels apart, in ``colour``; under them, ``under``."""
@@ -417,6 +436,53 @@ def strokes(K: Kit, name: str, lines: Sequence[Sequence[Vec]], width: float, col
 
 
 @dataclass(frozen=True)
+class Worn:
+    """A thing worn round the body or the head, as a loft with its own
+    outline: a scarf wound round the neck, a circlet. ``on``: ``"body"``
+    (rings in body space) or ``"head"`` (from the head's middle)."""
+
+    name: str
+    rings: Sequence[O.Ring]
+    garment: Garment
+    on: str = "body"
+
+    def piece(self, K: Kit, J, head: Vec) -> O.Part:
+        g = self.garment
+        surface = O.loft(self.rings, g.paint)
+        at = np.asarray(head if self.on == "head" else (0.0, 0.0, 0.0))
+        mid = self.rings[len(self.rings) // 2]
+        return O.Part(self.name, [surface.moved(tuple(at))], base=g.colour, outline=1.2, rim=0.4, shade=0.45, shade_colour=g.dark,
+                      anchor=tuple(at + (mid.l, mid.y, mid.z)))
+
+
+@dataclass(frozen=True)
+class Chains:
+    """Things that hang through 3D ``chains`` of points (body space), drawn
+    by the character's own maker: ``make(chains)`` gets each chain as frame
+    points from a whole frame pixel and returns the piece placed there (the
+    tails of a scarf). It is as near as the middle of the first chain."""
+
+    name: str
+    chains: Sequence[Sequence[Vec]]
+    make: Callable
+    lead: float = 0.0
+
+    def piece(self, K: Kit, J, head: Vec) -> O.Drawn:
+        chains = self.chains
+
+        def draw(view: O.View, far: bool, at) -> object:
+            pts = [[at(p) for p in ch] for ch in chains]
+            root = (float(round(pts[0][0][0])), float(round(pts[0][0][1])))
+            piece = self.make(tuple(tuple((x - root[0], y - root[1]) for x, y in ch) for ch in pts))
+            img = K.new_frame()
+            K.place(img, piece, root, self.name, 0.0)
+            return img
+
+        first = chains[0]
+        return O.Drawn(self.name, tuple(first[len(first) // 2]), draw, lead=self.lead)
+
+
+@dataclass(frozen=True)
 class Mane:
     """Hair down the back (or a tail, the end of a scarf): ``points`` from
     the head's middle, ``width`` from the side, ``back_width`` from behind
@@ -466,5 +532,5 @@ class Antlers:
                        lead=self.lead)
 
 
-__all__ = ["Antlers", "Mane", "Prop", "Across", "Band", "Buttons", "Cloak", "Dot", "Down", "Garment", "Glow", "Hat", "Lapels", "Neckline", "Opening", "Patch", "PointedHem",
+__all__ = ["Chains", "Path", "Worn", "Antlers", "Mane", "Prop", "Across", "Band", "Buttons", "Cloak", "Dot", "Down", "Garment", "Glow", "Hat", "Lapels", "Neckline", "Opening", "Patch", "PointedHem",
            "Shade", "Strip", "Swag", "Trunk", "mane", "prop", "strokes"]
