@@ -2,9 +2,12 @@
 
 George Boo'l is a playful George Boole parody.  He is deliberately rendered as
 an unmistakable old-fashioned bedsheet ghost: one draped cloth silhouette, two
-eye holes, a mouth hole, little raised sheet-corners for hands, and a scalloped
-hem.  Boolean ideas appear in the animation language rather than through a
-busy costume:
+eye holes, a mouth hole, sheet corners lifted by the fists under them, and a
+scalloped hem.  He is posed as cloth: the dome leads, the bell bends after it
+and the hem trails, and a corner reaching out pulls the sheet with it.  Every
+view turns (render_view, render_turnaround); the game's rows face +x
+at three quarters.  Boolean ideas appear in the animation language rather than
+through a busy costume:
 
 * TRUE is the ordinary pale sheet state;
 * FALSE is the inverted charcoal sheet state;
@@ -21,14 +24,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 import math
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Sequence, Tuple
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
-from ...authoring import rigdoc, shape_rig
+from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
-from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -186,8 +188,8 @@ ACTOR_METADATA = {
     "sockets": {
         "head": {"source": "george_booul.geometry", "point": {"x": 80.0, "y": 48.0}},
         "chest": {"source": "george_booul.geometry", "point": {"x": 80.0, "y": 82.0}},
-        "hand_l": {"source": "george_booul.geometry", "point": {"x": 48.0, "y": 86.0}},
-        "hand_r": {"source": "george_booul.geometry", "point": {"x": 112.0, "y": 86.0}},
+        "hand_l": {"source": "george_booul.geometry", "point": {"x": 57.0, "y": 81.0}},
+        "hand_r": {"source": "george_booul.geometry", "point": {"x": 111.0, "y": 81.0}},
         "speech_bubble": {"source": "george_booul.geometry", "point": {"x": 80.0, "y": 13.0}},
         "focus": {"source": "george_booul.geometry", "point": {"x": 80.0, "y": 63.0}},
     },
@@ -195,13 +197,14 @@ ACTOR_METADATA = {
 }
 
 INK = (20, 25, 30, 255)
-INK_SOFT = (65, 73, 81, 255)
 TRUE_CLOTH = (238, 243, 232, 255)
-TRUE_LIGHT = (255, 255, 247, 255)
-TRUE_SHADOW = (183, 199, 190, 255)
-FALSE_CLOTH = (43, 42, 50, 255)
-FALSE_LIGHT = (79, 73, 88, 255)
-FALSE_SHADOW = (24, 25, 31, 255)
+TRUE_LIGHT = (255, 255, 249, 255)
+TRUE_SHADOW = (186, 201, 196, 255)
+TRUE_LINE = (64, 77, 88, 255)
+FALSE_CLOTH = (52, 50, 61, 255)
+FALSE_LIGHT = (94, 88, 108, 255)
+FALSE_SHADOW = (29, 29, 37, 255)
+FALSE_LINE = (10, 10, 14, 255)
 TRUE_EYE = (19, 28, 27, 255)
 FALSE_EYE = (244, 106, 53, 255)
 LOGIC_GREEN = (113, 231, 135, 255)
@@ -209,19 +212,42 @@ LOGIC_GREEN_LIGHT = (205, 255, 192, 255)
 LOGIC_RED = (244, 95, 60, 255)
 LOGIC_GOLD = (244, 211, 104, 255)
 
+#: The camera's turn about him: 0 faces the viewer, 90 faces +x. The sheet
+#: shows his heading by where the face sits on the dome and which corner is
+#: in front; the game's rows face +x at three quarters.
+GAME_YAW = 40.0
+#: The dome, the bell of the sheet, and its hem at rest.
+HEAD_R = 22.0
+HEAD_AT = (CENTER_X, 52.0)
+HEM_Y = 129.0
+HEM_HALF = 33.0
+LINE_W = 1.5
+FIST_R = 5.5
+HAND_MARGIN = 18.0
+
 
 @dataclass
 class Pose:
+    """One frame of the sheet. The head leads and the cloth follows: ``lean``
+    carries the dome over (+ toward his heading) and ``hem_dx`` drags the hem,
+    so the bell bends between them. A hand is a fist under a sheet corner,
+    placed by its offset from where it rests (``near_*`` is the corner on
+    the viewer's side, ``far_*`` the one behind him)."""
+
     state: float = 1.0
     x: float = 0.0
     y: float = 0.0
     tilt: float = 0.0
-    bob: float = 0.0
-    arm_l: float = 0.0
-    arm_r: float = 0.0
-    hand_l_y: float = 0.0
-    hand_r_y: float = 0.0
-    hem_wave: float = 0.0
+    lean: float = 0.0
+    stretch: float = 0.0
+    hem_dx: float = 0.0
+    hem_spread: float = 1.0
+    flutter: float = 1.0
+    near_x: float = 0.0
+    near_y: float = 0.0
+    far_x: float = 0.0
+    far_y: float = 0.0
+    eyes: str = "round"
     eye_scale: float = 1.0
     mouth_open: float = 0.0
     blink: bool = False
@@ -232,6 +258,7 @@ class Pose:
     fx_strength: float = 0.0
     collapse: float = 0.0
     phase: float = 0.0
+    yaw: float = GAME_YAW
 
 
 def _s(value: float) -> int:
@@ -282,120 +309,126 @@ def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
     wave2 = math.sin(phase * math.tau * 2.0)
     p.phase = phase
 
-    if animation == "idle":
-        p.state = 1.0
+    if animation in ("idle", "idle_false"):
+        sign = 1.0 if animation == "idle" else -1.0
+        p.state = 1.0 if animation == "idle" else 0.0
         p.y = -2.5 * (0.5 - 0.5 * math.cos(phase * math.tau))
-        p.x = 1.2 * wave
-        p.tilt = 1.7 * wave
-        p.hem_wave = wave
-        p.arm_l = 2.0 * wave
-        p.arm_r = -2.0 * wave
-        p.blink = frame_idx == 6
-    elif animation == "idle_false":
-        p.state = 0.0
-        p.y = -2.0 * (0.5 - 0.5 * math.cos(phase * math.tau))
-        p.x = -1.0 * wave
-        p.tilt = -1.5 * wave
-        p.hem_wave = -wave
-        p.arm_l = -1.5 * wave
-        p.arm_r = 1.5 * wave
-        p.eye_scale = 1.0 + 0.08 * wave2
-        p.blink = frame_idx == 2
+        p.lean = 1.6 * wave * sign
+        p.hem_dx = -1.4 * wave * sign
+        p.near_y = 2.0 * wave
+        p.far_y = -2.0 * wave
+        p.near_x = 1.0 * wave2
+        p.blink = frame_idx == (6 if animation == "idle" else 2)
+        if animation == "idle_false":
+            p.eye_scale = 1.0 + 0.08 * wave2
     elif animation == "drift":
-        p.state = 1.0
-        p.x = 7.0 * wave
-        p.y = -4.0 * abs(wave)
-        p.tilt = 4.0 * wave
-        p.hem_wave = 1.5 * wave
-        p.arm_l = -7.0 * wave
-        p.arm_r = 7.0 * wave
-        p.hand_l_y = 2.0 * wave
-        p.hand_r_y = -2.0 * wave
+        # His walk: the dome leads, the hem streams behind and sways.
+        p.x = 1.5 * wave
+        p.y = -3.0 * abs(wave)
+        p.lean = 6.0 + 1.5 * wave
+        p.hem_dx = -7.0 - 2.0 * wave
+        p.flutter = 1.7
+        p.near_x, p.near_y = -5.0, 3.0 + 2.0 * wave
+        p.far_x, p.far_y = -6.0, 3.0 - 2.0 * wave
     elif animation == "toggle_state":
+        # NOT, staged: a full turn of the sheet that comes round inverted.
         flip = _smoothstep(t)
+        bump = math.sin(t * math.pi)
         p.state = 1.0 - flip
-        p.y = -4.0 * math.sin(t * math.pi)
+        p.y = -5.0 * bump
         p.tilt = 360.0 * t
-        p.squash_x = 1.0 - 0.45 * math.sin(t * math.pi)
-        p.squash_y = 1.0 + 0.25 * math.sin(t * math.pi)
-        p.arm_l = -12.0 * math.sin(t * math.pi)
-        p.arm_r = 12.0 * math.sin(t * math.pi)
+        p.squash_x = 1.0 - 0.3 * bump
+        p.squash_y = 1.0 + 0.18 * bump
+        p.near_x, p.near_y = 14.0 * bump, -18.0 * bump
+        p.far_x, p.far_y = -14.0 * bump, -18.0 * bump
+        p.eyes = "wide" if 0.2 < t < 0.8 else "round"
         p.fx = "toggle"
-        p.fx_strength = math.sin(t * math.pi)
+        p.fx_strength = bump
     elif animation == "and_zap":
-        p.state = 1.0
+        # AND: one input in each corner, brought together and fired forward.
         charge = math.sin(t * math.pi)
+        spread = _smoothstep(min(1.0, t * 2.0))
+        meet = _smoothstep((t - 0.4) / 0.4)
         p.y = -3.0 * charge
-        p.tilt = 2.0 * wave
-        p.arm_l = -22.0 * charge
-        p.arm_r = 22.0 * charge
-        p.hand_l_y = -8.0 * charge
-        p.hand_r_y = -8.0 * charge
-        p.hem_wave = wave
-        p.mouth_open = 0.35 + 0.5 * charge
+        p.lean = 4.0 * meet
+        p.hem_dx = -4.0 * meet
+        p.near_x = 18.0 * spread * (1.0 - meet) + 34.0 * meet
+        p.near_y = -16.0 * spread * (1.0 - meet) - 6.0 * meet
+        p.far_x = -18.0 * spread * (1.0 - meet) + 52.0 * meet
+        p.far_y = -16.0 * spread * (1.0 - meet) - 6.0 * meet
+        p.eyes = "narrow"
+        p.mouth_open = 0.3 + 0.4 * charge
         p.fx = "and"
         p.fx_strength = charge
     elif animation == "not_fade":
         pulse = math.sin(t * math.pi)
         p.state = 1.0 - _smoothstep(min(1.0, t * 1.2))
         p.y = -6.0 * pulse
-        p.x = 5.0 * math.sin(t * math.tau)
-        p.tilt = -10.0 * pulse
-        p.arm_l = -10.0 * pulse
-        p.arm_r = 10.0 * pulse
+        p.x = 4.0 * math.sin(t * math.tau)
+        p.lean = -5.0 * pulse
+        p.hem_dx = 4.0 * pulse
+        p.flutter = 1.5
+        p.near_x, p.near_y = 8.0 * pulse, -26.0 * pulse
+        p.far_x, p.far_y = -8.0 * pulse, -26.0 * pulse
         p.opacity = 1.0 - 0.55 * pulse
+        p.eyes = "wide"
+        p.mouth_open = 0.6 * pulse
         p.fx = "not"
         p.fx_strength = pulse
     elif animation == "hit":
+        # Struck: the dome snaps back, the hem keeps going, the corners fly up.
         impact = math.sin(t * math.pi)
-        p.state = 1.0
-        p.x = -9.0 * impact
+        p.x = -7.0 * impact
         p.y = 2.0 * impact
-        p.tilt = -13.0 * impact
-        p.squash_x = 1.0 + 0.12 * impact
-        p.squash_y = 1.0 - 0.10 * impact
-        p.arm_l = 11.0 * impact
-        p.arm_r = -11.0 * impact
-        p.eye_scale = 0.8
+        p.lean = -12.0 * impact
+        p.hem_dx = 7.0 * impact
+        p.tilt = 7.0 * impact
+        p.flutter = 1.0 + impact
+        p.near_x, p.near_y = -12.0 * impact, -30.0 * impact
+        p.far_x, p.far_y = -10.0 * impact, -26.0 * impact
+        p.eyes = "wide" if impact > 0.3 else "round"
         p.mouth_open = 0.8 * impact
         p.fx = "hit"
         p.fx_strength = impact
     elif animation == "death":
-        p.state = 1.0
-        if t < 0.35:
-            u = t / 0.35
-            p.y = 3.0 * u
-            p.x = -3.0 * u
-            p.tilt = -16.0 * u
-            p.arm_l = 8.0 * u
-            p.arm_r = -8.0 * u
-            p.mouth_open = 0.5 * u
+        # The proof fails: a recoil, then the sheet settles empty on the floor.
+        if t < 0.3:
+            u = _smoothstep(t / 0.3)
+            p.lean = -10.0 * u
+            p.hem_dx = 6.0 * u
+            p.y = -4.0 * u
+            p.near_x, p.near_y = -8.0 * u, -24.0 * u
+            p.far_x, p.far_y = -8.0 * u, -22.0 * u
+            p.eyes = "wide"
+            p.mouth_open = 0.7 * u
         else:
-            u = _smoothstep((t - 0.35) / 0.65)
-            p.y = 3.0 + 24.0 * u
-            p.x = -3.0 + 5.0 * u
-            p.tilt = -16.0 + 19.0 * u
-            p.squash_x = 1.0 + 0.45 * u
-            p.squash_y = 1.0 - 0.66 * u
-            p.arm_l = 8.0 * (1.0 - u)
-            p.arm_r = -8.0 * (1.0 - u)
-            p.eye_scale = 1.0 - 0.65 * u
-            p.opacity = 1.0 - 0.18 * u
+            u = _smoothstep((t - 0.3) / 0.7)
+            p.lean = -10.0 * (1.0 - u)
+            p.hem_dx = 6.0 * (1.0 - u)
+            p.y = -4.0 * (1.0 - u)
+            p.near_x, p.near_y = -8.0 + 4.0 * u, -24.0 + 44.0 * u
+            p.far_x, p.far_y = -8.0 + 12.0 * u, -22.0 + 42.0 * u
+            p.squash_x = 1.0 + 0.5 * u
+            p.squash_y = 1.0 - 0.72 * u
+            p.hem_spread = 1.0 + 0.25 * u
+            p.flutter = 1.0 - 0.8 * u
+            p.eyes = "wide" if u < 0.25 else "closed"
+            p.mouth_open = 0.7 * (1.0 - u)
+            p.opacity = 1.0 - 0.15 * u
             p.collapse = u
-            p.blink = u > 0.35
     elif animation in ATTACK_POSES:
         return _attack_pose(animation, frame_idx, nframes)
     elif animation == "taunt":
-        p.state = 1.0
-        p.y = -3.0 * (0.5 - 0.5 * math.cos(phase * math.tau))
-        p.x = 2.0 * wave
-        p.tilt = 4.0 * wave
-        p.arm_l = -18.0 * math.sin(phase * math.tau * 0.5)
-        p.arm_r = 18.0 * math.sin(phase * math.tau * 0.5)
-        p.hand_l_y = -8.0 * abs(wave)
-        p.hand_r_y = -8.0 * abs(wave)
-        p.hem_wave = wave2
-        p.mouth_open = 0.35 + 0.35 * (0.5 + 0.5 * wave2)
+        # BOO: both corners thrown up, the mouth at its widest.
+        raise_ = _smoothstep(min(1.0, t * 3.0)) * (1.0 - _smoothstep((t - 0.8) / 0.2))
+        p.y = -4.0 * raise_ - 1.5 * (0.5 + 0.5 * wave2)
+        p.stretch = -4.0 * raise_
+        p.lean = 2.0 * wave
+        p.flutter = 1.0 + raise_
+        p.near_x, p.near_y = (14.0 + 4.0 * wave2) * raise_, -50.0 * raise_
+        p.far_x, p.far_y = (-10.0 - 4.0 * wave2) * raise_, -48.0 * raise_
+        p.eyes = "happy" if raise_ > 0.5 else "round"
+        p.mouth_open = 0.2 + 0.8 * raise_
     return p
 
 
@@ -427,121 +460,144 @@ ATTACK_WINDOWS = {
 
 #: The poses of a fight row, as changes to the rest pose: `wind` is the
 #: anticipation before the hit, `strike` (one per live window) the hit itself.
-#: He faces +x. A sheet-corner reaches out with `arm_*` (the near, right
-#: corner forward with a positive value, the far, left one forward with a
-#: large positive value: it passes behind the sheet), and the whole sheet
-#: lunges, stretches and squashes around it. The far reach of a hit is its
+#: He faces +x. Each strike reaches toward its move's hitbox (the table's
+#: offsets): the dome leads into it, the hem trails out of it, and the fist
+#: under a sheet corner is the striking point. The far reach of a hit is its
 #: strike effect's; the sheet sells where it comes from.
 ATTACK_POSES = {
+    # Hitbox (26, 0): a quick near-corner poke.
     "jab": {
-        "wind": dict(x=-2.0, tilt=3.0, arm_r=-6.0),
-        "strike": [dict(x=5.0, tilt=-6.0, arm_r=70.0, hand_r_y=-4.0, mouth_open=0.4)],
+        "wind": dict(lean=-2.0, near_x=-6.0, eyes="narrow"),
+        "strike": [dict(x=3.0, lean=5.0, hem_dx=-4.0, near_x=34.0, near_y=-6.0, eyes="narrow", mouth_open=0.3)],
     },
+    # Jab 2 and 3: the far corner crosses in front of him.
     "attack": {
-        "wind": dict(x=1.0, arm_r=30.0, arm_l=20.0),
-        "strike": [dict(x=7.0, tilt=-8.0, arm_l=230.0, hand_l_y=-2.0, arm_r=40.0, hand_r_y=6.0,
-                        mouth_open=0.5, hem_wave=1.0)],
+        "wind": dict(lean=1.0, near_x=-4.0, far_x=6.0, eyes="narrow"),
+        "strike": [dict(x=5.0, lean=7.0, hem_dx=-6.0, far_x=80.0, far_y=-8.0, near_x=-6.0, near_y=6.0,
+                        eyes="narrow", mouth_open=0.4, flutter=1.4)],
     },
+    # Hitbox (36, -2): a lunge on the near corner, the far one behind it.
     "attack_side": {
-        "wind": dict(x=-5.0, tilt=8.0, arm_r=-12.0, hand_r_y=-10.0),
-        "strike": [dict(x=8.0, tilt=-11.0, arm_r=88.0, hand_r_y=-2.0, squash_x=1.08, squash_y=0.95,
-                        mouth_open=0.5, hem_wave=1.0)],
+        "wind": dict(x=-4.0, lean=-6.0, hem_dx=4.0, near_x=-10.0, near_y=-10.0, eyes="narrow"),
+        "strike": [dict(x=7.0, lean=10.0, hem_dx=-10.0, near_x=40.0, near_y=-4.0, far_x=30.0, far_y=-4.0,
+                        squash_x=1.05, squash_y=0.96, eyes="narrow", mouth_open=0.5, flutter=1.5)],
     },
+    # Hitbox (10, -30): both corners swept up over the dome.
     "attack_up": {
-        "wind": dict(y=4.0, squash_x=1.08, squash_y=0.9),
-        "strike": [dict(y=-5.0, squash_x=0.9, squash_y=1.14, arm_l=24.0, arm_r=-24.0,
-                        hand_l_y=-44.0, hand_r_y=-44.0, mouth_open=0.6, hem_wave=-1.0)],
+        "wind": dict(y=3.0, squash_x=1.08, squash_y=0.9, near_y=4.0, far_y=4.0),
+        "strike": [dict(stretch=-6.0, squash_x=0.92, squash_y=1.1, lean=3.0, near_x=14.0, near_y=-56.0,
+                        far_x=-12.0, far_y=-54.0, eyes="narrow", mouth_open=0.6, flutter=-1.0)],
     },
+    # Hitbox (30, 14): low, the corners along the floor.
     "attack_down": {
-        "wind": dict(y=-3.0, tilt=4.0, arm_r=8.0, hand_r_y=-8.0),
-        "strike": [dict(y=7.0, x=4.0, tilt=-9.0, squash_x=1.1, squash_y=0.88, arm_r=74.0,
-                        hand_r_y=44.0, mouth_open=0.4)],
+        "wind": dict(y=-2.0, near_y=-14.0, eyes="narrow"),
+        "strike": [dict(y=1.0, squash_x=1.1, squash_y=0.86, lean=8.0, hem_dx=-4.0, near_x=38.0, near_y=30.0,
+                        far_x=24.0, far_y=28.0, hem_spread=1.1, eyes="narrow", mouth_open=0.4)],
     },
+    # Hitbox (24, -2): the whole sheet thrown forward.
     "dash_attack": {
-        "wind": dict(x=2.0, tilt=-6.0, arm_r=20.0, arm_l=40.0),
-        "strike": [dict(x=13.0, tilt=-16.0, arm_r=78.0, arm_l=160.0, hand_r_y=-6.0, hand_l_y=2.0,
-                        hem_wave=1.5, mouth_open=0.6)],
+        "wind": dict(lean=4.0, hem_dx=-6.0, near_x=4.0, eyes="narrow"),
+        "strike": [dict(x=10.0, lean=14.0, tilt=-8.0, hem_dx=-16.0, flutter=2.0, near_x=38.0, near_y=-2.0,
+                        far_x=56.0, far_y=0.0, eyes="narrow", mouth_open=0.6)],
     },
+    # Hitboxes (46, -4) and (16, -4): AND, both corners driven forward as one.
     "smash_forward": {
-        "wind": dict(x=-9.0, tilt=13.0, arm_r=-24.0, arm_l=-24.0, hand_r_y=-14.0, hand_l_y=-14.0,
-                     squash_x=0.94, squash_y=1.05, eye_scale=0.8, mouth_open=0.2),
-        "strike": [dict(x=14.0, tilt=-15.0, arm_r=96.0, arm_l=150.0, hand_r_y=-6.0, hand_l_y=-10.0,
-                        squash_x=1.1, squash_y=0.95, mouth_open=0.85, eye_scale=1.2,
-                        fx="and", fx_strength=1.0, hem_wave=1.5)],
+        "wind": dict(x=-8.0, lean=-10.0, hem_dx=6.0, near_x=-22.0, near_y=-12.0, far_x=-14.0, far_y=-12.0,
+                     squash_x=0.96, squash_y=1.04, eyes="narrow", mouth_open=0.1),
+        "strike": [dict(x=12.0, lean=16.0, tilt=-3.0, hem_dx=-14.0, near_x=40.0, near_y=-4.0, far_x=70.0,
+                        far_y=-2.0, squash_x=1.06, squash_y=0.96, eyes="wide", mouth_open=0.9,
+                        fx="and", fx_strength=1.0, flutter=2.0)],
     },
+    # Hitbox (6, -38): crouched low, then flung tall with both corners up.
     "smash_up": {
-        "wind": dict(y=7.0, squash_x=1.16, squash_y=0.82, arm_l=-14.0, arm_r=14.0, hand_l_y=10.0,
-                     hand_r_y=10.0, eye_scale=0.85),
-        "strike": [dict(y=-4.0, squash_x=0.86, squash_y=1.17, arm_l=30.0, arm_r=-30.0, hand_l_y=-42.0,
-                        hand_r_y=-42.0, mouth_open=0.85, fx="uplift", fx_strength=1.0, hem_wave=-1.5)],
+        "wind": dict(y=7.0, squash_x=1.16, squash_y=0.82, near_x=-4.0, near_y=10.0, far_x=4.0, far_y=10.0,
+                     eyes="narrow"),
+        "strike": [dict(y=-2.0, stretch=-3.0, squash_x=0.88, squash_y=1.12, near_x=16.0, near_y=-50.0,
+                        far_x=-16.0, far_y=-48.0, eyes="wide", mouth_open=0.85, fx="uplift", fx_strength=1.0,
+                        flutter=-1.5)],
     },
+    # Hitbox (0, 16), 44 wide: risen with both corners up, then slammed flat.
     "smash_down": {
-        "wind": dict(y=-9.0, squash_x=0.92, squash_y=1.1, arm_l=10.0, arm_r=-10.0, hand_l_y=-24.0,
-                     hand_r_y=-24.0),
-        "strike": [dict(y=8.0, squash_x=1.4, squash_y=0.72, arm_l=-64.0, arm_r=64.0, hand_l_y=40.0,
-                        hand_r_y=40.0, mouth_open=0.8, fx="slam", fx_strength=1.0, hem_wave=1.8)],
+        "wind": dict(y=-9.0, stretch=-3.0, near_x=10.0, near_y=-52.0, far_x=-10.0, far_y=-50.0, eyes="narrow"),
+        "strike": [dict(y=1.0, squash_x=1.35, squash_y=0.74, near_x=18.0, near_y=40.0, far_x=-20.0,
+                        far_y=40.0, hem_spread=1.2, eyes="narrow", mouth_open=0.8, fx="slam", fx_strength=1.0,
+                        flutter=1.8)],
     },
+    # Hitbox (0, 0) about him: a whirl with both corners flung wide.
     "air_neutral": {
-        "wind": dict(arm_l=-8.0, arm_r=8.0, squash_x=0.95, squash_y=1.04),
-        "strike": [dict(arm_l=-46.0, arm_r=46.0, hand_l_y=-2.0, hand_r_y=-2.0, hem_wave=1.5,
-                        mouth_open=0.5, spin=360.0)],
+        "wind": dict(near_x=-4.0, near_y=-4.0, far_x=4.0, far_y=-4.0, squash_x=0.95, squash_y=1.04),
+        "strike": [dict(near_x=22.0, near_y=-4.0, far_x=-22.0, far_y=-4.0, hem_spread=1.15, flutter=1.5,
+                        eyes="narrow", mouth_open=0.5, spin=360.0)],
     },
+    # Hitbox (34, -2): the near corner raised, then chopped down and forward.
     "air_forward": {
-        "wind": dict(tilt=8.0, arm_r=12.0, hand_r_y=-42.0),
-        "strike": [dict(x=4.0, tilt=-12.0, arm_r=88.0, hand_r_y=12.0, mouth_open=0.5, hem_wave=1.2)],
+        "wind": dict(lean=-4.0, near_x=-2.0, near_y=-48.0, eyes="narrow"),
+        "strike": [dict(x=4.0, lean=10.0, hem_dx=-8.0, near_x=40.0, near_y=8.0, eyes="narrow",
+                        mouth_open=0.5, flutter=1.2)],
     },
+    # Hitbox (-36, 0): the far corner swung out behind him.
     "air_back": {
-        "wind": dict(tilt=-5.0, arm_l=10.0),
-        "strike": [dict(x=-5.0, tilt=13.0, arm_l=-74.0, hand_l_y=-2.0, arm_r=6.0, mouth_open=0.5,
-                        hem_wave=-1.2)],
+        "wind": dict(lean=4.0, far_x=4.0, eyes="narrow"),
+        "strike": [dict(x=-5.0, lean=-12.0, hem_dx=8.0, tilt=6.0, far_x=-46.0, far_y=-6.0, near_x=-10.0,
+                        near_y=4.0, eyes="narrow", mouth_open=0.5, flutter=-1.2)],
     },
+    # Hitbox (2, -32): a quick sweep of both corners overhead.
     "air_up": {
         "wind": dict(y=3.0, squash_x=1.05, squash_y=0.94),
-        "strike": [dict(y=-7.0, squash_x=0.92, squash_y=1.12, arm_l=26.0, arm_r=-26.0, hand_l_y=-48.0,
-                        hand_r_y=-48.0, mouth_open=0.5)],
+        "strike": [dict(y=-4.0, squash_x=0.93, squash_y=1.08, near_x=14.0, near_y=-48.0, far_x=-12.0,
+                        far_y=-46.0, eyes="narrow", mouth_open=0.5)],
     },
+    # Hitbox (6, 32): a stomp, the sheet driven down to a point.
     "air_down": {
-        "wind": dict(y=-5.0, arm_l=-10.0, arm_r=10.0, hand_l_y=-20.0, hand_r_y=-20.0),
-        "strike": [dict(y=10.0, squash_x=0.88, squash_y=1.18, arm_l=18.0, arm_r=-18.0, hand_l_y=-30.0,
-                        hand_r_y=-30.0, hem_wave=1.8, mouth_open=0.6, fx="stomp", fx_strength=0.8)],
+        "wind": dict(y=-5.0, near_x=-6.0, near_y=-24.0, far_x=6.0, far_y=-24.0),
+        "strike": [dict(y=10.0, squash_x=0.88, squash_y=1.18, near_x=12.0, near_y=-46.0, far_x=-12.0,
+                        far_y=-44.0, hem_spread=0.85, flutter=1.8, eyes="narrow", mouth_open=0.6,
+                        fx="stomp", fx_strength=0.8)],
     },
+    # Bivalence, (0, -6) about him: TRUE thrown open, then FALSE.
     "special": {
-        "wind": dict(y=4.0, squash_x=1.1, squash_y=0.86, eye_scale=0.8),
+        "wind": dict(y=4.0, squash_x=1.1, squash_y=0.86, near_x=-6.0, near_y=6.0, far_x=6.0, far_y=6.0,
+                     eyes="narrow"),
         "strike": [
-            dict(y=-4.0, squash_x=1.18, squash_y=1.12, arm_l=-60.0, arm_r=60.0, hand_l_y=-12.0,
-                 hand_r_y=-12.0, mouth_open=0.7, fx="toggle", fx_strength=1.0),
-            dict(state=0.0, y=-6.0, squash_x=1.3, squash_y=1.2, arm_l=-76.0, arm_r=76.0, hand_l_y=-16.0,
-                 hand_r_y=-16.0, mouth_open=0.9, eye_scale=1.25, fx="not", fx_strength=1.0),
+            dict(squash_x=1.12, squash_y=1.08, near_x=26.0, near_y=-16.0, far_x=-26.0, far_y=-16.0,
+                 hem_spread=1.15, eyes="wide", mouth_open=0.7, fx="toggle", fx_strength=1.0),
+            dict(state=0.0, y=-6.0, squash_x=1.2, squash_y=1.12, near_x=30.0, near_y=-30.0, far_x=-30.0,
+                 far_y=-30.0, hem_spread=1.2, eyes="wide", mouth_open=0.9, fx="not", fx_strength=1.0),
         ],
     },
+    # Modus ponens, (40, 0): the near corner points, and the inference fires.
     "special_side": {
-        "wind": dict(x=-4.0, tilt=6.0, arm_l=-20.0, arm_r=-20.0, hand_l_y=-8.0, hand_r_y=-8.0),
-        "strike": [dict(x=5.0, tilt=-7.0, arm_r=62.0, arm_l=150.0, hand_r_y=-6.0, hand_l_y=-6.0,
-                        mouth_open=0.6, fx="and", fx_strength=1.0)],
+        "wind": dict(x=-4.0, lean=-6.0, near_x=-14.0, near_y=-6.0, far_x=-10.0, far_y=-6.0, eyes="narrow"),
+        "strike": [dict(x=5.0, lean=8.0, hem_dx=-8.0, near_x=42.0, near_y=-8.0, far_x=12.0, far_y=-2.0,
+                        eyes="narrow", mouth_open=0.6, fx="and", fx_strength=1.0)],
     },
+    # The excluded middle, (2, -30): his recovery, a rise with the hem streaming.
     "special_up": {
-        "wind": dict(y=6.0, squash_x=1.12, squash_y=0.84),
-        "strike": [dict(y=-4.0, squash_x=0.87, squash_y=1.16, arm_l=28.0, arm_r=-28.0, hand_l_y=-42.0,
-                        hand_r_y=-42.0, mouth_open=0.7, fx="uplift", fx_strength=1.0, hem_wave=-1.5)],
+        "wind": dict(y=6.0, squash_x=1.12, squash_y=0.84, eyes="narrow"),
+        "strike": [dict(y=-2.0, stretch=-3.0, squash_x=0.89, squash_y=1.11, near_x=14.0, near_y=-48.0,
+                        far_x=-14.0, far_y=-46.0, flutter=2.0, eyes="wide", mouth_open=0.7, fx="uplift",
+                        fx_strength=1.0)],
         # A recovery: the rise is held while he goes up.
         "hold": 0.6,
     },
+    # Reductio, (4, 30): the slam, in FALSE.
     "special_down": {
-        "wind": dict(y=-8.0, squash_x=0.92, squash_y=1.08, hand_l_y=-26.0, hand_r_y=-26.0),
-        "strike": [dict(state=0.0, y=8.0, squash_x=1.36, squash_y=0.72, arm_l=-60.0, arm_r=60.0,
-                        hand_l_y=38.0, hand_r_y=38.0, mouth_open=0.8, fx="slam", fx_strength=1.0,
-                        hem_wave=1.8)],
+        "wind": dict(y=-8.0, stretch=-3.0, near_x=10.0, near_y=-50.0, far_x=-10.0, far_y=-48.0, eyes="narrow"),
+        "strike": [dict(state=0.0, y=1.0, squash_x=1.36, squash_y=0.72, near_x=18.0, near_y=38.0, far_x=-20.0,
+                        far_y=38.0, hem_spread=1.2, eyes="narrow", mouth_open=0.8, fx="slam", fx_strength=1.0,
+                        flutter=1.8)],
     },
+    # Reductio in the air, (4, 30): the stomp, in FALSE.
     "special_air_down": {
-        "wind": dict(y=-6.0, arm_l=-10.0, arm_r=10.0, hand_l_y=-30.0, hand_r_y=-30.0),
-        "strike": [dict(state=0.0, y=10.0, squash_x=0.86, squash_y=1.2, arm_l=20.0, arm_r=-20.0,
-                        hand_l_y=-34.0, hand_r_y=-34.0, mouth_open=0.7, fx="stomp", fx_strength=1.0,
-                        hem_wave=2.0)],
+        "wind": dict(y=-6.0, near_x=-6.0, near_y=-30.0, far_x=6.0, far_y=-30.0, eyes="narrow"),
+        "strike": [dict(state=0.0, y=10.0, squash_x=0.86, squash_y=1.2, near_x=12.0, near_y=-48.0, far_x=-12.0,
+                        far_y=-46.0, hem_spread=0.85, flutter=2.0, eyes="narrow", mouth_open=0.7, fx="stomp",
+                        fx_strength=1.0)],
     },
 }
 
-_LERPED = ("state", "x", "y", "tilt", "arm_l", "arm_r", "hand_l_y", "hand_r_y", "hem_wave",
-           "eye_scale", "mouth_open", "squash_x", "squash_y", "fx_strength")
+_LERPED = ("state", "x", "y", "tilt", "lean", "stretch", "hem_dx", "hem_spread", "flutter", "near_x", "near_y",
+           "far_x", "far_y", "eye_scale", "mouth_open", "squash_x", "squash_y", "fx_strength")
 
 
 def _blend(a: dict, b: dict, k: float) -> dict:
@@ -553,6 +609,7 @@ def _blend(a: dict, b: dict, k: float) -> dict:
         vb = b.get(name, getattr(rest, name))
         out[name] = va + (vb - va) * k
     out["fx"] = b.get("fx", "") if k >= 0.5 else a.get("fx", "")
+    out["eyes"] = b.get("eyes", "round") if k >= 0.5 else a.get("eyes", "round")
     return out
 
 
@@ -592,6 +649,7 @@ def _attack_pose(animation: str, frame_idx: int, nframes: int) -> Pose:
         pose = _blend(last, wind, 0.5)
     p = Pose(**{name: pose.get(name, getattr(Pose(), name)) for name in _LERPED})
     p.fx = pose.get("fx", "")
+    p.eyes = pose.get("eyes", "round")
     p.tilt += spin
     p.phase = mid
     return p
@@ -602,7 +660,7 @@ def _sheet_palette(state: float):
     light = _lerp_color(FALSE_LIGHT, TRUE_LIGHT, state)
     shadow = _lerp_color(FALSE_SHADOW, TRUE_SHADOW, state)
     eyes = _lerp_color(FALSE_EYE, TRUE_EYE, state)
-    outline = _lerp_color((11, 12, 16, 255), INK, state)
+    outline = _lerp_color(FALSE_LINE, TRUE_LINE, state)
     return cloth, light, shadow, eyes, outline
 
 
@@ -708,230 +766,368 @@ def _draw_fx(draw: ImageDraw.ImageDraw, p: Pose, cx: float, cy: float) -> None:
             )
 
 
-#: Pieces painted on a frame-sized canvas, kept cropped to what they cover
-#: (the frame-sized raster would sit in ``shape_rig``'s cache for the process).
-_CROPPED: dict = {}
+# --- The cloth ---------------------------------------------------------------
 
 
-def _cropped_piece(key: tuple, size, pivot, paint) -> tuple:
-    """``shape_rig.piece`` for a piece painted on a large canvas: painted once,
-    cropped to its alpha box with its pivot moved to match, and cached here."""
-    hit = _CROPPED.get(key)
-    if hit is None:
-        import math as _math
-
-        image = Image.new("RGBA", (int(_math.ceil(size[0])), int(_math.ceil(size[1]))), (0, 0, 0, 0))
-        paint(blending_draw(image))
-        box = image.getbbox() or (0, 0, 1, 1)
-        hit = (image.crop(box), (pivot[0] - box[0], pivot[1] - box[1]))
-        _CROPPED[key] = hit
-    return hit
+def _bezier(points: Sequence[Point], t: float) -> Point:
+    """De Casteljau: the point at ``t`` of the curve through ``points``' hull."""
+    pts = list(points)
+    while len(pts) > 1:
+        pts = [(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t) for a, b in zip(pts, pts[1:])]
+    return pts[0]
 
 
-def _rot_cw(point: Tuple[float, float], center: Tuple[float, float], degrees: float) -> Tuple[float, float]:
-    """``point`` turned ``degrees`` clockwise (+y down) about ``center``."""
-    r = math.radians(degrees)
+def _curve(points: Sequence[Point], n: int = 12) -> List[Point]:
+    return [_bezier(points, i / n) for i in range(n + 1)]
+
+
+@dataclass
+class _Cloth:
+    """The sheet of one pose, in frame pixels before the squash and the turn:
+    the spine from the dome to the hem, the bell's half width along it, and
+    the hem's scallops."""
+
+    p: Pose
+    head: Point
+    hem: Point
+    half_hem: float
+
+    @classmethod
+    def of(cls, p: Pose) -> "_Cloth":
+        head = (HEAD_AT[0] + p.x + p.lean, HEAD_AT[1] + p.y + p.stretch)
+        hem = (CENTER_X + p.x + p.hem_dx, HEM_Y + p.y)
+        return cls(p, head, hem, HEM_HALF * p.hem_spread)
+
+    def spine(self, t: float) -> Point:
+        # The cloth hangs straight under the dome and settles straight onto
+        # the hem; between them it bends as far as the lean and the trail ask.
+        h, m = self.head, self.hem
+        span = m[1] - h[1]
+        return _bezier([h, (h[0], h[1] + span * 0.4), (m[0], m[1] - span * 0.45), m], t)
+
+    def normal(self, t: float) -> Point:
+        a, b = self.spine(max(0.0, t - 0.01)), self.spine(min(1.0, t + 0.01))
+        tx, ty = b[0] - a[0], b[1] - a[1]
+        n = math.hypot(tx, ty) or 1.0
+        return (ty / n, -tx / n)
+
+    def width(self, t: float) -> float:
+        neck = HEAD_R * 0.95
+        return neck + (self.half_hem - neck) * _smoothstep((t - 0.08) / 0.92) ** 1.15
+
+    def edge(self, t: float, u: float) -> Point:
+        """The point ``u`` of the way across the bell at ``t`` (-1 the left
+        edge, 1 the right)."""
+        s, n, w = self.spine(t), self.normal(t), self.width(t)
+        return (s[0] + n[0] * w * u, s[1] + n[1] * w * u)
+
+    def hem_points(self) -> List[Point]:
+        """The hem, right corner to left: four scallops whose tips hang and
+        flutter, a wave that travels from his front to his back."""
+        p = self.p
+        right, left = self.edge(1.0, 1.0), self.edge(1.0, -1.0)
+        a, b = self.spine(0.97), self.spine(1.0)
+        dn = math.hypot(b[0] - a[0], b[1] - a[1]) or 1.0
+        down = ((b[0] - a[0]) / dn, (b[1] - a[1]) / dn)
+        pts = []
+        steps = 8
+        for i in range(steps + 1):
+            u = i / steps
+            base = (right[0] + (left[0] - right[0]) * u, right[1] + (left[1] - right[1]) * u)
+            depth = 7.5 if i % 2 else (3.0 if i in (0, steps) else 0.0)
+            depth += p.flutter * 2.4 * math.sin(p.phase * math.tau * 2.0 + u * math.tau * 1.25)
+            if i % 2 == 0 and i not in (0, steps):
+                depth = min(depth, 2.0)
+            pts.append((base[0] + down[0] * depth, base[1] + down[1] * depth))
+        return pts
+
+    def outline(self) -> List[Point]:
+        n = 18
+        right = [self.edge(i / n, 1.0) for i in range(n + 1)]
+        left = [self.edge(i / n, -1.0) for i in range(n, -1, -1)]
+        return right + self.hem_points() + left
+
+    # The corners. ``side`` 1 is the near corner (the viewer's side; on the
+    # right when he faces the viewer), -1 the far one.
+
+    def _turn(self, side: int) -> Tuple[float, float]:
+        yaw = math.radians(self.p.yaw)
+        return side * math.cos(yaw), side * math.sin(yaw)
+
+    def depth(self, side: int) -> float:
+        return self._turn(side)[1]
+
+    def hand(self, side: int) -> Point:
+        across, _ = self._turn(side)
+        yaw = math.radians(self.p.yaw)
+        anchor = self.edge(0.22, across)
+        rest = (anchor[0] + across * 14.0 + math.sin(yaw) * 6.0, anchor[1] + 12.0)
+        dx, dy = (self.p.near_x, self.p.near_y) if side > 0 else (self.p.far_x, self.p.far_y)
+        # A reach stops short of the frame's edge: the strike effect goes on.
+        return (max(HAND_MARGIN, min(FRAME_SIZE[0] - HAND_MARGIN, rest[0] + dx)), rest[1] + dy)
+
+    def arm(self, side: int) -> Tuple[List[Point], List[Point], Point]:
+        """A sheet corner lifted by the fist under it. The cloth runs from the
+        side of the dome over the fist, and hangs from the fist back to the
+        bell's side; between two points it sags, as cloth does. Returns the
+        corner's outline, the hanging cloth under the arm, and the fist."""
+        across, _ = self._turn(side)
+        top = self.edge(0.14, across)
+        low = self.edge(0.7, across)
+        hand = self.hand(side)
+        shoulder = self.edge(0.3, across * 0.6)
+        dx, dy = hand[0] - shoulder[0], hand[1] - shoulder[1]
+        n = math.hypot(dx, dy) or 1.0
+        px, py = -dy / n, dx / n
+        if py > 0:
+            px, py = -px, -py
+        over = (hand[0] + px * FIST_R * 0.8, hand[1] + py * FIST_R * 0.8)
+        under = (hand[0] - px * FIST_R * 0.8, hand[1] - py * FIST_R * 0.8)
+
+        def sagging(a: Point, b: Point, sag: float) -> List[Point]:
+            mid = ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0 + sag * abs(b[0] - a[0]))
+            return _curve([a, mid, b])
+
+        upper = sagging(top, over, 0.1)
+        lower = sagging(under, low, 0.35)
+        body = [self.edge(t, across) for t in (0.55, 0.4, 0.25)]
+        shape = upper + lower + body
+        hanging = lower + [upper[len(upper) // 2]]
+        return shape, hanging, hand
+
+    def folds(self) -> List[List[Point]]:
+        """The creases from under the dome to the hem's valleys."""
+        hem = self.hem_points()
+        out = []
+        for u, valley in ((-0.55, 6), (-0.05, 4), (0.5, 2)):
+            pts = [self.edge(0.3 + 0.62 * k / 8, u * (0.5 + 0.5 * k / 8)) for k in range(9)]
+            pts.append(hem[valley])
+            out.append(pts)
+        return out
+
+
+def _transform(p: Pose):
+    """Squash about the floor under him, then turn about his middle
+    (counter-clockwise for a positive ``tilt``, as the sheet always turned)."""
+    root = (CENTER_X + p.x, GROUND_Y + p.y)
+    pivot = (CENTER_X + p.x, 85.0 + p.y)
+    r = math.radians(p.tilt)
     c, s = math.cos(r), math.sin(r)
-    dx, dy = point[0] - center[0], point[1] - center[1]
-    return (center[0] + dx * c - dy * s, center[1] + dx * s + dy * c)
+
+    def apply(q: Point) -> Point:
+        x = root[0] + (q[0] - root[0]) * p.squash_x
+        y = root[1] + (q[1] - root[1]) * p.squash_y
+        dx, dy = x - pivot[0], y - pivot[1]
+        return (pivot[0] + dx * c + dy * s, pivot[1] - dx * s + dy * c)
+
+    return apply
 
 
-class _Sheet:
-    """Places pieces painted at rest (``p.x = p.y = 0`` on a frame-sized
-    canvas, anchored at its top left) where the pose puts them, turned with the
-    tilt about the body's centre (the old renderer turned the composed layer
-    counter-clockwise by ``tilt``)."""
-
-    def __init__(self, canvas: Image.Image, p: Pose, turned: bool) -> None:
-        self.canvas = canvas
-        self.offset = (p.x, p.y)
-        self.pivot = (CENTER_X + p.x, 85.0 + p.y)
-        self.cw = -p.tilt if turned else 0.0
-
-    def put(self, key: tuple, paint, name: str) -> None:
-        part = _cropped_piece(("george_booul",) + key, (W, H), (0.0, 0.0), paint)
-        world = _rot_cw(self.offset, self.pivot, self.cw)
-        shape_rig.place(self.canvas, part, (world[0] * SUPER, world[1] * SUPER), self.cw, name)
-
-    def layer(self, paint, name: str) -> None:
-        """A per-frame effect, painted where it is, as ONE draw turned with the sheet."""
-        layer = Image.new("RGBA", self.canvas.size, (0, 0, 0, 0))
-        paint(blending_draw(layer))
-        box = layer.getbbox()
-        if box is None:
-            return
-        pivot = (self.pivot[0] * SUPER - box[0], self.pivot[1] * SUPER - box[1])
-        shape_rig.place(self.canvas, (layer.crop(box), pivot), (self.pivot[0] * SUPER, self.pivot[1] * SUPER), self.cw, name)
+def _mask(size, shapes, circles) -> Image.Image:
+    m = Image.new("L", size, 0)
+    d = ImageDraw.Draw(m)
+    for pts in shapes:
+        d.polygon([_pt(*q) for q in pts], fill=255)
+    for (cx, cy), r in circles:
+        d.ellipse(_box(cx - r, cy - r, cx + r, cy + r), fill=255)
+    return m
 
 
-def _paint_arm(draw, side: int, arm: float, hand_y: float, state: float, alpha: float) -> None:
-    """A raised sheet corner (``side`` -1 left, 1 right) at rest."""
-    cloth, light, shadow, eye_color, outline = _sheet_palette(state)
-    cx = CENTER_X
-    shoulder_y = 29.0 + 47.0
-    hand = (cx + side * 34.0 + arm * 0.45, shoulder_y + hand_y)
-    pts = [
-        (cx + side * 20.0, shoulder_y - 4.0),
-        (hand[0] - side * 4.0, hand[1] - 8.0),
-        (hand[0] + side * 4.0, hand[1] + 2.0),
-        (cx + side * 24.0, shoulder_y + 12.0),
-    ]
-    draw.polygon([_pt(*q) for q in pts], fill=_rgba(shadow, alpha), outline=_rgba(outline, alpha))
+def _shifted(mask: Image.Image, dx: float, dy: float) -> Image.Image:
+    out = Image.new("L", mask.size, 0)
+    out.paste(mask, (round(dx * SUPER), round(dy * SUPER)))
+    return out
 
 
-def _paint_body(draw, hem_wave: float, state: float, alpha: float) -> None:
-    """The draped sheet, its highlight and folds at rest."""
-    cloth, light, shadow, eye_color, outline = _sheet_palette(state)
-    cx, top, bottom = CENTER_X, 29.0, GROUND_Y
-    hem = [
-        (cx + 31.0, bottom - 22.0),
-        (cx + 29.0, bottom - 10.0 + 1.5 * hem_wave),
-        (cx + 22.0, bottom - 2.0 - 2.0 * hem_wave),
-        (cx + 13.0, bottom - 10.0 + 2.0 * hem_wave),
-        (cx + 4.0, bottom - 1.0 - 1.5 * hem_wave),
-        (cx - 5.0, bottom - 10.0 + 2.2 * hem_wave),
-        (cx - 14.0, bottom - 2.0 - 1.4 * hem_wave),
-        (cx - 23.0, bottom - 10.0 + 1.7 * hem_wave),
-        (cx - 31.0, bottom - 3.0 - 1.4 * hem_wave),
-        (cx - 34.0, bottom - 22.0),
-    ]
-    sheet = [
-        (cx, top),
-        (cx + 13.0, top + 5.0),
-        (cx + 23.0, top + 18.0),
-        (cx + 29.0, top + 36.0),
-        (cx + 32.0, bottom - 23.0),
-        *hem,
-        (cx - 32.0, bottom - 23.0),
-        (cx - 29.0, top + 36.0),
-        (cx - 23.0, top + 18.0),
-        (cx - 13.0, top + 5.0),
-    ]
-    draw.polygon([_pt(*q) for q in sheet], fill=_rgba(cloth, alpha), outline=_rgba(outline, alpha))
-
-    # Cloth highlight and broad folds.
-    highlight = [
-        (cx - 6.0, top + 5.0),
-        (cx + 3.0, top + 6.0),
-        (cx + 9.0, top + 21.0),
-        (cx + 7.0, bottom - 18.0),
-        (cx - 2.0, bottom - 9.0),
-        (cx - 9.0, top + 25.0),
-    ]
-    draw.polygon([_pt(*q) for q in highlight], fill=_rgba(light, 0.54 * alpha))
-    fold_specs = [
-        (-18.0, top + 22.0, -23.0, bottom - 17.0),
-        (-6.0, top + 18.0, -9.0, bottom - 12.0),
-        (8.0, top + 19.0, 14.0, bottom - 15.0),
-        (20.0, top + 27.0, 24.0, bottom - 19.0),
-    ]
-    for x0, y0, x1, y1 in fold_specs:
-        draw.line([_pt(cx + x0, y0), _pt(cx + x1, y1)], fill=_rgba(shadow, 0.65 * alpha), width=_s(1.1))
+def _paint_silhouette(img: Image.Image, shapes, circles, fill: RGBA, line: RGBA) -> Image.Image:
+    """One merged piece of cloth: the outline of the union, then its fill.
+    Returns the fill's mask."""
+    lw = LINE_W
+    d = ImageDraw.Draw(img)
+    for pts in shapes:
+        ring = [_pt(*q) for q in pts]
+        d.polygon(ring, fill=line)
+        d.line(ring + [ring[0]], fill=line, width=_s(lw * 2.0), joint="curve")
+    for (cx, cy), r in circles:
+        d.ellipse(_box(cx - r - lw, cy - r - lw, cx + r + lw, cy + r + lw), fill=line)
+    m = _mask(img.size, shapes, circles)
+    img.paste(Image.new("RGBA", img.size, fill), (0, 0), m)
+    return m
 
 
-def _paint_face(draw, state: float, alpha: float, blink: bool, eye_scale: float, mouth_open: float) -> None:
-    """Face holes, mouth and the throat's logic badge at rest."""
-    cloth, light, shadow, eye_color, outline = _sheet_palette(state)
-    cx, top = CENTER_X, 29.0
-    eye_y = top + 27.0
-    for ex in (cx - 8.0, cx + 8.0):
-        if blink:
-            draw.line([_pt(ex - 4.0, eye_y), _pt(ex + 4.0, eye_y)], fill=_rgba(eye_color, alpha), width=_s(1.8))
+def _tone(img: Image.Image, mask: Image.Image, color: RGBA, alpha: float, blur: float = 0.0) -> None:
+    if blur:
+        mask = mask.filter(ImageFilter.GaussianBlur(blur * SUPER))
+    mask = mask.point(lambda v: round(v * alpha))
+    img.paste(Image.new("RGBA", img.size, color), (0, 0), mask)
+
+
+def _clipped(img: Image.Image, clip: Image.Image, paint) -> None:
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    paint(ImageDraw.Draw(layer))
+    layer.putalpha(ImageChops.multiply(layer.getchannel("A"), clip))
+    img.alpha_composite(layer)
+
+
+def _paint_face(img: Image.Image, cloth: _Cloth, T, p: Pose, eye_color: RGBA, line: RGBA) -> None:
+    """Two eye holes and a mouth on the dome, where his heading puts them,
+    and the logic badge on his chest: 1 for TRUE, 0 for FALSE."""
+    yaw = math.radians(p.yaw)
+    hx, hy = cloth.head
+    sx, sy = p.squash_x, p.squash_y
+    d = ImageDraw.Draw(img)
+
+    def on_dome(theta: float, drop: float) -> Tuple[Point, float]:
+        facing = math.cos(yaw + theta)
+        return (hx + HEAD_R * 0.86 * math.sin(yaw + theta), hy + drop), facing
+
+    for theta in (-0.4, 0.4):
+        (ex, ey), facing = on_dome(theta, 3.0)
+        if facing < 0.18:
+            continue
+        cx, cy = T((ex, ey))
+        ew = 4.9 * p.eye_scale * max(0.35, facing) * sx
+        eh = 6.8 * p.eye_scale * sy
+        if p.eyes == "wide":
+            ew, eh = ew * 1.18, eh * 1.15
+        if p.blink or p.eyes == "closed":
+            d.line([_pt(cx - ew, cy + 1.0), _pt(cx + ew, cy + 1.0)], fill=eye_color, width=_s(1.8))
+            continue
+        if p.eyes == "happy":
+            d.arc(_box(cx - ew, cy - eh * 0.4, cx + ew, cy + eh * 1.1), start=200, end=340, fill=eye_color,
+                  width=_s(2.0))
+            continue
+        m = Image.new("L", img.size, 0)
+        md = ImageDraw.Draw(m)
+        md.ellipse(_box(cx - ew, cy - eh, cx + ew, cy + eh), fill=255)
+        if p.eyes == "narrow":
+            # A cut across the top, lower toward his nose: a scowl.
+            inner = -1.0 if theta > 0 else 1.0
+            md.polygon([_pt(cx - ew * 2, cy - eh * 2), _pt(cx + ew * 2, cy - eh * 2),
+                        _pt(cx + ew * 2, cy - eh * (0.55 if inner > 0 else -0.05)),
+                        _pt(cx - ew * 2, cy - eh * (-0.05 if inner > 0 else 0.55))], fill=0)
+        img.paste(Image.new("RGBA", img.size, eye_color), (0, 0), m)
+        if p.state < 0.5 and p.eyes != "narrow":
+            d.ellipse(_box(cx - ew * 0.3, cy - eh * 0.4, cx + ew * 0.05, cy - eh * 0.1), fill=LOGIC_GOLD)
+
+    (mx, my), facing = on_dome(0.0, 17.0)
+    if facing > 0.1:
+        cx, cy = T((mx, my))
+        mw = (4.6 + 1.6 * p.mouth_open) * max(0.4, facing) * sx
+        mh = (3.0 + 5.5 * p.mouth_open) * sy
+        d.ellipse(_box(cx - mw, cy - mh, cx + mw, cy + mh), fill=eye_color)
+
+    # The badge rides the chest, under the face.
+    chest = cloth.spine(0.36)
+    bx = chest[0] + cloth.width(0.36) * 0.8 * math.sin(yaw)
+    facing = math.cos(yaw)
+    if facing > 0.05 and p.collapse < 0.5:
+        cx, cy = T((bx, chest[1] + 4.0))
+        r = 4.2
+        true = p.state >= 0.5
+        d.ellipse(_box(cx - r * max(0.4, facing), cy - r, cx + r * max(0.4, facing), cy + r),
+                  fill=LOGIC_GREEN if true else LOGIC_RED, outline=line, width=_s(0.7))
+        if true:
+            d.line([_pt(cx, cy - 2.3), _pt(cx, cy + 2.3)], fill=TRUE_LIGHT, width=_s(1.1))
         else:
-            ew = 5.1 * eye_scale
-            eh = 7.0 * eye_scale
-            draw.ellipse(_box(ex - ew, eye_y - eh, ex + ew, eye_y + eh), fill=_rgba(eye_color, alpha))
-            # A pinprick highlight keeps FALSE-state eyes alive at small scale.
-            if state < 0.5:
-                draw.ellipse(_box(ex - 1.3, eye_y - 2.3, ex + 0.6, eye_y - 0.4), fill=_rgba(LOGIC_GOLD, alpha))
-
-    mouth_y = top + 47.0
-    mouth_w = 5.5 + 1.5 * mouth_open
-    mouth_h = 3.5 + 6.0 * mouth_open
-    draw.ellipse(_box(cx - mouth_w, mouth_y - mouth_h, cx + mouth_w, mouth_y + mouth_h), fill=_rgba(eye_color, alpha))
-
-    # Small logic badge at the throat: restrained, not costume-like.
-    badge_y = top + 64.0
-    badge_color = LOGIC_GREEN if state >= 0.5 else LOGIC_RED
-    draw.ellipse(_box(cx - 4.2, badge_y - 4.2, cx + 4.2, badge_y + 4.2), fill=_rgba(badge_color, alpha), outline=_rgba(outline, alpha), width=_s(0.7))
-    mark_x = cx - 1.0 if state >= 0.5 else cx
-    draw.line([_pt(mark_x, badge_y - 2.2), _pt(mark_x, badge_y + 2.2)], fill=_rgba(TRUE_LIGHT if state >= 0.5 else LOGIC_GOLD, alpha), width=_s(1.0))
+            d.ellipse(_box(cx - 1.4 * facing, cy - 2.1, cx + 1.4 * facing, cy + 2.1), outline=LOGIC_GOLD,
+                      width=_s(0.9))
 
 
 def _draw_sheet(img: Image.Image, p: Pose) -> None:
-    """The ghost as a rig: arms, sheet and face are pieces painted once per
-    look (state, opacity, hem wave, expression, rounded) and turned with the
-    tilt; the logic glow and effects change every frame and are one draw each.
-    A squashed pose is composed in a layer and squashed and turned whole, as
-    before: a squash is no turn of a piece."""
-    squashed = p.squash_x != 1.0 or p.squash_y != 1.0
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0)) if squashed else img
-    rig = _Sheet(layer, p, turned=not squashed)
-    cx = CENTER_X + p.x
-    top = 29.0 + p.y
-    bottom = GROUND_Y + p.y
-    alpha = round(p.opacity, 2)
-    state = round(p.state, 2)
+    """The ghost, drawn whole for the pose: the far corner behind him, the
+    sheet with the near corner as one piece of cloth under one outline, its
+    shade and light from the upper right, the folds, then the face."""
+    cloth = _Cloth.of(p)
+    T = _transform(p)
+    cloth_c, light, shadow, eye_color, line = _sheet_palette(p.state)
 
-    # Back glow only during logic actions; never a ground shadow. One piece
-    # per strength (hundredths): a swell and its ebb share them.
-    if p.fx_strength > 0.01:
+    def tx(pts):
+        return [T(q) for q in pts]
+
+    scale = math.sqrt(p.squash_x * p.squash_y)
+    hx, hy = cloth.head
+    dome = tx([(hx + HEAD_R * math.cos(a * math.tau / 40), hy + HEAD_R * math.sin(a * math.tau / 40)) for a in range(40)])
+    body = tx(cloth.outline())
+    order = sorted((1, -1), key=cloth.depth)
+    behind = [s for s in order if cloth.depth(s) < -0.05]
+    front = [s for s in order if s not in behind]
+
+    if p.fx_strength > 0.01 and p.fx:
         glow = LOGIC_GREEN if p.fx in ("and", "uplift") else LOGIC_RED
-        strength = round(p.fx_strength, 2)
-        radius = 34.0 + 8.0 * strength
+        r = 34.0 + 8.0 * p.fx_strength
+        cx, cy = T((CENTER_X + p.x, 85.0 + p.y))
+        ImageDraw.Draw(img).ellipse(_box(cx - r, cy - r * 1.25, cx + r, cy + r * 1.25),
+                                    fill=_rgba(glow, 0.12 * p.fx_strength))
 
-        def paint_glow(draw) -> None:
-            draw.ellipse(
-                _box(CENTER_X - radius, 29.0 + 8.0 - radius * 0.25, CENTER_X + radius, GROUND_Y + radius * 0.25),
-                fill=_rgba(glow, 0.12 * strength * alpha),
-            )
+    for side in behind:
+        shape, hanging, fist = cloth.arm(side)
+        _paint_silhouette(img, [tx(shape)], [(T(fist), FIST_R * scale)], shadow, line)
+        _tone(img, _mask(img.size, [tx(hanging)], []), _lerp_color(shadow, line, 0.25), 0.5)
 
-        rig.put(("glow", glow, strength, alpha), paint_glow, "glow")
+    shapes, circles, hangs = [body, dome], [], []
+    for side in front:
+        shape, hanging, fist = cloth.arm(side)
+        shapes.append(tx(shape))
+        circles.append((T(fist), FIST_R * scale))
+        hangs.append(tx(hanging))
+    m = _paint_silhouette(img, shapes, circles, cloth_c, line)
 
-    # Little raised sheet-corners functioning as ghost hands.
-    for side, name, arm, hand_y in ((-1, "left_arm", p.arm_l, p.hand_l_y), (1, "right_arm", p.arm_r, p.hand_r_y)):
-        arm_q, hand_q = round(arm * 2) / 2, round(hand_y * 2) / 2
-        rig.put(("arm", side, arm_q, hand_q, state, alpha), lambda d, side=side, arm_q=arm_q, hand_q=hand_q: _paint_arm(d, side, arm_q, hand_q, state, alpha), name)
+    # Shade on the lower left, light on the upper right, as the cast is lit.
+    _tone(img, ImageChops.subtract(m, _shifted(m, 7.0, -3.0)), shadow, 0.95, blur=0.6)
+    for hang in hangs:
+        _tone(img, ImageChops.multiply(_mask(img.size, [hang], []), m), shadow, 0.55, blur=0.5)
+    _tone(img, ImageChops.subtract(m, _shifted(m, -3.0, 3.0)), light, 0.9, blur=0.4)
+    gx, gy = T((hx + HEAD_R * 0.3, hy - HEAD_R * 0.35))
+    gleam = _mask(img.size, [], [((gx, gy), HEAD_R * 0.38 * scale)])
+    _tone(img, ImageChops.multiply(gleam, m), light, 0.75, blur=2.0)
 
-    # Main draped sheet silhouette, highlight and folds.
-    hem = round(p.hem_wave * 20) / 20
-    rig.put(("sheet", hem, state, alpha), lambda d: _paint_body(d, hem, state, alpha), "sheet")
+    def paint_folds(d):
+        for fold in cloth.folds():
+            d.line([_pt(*T(q)) for q in fold], fill=_rgba(shadow, 0.75), width=_s(1.1), joint="curve")
 
-    # Face holes, mouth and badge.
-    eye_scale = round(p.eye_scale, 2)
-    mouth = round(p.mouth_open * 50) / 50
-    rig.put(("face", state, alpha, p.blink, eye_scale, mouth), lambda d: _paint_face(d, state, alpha, p.blink, eye_scale, mouth), "face")
+    _clipped(img, m, paint_folds)
+    _paint_face(img, cloth, T, p, eye_color, line)
 
     if p.fx:
-        rig.layer(lambda d: _draw_fx(d, p, cx, top + 50.0), "fx")
+        cx, cy = T((CENTER_X + p.x, 79.0 + p.y))
+        _draw_fx(ImageDraw.Draw(img), p, cx, cy)
 
-    if squashed:
-        # The whole frame, so a sheet-corner reaching past the body is squashed
-        # with it and not cut off.
-        # The squash is about the point under the hem (y 144), as it always was;
-        # what hangs below it (a stomp's chevrons) is squashed with the rest.
-        crop = layer.crop(_box(0.0, 0.0, 160.0, 160.0))
-        target = (_s(160.0 * p.squash_x), _s(160.0 * p.squash_y))
-        crop = crop.resize(target, Image.Resampling.BICUBIC)
-        scaled = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-        x = _s(CENTER_X) - target[0] // 2
-        y = _s(144.0) - round(_s(144.0) * p.squash_y)
-        rigdoc.composite_canvas(scaled, crop, (x, y))
-        layer = scaled
-        if abs(p.tilt) > 0.01:
-            layer = layer.rotate(
-                p.tilt,
-                resample=Image.Resampling.BICUBIC,
-                center=_pt(CENTER_X + p.x, 85.0 + p.y),
-                fillcolor=(0, 0, 0, 0),
-            )
-        rigdoc.composite_canvas(img, layer)
+    if p.opacity < 0.999:
+        img.putalpha(img.getchannel("A").point(lambda v: round(v * p.opacity)))
 
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     _draw_sheet(img, _pose(animation, frame_idx, nframes))
     return _downsample(img)
+
+
+#: The turnaround's views, as yaws: front, three quarters, side, three
+#: quarters back, back, and the left ones. The sheet is symmetric, so a left
+#: view is the right one mirrored.
+TURNAROUND_YAWS = (0.0, 45.0, 90.0, 135.0, 180.0, -135.0, -90.0, -45.0)
+
+
+def render_view(yaw: float, animation: str = "idle", frame_idx: int = 0, nframes: int = 8) -> Image.Image:
+    """One frame of ``animation`` seen from ``yaw`` (0 faces the viewer, 90
+    faces +x, a negative yaw faces -x)."""
+    p = _pose(animation, frame_idx, nframes)
+    p.yaw = abs(yaw)
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    _draw_sheet(img, p)
+    frame = _downsample(img)
+    return frame.transpose(Image.Transpose.FLIP_LEFT_RIGHT) if yaw < 0 else frame
+
+
+def render_turnaround(poses: Sequence[Tuple[str, int, int]] = (("idle", 0, 8), ("taunt", 4, 8))) -> Image.Image:
+    """The eight views (columns) of each pose (rows), on one image."""
+    fw, fh = FRAME_SIZE
+    sheet = Image.new("RGBA", (fw * len(TURNAROUND_YAWS), fh * len(poses)), (0, 0, 0, 0))
+    for row, (animation, index, count) in enumerate(poses):
+        for col, yaw in enumerate(TURNAROUND_YAWS):
+            sheet.alpha_composite(render_view(yaw, animation, index, count), (col * fw, row * fh))
+    return sheet
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
@@ -974,4 +1170,6 @@ __all__ = [
     "TARGET_NAME",
     "render",
     "render_frame",
+    "render_turnaround",
+    "render_view",
 ]
