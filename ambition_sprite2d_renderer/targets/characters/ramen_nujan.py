@@ -1651,10 +1651,42 @@ WRAP_3D = W.Worn("scarf", [O.Ring(-41.0, 0.0, 0.8, 5.0, 4.6), O.Ring(-39.6, 0.0,
                            O.Ring(-36.0, 0.0, 0.4, 6.8, 6.2)],
                  W.Garment(NOODLE, NOODLE_DARK, features=[W.Across(-180.0, 180.0, -38.9, NOODLE_DARK, width=0.3),
                                                           W.Across(-180.0, 180.0, -36.9, NOODLE_DARK, width=0.3), W.Shade(-0.45)]),
-                 lumps=[((-3.0, -37.6, -6.4), (3.0, 3.0, 2.6))], lead=3.0)
+                 lumps=[((-3.0, -37.6, -6.4), (3.0, 3.0, 2.6))], lead=6.0)
 _KNOT = np.array([-3.0, -37.0, -7.6])
 TAILS = W.Chains("scarf_tails", [[tuple(_KNOT + k * np.array([-0.4, 5.9, -0.9])) for k in range(8)],
                                  [tuple(_KNOT + k * np.array([-0.2, 5.6, -1.7])) for k in range(7)]], _tails, lead=0.5)
+
+
+# His head from the front, drawn as the cast draws a head from the front
+# (``_person_rig.make_front_head`` and the rest), in the numbers of his
+# three-quarter view: a full round face; short black hair, its line across his
+# forehead, down at the temples and in front of his ears, parted on his right
+# and combed across; eyes with whites under a heavy lid, strong brows, his
+# nose a line, a small smile.
+
+
+def _front_hair_shape(d) -> None:
+    K.oval(d, K.at(0.0, -4.8), 9.6, 7.6, WHITE)
+
+
+def _front_hair(d) -> None:
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 6.0), K.at(9.6, 6.0), K.at(8.8, 1.0), K.at(8.2, -4.6), K.at(5.8, -7.4), K.at(1.6, -8.4),
+               K.at(-2.6, -8.2), K.at(-5.8, -6.8), K.at(-8.2, -4.4), K.at(-8.8, 1.0), K.at(-9.6, 6.0), K.at(-20.0, 6.0)], HAIR)
+    # The part on his right, and the hair combed across from it.
+    K.line(d, [K.at(-3.8, -12.6), K.at(-3.2, -8.6)], HAIR_LIGHT, 0.6)
+    K.line(d, [K.at(-2.6, -11.4), K.at(1.8, -12.4), K.at(6.6, -10.8), K.at(8.6, -7.4)], HAIR_LIGHT, 0.9)
+    K.line(d, [K.at(-8.8, -5.0), K.at(-9.4, -1.0), K.at(-9.0, 3.0)], HAIR_LIGHT, 0.6)
+
+
+def _front_face(d) -> None:
+    K.line(d, [K.at(-0.4, -0.4), K.at(-1.0, 2.8), K.at(0.0, 3.6), K.at(1.0, 2.8)], SKIN_DEEP, 0.7)
+
+
+_FRONT_HEAD = R.front_face(
+    R.make_front_head(K, ("ramen",), SKIN, SKIN_DEEP, wide=8.6, jaw=7.4, chin=3.4, ears=SKIN, shape=_front_hair_shape, hair=_front_hair, face=_front_face),
+    R.make_front_eyes(K, ("ramen",), spread=3.6, y=-0.2, ink=INK, white=EYE_WHITE, iris=IRIS, size=1.0),
+    R.make_front_brows(K, ("ramen",), HAIR, spread=3.6, y=-3.8, width=1.3),
+    R.make_front_mouth(K, ("ramen",), y=7.0, colour=MOUTH, wide=0.7))
 
 
 def _arm_bones(pts, near):
@@ -1670,13 +1702,15 @@ def _leg_bones(pts, near):
 
 
 def _own(J):
-    """His own head, coat and scarf in his three-quarter view. His coat is
-    not mirrored (the constellation is on his right); his scarf is."""
+    """His own head, coat and scarf in his three-quarter view, and his head
+    from the front (``_FRONT_HEAD``). His coat is not mirrored (the
+    constellation is on his right); his scarf is."""
     turn = _TILT
     layers = lambda: O.composed(K, [(_head(), "head"), (_eyes(str(_REST["eyes"])), "eyes"),  # noqa: E731
                                     (_brows(1 if float(_REST["brows"]) > 0.5 else 0), "brows"), (_mouth(str(_REST["mouth"])), "mouth")], turn)
+    front = dict(R.FRONT_REST, eyes=str(_REST["eyes"]), mouth=str(_REST["mouth"]), brows=float(_REST["brows"]))
     return {"trunk": C.own_art("own_coat", (0.0, 0.0, 0.0), lambda: _coat(0, 0), lead=0.4, mirror=False),
-            "head": C.own_art("own_head", J.head, layers, lead=9.0),
+            "head": C.own_art("own_head", J.head, layers, lambda: O.composed(K, _FRONT_HEAD(front)), lead=9.0),
             "scarf": C.own_art("own_scarf", J.neck, _wrap, lead=9.5)}
 
 
