@@ -511,6 +511,19 @@ def _angle(a: Sequence[float], b: Sequence[float]) -> float:
     return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
 
 
+def place_along(K: Kit, img: Image.Image, piece, at: Sequence[float], name: str, degrees: float, view: "View") -> None:
+    """Place ``piece`` (drawn facing right, along its +x: a hand, a sword) at
+    ``at`` along the direction ``degrees``. In a view in which the person
+    faces left it is the mirror of itself, as the cast draws a person facing
+    left: its other face toward you (the back of a hand, not its palm; the
+    back of a curved blade up, not down)."""
+    if piece is not None and facing(view) < -10.0:
+        art, (ax, ay) = piece
+        piece = (art.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (art.width - ax, ay))
+        degrees -= 180.0
+    K.place(img, piece, at, name, degrees)
+
+
 def facing(view: View, heading: float = 0.0) -> float:
     """The turn of a thing that points ``heading`` (degrees, 0 forward, 90 to
     the person's left), as this view sees it: 0 toward the viewer, 90 to the
@@ -931,5 +944,5 @@ def turnaround(K: Kit, figure: Figure, path: Path, *, title: str = "", own: Opti
     return path
 
 
-__all__ = ["Drawn", "Glasses", "Head3D", "head_part", "place_bones", "composed", "near_turn", "lift", "Sprite", "facing", "Cheat", "both", "from_above", "profile_push", "Figure", "Line", "Paint", "Part", "Ring", "Surface", "VIEWS", "VIEW_BY_KEY", "View", "arc", "circle", "curve", "draw", "ellipsoid", "fill",
+__all__ = ["Drawn", "Glasses", "Head3D", "head_part", "place_along", "place_bones", "composed", "near_turn", "lift", "Sprite", "facing", "Cheat", "both", "from_above", "profile_push", "Figure", "Line", "Paint", "Part", "Ring", "Surface", "VIEWS", "VIEW_BY_KEY", "View", "arc", "circle", "curve", "draw", "ellipsoid", "fill",
            "flat", "limb", "loft", "on_ellipsoid", "put", "turnaround", "two_bone"]

@@ -483,7 +483,7 @@ def prop(K: Kit, name: str, foot: Vec, head: Vec, make: Callable[[int], object],
     def draw(view: O.View, far: bool, at) -> object:
         a, b = at(foot), at(head)
         img = K.new_frame()
-        K.place(img, make(int(round(math.dist(a, b)))), a, name, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+        O.place_along(K, img, make(int(round(math.dist(a, b)))), a, name, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), view)
         return img
 
     mid = tuple((np.asarray(foot) + np.asarray(head)) / 2.0)

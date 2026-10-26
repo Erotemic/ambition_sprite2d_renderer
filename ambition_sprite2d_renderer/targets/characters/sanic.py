@@ -47,6 +47,7 @@ from PIL import Image
 from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
+from ...core.measure import visible_bbox
 
 Point = Tuple[float, float]
 
@@ -100,16 +101,39 @@ LEG = (54.0, 54.0)
 BALL_C = (246.0, 323.0)          # a ball on the ground: its bottom on the soles
 BALL_R = 72.0
 #: The sprint's feet run round a sideways figure 8 (a lemniscate) under the
-#: hips: its middle, half-width and tilt.
-EIGHT_C = (272.0, 346.0)
+#: hips: its middle, half-width and tilt. Its lower lobe runs under the ground
+#: line, so the foot on it runs along the ground (:func:`_sprint_foot`).
+EIGHT_C = (272.0, 366.0)
 EIGHT_A = 92.0
 EIGHT_TILT = -12.0
+#: How far apart the two feet are round the 8, in turns. A quarter turn puts
+#: one foot low while the other is high, as in a run.
+SPRINT_FEET_APART = 0.25
 
 #: Rest limb targets: a hand from its shoulder, a foot from its hip.
 REST_HAND_BACK = (-112.0, 30.0)
 REST_HAND_FRONT = (74.0, 6.0)
 REST_FOOT_BACK = (-100.0, 62.0)
 REST_FOOT_FRONT = (66.0, 66.0)
+
+#: Each shoe: the way its toe points (+1: east) and its size.
+SHOES = {"back": (-1, 1.25), "front": (1, 0.9)}
+
+
+def _sole_drop(foot: str, tilt: float) -> float:
+    """How far under the ankle the lowest point of ``foot``'s shoe is, with
+    the shoe turned ``tilt`` degrees (reference pixels; the blob of
+    :func:`_shoe` without its ink)."""
+    facing, size = SHOES[foot]
+    a = math.radians(tilt)
+    cx, cy, rx, ry = facing * 14 * size, 6 * size, 34 * size, 13 * size
+    return cx * math.sin(a) + cy * math.cos(a) + math.hypot(rx * math.sin(a), ry * math.cos(a))
+
+
+#: The ground line (reference pixels): the higher of the two soles at rest. A
+#: running foot that reaches it runs along it and goes no lower.
+SOLE_Y = min(HIP_BACK[1] + REST_FOOT_BACK[1] + _sole_drop("back", 0.0),
+             HIP_FRONT[1] + REST_FOOT_FRONT[1] + _sole_drop("front", 0.0))
 
 #: Each quill: its root, its tip swept back, its tip raised (super), width.
 #: The first four grow from the head, the rest from the back.
@@ -432,10 +456,27 @@ def _eight_point(u: float) -> Point:
     return _add(_rot(p, EIGHT_TILT), EIGHT_C)
 
 
+def _sprint_foot(u: float, foot: str) -> Tuple[Point, float]:
+    """The ankle of ``foot`` at ``u`` (turns) round the figure 8, and its
+    shoe's tilt. The shoe tilts with the way it travels; where the 8 runs
+    under the ground the foot runs flat along it, its sole on ``SOLE_Y``."""
+    here, ahead = _eight_point(u), _eight_point(u - 0.02)
+    tilt = math.degrees(math.atan2(ahead[1] - here[1], ahead[0] - here[0]))
+    tilt = max(-30.0, min(30.0, ((tilt + 90) % 180) - 90))
+    if here[1] + _sole_drop(foot, tilt) <= SOLE_Y:
+        return here, tilt
+    return (here[0], SOLE_Y - _sole_drop(foot, 0.0)), 0.0
+
+
+#: Half the width of the blur of the feet (reference pixels).
+EIGHT_BLUR = 13.0
+
+
 def _eight_svg(skin: Skin) -> str:
-    """The blur the feet leave round the figure 8."""
-    pts = [_eight_point(u) for u in np.linspace(0, 1, 33)[:-1]]
-    return (f'<path d="{_smooth(pts)}" fill="none" stroke="{skin.body}" stroke-width="26" opacity="0.4"/>'
+    """The blur the feet leave round the figure 8, along the ground where
+    the feet run along it."""
+    pts = [(x, min(y, SOLE_Y - EIGHT_BLUR)) for x, y in (_eight_point(u) for u in np.linspace(0, 1, 33)[:-1])]
+    return (f'<path d="{_smooth(pts)}" fill="none" stroke="{skin.body}" stroke-width="{2 * EIGHT_BLUR}" opacity="0.4"/>'
             f'<path d="{_smooth(pts)}" fill="none" stroke="{skin.shoe}" stroke-width="8" opacity="0.5"/>')
 
 
@@ -444,8 +485,17 @@ def _eight_svg(skin: Skin) -> str:
 SHOE_GHOSTS = ((0.07, 0.45), (0.14, 0.22))
 
 
+#: The super glow: its middle above the torso's and its radii (reference
+#: pixels). It reaches from over the raised quills to the soles, and its blur
+#: fades out inside the frame: a glow that ran past the frame was cut flat at
+#: the frame's edge, and the cut stood under the feet.
+AURA_RISE, AURA_R = 62.0, (170.0, 200.0)
+#: The glow round the ball: its rise over the ball's middle and its radius.
+BALL_AURA_RISE, BALL_AURA_R = 40.0, 110.0
+
+
 def _aura_svg(skin: Skin) -> str:
-    return (f'<ellipse cx="{TORSO_C[0]}" cy="{TORSO_C[1] - 40}" rx="170" ry="210" '
+    return (f'<ellipse cx="{TORSO_C[0]}" cy="{TORSO_C[1] - AURA_RISE}" rx="{AURA_R[0]}" ry="{AURA_R[1]}" '
             f'fill="{skin.aura}" opacity="0.55" filter="url(#glow)"/>')
 
 
@@ -464,23 +514,27 @@ def _dust_svg() -> str:
 # --- Drawing one pose -----------------------------------------------------------
 
 
-def _draw_pose(skin: Skin, pose: Pose) -> Image.Image:
+def _draw_pose(skin: Skin, pose: Pose, body_only: bool = False) -> Image.Image:
+    """One pose. ``body_only`` draws the body without what it gives off (the
+    glow, the speed lines, the dust, the blur of the feet): the drawing the
+    gameplay body is measured from (:func:`_pose_bodies`)."""
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     s = _solve(pose)
     sk = skin.name
-    if "speed" in pose.fx:
+    fx = not body_only
+    if fx and "speed" in pose.fx:
         _put(img, ("speed", sk), lambda: _speed_svg(skin), (0.0, 240.0), _add((0.0, 240.0), pose.root), 0.0, "speed_lines")
-    if "dust" in pose.fx:
+    if fx and "dust" in pose.fx:
         _put(img, ("dust",), _dust_svg, (90.0, 380.0), (90.0 + pose.root[0], 380.0), 0.0, "dust")
 
     if pose.ball:
-        if skin.aura:
-            _put(img, ("ball_aura", sk), lambda: f'<circle cx="{BALL_C[0]}" cy="{BALL_C[1]}" r="125" fill="{skin.aura}" '
+        if fx and skin.aura:
+            _put(img, ("ball_aura", sk), lambda: f'<circle cx="{BALL_C[0]}" cy="{BALL_C[1] - BALL_AURA_RISE}" r="{BALL_AURA_R}" fill="{skin.aura}" '
                  'opacity="0.55" filter="url(#glow)"/>', BALL_C, s.ball, 0.0, "aura")
         _put(img, ("ball", sk), lambda: _ball_svg(skin), BALL_C, s.ball, 360.0 * pose.turn, "ball")
         return _downsample(img)
 
-    if skin.aura:
+    if fx and skin.aura:
         _put(img, ("aura", sk), lambda: _aura_svg(skin), TORSO_C, s.torso, 0.0, "aura", reach=300.0)
 
     # the quills, back to front: the back's, then the head's
@@ -496,23 +550,23 @@ def _draw_pose(skin: Skin, pose: Pose) -> Image.Image:
              base, at, degrees, f"quill_{k}")
 
     # the back leg and arm, behind the body
-    if pose.eight:
+    if fx and pose.eight:
         _put(img, ("eight", sk), lambda: _eight_svg(skin), EIGHT_C, _add(EIGHT_C, (pose.root[0], 0.0)), 0.0, "eight")
         for foot, (back, alpha) in [(f, g) for f in ("back", "front") for g in SHOE_GHOSTS]:
-            u = pose.eight_u + (0.5 if foot == "front" else 0.0) + back
-            at = _add(_eight_point(-u), (pose.root[0], 0.0))
+            u = pose.eight_u + (SPRINT_FEET_APART if foot == "front" else 0.0) + back
+            at = _add(_sprint_foot(-u, foot)[0], (pose.root[0], 0.0))
             _put(img, ("ghost_shoe", skin.shoe, alpha),
                  lambda a=alpha: f'<g opacity="{a}">' + _fill(_wobble_blob(14, 6, 32, 12, 301, amp=0.08), skin.shoe) + "</g>",
                  (0.0, 0.0), at, 0.0, f"ghost_{foot}_{back}")
     _limb(img, skin, [s.hip_back, s.knee_back, s.foot_back], 15, "leg_back")
-    _shoe(img, skin, s.foot_back, -1, pose.shoe_back_tilt, 1.25, 300, "shoe_back")
+    _shoe(img, skin, s.foot_back, SHOES["back"][0], pose.shoe_back_tilt, SHOES["back"][1], 300, "shoe_back")
     _limb(img, skin, [s.shoulder_back, s.elbow_back, s.hand_back], 15, "arm_back")
     _glove(img, skin, s.hand_back, pose.glove_back, 401, 27, 23, "glove_back")
 
     _put(img, ("torso", sk), lambda: _torso_svg(skin), LEAN_PIVOT, s.pivot, pose.lean, "torso")
 
     _limb(img, skin, [s.hip_front, s.knee_front, s.foot_front], 15, "leg_front")
-    _shoe(img, skin, s.foot_front, 1, pose.shoe_front_tilt, 0.9, 301, "shoe_front")
+    _shoe(img, skin, s.foot_front, SHOES["front"][0], pose.shoe_front_tilt, SHOES["front"][1], 301, "shoe_front")
 
     _put(img, ("head", sk), lambda: _head_svg(skin), NECK, s.neck, head_turn, "head")
     _put(img, ("mouth", pose.mouth), lambda: _mouth_svg(pose.mouth), NECK, s.neck, head_turn, "mouth")
@@ -568,16 +622,11 @@ def _gait(t: float, stride: float, lift: float, lean: float, arm: float, bob: fl
 
 
 def _sprint(t: float) -> Pose:
-    """Top speed: the feet run round a figure 8, half a lap apart, and leave
-    its blur behind them. The shoe tilts with the way it travels."""
+    """Top speed: the feet run round a figure 8 (:func:`_sprint_foot`),
+    ``SPRINT_FEET_APART`` apart, and leave its blur behind them."""
     s = math.sin(2 * math.pi * t)
-    feet = []
-    for phase in (0.0, 0.5):
-        u = -(t + phase)
-        here, ahead = _eight_point(u), _eight_point(u - 0.02)
-        tilt = math.degrees(math.atan2(ahead[1] - here[1], ahead[0] - here[0]))
-        feet.append((here, max(-30.0, min(30.0, ((tilt + 90) % 180) - 90))))
-    (fb, tb), (ff, tf) = feet
+    fb, tb = _sprint_foot(-t, "back")
+    ff, tf = _sprint_foot(-(t + SPRINT_FEET_APART), "front")
     return P(root=(0, -4 * abs(s)), lean=26, head=-14, quill_sway=-14 + 2 * s,
              foot_back=(fb[0] - HIP_BACK[0], fb[1] - HIP_BACK[1]), foot_front=(ff[0] - HIP_FRONT[0], ff[1] - HIP_FRONT[1]),
              shoe_back_tilt=tb, shoe_front_tilt=tf, knee_forward=1.0,
@@ -781,8 +830,8 @@ ANIMATION_KEY_MAP: Dict[str, str] = {
 }
 
 
-def _draw_sanic(skin: Skin, anim: str, frame_idx: int, nframes: int) -> Image.Image:
-    return _draw_pose(skin, _row_poses(anim, nframes)[frame_idx])
+def _draw_sanic(skin: Skin, anim: str, frame_idx: int, nframes: int, body_only: bool = False) -> Image.Image:
+    return _draw_pose(skin, _row_poses(anim, nframes)[frame_idx], body_only)
 
 
 # --- Hit areas, measured from the drawn strikes --------------------------------
@@ -1002,12 +1051,50 @@ ACTOR_METADATA_SUPER.update(
 )
 
 
+def _pose_bodies(skin: Skin) -> Dict[str, dict]:
+    """The gameplay body of each mapped row: the union of the visible boxes
+    (``visible_bbox``) of the row's frames drawn ``body_only``.
+
+    ⛔ Not the drawn frames. The game stands a body on the bottom of this box
+    and draws the frame on it, so whatever the box holds under the soles is
+    air between the feet and the floor: the super glow held 10 px of it, and
+    every pose's speed lines and dust widened its box.
+    """
+    counts = {name: n for name, n, _ms in ROWS}
+    bodies = {}
+    for row, key in ANIMATION_KEY_MAP.items():
+        boxes = [b for b in (visible_bbox(_draw_sanic(skin, row, i, counts[row], body_only=True))
+                             for i in range(counts[row])) if b is not None]
+        x0, y0 = min(b[0] for b in boxes), min(b[1] for b in boxes)
+        x1, y1 = max(b[2] for b in boxes), max(b[3] for b in boxes)
+        bodies[key] = {"parts": [{"name": "body", "x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0}]}
+    return bodies
+
+
+def _body_metrics(bodies: Dict[str, dict]):
+    """The sheet's body: the idle pose's (:func:`_pose_bodies`), its feet on
+    its bottom row."""
+    box = {k: v for k, v in bodies["idle"]["parts"][0].items() if k != "name"}
+
+    def metrics(fw: int, fh: int) -> dict:
+        feet_x, feet_y = box["x"] + (box["w"] - 1) / 2.0, float(box["y"] + box["h"] - 1)
+        return {
+            "body_pixel_bbox": box,
+            "feet_pixel": {"x": round(feet_x, 3), "y": round(feet_y, 3)},
+            "feet_anchor_norm": {"x": round(feet_x / fw - 0.5, 6), "y": round(0.5 - feet_y / fh, 6)},
+        }
+
+    return metrics
+
+
 def _render_form(target_name: str, skin: Skin, actor_metadata: dict, out_dir: str | Path) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
         return _draw_sanic(skin, animation, frame_idx, nframes)
+
+    bodies = _pose_bodies(skin)
 
     frame_transform: dict = {}
     outputs = build_sheet(
@@ -1023,6 +1110,8 @@ def _render_form(target_name: str, skin: Skin, actor_metadata: dict, out_dir: st
         actor_metadata=actor_metadata,
         animation_key_map=ANIMATION_KEY_MAP,
         attack_hitboxes=ATTACK_HITBOXES,
+        body_metrics_fn=_body_metrics(bodies),
+        hurtbox_parts=bodies,
     )
     parts = publish_rig_flipbook(target_name, ROWS, render_frame, outputs, frame_transform, out_dir)
     return [outputs[k] for k in ("canonical", "canonical_transparent", "spritesheet", "yaml", "ron", "actor", "preview")] + list(

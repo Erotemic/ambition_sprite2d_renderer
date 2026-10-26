@@ -434,10 +434,11 @@ def _render_body(doc: RigDocument, clip: str, t: float, solved) -> Image.Image:
     return doc.render_at(clip, t, solved=solved)
 
 
-def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframes: int) -> Image.Image:
+def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframes: int, doc: Optional[RigDocument] = None) -> Image.Image:
     """The frame of ``animation`` (an authored row): the body of ``clip`` posed
-    by ``solved`` at ``t``, between the effects behind and in front of it."""
-    doc = load_doc()
+    by ``solved`` at ``t``, between the effects behind and in front of it.
+    ``doc``: the rig it is drawn from (default: the side rig)."""
+    doc = load_doc() if doc is None else doc
     world, params = solved
     # A keyed strike is drawn entirely by the rig (its blade is a part), so it
     # borrows no other row's effects: `smash_charge` used to inherit the
@@ -456,9 +457,12 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
         _place_thrusters(front, world, frame_idx, slow_fall=False, burn=DOUBLE_JUMP_JETS[frame_idx % len(DOUBLE_JUMP_JETS)])
 
     if effect == "swim":
+        # Bubbles go up from in front of the visor, as it breathes out (the
+        # head's origin is its neck: the visor's front is well ahead of it).
+        hx, hy = world["head"].origin
         for i in range(5):
-            x = 42 + i * 13 + math.sin((t + i) * math.tau) * 3
-            y = 24 + ((i * 17 + frame_idx * 5) % 70)
+            x = hx + 40.0 + i * 2.0 + math.sin((t + i * 0.3) * math.tau) * 2.0
+            y = hy - 16.0 - ((i * 11 + frame_idx * 4) % 44)
             front.put(_disc(1 + (i % 2), None, (60, 226, 255, 150), 1, "bubble"), (x, y), 0.0, f"bubble{i}")
 
     # A block has no effect of its own in the sheet: the bubble of the guard is
@@ -562,8 +566,7 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
         doc = load_pure_side_doc()
         t = doc.frame_time(row, frame_idx, frame_count)
         world, params = doc.solve(row, t)
-        frame = Image.new("RGBA", (int(doc.frame["width"]), int(doc.frame["height"])), (0, 0, 0, 0))
-        rigdoc.composite_canvas(frame, _render_body(doc, row, t, (world, _other_side(params) if mirrored else params)))
+        frame = _compose(row, row, t, (world, _other_side(params) if mirrored else params), frame_idx, frame_count, doc=doc)
         return rigdoc.mirrored_canvas(frame) if mirrored else frame
     doc = load_doc()
     # A strike authors its own other-side clip (the blade stays in the hand that

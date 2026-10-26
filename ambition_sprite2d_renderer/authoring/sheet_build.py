@@ -46,7 +46,7 @@ from ..yaml_io import safe_dump
 from .actor_contract import write_actor_contract_for_tackon
 from ..profiling import profile, profile_checkpoint
 from .frame_source import CallableFrameSource, FrameSource
-from ..core.measure import measure_body_metrics
+from ..core.measure import measure_body_metrics, visible_bbox
 from ..core.manifest_ron import record_to_ron, records_to_ron, ron_tuning
 from ..registry.pack_groups import policy_for
 import os
@@ -1376,8 +1376,9 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
     # boss can register hits on the per-pose body instead of the coarse idle
     # bbox. Keyed by GENERIC gameplay keys (see `animation_key_map` in the
     # docstring) because the boss combat looks animations up that way, not by the
-    # sheet's row names. A row's hurtbox is the union alpha bbox across its
-    # frames, in cropped-frame coords (same space as `body_pixel_bbox`).
+    # sheet's row names. A row's hurtbox is the union of the VISIBLE boxes of
+    # its frames (`visible_bbox`), in cropped-frame coords (same space as
+    # `body_pixel_bbox`).
     if animation_key_map:
         anim_metrics = {}
         for anim, _nframes, _duration_ms, frames_data in rendered_rows:
@@ -1386,7 +1387,7 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
                 continue
             union = None
             for frame, _meta in frames_data:
-                bbox = frame.getchannel("A").getbbox()
+                bbox = visible_bbox(frame)
                 if bbox is None:
                     continue
                 union = (

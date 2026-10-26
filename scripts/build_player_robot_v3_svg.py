@@ -34,6 +34,7 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_turn import a
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_gait import author_gaits
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_ground import keep_over_ground
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_cling import author_wall_cling
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_swim import author_swim
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_climb import author_wall_climb
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crawl import (
     PURE_SIDE_ROWS,
@@ -56,7 +57,7 @@ RIG_DIR = PKG / "targets/characters/rigged/player_robot_v3"
 RIG_JSON = RIG_DIR / "player_robot_v3.rig.json"
 VIEW_LABEL = "Player Robot - Side Right"
 # The robot from the side with its torso and pelvis from the side, for the rows
-# of `PURE_SIDE_ROWS` (the wall climb and the crawl). Its other parts are clones of the side
+# of `PURE_SIDE_ROWS` (the wall climb, the crawl and the swim). Its other parts are clones of the side
 # view's.
 PURE_SIDE_SVG_PATH = SVG_PATH
 PURE_SIDE_RIG_JSON = RIG_DIR / "player_robot_v3_side_pure.rig.json"
@@ -715,6 +716,7 @@ def build_pure_side_doc(side: dict) -> dict:
     author_wall_climb(RigDocument(doc))
     author_crawl(RigDocument(doc))
     author_crawl_start(RigDocument(doc), RigDocument(side))
+    author_swim(RigDocument(doc))
     # The way down onto the hands mixes two poses on the floor, and the
     # middle of a mix can go under it. This pass DRAWS, so it needs the path
     # of the rig (the parts find their SVG beside it).
