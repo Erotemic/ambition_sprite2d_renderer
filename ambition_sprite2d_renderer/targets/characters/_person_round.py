@@ -312,6 +312,25 @@ def lift(x: float, l: float, yaw: float = 45.0) -> float:
     return (x - l * math.cos(t)) / math.sin(t)
 
 
+def cone(base: Vec, tip: Vec, radius: float, paint: Paint, rows: int = 4, cols: int = 16) -> Surface:
+    """A cone from a round ``base`` of ``radius`` to a point at ``tip`` (a
+    tuft of hair, a horn)."""
+    b, t = np.asarray(base, float), np.asarray(tip, float)
+    axis = t - b
+    w = axis / max(float(np.linalg.norm(axis)), 1e-9)
+    side = np.cross(w, [0.0, 1.0, 0.0])
+    if np.linalg.norm(side) < 1e-6:
+        side = np.cross(w, [0.0, 0.0, 1.0])
+    side /= np.linalg.norm(side)
+    up = np.cross(side, w)
+    u = np.linspace(-180.0, 180.0, cols + 1)
+    ur = np.radians(u)[None, :, None]
+    k = np.linspace(0.0, 1.0, rows + 1)[:, None, None]
+    pts = b + axis * k + radius * (1.0 - k) * (np.cos(ur) * side + np.sin(ur) * up)
+    uv = np.stack(np.broadcast_arrays(np.degrees(ur[..., 0]), k[..., 0]), -1)
+    return _grid(pts, uv, paint, b)
+
+
 def two_bone(root: Vec, target: Vec, first: float, second: float, pole: Vec) -> Tuple[np.ndarray, np.ndarray]:
     """The middle joint and the end of a limb of two bones from ``root``
     toward ``target``, bent toward ``pole``."""
@@ -569,6 +588,9 @@ class Head3D:
     #: A nose that slants down to a small round tip: the tip, as an
     #: ellipsoid (``nose`` is then its bridge).
     nose_tip: Optional[Tuple[Vec, Vec]] = None
+    #: Hair that does not lie down: ``(base, tip, radius)``, cones of the
+    #: hair's colour standing out of it, so it is spiky from every side.
+    tufts: Sequence[Tuple[Vec, Vec, float]] = ()
     #: Where the far side of the face is in shade (``lit`` under it).
     shade_at: float = -0.45
 
@@ -599,6 +621,7 @@ def head_part(h: Head3D, at: Vec, name: str = "head") -> Part:
     if h.nose_tip is not None:
         surfaces.append(ellipsoid(h.nose_tip[0], h.nose_tip[1], flat_skin))
     surfaces += [ellipsoid(c, r, flat(h.hair_colour, shade=hair_shade, at=-0.6)) for c, r in h.volumes]
+    surfaces += [cone(base, tip, radius, flat(h.hair_colour, shade=hair_shade, at=-0.6)) for base, tip, radius in h.tufts]
     if h.ear is not None:
         (el, ey_, ez), er = h.ear
         for side in (-1.0, 1.0):

@@ -419,7 +419,22 @@ from . import _round_cast as C  # noqa: E402
 from . import _round_wear as W  # noqa: E402
 
 
-_CROP = ((0.0, -5.4, -0.6), (8.6, 7.4, 8.6))
+#: A great deal of hair, and none of it lies down (his three-quarter view:
+#: a mass wider than his skull, spikes standing out of it all round the
+#: crown, a tuft at his nape).
+_CROP = ((0.0, -6.0, -1.6), (9.8, 7.8, 9.4))
+_MIDDLE = np.array([0.0, -5.0, -1.0])
+
+
+def _tuft(u: float, rise: float, out: float = 13.2) -> tuple:
+    """A spike of his hair at the turn ``u``, ``rise`` degrees above level."""
+    a, e = np.radians(u), np.radians(rise)
+    way = np.array([np.sin(a) * np.cos(e), -np.sin(e), np.cos(a) * np.cos(e)])
+    return (tuple(_MIDDLE + 7.6 * way), tuple(_MIDDLE + out * way), 2.4)
+
+
+_TUFTS = [_tuft(u, r) for u, r in ((-160.0, 40.0), (-110.0, 55.0), (-60.0, 62.0), (0.0, 68.0), (60.0, 62.0), (110.0, 55.0), (160.0, 40.0),
+                                    (20.0, 38.0), (-20.0, 38.0), (90.0, 20.0), (-90.0, 20.0))] + [_tuft(u, -10.0, 11.8) for u in (-150.0, 150.0, 180.0)]
 
 ROUND = C.Round(
     DISPLAY_NAME, C.PersonBody(X, anim="rest"),
@@ -428,7 +443,7 @@ ROUND = C.Round(
         C.auto_head(X, _head, _eyes,
                     hair=lambda u, v: (v < -6.6 + 2.0 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 70.0) & (v < 0.0))
                     | ((np.abs(u) > 100.0) & (v < 6.6)),
-                    hair_colour=HAIR, hair_shade=HAIR_LIGHT, volumes=[_CROP],
+                    hair_colour=HAIR, hair_shade=HAIR_LIGHT, volumes=[_CROP], tufts=_TUFTS,
                     lines=[O.curve([O.on_ellipsoid(*_CROP, u - 25.0 * t, -10.0 - 2.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_LIGHT, 0.6)
                            for u in (-140.0, -70.0, 20.0, 90.0)]),
         # His frock coat shut high: the black cravat and the shirt at his
