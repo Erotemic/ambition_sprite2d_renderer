@@ -1315,18 +1315,33 @@ TORSO_EDGE_X = 824.0
 MOSS_OVER = 3.5
 
 
-def shoulder_decks_world():
-    """The top of each epaulet at rest, as one-way ground: ``(left, right,
-    top)`` in world units about the middle of the giant's body (+y down),
-    the left shoulder first. Nothing over the neck between them is ground.
-    The numbers the game types (`mount.ledges` of `npc_giant_gnu`)."""
-    cx = BODY_BBOX[0] + BODY_BBOX[2] * 0.5
-    cy = BODY_BBOX[1] + BODY_BBOX[3] * 0.5
-    out = []
-    for x0, x1, top in (SHOULDER_L, SHOULDER_R):
-        (a, y), (b, _) = to_frame(_final((x0, top))), to_frame(_final((x1, top)))
-        out.append((round((a - cx) * WORLD_PER_PIXEL, 2), round((b - cx) * WORLD_PER_PIXEL, 2),
-                    round((y - cy) * WORLD_PER_PIXEL, 2)))
+#: The standing surfaces of the giant, by the name the sheet publishes them
+#: under (`surface:<name>:a` / `:b`): the top of each epaulet. The game's
+#: drawn ledges (`mount.drawn_ledges` of `npc_giant_gnu`) name them.
+SURFACES = {"shoulder_left": SHOULDER_L, "shoulder_right": SHOULDER_R}
+
+
+def surfaces(pose: dict) -> dict:
+    """Where each standing surface of ``pose`` is, in pixels of the published
+    frame: ``{name: (a, b)}``, the left end first. The epaulets lean and lift
+    with the torso (`_body_map`), and so do their tops."""
+    body_map = _body_map(pose)
+    out = {}
+    for name, (x0, x1, top) in SURFACES.items():
+        a, b = (to_frame(pc.apply(body_map, p)) for p in ((x0, top), (x1, top)))
+        out[name] = (a, b) if a[0] <= b[0] else (b, a)
+    return out
+
+
+def surface_anchors(found: dict, frame_size) -> dict:
+    """The anchors of a frame for ``found`` (``{name: (a, b)}`` in pixels of a
+    frame of ``frame_size``): ``surface:<name>:a`` and ``surface:<name>:b``,
+    as parts of the frame (0 to 1), as the seams are (`limb_seam_anchors`)."""
+    w, h = frame_size
+    out = {}
+    for name, (a, b) in found.items():
+        out[f"surface:{name}:a"] = {"x": round(a[0] / w, 5), "y": round(a[1] / h, 5)}
+        out[f"surface:{name}:b"] = {"x": round(b[0] / w, 5), "y": round(b[1] / h, 5)}
     return out
 
 

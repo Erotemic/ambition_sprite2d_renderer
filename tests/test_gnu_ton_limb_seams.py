@@ -119,3 +119,32 @@ def test_the_published_sheets_carry_the_seams():
     anchors = out[0]["rects"][1]["anchors"]
     assert set(anchors) == {"seam:hand_left:a", "seam:hand_left:b", "seam:hand_right:a", "seam:hand_right:b"}
     assert all(0.0 <= p["x"] <= 1.0 and 0.0 <= p["y"] <= 1.0 for p in anchors.values())
+
+
+@pytest.mark.parametrize("anim, frame, count", [("rest", 0, 10), ("hammer_windup", 11, 12), ("jab_strike", 3, 5),
+                                                ("left_hammer_strike", 3, 5), ("buck", 4, 8)])
+def test_each_shoulder_surface_is_on_the_drawn_epaulet(anim, frame, count):
+    """The game stands a body on the surface the sheet publishes
+    (`surface:<name>:a` / `:b`): in each frame it is the top of the epaulet
+    that is drawn (its moss is just under it), however the torso leans or
+    lifts. An arm in front of the epaulet may hide one point."""
+    image = g.render_giant(anim, frame, count)
+
+    def moss(px):
+        r, green, b, a = px
+        return a >= 128 and green > r + 20 and green > b + 20
+
+    hits = []
+    for name, (a, b) in sg._giant_surfaces(anim, frame, count).items():
+        for u in (0.3, 0.5, 0.7):
+            x, y = a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u
+            hits.append((name, round(x), round(y), moss(image.getpixel((int(round(x)), int(round(y + 3)))))))
+    assert sum(hit for *_, hit in hits) >= len(hits) - 1, f"{anim}[{frame}]: no moss under the surface at {hits}"
+
+
+def test_the_published_giant_sheet_carries_its_shoulder_surfaces():
+    rows = [{"animation": "hammer_windup", "frame_count": 2, "rects": [{"x": 0}, {"x": 1}]}]
+    out = sg._with_seam_anchors(rows, sg._giant_seams, sg.FRAME_SIZE, sg._giant_surfaces)
+    anchors = out[0]["rects"][1]["anchors"]
+    surfaces = {key for key in anchors if key.startswith("surface:")}
+    assert surfaces == {f"surface:{name}:{end}" for name in ("shoulder_left", "shoulder_right") for end in "ab"}

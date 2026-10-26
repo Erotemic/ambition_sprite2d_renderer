@@ -1060,18 +1060,28 @@ def _giant_seams(anim: str, frame_idx: int, frame_count: int) -> dict:
     return _giant.limb_seams(_giant.pose_for(anim, frame_idx / max(1, frame_count)))
 
 
-def _with_seam_anchors(rows_meta: list[dict], seams_of, frame_size) -> list[dict]:
+def _with_seam_anchors(rows_meta: list[dict], seams_of, frame_size, surfaces_of=None) -> list[dict]:
     """``rows_meta`` with the seams of each frame as its anchors
-    (`giant_art.limb_seam_anchors`): ``seams_of(row, frame, count)``."""
+    (`giant_art.limb_seam_anchors`): ``seams_of(row, frame, count)``; and,
+    with ``surfaces_of(row, frame, count)``, its standing surfaces
+    (`giant_art.surface_anchors`)."""
     out = []
     for row in rows_meta:
         count = row["frame_count"]
         rects = []
         for f, rect in enumerate(row["rects"]):
             anchors = _giant.limb_seam_anchors(seams_of(row["animation"], f, count), frame_size)
+            if surfaces_of is not None:
+                anchors.update(_giant.surface_anchors(surfaces_of(row["animation"], f, count), frame_size))
             rects.append(dict(rect, anchors=anchors) if anchors else rect)
         out.append(dict(row, rects=rects))
     return out
+
+
+def _giant_surfaces(anim: str, frame_idx: int, frame_count: int) -> dict:
+    """Where the giant's standing surfaces are in a frame (as
+    `giant_art.render_giant` poses it)."""
+    return _giant.surfaces(_giant.pose_for(anim, frame_idx / max(1, frame_count)))
 
 
 def _runtime_spritesheet_ron(
@@ -1399,7 +1409,7 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     # carried: the giant is the scholar's mount, not the thing you hit.
     giant_ron_path.write_text(
         _runtime_spritesheet_ron(
-            _with_seam_anchors(rows_meta, _giant_seams, FRAME_SIZE),
+            _with_seam_anchors(rows_meta, _giant_seams, FRAME_SIZE, _giant_surfaces),
             parts_doc,
             giant_page_names,
             target=GIANT_TARGET_NAME,
