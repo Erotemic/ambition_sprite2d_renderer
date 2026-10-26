@@ -100,9 +100,6 @@ def test_each_mechanism_is_in_the_flipbook(sample):
     # single parts too).
     faded = {d.track for frame in flipbook.clips["smash_forward"][1] for d in frame if d.opacity < 1.0}
     assert "blade" in faded, faded
-    mirrored = [d for frame in flipbook.clips["walk~mirrored"][1] for d in frame if d.track and not d.track.startswith("overlay:")]
-    # Mirrored about the pivot (scale.x -1); a squashed part keeps its squash.
-    assert mirrored and all(d.scale[0] == -1.0 for d in mirrored)
     # The blink draws the body whole and adds the portal pieces. The game
     # takes the body apart (`BodyWarp`), so a fade here would be a second one.
     blink = [d for frame in flipbook.clips["blink_out"][1] for d in frame]

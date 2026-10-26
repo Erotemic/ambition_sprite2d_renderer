@@ -668,18 +668,19 @@ class PaintRecord:
             return None
         return list(entry[1])
 
-    def reduced(self, sprite: Image.Image, pivot: Tuple[float, float], factor: int, reduce: Callable):
+    def reduced(self, sprite: Image.Image, pivot: Tuple[float, float], factor: int, reduce: Callable, phase: Tuple[int, int] = (0, 0)):
         """``sprite`` reduced by ``factor`` with ``reduce``, the filter the
-        frame is reduced with, and its pivot there (fractional)."""
-        key = (id(sprite), pivot, factor)
+        frame is reduced with, and its pivot there (fractional).
+        ``phase`` is the native offset from the frame sampling grid."""
+        key = (id(sprite), pivot, factor, phase)
         entry = self._reduced.get(key)
         if entry is None or entry[0] is not sprite:
-            entry = (sprite,) + _reduce_part(sprite, pivot, factor, reduce)
+            entry = (sprite,) + _reduce_part(sprite, pivot, factor, reduce, phase)
             self._reduced[key] = entry
         return entry[1], entry[2]
 
 
-def _reduce_part(sprite: Image.Image, pivot: Tuple[float, float], factor: int, reduce: Callable):
+def _reduce_part(sprite: Image.Image, pivot: Tuple[float, float], factor: int, reduce: Callable, phase: Tuple[int, int] = (0, 0)):
     """A supersampled part raster reduced by ``factor`` with ``reduce``, as the
     frame it is painted on is reduced: padded by the filter's reach first, so
     its edge is not cut, then trimmed to what it covers plus ``PART_BORDER``.
@@ -696,14 +697,14 @@ def _reduce_part(sprite: Image.Image, pivot: Tuple[float, float], factor: int, r
     half-covered edge row was smeared outward — the robot's sole drawn at
     alpha 82 where the render has 10 (a blob of 11, 2026-10-03)."""
     reach = 3 * factor
-    w = math.ceil(sprite.width / factor) * factor + 2 * reach
-    h = math.ceil(sprite.height / factor) * factor + 2 * reach
+    w = math.ceil((sprite.width + phase[0]) / factor) * factor + 2 * reach
+    h = math.ceil((sprite.height + phase[1]) / factor) * factor + 2 * reach
     padded = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    padded.alpha_composite(sprite, (reach, reach))
+    padded.alpha_composite(sprite, (reach + phase[0], reach + phase[1]))
     small = reduce(padded, (w // factor, h // factor))
     x0, y0, x1, y1 = small.getchannel("A").getbbox() or (0, 0, 1, 1)
     trim = (max(0, x0 - PART_BORDER), max(0, y0 - PART_BORDER), min(small.width, x1 + PART_BORDER), min(small.height, y1 + PART_BORDER))
-    return small.crop(trim), ((pivot[0] + reach) / factor - trim[0], (pivot[1] + reach) / factor - trim[1])
+    return small.crop(trim), ((pivot[0] + reach + phase[0]) / factor - trim[0], (pivot[1] + reach + phase[1]) / factor - trim[1])
 
 
 #: The most a premultiplied channel may move where a part's reduced edge is
@@ -1090,7 +1091,14 @@ def recorded_paint():
             # lands up to a quarter of a frame pixel off at 4x (a blob of 7 on
             # robot v3's `dash_attack~mirrored`[1], 2026-10-03).
             snapped = (float(round(op.pivot[0])), float(round(op.pivot[1])))
-            sprite, pivot = record.reduced(op.sprite, snapped, factor, reduce)
+            phase = (0, 0)
+            if not op.grid and op.degrees == 0.0 and op.scale_y == 1.0:
+                # Keep the rig pivot and sample the raster on the frame grid.
+                phase = (
+                    int(round(op.world[0]) - snapped[0]) % factor,
+                    int(round(op.world[1]) - snapped[1]) % factor,
+                )
+            sprite, pivot = record.reduced(op.sprite, snapped, factor, reduce, phase)
             target.append(
                 replace(
                     op,
