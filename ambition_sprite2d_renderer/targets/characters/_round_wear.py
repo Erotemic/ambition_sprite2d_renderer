@@ -313,12 +313,14 @@ class PointedHem:
 @dataclass(frozen=True)
 class Shade:
     """Where the key light does not reach (``lit`` under ``at``), the
-    garment's dark colour: the far side of a body in its own shade."""
+    garment's dark colour: the far side of a body in its own shade. It
+    shades the garment's colour only; a band, a stripe, a patch keeps its
+    own colour in the shade."""
 
     at: float = -0.45
 
     def apply(self, g, out, u, v, x, lit):
-        O.put(out, lit < self.at, g.dark)
+        O.put(out, (lit < self.at) & np.all(out == np.asarray(g.colour, np.uint8), axis=-1), g.dark)
 
 
 @dataclass(frozen=True)

@@ -572,16 +572,45 @@ from . import _round_wear as W  # noqa: E402
 
 #: His hair on the volume over his head: lighter strands in the grey.
 _MOP = ((0.0, -5.0, -0.4), (8.6, 7.6, 8.6))
+#: And down behind, over the tops of his ears, to his collar.
+_NAPE = ((0.0, 0.2, -2.8), (9.8, 7.8, 7.2))
+
+# His head from the side, drawn as the cast draws a head in the numbers of a
+# profile: the mop forward over his brow in locks, over the top of his ear,
+# shaggy at his nape.
+
+
+def _side_hair_shape(d) -> None:
+    K.oval(d, K.at(-1.4, -6.6), 10.2, 7.8, WHITE)
+    K.poly(d, [K.at(5.0, -13.0), K.at(10.4, -9.6), K.at(10.6, -6.4), K.at(7.0, -6.0)], WHITE)
+    K.poly(d, [K.at(-8.8, -6.0), K.at(-11.4, -2.0), K.at(-9.8, 0.6), K.at(-11.0, 4.0), K.at(-8.2, 5.2), K.at(-7.2, 8.2), K.at(-4.0, 6.8)], WHITE)
+
+
+def _side_hair(d) -> None:
+    K.poly(d, [K.at(20.0, -7.2), K.at(10.2, -7.2), K.at(9.0, -5.4), K.at(7.4, -6.8), K.at(5.6, -4.9), K.at(3.8, -6.6), K.at(2.2, -4.4), K.at(1.4, -1.2),
+               K.at(-0.4, -1.4), K.at(-2.0, -0.6), K.at(-3.6, 1.6), K.at(-4.6, 4.4), K.at(-4.0, 7.4), K.at(-20.0, 9.0), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+    for strand in ([(-3.6, -13.0), (2.4, -11.8), (7.6, -8.0)], [(-7.0, -10.6), (-1.4, -9.6), (3.0, -7.0)], [(-8.8, -6.0), (-6.4, -3.6), (-5.0, 0.4)],
+                   [(-9.4, -1.0), (-8.6, 3.0)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_SHADE, 0.6)
+
+
+_side_head = R.make_head(K, ("hinter_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.8, 8.8, 9.4), jaw=(3.4, 4.2, 5.8, 7.8),
+                         nose=((8.0, -1.2), (10.8, 2.8), (10.2, 4.4), (8.0, 4.8)), ear=(-1.6, 1.0, 2.2, 3.3), shape=_side_hair_shape, under=_side_hair,
+                         over=lambda d: K.line(d, [K.at(5.8, 4.6), K.at(4.4, 6.6)], mix(SKIN, SKIN_DEEP, 0.3), 0.45), far_shade=False)
+_side_eyes = R.make_eyes(K, (6.2, -0.4), None, ink=INK, white=None, lid=SKIN_DEEP, size=1.0)
+_side_brows = R.make_brows(K, [(4.0, -3.6), (6.2, -4.2), (8.4, -3.6)], None, HAIR, 1.3)
+_side_mouth = R.make_mouth(K, (8.0, 8.4), (124, 60, 62, 255), wide=0.55)
 
 ROUND = C.Round(
-    DISPLAY_NAME, C.PersonBody(X),
+    DISPLAY_NAME, C.PersonBody(X, heads={"side": lambda pose: [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"),
+                                                               (_side_brows(R.brow_mood(pose)), "brows"), (_side_mouth(str(pose["mouth"])), "mouth")]}),
     C.Look(
         # A mop of dark hair going grey: on his forehead to his brows, over
         # the top of his ears, down to his collar behind; no glasses.
         C.auto_head(X, _head, _eyes,
                     hair=lambda u, v: (v < -4.9 + 1.0 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 65.0) & (v < 3.6))
                     | ((np.abs(u) > 100.0) & (v < 9.0)),
-                    hair_colour=HAIR, hair_shade=HAIR_SHADE, volumes=[_MOP],
+                    hair_colour=HAIR, hair_shade=HAIR_SHADE, volumes=[_MOP, _NAPE],
                     lines=[O.curve([O.on_ellipsoid(*_MOP, u + 20.0 * t, -11.6 + 4.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_SHADE, 0.6)
                            for u in (-150.0, -100.0, -50.0, 0.0, 50.0, 100.0)]),
         # His jumper, the collar of his shirt over its neck, the rib at its hem.

@@ -104,30 +104,39 @@ def shoes(name: str, ankle: Sequence[float], side: Callable[[bool], object], fro
     return O.Sprite(name, tuple(ankle), draw, dims=True, lead=3.0)
 
 
-def own_turns(front: bool, mirror: bool = True, side: bool = False) -> Callable[[O.View], bool]:
-    """The views a character's own art is drawn for (``own_art``)."""
-    turns = (45.0,) + ((-45.0,) if mirror else ()) + ((0.0,) if front else ()) + ((90.0,) + ((-90.0,) if mirror else ()) if side else ())
+def own_turns(front: bool, mirror: bool = True, side: bool = False, side_left: Optional[bool] = None) -> Callable[[O.View], bool]:
+    """The views a character's own art is drawn for (``own_art``). ``mirror``:
+    it has a left three-quarter view; ``side_left``: a left side view (by
+    default, when it has a right one and ``mirror``)."""
+    side_left = side and mirror if side_left is None else side_left
+    turns = (45.0,) + ((-45.0,) if mirror else ()) + ((0.0,) if front else ()) + ((90.0,) if side else ()) + ((-90.0,) if side_left else ())
     return O.near_turn(*turns)
 
 
 def own_art(name: str, anchor: Sequence[float], three_quarter: Optional[Callable[[], object]], front: Optional[Callable[[], object]] = None, *,
-            side: Optional[Callable[[], object]] = None, degrees: float = 0.0, lead: float = 0.0, mirror: bool = True) -> O.Sprite:
+            side: Optional[Callable[[], object]] = None, left: Optional[Callable[[], object]] = None,
+            side_left: Optional[Callable[[], object]] = None, degrees: float = 0.0, lead: float = 0.0, mirror: bool = True) -> O.Sprite:
     """A piece of a character's own art in the views it is drawn for: its
     three-quarter view, its mirror for the left (``mirror``: only a piece that
     is the same on both sides; a pocket on one side is not), its front view
     and its side view if it has them (a head made with the cast's front or
-    side makers, for a character drawn in one view). Another piece draws the
-    other views (``not_in(sprite.when)``)."""
+    side makers, for a character drawn in one view). ``left``, ``side_left``:
+    the other side of a piece that is not the same on both sides, drawn as
+    its right is (facing right) and mirrored. Another piece draws the other
+    views (``not_in(sprite.when)``)."""
+    left = left if left is not None else (three_quarter if mirror else None)
+    side_left = side_left if side_left is not None else (side if mirror else None)
 
     def draw(view: O.View, far: bool):
         turn = O.facing(view)
         if abs(turn) <= 10.0:
             return (front() if front is not None else None), 0.0, False
         if abs(abs(turn) - 90.0) <= 10.0:
-            return (side() if side is not None else None), 0.0, turn < 0.0
-        return three_quarter(), degrees, turn < 0.0  # type: ignore[misc]
+            art = side_left if turn < 0.0 else side
+            return (art() if art is not None else None), 0.0, turn < 0.0
+        return (left if turn < 0.0 else three_quarter)(), degrees, turn < 0.0  # type: ignore[misc]
 
-    return O.Sprite(name, tuple(anchor), draw, when=own_turns(front is not None, mirror, side is not None), lead=lead)
+    return O.Sprite(name, tuple(anchor), draw, when=own_turns(front is not None, left is not None, side is not None, side_left is not None), lead=lead)
 
 
 def not_in(when: Optional[Callable[[O.View], bool]]) -> Optional[Callable[[O.View], bool]]:
@@ -196,10 +205,14 @@ class PersonBody(Body):
     ``back_layers``:
     the layers of its own art behind it (a cloak, hair, a staff), drawn in
     its three-quarter view. ``mirror``: which of its head and trunk are the
-    same on both sides, so their mirror is its left three-quarter view."""
+    same on both sides, so their mirror is its left three-quarter view.
+    ``heads``: its head in more views, each ``layers(pose)`` as
+    ``head_layers`` is, drawn with the cast's makers: ``"side"`` (from the
+    right), and for a head that is not the same on both sides ``"left"`` and
+    ``"side_left"`` (its left, drawn facing right; it is mirrored)."""
 
     def __init__(self, person, back_shoe: Optional[Callable[[], object]] = None, *, back_layers: Sequence[str] = (),
-                 mirror: Sequence[str] = ("head", "trunk"), anim: str = "idle") -> None:
+                 mirror: Sequence[str] = ("head", "trunk"), anim: str = "idle", heads: Optional[Dict[str, Callable]] = None) -> None:
         self.person = person
         self.K = person.K
         self.frame, self.cx, self.ground, self.hip_up = person.frame, person.cx, person.ground, person.b.hip_up
@@ -214,6 +227,7 @@ class PersonBody(Body):
         self.back_layers = tuple(back_layers)
         self.mirror = tuple(mirror)
         self.anim = anim
+        self.heads = dict(heads or {})
 
     def joints(self, stagger: float = 0.0) -> SimpleNamespace:
         """The joints standing at rest, lifted from the person's two views:
@@ -288,7 +302,7 @@ class PersonBody(Body):
                              mirror="trunk" in self.mirror),
             "head": own_art("own_head", J.head, lambda: O.composed(K, p.head_layers(J.rest)),
                             (lambda: O.composed(K, p.front_head_layers(dict(FRONT_REST)))) if has_front else None, lead=9.0,
-                            mirror="head" in self.mirror),
+                            mirror="head" in self.mirror, **{k: (lambda f=f: O.composed(K, f(J.rest))) for k, f in self.heads.items()}),
         }
         if self.back_layers:
             out["back"] = own_layers(p, self.back_layers, anim=self.anim)

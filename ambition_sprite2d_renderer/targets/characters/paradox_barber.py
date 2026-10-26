@@ -468,8 +468,58 @@ from . import _round_wear as W  # noqa: E402
 _OILED = ((0.0, -5.6, -0.6), (8.4, 7.0, 8.4))
 _head(True)  # his head with lather is the one at rest (``set_rest``)
 
+# The paradox is on his right cheek (lather) and his left (a beard): so his
+# left three-quarter view is his head with no lather (``_head(False)``), and
+# his head from the side, drawn as the cast draws a head in the numbers of a
+# profile, is two heads: the lather from the right, the beard from the left.
+
+
+def _side_hair_shape(d) -> None:
+    K.oval(d, K.at(-1.0, -6.0), 9.4, 6.8, WHITE)
+    K.poly(d, [K.at(4.0, -12.2), K.at(9.4, -11.4), K.at(10.8, -8.4), K.at(7.6, -7.0)], WHITE)
+    K.poly(d, [K.at(-8.4, -4.0), K.at(-9.8, 0.0), K.at(-8.0, 4.0), K.at(-5.0, 5.0)], WHITE)
+
+
+def _side_hair(d) -> None:
+    K.poly(d, [K.at(20.0, -8.4), K.at(9.6, -8.4), K.at(7.2, -7.2), K.at(4.2, -8.0), K.at(1.6, -7.0), K.at(0.8, -3.6), K.at(1.0, 1.0), K.at(-1.2, 1.4),
+               K.at(-4.0, 4.6), K.at(-6.0, 5.2), K.at(-20.0, 5.2), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+    K.line(d, [K.at(-3.0, -12.0), K.at(-4.6, -10.0)], SKIN_SHADE, 0.5)
+    for strand in ([(-8.0, -9.0), (-4.0, -11.8), (0.4, -12.4)], [(3.6, -11.6), (7.4, -10.8), (9.4, -9.0)], [(-8.6, -5.0), (-8.0, -1.0)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_SHADE, 0.6)
+
+
+def _side_face(lather: bool):
+    def paint(d) -> None:
+        if lather:
+            for (x, y), r in (((3.0, 4.4), 2.4), ((5.0, 6.4), 2.6), ((6.8, 8.2), 2.0), ((3.6, 7.2), 2.2)):
+                K.oval(d, K.at(x, y), r, r * 0.86, FOAM_SHADE)
+            for (x, y), r in (((2.8, 4.0), 2.0), ((4.8, 5.8), 2.2), ((6.6, 7.7), 1.6)):
+                K.oval(d, K.at(x, y), r, r * 0.86, FOAM)
+            K.poly(d, [K.at(7.6, 6.4), K.at(10.0, 6.2), K.at(10.2, 8.8), K.at(8.4, 10.8), K.at(6.8, 10.0)], HAIR)
+        else:
+            K.poly(d, [K.at(1.0, 2.4), K.at(4.2, 5.2), K.at(7.6, 6.4), K.at(10.0, 6.2), K.at(10.2, 8.8), K.at(8.4, 10.8), K.at(3.6, 10.0), K.at(0.8, 6.0)], HAIR)
+        # His moustache, its near end curled up on his cheek.
+        K.stroke(d, [K.at(10.4, 4.6), K.at(8.0, 5.2), K.at(6.0, 4.6), K.at(5.4, 3.0)], HAIR, 1.5)
+
+    return paint
+
+
+_SIDE_HEADS = {lather: R.make_head(K, ("barber_side", lather), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.8, 8.8, 9.2), jaw=(3.4, 4.2, 5.8, 7.6),
+                                   nose=((8.0, -1.2), (11.0, 2.6), (10.4, 4.0), (8.0, 4.4)), ear=(-1.6, 1.2, 2.2, 3.2), shape=_side_hair_shape,
+                                   under=_side_hair, over=_side_face(lather), far_shade=False) for lather in (True, False)}
+_side_eyes = R.make_eyes(K, (6.2, -0.6), None, ink=INK, white=None, lid=SKIN_DEEP, size=1.0)
+_side_brows = R.make_brows(K, [(4.0, -4.6), (6.2, -5.6), (8.4, -4.8)], None, HAIR, 1.4)
+_side_mouth = R.make_mouth(K, (8.0, 7.6), (124, 60, 62, 255), wide=0.5)
+
+
+def _side_layers(lather: bool):
+    return lambda pose: [(_SIDE_HEADS[lather](), "head"), (_side_eyes(str(pose["eyes"])), "eyes"), (_side_brows(R.brow_mood(pose)), "brows"),
+                         (_side_mouth(str(pose["mouth"])), "mouth")]
+
+
 ROUND = C.Round(
-    DISPLAY_NAME, C.PersonBody(X),
+    DISPLAY_NAME, C.PersonBody(X, heads={"left": lambda pose: X.head_layers(dict(pose, lather=False)), "side": _side_layers(True),
+                                         "side_left": _side_layers(False)}),
     C.Look(
         # Dark hair with oil in it and a parting; a moustache whose ends curl
         # up; the paradox: lather on his cheek, and a beard on his chin.
