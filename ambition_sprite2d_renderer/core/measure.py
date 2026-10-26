@@ -11,24 +11,44 @@ Bevy anchor convention: ``(0, 0)`` = sprite centre, ``+0.5`` y = top edge. The
 runtime uses ``feet_anchor_norm.y`` directly as ``feet_anchor_y`` so it never
 hand-tunes feet per target.
 
-Pillow + stdlib only — takes any object with ``.getbbox()`` and ``.size`` (a
-``PIL.Image``), so this module imports nothing.
+A body is what is VISIBLE (:data:`VISIBLE_ALPHA`), not every pixel with a
+non-zero alpha: the frames are resampled down from a larger canvas, and the
+resampling kernel leaves a fringe of near-transparent pixels round every edge.
+A box that counts the fringe stands the body on it, and the drawn feet then
+float above the floor by the width of the fringe.
+
+Pillow + stdlib only — takes a ``PIL.Image``, so this module imports nothing.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
+
+#: The least alpha a pixel has to be part of a measured body. The LANCZOS
+#: fringe of a frame downsampled 4x reaches ~15 (measured on Sanic's soles);
+#: an eighth of full opacity is above it and below any paint that is meant to
+#: be seen.
+VISIBLE_ALPHA = 32
+
+
+def visible_bbox(frame) -> Optional[Tuple[int, int, int, int]]:
+    """The box ``(x0, y0, x1, y1)`` (high side open) of the pixels of ``frame``
+    with an alpha of at least :data:`VISIBLE_ALPHA`; ``None`` when it has none.
+
+    The one rule for "where the drawn body is". Use the plain alpha box only to
+    crop, where a faint pixel must not be cut.
+    """
+    if "A" not in frame.getbands():
+        return frame.getbbox()
+    return frame.getchannel("A").point(lambda a: 255 if a >= VISIBLE_ALPHA else 0).getbbox()
 
 
 def measure_body_metrics(frame) -> Optional[Dict[str, Any]]:
-    """Body bbox + feet anchor from ``frame``'s drawn pixels.
+    """Body bbox + feet anchor from ``frame``'s visible pixels (:func:`visible_bbox`).
 
-    Uses all-channel ``getbbox()`` (NOT alpha-only) for byte-for-byte parity
-    with the legacy measurement; zero-alpha pixels with nonzero RGB count.
-
-    Returns ``None`` for a fully transparent frame (callers decide the
-    degenerate fallback). Byte-for-byte the legacy ``sheet._measure_body_extent``.
+    Returns ``None`` for a frame with no visible pixel (callers decide the
+    degenerate fallback).
     """
-    bbox = frame.getbbox()
+    bbox = visible_bbox(frame)
     if bbox is None:
         return None
     fw, fh = frame.size

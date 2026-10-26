@@ -12,7 +12,7 @@ from .actor_contract import write_actor_contract_for_adapter
 from .sheet_build import hurtbox_with_union, publish_character_notes
 from ..registry import CharacterJob
 from ..registry.pack_groups import policy_for
-from ..core.measure import measure_body_metrics
+from ..core.measure import measure_body_metrics, visible_bbox
 from ..core.manifest_ron import records_to_ron, render_adapter, ron_tuning
 
 
@@ -190,8 +190,9 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         },
     )
     body_metric_frame: Image.Image | None = None
-    # Per-animation union alpha bboxes in source canvas coords (before the
-    # sheet-wide crop) → per-animation hurtboxes. Layout-independent.
+    # Per-animation union VISIBLE boxes (`visible_bbox`) in source canvas
+    # coords (before the sheet-wide crop) → per-animation hurtboxes.
+    # Layout-independent.
     anim_union_bbox_src: Dict[str, Tuple[int, int, int, int] | None] = {}
     cropped_rows: List[List[Image.Image]] = []
     for row_idx, animation in enumerate(selected):
@@ -200,7 +201,7 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         for src_frame in rendered[row_idx]:
             cropped = src_frame.crop((crop_min_x, crop_min_y, crop_max_x, crop_max_y))
             row_imgs.append(cropped)
-            src_bbox = src_frame.getbbox()
+            src_bbox = visible_bbox(src_frame)
             if src_bbox is not None:
                 anim_bbox = (
                     src_bbox
