@@ -1351,7 +1351,10 @@ def main(argv: list[str] | None = None) -> int:
 
 import numpy as np  # noqa: E402
 
+from types import SimpleNamespace  # noqa: E402
+
 from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
 from . import _round_wear as W  # noqa: E402
 
 #: As he rests (``idle``, its first frame): thinking, his chin on his near
@@ -1382,12 +1385,12 @@ SHOULDERS3 = {"r": _lifted(NEAR_SHOULDER, -_SW), "l": _lifted(FAR_SHOULDER, _SW)
 HIPS3 = {"r": (-_HW, 0.0, O.lift(NEAR_HIP[0], -_HW)), "l": (_HW, 0.0, O.lift(FAR_HIP[0], _HW))}
 ANKLES3 = {"r": (-_FOOT, HIP_UP - ANKLE_UP, O.lift(float(_REST["nf"][0]) * U, -_FOOT)),
            "l": (_FOOT, HIP_UP - ANKLE_UP, O.lift(float(_REST["ff"][0]) * U, _FOOT))}
-#: His hands: where his three-quarter view puts them, at a side chosen for
-#: each (his chin is in the middle; his far hand is behind his back).
+#: Where his three-quarter view puts his wrists at rest: his chin on his near
+#: hand, his far hand behind his back.
 _CHIN = (NEAR_SHOULDER[0] + AT_CHIN[0] * U, NEAR_SHOULDER[1] + AT_CHIN[1] * U)
 _BACK = (FAR_SHOULDER[0] + BEHIND[0] * U, FAR_SHOULDER[1] + BEHIND[1] * U)
-WRISTS3 = {"r": ((-1.0, _seen(_CHIN)[1], O.lift(_seen(_CHIN)[0], -1.0)), (-0.4, 1.0, 0.1), str(_REST["nh"])),
-           "l": ((3.0, _seen(_BACK)[1], O.lift(_seen(_BACK)[0], 3.0)), (1.0, 0.2, -0.4), str(_REST["fh"]))}
+#: As he rests: his chin is in the middle; his far hand behind his back.
+STANCE = C.Stance(hands={"r": C.Hand(l=-1.0, pole=(-0.4, 1.0, 0.1)), "l": C.Hand(l=3.0, pole=(1.0, 0.2, -0.4))})
 
 #: His hair: the mass on top of his head, and what goes round behind his ears.
 _HAIR_TOP = ((0.0, -8.8, -0.6), (7.8, 4.8, 8.4))
@@ -1481,76 +1484,80 @@ def _back_sandal():
     return K.solid(("back_sandal",), shape, SOCK_FILL, detail, outline=1.2, rim=0.25, shade=0.3, shade_colour=SOCK_DARK)
 
 
-def _round_arm(side: str) -> O.Drawn:
-    (target, pole, mode) = WRISTS3[side]
-    elbow, wrist = O.two_bone(SHOULDERS3[side], target, UPPER, FORE, pole)
-    shoulder = SHOULDERS3[side]
+class ErdishBody(C.Body):
+    """Erdish as a body (``_round_cast.Body``): his joints lifted from his
+    three-quarter view and his build (he has no front view), his own pieces
+    drawn at them: his sleeves (``_bone``) with the patch on his near elbow,
+    his hands, his trousers and socks, his sandals, his neck; and his head,
+    jacket and collar in his three-quarter view. His jacket and collar are not
+    mirrored (the pocket on his chest is on his right)."""
 
-    def draw(view, far, at):
-        s, e, w = at(shoulder), at(elbow), at(wrist)
-        near = not far
-        colour = TWEED if near else TWEED_DARK
-        img = K.new_frame()
-        O.place_bones(K, img, f"{side}_arm", [(s, e, lambda edge, n: _bone("upper", n, 7.0, 5.8, colour, TWEED_DARK, edge)),
-                                              (e, w, lambda edge, n: _bone("fore", n, 5.8, 5.0, colour, TWEED_DARK, edge))])
-        if side == "r":
-            K.place(img, _patch(), e, "elbow_patch", angle(e, w))
-        K.place(img, _hand(mode, near), w, f"{side}_hand", angle(e, w))
-        return img
+    K, frame, cx, ground, hip_up = K, FRAME_SIZE, CX, GROUND, HIP_UP
+    upper, fore, thigh, shin = UPPER, FORE, THIGH, SHIN
 
-    return O.Drawn(f"{side}_arm", tuple(wrist), draw, dims=True, lead=3.0)
+    def joints(self, stagger=0.0):
+        def wrist(near, l):
+            x, y = _seen(_CHIN if near else _BACK)
+            return (l, y, O.lift(x, l))
+
+        ankles = {"r": tuple(np.asarray(ANKLES3["r"]) - [0.0, 0.0, stagger]), "l": tuple(np.asarray(ANKLES3["l"]) + [0.0, 0.0, stagger])}
+        return SimpleNamespace(shoulders=SHOULDERS3, hips=HIPS3, ankles=ankles, neck=_NECK3, head=HEAD3, throat=tuple(np.asarray(HEAD3) + [0.0, 4.0, -0.6]),
+                               rest=_REST, wrist=wrist)
+
+    def hand_mode(self, near):
+        return str(_REST["nh" if near else "fh"])
+
+    def arm(self, name, shoulder, elbow, wrist, mode):
+        def bones(pts, near):
+            colour = TWEED if near else TWEED_DARK
+            return [(pts[0], pts[1], lambda edge, n: _bone("upper", n, 7.0, 5.8, colour, TWEED_DARK, edge)),
+                    (pts[1], pts[2], lambda edge, n: _bone("fore", n, 5.8, 5.0, colour, TWEED_DARK, edge))]
+
+        def patch(img, pts, near):
+            if name.startswith("r"):
+                K.place(img, _patch(), pts[1], "elbow_patch", angle(pts[1], pts[2]))
+
+        return C.limb_piece(K, name, [shoulder, elbow, wrist], bones, hand=lambda near: _hand(mode, near), extra=patch, lead=3.0)
+
+    def leg(self, name, hip, knee, ankle):
+        def bones(pts, near):
+            # His trousers stop above his ankle; his sock is under them.
+            h, k, a = pts
+            c = (lerp(k[0], a[0], 1.0 - SOCK / SHIN), lerp(k[1], a[1], 1.0 - SOCK / SHIN))
+            colour = TROUSER if near else TROUSER_DARK
+            sock = SOCK_FILL if near else mix(SOCK_FILL, SOCK_DARK, 0.7)
+            return [(c, a, lambda edge, n: _bone("sock", n, 4.2, 4.0, sock, SOCK_DARK, edge)),
+                    (h, k, lambda edge, n: _bone("thigh", n, 7.4, 6.2, colour, TROUSER_DARK, edge)),
+                    (k, c, lambda edge, n: _bone("shin", n, 6.2, 6.4, colour, TROUSER_DARK, edge))]
+
+        return C.limb_piece(K, name, [hip, knee, ankle], bones, anchor=knee, lead=-12.0)
+
+    def neck(self, base, top):
+        def draw(view, far, at):
+            a, b = at(base), at(top)
+            img = K.new_frame()
+            K.place(img, _neck(round(math.dist(a, b))), a, "neck", angle(a, b))
+            return img
+
+        return O.Drawn("neck", tuple(base), draw)
+
+    def shoes(self, name, ankle):
+        return C.shoes(name, ankle, _sandal, _front_sandal, _back_sandal)
+
+    def own(self, J):
+        turn = _LEAN * 0.35 + _TILT
+        layers = lambda: O.composed(K, [(_head(), "head"), (_eyes(str(_REST["eyes"])), "eyes"), (_glasses(), "glasses"),  # noqa: E731
+                                        (_brows(1 if float(_REST["brows"]) > 0.5 else 0), "brows"), (_mouth(str(_REST["mouth"])), "mouth")], turn)
+        return {"trunk": C.own_art("own_jacket", (0.0, 0.0, 0.0), lambda: _jacket(0, 0), degrees=_LEAN, lead=0.4, mirror=False),
+                "head": C.own_art("own_head", J.head, layers, lead=9.0),
+                "extra": [C.own_art("own_collar", J.neck, _collar, degrees=_LEAN, lead=9.5, mirror=False)]}
+
+    def own_frames(self):
+        rows = {name: n for name, n, _ms in ROWS}
+        return {"front_3q": _render_frame("idle", 0, rows["idle"])}
 
 
-def _round_leg(side: str) -> List[object]:
-    knee, ankle = O.two_bone(HIPS3[side], ANKLES3[side], THIGH, SHIN, (0.0, 0.0, 1.0))
-    cuff = knee + (ankle - knee) * (1.0 - SOCK / SHIN)
-    hip = HIPS3[side]
-
-    def draw(view, far, at):
-        h, k, c, a = at(hip), at(knee), at(cuff), at(ankle)
-        near = not far
-        colour = TROUSER if near else TROUSER_DARK
-        sock = SOCK_FILL if near else mix(SOCK_FILL, SOCK_DARK, 0.7)
-        img = K.new_frame()
-        O.place_bones(K, img, f"{side}_leg", [(c, a, lambda edge, n: _bone("sock", n, 4.2, 4.0, sock, SOCK_DARK, edge)),
-                                              (h, k, lambda edge, n: _bone("thigh", n, 7.4, 6.2, colour, TROUSER_DARK, edge)),
-                                              (k, c, lambda edge, n: _bone("shin", n, 6.2, 6.4, colour, TROUSER_DARK, edge))])
-        return img
-
-    return [O.Drawn(f"{side}_leg", tuple(knee), draw, dims=True, lead=-12.0), O.shoes(f"{side}_sandal", ankle, _sandal, _front_sandal, _back_sandal)]
-
-
-def round_figure() -> O.Figure:
-    """Erdish in the round, as he rests."""
-    head, trunk = O.head_part(HEAD_3D, HEAD3), JACKET_3D.part()
-    turn = _LEAN * 0.35 + _TILT
-    layers = lambda: O.composed(K, [(_head(), "head"), (_eyes(str(_REST["eyes"])), "eyes"), (_glasses(), "glasses"),  # noqa: E731
-                                    (_brows(1 if float(_REST["brows"]) > 0.5 else 0), "brows"), (_mouth(str(_REST["mouth"])), "mouth")], turn)
-    throat = np.asarray(HEAD3) + [0.0, 4.0, -0.6]
-
-    def neck(view, far, at):
-        a, b = at(_NECK3), at(throat)
-        img = K.new_frame()
-        K.place(img, _neck(round(math.dist(a, b))), a, "neck", angle(a, b))
-        return img
-
-    # His jacket has its pocket on his right: it is not mirrored, and the
-    # jacket in 3D draws his left three-quarter view.
-    jacket = O.own_art("own_jacket", (0.0, 0.0, 0.0), lambda: _jacket(0, 0), degrees=_LEAN, lead=0.4, mirror=False)
-    own_head = O.own_art("own_head", HEAD3, layers, lead=9.0)
-    collar = O.own_art("own_collar", _NECK3, _collar, degrees=_LEAN, lead=9.5, mirror=False)
-    trunk.when, head.when = O.not_in(jacket.when), O.not_in(own_head.when)
-    parts = [trunk, head, O.Drawn("neck", _NECK3, neck), jacket, own_head, collar]
-    for side in ("r", "l"):
-        parts += [_round_arm(side)] + _round_leg(side)
-    return O.Figure(parts, FRAME_SIZE, CX, GROUND, HIP_UP, trunk=(0.0, -20.0, 0.4))
-
-
-def render_turnaround(path):
-    """His eight views, with his own three-quarter view (the first frame of
-    ``idle``) under the view it draws."""
-    rows = {name: n for name, n, _ms in ROWS}
-    return O.turnaround(K, round_figure(), path, title="Erdish in the round", own={"front_3q": _render_frame("idle", 0, rows["idle"])})
+ROUND = C.Round("Erdish", ErdishBody(), C.Look(HEAD_3D, JACKET_3D), STANCE)
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}

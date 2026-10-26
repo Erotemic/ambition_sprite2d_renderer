@@ -773,11 +773,11 @@ render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
 import numpy as np  # noqa: E402
 
 from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
 from . import _round_wear as W  # noqa: E402
 
-J = O.person_joints(X, stagger=2.0)
-#: Her near hand flat at her belt, her far hand at her side.
-HANDS = {"r": (J.wrist(True, -4.4), (-1.0, 0.3, -0.6)), "l": (J.wrist(False, 8.6), (1.0, 0.0, -0.2))}
+#: As she rests: her near hand flat at her belt, her far hand at her side.
+STANCE = C.Stance(hands={"r": C.Hand(l=-4.4, pole=(-1.0, 0.3, -0.6)), "l": C.Hand(l=8.6, pole=(1.0, 0.0, -0.2))}, stagger=2.0)
 
 HEAD_3D = O.Head3D(
     skin=SKIN, shade=SKIN_SHADE, deep=SKIN_DEEP,
@@ -826,42 +826,16 @@ CIRCLET = W.Hat(crown=[O.Ring(-8.6, 0.0, 0.0, 8.5, 8.5), O.Ring(-6.2, 0.0, 0.0, 
 #: its tines go forward, so it branches from the side as well.
 ANTLERS = [[(s * 3.4, -8.0, 2.0), (s * 4.6, -13.6, 0.8), (s * 7.0, -18.0, -1.6)] for s in (-1.0, 1.0)] + \
           [[(s * 4.6, -13.6, 0.8), (s * 1.6, -16.6, 3.6)] for s in (-1.0, 1.0)] + [[(s * 5.8, -15.8, -0.2), (s * 9.4, -15.4, 1.6)] for s in (-1.0, 1.0)]
-_BACK_SHOE = R.make_back_shoe(K, BOOT, BOOT_DARK, BUILD.ankle_up, wide=0.9)
+#: Her hair down her back, from the back of her head: a lock from the side,
+#: broad from behind.
+MANE = W.Mane([(0.0, -1.0, -7.4), (0.0, 5.0, -9.2), (0.0, 11.0, -10.2), (0.0, 17.0, -10.8), (0.0, 23.0, -11.2), (0.0, 28.0, -11.4)], 5.4, HAIR, HAIR_LIGHT,
+              back_width=12.0)
+#: Her staff across her back, from behind her right hip to over her left
+#: shoulder, out past her cloak.
+STAFF = W.Prop("staff", (-7.4, 14.0, -12.0), (11.0, -44.0, -10.0), _staff)
 
-
-def round_figure() -> O.Figure:
-    """Anne Druid in the round, as she rests."""
-    head = np.asarray(J.head)
-    own_trunk = O.own_art("own_robe", (0.0, 0.0, 0.0), lambda: X.torso(0, 0), X.front_torso, lead=0.4)
-    own_head = O.own_art("own_head", J.head, lambda: O.composed(K, X.head_layers(J.rest)), lambda: O.composed(K, X.front_head_layers(dict(R.FRONT_REST))),
-                         lead=9.0)
-    own_back = O.own_layers(X, ["back"])
-    not_head, not_back = O.not_in(own_head.when), O.not_in(own_back.when)
-    trunk, head3d, cloak, circlet = ROBE.part(), O.head_part(HEAD_3D, J.head), CLOAK_3D.part(), CIRCLET.part(J.head)
-    trunk.when, head3d.when, circlet.when, cloak.when = O.not_in(own_trunk.when), not_head, not_head, not_back
-    hair = W.mane(K, [tuple(head + d) for d in ((0.0, -1.0, -7.4), (0.0, 5.0, -9.2), (0.0, 11.0, -10.2), (0.0, 17.0, -10.8), (0.0, 23.0, -11.2),
-                                               (0.0, 28.0, -11.4))], 5.4, HAIR, HAIR_LIGHT, back_width=12.0, lead=1.0)
-    hair.when = not_back
-    parts = [trunk, head3d, cloak, circlet, own_trunk, own_head, own_back, hair,
-             W.prop(K, "staff", (-7.4, 14.0, -12.0), (11.0, -44.0, -10.0), _staff, when=not_back),
-             W.strokes(K, "antlers", [[tuple(head + p) for p in ln] for ln in ANTLERS], 1.8, ANTLER, ANTLER_DARK, tuple(head + (0.0, -12.0, 2.0)), lead=2.0,
-                       when=not_head),
-             O.person_neck(X, J.neck, J.throat)]
-    for side, hand in zip(("r", "l"), ("nh", "fh")):
-        target, pole = HANDS[side]
-        elbow, wrist = O.two_bone(J.shoulders[side], target, BUILD.upper, BUILD.fore, pole)
-        knee, ankle = O.two_bone(J.hips[side], J.ankles[side], BUILD.thigh, BUILD.shin, (0.0, 0.0, 1.0))
-        parts += [O.person_arm(X, f"{side}_arm", J.shoulders[side], elbow, wrist, str(J.rest[hand])), O.person_leg(X, f"{side}_leg", J.hips[side], knee, ankle),
-                  O.shoes(f"{side}_boot", ankle, X.shoe, X.front_shoe, _BACK_SHOE)]
-    return O.Figure(parts, X.frame, X.cx, X.ground, BUILD.hip_up, trunk=(0.0, -20.0, 0.4))
-
-
-def render_turnaround(path):
-    """Her eight views, with her own art (three quarters and the front) under
-    the views it draws."""
-    rows = {name: n for name, n, _ms in X.rows}
-    own = {"front_3q": X.render_frame("idle", 0, rows["idle"]), "front": X.render_frame("front", 0, rows["front"])}
-    return O.turnaround(K, round_figure(), path, title=f"{DISPLAY_NAME} in the round", own=own)
+ROUND = C.Round(DISPLAY_NAME, C.PersonBody(X, R.make_back_shoe(K, BOOT, BOOT_DARK, BUILD.ankle_up, wide=0.9), back_layers=("back",)),
+                C.Look(HEAD_3D, ROBE, head_pieces=[CIRCLET, W.Antlers(ANTLERS, 1.8, ANTLER, ANTLER_DARK)], back_pieces=[CLOAK_3D, MANE, STAFF]), STANCE)
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}

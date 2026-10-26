@@ -39,7 +39,6 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from types import SimpleNamespace
 
 from ._ai_era_kit import Kit, RGBA
 
@@ -629,176 +628,6 @@ def _mix(a: RGBA, b: RGBA, t: float) -> RGBA:
     return tuple(int(round(a[i] * (1.0 - t) + b[i] * t)) for i in range(4))  # type: ignore[return-value]
 
 
-# ---- A person of _person_rig in the round ------------------------------------
-#
-# A ``Person`` has its pieces drawn by its own makers: the dress of each bone
-# (``upper_arm``, ``forearm``, ``thigh``, ``shin``), its hands, its neck and
-# shoes, its head and trunk in the views it has them. These place them at
-# joints in 3D.
-
-
-def _between(a: Tuple[float, float], b: Tuple[float, float], t: float) -> Tuple[float, float]:
-    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
-
-
-def _seg_bones(K: Kit, tag: str, a: Tuple[float, float], b: Tuple[float, float], segs) -> list:
-    """The bones of a limb dressed in ``segs`` (``_person_rig.Seg``) from
-    frame point ``a`` to ``b``, as ``Person.limb`` places them."""
-    from ._person_rig import bone
-
-    out = []
-    for t0, t1, w0, w1, colour in segs:
-        out.append((_between(a, b, t0), _between(a, b, t1),
-                    lambda edge, length, w0=w0, w1=w1, colour=colour: bone(K, tag, length, w0, w1, colour, edge)))
-    return out
-
-
-def person_joints(person, *, stagger: float = 0.0) -> SimpleNamespace:
-    """The joints of ``person`` standing at rest, in 3D, lifted from its
-    two views: its three-quarter view (``Build``, the feet of its rest pose)
-    says where each is drawn across, its front view (``front_span``, the feet
-    of ``FRONT_REST``) how far to the side, and ``lift`` how far forward.
-    ``stagger``: the near foot back and the far foot forward by this much, so
-    a side view shows both. ``wrist(near, l)`` lifts the rest pose's wrist,
-    put ``l`` to the side; ``frame(p)`` is a frame point in body space."""
-    from ._person_rig import FRONT_REST
-
-    b, U = person.b, person.U
-    sw, hw = person.front_span
-    rest = person.full(person.rest)
-    foot = hw + FRONT_REST["lf"][0] * U
-    up = b.hip_up - b.ankle_up
-    neck = (0.0, b.neck[1], lift(b.neck[0], 0.0))
-    head = (0.0, b.neck[1] + b.head_up[1], lift(b.neck[0] + b.head_up[0], 0.0))
-
-    def frame(p: Sequence[float]) -> Tuple[float, float]:
-        return (p[0] - person.cx, p[1] - person.ground + b.hip_up)
-
-    def wrist(near: bool, l: float) -> Vec:
-        x, y = frame(person.arm_joints(rest, near)[2])
-        return (l, y, lift(x, l))
-
-    return SimpleNamespace(
-        shoulders={"r": (-sw, b.near_shoulder[1], lift(b.near_shoulder[0], -sw)), "l": (sw, b.far_shoulder[1], lift(b.far_shoulder[0], sw))},
-        hips={"r": (-hw, 0.0, lift(b.near_hip[0], -hw)), "l": (hw, 0.0, lift(b.far_hip[0], hw))},
-        ankles={"r": (-foot, up, lift(rest["nf"][0] * U, -foot) - stagger), "l": (foot, up, lift(rest["ff"][0] * U, foot) + stagger)},
-        neck=neck, head=head, throat=tuple(np.asarray(head) + [0.0, 4.0, -0.4]), rest=rest, wrist=wrist, frame=frame)
-
-
-def own_layers(person, layers: Sequence[str], *, anim: str = "idle", lead: float = -12.0) -> Sprite:
-    """What a ``Person`` paints in its own ``layers`` (``back``: a cloak,
-    hair down the back, a staff across it) in the first frame of ``anim``,
-    in its three-quarter view only: these are seldom the same on both sides,
-    so a mirror would put them wrong. The pieces 3D places draw the other
-    views."""
-    K = person.K
-    count = {name: n for name, n, _ms in person.rows}[anim]
-
-    def draw(view: View, far: bool):
-        ctx = person.frame_context(anim, 0, count)
-        canvas = K.scratch()
-        home = K.home
-        for layer in layers:
-            for fn in person.layers[layer]:
-                for piece, at, name, degrees in fn(ctx):
-                    K.place(canvas, piece, (home[0] + at[0] - person.cx, home[1] + at[1] - person.ground + person.b.hip_up), name, degrees)
-        return K._cut(canvas), 0.0, False
-
-    return Sprite("own_" + "_".join(layers), (0.0, 0.0, 0.0), draw, when=near_turn(45.0), lead=lead)
-
-
-def person_arm(person, name: str, shoulder: Sequence[float], elbow: Sequence[float], wrist: Sequence[float], hand: str, *,
-               lead: float = 3.0) -> Drawn:
-    """An arm of ``person`` from 3D joints: its sleeve on its two bones and
-    its hand (``hand``: soft, flat, fist, point, open) at its wrist, as near
-    as the wrist."""
-    K = person.K
-
-    def draw(view: View, far: bool, at) -> Image.Image:
-        s, e, w = at(shoulder), at(elbow), at(wrist)
-        img = K.new_frame()
-        near = not far
-        place_bones(K, img, name, _seg_bones(K, name, s, e, person.upper_arm(near)) + _seg_bones(K, name, e, w, person.forearm(near)))
-        K.place(img, person.hand(hand, near), w, f"{name}_hand", _angle(e, w))
-        return img
-
-    return Drawn(name, tuple(wrist), draw, dims=True, lead=lead)
-
-
-def person_leg(person, name: str, hip: Sequence[float], knee: Sequence[float], ankle: Sequence[float], *, lead: float = -12.0) -> Drawn:
-    """A leg of ``person`` from 3D joints, in what its bones are dressed in.
-    It goes under the trunk (``lead``), as the cast paints a leg that does not
-    kick."""
-    K = person.K
-
-    def draw(view: View, far: bool, at) -> Image.Image:
-        h, k, a = at(hip), at(knee), at(ankle)
-        img = K.new_frame()
-        near = not far
-        place_bones(K, img, name, _seg_bones(K, name, h, k, person.thigh(near)) + _seg_bones(K, name, k, a, person.shin(near)))
-        return img
-
-    return Drawn(name, tuple(knee), draw, dims=True, lead=lead)
-
-
-def person_neck(person, base: Sequence[float], top: Sequence[float]) -> Drawn:
-    """``person``'s neck from its base to where it goes into the head."""
-    K = person.K
-
-    def draw(view: View, far: bool, at) -> Optional[Image.Image]:
-        if person.neck is None:
-            return None
-        a, b = at(base), at(top)
-        img = K.new_frame()
-        K.place(img, person.neck(float(round(math.dist(a, b)))), a, "neck", _angle(a, b))
-        return img
-
-    return Drawn("neck", tuple(base), draw)
-
-
-def shoes(name: str, ankle: Sequence[float], side: Callable[[bool], object], front: Callable[[], object], back: Callable[[], object]) -> Sprite:
-    """A shoe in every view: ``front()`` seen from the toe, ``back()`` from
-    the heel, ``side(near)`` from the side, its toe to the side the foot
-    points (mirrored for the left)."""
-
-    def draw(view: View, far: bool):
-        turn = facing(view)
-        toward = math.cos(math.radians(turn))
-        if toward > 0.85:
-            return front(), 0.0, False
-        if toward < -0.85:
-            return back(), 0.0, False
-        return side(not far), 0.0, turn < 0.0
-
-    return Sprite(name, tuple(ankle), draw, dims=True, lead=3.0)
-
-
-def own_art(name: str, anchor: Sequence[float], three_quarter: Optional[Callable[[], object]], front: Optional[Callable[[], object]] = None, *,
-            degrees: float = 0.0, lead: float = 0.0, mirror: bool = True) -> Sprite:
-    """A piece of a character's own art in the views it is drawn for: its
-    three-quarter view, its mirror for the left (``mirror``: only a piece that
-    is the same on both sides; a pocket on one side is not), and its front
-    view if it has one. Another piece draws the other views
-    (``not_in(sprite.when)``)."""
-
-    def draw(view: View, far: bool):
-        turn = facing(view)
-        if abs(turn) <= 10.0:
-            return (front() if front is not None else None), 0.0, False
-        return three_quarter(), degrees, turn < 0.0  # type: ignore[misc]
-
-    return Sprite(name, tuple(anchor), draw, when=own_turns(front is not None, mirror), lead=lead)
-
-
-def own_turns(front: bool, mirror: bool = True) -> Callable[[View], bool]:
-    """The views a character's own art is drawn for (``own_art``)."""
-    return near_turn(*((45.0,) + ((-45.0,) if mirror else ()) + ((0.0,) if front else ())))
-
-
-def not_in(when: Callable[[View], bool]) -> Callable[[View], bool]:
-    return lambda view: not when(view)
-
-
 # ---- Drawing -----------------------------------------------------------------
 
 
@@ -1035,5 +864,5 @@ def turnaround(K: Kit, figure: Figure, path: Path, *, title: str = "", own: Opti
     return path
 
 
-__all__ = ["own_layers", "person_joints", "not_in", "own_art", "own_turns", "person_arm", "person_leg", "person_neck", "shoes", "Drawn", "Glasses", "Head3D", "head_part", "place_bones", "composed", "near_turn", "lift", "Sprite", "facing", "Cheat", "both", "from_above", "profile_push", "Figure", "Line", "Paint", "Part", "Ring", "Surface", "VIEWS", "VIEW_BY_KEY", "View", "arc", "circle", "curve", "draw", "ellipsoid", "fill",
+__all__ = ["Drawn", "Glasses", "Head3D", "head_part", "place_bones", "composed", "near_turn", "lift", "Sprite", "facing", "Cheat", "both", "from_above", "profile_push", "Figure", "Line", "Paint", "Part", "Ring", "Surface", "VIEWS", "VIEW_BY_KEY", "View", "arc", "circle", "curve", "draw", "ellipsoid", "fill",
            "flat", "limb", "loft", "on_ellipsoid", "put", "turnaround", "two_bone"]

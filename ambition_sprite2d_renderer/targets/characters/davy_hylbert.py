@@ -488,47 +488,30 @@ def render_portraits(out_dir, **opts):
     }, still="portrait", view_width=34.0)
 
 
-# ---- In the round (``_person_round``) -----------------------------------------
+# ---- In the round (``_round_cast``) --------------------------------------------
 #
-# His pieces as shapes in 3D, from his two views: the three-quarter view gives
-# where a thing is forward of the middle, the front view how wide it is. His
-# rows above do not use this; it draws the views he does not have. Body space
+# Davy Hylbert in the round: his own art where he has it (his head and trunk
+# in his three-quarter view, its mirror and his front view; his sleeves,
+# hands, neck, trousers and shoes in every view), placed by 3D; and what 3D
+# draws for the other views, as data (a head, his suit, his hat). Body space
 # is frame pixels from the middle of his hips: ``l`` to his left, ``y`` down,
-# ``z`` forward.
+# ``z`` forward. His rows do not use this.
 
 import numpy as np  # noqa: E402
 
 from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
 from . import _round_wear as W  # noqa: E402
 
-#: The middle of his head, and of his trunk.
-HEAD = (0.0, BUILD.neck[1] - 12.4, 1.6)
-TRUNK = (0.0, -20.0, 0.4)
-
-# His joints, lifted from his two views: his three-quarter view draws a joint
-# ``x`` across, his front view says how far to the side it is (``X.front_span``
-# and ``FRONT_REST``), and ``O.lift`` gives how far forward it is.
-_U = BUILD.hip_up / 37.0
-_SW, _HW = X.front_span
-_FOOT = _HW + R.FRONT_REST["lf"][0] * _U
-SHOULDERS = {"r": (-_SW, BUILD.near_shoulder[1], O.lift(BUILD.near_shoulder[0], -_SW)),
-             "l": (_SW, BUILD.far_shoulder[1], O.lift(BUILD.far_shoulder[0], _SW))}
-HIPS = {"r": (-_HW, 0.0, O.lift(BUILD.near_hip[0], -_HW)), "l": (_HW, 0.0, O.lift(BUILD.far_hip[0], _HW))}
-#: The feet are staggered, the near (right) one back and the far one forward,
-#: as his three-quarter view stands them, so that a side view shows both.
-_STAGGER = 3.0
-ANKLES = {"r": (-_FOOT, BUILD.hip_up - BUILD.ankle_up, O.lift(X.rest["nf"][0] * _U, -_FOOT) - _STAGGER),
-          "l": (_FOOT, BUILD.hip_up - BUILD.ankle_up, O.lift(X.rest["ff"][0] * _U, _FOOT) + _STAGGER)}
-#: Where his hands are, and which way each elbow goes. At rest
-#: (``set_rest``): the near (right) thumb in his waistcoat pocket, 5 to his
-#: right of the middle, and the far (left) hand behind his back. In his front
-#: rows (``front_arms``, clasped): the two hands meet low in front.
-_POCKET = (BUILD.near_shoulder[0] + IN_POCKET[0] * _U, BUILD.near_shoulder[1] + IN_POCKET[1] * _U)
-_CLASP = (_SW - (_SW - 5.0) * _U, BUILD.far_shoulder[1] + 0.56 * (BUILD.upper + BUILD.fore) * _U)
-POSES = {
-    "rest": {"r": ((-5.0, _POCKET[1], O.lift(_POCKET[0], -5.0)), (-0.6, 0.3, -1.0)), "l": ((2.0, -4.0, -7.6), (0.5, 0.3, -1.0))},
-    "front": {"r": ((-_CLASP[0], _CLASP[1], 7.4), (-1.0, 0.0, -0.2)), "l": ((_CLASP[0], _CLASP[1], 7.4), (1.0, 0.0, -0.2))},
-}
+#: How he stands at rest (``set_rest``): his near (right) thumb in his
+#: waistcoat pocket, 5 to his right of the middle; his far (left) hand behind
+#: his back; his feet staggered, so a side view shows both.
+STANCE = C.Stance(hands={"r": C.Hand(l=-5.0, pole=(-0.6, 0.3, -1.0)), "l": C.Hand(at=(2.0, -4.0, -7.6), pole=(0.5, 0.3, -1.0))}, stagger=3.0)
+#: As his front rows stand (``front_arms``, clasped): the two hands meet low
+#: in front.
+_CLASP = (X.front_span[0] - (X.front_span[0] - 5.0) * X.U, BUILD.far_shoulder[1] + 0.56 * (BUILD.upper + BUILD.fore) * X.U)
+FRONT_STANCE = C.Stance(hands={"r": C.Hand(at=(-_CLASP[0], _CLASP[1], 7.4), pole=(-1.0, 0.0, -0.2), mode="flat"),
+                               "l": C.Hand(at=(_CLASP[0], _CLASP[1], 7.4), pole=(1.0, 0.0, -0.2), mode="flat")}, stagger=3.0)
 
 #: His head in 3D, for the views he has no head drawn for: from his two views
 #: (front: the skull 7.8 and the jaw 6.4 wide, the eyes 3.4 from the middle;
@@ -577,39 +560,8 @@ HAT_3D = W.Hat(
 )
 
 
-def round_figure(pose: str = "rest") -> O.Figure:
-    """Davy Hylbert in the round, his hands as ``POSES`` has them. His own
-    pieces draw him: his head and trunk where he has them (three quarters,
-    its mirror, the front), his sleeves, hands, neck, trousers and shoes in
-    every view; the head and trunk in 3D draw the other views."""
-    head, hat, trunk = O.head_part(HEAD_3D, HEAD), HAT_3D.part(HEAD), SUIT_3D.part(TRUNK)
-    rest = X.full(X.rest)
-    own_trunk = O.own_art("own_trunk", (0.0, 0.0, 0.0), lambda: X.torso(0, 0), X.front_torso, lead=0.4)
-    own_head = O.own_art("own_head", HEAD, lambda: O.composed(K, X.head_layers(rest)), lambda: O.composed(K, X.front_head_layers(dict(R.FRONT_REST))),
-                         lead=9.0)
-    trunk.when = O.not_in(own_trunk.when)
-    head.when = hat.when = O.not_in(own_head.when)
-    parts = [trunk, head, hat, own_trunk, own_head, O.person_neck(X, (0.0, BUILD.neck[1], 0.4), np.asarray(HEAD) + [0.0, 4.0, -0.4])]
-    hands = {"rest": (str(rest["nh"]), str(rest["fh"])), "front": ("flat", "flat")}[pose]
-    for side, mode in zip(("r", "l"), hands):
-        target, pole = POSES[pose][side]
-        elbow, wrist = O.two_bone(SHOULDERS[side], target, BUILD.upper, BUILD.fore, pole)
-        knee, ankle = O.two_bone(HIPS[side], ANKLES[side], BUILD.thigh, BUILD.shin, (0.0, 0.0, 1.0))
-        parts += [O.person_arm(X, f"{side}_arm", SHOULDERS[side], elbow, wrist, mode), O.person_leg(X, f"{side}_leg", HIPS[side], knee, ankle),
-                  O.shoes(f"{side}_shoe", ankle, X.shoe, X.front_shoe, _BACK_SHOE)]
-    return O.Figure(parts, X.frame, X.cx, X.ground, BUILD.hip_up, trunk=TRUNK)
-
-
-_BACK_SHOE = R.make_back_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)
-
-
-def render_turnaround(path):
-    """His eight views from 3D, with his own art (the three-quarter view and
-    the front view, the first frame of ``idle`` and of ``front``) under the
-    two views it draws."""
-    rows = {name: n for name, n, _ms in X.rows}
-    own = {"front_3q": X.render_frame("idle", 0, rows["idle"]), "front": X.render_frame("front", 0, rows["front"])}
-    return O.turnaround(K, round_figure(), path, title=f"{DISPLAY_NAME} in the round", own=own)
+ROUND = C.Round(DISPLAY_NAME, C.PersonBody(X, R.make_back_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)), C.Look(HEAD_3D, SUIT_3D, head_pieces=[HAT_3D]),
+                STANCE)
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}

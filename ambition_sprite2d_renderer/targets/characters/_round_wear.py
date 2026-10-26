@@ -17,8 +17,8 @@ people of the cast picks from these.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Sequence, Tuple
+from dataclasses import dataclass
+from typing import Callable, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -323,6 +323,9 @@ class Hat:
     under: RGBA
     lines: Sequence[O.Line] = ()
 
+    def piece(self, K: Kit, J, head: Vec) -> O.Part:
+        return self.part(head)
+
     def part(self, head: Vec) -> O.Part:
         g = self.garment
 
@@ -344,6 +347,9 @@ class Cloak:
     rings: Sequence[O.Ring]
     garment: Garment
     turns: Tuple[float, float] = (110.0, 250.0)
+
+    def piece(self, K: Kit, J, head: Vec) -> O.Part:
+        return self.part()
 
     def part(self) -> O.Part:
         g = self.garment
@@ -410,5 +416,55 @@ def strokes(K: Kit, name: str, lines: Sequence[Sequence[Vec]], width: float, col
     return O.Drawn(name, tuple(anchor), draw, lead=lead, when=when)
 
 
-__all__ = ["Across", "Band", "Buttons", "Cloak", "Dot", "Down", "Garment", "Glow", "Hat", "Lapels", "Neckline", "Opening", "Patch", "PointedHem",
+@dataclass(frozen=True)
+class Mane:
+    """Hair down the back (or a tail, the end of a scarf): ``points`` from
+    the head's middle, ``width`` from the side, ``back_width`` from behind
+    (``mane``)."""
+
+    points: Sequence[Vec]
+    width: float
+    colour: RGBA
+    dark: RGBA
+    back_width: Optional[float] = None
+    lead: float = 1.0
+
+    def piece(self, K: Kit, J, head: Vec) -> O.Drawn:
+        return mane(K, [tuple(np.asarray(head) + p) for p in self.points], self.width, self.colour, self.dark, back_width=self.back_width, lead=self.lead)
+
+
+@dataclass(frozen=True)
+class Prop:
+    """A thing carried on the body (a staff across the back): ``make(length)``
+    drawn from ``foot`` to ``head``, body-space points (``prop``)."""
+
+    name: str
+    foot: Vec
+    head: Vec
+    make: Callable[[int], object]
+    lead: float = 0.0
+
+    def piece(self, K: Kit, J, head: Vec) -> O.Drawn:
+        return prop(K, self.name, self.foot, self.head, self.make, lead=self.lead)
+
+
+@dataclass(frozen=True)
+class Antlers:
+    """Branches on the head (antlers, horns): ``lines`` of points from the
+    head's middle, drawn as strokes (``strokes``)."""
+
+    lines: Sequence[Sequence[Vec]]
+    width: float
+    colour: RGBA
+    dark: RGBA
+    name: str = "antlers"
+    lead: float = 2.0
+
+    def piece(self, K: Kit, J, head: Vec) -> O.Drawn:
+        h = np.asarray(head)
+        return strokes(K, self.name, [[tuple(h + p) for p in ln] for ln in self.lines], self.width, self.colour, self.dark, tuple(h + (0.0, -12.0, 2.0)),
+                       lead=self.lead)
+
+
+__all__ = ["Antlers", "Mane", "Prop", "Across", "Band", "Buttons", "Cloak", "Dot", "Down", "Garment", "Glow", "Hat", "Lapels", "Neckline", "Opening", "Patch", "PointedHem",
            "Shade", "Strip", "Swag", "Trunk", "mane", "prop", "strokes"]
