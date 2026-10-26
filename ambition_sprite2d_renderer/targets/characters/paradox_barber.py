@@ -452,6 +452,50 @@ def render_portraits(out_dir, **opts):
     }, still="portrait", view_width=36.0)
 
 
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His trunk and head in 3D come from the numbers of his own makers
+# (``auto_trunk``, ``auto_head``); what they do not say is here, as data.
+# His rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+_OILED = ((0.0, -5.6, -0.6), (8.4, 7.0, 8.4))
+_head(True)  # his head with lather is the one at rest (``set_rest``)
+
+ROUND = C.Round(
+    DISPLAY_NAME, C.PersonBody(X),
+    C.Look(
+        # Dark hair with oil in it and a parting; a moustache whose ends curl
+        # up; the paradox: lather on his cheek, and a beard on his chin.
+        C.auto_head(X, _HEADS[True], _eyes,
+                    hair=lambda u, v: (v < -7.2 + 1.2 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 70.0) & (v < -0.6))
+                    | ((np.abs(u) > 100.0) & (v < 5.0)),
+                    hair_colour=HAIR, hair_shade=HAIR_SHADE, volumes=[_OILED], moustache=((0.0, 5.0, 7.6), (4.4, 1.0, 1.6)),
+                    beard=[O.Ring(8.4, 0.0, 4.4, 3.0, 2.8), O.Ring(10.6, 0.0, 4.6, 2.4, 2.2), O.Ring(12.6, 0.0, 4.4, 0.4, 0.4)],
+                    lines=[O.curve([O.on_ellipsoid(*_OILED, -20.0, v, 0.2)[0] for v in (-12.0, -7.6)], SKIN_SHADE, 0.5),
+                           O.curve([(-4.2, 5.0, 7.0), (-5.6, 4.2, 6.2), (-5.4, 3.0, 5.8)], HAIR, 0.8),
+                           O.curve([(4.2, 5.0, 7.0), (5.6, 4.2, 6.2), (5.4, 3.0, 5.8)], HAIR, 0.8),
+                           O.circle((-5.6, 4.0, 4.6), (-1.0, 0.2, 0.6), 2.2, None, fill=FOAM, slack=1.2)]),
+        # His long cream apron in front, its bib to his collar, tied at his
+        # waist, a pocket with his comb, the stripes of the pole at its hem;
+        # behind it his white shirt and his dark trousers; his collar and red
+        # bow tie.
+        C.auto_trunk(X, [W.Behind(70.0, SHIRT, bottom=-8.0), W.Behind(70.0, TROUSER, top=-8.0), W.Down(70.0, TOP + 4.0, HEM, APRON_DARK),
+                         W.Down(-70.0, TOP + 4.0, HEM, APRON_DARK), W.Strip(0.0, TOP - 1.4, TOP + 3.0, 4.0, SHIRT),
+                         W.Glow(-9.0, TOP + 2.8, 1.8, 1.3, RED, both=True), W.Dot(0.0, TOP + 2.8, 0.9, RED_DARK),
+                         W.Across(-180.0, 180.0, -8.0, APRON_DARK, width=0.4), W.Patch(10.0, 45.0, -3.0, 4.0, mix(APRON, APRON_DARK, 0.25)),
+                         W.Patch(14.0, 20.0, -6.4, -2.4, HAIR),
+                         W.Stripes(HEM - 6.0, HEM - 1.2, 2.2, (RED, FOAM, BLUE, FOAM), slant=0.45, half=70.0)])),
+    # Straight: his near hand forward, as if it held his scissors.
+    C.Stance(hands={"r": C.Hand(l=-6.0, pole=(-1.0, 0.4, -0.4)), "l": C.Hand(l=9.2, pole=(0.4, 0.0, -1.0))}, stagger=2.0))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 del OUTLINE

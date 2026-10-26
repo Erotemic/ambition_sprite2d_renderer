@@ -191,18 +191,25 @@ class Body:
 class PersonBody(Body):
     """A ``_person_rig.Person`` as a body: its joints lifted from its two
     views (``joints``), its pieces drawn by its own makers. ``back_shoe``:
-    its shoe seen from the heel (``make_back_shoe`` in its colours).
+    its shoe seen from the heel (default: ``make_back_shoe`` in the colours
+    of its shoe).
     ``back_layers``:
     the layers of its own art behind it (a cloak, hair, a staff), drawn in
     its three-quarter view. ``mirror``: which of its head and trunk are the
     same on both sides, so their mirror is its left three-quarter view."""
 
-    def __init__(self, person, back_shoe: Callable[[], object], *, back_layers: Sequence[str] = (), mirror: Sequence[str] = ("head", "trunk"),
-                 anim: str = "idle") -> None:
+    def __init__(self, person, back_shoe: Optional[Callable[[], object]] = None, *, back_layers: Sequence[str] = (),
+                 mirror: Sequence[str] = ("head", "trunk"), anim: str = "idle") -> None:
         self.person = person
         self.K = person.K
         self.frame, self.cx, self.ground, self.hip_up = person.frame, person.cx, person.ground, person.b.hip_up
         self.upper, self.fore, self.thigh, self.shin = person.b.upper, person.b.fore, person.b.thigh, person.b.shin
+        if back_shoe is None:
+            # Its shoe from the heel, in the colours of its shoe.
+            from ._person_rig import make_back_shoe
+
+            spec = person.shoe.spec
+            back_shoe = make_back_shoe(person.K, spec.colour, spec.dark, spec.ankle_up)
         self.back_shoe = back_shoe
         self.back_layers = tuple(back_layers)
         self.mirror = tuple(mirror)
@@ -412,6 +419,113 @@ def own_layers(person, layers: Sequence[str], *, anim: str = "idle", lead: float
     return O.Sprite("own_" + "_".join(layers), (0.0, 0.0, 0.0), draw, when=O.near_turn(45.0), lead=lead)
 
 
+# ---- A look from the numbers of a person's makers ---------------------------
+#
+# A person of ``_person_rig`` is drawn by makers given numbers: its trunk
+# (``make_torso`` or ``make_figure``, and ``make_front_torso``), its head
+# (``make_head``, ``make_front_head``, the eyes, brows and mouth). Each maker
+# keeps them (``.spec``). These are the person in numbers, and the trunk and
+# the head in 3D come from them: the front view says how wide a thing is,
+# the three-quarter view how far it is from the middle behind and in front,
+# and ``lift`` how deep it is. What the numbers do not say (where the hair
+# is, what is on a coat) the character gives as data.
+
+_S2 = math.sqrt(2.0)
+
+
+def _width_at(outline: Sequence[Tuple[float, float]], y: float) -> float:
+    pts = sorted(outline)
+    ys = [p[0] for p in pts]
+    return float(np.interp(y, ys, [p[1] for p in pts]))
+
+
+def auto_trunk(person, features: Sequence[object] = (), *, depth: float = 1.0, radius: Optional[float] = None, shoulders: bool = True):
+    """The trunk of ``person`` in 3D, from its makers' numbers, dressed in its
+    own colours and ``features`` (``_round_wear``). ``depth`` makes it deeper
+    or shallower than the numbers say."""
+    from . import _round_wear as W
+
+    t = person.torso.spec
+    front = getattr(getattr(person, "front_torso", None), "spec", None)
+    if t.kind == "torso":
+        levels = [t.top + 3.0, -24.0, -4.0, t.hem_y]
+        backs, fronts = t.back, t.front
+    else:
+        bust = t.top + 12.5
+        levels = [t.top + 4.0, bust, t.waist_y, -1.0, t.hem_y]
+        backs, fronts = t.back, t.front
+    rings = []
+    top_w = front.outline[0][1] if front is not None else 4.0
+    rings.append(O.Ring(t.top - 0.5, 0.0, 0.3, top_w, top_w * 0.85))
+    for y, b, f in zip(levels, backs, fronts):
+        s, mid = (b + f) / 2.0, (f - b) / 2.0
+        rl = _width_at(front.outline, y) if front is not None else 0.95 * s
+        rz = float(np.clip(math.sqrt(max(0.0, 2.0 * s * s - rl * rl)), 0.6 * rl, 0.95 * rl)) * depth
+        cz = float(np.clip(mid * _S2, -0.3 * rz, 0.3 * rz))
+        rings.append(O.Ring(y, 0.0, cz, rl, rz))
+    chest = rings[2].rl if len(rings) > 2 else 9.0
+    garment = W.Garment(t.colour, t.dark, list(features) + [W.Shade()], radius=radius or chest)
+    shoulder = None
+    if shoulders:
+        if front is not None and front.shoulder is not None:
+            fx, fy, frx, fry = front.shoulder
+        else:
+            fx, fy, frx, fry = abs(t.shoulders[1][0]) + 1.0, t.shoulders[1][1], t.shoulder_r[1], t.shoulder_r[1] + 0.6
+        shoulder = ((-fx, fy, O.lift(t.shoulders[0][0], -fx) * 0.5), (frx, fry, frx))
+    return W.Trunk(rings, garment, shoulder=shoulder)
+
+
+def auto_head(person, head, eyes=None, **look) -> O.Head3D:
+    """The head of ``person`` in 3D, from the numbers of its three-quarter
+    head (``head``: its ``make_head``, ``eyes``: its ``make_eyes``) and its
+    front head (``front_head_layers``). ``look``: the rest of ``Head3D``
+    (where the hair is, its colour and volumes, a beard, glasses, lines), and
+    any part to put in place of the one the numbers give."""
+    h = head.spec
+    fl = getattr(getattr(person, "front_head_layers", None), "spec", None)
+    fh = fl.head.spec if fl is not None else None
+    fe = fl.eyes.spec if fl is not None and fl.eyes is not None else None
+    fb = fl.brows.spec if fl is not None and fl.brows is not None else None
+    fm = fl.mouth.spec if fl is not None and fl.mouth is not None else None
+    sx, sy, srx, sry = h.skull
+    rl = fh.wide if fh is not None else 0.9 * srx
+    rz = float(np.clip(math.sqrt(max(0.0, 2.0 * srx * srx - rl * rl)), 0.85 * rl, 1.1 * rl))
+    skull = ((0.0, sy, sx * _S2), (rl, sry, rz))
+    jx, jy, jrx, jry = h.jaw
+    jl = fh.jaw if fh is not None else 0.8 * rl
+    jz = float(np.clip(math.sqrt(max(0.0, 2.0 * jrx * jrx - jl * jl)), 0.5 * jl, 0.8 * jl))
+    jaw = ((0.0, (jy + fh.chin) / 2.0 if fh is not None else jy, jx * _S2), (jl, jry, jz))
+    if h.nose is not None:
+        tip = max(p[0] for p in h.nose)
+        ys = [p[1] for p in h.nose]
+        z_tip = min(tip * _S2 * 0.85, rz + 3.4)
+        nose = ((0.0, (min(ys) + max(ys)) / 2.0, z_tip - 2.0), (1.1, (max(ys) - min(ys)) / 2.0 + 0.4, 2.0))
+    else:
+        nose = ((0.0, 2.0, rz), (1.0, 2.0, 1.4))
+    ear = None
+    if h.ear is not None and (fh is None or fh.ears is not None):
+        ex, ey, erx, ery = h.ear
+        ear = ((-rl, ey, O.lift(ex, -rl)), (1.4, ery, erx * 0.8))
+    spread = fe.spread if fe is not None else 3.4
+    eye_y = fe.y if fe is not None else (eyes.spec.near[1] if eyes is not None else -0.4)
+    params = dict(
+        skin=h.skin, shade=h.shade, deep=h.deep, skull=skull, jaw=jaw, nose=nose, ear=ear,
+        eye=(math.degrees(math.asin(min(0.9, spread / rl))), eye_y),
+        eye_size=(fe.size if fe is not None else 1.0), ink=(fe.ink if fe is not None else (28, 24, 32, 255)),
+        eye_white=(fe.white if fe is not None else None), iris=(fe.iris if fe is not None else None),
+        lid=(eyes.spec.lid if eyes is not None and eyes.spec.lid is not None else None),
+        brow=((fb.colour, None, fb.y, fb.width) if fb is not None else None),
+    )
+    lines = list(look.pop("lines", ()))
+    if fm is not None:
+        # The mouth, where the front view has it, on the front of the jaw.
+        y = fm.y - 1.0
+        z = jaw[0][2] + jz * 0.85
+        lines.insert(0, O.curve([(-1.8 * fm.wide, y, z - 0.4), (0.0, y + 0.5, z), (1.8 * fm.wide, y, z - 0.4)], fm.colour, 0.8))
+    params.update(look, lines=lines)
+    return O.Head3D(**params)
+
+
 # ---- Look and stance ----------------------------------------------------------
 
 
@@ -516,7 +630,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     return 0
 
 
-__all__ = ["RigBody", "lifted_joints", "Body", "Hand", "Look", "PersonBody", "Round", "Stance", "limb_piece", "not_in", "own_art", "own_layers", "own_turns", "seg_bones", "shoes"]
+__all__ = ["auto_head", "auto_trunk", "RigBody", "lifted_joints", "Body", "Hand", "Look", "PersonBody", "Round", "Stance", "limb_piece", "not_in", "own_art", "own_layers", "own_turns", "seg_bones", "shoes"]
 
 
 if __name__ == "__main__":

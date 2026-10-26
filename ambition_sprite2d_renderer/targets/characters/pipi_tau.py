@@ -440,6 +440,35 @@ def render_portraits(out_dir, **opts):
     }, view_width=34.0)
 
 
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His trunk and head in 3D come from the numbers of his own makers
+# (``auto_trunk``, ``auto_head``); what they do not say is here, as data. His
+# rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+ROUND = C.Round(
+    DISPLAY_NAME, C.PersonBody(X),
+    C.Look(
+        # Straight black hair that falls across his brow, short at the back;
+        # thin rectangular glasses.
+        C.auto_head(X, _head, _eyes,
+                    hair=lambda u, v: (v < -6.4 + 3.0 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 75.0) & (v < -1.0))
+                    | ((np.abs(u) > 105.0) & (v < 6.2)),
+                    hair_colour=HAIR, hair_shade=HAIR_LIGHT, volumes=[((0.0, -5.4, -0.6), (8.4, 7.0, 8.4))],
+                    glasses=C.O.Glasses("square", (2.8, 2.1), FRAME, LENS, 0.8)),
+        # His short jacket open on the dark shirt with the tau on it.
+        C.auto_trunk(X, [W.Opening(30.0, TEE, top=TOP), W.Neckline(TOP - 1.0, TOP + 3.4, 14.0, SKIN_SHADE),
+                         W.Path([(-14.0, -22.6), (14.0, -22.6)], TEE_MARK, 0.5), W.Path([(1.0, -22.6), (-2.0, -17.6), (5.0, -16.8)], TEE_MARK, 0.5),
+                         W.Lapels(30.0, TOP, -25.0, 10.0, JACKET_LIGHT, line=JACKET_DARK), W.Across(40.0, 80.0, 3.2, JACKET_DARK, both=True)])),
+    # His arms loose at his sides, his weight forward.
+    C.Stance(hands={"r": C.Hand(l=-8.8, pole=(-0.4, 0.0, -1.0)), "l": C.Hand(l=8.8, pole=(0.4, 0.0, -1.0))}, stagger=2.0))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 

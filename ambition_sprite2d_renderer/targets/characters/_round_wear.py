@@ -46,6 +46,42 @@ class Opening:
 
 
 @dataclass(frozen=True)
+class Behind:
+    """Behind, beyond ``half`` degrees each side of the front, from ``top``
+    down to ``bottom``, the garment is ``colour``: what a thing worn only in
+    front (an apron) does not cover."""
+
+    half: float
+    colour: RGBA
+    top: float = -1e9
+    bottom: float = 1e9
+
+    def apply(self, g, out, u, v, x, lit):
+        O.put(out, (np.abs(u) >= self.half) & (v > self.top) & (v < self.bottom), self.colour)
+
+
+@dataclass(frozen=True)
+class Stripes:
+    """Bands that slant (``slant`` pixels across for each pixel down), one
+    ``period`` pixels wide each, in turn of ``colours``, from ``top`` to
+    ``bottom``, within ``half`` degrees of the front (the stripes of a
+    barber's pole at a hem)."""
+
+    top: float
+    bottom: float
+    period: float
+    colours: Sequence[RGBA]
+    slant: float = 0.5
+    half: float = 180.0
+
+    def apply(self, g, out, u, v, x, lit):
+        band = np.floor((x + self.slant * v) / self.period).astype(int) % len(self.colours)
+        on = (v > self.top) & (v < self.bottom) & (np.abs(u) < self.half)
+        for k, colour in enumerate(self.colours):
+            O.put(out, on & (band == k), colour)
+
+
+@dataclass(frozen=True)
 class Neckline:
     """A V (or a narrowing opening) at the neck: ``half`` degrees each side
     at ``top``, to a point at ``bottom``."""
@@ -536,5 +572,5 @@ class Antlers:
                        lead=self.lead)
 
 
-__all__ = ["Chains", "Path", "Worn", "Antlers", "Mane", "Prop", "Across", "Band", "Buttons", "Cloak", "Dot", "Down", "Garment", "Glow", "Hat", "Lapels", "Neckline", "Opening", "Patch", "PointedHem",
+__all__ = ["Behind", "Stripes", "Chains", "Path", "Worn", "Antlers", "Mane", "Prop", "Across", "Band", "Buttons", "Cloak", "Dot", "Down", "Garment", "Glow", "Hat", "Lapels", "Neckline", "Opening", "Patch", "PointedHem",
            "Shade", "Strip", "Swag", "Trunk", "mane", "prop", "strokes"]

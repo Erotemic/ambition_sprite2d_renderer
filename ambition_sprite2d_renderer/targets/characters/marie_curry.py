@@ -490,6 +490,44 @@ X.effects = _effects
 
 _render_frame = X.render_frame
 render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# Her trunk and head in 3D come from the numbers of her own makers
+# (``auto_trunk``, ``auto_head``); what they do not say is here, as data.
+# Her rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+_UP = ((0.0, -5.4, -1.0), (8.6, 7.6, 8.6))
+_KNOT = ((0.0, -12.6, -2.6), (4.6, 3.6, 4.2))
+
+ROUND = C.Round(
+    DISPLAY_NAME, C.PersonBody(X),
+    C.Look(
+        # Fair hair going grey, put up loose in a knot on top of her head, a
+        # high brow, wisps down by her face.
+        C.auto_head(X, _head, _eyes,
+                    hair=lambda u, v: (v < -8.4 + 2.4 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 65.0) & (v < 5.0))
+                    | ((np.abs(u) > 100.0) & (v < 6.6)),
+                    hair_colour=HAIR, hair_shade=HAIR_DARK, volumes=[_UP, _KNOT],
+                    lines=[O.curve([O.on_ellipsoid(*_UP, u + 18.0 * t, -10.6 + 3.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_DARK, 0.6)
+                           for u in (-150.0, -90.0, -30.0, 40.0, 110.0)]
+                    + [O.curve([O.on_ellipsoid(*_KNOT, u, v, 0.2)[0] for v in (-14.6, -12.0)], HAIR_LIGHT, 0.6) for u in (-60.0, 0.0, 70.0)]),
+        # Her black dress with its high neck, and over it in front her white
+        # apron: the bib, the skirt tied at her waist, green at its hem.
+        C.auto_trunk(X, [W.Band(TOP - 1.5, TOP + 3.2, DRESS_DARK), W.Opening(40.0, APRON, top=TOP + 8.0, bottom=TOP + 19.0),
+                         W.Opening(62.0, APRON, top=TOP + 18.4, bottom=HEM - 5.0), W.Across(-180.0, 180.0, TOP + 17.8, APRON_DARK, width=0.6),
+                         W.Glow(0.0, HEM - 8.0, 1.6, 1.3, GLOW), W.Glow(30.0, HEM - 6.6, 1.2, 1.0, GLOW), W.Glow(-35.0, HEM - 9.0, 1.0, 0.8, GLOW),
+                         W.Down(150.0, 2.0, HEM - 2.0, DRESS_LIGHT, spread=6.0), W.Down(-150.0, 2.0, HEM - 2.0, DRESS_LIGHT, spread=6.0)])),
+    # Her near hand at her waist, her far hand at her side.
+    C.Stance(hands={"r": C.Hand(l=-4.0, pole=(-1.0, 0.3, -0.6)), "l": C.Hand(l=7.6, pole=(1.0, 0.0, -0.3))}, stagger=1.6))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 

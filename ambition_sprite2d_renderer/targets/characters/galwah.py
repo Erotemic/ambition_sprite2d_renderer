@@ -406,6 +406,42 @@ X.effects = _effects
 ROWS = X.rows
 _render_frame = X.render_frame
 render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His trunk and head in 3D come from the numbers of his own makers
+# (``auto_trunk``, ``auto_head``); what they do not say is here, as data.
+# His rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+_CROP = ((0.0, -5.4, -0.6), (8.6, 7.4, 8.6))
+
+ROUND = C.Round(
+    DISPLAY_NAME, C.PersonBody(X, anim="rest"),
+    C.Look(
+        # Dark hair he has had his hands in, short at the back.
+        C.auto_head(X, _head, _eyes,
+                    hair=lambda u, v: (v < -6.6 + 2.0 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 70.0) & (v < 0.0))
+                    | ((np.abs(u) > 100.0) & (v < 6.6)),
+                    hair_colour=HAIR, hair_shade=HAIR_LIGHT, volumes=[_CROP],
+                    lines=[O.curve([O.on_ellipsoid(*_CROP, u - 25.0 * t, -10.0 - 2.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_LIGHT, 0.6)
+                           for u in (-140.0, -70.0, 20.0, 90.0)]),
+        # His frock coat shut high: the black cravat and the shirt at his
+        # throat, the lapels, two rows of gold buttons, the pale waistcoat
+        # where it is cut away at his waist, and below that his trousers.
+        C.auto_trunk(X, [W.Strip(0.0, TOP - 1.0, TOP + 7.0, 3.4, CRAVAT), W.Strip(0.0, TOP - 1.0, TOP + 2.4, 2.0, SHIRT),
+                         W.Lapels(18.0, TOP, TOP + 12.0, 10.0, COAT_LIGHT), W.Buttons(-14.0, -22.0, -10.0, 3, 0.9, GOLD), W.Buttons(14.0, -22.0, -10.0, 3, 0.9, GOLD),
+                         W.Opening(28.0, VEST, top=-6.0, bottom=3.0), W.Opening(30.0, TROUSER, top=3.0),
+                         W.Down(28.0, -6.0, 20.0, COAT_DARK), W.Down(-28.0, -6.0, 20.0, COAT_DARK)])),
+    # He leans forward, his arms at his sides: he is in a hurry.
+    C.Stance(hands={"r": C.Hand(l=-9.0, pole=(-0.4, 0.0, -1.0)), "l": C.Hand(l=9.0, pole=(0.4, 0.0, -1.0))}, stagger=2.6))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 

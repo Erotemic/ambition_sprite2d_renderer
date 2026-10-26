@@ -635,6 +635,7 @@ def make_front_torso(K: Kit, key: tuple, colour: RGBA, dark: RGBA, outline: Sequ
         return K.solid(("front_torso",) + tuple(key), shape, colour, (lambda d: detail(d)) if detail is not None else None, outline=1.3, rim=0.3, shade=0.4,
                        shade_colour=dark)
 
+    torso.spec = SimpleNamespace(colour=colour, dark=dark, outline=tuple(outline), shoulder=shoulder)  # type: ignore[attr-defined]
     return torso
 
 
@@ -668,6 +669,7 @@ def make_front_head(K: Kit, key: tuple, skin: RGBA, deep: RGBA, *, wide: float =
 
         return K.solid(("front_head",) + tuple(key), outline, skin, paint, outline=1.3, rim=0.3, shade=0.35, shade_colour=deep)
 
+    head.spec = SimpleNamespace(skin=skin, deep=deep, wide=wide, jaw=jaw, chin=chin, ears=ears)  # type: ignore[attr-defined]
     return head
 
 
@@ -698,6 +700,7 @@ def make_front_eyes(K: Kit, key: tuple, *, spread: float = 3.6, y: float = -0.8,
 
         return K.piece(("front_eyes",) + tuple(key) + (mode,), paint)
 
+    eyes.spec = SimpleNamespace(spread=spread, y=y, ink=ink, white=white, iris=iris, size=size, lash=lash)  # type: ignore[attr-defined]
     return eyes
 
 
@@ -711,6 +714,7 @@ def make_front_brows(K: Kit, key: tuple, colour: RGBA, *, spread: float = 3.6, y
 
         return K.piece(("front_brows",) + tuple(key) + (mood,), paint)
 
+    brows.spec = SimpleNamespace(colour=colour, spread=spread, y=y, width=width)  # type: ignore[attr-defined]
     return brows
 
 
@@ -734,6 +738,7 @@ def make_front_mouth(K: Kit, key: tuple, *, y: float = 9.2, colour: RGBA = (98, 
 
         return K.piece(("front_mouth",) + tuple(key) + (mode,), paint)
 
+    mouth.spec = SimpleNamespace(y=y, colour=colour, ink=ink, lips=lips, wide=wide)  # type: ignore[attr-defined]
     return mouth
 
 
@@ -751,6 +756,7 @@ def front_face(head, eyes=None, brows=None, mouth=None, extra: Sequence[Tuple[Ca
             out.append((mouth(str(pose["mouth"])), "mouth"))
         return out + [(fn(), name) for fn, name in extra]
 
+    layers.spec = SimpleNamespace(head=head, eyes=eyes, brows=brows, mouth=mouth, extra=tuple(extra))  # type: ignore[attr-defined]
     return layers
 
 
@@ -902,6 +908,7 @@ def make_hand(K: Kit, skin: RGBA, shade: RGBA, deep: RGBA, cuff: Optional[RGBA] 
         return K.solid(("hand", mode, near, skin, cuff, size), shape, skin if near else shade, detail, outline=1.1, rim=0.3, shade=0.3,
                        shade_colour=deep)
 
+    hand.spec = SimpleNamespace(skin=skin, shade=shade, deep=deep, cuff=cuff, size=size)  # type: ignore[attr-defined]
     return hand
 
 
@@ -926,6 +933,7 @@ def make_shoe(K: Kit, colour: RGBA, dark: RGBA, ankle_up: float = 3.0, long: flo
         return K.solid(("shoe", near, colour, long, heel), shape, colour if near else mix(colour, dark, 0.6), detail, outline=1.2, rim=0.25,
                        shade=0.3, shade_colour=dark)
 
+    shoe.spec = SimpleNamespace(colour=colour, dark=dark, ankle_up=ankle_up, long=long, sole=sole, heel=heel)  # type: ignore[attr-defined]
     return shoe
 
 
@@ -939,6 +947,7 @@ def make_neck(K: Kit, colour: RGBA, width: float = 5.0):
 
         return K.solid(("neck", length, colour, width), shape, colour, None, outline=1.1, rim=0.0, shade=0.0)
 
+    neck.spec = SimpleNamespace(colour=colour, width=width)  # type: ignore[attr-defined]
     return neck
 
 
@@ -993,6 +1002,7 @@ def make_eyes(K: Kit, near: Point, far: Optional[Point], *, ink: RGBA = (28, 24,
 
         return K.piece(("eyes", mode, near, far, ink, white, iris, size, lash), paint)
 
+    eyes.spec = SimpleNamespace(near=near, far=far, ink=ink, white=white, iris=iris, lid=lid, size=size, lash=lash)  # type: ignore[attr-defined]
     return eyes
 
 
@@ -1017,6 +1027,7 @@ def make_brows(K: Kit, near: Sequence[Point], far: Optional[Sequence[Point]], co
 
         return K.piece(("brows", mood, tuple(near), tuple(far) if far is not None else None, colour, width), paint)
 
+    brows.spec = SimpleNamespace(near=tuple(near), far=tuple(far) if far is not None else None, colour=colour, width=width)  # type: ignore[attr-defined]
     return brows
 
 
@@ -1060,6 +1071,7 @@ def make_mouth(K: Kit, at: Point, colour: RGBA = (112, 48, 50, 255), *, ink: RGB
 
         return K.piece(("mouth", mode, at, colour, wide, lips), paint)
 
+    mouth.spec = SimpleNamespace(at=at, colour=colour, ink=ink, wide=wide, lips=lips)  # type: ignore[attr-defined]
     return mouth
 
 
@@ -1107,6 +1119,7 @@ def make_head(K: Kit, key: tuple, skin: RGBA, shade: RGBA, deep: RGBA, *, skull:
 
         return K.solid(("head",) + tuple(key), silhouette, skin, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=deep)
 
+    head.spec = SimpleNamespace(skin=skin, shade=shade, deep=deep, skull=skull, jaw=jaw, nose=tuple(nose) if nose is not None else None, ear=ear)  # type: ignore[attr-defined]
     return head
 
 
@@ -1170,6 +1183,8 @@ def make_torso(K: Kit, key: tuple, colour: RGBA, dark: RGBA, *, back: Tuple[floa
 
     torso.takes_drop = full_hem > 12.0  # type: ignore[attr-defined]
     # The far arm starts behind the front edge too (``Person`` reads this).
+    torso.spec = SimpleNamespace(kind="torso", colour=colour, dark=dark, back=back, front=front, hem_y=hem_y, top=top, shoulders=shoulders,  # type: ignore[attr-defined]
+                                 shoulder_r=shoulder_r, belly=belly)
     torso.far_arm_x = front[0] - FAR_ARM_IN  # type: ignore[attr-defined]
     return torso
 
@@ -1216,6 +1231,8 @@ def make_figure(K: Kit, key: tuple, colour: RGBA, dark: RGBA, *, back: Tuple[flo
 
         return K.solid(("figure",) + tuple(key) + (hem_back, hem_front, hem_y), shape, colour, paint, outline=1.3, rim=0.3, shade=0.4, shade_colour=dark)
 
+    torso.spec = SimpleNamespace(kind="figure", colour=colour, dark=dark, back=back, front=front, hem_y=hem_y, top=top, shoulders=shoulders,  # type: ignore[attr-defined]
+                                 shoulder_r=shoulder_r, waist_y=waist_y)
     torso.takes_drop = full_hem > 12.0  # type: ignore[attr-defined]
     return torso
 

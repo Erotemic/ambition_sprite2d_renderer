@@ -557,6 +557,40 @@ def render(out_dir, **opts):
 
 
 
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His trunk and head in 3D come from the numbers of his own makers
+# (``auto_trunk``, ``auto_head``); what they do not say is here, as data.
+# His rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+#: His hair on the volume over his head: lighter strands in the grey.
+_MOP = ((0.0, -5.0, -0.4), (8.6, 7.6, 8.6))
+
+ROUND = C.Round(
+    DISPLAY_NAME, C.PersonBody(X),
+    C.Look(
+        # A mop of dark hair going grey: on his forehead to his brows, over
+        # the top of his ears, down to his collar behind; no glasses.
+        C.auto_head(X, _head, _eyes,
+                    hair=lambda u, v: (v < -4.9 + 1.0 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 65.0) & (v < 3.6))
+                    | ((np.abs(u) > 100.0) & (v < 9.0)),
+                    hair_colour=HAIR, hair_shade=HAIR_SHADE, volumes=[_MOP],
+                    lines=[O.curve([O.on_ellipsoid(*_MOP, u + 20.0 * t, -11.6 + 4.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_SHADE, 0.6)
+                           for u in (-150.0, -100.0, -50.0, 0.0, 50.0, 100.0)]),
+        # His jumper, the collar of his shirt over its neck, the rib at its hem.
+        C.auto_trunk(X, [W.Neckline(TOP - 1.0, TOP + 3.6, 14.0, SKIN_SHADE), W.Patch(-34.0, -6.0, TOP - 1.4, TOP + 4.6, SHIRT),
+                         W.Patch(6.0, 34.0, TOP - 1.4, TOP + 4.6, SHIRT), W.Across(-180.0, 180.0, 1.6, BLAZER_DARK, width=0.4)])),
+    # Straight, his arms loose at his sides.
+    C.Stance(hands={"r": C.Hand(l=-9.4, pole=(-0.4, 0.0, -1.0)), "l": C.Hand(l=9.4, pole=(0.4, 0.0, -1.0))}, stagger=2.0))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 
