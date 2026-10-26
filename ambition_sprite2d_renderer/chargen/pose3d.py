@@ -460,6 +460,8 @@ class ViewSolver:
                 tgt = (hip2[0] + frel[0] * self.px, hip2[1] + frel[1] * self.px)
                 A3 = add3(H3, rel3)
             else:
+                # A planted ankle stays in world space while the hip moves with the body.
+                H3 = add3(H3, pose.root)
                 A3 = add3(A0, foot.at)
                 tgt = (cx + self.to_frame(v.project(A3))[0], gy + self.to_frame(v.project(A3))[1])
             ankle_h = float(self.frame.get("ankle_h", 0.0))

@@ -185,6 +185,27 @@ def _rest_rigs(spec, tmp_path):
     return build_rigs(spec, svg, tmp_path, clips=lambda fig, view, doc: dict(_REST))
 
 
+@pytest.mark.parametrize("shoes", ["shoes", "geta"])
+def test_a_crouched_body_keeps_both_knees_forward(shoes, tmp_path):
+    from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
+    from ambition_sprite2d_renderer.chargen.motion import Kit
+    from ambition_sprite2d_renderer.chargen.pose3d import ViewSolver
+    from ambition_sprite2d_renderer.chargen.rig import PX_PER_CM, draw_views, view_document
+
+    spec = S.generate("slim_female", 1, {"outfit": {"shoes": shoes, "geta_height": 9.0}})
+    fig, drawn = draw_views(spec, [VIEW_BY_KEY["side"]])
+    doc = view_document(spec, fig, drawn[0], tmp_path / "body.svg", tmp_path)
+    solver = ViewSolver(fig, drawn[0].view, doc, PX_PER_CM)
+    channels = solver.solve(Kit(fig).crouch())
+    world, _ = RigDocument(doc).solve("", 0.0, sampled_channels=channels)
+
+    for depth in ("near", "far"):
+        hip = world[f"{depth}_leg_u"].origin
+        knee = world[f"{depth}_leg_l"].origin
+        ankle = world[f"{depth}_leg_foot"].origin
+        assert knee[0] > max(hip[0], ankle[0]), (shoes, depth, hip, knee, ankle)
+
+
 def test_the_rig_derives_from_the_spec_for_many_seeds(tmp_path):
     from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
     from ambition_sprite2d_renderer.chargen.rig import CELL_H, CELL_W
