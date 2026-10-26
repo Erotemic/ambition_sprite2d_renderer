@@ -41,3 +41,21 @@ def test_rotation_ignores_rgb_hidden_beneath_transparency() -> None:
     dirty_rotated = rotate_transparent_sprite(dirty, 23.5, center=(12, 12))
 
     assert dirty_rotated.tobytes() == clean_rotated.tobytes()
+
+
+def test_unrotated_parts_reduce_on_the_frame_grid() -> None:
+    """An unrotated part must keep the sampling phase of the whole frame."""
+    from ambition_sprite2d_renderer.authoring import rigdoc
+    from ambition_sprite2d_renderer.authoring.part_flipbook import build_rig_flipbook
+
+    back = Image.new("RGBA", (73, 100), (40, 100, 210, 255))
+
+    def render(_row, _index, _count):
+        frame = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
+        rigdoc.blit_rotated(frame, back, (0, 0), (13, 9), 0, part_name="back")
+        return rigdoc.downsampled_canvas(frame, (32, 32))
+
+    flipbook = build_rig_flipbook(
+        "rest_parts", [("idle", 1, 100)], render, None, (0, 0), (32, 32)
+    )
+    assert flipbook.recompose("idle", 0).tobytes() == render("idle", 0, 1).tobytes()
