@@ -393,6 +393,10 @@ class Part:
     dims: bool = False
     #: The views it is drawn in (default: all); another piece draws the rest.
     when: Optional[Callable[[View], bool]] = None
+    #: How much nearer than its surfaces it counts as being: a thing the cast
+    #: paints over another that is a little in front of it (a scarf over the
+    #: chin).
+    lead: float = 0.0
 
 
 @dataclass
@@ -446,6 +450,33 @@ class Drawn:
     dims: bool = False
     when: Optional[Callable[[View], bool]] = None
     lead: float = 0.0
+    #: A limb's joints: then each of its pixels is as near as the nearest
+    #: point of its bones (plus ``lead``), not all as near as ``anchor``, so
+    #: an arm can pass over the trunk at the shoulder and behind it at the
+    #: hand.
+    joints: Optional[Sequence[Vec]] = None
+
+
+def _bone_depth(rgba: np.ndarray, pts: np.ndarray, depths: np.ndarray, scale: float) -> np.ndarray:
+    """The depth at each painted pixel of a limb: that of the nearest point
+    of the polyline ``pts`` (frame points), along which the depth goes from
+    joint to joint."""
+    out = np.full(rgba.shape[:2], -np.inf, np.float32)
+    ys, xs = np.nonzero(rgba[..., 3] > 0)
+    if len(xs) == 0:
+        return out
+    px, py = (xs + 0.5) / scale, (ys + 0.5) / scale
+    best = np.full(len(xs), np.inf)
+    depth = np.zeros(len(xs))
+    for (a, b), (da, db) in zip(zip(pts[:-1], pts[1:]), zip(depths[:-1], depths[1:])):
+        d = b - a
+        t = np.clip(((px - a[0]) * d[0] + (py - a[1]) * d[1]) / max(1e-9, float(d @ d)), 0.0, 1.0)
+        dist = np.hypot(px - (a[0] + t * d[0]), py - (a[1] + t * d[1]))
+        win = dist < best
+        best[win] = dist[win]
+        depth[win] = (da + t * (db - da))[win]
+    out[ys, xs] = depth
+    return out
 
 
 def place_bones(K: Kit, img: Image.Image, name: str, bones: Sequence[Tuple[Tuple[float, float], Tuple[float, float], Callable[[bool, float], object]]]) -> None:
@@ -730,7 +761,7 @@ def _draw_part(K: Kit, part: Part, view: View, to_canvas: Callable, far: bool) -
     out = Image.new("RGBA", size, K.ink)
     out.putalpha(grown)
     out.alpha_composite(body_img)
-    near = np.where(mask, buf.depth, -1e9).astype(np.float32)
+    near = np.where(mask, buf.depth + part.lead, -1e9).astype(np.float32)
     grown_depth = np.asarray(Image.fromarray(near, "F").filter(ImageFilter.MaxFilter(reach)))
     depth = np.where(mask, near, grown_depth)
     return np.asarray(out), depth
@@ -811,7 +842,11 @@ def draw(K: Kit, figure: Figure, view: View) -> Image.Image:
             if img is None:
                 continue
             rgba = np.asarray(img)
-            layer = rgba, np.where(rgba[..., 3] > 0, float(np.asarray(part.anchor) @ ed) + part.lead, -np.inf).astype(np.float32)
+            if part.joints is not None:
+                pts = np.array([at(p) for p in part.joints])
+                layer = rgba, _bone_depth(rgba, pts, np.array([float(np.asarray(p) @ ed) for p in part.joints]) + part.lead, K.scale)
+            else:
+                layer = rgba, np.where(rgba[..., 3] > 0, float(np.asarray(part.anchor) @ ed) + part.lead, -np.inf).astype(np.float32)
         elif isinstance(part, Sprite):
             layer = _draw_sprite(K, part, view, to_canvas, far)
         else:

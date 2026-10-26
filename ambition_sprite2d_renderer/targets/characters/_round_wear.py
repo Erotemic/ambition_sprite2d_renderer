@@ -439,20 +439,24 @@ def strokes(K: Kit, name: str, lines: Sequence[Sequence[Vec]], width: float, col
 class Worn:
     """A thing worn round the body or the head, as a loft with its own
     outline: a scarf wound round the neck, a circlet. ``on``: ``"body"``
-    (rings in body space) or ``"head"`` (from the head's middle)."""
+    (rings in body space) or ``"head"`` (from the head's middle).
+    ``lumps``: ellipsoids of it (the knot of a scarf)."""
 
     name: str
     rings: Sequence[O.Ring]
     garment: Garment
     on: str = "body"
+    lumps: Sequence[Tuple[Vec, Vec]] = ()
+    #: How much nearer it counts as being (``Part.lead``).
+    lead: float = 0.0
 
     def piece(self, K: Kit, J, head: Vec) -> O.Part:
         g = self.garment
-        surface = O.loft(self.rings, g.paint)
+        surfaces = [O.loft(self.rings, g.paint)] + [O.ellipsoid(c, r, O.flat(g.colour, shade=g.dark, at=-0.45)) for c, r in self.lumps]
         at = np.asarray(head if self.on == "head" else (0.0, 0.0, 0.0))
         mid = self.rings[len(self.rings) // 2]
-        return O.Part(self.name, [surface.moved(tuple(at))], base=g.colour, outline=1.2, rim=0.4, shade=0.45, shade_colour=g.dark,
-                      anchor=tuple(at + (mid.l, mid.y, mid.z)))
+        return O.Part(self.name, [s.moved(tuple(at)) for s in surfaces], base=g.colour, outline=1.2, rim=0.4, shade=0.45, shade_colour=g.dark,
+                      anchor=tuple(at + (mid.l, mid.y, mid.z)), lead=self.lead)
 
 
 @dataclass(frozen=True)

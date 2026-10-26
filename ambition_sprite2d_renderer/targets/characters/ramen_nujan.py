@@ -1642,14 +1642,19 @@ COAT_3D = W.Trunk(
         W.Shade()]),
     shoulder=((-6.4, -32.4, 0.3), (5.0, 5.6, 5.0)),
 )
-#: His scarf, wound round his neck, the tails of it trailing down his back
-#: from the knot (``_tails``: each tail ends in loose noodles).
-WRAP_3D = W.Worn("scarf", [O.Ring(-39.6, 0.0, 0.6, 5.2, 4.8), O.Ring(-37.4, 0.0, 0.6, 7.6, 6.6), O.Ring(-35.2, 0.0, 0.6, 7.4, 6.4)],
-                 W.Garment(NOODLE, NOODLE_DARK, features=[W.Across(-180.0, 180.0, -38.2, NOODLE_DARK), W.Across(-180.0, 180.0, -36.4, NOODLE_DARK),
-                                                          W.Shade(-0.45)]))
-_KNOT = np.array([-1.4, -38.4, -5.6])
-TAILS = W.Chains("scarf_tails", [[tuple(_KNOT + k * np.array([0.0, 5.6, -1.4])) for k in range(8)],
-                                 [tuple(_KNOT + k * np.array([0.5, 5.2, -2.2])) for k in range(7)]], _tails, lead=0.5)
+#: His scarf as his three-quarter view draws it (``_wrap``): a thick roll
+#: wound round his neck, over the bottom of his chin (``lead``, as his view
+#: paints it over his head), two dark lines along it, and its knot
+#: behind his right shoulder; from the knot its two tails hang down behind
+#: him on that side (``_tails``: each ends in loose noodles).
+WRAP_3D = W.Worn("scarf", [O.Ring(-41.0, 0.0, 0.8, 5.0, 4.6), O.Ring(-39.6, 0.0, 0.8, 7.6, 7.0), O.Ring(-37.8, 0.0, 0.6, 8.0, 7.4),
+                           O.Ring(-36.0, 0.0, 0.4, 6.8, 6.2)],
+                 W.Garment(NOODLE, NOODLE_DARK, features=[W.Across(-180.0, 180.0, -38.9, NOODLE_DARK, width=0.3),
+                                                          W.Across(-180.0, 180.0, -36.9, NOODLE_DARK, width=0.3), W.Shade(-0.45)]),
+                 lumps=[((-3.0, -37.6, -6.4), (3.0, 3.0, 2.6))], lead=3.0)
+_KNOT = np.array([-3.0, -37.0, -7.6])
+TAILS = W.Chains("scarf_tails", [[tuple(_KNOT + k * np.array([-0.4, 5.9, -0.9])) for k in range(8)],
+                                 [tuple(_KNOT + k * np.array([-0.2, 5.6, -1.7])) for k in range(7)]], _tails, lead=0.5)
 
 
 def _arm_bones(pts, near):

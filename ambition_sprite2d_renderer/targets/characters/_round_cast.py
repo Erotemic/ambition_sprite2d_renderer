@@ -84,7 +84,7 @@ def limb_piece(K: Kit, name: str, joints: Sequence[Vec], bones: Callable[[Sequen
             K.place(img, hand(near), pts[-1], f"{name}_hand", O._angle(pts[-2], pts[-1]))
         return img
 
-    return O.Drawn(name, tuple(anchor if anchor is not None else joints[-1]), draw, dims=True, lead=lead)
+    return O.Drawn(name, tuple(anchor if anchor is not None else joints[-1]), draw, dims=True, lead=lead, joints=[tuple(j) for j in joints])
 
 
 def shoes(name: str, ankle: Sequence[float], side: Callable[[bool], object], front: Callable[[], object], back: Callable[[], object]) -> O.Sprite:
