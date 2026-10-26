@@ -546,6 +546,105 @@ X.effects = _effects
 ROWS = X.rows
 _render_frame = X.render_frame
 render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His trunk and head in 3D come from the numbers of his own makers
+# (``auto_trunk``, ``auto_head``); what they do not say is here, as data.
+# His rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+#: The great wig over his head, and its curls down past his shoulders each
+#: side and behind.
+_WIG = ((0.0, -5.6, -1.6), (10.8, 9.6, 10.0))
+_WIG_CURLS = ([((sx * x, y, z), (r, r * 0.92, r)) for sx in (-1.0, 1.0) for x, y, r in ((9.4, 0.0, 4.0), (10.0, 6.0, 4.0), (9.6, 12.0, 3.8), (8.4, 17.6, 3.4))
+               for z in (-1.0, -5.0)]
+              + [((x, y, -8.6 + 0.4 * abs(x) / 6.0), (4.0, 3.8, 3.4)) for x, y in ((-6.0, 2.4), (0.4, 1.6), (6.2, 2.8), (-3.2, 8.4), (3.4, 7.8),
+                                                                             (-6.4, 14.0), (-0.2, 14.6), (5.8, 13.6))])
+
+
+def _curl(centre, radii):
+    """The light ring of a curl, on its outside (away from his middle)."""
+    out = np.array([centre[0], 0.0, centre[2] + 4.0])
+    out /= np.linalg.norm(out)
+    return O.circle(tuple(np.asarray(centre) + out * 0.8 * radii[0]), tuple(out), radii[0] * 0.55, WIG_LIGHT, 0.6, slack=1.0)
+
+
+# His head from the side, drawn as the cast draws a head in the numbers of a
+# profile: the wig high over his brow and down behind in curls, his long nose.
+
+
+def _side_wig_shape(d) -> None:
+    K.oval(d, K.at(-2.6, -6.0), 11.2, 9.6, WHITE)
+    for x, y, r in ((-10.4, 0.0, 4.2), (-10.8, 6.0, 4.2), (-10.2, 12.0, 4.0), (-8.4, 17.6, 3.6), (-3.6, 15.0, 3.4)):
+        K.oval(d, K.at(x, y), r, r * 0.92, WHITE)
+
+
+def _side_wig(d) -> None:
+    K.poly(d, [K.at(20.0, -8.0), K.at(9.4, -8.0), K.at(6.8, -9.6), K.at(4.2, -8.2), K.at(1.8, -9.4), K.at(0.4, -6.4), K.at(-0.4, -2.0), K.at(0.0, 3.0),
+               K.at(0.8, 8.0), K.at(1.2, 12.0), K.at(1.2, 30.0), K.at(-30.0, 30.0), K.at(-30.0, -30.0), K.at(20.0, -30.0)], WIG)
+    for x, y, r in ((-10.4, 0.0, 3.0), (-10.8, 6.0, 3.0), (-10.2, 12.0, 2.8), (-8.4, 17.6, 2.4), (-3.8, 15.0, 2.2), (-6.8, -6.0, 3.0), (-1.8, -11.6, 2.8),
+                    (4.2, -12.0, 2.4), (-4.2, 6.0, 2.6), (-3.4, 0.0, 2.4)):
+        K.oval(d, K.at(x, y), r, r * 0.85, None, WIG_LIGHT, 0.6)  # type: ignore[arg-type]
+
+
+_side_head = R.make_head(K, ("leib_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.4, 9.0, 9.0), jaw=(3.4, 4.2, 6.2, 7.8),
+                         nose=((8.0, -1.6), (12.0, 3.0), (11.2, 4.8), (8.0, 5.2)), ear=None, shape=_side_wig_shape, under=_side_wig,
+                         over=lambda d: K.line(d, [K.at(6.0, 4.4), K.at(4.4, 6.4), K.at(4.2, 8.4)], mix(SKIN, SKIN_DEEP, 0.5), 0.5), far_shade=False)
+_side_eyes = R.make_eyes(K, (6.2, -0.6), None, ink=INK, iris=(70, 56, 44, 255), size=0.95, lid=SKIN_DEEP)
+_side_brows = R.make_brows(K, [(4.0, -4.0), (6.2, -4.8), (8.4, -4.2)], None, WIG, 1.1)
+_side_mouth = R.make_mouth(K, (8.2, 8.2), (130, 60, 64, 255), wide=0.5)
+
+
+def _sheaths(length: int):
+    """His two blades in their sheaths, along +x from their hilts."""
+    n = float(length)
+
+    def shape(d) -> None:
+        for dy, k in ((0.0, 1.0), (2.8, 0.78)):
+            K.stroke(d, [K.at(0.0, dy), K.at(n * k, dy)], WHITE, 2.2)
+            K.stroke(d, [K.at(0.0, dy), K.at(-5.0, dy - 0.6)], WHITE, 1.8)
+            K.oval(d, K.at(-0.4, dy), 2.4, 2.4, WHITE)
+
+    def detail(d) -> None:
+        for dy in (0.0, 2.8):
+            K.oval(d, K.at(-0.4, dy), 2.4, 2.4, GOLD)
+            K.stroke(d, [K.at(-0.8, dy - 0.2), K.at(-5.0, dy - 0.6)], GOLD, 1.6)
+
+    return K.solid(("sheaths", length), shape, BREECHES_DARK, detail, outline=1.0, rim=0.2, shade=0.3, shade_colour=SHOE_DARK)
+
+
+ROUND = C.Round(
+    DISPLAY_NAME, C.PersonBody(X, R.make_back_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up), heads={"side": lambda pose: [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"),
+                                                               (_side_brows(R.brow_mood(pose)), "brows"), (_side_mouth(str(pose["mouth"])), "mouth")]}),
+    C.Look(
+        # The great dark wig: all of his head but his face, high over his
+        # brow, in curls past his shoulders each side and down his back.
+        C.auto_head(X, _head, _eyes,
+                    hair=lambda u, v: (v < -8.0 + 1.6 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | (np.abs(u) > 58.0),
+                    hair_colour=WIG, hair_shade=mix(WIG, INK, 0.4), volumes=[_WIG] + _WIG_CURLS,
+                    lines=[_curl(c, r) for c, r in _WIG_CURLS]
+                    # and the curls over his crown, as his own art has them.
+                    + [O.circle(*O.on_ellipsoid(*_WIG, u, v, 0.2), 2.2, WIG_LIGHT, 0.6, slack=1.0)
+                       for u, v in ((-150.0, -10.0), (-100.0, -12.0), (-40.0, -14.0), (30.0, -14.6), (95.0, -11.6), (155.0, -9.0), (180.0, -2.0),
+                                    (-120.0, -4.0), (125.0, -3.0))]),
+        # His burgundy coat to his knees: gold down its edges and round its
+        # hem, gold buttons each side, the lace at his throat.
+        C.auto_trunk(X, [W.Strip(0.0, TOP + 2.0, 27.0, 3.2, GOLD, flare=1.2), W.Strip(0.0, TOP + 2.0, 27.0, 1.6, COAT_DARK, flare=1.0),
+                         W.Buttons(32.0, -20.0, 1.0, 4, 0.9, GOLD), W.Buttons(-32.0, -20.0, 1.0, 4, 0.9, GOLD), W.Band(22.6, 25.0, GOLD),
+                         W.Strip(0.0, TOP - 1.0, TOP + 12.4, 3.8, LACE, flare=-3.8), W.Down(180.0, 0.0, 26.0, COAT_DARK)]),
+        # His blades in their sheaths at his near hip, their hilts forward.
+        back_pieces=[W.Prop("sheaths", (-10.6, -2.0, 4.0), (-10.6, 9.0, -20.0), _sheaths, lead=1.0)]),
+    # His near hand on a hilt, his far hand behind his back.
+    C.Stance(hands={"r": C.Hand(l=-10.0, at=(-11.4, -3.0, 6.0), mode="fist"), "l": C.Hand(l=4.0, at=(3.0, -2.0, -11.0))}, stagger=2.0))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 
