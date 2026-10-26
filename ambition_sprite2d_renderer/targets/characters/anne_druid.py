@@ -836,7 +836,63 @@ MANE = W.Mane([(0.0, -1.0, -7.4), (0.0, 5.0, -9.2), (0.0, 11.0, -10.2), (0.0, 17
 #: shoulder, out past her cloak.
 STAFF = W.Prop("staff", (-7.4, 14.0, -12.0), (11.0, -44.0, -10.0), _staff)
 
-ROUND = C.Round(DISPLAY_NAME, C.PersonBody(X, R.make_back_shoe(K, BOOT, BOOT_DARK, BUILD.ankle_up, wide=0.9), back_layers=("back",)),
+
+# Her head from the side, drawn as the cast draws a head in the numbers of a
+# profile: her hair parted and down past her jaw, its silver, her gold
+# earring under it, the band of leaves round her head and her near antler.
+
+
+def _side_hair_shape(d) -> None:
+    K.oval(d, K.at(-1.6, -4.4), 10.0, 8.8, WHITE)
+    K.poly(d, [K.at(-10.0, -4.0), K.at(-11.2, 4.0), K.at(-9.4, 10.4), K.at(-3.0, 10.4), K.at(-0.6, 1.0)], WHITE)
+
+
+def _side_hair(d) -> None:
+    K.poly(d, [K.at(20.0, -8.6), K.at(9.4, -8.6), K.at(6.6, -7.4), K.at(3.6, -5.6), K.at(1.6, -3.6), K.at(0.8, 0.6), K.at(0.4, 5.0), K.at(0.0, 10.4),
+               K.at(-20.0, 10.4), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+    for strand in ([(6.4, -9.6), (1.4, -8.0), (-1.8, -3.0), (-3.0, 4.0)], [(2.0, -11.0), (-4.4, -8.0), (-8.4, -1.0), (-8.8, 6.0)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_LIGHT, 0.8)
+
+
+def _side_face(d) -> None:
+    K.line(d, [K.at(5.6, 4.4), K.at(4.2, 6.0)], mix(SKIN, SKIN_DEEP, 0.4), 0.45)
+    K.oval(d, K.at(1.4, 5.8), 0.9, 1.1, GOLD)
+
+
+def _side_circlet():
+    def shape(d) -> None:
+        K.poly(d, [K.at(-10.0, -7.6), K.at(9.6, -8.8), K.at(9.6, -6.2), K.at(-10.0, -5.0)], WHITE)
+        # The near antler hides the far one.
+        K.stroke(d, [K.at(0.6, -7.6), K.at(-0.2, -12.8), K.at(-2.4, -17.6)], WHITE, 1.9)
+        K.stroke(d, [K.at(-0.2, -12.8), K.at(3.4, -16.0)], WHITE, 1.6)
+        K.stroke(d, [K.at(-1.2, -15.0), K.at(-5.4, -15.0)], WHITE, 1.5)
+        for x in (-7.4, -0.4, 6.6):
+            K.oval(d, K.at(x, -7.0 - 0.1 * x), 2.6, 1.6, WHITE)
+
+    def detail(d) -> None:
+        K.poly(d, [K.at(-20.0, -7.0), K.at(20.0, -12.6), K.at(20.0, 0.0), K.at(-20.0, 0.0)], LEAF_DARK)
+        for x in (-7.4, -0.4, 6.6):
+            K.oval(d, K.at(x, -7.0 - 0.1 * x), 2.6, 1.6, LEAF)
+        K.oval(d, K.at(7.8, -7.6), 1.2, 1.2, GOLD)
+
+    return K.solid(("circlet_side",), shape, ANTLER, detail, outline=1.1, rim=0.3, shade=0.35, shade_colour=ANTLER_DARK)
+
+
+_side_head = R.make_head(K, ("anne_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.2, 8.8, 8.6), jaw=(3.0, 3.6, 6.2, 6.8),
+                         nose=((8.0, 0.6), (9.8, 3.0), (9.4, 4.0), (8.0, 4.2)), ear=None, shape=_side_hair_shape, under=_side_hair, over=_side_face,
+                         far_shade=False)
+_side_eyes = R.make_eyes(K, (6.4, -0.2), None, ink=INK, white=None, lid=INK, size=0.95)
+_side_brows = R.make_brows(K, [(4.0, -3.8), (6.2, -4.6), (8.4, -4.2)], None, HAIR, 0.9)
+_side_mouth = R.make_mouth(K, (7.8, 7.0), (128, 54, 62, 255), wide=0.6, lips=(196, 96, 100, 255))
+
+
+def _side_layers(pose):
+    return [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"), (_side_brows(R.brow_mood(pose)), "brows"),
+            (_side_mouth(str(pose["mouth"])), "mouth"), (_side_circlet(), "circlet")]
+
+
+ROUND = C.Round(DISPLAY_NAME, C.PersonBody(X, R.make_back_shoe(K, BOOT, BOOT_DARK, BUILD.ankle_up, wide=0.9), back_layers=("back",),
+                                           heads={"side": _side_layers}),
                 C.Look(HEAD_3D, ROBE, head_pieces=[CIRCLET, W.Antlers(ANTLERS, 1.8, ANTLER, ANTLER_DARK)], back_pieces=[CLOAK_3D, MANE, STAFF]), STANCE)
 
 

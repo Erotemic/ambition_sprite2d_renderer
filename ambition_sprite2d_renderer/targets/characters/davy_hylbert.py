@@ -560,8 +560,55 @@ HAT_3D = W.Hat(
 )
 
 
-ROUND = C.Round(DISPLAY_NAME, C.PersonBody(X, R.make_back_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)), C.Look(HEAD_3D, SUIT_3D, head_pieces=[HAT_3D]),
-                STANCE)
+
+# His head from the side, drawn as the cast draws a head in the numbers of a
+# profile: his beard to its point well forward, his moustache, one round
+# lens and the arm of his glasses back to his ear, the white hair at the back
+# of his head under his hat.
+
+
+def _side_shape(d) -> None:
+    K.poly(d, [K.at(0.4, 5.0), K.at(10.0, 5.6), K.at(9.6, 10.0), K.at(7.0, 14.6), K.at(5.4, 16.6), K.at(3.0, 13.0), K.at(0.6, 9.0)], WHITE)
+    K.oval(d, K.at(-6.6, 1.0), 3.8, 5.0, WHITE)
+
+
+def _side_under(d) -> None:
+    K.poly(d, [K.at(0.2, -8.0), K.at(0.0, -1.6), K.at(-2.8, -1.6), K.at(-3.6, 3.6), K.at(-2.0, 4.8), K.at(-1.6, 6.6), K.at(-20.0, 6.6), K.at(-20.0, -8.0)], BEARD)
+    K.line(d, [K.at(-6.6, -4.0), K.at(-9.0, 0.0), K.at(-8.6, 4.0)], BEARD_DARK, 0.6)
+
+
+def _side_over(d) -> None:
+    K.oval(d, K.at(6.4, -0.4), 2.6, 2.6, LENS)
+    K.poly(d, [K.at(0.2, 4.8), K.at(4.0, 6.6), K.at(10.4, 5.6), K.at(10.0, 10.0), K.at(7.0, 14.6), K.at(5.4, 17.0), K.at(3.0, 13.0), K.at(0.4, 9.0)], BEARD)
+    K.poly(d, [K.at(3.6, 5.4), K.at(7.0, 4.4), K.at(10.8, 5.2), K.at(11.4, 7.0), K.at(7.6, 6.6), K.at(3.4, 7.4)], BEARD)
+    K.line(d, [K.at(3.6, 7.4), K.at(7.6, 6.8), K.at(11.0, 7.0)], BEARD_DARK, 0.6)
+    for x0, y0, x1, y1 in ((3.6, 9.6, 4.6, 14.0), (6.6, 9.6, 6.2, 14.6)):
+        K.line(d, [K.at(x0, y0), K.at(x1, y1)], BEARD_DARK, 0.5)
+    K.line(d, [K.at(6.6, 8.6), K.at(8.2, 9.2), K.at(9.6, 8.8)], (140, 80, 84, 255), 0.7)
+
+
+def _side_glasses():
+    def paint(d) -> None:
+        K.oval(d, K.at(6.4, -0.4), 2.6, 2.6, None, FRAME, 0.6)  # type: ignore[arg-type]
+        K.line(d, [K.at(3.8, -0.8), K.at(-0.8, -0.2)], FRAME, 0.6)
+
+    return K.piece(("hylbert_side_glasses",), paint)
+
+
+_side_head = R.make_head(K, ("hylbert_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.4, 8.8, 8.8), jaw=(3.4, 4.0, 6.0, 7.2),
+                         nose=((8.0, -0.8), (11.0, 3.0), (10.4, 4.6), (8.0, 5.0)), ear=(-1.6, 1.0, 2.0, 3.0), shape=_side_shape, under=_side_under,
+                         over=_side_over, far_shade=False)
+_side_eyes = R.make_eyes(K, (6.6, -0.2), None, ink=INK, white=None, lid=SKIN_DEEP, size=0.9)
+_side_brows = R.make_brows(K, [(4.0, -4.4), (6.2, -5.0), (8.4, -4.4)], None, BEARD, 1.2, under=BEARD_DARK)
+
+
+def _side_layers(pose):
+    return [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"), (_side_glasses(), "glasses"), (_side_brows(R.brow_mood(pose)), "brows")] + (
+        [] if float(pose["hat"]) < 0.5 else [(_hat(), "hat")])
+
+
+ROUND = C.Round(DISPLAY_NAME, C.PersonBody(X, R.make_back_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up), heads={"side": _side_layers}),
+                C.Look(HEAD_3D, SUIT_3D, head_pieces=[HAT_3D]), STANCE)
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
