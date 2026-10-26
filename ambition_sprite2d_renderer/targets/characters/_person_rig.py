@@ -942,9 +942,10 @@ def make_neck(K: Kit, colour: RGBA, width: float = 5.0):
     return neck
 
 
-def make_eyes(K: Kit, near: Point, far: Point, *, ink: RGBA = (28, 24, 32, 255), white: Optional[RGBA] = (252, 248, 238, 255),
+def make_eyes(K: Kit, near: Point, far: Optional[Point], *, ink: RGBA = (28, 24, 32, 255), white: Optional[RGBA] = (252, 248, 238, 255),
               iris: Optional[RGBA] = None, lid: Optional[RGBA] = None, size: float = 1.0, lash: float = 0.0):
-    """``eyes(mode)``: two small eyes, from the middle of the head. With
+    """``eyes(mode)``: two small eyes, from the middle of the head (one, the
+    near one, when ``far`` is none: a head seen from the side). With
     ``white`` they have whites (and an ``iris`` colour if given); without, they
     are dots. ``lid``: the colour of the line over an open eye. ``lash``: 0 to 1,
     how heavy the upper line is and how far it goes out past the corner of
@@ -952,7 +953,7 @@ def make_eyes(K: Kit, near: Point, far: Point, *, ink: RGBA = (28, 24, 32, 255),
 
     def eyes(mode: str):
         def paint(d) -> None:
-            for (ex, ey), k in ((near, 1.0), (far, 0.85)):
+            for (ex, ey), k in ((near, 1.0),) + (((far, 0.85),) if far is not None else ()):
                 c = K.at(ex, ey)
                 rx, ry = 2.0 * size * k, 1.8 * size
                 out = -1.0 if (ex, ey) == near else 1.0
@@ -995,10 +996,10 @@ def make_eyes(K: Kit, near: Point, far: Point, *, ink: RGBA = (28, 24, 32, 255),
     return eyes
 
 
-def make_brows(K: Kit, near: Sequence[Point], far: Sequence[Point], colour: RGBA, width: float = 1.2, under: Optional[RGBA] = None):
+def make_brows(K: Kit, near: Sequence[Point], far: Optional[Sequence[Point]], colour: RGBA, width: float = 1.2, under: Optional[RGBA] = None):
     """``brows(mood)``: each brow a line of three points, from the middle of
-    the head, the inner end last for the near brow and first for the far one.
-    -1 set, 0 level, 1 raised."""
+    the head, the inner end last for the near brow and first for the far one
+    (no far one: a head seen from the side). -1 set, 0 level, 1 raised."""
 
     def brows(mood: int):
         up = -1.1 if mood > 0 else 0.0
@@ -1006,13 +1007,15 @@ def make_brows(K: Kit, near: Sequence[Point], far: Sequence[Point], colour: RGBA
 
         def paint(d) -> None:
             a = [K.at(near[0][0], near[0][1] + up), K.at(near[1][0], near[1][1] + up), K.at(near[2][0], near[2][1] + up + inner)]
-            b = [K.at(far[0][0], far[0][1] + up + inner), K.at(far[1][0], far[1][1] + up), K.at(far[2][0], far[2][1] + up)]
-            for pts, w in ((a, width), (b, width * 0.9)):
+            lines = [(a, width)]
+            if far is not None:
+                lines.append(([K.at(far[0][0], far[0][1] + up + inner), K.at(far[1][0], far[1][1] + up), K.at(far[2][0], far[2][1] + up)], width * 0.9))
+            for pts, w in lines:
                 if under is not None:
                     K.stroke(d, pts, under, w + 0.6)
                 K.stroke(d, pts, colour, w)
 
-        return K.piece(("brows", mood, tuple(near), tuple(far), colour, width), paint)
+        return K.piece(("brows", mood, tuple(near), tuple(far) if far is not None else None, colour, width), paint)
 
     return brows
 
@@ -1063,7 +1066,7 @@ def make_mouth(K: Kit, at: Point, colour: RGBA = (112, 48, 50, 255), *, ink: RGB
 def make_head(K: Kit, key: tuple, skin: RGBA, shade: RGBA, deep: RGBA, *, skull: Tuple[float, float, float, float] = (0.0, -2.4, 8.0, 9.0),
               jaw: Tuple[float, float, float, float] = (2.4, 4.0, 5.6, 7.4), nose: Optional[Sequence[Point]] = ((7.0, -1.0), (9.8, 3.2), (9.2, 4.6), (7.0, 5.0)),
               ear: Optional[Tuple[float, float, float, float]] = (-4.8, 1.0, 2.2, 3.3), shape: Optional[Callable] = None,
-              under: Optional[Callable] = None, over: Optional[Callable] = None):
+              under: Optional[Callable] = None, over: Optional[Callable] = None, far_shade: bool = True):
     """``head()``: a head from its middle, seen three quarters and facing
     right. ``skull`` and ``jaw`` are ovals ``(x, y, rx, ry)``; ``nose`` is
     the part of it that stands out of the face; ``ear`` an oval.
@@ -1072,7 +1075,8 @@ def make_head(K: Kit, key: tuple, skin: RGBA, shade: RGBA, deep: RGBA, *, skull:
     beard, a bun). ``under(d)`` paints on the head before the ear (the hair,
     down to its line). ``over(d)`` paints after it (lenses, the lines of a
     face, a moustache). What stays the character's is all of that: this
-    function is only the skull."""
+    function is only the skull. ``far_shade``: the far side of the face in
+    shade (a head seen three quarters); a head seen from the side has none."""
 
     def head():
         def silhouette(d) -> None:
@@ -1087,7 +1091,8 @@ def make_head(K: Kit, key: tuple, skin: RGBA, shade: RGBA, deep: RGBA, *, skull:
 
         def detail(d) -> None:
             # The far side of the face is in shade.
-            K.oval(d, K.at(jaw[0] + jaw[2] + 0.6, jaw[1] + 3.4), 2.2, 4.0, mix(skin, shade, 0.7))
+            if far_shade:
+                K.oval(d, K.at(jaw[0] + jaw[2] + 0.6, jaw[1] + 3.4), 2.2, 4.0, mix(skin, shade, 0.7))
             if under is not None:
                 under(d)
             if ear is not None:

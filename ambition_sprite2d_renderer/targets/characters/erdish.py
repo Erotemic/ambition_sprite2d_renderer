@@ -1353,6 +1353,7 @@ import numpy as np  # noqa: E402
 
 from types import SimpleNamespace  # noqa: E402
 
+from . import _person_rig as R  # noqa: E402
 from . import _person_round as O  # noqa: E402
 from . import _round_cast as C  # noqa: E402
 from . import _round_wear as W  # noqa: E402
@@ -1484,6 +1485,53 @@ def _back_sandal():
     return K.solid(("back_sandal",), shape, SOCK_FILL, detail, outline=1.2, rim=0.25, shade=0.3, shade_colour=SOCK_DARK)
 
 
+# His head from the front, drawn as the cast draws a head from the front
+# (``_person_rig.make_front_head`` and the rest), in the numbers of his
+# three-quarter view: a long thin face with hollow cheeks and deep lines from
+# his nose to his mouth, large ears, iron-grey hair standing up on top and
+# down in front of his ears, large square black glasses, small eyes, a long
+# nose.
+
+
+def _front_hair_shape(d) -> None:
+    K.oval(d, K.at(0.0, -7.6), 8.6, 5.6, WHITE)
+    K.poly(d, [K.at(-7.6, -9.0), K.at(-6.0, -13.6), K.at(-3.8, -12.2), K.at(-1.6, -15.0), K.at(0.8, -12.8), K.at(3.2, -15.2), K.at(5.0, -12.4),
+               K.at(7.4, -13.4), K.at(7.8, -8.6)], WHITE)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(6.4 * sx, -6.0), K.at(8.8 * sx, -4.0), K.at(8.6 * sx, 2.4), K.at(6.6 * sx, 3.0)], WHITE)
+
+
+def _front_hair(d) -> None:
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 4.0), K.at(7.0, 4.0), K.at(6.8, -2.4), K.at(6.2, -6.0), K.at(4.0, -8.0), K.at(0.0, -8.6),
+               K.at(-4.0, -8.0), K.at(-6.2, -6.0), K.at(-6.8, -2.4), K.at(-7.0, 4.0), K.at(-20.0, 4.0)], HAIR)
+    for strand in ([(-5.6, -9.4), (-2.6, -12.0), (0.6, -12.4)], [(0.8, -9.6), (3.6, -12.4), (6.2, -11.6)], [(-3.0, -9.0), (-0.6, -10.8)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_LIGHT, 0.6)
+    for sx in (-1.0, 1.0):
+        K.line(d, [K.at(7.2 * sx, -4.0), K.at(8.0 * sx, -0.6), K.at(7.6 * sx, 2.0)], HAIR_SHADE, 0.6)
+
+
+def _front_face(d) -> None:
+    for sx in (-1.0, 1.0):
+        # His cheek is hollow, and the line from his nose to his mouth deep.
+        K.oval(d, K.at(4.4 * sx, 6.0), 1.6, 2.6, mix(SKIN, SKIN_SHADE, 0.55))
+        K.line(d, [K.at(2.4 * sx, 4.2), K.at(3.0 * sx, 6.8), K.at(2.8 * sx, 9.0)], SKIN_DEEP, 0.6)
+    K.line(d, [K.at(-2.4, -6.6), K.at(0.0, -7.0), K.at(2.4, -6.6)], mix(SKIN, SKIN_DEEP, 0.55), 0.45)
+    K.line(d, [K.at(-0.3, -0.4), K.at(-1.0, 3.8), K.at(0.0, 4.8), K.at(1.0, 3.8)], SKIN_DEEP, 0.7)
+    for sx in (-1.0, 1.0):
+        cx = 3.6 * sx
+        K.rrect(d, K.home[0] + cx - 3.2, K.home[1] - 3.3, K.home[0] + cx + 3.2, K.home[1] + 2.5, 0.9, LENS, FRAME, 0.9)
+        K.line(d, [K.at(cx - 3.2, -3.0), K.at(cx + 3.2, -3.0)], FRAME, 1.4)
+        K.line(d, [K.at(6.8 * sx, -1.6), K.at(7.6 * sx, -1.2)], FRAME, 0.9)
+    K.line(d, [K.at(-0.4, -1.8), K.at(0.4, -1.8)], FRAME, 1.0)
+
+
+_FRONT_HEAD = R.front_face(
+    R.make_front_head(K, ("erdish",), SKIN, SKIN_DEEP, wide=7.4, jaw=5.4, chin=4.4, ears=SKIN, shape=_front_hair_shape, hair=_front_hair, face=_front_face),
+    R.make_front_eyes(K, ("erdish",), spread=3.6, y=-0.4, ink=INK, white=None, size=0.9),
+    R.make_front_brows(K, ("erdish",), HAIR_SHADE, spread=3.6, y=-4.8, width=1.1),
+    R.make_front_mouth(K, ("erdish",), y=8.4, colour=MOUTH, wide=0.8))
+
+
 def _wrist(near, l):
     x, y = _seen(_CHIN if near else _BACK)
     return (l, y, O.lift(x, l))
@@ -1512,13 +1560,15 @@ def _elbow_patch(side, img, pts, near):
 
 
 def _own(J):
-    """His own head, jacket and collar in his three-quarter view. His jacket
-    and collar are not mirrored: the pocket on his chest is on his right."""
+    """His own head, jacket and collar in his three-quarter view, and his
+    head from the front (``_FRONT_HEAD``). His jacket and collar are not
+    mirrored: the pocket on his chest is on his right."""
     turn = _LEAN * 0.35 + _TILT
     layers = lambda: O.composed(K, [(_head(), "head"), (_eyes(str(_REST["eyes"])), "eyes"), (_glasses(), "glasses"),  # noqa: E731
                                     (_brows(1 if float(_REST["brows"]) > 0.5 else 0), "brows"), (_mouth(str(_REST["mouth"])), "mouth")], turn)
+    front = dict(R.FRONT_REST, eyes=str(_REST["eyes"]), mouth=str(_REST["mouth"]), brows=float(_REST["brows"]))
     return {"trunk": C.own_art("own_jacket", (0.0, 0.0, 0.0), lambda: _jacket(0, 0), degrees=_LEAN, lead=0.4, mirror=False),
-            "head": C.own_art("own_head", J.head, layers, lead=9.0),
+            "head": C.own_art("own_head", J.head, layers, lambda: O.composed(K, _FRONT_HEAD(front)), lead=9.0),
             "collar": C.own_art("own_collar", J.neck, _collar, degrees=_LEAN, lead=9.5, mirror=False)}
 
 

@@ -1689,6 +1689,37 @@ _FRONT_HEAD = R.front_face(
     R.make_front_mouth(K, ("ramen",), y=7.0, colour=MOUTH, wide=0.7))
 
 
+# His head from the side, drawn as the cast draws a head (``make_head``,
+# ``make_eyes``, ``make_brows``, ``make_mouth``) in the numbers of a profile:
+# his jaw and his nose well forward, his ear at the middle of his head, one
+# eye at the front, his hairline across his forehead and down in front of his
+# ear, the part along the top, his hair to the nape.
+
+
+def _side_hair_shape(d) -> None:
+    K.oval(d, K.at(-1.4, -4.4), 9.6, 8.2, WHITE)
+    K.poly(d, [K.at(-9.0, -2.0), K.at(-9.4, 4.0), K.at(-7.0, 8.4), K.at(-3.6, 8.0), K.at(-2.6, 2.0)], WHITE)
+
+
+def _side_hair(d) -> None:
+    K.poly(d, [K.at(20.0, -26.0), K.at(20.0, -7.2), K.at(8.4, -7.2), K.at(6.2, -8.8), K.at(3.0, -8.2), K.at(1.8, -4.8), K.at(2.0, 1.2), K.at(-1.0, 4.6),
+               K.at(-3.4, 8.4), K.at(-20.0, 8.4), K.at(-20.0, -26.0)], HAIR)
+    K.line(d, [K.at(-6.0, -11.0), K.at(-1.0, -12.6), K.at(4.6, -11.8), K.at(7.6, -9.4)], HAIR_LIGHT, 0.9)
+    K.line(d, [K.at(-8.4, -5.0), K.at(-9.2, -0.6), K.at(-8.6, 3.6)], HAIR_LIGHT, 0.7)
+
+
+def _side_face(d) -> None:
+    K.line(d, [K.at(0.4, 8.6), K.at(3.6, 10.8), K.at(6.4, 10.4)], mix(SKIN, SKIN_DEEP, 0.55), 0.6)
+
+
+_SIDE_HEAD = R.make_head(K, ("ramen_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -1.4, 8.8, 9.8), jaw=(3.0, 3.6, 6.2, 7.8),
+                         nose=((7.6, -0.6), (10.2, 2.8), (9.8, 3.8), (7.8, 4.2)), ear=(-1.4, 1.6, 2.2, 3.0), shape=_side_hair_shape, under=_side_hair,
+                         over=_side_face, far_shade=False)
+_SIDE_EYES = R.make_eyes(K, (5.8, 0.0), None, ink=INK, white=EYE_WHITE, iris=IRIS, lid=INK, size=0.9)
+_SIDE_BROWS = R.make_brows(K, [(4.0, -3.4), (6.0, -4.1), (8.0, -3.6)], None, HAIR, 1.3)
+_SIDE_MOUTH = R.make_mouth(K, (7.4, 6.8), MOUTH, wide=0.5)
+
+
 def _arm_bones(pts, near):
     colour = COAT if near else COAT_DARK
     return [(pts[0], pts[1], lambda edge, n: _bone("upper", n, 7.4, 6.2, colour, COAT_DARK, edge)),
@@ -1703,14 +1734,16 @@ def _leg_bones(pts, near):
 
 def _own(J):
     """His own head, coat and scarf in his three-quarter view, and his head
-    from the front (``_FRONT_HEAD``). His coat is not mirrored (the
-    constellation is on his right); his scarf is."""
+    from the front and from the side (``_FRONT_HEAD``, ``_SIDE_HEAD``). His
+    coat is not mirrored (the constellation is on his right); his scarf is."""
     turn = _TILT
     layers = lambda: O.composed(K, [(_head(), "head"), (_eyes(str(_REST["eyes"])), "eyes"),  # noqa: E731
                                     (_brows(1 if float(_REST["brows"]) > 0.5 else 0), "brows"), (_mouth(str(_REST["mouth"])), "mouth")], turn)
     front = dict(R.FRONT_REST, eyes=str(_REST["eyes"]), mouth=str(_REST["mouth"]), brows=float(_REST["brows"]))
+    side = lambda: O.composed(K, [(_SIDE_HEAD(), "head"), (_SIDE_EYES(str(_REST["eyes"])), "eyes"),  # noqa: E731
+                                  (_SIDE_BROWS(R.brow_mood(_REST)), "brows"), (_SIDE_MOUTH(str(_REST["mouth"])), "mouth")], turn)
     return {"trunk": C.own_art("own_coat", (0.0, 0.0, 0.0), lambda: _coat(0, 0), lead=0.4, mirror=False),
-            "head": C.own_art("own_head", J.head, layers, lambda: O.composed(K, _FRONT_HEAD(front)), lead=9.0),
+            "head": C.own_art("own_head", J.head, layers, lambda: O.composed(K, _FRONT_HEAD(front)), side=side, lead=9.0),
             "scarf": C.own_art("own_scarf", J.neck, _wrap, lead=9.5)}
 
 

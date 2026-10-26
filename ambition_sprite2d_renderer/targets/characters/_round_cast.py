@@ -104,26 +104,30 @@ def shoes(name: str, ankle: Sequence[float], side: Callable[[bool], object], fro
     return O.Sprite(name, tuple(ankle), draw, dims=True, lead=3.0)
 
 
-def own_turns(front: bool, mirror: bool = True) -> Callable[[O.View], bool]:
+def own_turns(front: bool, mirror: bool = True, side: bool = False) -> Callable[[O.View], bool]:
     """The views a character's own art is drawn for (``own_art``)."""
-    return O.near_turn(*((45.0,) + ((-45.0,) if mirror else ()) + ((0.0,) if front else ())))
+    turns = (45.0,) + ((-45.0,) if mirror else ()) + ((0.0,) if front else ()) + ((90.0,) + ((-90.0,) if mirror else ()) if side else ())
+    return O.near_turn(*turns)
 
 
 def own_art(name: str, anchor: Sequence[float], three_quarter: Optional[Callable[[], object]], front: Optional[Callable[[], object]] = None, *,
-            degrees: float = 0.0, lead: float = 0.0, mirror: bool = True) -> O.Sprite:
+            side: Optional[Callable[[], object]] = None, degrees: float = 0.0, lead: float = 0.0, mirror: bool = True) -> O.Sprite:
     """A piece of a character's own art in the views it is drawn for: its
     three-quarter view, its mirror for the left (``mirror``: only a piece that
-    is the same on both sides; a pocket on one side is not), and its front
-    view if it has one. Another piece draws the other views
-    (``not_in(sprite.when)``)."""
+    is the same on both sides; a pocket on one side is not), its front view
+    and its side view if it has them (a head made with the cast's front or
+    side makers, for a character drawn in one view). Another piece draws the
+    other views (``not_in(sprite.when)``)."""
 
     def draw(view: O.View, far: bool):
         turn = O.facing(view)
         if abs(turn) <= 10.0:
             return (front() if front is not None else None), 0.0, False
+        if abs(abs(turn) - 90.0) <= 10.0:
+            return (side() if side is not None else None), 0.0, turn < 0.0
         return three_quarter(), degrees, turn < 0.0  # type: ignore[misc]
 
-    return O.Sprite(name, tuple(anchor), draw, when=own_turns(front is not None, mirror), lead=lead)
+    return O.Sprite(name, tuple(anchor), draw, when=own_turns(front is not None, mirror, side is not None), lead=lead)
 
 
 def not_in(when: Optional[Callable[[O.View], bool]]) -> Optional[Callable[[O.View], bool]]:
