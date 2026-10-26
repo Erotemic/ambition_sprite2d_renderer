@@ -765,9 +765,9 @@ def _make(look: Look) -> SimpleNamespace:
                 return None
             a, b, e = at(grip), at(tip), at(elbow)
             img = K.new_frame()
-            K.place(img, _kanabo(max(24.0, math.dist(a, b))), a, "kanabo", math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+            O.place_along(K, img, _kanabo(max(24.0, math.dist(a, b))), a, "kanabo", math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), view)
             # His hand round the grip, over the club.
-            K.place(img, X.hand("fist", True), a, "near_hand_on_club", math.degrees(math.atan2(a[1] - e[1], a[0] - e[0])))
+            O.place_along(K, img, X.hand("fist", True), a, "near_hand_on_club", math.degrees(math.atan2(a[1] - e[1], a[0] - e[0])), view)
             return img
 
         return O.Drawn("club", grip, draw, lead=5.0, joints=[grip, tip])

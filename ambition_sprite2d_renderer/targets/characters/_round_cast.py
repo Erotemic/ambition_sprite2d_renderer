@@ -81,7 +81,7 @@ def limb_piece(K: Kit, name: str, joints: Sequence[Vec], bones: Callable[[Sequen
         if extra is not None:
             extra(img, pts, near)
         if hand is not None:
-            K.place(img, hand(near), pts[-1], f"{name}_hand", O._angle(pts[-2], pts[-1]))
+            O.place_along(K, img, hand(near), pts[-1], f"{name}_hand", O._angle(pts[-2], pts[-1]), view)
         return img
 
     return O.Drawn(name, tuple(anchor if anchor is not None else joints[-1]), draw, dims=True, lead=lead, joints=[tuple(j) for j in joints])
