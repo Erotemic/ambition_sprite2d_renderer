@@ -18,7 +18,11 @@ PEOPLE = ("anne_druid", "davy_hylbert", "erdish", "galwah", "jeff_hinter", "jose
 
 
 def _round(who):
-    return importlib.import_module(f"ambition_sprite2d_renderer.targets.characters.{who}").ROUND
+    """``module`` (its ``ROUND``) or ``module:target`` (its ``ROUNDS[target]``:
+    a module of many people, the crypto crew)."""
+    module, _, target = who.partition(":")
+    m = importlib.import_module(f"ambition_sprite2d_renderer.targets.characters.{module}")
+    return m.ROUNDS[target] if target else m.ROUND
 
 
 def _box(img):

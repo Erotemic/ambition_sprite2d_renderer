@@ -25,8 +25,13 @@ import math
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
+import numpy as np
+
 from ._ai_era_kit import OUTLINE, WHITE, RGBA, mix, pin
 from . import _person_rig as R
+from . import _person_round as O
+from . import _round_cast as C
+from . import _round_wear as W
 from ._person_rig import Build, Person, Stamp, loop, shot
 
 INK: RGBA = (26, 22, 30, 255)
@@ -46,6 +51,10 @@ ROWS: List[Tuple[str, int, int]] = [("idle", 8, 150), ("walk", 8, 104), ("talk",
 
 PEOPLE: Dict[str, Person] = {}
 META: Dict[str, dict] = {}
+#: Each of the crew in the round (``_round_cast.Round``), by target: own art
+#: where it exists, side heads drawn by the cast's makers, 3D for the rest.
+#: The rows do not use this.
+ROUNDS: Dict[str, "C.Round"] = {}
 
 
 def _build(cm: float, *, girth: float = 0.0, stoop: float = 0.0, woman: bool = False, legs: float = 0.0) -> Build:
