@@ -619,9 +619,29 @@ def _eve() -> None:
                        garment=W.Garment(CLOAK, CLOAK_DARK, radius=10.0, features=[W.Down(160.0, top + 8.0, 28.0, CLOAK_DARK), W.Down(-160.0, top + 8.0, 28.0, CLOAK_DARK)]),
                        turns=(115.0, 245.0))
     lock_3d = W.Mane([(-6.4, 7.0, -0.6), (-7.0, 12.0, 1.2), (-7.4, 17.0, 2.4), (-7.4, 22.0, 2.8)], 3.6, HAIR, HAIR_LIGHT, lead=0.5)
+    # Her head from the front in the round: the hood as far back on her head
+    # as her side views have it (Jon, 2026-10-25, of Furrier's hood and then
+    # of hers: from the front it hid too much of the face). Her front rows
+    # keep their own hood.
+    def round_front_hood(d) -> None:
+        K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 20.0), K.at(-20.0, 20.0)], CLOAK)
+        for sx in (-1.0, 1.0):
+            K.poly(d, [K.at(8.6 * sx, -11.0), K.at(11.0 * sx, -3.0), K.at(9.6 * sx, 9.6), K.at(8.6 * sx, 9.6)], CLOAK_DARK)
+        K.oval(d, K.at(0.0, 0.4), 7.6, 9.8, skin[0])
+        ring = [K.at(7.8 * math.cos(math.radians(a)), 0.4 + 10.0 * math.sin(math.radians(a))) for a in range(-190, 11, 10)]
+        K.line(d, ring, DRESS_LIGHT, 1.0)
+        for sx in (-1.0, 1.0):
+            K.poly(d, [K.at(x * 1.15 * sx, y - 1.4) for x, y in ((0.0, -7.6), (4.6, -6.4), (6.2, -1.0), (5.8, 7.0), (4.4, 2.0), (3.4, -3.6), (0.6, -5.0))], HAIR)
+            K.line(d, [K.at(3.4 * sx, -7.4), K.at(5.8 * sx, -2.4), K.at(6.0 * sx, 5.0)], HAIR_LIGHT, 0.5)
+
+    round_front = R.front_face(
+        R.make_front_head(K, ("eve_round",), skin[0], skin[2], wide=7.4, jaw=5.8, chin=3.4, shape=front_hood_shape, hair=round_front_hood, face=front_nose),
+        R.make_front_eyes(K, ("eve",), white=None, ink=INK, spread=3.0, y=-0.2, size=0.9, lash=0.5), R.make_front_brows(K, ("eve",), HAIR, spread=3.0, y=-3.4, width=0.7),
+        R.make_front_mouth(K, ("eve",), y=7.4, colour=(140, 60, 76, 255), lips=(206, 112, 124, 255), wide=0.7))
+
     ROUNDS["eve"] = C.Round(
         "Eve", C.PersonBody(p, back_layers=("back",), mirror=("head",),
-                            heads={"side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"), (side_brows(R.brow_mood(pose)), "brows"),
+                            heads={"front": round_front, "side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"), (side_brows(R.brow_mood(pose)), "brows"),
                                                          (side_mouth(str(pose["mouth"])), "mouth")]}),
         C.Look(
             # The hood: all of her head but her face, and a soft point behind.
@@ -847,8 +867,29 @@ def _judy() -> None:
         out /= np.linalg.norm(out)
         return O.circle(tuple(np.asarray(centre) + out * 0.8 * radii[0]), tuple(out), radii[0] * 0.55, WIG_DARK, 0.6, slack=1.0)
 
+    # Her head from the front in the round: her glasses over her eyes, as
+    # they are in her three-quarter view (her front rows paint the lenses
+    # under her eyes, so her eyes look dark and wide there).
+    def round_front_face(d) -> None:
+        K.line(d, [K.at(-0.3, 1.0), K.at(-1.4, 3.6), K.at(0.0, 4.4), K.at(1.4, 3.6)], skin[2], 0.6)
+        K.line(d, [K.at(-3.6, 11.0), K.at(0.0, 11.8), K.at(3.6, 11.0)], mix(skin[0], skin[2], 0.5), 0.5)
+
+    def front_glasses():
+        def paint(d) -> None:
+            for sx in (-1.0, 1.0):
+                K.rrect(d, K.home[0] + 3.4 * sx - 2.5, K.home[1] - 2.4, K.home[0] + 3.4 * sx + 2.5, K.home[1] + 1.0, 0.8, (236, 244, 250, 120), GOLD_DARK, 0.6)
+            K.line(d, [K.at(-0.9, -1.0), K.at(0.9, -1.0)], GOLD_DARK, 0.6)
+
+        return K.piece(("judy_front_glasses",), paint)
+
+    round_front = R.front_face(
+        R.make_front_head(K, ("judy_round",), skin[0], skin[2], wide=8.0, jaw=7.2, chin=3.4, shape=front_wig_shape, hair=front_wig, face=round_front_face),
+        R.make_front_eyes(K, ("judy",), ink=INK, iris=(64, 38, 30, 255), spread=3.4, y=-0.8, size=0.85, lash=0.4),
+        R.make_front_brows(K, ("judy",), (60, 50, 54, 255), spread=3.4, y=-4.2, width=1.0),
+        R.make_front_mouth(K, ("judy",), y=7.6, colour=(110, 34, 44, 255), lips=(168, 54, 62, 255), wide=0.85), extra=[(front_glasses, "glasses")])
+
     ROUNDS["judy"] = C.Round(
-        "Judy", C.PersonBody(p, heads={"side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"),
+        "Judy", C.PersonBody(p, heads={"front": round_front, "side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"),
                                                              (side_brows(R.brow_mood(pose)), "brows"), (side_mouth(str(pose["mouth"])), "mouth"),
                                                              (side_glasses(), "glasses")]}),
         C.Look(

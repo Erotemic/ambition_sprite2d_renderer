@@ -305,11 +305,14 @@ class PersonBody(Body):
 
         p, K = self.person, self.K
         has_front = bool(p.front_poses)
+        # Its face from the front is the face it has at rest: the same eyes,
+        # mouth and brows as its head in the other views.
+        face = dict(FRONT_REST, **{k: J.rest[k] for k in ("eyes", "mouth", "brows") if k in J.rest})
         out: Dict[str, object] = {
             "trunk": own_art("own_trunk", (0.0, 0.0, 0.0), lambda: p.torso(0, 0), p.front_torso if has_front else None, lead=0.4,
                              mirror="trunk" in self.mirror),
             "head": own_art("own_head", J.head, lambda: O.composed(K, p.head_layers(J.rest)),
-                            (lambda: O.composed(K, self.heads.get("front", p.front_head_layers)(dict(FRONT_REST)))) if has_front else None, lead=9.0,
+                            (lambda: O.composed(K, self.heads.get("front", p.front_head_layers)(face))) if has_front else None, lead=9.0,
                             mirror="head" in self.mirror, **{k: (lambda f=f: O.composed(K, f(J.rest))) for k, f in self.heads.items() if k != "front"}),
         }
         if self.back_layers:
