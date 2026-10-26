@@ -237,10 +237,11 @@ def wardrobe_sheet(spec: CharacterSpec, out: Path, *, px_per_cm: float = 1.4,
 
 # ---- the rigged character --------------------------------------------------------------------
 
-#: The rows a background townsperson publishes by default: standing,
-#: walking every way, talking, and turning (``CharacterAnim`` names).
+#: The rows an ordinary townsperson publishes. A peaceful body can still
+#: take damage and die, so its sheet includes reactions and a corpse pose.
 TOWNSFOLK_ROWS: Tuple[str, ...] = (
-    "idle", "idle_back", "walk", "walk_away", "walk_toward", "talk", "interact", "turnaround", "turn_away",
+    "idle", "idle_back", "walk", "walk_away", "walk_toward", "hurt", "death", "death_idle",
+    "talk", "interact", "turnaround", "turn_away",
 )
 
 #: The rows of a character that moves, fights and holds items: what the game

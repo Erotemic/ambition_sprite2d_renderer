@@ -164,7 +164,7 @@ def test_a_generated_character_binds_to_the_humanoid_rig_and_poses(tmp_path):
         errors = [(f.animation, fd.code) for f in audit_document(doc).frames for fd in f.findings if fd.severity == "error"]
         assert errors == [], (path.name, errors)
     rc = RiggedCharacter(files.rigs)
-    for row in ("idle", "walk", "talk", "walk_away", "turnaround"):
+    for row in ("idle", "walk", "talk", "walk_away", "turnaround", "hurt", "death", "death_idle"):
         frames = {r[0]: r[1] for r in rc.rows()}[row]
         a, b = rc.render_frame(row, 0, frames), rc.render_frame(row, frames // 2, frames)
         assert _alpha_box(a) is not None and _alpha_box(b) is not None
