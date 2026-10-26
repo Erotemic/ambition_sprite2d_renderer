@@ -363,7 +363,28 @@ def epaulet(name, deck, outer):
              C["cloth"]),
     ], f"clip-{name}")
     body += [ellipse(inner + s * 20, top + 15, 7, 7, C["gold_light"], INK, 1.8)]
+    body += epaulet_moss(name, x0, x1, top)
     part(name, name, name.replace("-", "_"), "chest", 46, body)
+
+
+def epaulet_moss(name, x0, x1, top):
+    """Moss on the top of an epaulet: the giant's language for "you can stand
+    here" (as on the hump and the horns). Its top is the board's top, the
+    line the game's shoulder ledge is on (`shoulder_decks_world`)."""
+    n = 10
+    ridge = [(x0 + 4 + (x1 - x0 - 8) * k / n, top) for k in range(n + 1)]
+    under = []
+    for k, (x, y) in enumerate(ridge):
+        drip = 16.0 + (8.0 if k % 3 == 1 else 0.0) + 3.0 * math.sin(k * 1.9)
+        under.append((x + 2, y + drip))
+    moss = smooth([(ridge[0][0] - 3, top + 6, True)] + ridge + [(ridge[-1][0] + 3, top + 6, True)] + under[::-1])
+    light = smooth(ridge + [(x, y + 6) for x, y in ridge[::-1]])
+    body = outlined(moss, C["moss"], [path(light, "#9cc46a")], f"clip-{name}-moss", width=3.0)
+    for k in (2, 7):
+        x, y = ridge[k]
+        for dx, h in ((-7, 14), (0, 19), (7, 13)):
+            body.append(line([(x + dx, y), (x + dx * 1.6 - 3, y - h)], C["moss_dark"], 3.0))
+    return body
 
 
 def fist(name):
@@ -1292,6 +1313,21 @@ WORLD_PER_PIXEL = 1.3
 TORSO_EDGE_X = 824.0
 #: How far over the top line the top of the moss is drawn (its edge and ink).
 MOSS_OVER = 3.5
+
+
+def shoulder_decks_world():
+    """The top of each epaulet at rest, as one-way ground: ``(left, right,
+    top)`` in world units about the middle of the giant's body (+y down),
+    the left shoulder first. Nothing over the neck between them is ground.
+    The numbers the game types (`mount.ledges` of `npc_giant_gnu`)."""
+    cx = BODY_BBOX[0] + BODY_BBOX[2] * 0.5
+    cy = BODY_BBOX[1] + BODY_BBOX[3] * 0.5
+    out = []
+    for x0, x1, top in (SHOULDER_L, SHOULDER_R):
+        (a, y), (b, _) = to_frame(_final((x0, top))), to_frame(_final((x1, top)))
+        out.append((round((a - cx) * WORLD_PER_PIXEL, 2), round((b - cx) * WORLD_PER_PIXEL, 2),
+                    round((y - cy) * WORLD_PER_PIXEL, 2)))
+    return out
 
 
 def hump_line_world(points: int = 11):
