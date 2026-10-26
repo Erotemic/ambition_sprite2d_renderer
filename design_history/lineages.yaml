@@ -1465,7 +1465,14 @@ lineages:
     name: George Booul
     ids: [george_booul]
     paths: ['characters/george_booul']
-    eras: []
+    summary: "a rigid bedsheet with tabs for hands, then a sheet posed as cloth"
+    eras:
+      - commit: "17b1e41"
+        label: "Rigid sheet, tabs for hands"
+        note: "The last of the first design: one sheet polygon with triangle corners, squashed and turned whole, a pose per Smash move (2026-10-18)."
+      - commit: "6d3bbe9"
+        label: "Cloth on a bent spine"
+        note: "Jon: redo the sprite work and posing. The dome leads, the hem trails, a fist under each corner pulls the cloth; eight views. Claude Opus 5.5 declared."
   le_beast:
     name: Le Beast
     ids: [le_beast]
