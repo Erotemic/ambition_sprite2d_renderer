@@ -144,8 +144,6 @@ OUTPUT_FILES = [
     f"{TARGET_NAME}_hands_spritesheet.png",
     f"{TARGET_NAME}_spritesheet.ron",
     f"{TARGET_NAME}_actor.ron",
-    f"{TARGET_NAME}_canonical.png",
-    f"{TARGET_NAME}_preview_labeled.png",
     # ADR 0020 split: the giant MOUNT (scholar-less body + shared hands) and the
     # scholar RIDER (drawn alone, its own tight-trim standalone sheet). Emitted
     # into the same `gnu_ton_boss/` install dir alongside the fused sheet.
@@ -1762,12 +1760,14 @@ def render_outputs(outdir: Path, quick: bool = False) -> List[Path]:
     print("  spritesheets (full / body / hands)...")
     paths.extend(build_spritesheet(outdir))
 
+    review_dir = outdir / "review"
+    review_dir.mkdir(exist_ok=True)
     print("  canonical...")
-    paths.append(build_canonical(outdir))
+    paths.append(build_canonical(review_dir))
 
     if not quick:
         print("  preview...")
-        paths.append(build_preview_labeled(outdir))
+        paths.append(build_preview_labeled(review_dir))
 
     print(f"  done. {len(paths)} files.")
     return paths
