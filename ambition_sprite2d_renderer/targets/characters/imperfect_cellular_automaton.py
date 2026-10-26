@@ -37,6 +37,7 @@ from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.rigdoc import RigDocument, sample_channel_spec
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ...core.measure import union_visible_bbox
 from ._svg_fighter_effects import compose_rig_frame
 from .pca_combat_authoring import author_pca_combat_clips
 from .pca_effects import EFFECTFUL_ANIMATIONS, draw_pca_behind, draw_pca_front
@@ -62,6 +63,8 @@ MIRROR_OF: Dict[str, str] = {MIRRORED.format(name): name for name, _frames, _dur
 ROWS: List[Tuple[str, int, int]] = BASE_ROWS + [
     (MIRRORED.format(name), frames, duration) for name, frames, duration in BASE_ROWS
 ]
+
+IDLE_FRAMES = next(frames for name, frames, _duration in BASE_ROWS if name == "idle")
 
 #: The states of the grid on her chest (the ``grid_<n>`` parts of the SVG).
 GRID_STATES = 8
@@ -292,17 +295,24 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
 
 
 def body_metrics(fw: int, fh: int) -> dict:
-    """Her body, authored: from the ground to the top of her skull, as wide as
-    her trunk. Her crown, her tail and her arms are not her body."""
-    x, y, w, h = 58, 46, 46, 130
+    """Her body, authored: from the top of her skull down to where her
+    standing soles are drawn, as wide as her trunk. Her crown, her tail and her
+    arms are not her body.
+
+    ⛔ The floor is measured from her idle frames, not the rig's ground line
+    (176): her flat feet reach under it, and a box with its floor there stood
+    her 8 px in the floor."""
+    x, y, w = 58, 46, 46
+    top = (y + PADDING) * RENDER_SCALE
+    floor = union_visible_bbox(render_frame("idle", k, IDLE_FRAMES) for k in range(IDLE_FRAMES))[3]
     feet_x = float((80 + PADDING) * RENDER_SCALE)
-    feet_y = float((176 + PADDING) * RENDER_SCALE)
+    feet_y = float(floor - 1)
     return {
         "body_pixel_bbox": {
             "x": (x + PADDING) * RENDER_SCALE,
-            "y": (y + PADDING) * RENDER_SCALE,
+            "y": top,
             "w": w * RENDER_SCALE,
-            "h": h * RENDER_SCALE,
+            "h": floor - top,
         },
         "feet_pixel": {"x": feet_x, "y": feet_y},
         "feet_anchor_norm": {"x": round(feet_x / fw - 0.5, 6), "y": round(0.5 - feet_y / fh, 6)},

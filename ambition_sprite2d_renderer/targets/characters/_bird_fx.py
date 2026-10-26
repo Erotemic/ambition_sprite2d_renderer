@@ -127,8 +127,8 @@ class BirdFx:
         if dust > 0.02:
             ground = float(self.doc().frame["ground_y"])
             x = world[self.body_bone].origin[0]
-            place(canvas, "dust", (x - 26.0 * k, ground), dust)
-            place(canvas, "dust", (x + 36.0 * k, ground), dust * 0.8)
+            self.glyphs.place_on_ground(canvas, "dust", (x - 26.0 * k, ground), dust)
+            self.glyphs.place_on_ground(canvas, "dust", (x + 36.0 * k, ground), dust * 0.8)
 
     def _front(self, canvas: FxCanvas, t: float, world, params) -> None:
         place, k = self.glyphs.place, self.art_scale

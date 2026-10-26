@@ -92,6 +92,12 @@ class Glyphs:
         if opacity > 0.02:
             canvas.place(self.raster(name), at, degrees, min(1.0, opacity), name=name)
 
+    def place_on_ground(self, canvas: FxCanvas, name: str, at: Point, opacity: float) -> None:
+        """``place`` with the glyph's low edge on the ground point ``at``: a
+        puff of dust stands on the ground, and its lower half is not in it."""
+        bottom = self.glyphs[name][0][3] * self.art_scale
+        self.place(canvas, name, (at[0], at[1] - bottom), opacity)
+
     def local(self, bone, x: float, y: float) -> Point:
         """A point in a bone's frame given in SVG units."""
         return bone.to_world((x * self.art_scale, y * self.art_scale))

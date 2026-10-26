@@ -437,7 +437,7 @@ def run(i: int, n: int):
     # On all fours: the hands reach the floor in turn, the legs push.
     ph, s, c = loop(i, n)
     # The wrist stops a hand's length over the floor: the paw is on it.
-    reach = 16.5
+    reach = 12.0
 
     def hand(p: float) -> tuple:
         lift = max(0.0, -math.sin(p))

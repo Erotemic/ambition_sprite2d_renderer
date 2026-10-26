@@ -22,6 +22,8 @@ from __future__ import annotations
 import copy
 from typing import Iterable, Optional, Sequence
 
+from ..core.measure import visible_bbox
+
 #: Part-name fragments that make up the body you collide with.
 TRUNK_HINTS: tuple[str, ...] = ("torso", "pelvis", "hip", "leg", "foot", "tail")
 #: Part-name fragments whose TOP sets the body's ceiling — and only its top. A
@@ -47,7 +49,7 @@ def _render_only(doc, names: Iterable[str], animation: str, padding):
     ]
     if not trimmed.data["parts"]:
         return None
-    return trimmed.render_at(animation, 0.0, padding=padding).getchannel("A").getbbox()
+    return visible_bbox(trimmed.render_at(animation, 0.0, padding=padding))
 
 
 def gameplay_body_metrics(

@@ -424,7 +424,10 @@ BODY_BOX = (FEET_X - 36.0, GROUND - 150.0, FEET_X + 38.0, GROUND + 1.0)
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
     del opts
-    return K.render(TARGET_NAME, ROWS, _render_frame, out_dir, ACTOR_METADATA, BODY_BOX)
+    # The floor where its soles are drawn (`Kit.standing_floor`), not `GROUND`:
+    # its shoes reach under the ground line.
+    floor = K.standing_floor(ROWS, _render_frame)
+    return K.render(TARGET_NAME, ROWS, _render_frame, out_dir, ACTOR_METADATA, BODY_BOX[:3] + (floor or BODY_BOX[3],))
 
 
 def main(argv: list[str] | None = None) -> int:

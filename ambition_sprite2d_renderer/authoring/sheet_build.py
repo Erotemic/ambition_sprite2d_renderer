@@ -322,6 +322,38 @@ def _translate_actor_metadata(actor_metadata: Any, dx: float, dy: float) -> Any:
     return shifted
 
 
+def _crop_rects(payload: Any, crop_x: int, crop_y: int) -> Any:
+    """``payload`` with each pixel rect (``{x, y, w, h}``) in it moved by the
+    auto-crop: the frame it was stated in lost ``crop_x`` columns on its left
+    and ``crop_y`` rows on its top."""
+    if isinstance(payload, Mapping):
+        if all(k in payload for k in ("x", "y", "w", "h")):
+            return {**payload, "x": int(payload["x"]) - crop_x, "y": int(payload["y"]) - crop_y}
+        return {k: _crop_rects(v, crop_x, crop_y) for k, v in payload.items()}
+    if isinstance(payload, list):
+        return [_crop_rects(v, crop_x, crop_y) for v in payload]
+    return payload
+
+
+def _cropped_body_metrics(metrics: dict, crop_x: int, crop_y: int, fw: int, fh: int) -> dict:
+    """An authored body (``body_metrics_fn``) in the frame the sheet publishes.
+
+    ⛔ A target states its body in the frame it draws (padded), and the
+    auto-crop then cuts that frame. Unmoved, the box kept the uncropped rows:
+    the Officer's feet were drawn 29 px above the bottom of his box, which
+    stood below the bottom of his 171 px frame. The feet anchor is restated
+    against the cropped frame from the moved feet."""
+    if not (crop_x or crop_y):
+        return metrics
+    out = _crop_rects(metrics, crop_x, crop_y)
+    feet = metrics.get("feet_pixel")
+    if feet:
+        fx, fy = float(feet["x"]) - crop_x, float(feet["y"]) - crop_y
+        out["feet_pixel"] = {"x": round(fx, 3), "y": round(fy, 3)}
+        out["feet_anchor_norm"] = {"x": round(fx / fw - 0.5, 6), "y": round(0.5 - fy / fh, 6)}
+    return out
+
+
 def _translate_attack_hitboxes(attack_hitboxes: Any, dx: float, dy: float) -> Any:
     if not attack_hitboxes:
         return attack_hitboxes
@@ -1239,6 +1271,8 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
             attack_hitboxes = _translate_attack_hitboxes(
                 attack_hitboxes, -crop_x, -crop_y
             )
+            # The authored bodies move with it too (`_cropped_body_metrics`).
+            hurtbox_parts = _crop_rects(hurtbox_parts, crop_x, crop_y)
             fw, fh = new_fw, new_fh
     progress(f"phase crop: done in {time.perf_counter() - crop_started:.2f}s | frame={fw}x{fh}")
     if frame_transform_out is not None:
@@ -1363,7 +1397,7 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
         # generators keep their current conventions; targets that pass this hook
         # can keep gameplay hurtboxes tight to the true character body while the
         # rendered frame still includes decorations.
-        body_metrics = body_metrics_fn(fw, fh)
+        body_metrics = _cropped_body_metrics(body_metrics_fn(fw, fh), crop_x, crop_y, fw, fh)
         # Say which of the two rectangles this is. `body_pixel_bbox` means
         # "the alpha extent of the drawn art" by default and "the gameplay body"
         # when a target authors one, and a consumer could not tell them apart —

@@ -1839,7 +1839,18 @@ class Person:
             # The metadata of a character that was drawn before on another
             # frame has that frame's points. These are this frame's.
             actor_metadata = dict(actor_metadata, sockets=self.sockets())
-        return self.K.render(self.target, self.rows, self.render_frame, out_dir, actor_metadata, self.body_box)
+        return self.K.render(self.target, self.rows, self.render_frame, out_dir, actor_metadata, self.standing_box())
+
+    def standing_box(self) -> Tuple[float, float, float, float]:
+        """``body_box`` with its floor where the standing soles are drawn: the
+        lowest visible row of the ``idle`` frames, in frame pixels.
+
+        ⛔ Not ``ground``. A shoe's sole and its outline reach a little under
+        the ground line, so a box whose floor was ``ground`` stood the person
+        2-3 px in the floor."""
+        floor = self.K.standing_floor(self.rows, self.render_frame)
+        x0, y0, x1, ground = self.body_box
+        return (x0, y0, x1, ground if floor is None else floor)
 
     #: Set while a frame is drawn for a portrait: it is not reduced.
     _big = False

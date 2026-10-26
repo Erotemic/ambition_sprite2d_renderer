@@ -42,6 +42,27 @@ def visible_bbox(frame) -> Optional[Tuple[int, int, int, int]]:
     return frame.getchannel("A").point(lambda a: 255 if a >= VISIBLE_ALPHA else 0).getbbox()
 
 
+def union_visible_bbox(frames) -> Optional[Tuple[int, int, int, int]]:
+    """The union of the :func:`visible_bbox` of each of ``frames``; ``None``
+    when none has a visible pixel."""
+    boxes = [box for box in (visible_bbox(frame) for frame in frames) if box is not None]
+    if not boxes:
+        return None
+    return (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+
+
+def body_metrics_for_box(box: Tuple[int, int, int, int], fw: int, fh: int) -> Dict[str, Any]:
+    """``body_metrics_fn``-shaped metrics of the body box ``(x0, y0, x1, y1)``
+    (high side open), its feet on its bottom row, in a ``fw`` x ``fh`` frame."""
+    x0, y0, x1, y1 = box
+    feet_x, feet_y = (x0 + x1 - 1) / 2.0, float(y1 - 1)
+    return {
+        "body_pixel_bbox": {"x": int(x0), "y": int(y0), "w": int(x1 - x0), "h": int(y1 - y0)},
+        "feet_pixel": {"x": round(feet_x, 3), "y": round(feet_y, 3)},
+        "feet_anchor_norm": {"x": round(feet_x / fw - 0.5, 6), "y": round(0.5 - feet_y / fh, 6)},
+    }
+
+
 def measure_body_metrics(frame) -> Optional[Dict[str, Any]]:
     """Body bbox + feet anchor from ``frame``'s visible pixels (:func:`visible_bbox`).
 

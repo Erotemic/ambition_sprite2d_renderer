@@ -21,6 +21,7 @@ from PIL import Image, ImageChops, ImageFilter
 from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
+from ...core.measure import union_visible_bbox
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
@@ -415,6 +416,15 @@ class Kit:
 
     def downsample(self, img: Image.Image) -> Image.Image:
         return rigdoc.downsampled_canvas(img, self.out, Image.Resampling.LANCZOS)
+
+    def standing_floor(self, rows: List[Tuple[str, int, int]], frame_fn: Callable[[str, int, int], Image.Image]) -> Optional[float]:
+        """Where the standing soles are drawn, in frame pixels: the lowest
+        visible row of the ``idle`` frames (of the first row, with no idle).
+        The floor of a box that stands on its soles; ``None`` when nothing is
+        drawn."""
+        name, frames = next(((n, f) for n, f, _ms in rows if n == "idle"), rows[0][:2])
+        drawn = union_visible_bbox(frame_fn(name, k, frames) for k in range(frames))
+        return None if drawn is None else drawn[3] * self.frame[0] / self.out[0]
 
     def body_metrics(self, box: Tuple[float, float, float, float]) -> Callable[[int, int], dict]:
         """The ``body_metrics_fn`` of a body whose box is ``(x0, y0, x1, y1)``

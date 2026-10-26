@@ -45,8 +45,10 @@ CENTER_X, GROUND_Y = 256.0, 416.0
 ANKLE_Y = 404.0
 BODY = (252.0, 330.0)
 NEAR_X, FAR_X = 16.0, -8.0
-#: How far the body joint comes down for the bird to lie on its belly.
-BELLY = 44.0
+#: How far the body joint comes down for the bird to lie on its belly: the
+#: belly on the ground line, where its feet stand (at 44 it slid 3 px into
+#: the floor).
+BELLY = 34.0
 
 #: (row, frames, ms, loops).
 ROWS = [
@@ -122,8 +124,10 @@ def run(i: int, n: int, t: float) -> Pose:
     p: Pose = {"body": 80.0, "head": -64.0, "tail1": -20.0, "jaw": 4.0}
     p["root_y"] = BELLY + 1.5 * math.sin(2.0 * w)
     p["root_x"] = 10.0
-    # A flipper rows: back along the body, then forward again.
-    flippers(p, -30.0 + 55.0 * math.sin(w), -30.0 + 55.0 * math.sin(w + 0.5))
+    # A flipper rows: back along the body, then forward again, above the
+    # ground it slides on (rowed down past the belly, it went 12 px into the
+    # floor).
+    flippers(p, 15.0 + 40.0 * math.sin(w), 15.0 + 40.0 * math.sin(w + 0.5))
     p.update(eyes("angry"))
     foot(p, "near", (14.0, 74.0 + 8.0 * math.sin(w)))
     foot(p, "far", (-6.0, 74.0 + 8.0 * math.sin(w + math.pi)))

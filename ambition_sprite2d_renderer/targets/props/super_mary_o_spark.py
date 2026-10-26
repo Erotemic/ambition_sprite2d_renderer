@@ -17,6 +17,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
+from ...core.measure import body_metrics_for_box, union_visible_bbox
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -58,15 +59,16 @@ def _petal(center: Point, angle: float, length: float, width: float, curl: float
     return [(center[0] + x * ca - y * sa, center[1] + x * sa + y * ca) for x, y in shape]
 
 
-def _spark_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+def _spark_frame(animation: str, frame_idx: int, nframes: int, glow: bool = True) -> Image.Image:
+    """One frame; ``glow=False`` draws the blossom alone, the body of the shot."""
     del animation
     image = Image.new("RGBA", (FRAME[0] * SUPER, FRAME[1] * SUPER), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
     center = (FRAME[0] / 2.0, FRAME[1] / 2.0)
     turn = (frame_idx / float(max(nframes, 1))) * (math.tau / PETALS)
     beat = math.sin(frame_idx / float(max(nframes, 1)) * math.tau)
-    glow = [_c * SUPER for _c in (center[0] - 29.0, center[1] - 29.0, center[0] + 29.0, center[1] + 29.0)]
-    draw.ellipse(glow, fill=GLOW)
+    if glow:
+        draw.ellipse([_c * SUPER for _c in (center[0] - 29.0, center[1] - 29.0, center[0] + 29.0, center[1] + 29.0)], fill=GLOW)
     for length, width, fill in ((27.0, 9.5, OUTLINE), (24.5, 7.6, PETAL), (18.0, 5.2, PETAL_HOT), (11.5, 3.0, PETAL_CORE)):
         for petal in range(PETALS):
             angle = turn + petal * math.tau / PETALS
@@ -89,6 +91,10 @@ def _render(out_dir: str | Path, **_opts) -> List[Path]:
         label_width=160,
         auto_crop=False,
         actor_metadata=_ACTOR,
+        # The body is the blossom over its turn, not its glow.
+        body_metrics_fn=lambda fw, fh: body_metrics_for_box(
+            union_visible_bbox(_spark_frame("idle", i, FRAMES, glow=False) for i in range(FRAMES)), fw, fh
+        ),
     )
     return [
         outputs[key]

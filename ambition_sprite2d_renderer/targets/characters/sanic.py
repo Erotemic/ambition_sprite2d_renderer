@@ -47,7 +47,7 @@ from PIL import Image
 from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
-from ...core.measure import visible_bbox
+from ...core.measure import body_metrics_for_box, union_visible_bbox
 
 Point = Tuple[float, float]
 
@@ -1063,10 +1063,8 @@ def _pose_bodies(skin: Skin) -> Dict[str, dict]:
     counts = {name: n for name, n, _ms in ROWS}
     bodies = {}
     for row, key in ANIMATION_KEY_MAP.items():
-        boxes = [b for b in (visible_bbox(_draw_sanic(skin, row, i, counts[row], body_only=True))
-                             for i in range(counts[row])) if b is not None]
-        x0, y0 = min(b[0] for b in boxes), min(b[1] for b in boxes)
-        x1, y1 = max(b[2] for b in boxes), max(b[3] for b in boxes)
+        x0, y0, x1, y1 = union_visible_bbox(_draw_sanic(skin, row, i, counts[row], body_only=True)
+                                            for i in range(counts[row]))
         bodies[key] = {"parts": [{"name": "body", "x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0}]}
     return bodies
 
@@ -1074,17 +1072,9 @@ def _pose_bodies(skin: Skin) -> Dict[str, dict]:
 def _body_metrics(bodies: Dict[str, dict]):
     """The sheet's body: the idle pose's (:func:`_pose_bodies`), its feet on
     its bottom row."""
-    box = {k: v for k, v in bodies["idle"]["parts"][0].items() if k != "name"}
-
-    def metrics(fw: int, fh: int) -> dict:
-        feet_x, feet_y = box["x"] + (box["w"] - 1) / 2.0, float(box["y"] + box["h"] - 1)
-        return {
-            "body_pixel_bbox": box,
-            "feet_pixel": {"x": round(feet_x, 3), "y": round(feet_y, 3)},
-            "feet_anchor_norm": {"x": round(feet_x / fw - 0.5, 6), "y": round(0.5 - feet_y / fh, 6)},
-        }
-
-    return metrics
+    part = bodies["idle"]["parts"][0]
+    box = (part["x"], part["y"], part["x"] + part["w"], part["y"] + part["h"])
+    return lambda fw, fh: body_metrics_for_box(box, fw, fh)
 
 
 def _render_form(target_name: str, skin: Skin, actor_metadata: dict, out_dir: str | Path) -> List[Path]:

@@ -1280,6 +1280,9 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         out_dir=out_dir,
         frame_size=FRAME_SIZE,
         auto_crop=False,
+        # The map is drawn on the boss, so it states the boss's body. Measured
+        # from its own pixels, its body was where the sauce is.
+        body_metrics_fn=_body_metrics,
         pose_bodies="authored",
     )
     return [sauce["spritesheet"], sauce["yaml"], sauce["ron"]] + [

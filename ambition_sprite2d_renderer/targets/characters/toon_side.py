@@ -257,6 +257,23 @@ class ToonSideGenerator(CharacterGenerator):
         preset["nose_len"] = float(preset["nose_len"]) + rng.uniform(-0.2, 0.2)
         return ToonSpec(target=self.name, seed=seed, archetype=archetype, **preset)
 
+    def _ground_ankle_y(self, spec: ToonSpec, S: float) -> float:
+        """The ankle height of the lowest standing foot: the ground line of
+        the frame. The body box is measured from the standing pose and the
+        game stands every row on it, so a walking foot on the ground is on
+        this line (a walk planted above it hovered 10 px)."""
+        frames = self.animations()["idle"]["frames"]
+        shift = self._body_plan_shift(spec)
+        leg_bone = (spec.leg_upper + spec.leg_lower) * 0.5
+        lowest = -math.inf
+        for k in range(frames):
+            p = self.pose_for_animation("idle", k, frames, spec)
+            hip_y = 74.0 * S + p.root_y * S - p.body_bob * S + shift["hip_y"] * S + 3.0 * S
+            for upper, lower in ((p.near_leg_upper, p.near_leg_lower), (p.far_leg_upper, p.far_leg_lower)):
+                drop = sum(math.sin(math.radians(a + p.torso_tilt * 0.08)) for a in (upper, lower))
+                lowest = max(lowest, hip_y + leg_bone * S * drop)
+        return lowest
+
     def _clamp_leg_target(self, hip: Point, ankle: Point, upper_len: float, lower_len: float, pad: float = 0.8) -> Point:
         dx = ankle[0] - hip[0]
         dy = ankle[1] - hip[1]
@@ -330,7 +347,9 @@ class ToonSideGenerator(CharacterGenerator):
             leg_amp = (18.0 if animation == "walk" else 26.0) * run_scale
             arm_amp = (11.0 if animation == "walk" else 16.0) * (1.0 if plan != "round" else 0.85)
             p.root_x = stride * (1.0 if animation == "walk" else 1.8)
-            p.body_bob = 0.5 + bounce * (1.8 if animation == "walk" else 2.5)
+            # A dip, not a rise: the planted foot stays on the ground line
+            # (`_ground_ankle_y`), so a hip above standing would lift it.
+            p.body_bob = -(0.5 + bounce * (1.8 if animation == "walk" else 2.5))
             p.torso_tilt = (-3.0 if animation == "walk" else -8.0) - stride * 3.5
             p.head_tilt = -bounce * 1.6
             p.far_arm_upper = 150.0 + stride * arm_amp
@@ -2289,7 +2308,7 @@ class ToonSideGenerator(CharacterGenerator):
             idx = frame_index % 8
             leg_len = 2.0 * leg_bone * S
             stride = leg_len * (0.42 if animation == "run" else 0.36)
-            base_drop = leg_len * (0.86 if animation == "run" else 0.88)
+            ground = self._ground_ankle_y(spec, S)
             far_x = (-1.00, -0.76, -0.36, -0.06, 0.12, -0.18, -0.58, -0.90)
             near_x = (0.92, 0.68, 0.30, 0.04, -0.08, 0.20, 0.62, 0.94)
             far_lift = (0.00, 0.00, 0.05, 0.14, 0.00, 0.02, 0.08, 0.02)
@@ -2301,13 +2320,13 @@ class ToonSideGenerator(CharacterGenerator):
             hip_spread = (spec.hip_w * 0.26 if spec.outfit in {"general_uniform", "storm_uniform"} else max(3.8, spec.hip_w * 0.18)) * S
             hip = (hip_center[0] + (hip_spread if is_near else -hip_spread), hip_center[1] + 3.0 * S)
             if is_near:
-                ankle = (hip_center[0] + near_x[idx] * stride, hip[1] + base_drop - near_lift[idx] * leg_len)
+                ankle = (hip_center[0] + near_x[idx] * stride, ground - near_lift[idx] * leg_len)
                 ankle = self._clamp_leg_target(hip, ankle, leg_bone * S, leg_bone * S)
                 knee, _a1, _a2 = self._solve_leg_ik(hip, ankle, leg_bone * S, leg_bone * S, bend_sign=1.0)
                 foot_center = (ankle[0] + spec.foot_w * 0.28 * S + near_shift[idx] * S, ankle[1] + 2.0 * S)
                 foot_angle = -foot_tilt[(idx + 4) % 8] + p.torso_tilt * 0.10
             else:
-                ankle = (hip_center[0] + far_x[idx] * stride, hip[1] + base_drop - far_lift[idx] * leg_len)
+                ankle = (hip_center[0] + far_x[idx] * stride, ground - far_lift[idx] * leg_len)
                 ankle = self._clamp_leg_target(hip, ankle, leg_bone * S, leg_bone * S)
                 knee, _a1, _a2 = self._solve_leg_ik(hip, ankle, leg_bone * S, leg_bone * S, bend_sign=1.0)
                 foot_center = (ankle[0] + spec.foot_w * 0.25 * S + far_shift[idx] * S, ankle[1] + 2.0 * S)
