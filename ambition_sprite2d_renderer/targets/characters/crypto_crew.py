@@ -301,8 +301,8 @@ def _craig() -> None:
 
     head = R.make_head(K, ("craig",), *skin, skull=(0.0, -2.4, 8.2, 9.0), jaw=(2.6, 4.2, 6.2, 7.6), nose=((7.2, -0.8), (10.4, 3.0), (9.8, 4.6), (7.2, 5.0)),
                        shape=cap_shape, under=hair, over=face)
-    _face(p, head, R.make_eyes(K, (1.2, -0.4), (7.0, -0.6), ink=INK, white=None, lid=skin[2]),
-          R.make_brows(K, [(-1.2, -3.6), (1.4, -4.2), (4.0, -3.6)], [(5.6, -3.8), (7.2, -4.2), (8.6, -3.6)], HAIR, 1.3),
+    eyes = R.make_eyes(K, (1.2, -0.4), (7.0, -0.6), ink=INK, white=None, lid=skin[2])
+    _face(p, head, eyes, R.make_brows(K, [(-1.2, -3.6), (1.4, -4.2), (4.0, -3.6)], [(5.6, -3.8), (7.2, -4.2), (8.6, -3.6)], HAIR, 1.3),
           R.make_mouth(K, (5.4, 8.2), (104, 52, 50, 255), wide=0.9))
 
     # ---- From the front: his jacket open on his shirt, his cap low, the
@@ -380,6 +380,54 @@ def _craig() -> None:
         return out
 
     p.effects = effects
+
+    # ---- In the round: his cap (crown and peak), his jacket open on his
+    # shirt and belt, the ring of keys at his belt, his head from the side
+    # drawn by the cast's makers. The pocket and the keys are on one side,
+    # so his trunk is not mirrored.
+    def side_cap_shape(d) -> None:
+        K.oval(d, K.at(-1.2, -8.4), 10.2, 4.8, WHITE)
+        K.poly(d, [K.at(5.0, -7.6), K.at(13.6, -5.4), K.at(13.2, -3.8), K.at(5.0, -5.0)], WHITE)
+
+    def side_hair(d) -> None:
+        K.poly(d, [K.at(20.0, -6.0), K.at(0.6, -6.0), K.at(0.8, -2.4), K.at(1.2, 1.0), K.at(-1.2, 1.4), K.at(-3.8, 3.6), K.at(-4.4, 6.6),
+                   K.at(-20.0, 6.6), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+        K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, -5.4), K.at(5.0, -5.4), K.at(-11.0, -6.0), K.at(-20.0, -4.0)], CAP)
+        K.poly(d, [K.at(5.0, -6.0), K.at(15.0, -4.0), K.at(15.0, -2.0), K.at(5.0, -4.6)], CAP_DARK)
+        K.line(d, [K.at(-10.0, -6.4), K.at(5.0, -6.2)], CAP_DARK, 0.7)
+
+    def side_face(d) -> None:
+        K.poly(d, [K.at(0.6, 5.0), K.at(9.4, 6.0), K.at(8.6, 10.6), K.at(4.0, 11.8), K.at(0.8, 9.0)], mix(skin[0], HAIR, 0.22))
+
+    side_head = R.make_head(K, ("craig_side",), *skin, skull=(0.0, -2.4, 9.2, 9.0), jaw=(3.4, 4.2, 6.8, 7.6),
+                            nose=((8.0, -0.8), (11.2, 3.0), (10.6, 4.6), (8.0, 5.0)), ear=(-1.6, 1.0, 2.2, 3.3), shape=side_cap_shape, under=side_hair,
+                            over=side_face, far_shade=False)
+    side_eyes = R.make_eyes(K, (6.2, -0.4), None, ink=INK, white=None, lid=skin[2])
+    side_brows = R.make_brows(K, [(4.2, -3.6), (6.2, -4.2), (8.4, -3.6)], None, HAIR, 1.3)
+    side_mouth = R.make_mouth(K, (8.0, 8.2), (104, 52, 50, 255), wide=0.6)
+    crop = ((0.0, -4.0, -1.2), (8.6, 7.6, 8.8))
+    cap = W.Hat(
+        crown=[O.Ring(-5.4, 0.0, -0.4, 8.8, 9.0), O.Ring(-8.8, 0.0, -0.8, 9.6, 9.8), O.Ring(-11.4, 0.0, -1.0, 8.6, 8.8), O.Ring(-12.4, 0.0, -1.0, 0.0, 0.0)],
+        # The peak: a brim whose ring is forward of the crown, so only its
+        # front is out of it.
+        brim=[O.Ring(-5.6, 0.0, 1.0, 6.0, 7.4, v=0.0), O.Ring(-5.2, 0.0, 4.6, 6.6, 8.6, droop=1.4, v=1.0), O.Ring(-4.6, 0.0, 4.6, 6.6, 8.6, droop=1.4, v=2.0),
+              O.Ring(-5.0, 0.0, 1.0, 6.0, 7.4, v=3.0)],
+        garment=W.Garment(CAP, CAP_DARK, features=[W.Shade(-0.4)]), under=CAP_DARK,
+        lines=[O.curve([(-9.0, -7.0, 2.0), (0.0, -6.6, 8.6), (9.0, -7.0, 2.0)], CAP_DARK, 0.7)])
+    ROUNDS["craig"] = C.Round(
+        "Craig", C.PersonBody(p, mirror=("head",), heads={"side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"),
+                                                                                 (side_brows(R.brow_mood(pose)), "brows"), (side_mouth(str(pose["mouth"])), "mouth")]}),
+        C.Look(
+            C.auto_head(p, head, eyes, hair=lambda u, v: ((np.abs(u) > 60.0) & (v < 4.0)) | ((np.abs(u) > 100.0) & (v < 6.6)), hair_colour=HAIR,
+                        hair_shade=mix(HAIR, INK, 0.3), volumes=[crop]),
+            C.auto_trunk(p, [W.Opening(24.0, SHIRT, top=top - 1.0, bottom=2.0), W.Opening(24.0, TROUSER, top=2.0), W.Patch(-24.0, 24.0, 2.0, 4.8, TROUSER_DARK),
+                             W.Lapels(24.0, top, -20.0, 12.0, JACKET_LIGHT, line=JACKET_DARK), W.Down(24.0, -20.0, 11.0, JACKET_DARK),
+                             W.Down(-24.0, -20.0, 11.0, JACKET_DARK), W.Patch(33.0, 55.0, -24.0, -19.6, mix(JACKET, JACKET_DARK, 0.4)),
+                             W.Across(33.0, 55.0, -22.6, JACKET_DARK), W.Dot(-18.0, 7.2, 2.0, TROUSER, GOLD), W.Down(180.0, top + 4.0, 11.0, JACKET_DARK)]),
+            head_pieces=[cap]),
+        # His thumbs in his belt.
+        C.Stance(hands={"r": C.Hand(at=(-8.4, -2.0, 6.4), pole=(-1.0, -0.2, -0.3), mode="fist"), "l": C.Hand(at=(8.4, -2.0, 6.4), pole=(1.0, -0.2, -0.3), mode="fist")},
+                 stagger=2.0))
     _meta("craig", "Craig", ["hub", "peaceful", "cryptography_crew", "cracker"],
           "Craig is the password-cracker role sometimes added to cryptographic casts. He is not a specific person: his ordinary name hides a "
           "specialist who attacks weak secrets by guessing, searching, and exploiting what users thought nobody would try.",
@@ -450,8 +498,8 @@ def _eve() -> None:
 
     head = R.make_head(K, ("eve",), *skin, skull=(0.0, -2.2, 7.6, 8.6), jaw=(2.4, 3.4, 5.0, 6.4), nose=((7.2, 1.0), (8.6, 3.0), (8.2, 3.8), (7.2, 4.0)),
                        ear=None, shape=hood_shape, under=hood)
-    _face(p, head, R.make_eyes(K, (2.6, -0.2), (7.4, -0.4), ink=INK, white=None, lid=INK, size=0.9),
-          R.make_brows(K, [(0.6, -3.6), (2.6, -4.3), (4.6, -4.0)], [(6.0, -4.1), (7.4, -4.4), (8.6, -4.0)], HAIR, 0.7),
+    eyes = R.make_eyes(K, (2.6, -0.2), (7.4, -0.4), ink=INK, white=None, lid=INK, size=0.9)
+    _face(p, head, eyes, R.make_brows(K, [(0.6, -3.6), (2.6, -4.3), (4.6, -4.0)], [(6.0, -4.1), (7.4, -4.4), (8.6, -4.0)], HAIR, 0.7),
           R.make_mouth(K, (5.6, 6.8), (140, 60, 76, 255), wide=0.7, lips=(206, 112, 124, 255)))
 
     def lock(ctx) -> List[Stamp]:
@@ -540,6 +588,54 @@ def _eve() -> None:
         return out
 
     p.effects = effects
+
+    # ---- In the round: her hood up round her face, her cloak behind her,
+    # the lock of hair in front of her near shoulder, the belt and strap of
+    # her dress; her head in the hood from the side drawn by the cast's
+    # makers.
+    def side_hood_shape(d) -> None:
+        K.oval(d, K.at(-2.0, -3.6), 10.8, 10.6, WHITE)
+        K.poly(d, [K.at(-9.6, -8.0), K.at(-14.4, -2.0), K.at(-10.4, 6.6), K.at(-4.0, 9.4), K.at(2.4, 8.4)], WHITE)
+
+    def side_hood(d) -> None:
+        K.poly(d, [K.at(20.0, -8.8), K.at(9.4, -8.8), K.at(5.4, -9.6), K.at(2.0, -8.2), K.at(0.0, -5.0), K.at(-0.6, 0.0), K.at(0.0, 5.0), K.at(1.6, 9.6),
+                   K.at(3.6, 20.0), K.at(-20.0, 20.0), K.at(-20.0, -26.0), K.at(20.0, -26.0)], CLOAK)
+        K.line(d, [K.at(9.4, -9.0), K.at(5.2, -9.8), K.at(1.8, -8.2), K.at(-0.2, -5.0), K.at(-0.8, 0.0), K.at(-0.2, 5.0), K.at(1.4, 9.6)], DRESS_LIGHT, 1.0)
+        K.line(d, [K.at(-9.6, -6.0), K.at(-11.6, -2.0), K.at(-9.2, 4.6)], CLOAK_DARK, 0.7)
+        K.poly(d, [K.at(2.0, -8.0), K.at(9.4, -8.6), K.at(10.4, -4.0), K.at(7.8, -6.6), K.at(4.4, -6.0), K.at(1.6, -2.0), K.at(0.8, 4.6), K.at(0.0, 0.0),
+                   K.at(0.4, -5.0)], HAIR)
+        K.line(d, [K.at(5.4, -8.2), K.at(2.4, -5.0), K.at(1.0, 1.0)], HAIR_LIGHT, 0.5)
+
+    side_head = R.make_head(K, ("eve_side",), *skin, skull=(0.0, -2.2, 8.6, 8.6), jaw=(3.2, 3.4, 5.6, 6.4), nose=((8.0, 1.0), (9.4, 3.0), (9.0, 3.8), (8.0, 4.0)),
+                            ear=None, shape=side_hood_shape, under=side_hood, far_shade=False)
+    side_eyes = R.make_eyes(K, (6.6, -0.2), None, ink=INK, white=None, lid=INK, size=0.9)
+    side_brows = R.make_brows(K, [(4.6, -3.8), (6.6, -4.4), (8.4, -4.0)], None, HAIR, 0.7)
+    side_mouth = R.make_mouth(K, (7.8, 6.8), (140, 60, 76, 255), wide=0.5, lips=(206, 112, 124, 255))
+    hood_3d = ((0.0, -3.4, -2.2), (10.2, 10.8, 9.4))
+    edge = O.curve([O.on_ellipsoid(*hood_3d, sx * 52.0, v, 0.3)[0] for sx, v in [(-1.0, 9.0), (-1.0, 4.0), (-1.0, -2.0), (-1.0, -7.0), (-0.5, -10.4), (0.0, -11.2),
+                                                                                (0.5, -10.4), (1.0, -7.0), (1.0, -2.0), (1.0, 4.0), (1.0, 9.0)]], DRESS_LIGHT, 1.0)
+    cloak_3d = W.Cloak(rings=[O.Ring(top + 1.0, 0.0, -0.6, 5.0, 4.4), O.Ring(top + 6.0, 0.0, -1.0, 9.6, 7.6), O.Ring(-10.0, 0.0, -1.4, 10.0, 8.0),
+                              O.Ring(30.0, 0.0, -2.0, 12.4, 9.6)],
+                       garment=W.Garment(CLOAK, CLOAK_DARK, radius=10.0, features=[W.Down(160.0, top + 8.0, 28.0, CLOAK_DARK), W.Down(-160.0, top + 8.0, 28.0, CLOAK_DARK)]),
+                       turns=(115.0, 245.0))
+    lock_3d = W.Mane([(-6.4, 7.0, -0.6), (-7.0, 12.0, 1.2), (-7.4, 17.0, 2.4), (-7.4, 22.0, 2.8)], 3.6, HAIR, HAIR_LIGHT, lead=0.5)
+    ROUNDS["eve"] = C.Round(
+        "Eve", C.PersonBody(p, back_layers=("back",), mirror=("head",),
+                            heads={"side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"), (side_brows(R.brow_mood(pose)), "brows"),
+                                                         (side_mouth(str(pose["mouth"])), "mouth")]}),
+        C.Look(
+            # The hood: all of her head but her face, and a soft point behind.
+            C.auto_head(p, head, eyes, hair=lambda u, v: ~((np.abs(u) < 50.0) & (v > -8.6)), hair_colour=CLOAK, hair_shade=CLOAK_DARK,
+                        volumes=[hood_3d, ((0.0, -4.0, -9.6), (4.4, 5.0, 4.4))], lines=[edge]),
+            C.auto_trunk(p, [W.Band(-14.6, -11.6, DRESS_DARK), W.Dot(0.0, -13.0, 1.4, GOLD), W.Dot(0.0, top + 3.0, 1.4, GOLD),
+                             W.Path([(-40.0, top + 5.0), (0.0, -14.0), (40.0, -6.0)], STRAP, 0.75), W.Down(-25.0, -4.0, 30.0, DRESS_DARK, spread=8.0),
+                             W.Down(0.0, -4.0, 30.0, DRESS_DARK), W.Down(25.0, -4.0, 30.0, DRESS_DARK, spread=8.0), W.Band(31.0, 36.0, DRESS_LIGHT)]),
+            back_pieces=[cloak_3d], pieces=[("lock", lock_3d)]),
+        # She listens: her near hand at her ear, as she stands in her idle
+        # row (what she is); the other holds her elbow.
+        C.Stance(hands={"r": C.Hand(at=(-10.2, -46.4, -0.6), pole=(-1.0, 0.3, 0.3), mode="flat"),
+                        "l": C.Hand(at=(-2.0, -12.0, 7.0), pole=(1.0, 0.4, -0.4), mode="soft")},
+                 stagger=1.6))
     _meta("eve", "Eve", ["hub", "peaceful", "cryptography_crew", "eavesdropper"],
           "Eve is the conventional passive eavesdropper in cryptography examples, turned into a quiet character who listens without changing the "
           "channel. Her name comes from eavesdropping, not from a specific historical woman; the characterization should make observation itself "
@@ -609,7 +705,8 @@ def _judy() -> None:
 
     head = R.make_head(K, ("judy",), *skin, skull=(0.0, -2.0, 8.2, 8.6), jaw=(2.2, 3.8, 6.6, 6.8), nose=((7.6, 0.6), (9.8, 3.0), (9.6, 4.2), (7.6, 4.4)),
                        ear=None, shape=wig_shape, under=wig, over=over)
-    _face(p, head, R.make_eyes(K, (2.0, -0.6), (7.4, -0.8), ink=INK, iris=(64, 38, 30, 255), size=0.9, lash=0.4),
+    eyes = R.make_eyes(K, (2.0, -0.6), (7.4, -0.8), ink=INK, iris=(64, 38, 30, 255), size=0.9, lash=0.4)
+    _face(p, head, eyes,
           R.make_brows(K, [(-0.2, -4.0), (2.0, -4.8), (4.4, -4.0)], [(5.8, -4.2), (7.4, -4.8), (8.8, -4.2)], (60, 50, 54, 255), 1.0),
           R.make_mouth(K, (5.8, 7.0), (110, 34, 44, 255), wide=0.85, lips=(168, 54, 62, 255)), glasses)
 
@@ -703,6 +800,66 @@ def _judy() -> None:
         return out
 
     p.effects = effects
+
+    # ---- In the round: her head from the side drawn as the cast draws a
+    # head in the numbers of a profile (the wig and its curls down behind,
+    # one lens and its arm, the second line under her chin); the wig in 3D
+    # as a mass and rolls of curl each side and behind; her robe from the
+    # numbers of her makers, with the red of her office and the lace.
+    def side_wig_shape(d) -> None:
+        K.oval(d, K.at(-2.0, -4.6), 11.0, 9.8, WHITE)
+        for x, y, r in ((-10.0, 2.0, 3.6), (-9.6, 7.2, 3.4), (-8.0, 12.0, 3.2), (-3.6, 11.4, 2.8)):
+            K.oval(d, K.at(x, y), r, r * 0.9, WHITE)
+
+    def side_wig(d) -> None:
+        K.poly(d, [K.at(20.0, -8.0), K.at(9.6, -8.0), K.at(5.8, -8.8), K.at(2.2, -7.6), K.at(0.4, -5.0), K.at(-0.4, -1.0), K.at(0.0, 4.0), K.at(0.8, 8.0),
+                   K.at(1.2, 20.0), K.at(-20.0, 20.0), K.at(-20.0, -26.0), K.at(20.0, -26.0)], WIG)
+        for x, y, r in ((-10.0, 2.0, 2.6), (-9.6, 7.2, 2.4), (-8.0, 12.0, 2.2), (-3.8, 11.4, 1.9), (-7.4, -4.0, 2.6), (-3.0, -9.4, 2.4), (2.8, -10.8, 2.2),
+                        (-3.2, 3.0, 2.2)):
+            K.oval(d, K.at(x, y), r, r * 0.85, None, WIG_DARK, 0.6)  # type: ignore[arg-type]
+
+    def side_over(d) -> None:
+        K.line(d, [K.at(2.6, 10.6), K.at(5.6, 11.6), K.at(8.4, 10.4)], mix(skin[0], skin[2], 0.5), 0.5)
+        K.line(d, [K.at(3.6, 3.0), K.at(4.8, 6.0)], mix(skin[0], skin[2], 0.45), 0.5)
+        K.oval(d, K.at(1.4, 6.0), 0.9, 1.1, GOLD)
+
+    def side_glasses():
+        # One lens and the arm of her glasses back into her wig.
+        def paint(d) -> None:
+            K.rrect(d, K.home[0] + 5.0, K.home[1] - 2.2, K.home[0] + 8.4, K.home[1] + 1.2, 0.8, (236, 244, 250, 120), GOLD_DARK, 0.6)
+            K.line(d, [K.at(5.0, -0.8), K.at(0.2, -1.2)], GOLD_DARK, 0.6)
+
+        return K.piece(("judy_side_glasses",), paint)
+
+    side_head = R.make_head(K, ("judy_side",), *skin, skull=(0.0, -2.0, 9.2, 8.6), jaw=(3.0, 3.8, 7.0, 6.8), nose=((8.2, 0.6), (10.4, 3.0), (10.2, 4.2), (8.2, 4.4)),
+                            ear=None, shape=side_wig_shape, under=side_wig, over=side_over, far_shade=False)
+    side_eyes = R.make_eyes(K, (6.6, -0.6), None, ink=INK, iris=(64, 38, 30, 255), size=0.9, lash=0.4)
+    side_brows = R.make_brows(K, [(4.6, -4.2), (6.6, -4.8), (8.8, -4.2)], None, (60, 50, 54, 255), 1.0)
+    side_mouth = R.make_mouth(K, (8.0, 7.0), (110, 34, 44, 255), wide=0.6, lips=(168, 54, 62, 255))
+
+    wig_3d = ((0.0, -4.6, -1.4), (10.4, 9.6, 9.8))
+    curls = ([((sx * x, y, -1.0), (r, r * 0.9, r)) for sx in (-1.0, 1.0) for x, y, r in ((9.4, 2.0, 3.6), (9.2, 7.2, 3.4), (8.2, 12.0, 3.2))]
+             + [((x, y, -7.6), (3.6, 3.4, 3.2)) for x, y in ((-5.2, 3.0), (0.4, 2.2), (5.6, 3.4), (-2.6, 9.0), (3.0, 8.4))])
+
+    def curl(centre, radii):
+        # The dark ring of a curl, on its outside.
+        out = np.array([centre[0], 0.0, centre[2] + 4.0])
+        out /= np.linalg.norm(out)
+        return O.circle(tuple(np.asarray(centre) + out * 0.8 * radii[0]), tuple(out), radii[0] * 0.55, WIG_DARK, 0.6, slack=1.0)
+
+    ROUNDS["judy"] = C.Round(
+        "Judy", C.PersonBody(p, heads={"side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"),
+                                                             (side_brows(R.brow_mood(pose)), "brows"), (side_mouth(str(pose["mouth"])), "mouth"),
+                                                             (side_glasses(), "glasses")]}),
+        C.Look(
+            C.auto_head(p, head, eyes, hair=lambda u, v: (v < -7.6 + 1.6 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | (np.abs(u) > 58.0),
+                        hair_colour=WIG, hair_shade=WIG_DARK, volumes=[wig_3d] + curls, lines=[curl(c, r) for c, r in curls]),
+            C.auto_trunk(p, [W.Strip(27.0, top + 1.0, hem + 4.0, 1.6, STOLE, flare=0.9), W.Strip(-27.0, top + 1.0, hem + 4.0, 1.6, STOLE, flare=0.9),
+                             W.Strip(0.0, top - 1.0, top + 13.0, 3.6, LACE, flare=-3.6), W.Down(60.0, 2.0, hem - 4.0, ROBE_LIGHT),
+                             W.Down(-60.0, 2.0, hem - 4.0, ROBE_LIGHT), W.Down(180.0, top + 4.0, hem, ROBE_DARK)])),
+        # Her hands one on the other, in front of her.
+        C.Stance(hands={"r": C.Hand(l=-1.0, pole=(-0.8, 0.2, -0.6)), "l": C.Hand(l=2.0, pole=(0.8, 0.2, -0.6))}, stagger=1.4))
+
     _meta("judy", "Judy", ["hub", "peaceful", "cryptography_crew", "judge"],
           "Judy is the judge or adjudicator role used in cryptographic protocol stories. She personifies the neutral party asked to decide which "
           "claimant, signature, transcript, or story is authentic when other participants disagree.",
@@ -782,7 +939,8 @@ def _mallory() -> None:
 
     head = R.make_head(K, ("mallory",), *skin, skull=(0.0, -2.4, 7.6, 8.8), jaw=(2.6, 4.0, 5.0, 7.2), nose=((7.2, 0.8), (8.6, 3.0), (8.2, 3.8), (7.2, 4.0)),
                        ear=None, shape=hair_shape, under=hair, over=over)
-    _face(p, head, R.make_eyes(K, (1.6, -0.4), (7.2, -0.6), ink=INK, iris=(70, 140, 130, 255), size=0.85, lash=0.25),
+    eyes = R.make_eyes(K, (1.6, -0.4), (7.2, -0.6), ink=INK, iris=(70, 140, 130, 255), size=0.85, lash=0.25)
+    _face(p, head, eyes,
           R.make_brows(K, [(-0.8, -4.2), (1.8, -4.4), (4.6, -3.2)], [(5.8, -3.4), (7.2, -4.4), (8.6, -4.2)], (92, 40, 38, 255), 0.9),
           R.make_mouth(K, (5.6, 7.6), (120, 52, 56, 255), wide=0.8))
 
@@ -938,6 +1096,109 @@ def _mallory() -> None:
         return out
 
     p.effects = effects
+
+    # ---- In the round. The listening piece is at her right ear only, so her
+    # head is not the same on both sides: her left three-quarter view and her
+    # left side are her head without it, and her coat (straps, pouch, the
+    # lining at the far side) is not mirrored. Her head from the side is
+    # drawn as the cast draws a head in the numbers of a profile; her braid
+    # hangs through 3D points, drawn as her own braid is.
+    def no_piece(d) -> None:
+        K.line(d, [K.at(0.4, 2.6), K.at(2.4, 6.4)], mix(skin[0], skin[2], 0.5), 0.5)
+
+    left_head = R.make_head(K, ("mallory_left",), *skin, skull=(0.0, -2.4, 7.6, 8.8), jaw=(2.6, 4.0, 5.0, 7.2),
+                            nose=((7.2, 0.8), (8.6, 3.0), (8.2, 3.8), (7.2, 4.0)), ear=None, shape=hair_shape, under=hair, over=no_piece)
+    brows = R.make_brows(K, [(-0.8, -4.2), (1.8, -4.4), (4.6, -3.2)], [(5.8, -3.4), (7.2, -4.4), (8.6, -4.2)], (92, 40, 38, 255), 0.9)
+    mouth = R.make_mouth(K, (5.6, 7.6), (120, 52, 56, 255), wide=0.8)
+
+    def side_hair_shape(d) -> None:
+        K.oval(d, K.at(-1.6, -4.4), 9.6, 8.6, WHITE)
+        K.poly(d, [K.at(-6.4, -9.0), K.at(-2.4, -14.6), K.at(7.6, -14.0), K.at(9.8, -10.0), K.at(6.4, -8.0)], WHITE)
+
+    def side_hair(d) -> None:
+        K.poly(d, [K.at(20.0, -9.6), K.at(8.2, -9.6), K.at(4.4, -8.0), K.at(1.6, -5.6), K.at(0.6, -3.4), K.at(-0.6, -1.6), K.at(-3.0, -1.4), K.at(-3.6, 3.4),
+                   K.at(-2.4, 4.6), K.at(-2.0, 6.6), K.at(-20.0, 6.6), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+        for strand in ([(7.0, -10.4), (0.4, -8.6), (-6.4, -3.6)], [(3.4, -11.8), (-3.6, -9.6), (-8.0, -4.0)], [(-5.0, -1.0), (-7.4, 1.6)]):
+            K.line(d, [K.at(x, y) for x, y in strand], HAIR_DARK, 0.6)
+
+    def side_piece(d) -> None:
+        K.line(d, [K.at(3.0, 2.6), K.at(4.6, 6.4)], mix(skin[0], skin[2], 0.5), 0.5)
+        K.line(d, [K.at(-1.4, 1.8), K.at(3.0, 5.8), K.at(5.8, 6.6)], STEEL, 0.8)
+        K.oval(d, K.at(-1.6, 1.0), 2.5, 2.9, BRASS, OUTLINE, 0.6)
+        K.oval(d, K.at(-1.6, 1.0), 1.1, 1.3, BRASS_DARK)
+        K.line(d, [K.at(-2.4, -1.8), K.at(-1.2, -6.4)], STEEL, 0.8)
+
+    def side_bare(d) -> None:
+        K.line(d, [K.at(3.0, 2.6), K.at(4.6, 6.4)], mix(skin[0], skin[2], 0.5), 0.5)
+
+    def side_head(piece: bool):
+        made = R.make_head(K, ("mallory_side", piece), *skin, skull=(0.0, -2.4, 8.6, 8.8), jaw=(3.4, 4.0, 5.6, 7.2),
+                           nose=((8.0, 0.8), (9.4, 3.0), (9.0, 3.8), (8.0, 4.0)), ear=None, shape=side_hair_shape, under=side_hair,
+                           over=side_piece if piece else side_bare, far_shade=False)
+        side_eyes = R.make_eyes(K, (6.2, -0.4), None, ink=INK, iris=(70, 140, 130, 255), size=0.85, lash=0.25)
+        side_brows = R.make_brows(K, [(4.2, -4.0), (6.2, -4.4), (8.4, -3.6)], None, (92, 40, 38, 255), 0.9)
+        side_mouth = R.make_mouth(K, (7.8, 7.6), (120, 52, 56, 255), wide=0.5)
+        return lambda pose: [(made(), "head"), (side_eyes(str(pose["eyes"])), "eyes"), (side_brows(R.brow_mood(pose)), "brows"),
+                             (side_mouth(str(pose["mouth"])), "mouth")]
+
+    def braid_3d(chains):
+        pts_rel = chains[0]
+
+        def paint(d) -> None:
+            pts = [K.at(x, y) for x, y in pts_rel]
+            K.stroke(d, pts, OUTLINE, 5.0 + 2.4)
+            K.stroke(d, pts, HAIR, 5.0)
+            for k in range(1, len(pts), 2):
+                K.oval(d, pts[k], 2.9, 2.9, BRASS_DARK)
+                K.oval(d, pts[k], 2.0, 2.0, BRASS)
+            K.oval(d, pts[-1], 3.2, 3.2, OUTLINE)
+            K.oval(d, pts[-1], 2.2, 2.2, STEEL)
+
+        return K.aligned(("mallory_braid_3d", tuple(tuple(round(c, 1) for c in q) for q in pts_rel)), paint)
+
+    hy = p.b.neck[1] + p.b.head_up[1]
+    # It hangs from the back of her head down her back, on her coat.
+    braid_points = [(0.0, hy - 1.0, -7.4), (0.0, hy + 4.0, -8.6), (0.0, hy + 10.0, -9.2), (0.0, hy + 16.0, -9.4), (0.0, hy + 22.0, -9.4),
+                    (0.0, hy + 28.0, -9.4), (0.0, hy + 33.0, -9.2), (0.0, hy + 38.0, -9.0)]
+
+    class FrontBraid:
+        """Her braid from the front, as her front rows draw it
+        (``front_braid``): out to one side past her shoulder, behind it."""
+
+        def piece(self, K_, J, head_at):
+            def draw(view, far):
+                if abs(O.facing(view)) > 10.0:
+                    return None
+                return front_braid((0.0, 0.0))[0][0], 0.0, False
+
+            return O.Sprite("front_braid", (0.0, 0.0, 0.0), draw, lead=-12.0)
+
+    radius = 8.0
+    at = lambda x: math.degrees(x / radius)  # noqa: E731
+    ROUNDS["mallory"] = C.Round(
+        "Mallory", C.PersonBody(p, back_layers=("back",), mirror=(),
+                                heads={"left": lambda pose: [(left_head(), "head"), (eyes(str(pose["eyes"])), "eyes"), (brows(R.brow_mood(pose)), "brows"),
+                                                             (mouth(str(pose["mouth"])), "mouth")],
+                                       "side": side_head(True), "side_left": side_head(False)}),
+        C.Look(
+            C.auto_head(p, head, eyes, hair=lambda u, v: (v < -5.6 - 2.0 * np.clip(np.abs(u) / 50.0, 0.0, 1.0)) | ((np.abs(u) > 72.0) & (v < 3.4))
+                        | ((np.abs(u) > 100.0) & (v < 6.6)),
+                        hair_colour=HAIR, hair_shade=HAIR_DARK, volumes=[((0.0, -4.8, -1.0), (8.2, 7.6, 8.4)), ((0.0, -10.4, 2.2), (5.6, 3.8, 6.4))],
+                        lines=[O.curve([O.on_ellipsoid((0.0, -4.8, -1.0), (8.2, 7.6, 8.4), u, v, 0.2)[0] for v in (-11.6, -6.0, -1.0)], HAIR_DARK, 0.6)
+                               for u in (-150.0, -110.0, 110.0, 150.0, 180.0)]
+                        + [O.circle((-8.2, 1.0, -0.4), (-1.0, 0.0, 0.0), 2.4, OUTLINE, 0.6, fill=BRASS, slack=1.4)]),
+            C.auto_trunk(p, [W.Band(top - 1.0, top + 3.4, COAT_DARK), W.Path([(at(-7.0), top + 5.0), (at(7.0), -15.0)], TEAL, 0.85),
+                             W.Path([(at(7.0), top + 5.0), (at(-7.0), -15.0)], BRASS, 0.75), W.Dot(0.0, top + 14.6, 2.0, LINING, ring=OUTLINE),
+                             W.Dot(0.0, top + 14.6, 0.8, BRASS), W.Dot(at(-6.0), top + 9.0, 0.7, STEEL), W.Dot(at(6.0), top + 9.0, 0.7, STEEL),
+                             W.Dot(at(-5.6), -18.0, 0.7, STEEL), W.Dot(at(5.6), -18.0, 0.7, STEEL), W.Band(-14.6, -11.6, (60, 54, 62, 255)),
+                             W.Patch(at(-2.0), at(2.0), -15.4, -10.8, BRASS), W.Patch(at(-7.4), at(-3.6), -11.0, -5.6, (70, 60, 66, 255)),
+                             W.Strip(0.0, -10.6, 26.0, 0.8, LINING, flare=1.8), W.Down(0.0, -10.6, 26.0, LINING_DARK),
+                             W.Down(180.0, top + 4.0, 26.0, COAT_DARK)], radius=radius),
+            back_pieces=[W.Chains("braid", [braid_points], braid_3d, lead=1.0), FrontBraid()]),
+        # Her arms folded.
+        C.Stance(hands={"r": C.Hand(at=(4.0, -20.0, 7.6), pole=(-1.0, 0.2, -0.4), mode="fist"),
+                        "l": C.Hand(at=(-4.0, -19.0, 7.0), pole=(1.0, 0.2, -0.4), mode="fist")}, stagger=1.8))
+
     _meta("mallory", "Mallory", ["hub", "peaceful", "cryptography_crew", "attacker"],
           "Mallory is the conventional malicious active attacker in security examples. Unlike Eve, she intercepts, edits, impersonates, and relays; "
           "the name is a mnemonic for malicious behavior rather than a parody of a real person.",
@@ -992,8 +1253,8 @@ def _olivia() -> None:
 
     head = R.make_head(K, ("olivia",), *skin, skull=(0.0, -2.4, 7.4, 8.8), jaw=(2.6, 3.8, 4.8, 7.2), nose=((7.2, 0.6), (8.8, 3.2), (8.4, 4.0), (7.2, 4.2)),
                        ear=None, shape=veil_shape, under=veil)
-    _face(p, head, R.make_eyes(K, (2.4, -0.2), (7.4, -0.4), ink=INK, iris=(110, 96, 170, 255), size=0.9, lash=0.8),
-          R.make_brows(K, [(0.4, -3.8), (2.4, -4.6), (4.6, -4.2)], [(6.0, -4.3), (7.4, -4.6), (8.6, -4.2)], HAIR, 0.7),
+    eyes = R.make_eyes(K, (2.4, -0.2), (7.4, -0.4), ink=INK, iris=(110, 96, 170, 255), size=0.9, lash=0.8)
+    _face(p, head, eyes, R.make_brows(K, [(0.4, -3.8), (2.4, -4.6), (4.6, -4.2)], [(6.0, -4.3), (7.4, -4.6), (8.6, -4.2)], HAIR, 0.7),
           R.make_mouth(K, (5.6, 7.4), (140, 76, 96, 255), wide=0.7, lips=(190, 124, 150, 255)))
 
     # ---- From the front: her veil round her face and down each side of her
@@ -1081,6 +1342,41 @@ def _olivia() -> None:
         return out
 
     p.effects = effects
+
+    # ---- In the round: her veil over her head and down behind her
+    # shoulders, its gold edge round her face; her long robe with its band,
+    # its three marks and its sash; her hands one in the other in front.
+    def side_veil_shape(d) -> None:
+        K.oval(d, K.at(-2.0, -4.0), 10.2, 9.8, WHITE)
+        K.poly(d, [K.at(-10.4, -6.0), K.at(-13.4, 6.0), K.at(-11.8, 16.0), K.at(-3.8, 14.0), K.at(-0.8, 6.0)], WHITE)
+
+    def side_veil(d) -> None:
+        edge = [(9.4, -9.0), (5.4, -9.8), (2.0, -8.0), (0.4, -4.6), (-0.2, 1.0), (0.4, 6.0), (1.4, 9.0)]
+        K.poly(d, [K.at(20.0, -9.0)] + [K.at(x, y) for x, y in edge] + [K.at(1.4, 30.0), K.at(-20.0, 30.0), K.at(-20.0, -26.0), K.at(20.0, -26.0)], VEIL)
+        K.line(d, [K.at(x, y - 0.2) for x, y in edge[:-1]], GOLD, 0.9)
+        for x0, y0, x1, y1 in ((-4.0, -8.0, -8.6, 8.0), (-7.0, 2.0, -9.8, 14.0)):
+            K.line(d, [K.at(x0, y0), K.at(x1, y1)], VEIL_DARK, 0.6)
+        K.poly(d, [K.at(2.6, -8.0), K.at(8.8, -8.6), K.at(5.2, -6.4), K.at(1.4, -5.0)], HAIR)
+
+    side_head = R.make_head(K, ("olivia_side",), *skin, skull=(0.0, -2.4, 8.4, 8.8), jaw=(3.4, 3.8, 5.4, 7.2),
+                            nose=((8.0, 0.6), (9.6, 3.2), (9.2, 4.0), (8.0, 4.2)), ear=None, shape=side_veil_shape, under=side_veil, far_shade=False)
+    side_eyes = R.make_eyes(K, (6.4, -0.2), None, ink=INK, iris=(110, 96, 170, 255), size=0.9, lash=0.8)
+    side_brows = R.make_brows(K, [(4.4, -3.8), (6.4, -4.6), (8.4, -4.2)], None, HAIR, 0.7)
+    side_mouth = R.make_mouth(K, (7.8, 7.4), (140, 76, 96, 255), wide=0.5, lips=(190, 124, 150, 255))
+    veil_3d = ((0.0, -3.4, -1.8), (9.6, 10.4, 9.0))
+    ROUNDS["olivia"] = C.Round(
+        "Olivia", C.PersonBody(p, heads={"side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"),
+                                                               (side_brows(R.brow_mood(pose)), "brows"), (side_mouth(str(pose["mouth"])), "mouth")]}),
+        C.Look(
+            C.auto_head(p, head, eyes, hair=lambda u, v: ~((np.abs(u) < 50.0) & (v > -8.6)), hair_colour=VEIL, hair_shade=VEIL_DARK, volumes=[veil_3d],
+                        lines=[O.curve([O.on_ellipsoid(*veil_3d, u, -8.0 + 16.0 * max(0.0, (abs(u) - 40.0) / 20.0) if abs(u) > 40.0 else -9.2, 0.3)[0]
+                                        for u in np.linspace(-58.0, 58.0, 13)], GOLD, 0.9)]),
+            C.auto_trunk(p, [W.Strip(0.0, top, hem + 2.0, 2.2, ROBE_LIGHT, flare=1.2)] + [W.Dot(0.0, y, 1.2, SASH) for y in (-24.0, -10.0, -2.0)]
+                         + [W.Band(-17.4, -15.0, SASH), W.Down(35.0, 0.0, hem - 2.0, ROBE_DARK, spread=10.0), W.Down(-35.0, 0.0, hem - 2.0, ROBE_DARK, spread=10.0),
+                            W.Down(180.0, -14.0, hem - 2.0, ROBE_DARK)]),
+            back_pieces=[W.Mane([(0.0, 3.0, -8.6), (0.0, 8.0, -9.4), (0.0, 12.0, -9.8), (0.0, 16.0, -9.6)], 5.0, VEIL, VEIL_DARK, back_width=15.0)]),
+        C.Stance(hands={"r": C.Hand(at=(-1.0, 0.0, 8.0), pole=(-0.6, 0.3, -0.6), mode="flat"), "l": C.Hand(at=(1.6, 1.4, 7.6), pole=(0.6, 0.3, -0.6))},
+                 stagger=1.2))
     _meta("olivia", "Olivia", ["hub", "peaceful", "cryptography_crew", "oracle"],
           "Olivia is the oracle role in cryptographic examples, personified as a character who answers a narrowly defined class of questions "
           "perfectly. The joke is that 'always correct' sounds omniscient until the player notices the exact interface and restrictions around "
@@ -1160,8 +1456,8 @@ def _peggy() -> None:
 
     head = R.make_head(K, ("peggy",), *skin, skull=(0.0, -2.0, 8.0, 8.6), jaw=(2.2, 3.6, 6.2, 6.6), nose=((7.4, 1.0), (9.0, 3.0), (8.6, 3.8), (7.4, 4.0)),
                        ear=None, shape=hair_shape, under=hair)
-    _face(p, head, R.make_eyes(K, (2.0, -0.2), (7.4, -0.4), ink=INK, iris=(80, 48, 30, 255), size=0.9, lash=0.6),
-          R.make_brows(K, [(-0.2, -4.0), (2.0, -4.8), (4.4, -4.2)], [(5.8, -4.4), (7.4, -4.8), (8.8, -4.2)], HAIR, 0.9),
+    eyes = R.make_eyes(K, (2.0, -0.2), (7.4, -0.4), ink=INK, iris=(80, 48, 30, 255), size=0.9, lash=0.6)
+    _face(p, head, eyes, R.make_brows(K, [(-0.2, -4.0), (2.0, -4.8), (4.4, -4.2)], [(5.8, -4.4), (7.4, -4.8), (8.8, -4.2)], HAIR, 0.9),
           R.make_mouth(K, (5.8, 7.0), (130, 40, 56, 255), wide=0.9, lips=(214, 84, 96, 255)), hat)
 
     # ---- From the front: the cut of her coat open on her waistcoat, her
@@ -1241,6 +1537,53 @@ def _peggy() -> None:
         return out
 
     p.effects = effects
+
+    # ---- In the round: her bob and her small top hat; her coat cut away at
+    # her waist in front, open on her waistcoat, her shirt and her bow, and
+    # its two tails behind; one hand at her side, one behind her back. Her
+    # coat is her own ``torso``, which keeps no numbers, so its rings are the
+    # numbers of her front coat.
+    def side_hair_shape(d) -> None:
+        K.oval(d, K.at(-1.8, -4.0), 10.0, 9.2, WHITE)
+        K.poly(d, [K.at(-10.4, -4.0), K.at(-11.0, 7.0), K.at(-2.0, 7.6), K.at(0.4, 0.0)], WHITE)
+
+    def side_hair(d) -> None:
+        K.poly(d, [K.at(20.0, -8.4), K.at(9.4, -8.4), K.at(7.2, -5.6), K.at(3.2, -5.0), K.at(1.4, -3.0), K.at(0.8, 1.0), K.at(1.0, 7.8), K.at(-20.0, 8.0),
+                   K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+        K.line(d, [K.at(4.0, -10.0), K.at(-3.6, -8.6), K.at(-8.2, -2.0), K.at(-8.8, 5.0)], HAIR_LIGHT, 0.7)
+
+    side_head = R.make_head(K, ("peggy_side",), *skin, skull=(0.0, -2.0, 9.0, 8.6), jaw=(3.0, 3.6, 6.8, 6.6),
+                            nose=((8.2, 1.0), (9.8, 3.0), (9.4, 3.8), (8.2, 4.0)), ear=None, shape=side_hair_shape, under=side_hair, far_shade=False)
+    side_eyes = R.make_eyes(K, (6.6, -0.2), None, ink=INK, iris=(80, 48, 30, 255), size=0.9, lash=0.6)
+    side_brows = R.make_brows(K, [(4.2, -4.0), (6.4, -4.8), (8.6, -4.2)], None, HAIR, 0.9)
+    side_mouth = R.make_mouth(K, (8.0, 7.0), (130, 40, 56, 255), wide=0.6, lips=(214, 84, 96, 255))
+    crop, bob = ((0.0, -4.0, -1.0), (8.6, 8.2, 8.6)), ((0.0, -0.4, -2.4), (9.4, 7.8, 7.6))
+    coat = W.Trunk(
+        rings=[O.Ring(top - 0.5, 0.0, 0.3, 3.6, 3.0), O.Ring(top + 3.6, 0.0, 0.4, 7.8, 5.8), O.Ring(top + 12.5, 0.0, 1.2, 9.2, 8.4),
+               O.Ring(-12.0, 0.0, 0.4, 7.8, 6.4), O.Ring(0.0, 0.0, 0.0, 9.4, 8.2), O.Ring(8.0, 0.0, 0.0, 9.6, 8.4)],
+        garment=W.Garment(COAT, COAT_DARK, radius=9.2, features=[
+            W.Opening(36.0, VEST, top=top + 1.0), W.Lapels(36.0, top, -16.0, 12.0, COAT_LIGHT, line=COAT_DARK), W.Neckline(top, top + 12.0, 16.0, SHIRT),
+            W.Glow(10.0, top + 3.4, 1.6, 1.4, COAT, both=True), W.Buttons(0.0, -12.0, 0.0, 3, 0.9, GOLD), W.Down(180.0, top + 4.0, 8.0, COAT_DARK),
+            W.Shade()]),
+        shoulder=((-6.0, sy, 0.2), (4.4, 4.8, 4.4)))
+    tails = W.Cloak([O.Ring(0.0, 0.0, 0.0, 8.8, 7.6), O.Ring(8.0, 0.0, -0.4, 9.2, 8.0), O.Ring(25.0, 0.0, -2.0, 9.8, 8.6)],
+                    W.Garment(COAT, COAT_DARK, [W.Down(180.0, 2.0, 25.0, COAT_DARK, width=0.6), W.Shade()], radius=9.0), turns=(118.0, 242.0))
+    hat_3d = W.Hat(
+        crown=[O.Ring(-9.4, 0.0, -1.0, 5.6, 5.0), O.Ring(-18.0, 0.0, -1.2, 5.0, 4.6), O.Ring(-19.8, 0.0, -1.2, 4.8, 4.4), O.Ring(-19.8, 0.0, -1.2, 0.0, 0.0)],
+        brim=[O.Ring(-9.6, 0.0, -1.0, 5.6, 5.0, v=0.0), O.Ring(-9.6, 0.0, -1.0, 8.8, 7.6, droop=-1.6, v=1.0),
+              O.Ring(-8.8, 0.0, -1.0, 8.8, 7.6, droop=-1.6, v=2.0), O.Ring(-9.0, 0.0, -1.0, 5.6, 5.0, v=3.0)],
+        garment=W.Garment(HAT, HAT_DARK, features=[W.Band(-13.4, -10.6, COAT), W.Shade(-0.4)]), under=HAT_DARK)
+    ROUNDS["peggy"] = C.Round(
+        "Peggy", C.PersonBody(p, heads={"side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"),
+                                                              (side_brows(R.brow_mood(pose)), "brows"), (side_mouth(str(pose["mouth"])), "mouth"),
+                                                              (hat(), "hat")]}),
+        C.Look(
+            C.auto_head(p, head, eyes, hair=lambda u, v: (v < -5.0) | ((np.abs(u) > 55.0) & (v < 7.6)), hair_colour=HAIR, hair_shade=HAIR_LIGHT,
+                        volumes=[crop, bob],
+                        lines=[O.curve([O.on_ellipsoid(*crop, u + 20.0 * t, -10.0 + 6.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_LIGHT, 0.7)
+                               for u in (-150.0, -90.0, 100.0)]),
+            coat, head_pieces=[hat_3d], pieces=[("trunk", tails)]),
+        C.Stance(hands={"r": C.Hand(l=-8.6, pole=(-0.4, 0.0, -1.0)), "l": C.Hand(at=(1.0, -2.0, -9.6), pole=(1.0, 0.2, 0.0))}, stagger=1.8))
     _meta("peggy", "Peggy", ["hub", "peaceful", "cryptography_crew", "prover"],
           "Peggy is the prover in zero-knowledge proof stories. She can convince Victor that she knows a secret without revealing the secret "
           "itself, turning an abstract protocol role into a confident performer whose best demonstrations teach the observer nothing except that "
@@ -1301,7 +1644,8 @@ def _sybil() -> None:
 
     head = R.make_head(K, ("sybil",), *skin, skull=(0.0, -2.2, 7.8, 8.8), jaw=(2.6, 3.8, 5.4, 7.0), nose=((7.4, 0.6), (9.4, 3.0), (9.2, 4.0), (7.4, 4.2)),
                        ear=(-4.6, 1.2, 1.9, 2.6), shape=hair_shape, under=hair, over=hoop)
-    _face(p, head, R.make_eyes(K, (2.0, -0.4), (7.4, -0.6), ink=INK, iris=(170, 110, 44, 255), size=0.95, lash=0.8),
+    eyes = R.make_eyes(K, (2.0, -0.4), (7.4, -0.6), ink=INK, iris=(170, 110, 44, 255), size=0.95, lash=0.8)
+    _face(p, head, eyes,
           R.make_brows(K, [(-0.2, -4.0), (2.0, -4.8), (4.4, -4.0)], [(5.8, -4.2), (7.4, -4.8), (8.8, -4.2)], HAIR, 1.0),
           R.make_mouth(K, (5.8, 7.4), (96, 30, 60, 255), wide=0.9, lips=(150, 60, 110, 255)))
 
@@ -1390,6 +1734,50 @@ def _sybil() -> None:
         return out
 
     p.effects = effects
+
+    # ---- In the round: her head from the side, drawn by the cast's makers in
+    # the numbers of a profile (the full round of her hair, a hoop under her
+    # ear); 3D for the views her art does not draw.
+
+    def side_hair_shape(d) -> None:
+        K.oval(d, K.at(-2.6, -6.0), 12.4, 11.6, WHITE)
+
+    def side_hair(d) -> None:
+        K.poly(d, [K.at(20.0, -7.6), K.at(9.4, -7.6), K.at(5.8, -8.4), K.at(2.4, -7.0), K.at(0.8, -4.6), K.at(0.6, -1.0), K.at(-1.6, 2.0), K.at(-2.8, 6.0),
+                   K.at(-30.0, 6.0), K.at(-30.0, -30.0), K.at(20.0, -30.0)], HAIR)
+        for k in range(14):
+            a = math.radians(150.0 + k * 17.0)
+            K.oval(d, K.at(-2.6 + 8.6 * math.cos(a) * (0.7 + 0.3 * (k % 2)), -7.0 + 8.0 * math.sin(a) * (0.7 + 0.3 * (k % 2))), 0.9, 0.7, HAIR_LIGHT)
+
+    def side_hoop(d) -> None:
+        K.oval(d, K.at(-1.4, 5.6), 1.9, 2.3, None, GOLD, 0.7)  # type: ignore[arg-type]
+
+    side_head = R.make_head(K, ("sybil_side",), *skin, skull=(0.0, -2.2, 8.8, 8.8), jaw=(3.4, 3.8, 6.0, 7.0),
+                            nose=((8.2, 0.6), (10.2, 3.0), (10.0, 4.0), (8.2, 4.2)), ear=(-1.6, 1.2, 1.9, 2.6), shape=side_hair_shape, under=side_hair,
+                            over=side_hoop, far_shade=False)
+    side_eyes = R.make_eyes(K, (6.6, -0.4), None, ink=INK, iris=(170, 110, 44, 255), size=0.95, lash=0.8)
+    side_brows = R.make_brows(K, [(4.4, -4.0), (6.6, -4.8), (8.8, -4.2)], None, HAIR, 1.0)
+    side_mouth = R.make_mouth(K, (8.2, 7.4), (96, 30, 60, 255), wide=0.6, lips=(150, 60, 110, 255))
+    afro = ((0.0, -6.0, -3.6), (12.0, 11.6, 10.4))
+    ROUNDS["sybil"] = C.Round(
+        "Sybil", C.PersonBody(p, heads={"side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"),
+                                                              (side_brows(R.brow_mood(pose)), "brows"), (side_mouth(str(pose["mouth"])), "mouth")]}),
+        C.Look(
+            # The full round of her hair, larger than her head, with its light;
+            # a gold hoop at each ear.
+            C.auto_head(p, head, eyes, hair=lambda u, v: (v < -7.0 + 1.4 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | (np.abs(u) > 60.0),
+                        hair_colour=HAIR, hair_shade=mix(HAIR, INK, 0.4), volumes=[afro],
+                        lines=[O.circle(*O.on_ellipsoid(*afro, u, v, 0.2), 0.8, None, fill=HAIR_LIGHT, slack=1.0)
+                               for u in range(-165, 180, 30) for v in (-14.0, -8.0, -2.0)]
+                        + [O.circle((7.2 * sx, 5.6, 0.2), (sx, 0.0, 0.2), 2.0, GOLD, 0.7, slack=1.2) for sx in (-1.0, 1.0)]),
+            # Her short jacket open on her shirt; under it her trousers come
+            # up high; two more of her faces at her belt.
+            C.auto_trunk(p, [W.Opening(24.0, SHIRT, top=top, bottom=-12.0), W.Lapels(24.0, top, -16.0, 12.0, JACKET_LIGHT),
+                             W.Band(-12.0, 6.0, TROUSER), W.Band(-12.0, -9.6, SHIRT), W.Down(0.0, -9.6, 6.0, TROUSER_DARK),
+                             W.Dot(-34.0, 4.0, 2.8, MASK_A), W.Dot(-12.0, 5.0, 2.6, MASK_B),
+                             W.Dot(-38.0, 3.4, 0.5, INK), W.Dot(-30.0, 3.4, 0.5, INK), W.Dot(-16.0, 4.4, 0.5, INK), W.Dot(-8.0, 4.4, 0.5, INK)])),
+        # She stands square, her arms down at her sides.
+        C.Stance(hands={"r": C.Hand(l=-7.4, pole=(-0.4, 0.0, -1.0)), "l": C.Hand(l=7.4, pole=(0.4, 0.0, -1.0))}, stagger=1.8))
     _meta("sybil", "Sybil", ["hub", "peaceful", "cryptography_crew", "many_identities"],
           "Sybil personifies a Sybil attack: one actor presenting many apparently independent identities to overwhelm systems that count "
           "participants rather than establishing who they are. The name comes from the established security term, itself derived from the famous "
@@ -1447,7 +1835,8 @@ def _trent() -> None:
     head = R.make_head(K, ("trent",), *skin, skull=(0.0, -2.4, 8.2, 9.0), jaw=(2.6, 4.2, 6.0, 7.4), nose=((7.2, -0.8), (10.6, 3.2), (10.0, 4.8), (7.2, 5.0)),
                        ear=(-5.0, 0.4, 2.2, 3.2), shape=shape, under=under, over=over)
     no_mouth = lambda mode: None  # noqa: E731  (his beard is over it)
-    _face(p, head, R.make_eyes(K, (1.4, -0.6), (7.0, -0.8), ink=INK, white=None, lid=skin[2]),
+    eyes = R.make_eyes(K, (1.4, -0.6), (7.0, -0.8), ink=INK, white=None, lid=skin[2])
+    _face(p, head, eyes,
           R.make_brows(K, [(-1.4, -3.8), (1.4, -4.8), (4.2, -4.0)], [(5.8, -4.2), (7.2, -4.8), (8.8, -4.0)], BEARD, 1.5, under=BEARD_DARK), no_mouth)
 
     # ---- From the front: gold down his robe and round its hem, the chain of
@@ -1535,6 +1924,59 @@ def _trent() -> None:
         return out
 
     p.effects = effects
+
+    # ---- In the round: his head from the side, drawn by the cast's makers in
+    # the numbers of a profile (his cap, the white hair under it behind his
+    # ear, his beard down to his chest); 3D for the views his art does not
+    # draw: the cap as a hat, the beard, his robe with its gold and the chain
+    # of his office.
+
+    def side_shape(d) -> None:
+        K.poly(d, [K.at(-10.4, -8.0), K.at(-9.0, -13.6), K.at(1.0, -15.0), K.at(9.6, -11.6), K.at(9.8, -8.0)], WHITE)
+        K.poly(d, [K.at(-0.4, 4.0), K.at(10.2, 5.0), K.at(9.8, 12.0), K.at(7.2, 20.0), K.at(4.4, 25.0), K.at(1.0, 19.0), K.at(-1.2, 11.0)], WHITE)
+
+    def side_under(d) -> None:
+        K.poly(d, [K.at(0.6, -7.2), K.at(-20.0, -7.2), K.at(-20.0, 5.0), K.at(-3.0, 5.0), K.at(-0.6, 1.4)], BEARD)
+        K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, -7.6), K.at(-20.0, -7.0)], CAP)
+        K.line(d, [K.at(-10.4, -7.2), K.at(10.0, -8.0)], GOLD, 1.0)
+
+    def side_over(d) -> None:
+        K.poly(d, [K.at(0.2, 3.6), K.at(4.4, 5.0), K.at(8.0, 4.6), K.at(11.0, 5.4), K.at(10.8, 12.0), K.at(7.2, 20.0), K.at(4.4, 26.0), K.at(1.0, 19.0),
+                   K.at(-1.2, 11.0)], BEARD)
+        for x0, y0, x1, y1 in ((2.0, 8.0, 3.4, 19.0), (5.0, 9.0, 5.4, 21.0), (8.0, 8.0, 7.0, 17.0)):
+            K.line(d, [K.at(x0, y0), K.at(x1, y1)], BEARD_DARK, 0.6)
+        K.line(d, [K.at(7.4, 7.4), K.at(9.0, 7.9), K.at(10.4, 7.4)], (130, 80, 84, 255), 0.8)
+
+    side_head = R.make_head(K, ("trent_side",), *skin, skull=(0.0, -2.4, 9.2, 9.0), jaw=(3.4, 4.2, 6.6, 7.4),
+                            nose=((8.0, -0.8), (11.4, 3.2), (10.8, 4.8), (8.0, 5.0)), ear=(-1.6, 0.4, 2.2, 3.2), shape=side_shape, under=side_under,
+                            over=side_over, far_shade=False)
+    side_eyes = R.make_eyes(K, (6.4, -0.6), None, ink=INK, white=None, lid=skin[2])
+    side_brows = R.make_brows(K, [(4.0, -3.8), (6.4, -4.8), (8.8, -4.0)], None, BEARD, 1.5, under=BEARD_DARK)
+    cap_3d = W.Hat(crown=[O.Ring(-7.0, 0.0, 0.0, 8.8, 8.8), O.Ring(-11.0, 0.0, -0.4, 9.4, 9.0), O.Ring(-14.0, 0.0, -0.4, 7.8, 7.4),
+                          O.Ring(-15.2, 0.0, -0.4, 4.2, 4.0), O.Ring(-15.4, 0.0, -0.4, 0.0, 0.0)],
+                   brim=None, garment=W.Garment(CAP, mix(CAP, INK, 0.4), [W.Band(-8.0, -6.6, GOLD), W.Shade()]), under=CAP)
+    beard_3d = [O.Ring(4.0, 0.0, 3.0, 6.8, 4.8), O.Ring(9.0, 0.0, 4.4, 6.6, 4.2), O.Ring(14.0, 0.0, 5.2, 5.2, 3.6), O.Ring(20.0, 0.0, 5.6, 3.0, 2.4),
+                O.Ring(25.0, 0.0, 5.4, 0.4, 0.4)]
+    ROUNDS["trent"] = C.Round(
+        "Trent", C.PersonBody(p, heads={"side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"),
+                                                              (side_brows(R.brow_mood(pose)), "brows")]}),
+        C.Look(
+            # White hair under his cap round the back of his head, and his
+            # white beard to his chest.
+            C.auto_head(p, head, eyes, hair=lambda u, v: (np.abs(u) > 62.0) & (v < 5.0), hair_colour=BEARD, hair_shade=BEARD_DARK,
+                        volumes=[((0.0, -1.0, -2.6), (8.6, 6.4, 7.0))], beard=beard_3d,
+                        lines=[O.curve([(x, 9.0, 6.4), (x * 0.9, 16.0, 6.0), (x * 0.6, 21.0, 5.6)], BEARD_DARK, 0.6) for x in (-2.4, 0.0, 2.4)]),
+            # His long robe: gold down its front and round its hem, the chain
+            # of his office and its seal on his chest, the folds of it.
+            C.auto_trunk(p, [W.Strip(0.0, top, hem + 6.0, 1.8, TRIM, flare=0.8), W.Band(hem - 4.0, hem + 6.0, TRIM),
+                             W.Swag(-42.0, 42.0, -15.0, (-15.0 - top - 6.0, -15.0 - top - 6.0), GOLD_DARK, width=0.5),
+                             W.Dot(0.0, -13.0, 2.6, GOLD), W.Dot(0.0, -13.0, 1.0, ROBE_DARK),
+                             W.Down(28.0, 2.0, hem - 6.0, ROBE_LIGHT, spread=6.0), W.Down(-28.0, 2.0, hem - 6.0, ROBE_LIGHT, spread=6.0),
+                             W.Down(180.0, top + 4.0, hem - 4.0, ROBE_DARK)]),
+            head_pieces=[cap_3d]),
+        # His hands in his sleeves, across him.
+        C.Stance(hands={"r": C.Hand(at=(2.4, -14.0, 11.0), pole=(-0.4, 1.0, -0.2), mode="flat"),
+                        "l": C.Hand(at=(-1.6, -15.0, 11.0), pole=(0.4, 1.0, -0.2), mode="flat")}, stagger=1.6))
     _meta("trent", "Trent", ["hub", "peaceful", "cryptography_crew", "trusted_third_party"],
           "Trent is the trusted third party in security examples, personified as an elder whose authority is both useful and dangerously central. "
           "The character should embody the convenience and fragility of a system that works because everyone assumes one person will remain "
@@ -1682,6 +2124,53 @@ def _trudy() -> None:
         return out
 
     p.effects = effects
+
+    # ---- In the round. Her head from the side, drawn as the cast draws a
+    # head in the numbers of a profile: her black hair cut at her jaw, the
+    # fringe straight across, the strip of cloth over her eye.
+    def side_hair_shape(d) -> None:
+        K.oval(d, K.at(-1.8, -4.0), 9.8, 9.0, WHITE)
+        K.poly(d, [K.at(-10.2, -4.0), K.at(-10.6, 5.6), K.at(-3.6, 6.6), K.at(-1.6, 0.0)], WHITE)
+
+    def side_hair(d) -> None:
+        K.poly(d, [K.at(20.0, -5.6), K.at(2.0, -5.2), K.at(0.8, -3.0), K.at(0.4, 1.0), K.at(0.2, 7.0), K.at(-20.0, 7.0), K.at(-20.0, -26.0),
+                   K.at(20.0, -26.0)], HAIR)
+        K.line(d, [K.at(5.4, -10.4), K.at(-3.6, -8.8), K.at(-8.2, -2.0), K.at(-8.6, 4.0)], HAIR_LIGHT, 0.7)
+
+    def side_mask(d) -> None:
+        K.poly(d, [K.at(-0.4, -2.8), K.at(10.2, -3.0), K.at(10.2, 1.6), K.at(-0.2, 2.0)], GLOVE)
+        K.oval(d, K.at(6.6, -0.4), 1.5, 1.2, (240, 240, 236, 255))
+        K.oval(d, K.at(6.9, -0.3), 0.8, 0.9, INK)
+
+    side_head = R.make_head(K, ("trudy_side",), *skin, skull=(0.0, -2.2, 8.6, 8.6), jaw=(3.2, 3.8, 5.8, 6.8),
+                            nose=((8.0, 0.6), (9.8, 3.2), (9.4, 4.2), (8.0, 4.6)), ear=None, shape=side_hair_shape, under=side_hair, over=side_mask,
+                            far_shade=False)
+    side_brows = R.make_brows(K, [(4.0, -4.6), (6.2, -5.2), (8.4, -4.8)], None, HAIR, 0.9)
+    side_mouth = R.make_mouth(K, (7.8, 7.2), (140, 60, 76, 255), wide=0.55, lips=(204, 104, 116, 255))
+
+    def side_layers(pose):
+        return [(side_head(), "head"), (side_brows(R.brow_mood(pose)), "brows"), (side_mouth(str(pose["mouth"])), "mouth")]
+
+    # Her hair: close on top, to her jaw at the sides and behind, the fringe
+    # straight across; the strip of cloth round her head at her eyes.
+    cap, bob = ((0.0, -4.2, -0.8), (8.4, 7.8, 8.4)), ((0.0, -0.6, -2.0), (9.0, 7.6, 7.6))
+    head3 = C.auto_head(p, head, None, hair=lambda u, v: (v < -5.6) | ((np.abs(u) > 55.0) & (v < 7.0)), hair_colour=HAIR, hair_shade=HAIR_LIGHT,
+                        volumes=[cap, bob],
+                        lines=[O.curve([O.on_ellipsoid(*cap, u + 18.0 * t, -10.4 + 4.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_LIGHT, 0.6)
+                               for u in (-140.0, -70.0, 0.0, 70.0, 140.0)])
+    from dataclasses import replace
+
+    head3 = replace(head3, lines=list(head3.lines) + [O.curve([O.on_ellipsoid(*bob, u, -0.4, 0.3)[0] for u in range(-180, 181, 15)], GLOVE, 2.2)])
+    # Her suit from neck to ankle: the zip, its dark collar, her belt with its
+    # pouches.
+    pouch = mix(BELT, INK, 0.3)
+    trunk3 = C.auto_trunk(p, [W.Strip(0.0, top - 1.0, top + 3.0, 3.4, SUIT_DARK), W.Down(0.0, top + 3.0, 6.0, SUIT_LIGHT, width=0.45),
+                              W.Band(-1.0, 2.6, BELT), W.Patch(-47.0, -28.0, 1.0, 6.0, pouch), W.Patch(-22.0, -3.0, 1.0, 6.0, pouch),
+                              W.Patch(25.0, 44.0, 1.0, 6.0, pouch), W.Down(180.0, top + 3.0, 5.0, SUIT_DARK)])
+    # Low and ready: her open hands in front of her, where a wall will be.
+    ROUNDS["trudy"] = C.Round("Trudy", C.PersonBody(p, heads={"side": side_layers}), C.Look(head3, trunk3),
+                              C.Stance(hands={"r": C.Hand(at=(-5.0, -17.0, 15.0), pole=(-1.0, 0.3, -0.3), mode="open"),
+                                              "l": C.Hand(at=(5.0, -20.0, 15.0), pole=(1.0, 0.3, -0.3), mode="open")}, stagger=2.6))
     _meta("trudy", "Trudy", ["hub", "peaceful", "cryptography_crew", "intruder"],
           "Trudy is the intruder role in security examples; the pun is embedded in 'inTRUDer.' She represents unauthorized entry more generally "
           "than Mallory's active channel manipulation and approaches every boundary as a system waiting to be tested.",
@@ -1741,7 +2230,8 @@ def _victor() -> None:
 
     head = R.make_head(K, ("victor",), *skin, skull=(0.0, -2.4, 8.2, 9.0), jaw=(2.6, 4.2, 6.0, 7.6), nose=((7.2, -0.6), (10.4, 3.0), (9.8, 4.8), (7.2, 5.0)),
                        shape=hair_shape, under=hair, over=over)
-    _face(p, head, R.make_eyes(K, (1.4, -0.6), (7.0, -0.8), ink=INK, iris=(50, 30, 24, 255)),
+    eyes = R.make_eyes(K, (1.4, -0.6), (7.0, -0.8), ink=INK, iris=(50, 30, 24, 255))
+    _face(p, head, eyes,
           R.make_brows(K, [(-1.4, -4.4), (1.4, -4.6), (4.2, -3.4)], [(5.6, -3.6), (7.2, -4.8), (8.8, -4.6)], HAIR, 1.3),
           R.make_mouth(K, (5.6, 8.4), (96, 42, 46, 255), wide=0.9))
 
@@ -1837,6 +2327,64 @@ def _victor() -> None:
         return out
 
     p.effects = effects
+
+    # ---- In the round. His head from the side, drawn as the cast draws a
+    # head in the numbers of a profile: his short hair going back from his
+    # brow, the line of his forehead, his ear at the middle of his head.
+    def side_hair_shape(d) -> None:
+        K.oval(d, K.at(-1.4, -5.0), 9.6, 7.6, WHITE)
+
+    def side_hair(d) -> None:
+        K.poly(d, [K.at(20.0, -10.0), K.at(7.2, -10.0), K.at(2.8, -8.6), K.at(1.0, -6.4), K.at(0.8, -3.0), K.at(1.0, 0.4), K.at(-1.0, 0.6), K.at(-3.6, 2.6),
+                   K.at(-3.6, 6.0), K.at(-20.0, 6.0), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+
+    def side_over(d) -> None:
+        K.line(d, [K.at(3.6, -6.6), K.at(6.2, -7.0), K.at(8.4, -6.6)], mix(skin[0], skin[2], 0.5), 0.5)
+
+    side_head = R.make_head(K, ("victor_side",), *skin, skull=(0.0, -2.4, 9.2, 9.0), jaw=(3.4, 4.2, 6.6, 7.6),
+                            nose=((8.0, -0.6), (11.2, 3.0), (10.6, 4.8), (8.0, 5.0)), ear=(-1.6, 1.0, 2.2, 3.3), shape=side_hair_shape, under=side_hair,
+                            over=side_over, far_shade=False)
+    side_eyes = R.make_eyes(K, (6.4, -0.4), None, ink=INK, iris=(50, 30, 24, 255))
+    side_brows = R.make_brows(K, [(4.2, -4.4), (6.2, -4.8), (8.4, -4.2)], None, HAIR, 1.3)
+    side_mouth = R.make_mouth(K, (8.0, 8.4), (96, 42, 46, 255), wide=0.55)
+
+    def side_layers(pose):
+        return [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"), (side_brows(R.brow_mood(pose)), "brows"),
+                (side_mouth(str(pose["mouth"])), "mouth")]
+
+    # His short hair, going back from his brow.
+    crop = ((0.0, -5.0, -0.8), (8.4, 7.4, 8.4))
+    head3 = C.auto_head(p, head, eyes, hair=lambda u, v: (v < -8.6 + 2.0 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 70.0) & (v < 0.0))
+                        | ((np.abs(u) > 100.0) & (v < 6.0)), hair_colour=HAIR, hair_shade=mix(HAIR, WHITE, 0.15), volumes=[crop])
+    # His long coat, buttoned, a line down its front, a scarf end down it,
+    # a pocket, the seam at his back.
+    trunk3 = C.auto_trunk(p, [W.Down(0.0, top + 4.0, 30.0, COAT_DARK, width=0.4), W.Buttons(-11.0, -20.0, 10.0, 4, 1.0, COAT_DARK),
+                              W.Strip(20.0, top + 1.0, -11.6, 2.4, SCARF), W.Across(8.0, 32.0, -22.0, SCARF_DARK, width=0.35),
+                              W.Across(8.0, 32.0, -17.0, SCARF_DARK, width=0.35), W.Across(-50.0, -15.0, 6.0, COAT_DARK),
+                              W.Down(180.0, top + 4.0, 30.0, COAT_DARK)])
+    # His scarf round his neck: his own scarf in his three-quarter views (the
+    # front art has it in its coat), a loft of it in the others.
+    n = p.b.neck[1]
+    neck3 = (0.0, n, O.lift(p.b.neck[0], 0.0))
+    own_scarf = O.Sprite("own_scarf", neck3, lambda view, far: (scarf(), 0.0, O.facing(view) < 0.0) if 30.0 <= abs(O.facing(view)) <= 60.0 else None,
+                         lead=9.5)
+    scarf3 = W.Worn("scarf", [O.Ring(n - 1.6, 0.0, 0.6, 4.8, 4.4), O.Ring(n + 0.2, 0.0, 0.6, 7.6, 7.0), O.Ring(n + 2.0, 0.0, 0.6, 8.0, 7.4),
+                              O.Ring(n + 3.6, 0.0, 0.4, 6.6, 6.0)],
+                    W.Garment(SCARF, SCARF_DARK, features=[W.Across(-180.0, 180.0, n + 1.2, SCARF_DARK, width=0.3), W.Shade(-0.45)]), lead=6.0)
+
+    class _Own:
+        """His own scarf as a piece of the look: it says itself in which
+        views it draws."""
+
+        def piece(self, K_, J, head_):
+            return own_scarf
+
+    # His arms folded, as his front art has them. He will be convinced, but
+    # not yet.
+    ROUNDS["victor"] = C.Round("Victor", C.PersonBody(p, heads={"side": side_layers}),
+                               C.Look(head3, trunk3, back_pieces=[_Own()], pieces=[("trunk", scarf3)]),
+                               C.Stance(hands={"r": C.Hand(at=(5.0, -16.0, 8.5), pole=(-1.0, 0.6, 0.2), mode="fist"),
+                                               "l": C.Hand(at=(-5.0, -14.5, 9.5), pole=(1.0, 0.6, 0.2), mode="fist")}, stagger=2.0))
     _meta("victor", "Victor", ["hub", "peaceful", "cryptography_crew", "verifier"],
           "Victor is the verifier paired with Peggy in zero-knowledge proof examples. He repeatedly becomes convinced that Peggy knows a secret "
           "while learning nothing about the secret itself, making skepticism and disciplined challenge-response his defining traits.",
@@ -1896,8 +2444,8 @@ def _walter() -> None:
 
     head = R.make_head(K, ("walter",), *skin, skull=(0.0, -2.2, 8.6, 9.0), jaw=(2.4, 4.4, 6.8, 7.4), nose=((7.4, -0.6), (10.6, 3.0), (10.2, 4.6), (7.2, 5.0)),
                        shape=cap_shape, under=under, over=over)
-    _face(p, head, R.make_eyes(K, (1.4, -0.4), (7.0, -0.6), ink=INK, white=None, lid=skin[2]),
-          R.make_brows(K, [(-1.4, -3.4), (1.4, -4.0), (4.2, -3.4)], [(5.8, -3.6), (7.2, -4.0), (8.8, -3.4)], HAIR, 1.4),
+    eyes = R.make_eyes(K, (1.4, -0.4), (7.0, -0.6), ink=INK, white=None, lid=skin[2])
+    _face(p, head, eyes, R.make_brows(K, [(-1.4, -3.4), (1.4, -4.0), (4.2, -3.4)], [(5.8, -3.6), (7.2, -4.0), (8.8, -3.4)], HAIR, 1.4),
           R.make_mouth(K, (5.6, 8.8), (104, 52, 50, 255), wide=0.85))
 
     # ---- From the front: two rows of brass buttons, his belt and his keys,
@@ -1976,6 +2524,55 @@ def _walter() -> None:
         return out
 
     p.effects = effects
+
+    # ---- In the round: his head from the side drawn by the cast's makers in
+    # the numbers of a profile (the peaked cap, its badge and its peak, his
+    # wide moustache); his cap, his head and his coat in 3D from the numbers
+    # of his makers. His keys are on his right, so his coat is not mirrored.
+
+    def side_cap_shape(d) -> None:
+        K.poly(d, [K.at(-11.0, -8.6), K.at(-10.4, -15.0), K.at(5.0, -16.6), K.at(10.4, -12.6), K.at(9.6, -8.4)], WHITE)
+        K.poly(d, [K.at(4.0, -7.0), K.at(13.2, -5.0), K.at(13.0, -3.4), K.at(4.0, -4.6)], WHITE)
+
+    def side_under(d) -> None:
+        K.poly(d, [K.at(20.0, -6.6), K.at(1.0, -6.6), K.at(1.2, -2.4), K.at(-1.0, -2.0), K.at(-3.6, 3.4), K.at(-3.4, 6.6), K.at(-20.0, 6.6),
+                   K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+        K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, -6.4), K.at(4.0, -6.4), K.at(-20.0, -7.4)], CAP)
+        K.poly(d, [K.at(-20.0, -10.6), K.at(20.0, -9.4), K.at(20.0, -6.4), K.at(4.0, -6.4), K.at(-20.0, -7.4)], CAP_DARK)
+        K.poly(d, [K.at(4.0, -6.6), K.at(14.0, -4.4), K.at(14.0, -2.6), K.at(4.0, -4.4)], BELT)
+        K.oval(d, K.at(7.0, -11.4), 1.6, 1.8, GOLD)
+
+    def side_over(d) -> None:
+        K.poly(d, [K.at(4.6, 5.6), K.at(8.0, 4.6), K.at(11.2, 5.4), K.at(11.8, 7.2), K.at(8.4, 6.8), K.at(4.4, 7.6)], HAIR)
+
+    side_head = R.make_head(K, ("walter_side",), *skin, skull=(0.0, -2.2, 9.6, 9.0), jaw=(3.2, 4.4, 7.4, 7.4),
+                            nose=((8.2, -0.6), (11.4, 3.0), (11.0, 4.6), (8.0, 5.0)), ear=(-1.6, 1.0, 2.2, 3.2), shape=side_cap_shape, under=side_under,
+                            over=side_over, far_shade=False)
+    side_eyes = R.make_eyes(K, (6.6, -0.4), None, ink=INK, white=None, lid=skin[2])
+    side_brows = R.make_brows(K, [(4.4, -3.4), (6.6, -4.0), (8.8, -3.4)], None, HAIR, 1.4)
+    side_mouth = R.make_mouth(K, (8.2, 8.8), (104, 52, 50, 255), wide=0.55)
+    #: His cap: a crown wide at the top, its dark band and its badge; its
+    #: peak in front only (its back is inside the crown).
+    cap = W.Hat(crown=[O.Ring(-6.4, 0.0, 0.6, 8.8, 8.8), O.Ring(-10.6, 0.0, 0.6, 9.2, 9.2), O.Ring(-14.6, 0.0, 1.2, 10.4, 10.8), O.Ring(-16.2, 0.0, 1.2, 9.6, 10.0),
+                       O.Ring(-16.6, 0.0, 1.2, 0.0, 0.0)],
+                brim=None, garment=W.Garment(CAP, CAP_DARK, [W.Band(-10.6, -6.4, CAP_DARK), W.Dot(0.0, -12.0, 1.8, GOLD), W.Shade(-0.4)]), under=CAP_DARK)
+    peak = W.Worn("peak", [O.Ring(-6.6, 0.0, 3.6, 7.6, 8.8, v=0.0), O.Ring(-5.0, 0.0, 4.4, 7.8, 9.4, droop=1.4, v=1.0), O.Ring(-6.0, 0.0, 3.6, 7.6, 8.8, v=3.0)],
+                  W.Garment(BELT, mix(BELT, INK, 0.5)), on="head")
+    ROUNDS["walter"] = C.Round(
+        "Walter", C.PersonBody(p, mirror=("head",), heads={"side": lambda pose: [(side_head(), "head"), (side_eyes(str(pose["eyes"])), "eyes"),
+                                                                                 (side_brows(R.brow_mood(pose)), "brows"), (side_mouth(str(pose["mouth"])), "mouth")]}),
+        C.Look(
+            # Grey hair under his cap, at his temples and his nape; his wide grey moustache.
+            C.auto_head(p, head, eyes, hair=lambda u, v: (v < -6.4) | ((np.abs(u) > 70.0) & (v < 3.4)) | ((np.abs(u) > 100.0) & (v < 6.6)),
+                        hair_colour=HAIR, hair_shade=mix(HAIR, INK, 0.3), moustache=((0.0, 5.8, 7.8), (5.4, 1.1, 1.7))),
+            # His coat: two rows of brass buttons, its dark collar, the gold at
+            # his near shoulder, his belt and its buckle, his keys on his right.
+            C.auto_trunk(p, [W.Band(top - 1.0, top + 3.6, COAT_DARK), W.Patch(-62.0, -32.0, top + 3.0, top + 6.0, GOLD),
+                             W.Buttons(16.0, -26.0, -12.0, 3, 1.1, GOLD), W.Buttons(-16.0, -26.0, -12.0, 3, 1.1, GOLD), W.Band(-5.4, -2.0, BELT),
+                             W.Patch(-10.0, 10.0, -6.0, -1.4, GOLD), W.Dot(-34.0, 1.4, 2.3, COAT, ring=GOLD), W.Down(180.0, 0.0, 12.0, COAT_DARK)]),
+            head_pieces=[cap, peak]),
+        # His near hand at his belt, his thumb in it; his far hand at his side.
+        C.Stance(hands={"r": C.Hand(at=(-8.4, -3.6, 7.0), pole=(-1.0, 0.0, -0.6), mode="fist"), "l": C.Hand(l=9.8, pole=(0.4, 0.0, -1.0))}, stagger=1.8))
     _meta("walter", "Walter", ["hub", "peaceful", "cryptography_crew", "warden"],
           "Walter is the warden in cryptographic stories about prisoners communicating under surveillance. He reads every message crossing his "
           "desk yet still faces protocols that allow Alice and Bob to coordinate or exchange secrets without exposing their content.",
