@@ -451,17 +451,28 @@ def _front_hood_shape(d) -> None:
     K.poly(d, [K.at(-10.4, 0.0), K.at(-9.0, 10.0), K.at(9.0, 10.0), K.at(10.4, 0.0)], WHITE)
 
 
-def _front_hood(d) -> None:
-    # The blanket is over his head: his face is in the opening of it, with
-    # the fur of its edge round it, and his curls at the top of it.
-    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 20.0), K.at(-20.0, 20.0)], BLANKET)
-    for sx in (-1.0, 1.0):
-        K.poly(d, [K.at(7.6 * sx, -12.0), K.at(11.6 * sx, -4.0), K.at(10.4 * sx, 10.0), K.at(7.6 * sx, 10.0)], BLANKET_DARK)
-    K.oval(d, K.at(0.0, 1.2), 6.6, 8.6, SKIN)
-    K.poly(d, [K.at(-6.0, -4.0), K.at(-4.0, -7.4), K.at(0.0, -8.2), K.at(4.0, -7.4), K.at(6.0, -4.0), K.at(3.6, -5.6), K.at(1.4, -4.6), K.at(-1.0, -5.8), K.at(-3.4, -4.6)],
-           HAIR)
-    ring = [(6.9 * math.cos(math.radians(a)), 1.2 + 9.0 * math.sin(math.radians(a))) for a in range(-200, 21, 20)]
-    _tufts(d, ring, 1.6)
+def _hood_from_front(opening=(1.2, 6.6, 8.6), side: float = 7.6, up: float = 0.0, wide: float = 1.0):
+    """The hood from the front: ``opening`` is the oval his face is in
+    (``(y, half width, half height)``), ``side`` where its dark sides begin,
+    ``up`` and ``wide`` move and widen his curls with the opening."""
+    y, rx, ry = opening
+
+    def paint(d) -> None:
+        # The blanket is over his head: his face is in the opening of it, with
+        # the fur of its edge round it, and his curls at the top of it.
+        K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 20.0), K.at(-20.0, 20.0)], BLANKET)
+        for sx in (-1.0, 1.0):
+            K.poly(d, [K.at(side * sx, -12.0), K.at(11.6 * sx, -4.0), K.at(10.4 * sx, 10.0), K.at(side * sx, 10.0)], BLANKET_DARK)
+        K.oval(d, K.at(0.0, y), rx, ry, SKIN)
+        K.poly(d, [K.at(x * wide, cy - up) for x, cy in ((-6.0, -4.0), (-4.0, -7.4), (0.0, -8.2), (4.0, -7.4), (6.0, -4.0), (3.6, -5.6), (1.4, -4.6), (-1.0, -5.8),
+                                                         (-3.4, -4.6))], HAIR)
+        ring = [((rx + 0.3) * math.cos(math.radians(a)), y + (ry + 0.4) * math.sin(math.radians(a))) for a in range(-200, 21, 20)]
+        _tufts(d, ring, 1.6)
+
+    return paint
+
+
+_front_hood = _hood_from_front()
 
 
 def _front_cold(d) -> None:
@@ -633,6 +644,15 @@ def _side_cold(d) -> None:
     K.oval(d, K.at(5.2, 4.2), 2.0, 1.3, mix(SKIN, NOSE, 0.45))
 
 
+# His head from the front in the round: the hood as far back on his head as
+# the side views have it (Jon, 2026-10-25: "on side views it covers less of
+# the face. make the front view agree. it hides too much"). His front rows
+# keep their own hood.
+_ROUND_FRONT_HEAD = R.front_face(R.make_front_head(K, ("furrier_round",), SKIN, SKIN_DEEP, wide=8.0, jaw=6.8, chin=3.6, shape=_front_hood_shape,
+                                                   hair=_hood_from_front((0.6, 7.8, 10.2), side=8.8, up=1.6, wide=1.2), face=_front_cold),
+                                 R.make_front_eyes(K, ("furrier",), white=None, ink=INK, spread=3.0, y=-0.2), R.make_front_brows(K, ("furrier",), HAIR, spread=3.0, y=-3.2),
+                                 R.make_front_mouth(K, ("furrier",), y=8.0, colour=(118, 67, 65, 255), wide=0.7))
+
 _side_head = R.make_head(K, ("furrier_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.4, 9.0, 9.0), jaw=(3.2, 4.0, 6.4, 7.2),
                          nose=((8.0, -0.8), (10.8, 2.6), (10.4, 4.2), (8.0, 4.6)), ear=None, shape=_side_hood_shape, under=_side_hood, over=_side_cold,
                          far_shade=False)
@@ -642,7 +662,7 @@ _side_mouth = R.make_mouth(K, (8.0, 7.2), (118, 67, 65, 255), wide=0.5)
 
 ROUND = C.Round(
     DISPLAY_NAME, C.PersonBody(X, pose=_WRAPPED, front_layers=("front",),
-                               heads={"side": lambda pose: [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"),
+                               heads={"front": _ROUND_FRONT_HEAD, "side": lambda pose: [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"),
                                                             (_side_brows(R.brow_mood(pose)), "brows"), (_side_mouth(str(pose["mouth"])), "mouth")]}),
     C.Look(
         # The hood: the blanket over all his head but his face, the fur of

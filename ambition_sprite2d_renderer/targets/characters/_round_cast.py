@@ -213,7 +213,8 @@ class PersonBody(Body):
     ``heads``: its head in more views, each ``layers(pose)`` as
     ``head_layers`` is, drawn with the cast's makers: ``"side"`` (from the
     right), and for a head that is not the same on both sides ``"left"`` and
-    ``"side_left"`` (its left, drawn facing right; it is mirrored)."""
+    ``"side_left"`` (its left, drawn facing right; it is mirrored);
+    ``"front"`` in place of its own front head, to agree with the others."""
 
     def __init__(self, person, back_shoe: Optional[Callable[[], object]] = None, *, back_layers: Sequence[str] = (),
                  mirror: Sequence[str] = ("head", "trunk"), anim: str = "idle", heads: Optional[Dict[str, Callable]] = None,
@@ -308,8 +309,8 @@ class PersonBody(Body):
             "trunk": own_art("own_trunk", (0.0, 0.0, 0.0), lambda: p.torso(0, 0), p.front_torso if has_front else None, lead=0.4,
                              mirror="trunk" in self.mirror),
             "head": own_art("own_head", J.head, lambda: O.composed(K, p.head_layers(J.rest)),
-                            (lambda: O.composed(K, p.front_head_layers(dict(FRONT_REST)))) if has_front else None, lead=9.0,
-                            mirror="head" in self.mirror, **{k: (lambda f=f: O.composed(K, f(J.rest))) for k, f in self.heads.items()}),
+                            (lambda: O.composed(K, self.heads.get("front", p.front_head_layers)(dict(FRONT_REST)))) if has_front else None, lead=9.0,
+                            mirror="head" in self.mirror, **{k: (lambda f=f: O.composed(K, f(J.rest))) for k, f in self.heads.items() if k != "front"}),
         }
         if self.back_layers:
             out["back"] = own_layers(p, self.back_layers, anim=self.anim)
