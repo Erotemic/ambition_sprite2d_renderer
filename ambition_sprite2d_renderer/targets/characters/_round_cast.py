@@ -206,13 +206,18 @@ class PersonBody(Body):
     the layers of its own art behind it (a cloak, hair, a staff), drawn in
     its three-quarter view. ``mirror``: which of its head and trunk are the
     same on both sides, so their mirror is its left three-quarter view.
+    ``pose``: what to change in its rest pose to stand as it does in the
+    round (a blanket it is wrapped in at rest). ``front_layers``: the layers
+    of its own art over it (that blanket, its arms inside), drawn in its
+    three-quarter view; its front view has them in its own front art.
     ``heads``: its head in more views, each ``layers(pose)`` as
     ``head_layers`` is, drawn with the cast's makers: ``"side"`` (from the
     right), and for a head that is not the same on both sides ``"left"`` and
     ``"side_left"`` (its left, drawn facing right; it is mirrored)."""
 
     def __init__(self, person, back_shoe: Optional[Callable[[], object]] = None, *, back_layers: Sequence[str] = (),
-                 mirror: Sequence[str] = ("head", "trunk"), anim: str = "idle", heads: Optional[Dict[str, Callable]] = None) -> None:
+                 mirror: Sequence[str] = ("head", "trunk"), anim: str = "idle", heads: Optional[Dict[str, Callable]] = None,
+                 pose: Optional[Dict[str, object]] = None, front_layers: Sequence[str] = ()) -> None:
         self.person = person
         self.K = person.K
         self.frame, self.cx, self.ground, self.hip_up = person.frame, person.cx, person.ground, person.b.hip_up
@@ -228,6 +233,8 @@ class PersonBody(Body):
         self.mirror = tuple(mirror)
         self.anim = anim
         self.heads = dict(heads or {})
+        self.pose = dict(pose or {})
+        self.front_layers = tuple(front_layers)
 
     def joints(self, stagger: float = 0.0) -> SimpleNamespace:
         """The joints standing at rest, lifted from the person's two views:
@@ -241,7 +248,7 @@ class PersonBody(Body):
         person = self.person
         b, U = person.b, person.U
         sw, hw = person.front_span
-        rest = person.full(person.rest)
+        rest = person.full(dict(person.rest, **self.pose))
         foot = hw + FRONT_REST["lf"][0] * U
         up = b.hip_up - b.ankle_up
         head = (0.0, b.neck[1] + b.head_up[1], O.lift(b.neck[0] + b.head_up[0], 0.0))
@@ -261,7 +268,7 @@ class PersonBody(Body):
         return (p[0] - self.cx, p[1] - self.ground + self.hip_up)
 
     def hand_mode(self, near: bool) -> str:
-        return str(self.person.full(self.person.rest)["nh" if near else "fh"])
+        return str(self.person.full(dict(self.person.rest, **self.pose))["nh" if near else "fh"])
 
     def arm(self, name, shoulder, elbow, wrist, mode):
         p, K = self.person, self.K
@@ -306,6 +313,8 @@ class PersonBody(Body):
         }
         if self.back_layers:
             out["back"] = own_layers(p, self.back_layers, anim=self.anim)
+        if self.front_layers:
+            out["front"] = own_layers(p, self.front_layers, anim=self.anim, lead=12.0, in_front=has_front)
         return out
 
     def own_frames(self):
@@ -412,15 +421,19 @@ def lifted_joints(*, shoulders: Tuple[Point, Point], hips: Tuple[Point, Point], 
         neck=(0.0, neck[1], O.lift(neck[0], 0.0)), head=head3, throat=tuple(np.asarray(head3) + throat), wrist=wrist)
 
 
-def own_layers(person, layers: Sequence[str], *, anim: str = "idle", lead: float = -12.0) -> O.Sprite:
+def own_layers(person, layers: Sequence[str], *, anim: str = "idle", lead: float = -12.0, in_front: bool = False) -> O.Sprite:
     """What a ``Person`` paints in its own ``layers`` (``back``: a cloak,
     hair down the back, a staff across it) in the first frame of ``anim``,
     in its three-quarter view only: these are seldom the same on both sides,
-    so a mirror would put them wrong. The look draws the other views."""
+    so a mirror would put them wrong. The look draws the other views.
+    ``in_front``: its own front art has them too (a blanket in its front
+    torso), so the look does not draw the front view either."""
     K = person.K
     count = {name: n for name, n, _ms in person.rows}[anim]
 
     def draw(view: O.View, far: bool):
+        if abs(O.facing(view)) <= 10.0:
+            return None
         ctx = person.frame_context(anim, 0, count)
         canvas = K.scratch()
         home = K.home
@@ -430,7 +443,7 @@ def own_layers(person, layers: Sequence[str], *, anim: str = "idle", lead: float
                     K.place(canvas, piece, (home[0] + at[0] - person.cx, home[1] + at[1] - person.ground + person.b.hip_up), name, degrees)
         return K._cut(canvas), 0.0, False
 
-    return O.Sprite("own_" + "_".join(layers), (0.0, 0.0, 0.0), draw, when=O.near_turn(45.0), lead=lead)
+    return O.Sprite("own_" + "_".join(layers), (0.0, 0.0, 0.0), draw, when=O.near_turn(*((45.0, 0.0) if in_front else (45.0,))), lead=lead)
 
 
 # ---- A look from the numbers of a person's makers ---------------------------
@@ -566,12 +579,15 @@ class Look:
 class Hand:
     """Where a hand is in a stance: the wrist of the rest pose put ``l`` to
     the side (``at`` None), or the 3D point ``at``; its elbow goes toward
-    ``pole``; ``mode`` is what the hand does (default: as at rest)."""
+    ``pole``; ``mode`` is what the hand does (default: as at rest).
+    ``inside``: the arm is inside what the person wears (a blanket wrapped
+    round it), and is not drawn."""
 
     l: float = 0.0
     pole: Vec = (0.0, 0.3, -1.0)
     at: Optional[Vec] = None
     mode: Optional[str] = None
+    inside: bool = False
 
 
 @dataclass
@@ -622,8 +638,9 @@ class Round:
             target = hand.at if hand.at is not None else J.wrist(near, hand.l)
             elbow, wrist = O.two_bone(J.shoulders[side], target, body.upper, body.fore, hand.pole)
             knee, ankle = O.two_bone(J.hips[side], J.ankles[side], body.thigh, body.shin, (0.0, 0.0, 1.0))
-            parts += [body.arm(f"{side}_arm", J.shoulders[side], elbow, wrist, hand.mode or body.hand_mode(near)),
-                      body.leg(f"{side}_leg", J.hips[side], knee, ankle), body.shoes(f"{side}_shoe", ankle)]
+            if not hand.inside:
+                parts.append(body.arm(f"{side}_arm", J.shoulders[side], elbow, wrist, hand.mode or body.hand_mode(near)))
+            parts += [body.leg(f"{side}_leg", J.hips[side], knee, ankle), body.shoes(f"{side}_shoe", ankle)]
         return O.Figure(parts, body.frame, body.cx, body.ground, body.hip_up, trunk=(0.0, -20.0, 0.4))
 
     def draw(self, view: Union[str, O.View]) -> Image.Image:

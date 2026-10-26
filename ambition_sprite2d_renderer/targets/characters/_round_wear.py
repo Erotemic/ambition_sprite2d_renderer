@@ -292,6 +292,45 @@ class Path:
 
 
 @dataclass(frozen=True)
+class Beyond:
+    """The garment is ``colour`` beyond a line down it (``points``, ``(u,
+    v)``) toward the turn ``until``: the layer under the flap of a thing
+    wrapped round, in its shade."""
+
+    points: Sequence[Tuple[float, float]]
+    until: float
+    colour: RGBA
+
+    def apply(self, g, out, u, v, x, lit):
+        pu, pv = zip(*sorted(self.points, key=lambda p: p[1]))
+        edge = np.interp(v, pv, pu)
+        lo, hi = np.minimum(edge, self.until), np.maximum(edge, self.until)
+        O.put(out, (u > lo) & (u < hi) & (v > pv[0]) & (v < pv[-1]), self.colour)
+
+
+@dataclass(frozen=True)
+class Tufts:
+    """A line of fur through ``points`` (``(u, v)``): tufts ``r`` pixels
+    across, each other one with its ``light``, as the cast draws fur."""
+
+    points: Sequence[Tuple[float, float]]
+    r: float
+    colour: RGBA
+    light: Optional[RGBA] = None
+
+    def apply(self, g, out, u, v, x, lit):
+        pts = np.array([(O.arc(pu, g.radius), pv) for pu, pv in self.points])
+        steps = np.hypot(*np.diff(pts, axis=0).T)
+        at = np.interp(np.arange(0.0, steps.sum() + 1e-6, self.r * 1.4), np.concatenate([[0.0], np.cumsum(steps)]), np.arange(len(pts)))
+        for k, t in enumerate(at):
+            i = min(int(t), len(pts) - 2)
+            cx, cv = pts[i] + (pts[i + 1] - pts[i]) * (t - i)
+            O.put(out, ((x - cx) / self.r) ** 2 + ((v - cv) / (self.r * 0.9)) ** 2 < 1.0, self.colour)
+            if self.light is not None and k % 2 == 0:
+                O.put(out, ((x - cx + 0.4) / (self.r * 0.5)) ** 2 + ((v - cv + 0.6) / (self.r * 0.45)) ** 2 < 1.0, self.light)
+
+
+@dataclass(frozen=True)
 class PointedHem:
     """A hem cut in points (leaves): from ``top`` to ``bottom`` a row of
     points ``period`` pixels apart, in ``colour``; under them, ``under``."""
@@ -557,6 +596,21 @@ class Prop:
 
 
 @dataclass(frozen=True)
+class Pinned:
+    """A piece of the character's own art pinned at a 3D point (body space):
+    ``make()`` (a hand that holds a blanket shut). It is mirrored in the
+    views from the left."""
+
+    name: str
+    at: Vec
+    make: Callable[[], object]
+    lead: float = 0.0
+
+    def piece(self, K: Kit, J, head: Vec) -> O.Sprite:
+        return O.Sprite(self.name, tuple(self.at), lambda view, far: (self.make(), 0.0, O.facing(view) < 0.0), lead=self.lead)
+
+
+@dataclass(frozen=True)
 class Antlers:
     """Branches on the head (antlers, horns): ``lines`` of points from the
     head's middle, drawn as strokes (``strokes``)."""
@@ -574,5 +628,5 @@ class Antlers:
                        lead=self.lead)
 
 
-__all__ = ["Behind", "Stripes", "Chains", "Path", "Worn", "Antlers", "Mane", "Prop", "Across", "Band", "Buttons", "Cloak", "Dot", "Down", "Garment", "Glow", "Hat", "Lapels", "Neckline", "Opening", "Patch", "PointedHem",
+__all__ = ["Behind", "Stripes", "Chains", "Path", "Worn", "Antlers", "Mane", "Prop", "Across", "Band", "Buttons", "Cloak", "Dot", "Down", "Garment", "Glow", "Hat", "Lapels", "Neckline", "Opening", "Patch", "PointedHem", "Tufts", "Beyond", "Pinned",
            "Shade", "Strip", "Swag", "Trunk", "mane", "prop", "strokes"]

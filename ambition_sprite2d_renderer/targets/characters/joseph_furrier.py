@@ -567,6 +567,95 @@ def render_portraits(out_dir, **opts):
     }, view_width=38.0)
 
 
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# He is in the round as he is at rest: wrapped in the blanket, its hood over
+# his head, his arms inside it, one hand out holding it shut (THE DESIGN
+# ELEMENTS above, 1). His own art draws the wrap in his three-quarter view
+# and from the front; 3D draws it in the other views, from the numbers of
+# his front art. His rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+_WRAPPED = dict(wrap=1.0, na=IN_NEAR, fa=IN_FAR)
+#: The garment's radius: a turn ``u`` of the wrap is ``x / _R`` radians.
+_R = 13.0
+#: The edge of the flap that is on top, from his far shoulder down across
+#: him to his near shin, as ``(u, v)`` (as ``_front_blanket`` draws it).
+_FLAP = [(math.degrees((8.6 + (-9.0 - 8.6) * t - 3.0 * math.sin(math.pi * t)) / _R), TOP + 6.0 + (HEM + 3.0 - TOP - 6.0) * t) for t in np.linspace(0.0, 1.0, 9)]
+#: The hood over his head: the blanket round all of it but his face.
+_HOOD = ((0.0, -3.4, -2.6), (10.4, 11.4, 9.6))
+
+WRAP_3D = W.Worn("front", [O.Ring(y, 0.0, 0.4, w, w * 0.85) for y, w in ((TOP - 0.6, 5.0), (TOP + 4.0, 11.4), (-22.0, 13.8), (-4.0, 15.2), (HEM + 1.0, 14.8),
+                                                                          (HEM + 3.6, 12.0))],
+                 W.Garment(BLANKET, BLANKET_DARK, [W.Beyond(_FLAP, 160.0, BLANKET_DARK), W.Down(-40.0, -24.0, 6.0, mix(BLANKET, BLANKET_DARK, 0.6)),
+                                                   W.Down(-20.0, -20.0, 14.0, mix(BLANKET, BLANKET_DARK, 0.6)), W.Down(150.0, -20.0, 20.0, BLANKET_LIGHT),
+                                                   W.Down(-150.0, -24.0, 16.0, BLANKET_DARK), W.Tufts(_FLAP, 2.1, FUR, FUR_LIGHT),
+                                                   W.Tufts([(-180.0, HEM + 1.8), (180.0, HEM + 1.8)], 2.4, FUR, FUR_LIGHT), W.Shade()], radius=_R),
+                 lead=4.0)
+#: The roll of fur at his chin.
+ROLL_3D = W.Worn("front", [O.Ring(TOP - 1.0, 0.0, 0.4, 5.6, 5.0), O.Ring(TOP + 1.6, 0.0, 0.6, 10.6, 9.4), O.Ring(TOP + 4.4, 0.0, 0.6, 10.2, 9.0),
+                           O.Ring(TOP + 5.6, 0.0, 0.4, 7.0, 6.0)],
+                 W.Garment(FUR, FUR_DARK, [W.Tufts([(-180.0, TOP + 1.4), (180.0, TOP + 1.4)], 2.0, FUR, FUR_LIGHT), W.Shade()], radius=10.0), lead=5.0)
+#: His near hand out of it, holding it shut at his chest.
+HAND_3D = W.Pinned("front", (3.6, -21.0, 9.6), lambda: X.hand("fist", True), lead=2.0)
+
+
+# His head from the side in the hood, drawn as the cast draws a head in the
+# numbers of a profile: his face in the opening, the fur round it, his curls
+# over his brow, his nose pink with the cold.
+
+
+def _side_hood_shape(d) -> None:
+    K.poly(d, [K.at(1.0, 10.4), K.at(-6.0, 10.6), K.at(-11.6, 6.0), K.at(-12.6, -4.0), K.at(-9.6, -11.8), K.at(-1.6, -15.4), K.at(6.4, -14.0), K.at(10.4, -10.0),
+               K.at(8.0, -8.4)], WHITE)
+
+
+def _side_hood(d) -> None:
+    for x, y in ((3.0, -8.8), (6.0, -9.0)):
+        K.oval(d, K.at(x, y), 1.8, 1.6, HAIR)
+    K.poly(d, [K.at(10.4, -30.0), K.at(10.4, -9.8), K.at(7.6, -9.6), K.at(4.4, -9.4), K.at(1.2, -8.4), K.at(-0.6, -5.0), K.at(-1.0, 0.0), K.at(-0.4, 5.0),
+               K.at(1.0, 9.6), K.at(1.0, 30.0), K.at(-30.0, 30.0), K.at(-30.0, -30.0)], BLANKET)
+    K.poly(d, [K.at(-12.6, -4.0), K.at(-9.6, -11.8), K.at(-7.0, -9.0), K.at(-9.4, -3.0), K.at(-8.6, 5.0), K.at(-11.6, 6.0)], BLANKET_DARK)
+    K.line(d, [K.at(-8.0, -8.0), K.at(-2.0, -12.0), K.at(4.0, -11.4)], BLANKET_LIGHT, 0.5)
+    _tufts(d, [(8.4, -10.0), (5.2, -9.6), (2.0, -9.0), (-0.4, -6.4), (-1.0, -3.0), (-1.0, 0.6), (-0.6, 4.0), (0.2, 7.4), (1.0, 10.0)], 1.7)
+
+
+def _side_cold(d) -> None:
+    K.oval(d, K.at(10.0, 3.0), 1.5, 1.4, NOSE)
+    K.oval(d, K.at(5.2, 4.2), 2.0, 1.3, mix(SKIN, NOSE, 0.45))
+
+
+_side_head = R.make_head(K, ("furrier_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.4, 9.0, 9.0), jaw=(3.2, 4.0, 6.4, 7.2),
+                         nose=((8.0, -0.8), (10.8, 2.6), (10.4, 4.2), (8.0, 4.6)), ear=None, shape=_side_hood_shape, under=_side_hood, over=_side_cold,
+                         far_shade=False)
+_side_eyes = R.make_eyes(K, (6.2, -0.4), None, ink=INK, white=None, lid=SKIN_DEEP, size=1.0)
+_side_brows = R.make_brows(K, [(4.2, -4.0), (6.2, -4.8), (8.2, -4.0)], None, HAIR, 1.3)
+_side_mouth = R.make_mouth(K, (8.0, 7.2), (118, 67, 65, 255), wide=0.5)
+
+ROUND = C.Round(
+    DISPLAY_NAME, C.PersonBody(X, pose=_WRAPPED, front_layers=("front",),
+                               heads={"side": lambda pose: [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"),
+                                                            (_side_brows(R.brow_mood(pose)), "brows"), (_side_mouth(str(pose["mouth"])), "mouth")]}),
+    C.Look(
+        # The hood: the blanket over all his head but his face, the fur of
+        # its edge round his face.
+        C.auto_head(X, _head, _eyes,
+                    hair=lambda u, v: ~((np.abs(u) < 52.0) & (v > -8.6)), hair_colour=BLANKET, hair_shade=BLANKET_DARK, volumes=[_HOOD],
+                    lines=[O.circle(*O.on_ellipsoid(*_HOOD, u, v, 0.4), 1.6, None, fill=FUR, slack=1.2)
+                           for u, v in [(sx * 56.0, y) for sx in (-1.0, 1.0) for y in (-6.0, -2.0, 2.0, 6.0)] + [(u, -11.0) for u in (-40.0, -15.0, 15.0, 40.0)]]),
+        C.auto_trunk(X),
+        pieces=[("front", WRAP_3D), ("front", ROLL_3D), ("front", HAND_3D)]),
+    # His arms are inside the blanket, his hands at his chest.
+    C.Stance(hands={"r": C.Hand(inside=True), "l": C.Hand(inside=True)}, stagger=1.6))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 
