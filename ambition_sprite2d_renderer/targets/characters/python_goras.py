@@ -590,6 +590,173 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His trunk and head in 3D come from the numbers of his own makers
+# (``auto_trunk``, ``auto_head``); what they do not say is here, as data. His
+# own art draws the python in his three-quarter view and from the front; in
+# the other views it is drawn as his own art draws it (``_snake_body``,
+# ``_snake_head``) through points round his neck and shoulders in 3D. His
+# rows do not use this.
+
+from types import SimpleNamespace  # noqa: E402
+
+import numpy as np  # noqa: E402
+from PIL import Image  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+class _Made:
+    """A piece of the look that this module makes: ``make(K, J, head)``."""
+
+    def __init__(self, make) -> None:
+        self.make = make
+
+    def piece(self, K, J, head):
+        return self.make(K, J, head)
+
+
+#: The python in 3D, body space: its tail down his back on his near side,
+#: behind his neck, over his far shoulder, down in front of it, and up to
+#: its head, which looks where he looks (forward).
+_SNAKE = [(-6.0, -6.0, -10.6), (-7.2, -15.0, -11.2), (-7.0, -24.0, -10.4), (-5.6, -32.0, -8.2), (-3.4, -38.2, -5.4), (0.0, -39.6, -5.0),
+          (3.8, -38.8, -4.4), (7.6, -37.4, -1.2), (10.4, -33.0, 3.2), (11.6, -27.4, 6.4), (13.0, -31.6, 9.6), (13.8, -36.0, 11.6)]
+_SNAKE_LOOK = (0.3, -0.1, 1.0)
+
+
+def _snake_round(name: str, points, head: bool, lead: float):
+    """A part of the python through ``points`` (body space), from a view
+    that his own art does not draw, and its head at the end of it."""
+
+    def draw(view: O.View, far: bool, at):
+        pts = [at(p) for p in points]
+        root = (float(round(pts[0][0])), float(round(pts[0][1])))
+        img = K.new_frame()
+        K.place(img, _snake_body((name,), _spline([(x - root[0], y - root[1]) for x, y in pts])), root, name, 0.0)
+        if head:
+            tip = np.asarray(points[-1])
+            a, b = at(tip), at(tip + 4.0 * np.asarray(_SNAKE_LOOK))
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            piece = _snake_head(False, False)
+            if dx < 0.0:
+                # It looks to the left: its head is mirrored, not upside down.
+                piece = (piece[0].transpose(Image.Transpose.FLIP_LEFT_RIGHT), (piece[0].width - piece[1][0], piece[1][1]))
+                turn = math.degrees(math.atan2(-dy, -dx))
+            else:
+                turn = math.degrees(math.atan2(dy, dx))
+            K.place(img, piece, (a[0] - 1.0 if dx >= 0.0 else a[0] + 1.0, a[1]), name + "_head", 0.5 * turn)
+        return img
+
+    return _Made(lambda K_, J, h: O.Drawn(name, tuple(points[len(points) // 2]), draw, lead=lead, joints=list(points)))
+
+
+#: Its tail and the part behind his neck; and the part in front of his far
+#: shoulder, which is over his beard where they meet (as in his own art).
+_SNAKE_BACK = _snake_round("snake_back", _SNAKE[:8], False, 1.0)
+_SNAKE_FRONT = _snake_round("snake_front", _SNAKE[7:], True, 10.0)
+
+
+def _snake_tail_own(K, J, head):
+    """The tail of the python down his back, from his own art, in his
+    three-quarter view only: over his trunk, under his near arm (as his
+    rows paint it, in ``over_torso``)."""
+    own = C.own_layers(G, ("over_torso",), anim="idle", lead=1.0)
+    draw = own.draw
+    own.draw = lambda view, far: draw(view, far) if abs(O.facing(view) - 45.0) <= 10.0 else None
+    return own
+
+
+def _snake_from_front(K, J, head):
+    """The python from the front, as his front rows draw it, at his neck."""
+
+    def draw(view: O.View, far: bool):
+        if abs(O.facing(view)) > 10.0:
+            return None
+        canvas = K.scratch()
+        ctx = SimpleNamespace(anim="front", i=0, phase=0.0, neck=K.home)
+        for piece, at, name, degrees in _front_snake(ctx):
+            K.place(canvas, piece, at, name, degrees)
+        return K._cut(canvas), 0.0, False
+
+    return O.Sprite("front_snake", tuple(J.neck), draw, lead=12.0)
+
+
+# His head from the side, drawn as the cast draws a head in the numbers of a
+# profile: his curls close to his head, the gold band round it, his strong
+# straight nose, and his full beard from his ear to his chest.
+
+
+def _side_hair_shape(d) -> None:
+    K.oval(d, K.at(-1.6, -4.8), 9.8, 8.4, WHITE)
+    K.poly(d, [K.at(0.6, 2.0), K.at(10.4, 4.0), K.at(10.6, 9.0), K.at(8.0, 15.0), K.at(4.0, 17.6), K.at(0.4, 13.0), K.at(-1.0, 6.0)], WHITE)
+
+
+def _side_hair(d) -> None:
+    K.poly(d, [K.at(20.0, -8.4), K.at(9.2, -8.4), K.at(5.0, -7.4), K.at(2.0, -6.0), K.at(1.2, -3.0), K.at(1.0, 1.0), K.at(-1.0, 1.4), K.at(-3.6, 4.0),
+               K.at(-4.4, 6.6), K.at(-20.0, 6.6), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+    for x, y in ((-6.8, -8.0), (-2.6, -11.0), (2.4, -11.4), (-8.8, -3.0), (6.2, -10.0), (-8.4, 2.0), (-4.6, -4.0)):
+        K.oval(d, K.at(x, y), 1.5, 1.2, None, HAIR_LIGHT, 0.5)  # type: ignore[arg-type]
+    K.poly(d, [K.at(-11.0, -5.0), K.at(10.4, -9.6), K.at(10.4, -7.6), K.at(-11.0, -2.8)], BAND)
+    for x in (-8.0, -4.0, 0.0, 4.0, 8.0):
+        y = -4.4 - (x + 11.0) * 0.21
+        K.line(d, [K.at(x, y + 1.0), K.at(x + 1.8, y - 1.2)], BAND_DARK, 0.6)
+
+
+def _side_beard(d) -> None:
+    K.poly(d, [K.at(0.6, 2.0), K.at(4.4, 4.6), K.at(7.6, 4.6), K.at(10.6, 4.8), K.at(10.8, 9.0), K.at(8.0, 15.4), K.at(4.0, 18.0), K.at(0.2, 13.0),
+               K.at(-1.0, 6.0)], HAIR)
+    for x0, y0, x1, y1 in ((2.0, 8.0, 3.4, 15.0), (5.4, 8.4, 5.6, 16.0), (8.6, 8.0, 7.4, 13.6)):
+        K.line(d, [K.at(x0, y0), K.at(x1, y1)], HAIR_LIGHT, 0.6)
+    K.line(d, [K.at(7.8, 7.2), K.at(9.2, 7.6), K.at(10.6, 7.2)], (140, 84, 84, 255), 0.8)
+
+
+_side_head = R.make_head(K, ("goras_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.4, 9.2, 9.0), jaw=(3.4, 4.2, 6.6, 7.4),
+                         nose=((8.0, -1.4), (11.2, 3.0), (10.6, 4.6), (8.0, 5.0)), ear=(-1.6, 1.2, 2.1, 3.0), shape=_side_hair_shape, under=_side_hair,
+                         over=_side_beard, far_shade=False)
+_side_eyes = R.make_eyes(K, (6.4, -0.6), None, ink=INK, iris=(70, 46, 30, 255), size=0.95)
+_side_brows = R.make_brows(K, [(4.0, -3.8), (6.4, -4.6), (8.8, -3.8)], None, HAIR, 1.4)
+
+#: The edge of his cloak, from his near shoulder at his neck across his
+#: chest to under his far arm, as ``(u, v)``; it is round all of him under
+#: that, to his hips.
+_CLOAK_EDGE = [(-9.0, TOP), (16.0, -31.0), (38.0, -22.0), (60.0, -13.0)]
+
+ROUND = C.Round(
+    "Python Goras", C.PersonBody(G, R.make_back_shoe(K, SANDAL, SANDAL_DARK, BUILD.ankle_up), front_layers=("front",),
+                               heads={"side": lambda pose: [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"),
+                                                            (_side_brows(R.brow_mood(pose)), "brows")]}),
+    C.Look(
+        # Dark curls close to his head with a gold band round them, a full
+        # dark beard to his chest.
+        C.auto_head(G, _head, _eyes,
+                    hair=lambda u, v: (v < -7.4 + 1.4 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 70.0) & (v < 1.0))
+                    | ((np.abs(u) > 100.0) & (v < 6.6)),
+                    hair_colour=HAIR, hair_shade=HAIR_LIGHT, volumes=[((0.0, -5.0, -0.8), (8.8, 7.6, 8.8))],
+                    beard=[O.Ring(2.6, 0.0, 3.0, 6.8, 5.4), O.Ring(6.0, 0.0, 4.0, 6.6, 5.6), O.Ring(10.6, 0.0, 4.6, 5.4, 4.6),
+                           O.Ring(14.6, 0.0, 4.8, 3.2, 2.8), O.Ring(17.4, 0.0, 4.8, 0.6, 0.6)],
+                    lines=[O.curve([O.on_ellipsoid((0.0, -5.0, -0.8), (8.8, 7.6, 8.8), u, -9.6 + 2.0 * np.cos(np.radians(u)), 0.3)[0]
+                                    for u in np.linspace(-180.0, 180.0, 25)], BAND, 1.1)]),
+        # His long white chiton to his ankles with the blue key at its hem,
+        # his cloak round him from his near shoulder with its blue edge, the
+        # bronze triangle on his chest and the bronze pin at his far
+        # shoulder.
+        C.auto_trunk(G, shoulders=False, features=[W.Neckline(TOP - 1.0, TOP + 7.0, 22.0, SKIN_SHADE),
+                         W.Beyond(_CLOAK_EDGE + [(180.0, -6.0), (180.0, 12.0)], -180.0, CLOAK), W.Path(_CLOAK_EDGE, KEY, 0.6),
+                         W.Across(-180.0, 180.0, 12.0, CLOAK_DARK, width=0.5), W.Down(-30.0, -30.0, -10.0, CLOAK_DARK), W.Down(-50.0, -20.0, 2.0, CLOAK_DARK),
+                         W.Path([(26.0, -27.0), (48.0, -21.6), (26.0, -21.6), (26.0, -27.0)], BRONZE, 0.9), W.Dot(38.0, TOP + 4.0, 1.5, BRONZE, BRONZE_DARK),
+                         W.Down(-10.0, 16.0, HEM - 5.0, CHITON_DARK, spread=4.0), W.Down(10.0, 16.0, HEM - 5.0, CHITON_DARK, spread=4.0),
+                         W.Down(-32.0, 16.0, HEM - 5.0, CHITON_DARK, spread=6.0), W.Down(32.0, 16.0, HEM - 5.0, CHITON_DARK, spread=6.0),
+                         W.Down(180.0, 14.0, HEM - 5.0, CHITON_DARK), W.Band(HEM - 4.4, HEM - 1.6, KEY),
+                         W.Stripes(HEM - 3.8, HEM - 2.2, 1.7, (CHITON, KEY), slant=0.0)]),
+        pieces=[("front", _SNAKE_BACK), ("front", _SNAKE_FRONT), ("front_snake", _Made(_snake_from_front)), ("snake_tail", _Made(_snake_tail_own))]),
+    # One hand flat on his chest over the triangle, the other at his side.
+    C.Stance(hands={"r": C.Hand(at=(3.4, -23.0, 9.0), pole=(-1.0, 0.6, -0.4), mode="flat"), "l": C.Hand(l=9.6, pole=(0.4, 0.0, -1.0))}, stagger=1.6))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 

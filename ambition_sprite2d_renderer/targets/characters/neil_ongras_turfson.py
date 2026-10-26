@@ -567,6 +567,86 @@ def render_portraits(out_dir, **opts):
     }, still="portrait", view_width=38.0)
 
 
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His trunk and head in 3D come from the numbers of his own makers
+# (``auto_trunk``, ``auto_head``); what they do not say is here, as data. His
+# head from the side is drawn as the cast draws a head. His rows do not use
+# this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+#: His short hair, round over all of the top of his head.
+_CROP = ((0.0, -5.0, -0.6), (9.6, 8.0, 9.4))
+
+
+# His head from the side, drawn as the cast draws a head in the numbers of a
+# profile: his round full face, his broad nose, the thick moustache over all
+# of his lip, his short hair down in front of his ear and round behind it.
+
+
+def _side_hair_shape(d) -> None:
+    K.oval(d, K.at(-1.4, -5.6), 10.6, 8.8, WHITE)
+
+
+def _side_hair(d) -> None:
+    K.poly(d, [K.at(20.0, -8.6), K.at(10.2, -8.6), K.at(7.8, -7.6), K.at(3.8, -8.2), K.at(1.6, -6.4), K.at(1.0, -3.0), K.at(1.4, 1.6), K.at(-0.6, 1.8),
+               K.at(-3.8, 3.6), K.at(-4.4, 7.0), K.at(-20.0, 7.0), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+    for x, y in ((-5.6, -9.6), (-1.4, -12.0), (3.6, -12.0), (-8.2, -5.0), (7.8, -10.4), (1.2, -9.6), (-9.0, -0.4), (-6.4, 3.4)):
+        K.oval(d, K.at(x, y), 0.8, 0.6, HAIR_LIGHT)
+
+
+def _side_face(d) -> None:
+    K.poly(d, [K.at(4.4, 5.6), K.at(7.4, 4.6), K.at(10.6, 5.2), K.at(11.2, 7.0), K.at(7.8, 6.8), K.at(4.2, 7.4)], HAIR)
+    K.line(d, [K.at(2.4, 3.6), K.at(3.2, 5.6)], mix(SKIN, SKIN_DEEP, 0.5), 0.5)
+
+
+_side_head = R.make_head(K, ("neil_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.2, 9.6, 9.0), jaw=(3.0, 4.4, 7.4, 7.6),
+                         nose=((8.2, -0.6), (11.4, 2.8), (11.0, 4.6), (8.0, 5.0)), ear=(-1.6, 1.2, 2.3, 3.2), shape=_side_hair_shape, under=_side_hair,
+                         over=_side_face, far_shade=False)
+_side_eyes = R.make_eyes(K, (6.6, -0.4), None, ink=INK, iris=(70, 40, 28, 255), size=1.05)
+_side_brows = R.make_brows(K, [(4.4, -4.2), (6.6, -5.0), (8.8, -4.2)], None, HAIR, 1.4)
+_side_mouth = R.make_mouth(K, (8.4, 8.6), (98, 40, 44, 255), wide=0.6)
+
+
+def _side_layers(pose):
+    return [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"), (_side_brows(R.brow_mood(pose)), "brows"),
+            (_side_mouth(str(pose["mouth"])), "mouth")]
+
+
+#: The sky on his waistcoat (as his front art has it): ``(u, v, r)``.
+_SKY = [(-14.0, -27.0, 0.7), (14.0, -16.0, 0.7), (-15.0, -15.0, 0.7), (11.0, -3.0, 0.7), (-11.0, 2.0, 0.7), (15.0, 6.0, 0.7), (2.0, -30.0, 0.7)]
+
+ROUND = C.Round(
+    # His waistcoat is not the same on both sides (the moon is on his
+    # right), so his trunk is not mirrored.
+    ACTOR_METADATA["actor"]["display_name"], C.PersonBody(N, mirror=("head",), heads={"side": _side_layers}),
+    C.Look(
+        # Short black hair, round over the top of his head, down in front of
+        # each ear; a thick moustache.
+        C.auto_head(N, _head, _eyes,
+                    hair=lambda u, v: (v < -7.6 + 1.0 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 70.0) & (v < -1.6))
+                    | ((np.abs(u) > 100.0) & (v < 6.0)),
+                    hair_colour=HAIR, hair_shade=HAIR_LIGHT, volumes=[_CROP], moustache=((0.0, 5.8, 8.4), (4.6, 1.1, 1.6)),
+                    lines=[O.circle(*O.on_ellipsoid(*_CROP, u, v, 0.2), 0.7, None, fill=HAIR_LIGHT, slack=1.0)
+                           for u, v in ((-160.0, -8.0), (-120.0, -11.0), (-60.0, -12.0), (40.0, -12.4), (110.0, -10.0), (150.0, -4.0), (-150.0, -2.0))]),
+        # His dark blazer open on the night-purple waistcoat: a sun, a moon
+        # and stars on it, his open collar, a lapel each side.
+        C.auto_trunk(N, [W.Opening(28.0, VEST), W.Lapels(36.0, -42.0, -20.0, 10.0, BLAZER_LIGHT, line=BLAZER_DARK),
+                         W.Neckline(-43.0, -29.0, 15.0, SHIRT), W.Neckline(-43.0, -35.0, 8.0, SKIN_SHADE),
+                         W.Dot(0.0, -22.0, 2.2, STAR), W.Dot(-7.0, -9.0, 1.9, MOON), W.Dot(-3.6, -9.4, 1.7, VEST)]
+                     + [W.Dot(u, v, r, STAR) for u, v, r in _SKY]
+                     + [W.Across(40.0, 58.0, -3.8, BLAZER_DARK, both=True, width=0.4), W.Down(180.0, -38.0, 10.0, BLAZER_DARK)])),
+    # One hand flat on his waistcoat; the other hangs.
+    C.Stance(hands={"r": C.Hand(at=(2.0, -17.0, 12.6), pole=(-1.0, 0.6, 0.5), mode="flat"), "l": C.Hand(l=11.0, pole=(0.4, 0.0, -1.0))}, stagger=2.0))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 

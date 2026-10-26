@@ -13,7 +13,8 @@ from PIL import ImageOps
 
 from ambition_sprite2d_renderer.targets.characters import _person_round as O
 
-PEOPLE = ("anne_druid", "davy_hylbert", "erdish", "galwah", "jeff_hinter", "joseph_furrier", "leib_knives", "marie_curry", "paradox_barber", "pipi_tau", "ramen_nujan")
+PEOPLE = ("anne_druid", "davy_hylbert", "erdish", "galwah", "jeff_hinter", "joseph_furrier", "leib_knives", "m_leblanc", "mami_marzakhani", "marie_curry",
+          "neil_ongras_turfson", "paradox_barber", "pipi_tau", "python_goras", "ramen_nujan")
 
 
 def _round(who):

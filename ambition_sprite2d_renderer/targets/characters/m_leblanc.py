@@ -382,6 +382,103 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# Her trunk and head in 3D come from the numbers of her own makers
+# (``auto_trunk``, ``auto_head``); what they do not say is here, as data.
+# Her rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+#: Her hair close over her head, and put up in a knot high at the back.
+_UP = ((0.0, -5.0, -1.0), (8.2, 7.4, 8.4))
+_KNOT = ((0.0, -11.0, -5.4), (4.6, 4.2, 4.4))
+#: The green ribbon through her hair, from over her brow back to the knot.
+_RIBBON = [O.on_ellipsoid(*_UP, u, v, 0.3)[0] for u, v in ((-70.0, -8.6), (-35.0, -11.0), (0.0, -12.2), (35.0, -11.0), (70.0, -8.6))]
+
+#: Her shawl: over her shoulders and down her back to her knees, and its ends
+#: in front over each shoulder, down beside her bust.
+SHAWL_3D = W.Cloak(
+    rings=[O.Ring(TOP + 0.4, 0.0, -0.6, 5.6, 4.8), O.Ring(TOP + 5.0, 0.0, -0.8, 12.6, 8.8), O.Ring(-14.0, 0.0, -1.4, 12.0, 9.6), O.Ring(4.0, 0.0, -1.6, 11.6, 9.6),
+           O.Ring(16.0, 0.0, -2.0, 11.6, 9.4)],
+    garment=W.Garment(GREEN, GREEN_DARK, radius=9.0, features=[W.Down(160.0, TOP + 8.0, 14.0, GREEN_DARK), W.Down(-150.0, TOP + 8.0, 14.0, GREEN_DARK),
+                                                               W.Across(100.0, 260.0, 12.0, GREEN_LIGHT, width=0.4), W.Across(100.0, 260.0, 14.4, GREEN_LIGHT, width=0.4)]),
+    turns=(100.0, 260.0))
+SHAWL_ENDS_3D = W.Cloak(
+    rings=[O.Ring(TOP + 0.2, 0.0, -0.4, 5.4, 4.6), O.Ring(TOP + 4.4, 0.0, -0.4, 11.0, 7.6), O.Ring(-14.0, 0.0, 0.2, 10.2, 8.0), O.Ring(-11.0, 0.0, 0.2, 10.2, 8.0)],
+    garment=W.Garment(GREEN, GREEN_DARK, radius=9.0, features=[W.Down(55.0, TOP + 5.0, -11.0, GREEN_DARK), W.Down(-55.0, TOP + 5.0, -11.0, GREEN_DARK)]),
+    turns=(42.0, 318.0))
+
+
+# Her head from the side, drawn as the cast draws a head in the numbers of a
+# profile: her hair put up in a knot high at the back, the green ribbon
+# through it, a curl in front of her ear.
+
+
+def _side_hair_shape(d) -> None:
+    K.oval(d, K.at(-1.6, -4.6), 9.8, 8.6, WHITE)
+    K.oval(d, K.at(-8.6, -10.0), 5.0, 4.6, WHITE)
+    for x, y in ((0.8, 2.0), (0.2, 5.4)):
+        K.oval(d, K.at(x, y), 2.2, 2.2, WHITE)
+
+
+def _side_hair(d) -> None:
+    K.poly(d, [K.at(20.0, -8.8), K.at(9.2, -8.8), K.at(6.0, -7.4), K.at(3.0, -5.4), K.at(1.6, -3.0), K.at(1.0, 0.0), K.at(1.0, 3.0), K.at(0.0, 7.6),
+               K.at(-20.0, 7.6), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+    for strand in ([(6.6, -9.8), (0.0, -9.4), (-5.6, -7.0)], [(-5.6, -11.6), (-9.0, -13.0), (-12.0, -10.2)], [(-6.0, -8.4), (-10.4, -8.0)], [(-3.0, -2.0), (-6.0, 2.0)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_LIGHT, 0.6)
+    for x, y in ((0.8, 2.0), (0.2, 5.4)):
+        K.oval(d, K.at(x, y), 1.3, 1.3, None, HAIR_LIGHT, 0.5)  # type: ignore[arg-type]
+    K.line(d, [K.at(5.0, -11.0), K.at(-1.0, -10.6), K.at(-6.0, -8.0)], GREEN, 1.3)
+    K.poly(d, [K.at(-6.0, -8.0), K.at(-9.6, -5.6), K.at(-7.6, -4.4)], GREEN)
+
+
+_side_head = R.make_head(K, ("leblanc_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.2, 8.8, 8.6), jaw=(3.0, 3.6, 6.4, 6.8),
+                         nose=((8.0, 0.8), (9.4, 3.0), (9.0, 3.8), (8.0, 4.0)), ear=None, shape=_side_hair_shape, under=_side_hair, far_shade=False)
+_side_eyes = R.make_eyes(K, (6.4, -0.4), None, ink=INK, iris=(84, 60, 44, 255), size=0.9, lash=0.5)
+_side_brows = R.make_brows(K, [(4.2, -4.0), (6.4, -4.8), (8.6, -4.2)], None, HAIR, 1.0)
+_side_mouth = R.make_mouth(K, (7.8, 7.2), (130, 56, 66, 255), wide=0.55, lips=(196, 104, 110, 255))
+
+
+def _side_layers(pose):
+    return [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"), (_side_brows(R.brow_mood(pose)), "brows"),
+            (_side_mouth(str(pose["mouth"])), "mouth")]
+
+
+ROUND = C.Round(
+    "Madam LeBlanc", C.PersonBody(L, back_layers=("back",), heads={"side": _side_layers}),
+    C.Look(
+        # Dark hair close over her head and up in a knot high at the back, a
+        # green ribbon through it, a curl at each temple.
+        C.auto_head(L, _head, _eyes,
+                    hair=lambda u, v: (v < -8.4 + 2.0 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 62.0) & (v < 3.0))
+                    | ((np.abs(u) > 100.0) & (v < 7.0)),
+                    hair_colour=HAIR, hair_shade=mix(HAIR, INK, 0.35), volumes=[_UP, _KNOT, ((-7.2, 1.0, 1.6), (2.2, 2.4, 2.0)), ((7.2, 1.0, 1.6), (2.2, 2.4, 2.0))],
+                    lines=[O.curve(_RIBBON, GREEN, 1.3), O.curve([O.on_ellipsoid(*_KNOT, u, -11.0, 0.2)[0] for u in (-120.0, 180.0, 120.0)], GREEN, 1.1)]
+                    + [O.curve([O.on_ellipsoid(*_UP, u + 14.0 * t, -10.0 + 4.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_LIGHT, 0.6)
+                       for u in (-150.0, -100.0, 100.0, 150.0)]
+                    + [O.circle(*O.on_ellipsoid(*_KNOT, u, -11.6, 0.2), 1.8, HAIR_LIGHT, 0.6, slack=1.0) for u in (-140.0, 140.0, 180.0)]),
+        # Her white gown: its low square neck, the green sash high under her
+        # bust and its end down in front, the light on her bust, the long
+        # folds of its skirt, the green band near its hem.
+        C.auto_trunk(L, [W.Patch(-28.0, 28.0, TOP - 2.0, TOP + 6.0, SKIN), W.Across(-28.0, 28.0, TOP + 6.2, GOWN_DARK, width=0.4),
+                         W.Glow(26.0, TOP + 13.0, 2.4, 1.8, GOWN_LIGHT, both=True), W.Band(TOP + 16.4, TOP + 19.4, GREEN),
+                         W.Across(-180.0, 180.0, TOP + 19.4, GREEN_DARK, width=0.35), W.Strip(19.0, TOP + 19.0, TOP + 34.0, 1.2, GREEN, flare=0.3),
+                         W.Down(15.0, TOP + 22.0, 38.0, GOWN_DARK, spread=8.0), W.Down(-15.0, TOP + 22.0, 38.0, GOWN_DARK, spread=8.0),
+                         W.Down(50.0, TOP + 22.0, 38.0, GOWN_DARK, spread=10.0), W.Down(-50.0, TOP + 22.0, 38.0, GOWN_DARK, spread=10.0),
+                         W.Down(180.0, TOP + 22.0, 38.0, GOWN_DARK), W.Band(BUILD.hip_up - 9.0, BUILD.hip_up - 7.4, GREEN_LIGHT)]),
+        back_pieces=[SHAWL_3D, SHAWL_ENDS_3D]),
+    # Her hands one over the other at her sash.
+    C.Stance(hands={"r": C.Hand(at=(0.6, -15.6, 9.0), pole=(-0.5, 1.0, 0.2), mode="flat"), "l": C.Hand(at=(2.6, -14.4, 8.6), pole=(0.5, 1.0, 0.2), mode="flat")},
+             stagger=1.6))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 

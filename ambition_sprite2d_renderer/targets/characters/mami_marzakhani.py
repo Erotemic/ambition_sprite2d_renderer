@@ -512,6 +512,94 @@ render_frame = X.render_frame
 ROWS = X.rows
 _render_frame = X.render_frame
 render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# Her head in 3D comes from the numbers of her own makers (``auto_head``);
+# her jacket is drawn by her own ``_torso``, which keeps no numbers, so its
+# rings here are the numbers of her front and three-quarter jacket. What
+# the numbers do not say is here, as data. Her rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+#: Her hair, close to her head on top.
+_CROP = ((0.0, -4.6, -0.8), (8.2, 7.4, 8.2))
+#: And full behind and at the sides, over her ears, to her jaw: a bob, as
+#: her own art and her head from the side have it.
+_BOB = ((0.0, -1.4, -2.4), (9.2, 8.2, 7.6))
+
+#: Her garnet jacket: fitted, to her hip in front; the ivory collar and the
+#: skin in its V, the light on her bust and the shade under it, its edge
+#: down the middle and its three buttons.
+JACKET_3D = W.Trunk(
+    rings=[O.Ring(TOP - 0.5, 0.0, 0.3, 3.4, 2.9), O.Ring(TOP + 3.6, 0.0, 0.4, 7.2, 5.4), O.Ring(TOP + 12.5, 0.0, 1.2, 8.6, 8.0),
+           O.Ring(-12.0, 0.0, 0.4, 6.2, 4.6), O.Ring(0.0, 0.0, 0.0, 8.0, 7.4), O.Ring(7.6, 0.0, 0.0, 8.6, 8.0)],
+    garment=W.Garment(JACKET, JACKET_DARK, radius=8.6, features=[
+        W.Strip(0.0, TOP - 1.0, TOP + 8.0, 5.2, COLLAR, flare=-3.6), W.Neckline(TOP - 1.0, TOP + 6.0, 22.0, SKIN_SHADE),
+        W.Glow(28.0, TOP + 12.7, 2.4, 1.9, JACKET_LIGHT, both=True), W.Glow(28.0, TOP + 17.6, 3.6, 1.0, JACKET_DARK, both=True),
+        W.Down(0.0, TOP + 8.0, 6.0, JACKET_DARK), W.Buttons(9.4, -14.0, -2.0, 3, 0.8, COLLAR), W.Down(180.0, TOP + 4.0, 7.6, JACKET_DARK),
+        W.Shade()]),
+    shoulder=((-5.8, -29.6, -0.2), (3.8, 4.2, 3.8)),
+)
+#: Its long side, down behind her to her thigh. It starts inside the
+#: jacket, so it comes out from under its hem.
+TAILS_3D = W.Cloak([O.Ring(0.0, 0.0, 0.0, 7.4, 6.8), O.Ring(7.6, 0.0, 0.0, 8.2, 7.6), O.Ring(19.0, 0.0, -1.0, 9.8, 9.0)],
+                   W.Garment(JACKET, JACKET_DARK, [W.Down(180.0, 0.0, 19.0, JACKET_DARK), W.Shade()], radius=9.0), turns=(105.0, 255.0))
+
+
+# Her head from the side, drawn as the cast draws a head in the numbers of a
+# profile: her short hair soft over her brow, over her ear and in to the
+# back of her neck; her small gold earring under it.
+
+
+def _side_hair_shape(d) -> None:
+    K.oval(d, K.at(-1.6, -4.2), 9.6, 8.6, WHITE)
+    K.poly(d, [K.at(3.0, -11.0), K.at(9.6, -9.6), K.at(10.4, -4.6), K.at(6.0, -6.0)], WHITE)
+    K.poly(d, [K.at(-9.6, -4.0), K.at(-10.2, 3.0), K.at(-8.4, 6.6), K.at(-4.0, 5.6), K.at(-1.0, 0.0)], WHITE)
+
+
+def _side_hair(d) -> None:
+    K.poly(d, [K.at(20.0, -5.0), K.at(10.4, -5.0), K.at(8.2, -7.4), K.at(5.4, -6.0), K.at(3.0, -3.6), K.at(1.6, -1.0), K.at(1.2, 2.0), K.at(0.4, 4.4),
+               K.at(-0.6, 7.0), K.at(-20.0, 7.0), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+    for strand in ([(8.4, -8.6), (2.6, -10.2), (-4.0, -8.4)], [(4.0, -6.6), (-1.4, -7.0), (-6.4, -4.0)], [(-6.2, -0.6), (-8.0, 1.6)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_LIGHT, 0.6)
+
+
+_side_head = R.make_head(K, ("mami_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.2, 8.6, 8.6), jaw=(3.2, 3.6, 5.8, 6.8),
+                         nose=((8.0, 0.9), (9.4, 3.0), (9.0, 3.8), (8.0, 4.0)), ear=None, shape=_side_hair_shape, under=_side_hair,
+                         over=lambda d: K.oval(d, K.at(1.0, 5.6), 0.9, 0.9, CURVE), far_shade=False)
+_side_eyes = R.make_eyes(K, (6.4, -0.2), None, ink=INK, white=None, lid=INK, size=1.0)
+_side_brows = R.make_brows(K, [(4.4, -3.8), (6.4, -4.6), (8.4, -4.2)], None, HAIR, 0.9)
+_side_mouth = R.make_mouth(K, (7.8, 7.0), (130, 54, 66, 255), wide=0.6, lips=(206, 96, 104, 255))
+
+
+def _side_layers(pose):
+    return [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"), (_side_brows(R.brow_mood(pose)), "brows"),
+            (_side_mouth(str(pose["mouth"])), "mouth")]
+
+
+ROUND = C.Round(
+    DISPLAY_NAME, C.PersonBody(X, heads={"side": _side_layers}),
+    C.Look(
+        # Dark hair cut short and close: soft over her brow, over her ears,
+        # in to the back of her neck; a small gold earring each side.
+        C.auto_head(X, _head, _eyes,
+                    hair=lambda u, v: (v < -5.0 - 1.6 * np.clip(np.abs(u) / 40.0, 0.0, 1.0) + 2.0 * np.clip((np.abs(u) - 40.0) / 30.0, 0.0, 1.0))
+                    | ((np.abs(u) > 62.0) & (v < 4.6)) | ((np.abs(u) > 100.0) & (v < 7.0)),
+                    hair_colour=HAIR, hair_shade=HAIR_LIGHT, volumes=[_CROP, _BOB],
+                    lines=[O.curve([O.on_ellipsoid(*_CROP, u + 20.0 * t, -10.6 + 4.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_LIGHT, 0.6)
+                           for u in (-140.0, -80.0, -20.0, 50.0, 110.0)]
+                    + [O.circle((6.8 * sx, 5.8, 3.4), (sx, 0.0, 0.4), 0.9, None, fill=CURVE, slack=1.2) for sx in (-1.0, 1.0)]),
+        JACKET_3D, pieces=[("trunk", TAILS_3D)]),
+    # Straight, quick on her feet: her arms loose at her sides.
+    C.Stance(hands={"r": C.Hand(l=-8.4, pole=(-0.4, 0.0, -1.0)), "l": C.Hand(l=8.4, pole=(0.4, 0.0, -1.0))}, stagger=1.8))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 
