@@ -63,6 +63,9 @@ SCALE = 0.5
 #: The drawings' centre line and ground, in SVG units.
 CENTER_X, GROUND_Y = 280.0, 502.0
 FRAME = {"width": 400, "height": 480, "center_x": 200, "ground_y": 460, "ankle_h": 0, "supersample": 3, "render_scale": 1, "trim": False}
+#: The walk keeps a foot on the ground the body stands on in every frame, and
+#: the run's lowest stride touches it (``RigDocument.plant_offset``).
+FRAME["plant"] = {"walk": "each", "run": "row"}
 
 #: target id -> (art script, character key in it, display name, view label)
 CAST = {

@@ -76,7 +76,8 @@ _AIR = frozenset({
     "air_up", "air_down", "fly", "hover", "float_glide", "wall_jump", "ledge_jump", "footstool_jump", "launch",
 })
 #: Rows in which her feet step on the ground. The perfect one's feet point
-#: down and may turn far; hers are flat, so they turn half as far.
+#: down and may turn far; hers are flat, so they do not turn: a flat foot
+#: turned on the ground went 5 px into it.
 _GAIT = frozenset({"idle", "walk", "walk_stop", "turnaround", "dash_startup", "dash", "run", "crouch_walk", "stumble"})
 
 ACTOR_METADATA = {
@@ -188,13 +189,8 @@ def _author_own_motion(clips: Dict[str, dict], rest_pitch: Dict[str, float]) -> 
 
         if name in _GAIT:
             for prefix, rest in rest_pitch.items():
-                spec = channels.get(f"{prefix}_pitch")
-                if spec is None:
-                    continue
-                if "const" in spec:
-                    spec["const"] = rest + 0.5 * (float(spec["const"]) - rest)
-                elif "keys" in spec:
-                    spec["keys"] = [[key[0], round(rest + 0.5 * (float(key[1]) - rest), 3), *key[2:]] for key in spec["keys"]]
+                if f"{prefix}_pitch" in channels:
+                    channels[f"{prefix}_pitch"] = {"const": rest}
 
 
 def _borrow_clips(doc: RigDocument) -> RigDocument:

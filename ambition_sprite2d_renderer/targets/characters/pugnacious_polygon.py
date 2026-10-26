@@ -214,8 +214,11 @@ def _prepared():
 def _doc() -> RigDocument:
     # RigDocument is a temporary renderer projection.  The editable sources are
     # the SVG static rig plus the shared Ambition pose/clip library selected by
-    # this character binding.
-    return _prepared().to_rig_document()
+    # this character binding. Its walk keeps a foot on the ground it stands
+    # on, and its run's lowest stride touches it (`RigDocument.plant_offsets`).
+    doc = _prepared().to_rig_document()
+    doc.frame["plant"] = {"walk": "each", "run": "row"}
+    return doc
 
 
 @lru_cache(maxsize=1)
@@ -374,13 +377,9 @@ def _raw_frame(animation: str, frame_idx: int, frame_count: int):
         raise ValueError(
             f"{animation}: requested {frame_count} publication frames, source declares {clip.frame_count}"
         )
-    at_s = frame_idx * clip.frame_duration_ms / 1000.0
-    normalized = round(at_s / max(clip.duration_s, 1e-9), 9)
-    return _doc().render_at(
-        animation,
-        normalized,
-        padding=_publication_padding(),
-    )
+    times = [round(i * clip.frame_duration_ms / 1000.0 / max(clip.duration_s, 1e-9), 9) for i in range(frame_count)]
+    lift = _doc().plant_offsets(animation, times, padding=_publication_padding())[frame_idx]
+    return _doc().render_planted(animation, times[frame_idx], lift, padding=_publication_padding())
 
 
 def _body_metrics(fw: int, fh: int):

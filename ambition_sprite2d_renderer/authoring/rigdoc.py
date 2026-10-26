@@ -87,7 +87,7 @@ import json
 import math
 import os
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Tuple, Union
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from PIL import Image, ImageDraw
 
@@ -568,6 +568,8 @@ class RigDocument:
         self._svg_path_cache: Optional[Path] = None
         self._skeleton_cache_key: Optional[tuple] = None
         self._skeleton_cache: Optional[Skeleton] = None
+        # (clip, sample times, padding) -> each frame's ``plant_offsets``.
+        self._plant_offsets: Dict[tuple, List[float]] = {}
 
     # ---- I/O -------------------------------------------------------------
 
@@ -1286,11 +1288,64 @@ class RigDocument:
         *,
         padding: Optional[RenderPadding] = None,
     ) -> Image.Image:
-        return self.render_at(
-            clip_name,
-            self.frame_time(clip_name, frame_idx, nframes),
-            padding=padding,
-        )
+        times = [self.frame_time(clip_name, k, nframes) for k in range(nframes)]
+        lift = self.plant_offsets(clip_name, times, padding=padding)[frame_idx]
+        return self.render_planted(clip_name, times[frame_idx], lift, padding=padding)
+
+    def render_planted(self, clip_name: str, t: float, lift: float, *, padding: Optional[RenderPadding] = None) -> Image.Image:
+        """``render_at`` with the whole figure ``lift`` base-frame units lower
+        (``plant_offsets``): the root, and each IK target with it, so a foot
+        that rides an IK target moves with the body instead of bending it."""
+        solved = self.solve(clip_name, t, channel_overrides=self.lowered(clip_name, t, lift)) if lift else None
+        return self.render_at(clip_name, t, solved=solved, padding=padding)
+
+    def lowered(self, clip_name: str, t: float, lift: float) -> Dict[str, float]:
+        """The channel overrides that move the whole figure of ``clip_name``
+        at ``t`` ``lift`` base-frame units lower, for ``solve``."""
+        s = self.sample(clip_name, t)
+        moved = {"root_y": s.get("root_y", 0.0) + lift}
+        for leg in self.ik_legs:
+            key = f"{leg.get('channel_prefix', 'foot')}_lift"
+            moved[key] = s.get(key, float(leg.get("rest_lift", 0.0))) - lift
+        for chain in self.ik_chains:
+            key = f"{chain.get('channel_prefix', 'target')}_y"
+            moved[key] = s.get(key, float(chain.get("rest_y", 0.0))) + lift
+        return moved
+
+    def plant_offsets(self, clip_name: str, times: Sequence[float], *, padding: Optional[RenderPadding] = None) -> List[float]:
+        """How far down (base-frame units) ``frame.plant`` moves the root of
+        each frame of ``clip_name`` (sampled at ``times``) so that its feet are
+        on the ground the body stands on: the lowest visible row of the
+        ``idle`` frames.
+
+        ``frame.plant`` maps a clip to ``"each"`` (every frame touches the
+        ground: a walk has a foot down in each) or ``"row"`` (the row's lowest
+        frame touches it: a run leaves the ground between strides). A clip it
+        does not name is drawn as authored. The game draws every row of a
+        sheet on the standing body, so a walk whose legs swing lower than they
+        stand drew its feet in the floor, and one whose hip rides higher drew
+        them over it."""
+        mode = (self.frame.get("plant") or {}).get(clip_name)
+        if mode not in ("each", "row") or clip_name == "idle":
+            return [0.0] * len(times)
+        key = (clip_name, tuple(times), padding)
+        if key not in self._plant_offsets:
+            from ..core.measure import visible_bbox
+
+            scale = max(1, int(self.frame.get("render_scale", 1)))
+
+            def bottom(clip: str, t: float) -> float:
+                box = visible_bbox(self.render_at(clip, t, padding=padding))
+                return 0.0 if box is None else box[3] / scale
+
+            idle = int((self.clips.get("idle") or {}).get("frames", 8))
+            floor = max(bottom("idle", self.frame_time("idle", k, idle)) for k in range(idle))
+            bottoms = [bottom(clip_name, t) for t in times]
+            if mode == "row":
+                self._plant_offsets[key] = [floor - max(bottoms)] * len(bottoms)
+            else:
+                self._plant_offsets[key] = [floor - b for b in bottoms]
+        return self._plant_offsets[key]
 
 
 # ---- Part painting -----------------------------------------------------------

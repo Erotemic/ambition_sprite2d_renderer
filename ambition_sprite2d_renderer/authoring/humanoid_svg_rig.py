@@ -103,6 +103,9 @@ class HumanoidViewSpec:
     arm_max_reach_ratio: Optional[float] = None
     label_binding_mode: str = "explicit"
     auxiliary_bones: Tuple["AuxiliaryBoneSpec", ...] = ()
+    #: The document's ``frame.plant``: which clips keep a foot on the ground
+    #: (``RigDocument.plant_offsets``).
+    plant: Optional[Mapping[str, str]] = None
 
 
 @dataclass(frozen=True)
@@ -1295,6 +1298,7 @@ def humanoid_document_from_geometry(
             "ankle_h": round(ankle_h, 4),
             "supersample": spec.supersample,
             "render_scale": spec.render_scale,
+            **({"plant": dict(spec.plant)} if spec.plant else {}),
         },
         "svg_source": {
             "path": os.path.relpath(svg_path, rig_dir),

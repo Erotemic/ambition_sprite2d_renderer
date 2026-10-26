@@ -19,6 +19,7 @@ from typing import Dict
 from ambition_sprite2d_renderer.authoring.part_flipbook import publish_rig_flipbook
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.measure import union_visible_bbox
 
 RIGGED = Path(__file__).resolve().parent / "rigged"
 
@@ -78,8 +79,12 @@ def body_box(name: str, x0: float, y0: float, x1: float, y1: float) -> tuple:
 def render(name: str, actor: dict, box: tuple, out_dir: str | Path):
     """The sheet. The body is the authored ``box`` in every row: the game
     sizes a mite by it (the catalog's ``standing_height``), so a feeler or the
-    fuse does not make the mite taller or its body larger."""
+    fuse does not make the mite taller or its body larger. Its floor is
+    where the standing legs are drawn (the idle frames), not the box's
+    authored bottom, which stood the mite 2 px in the floor."""
     d = doc(name)
+    idle = int(d.clips["idle"]["frames"])
+    box = box[:3] + (union_visible_bbox(d.render_frame("idle", k, idle) for k in range(idle))[3],)
 
     def body_metrics(fw: int, fh: int) -> dict:
         x0, y0, x1, y1 = box

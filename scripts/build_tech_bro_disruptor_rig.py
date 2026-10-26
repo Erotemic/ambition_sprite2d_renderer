@@ -47,6 +47,9 @@ DX, DY = art.DX, art.DY
 GROUND_Y = 456.0 + 18.0 + DY
 CENTER_X = 250.0 + DX
 FRAME = {"width": 224, "height": 224, "center_x": 112, "ground_y": 214, "ankle_h": 0, "supersample": 3, "render_scale": 1, "trim": False}
+#: The walk keeps a foot on the ground the body stands on in every frame, and
+#: the run's lowest stride touches it (``RigDocument.plant_offset``).
+FRAME["plant"] = {"walk": "each", "run": "row"}
 
 #: Each bone: (parent, the joint of the drawing it turns about).
 BONES = {

@@ -51,8 +51,11 @@ class AuthoredSwingFighter:
     def doc(self) -> RigDocument:
         # RigDocument is a temporary renderer projection. The editable sources
         # are the SVG static rig plus the shared pose/clip library this
-        # character binds.
-        return self.prepared().to_rig_document()
+        # character binds. Its walk keeps a foot on the ground it stands on,
+        # and its run's lowest stride touches it (`RigDocument.plant_offsets`).
+        doc = self.prepared().to_rig_document()
+        doc.frame["plant"] = {"walk": "each", "run": "row"}
+        return doc
 
     @lru_cache(maxsize=1)
     def _spec_dir(self) -> Path:
@@ -95,9 +98,9 @@ class AuthoredSwingFighter:
             raise ValueError(
                 f"{animation}: requested {frame_count} publication frames, "
                 f"source declares {clip.frame_count}")
-        at_s = frame_idx * clip.frame_duration_ms / 1000.0
-        normalized = round(at_s / max(clip.duration_s, 1e-9), 9)
-        return self.doc().render_at(animation, normalized, padding=self.padding())
+        times = self._sample_times(animation, frame_count)
+        lift = self.doc().plant_offsets(animation, times, padding=self.padding())[frame_idx]
+        return self.doc().render_planted(animation, times[frame_idx], lift, padding=self.padding())
 
     @lru_cache(maxsize=None)
     def _clip_frames(self, animation: str, frame_count: int) -> tuple:

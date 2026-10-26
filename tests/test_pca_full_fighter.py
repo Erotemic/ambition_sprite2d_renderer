@@ -173,6 +173,7 @@ def test_pca_doc_cache_preserves_rig_owned_render_caches(monkeypatch):
     class FakeDoc:
         def __init__(self):
             self.data = {}
+            self.frame = {}
             self.clips = {name: {} for name, _frames, _duration in PCA_ROWS}
 
     def fake_load(path):

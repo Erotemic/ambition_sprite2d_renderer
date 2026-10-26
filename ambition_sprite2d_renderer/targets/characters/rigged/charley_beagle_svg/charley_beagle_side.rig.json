@@ -8,7 +8,11 @@
   "ankle_h": 0.0,
   "supersample": 4,
   "render_scale": 1,
-  "trim": false
+  "trim": false,
+  "plant": {
+   "walk": "each",
+   "run": "row"
+  }
  },
  "svg_source": {
   "path": "../../../../data/characters/charley_beagle_svg/charley_beagle_side.svg",

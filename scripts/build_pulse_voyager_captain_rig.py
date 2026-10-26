@@ -42,6 +42,9 @@ SCALE = 0.4
 #: The drawing's centre line: the frame's centre, so a row mirrors about it.
 CENTER_X = 262.0
 FRAME = {"width": 224, "height": 224, "center_x": 112, "ground_y": 214, "ankle_h": 0, "supersample": 3, "render_scale": 1, "trim": False}
+#: The walk keeps a foot on the ground the body stands on in every frame, and
+#: the run's lowest stride touches it (``RigDocument.plant_offset``).
+FRAME["plant"] = {"walk": "each", "run": "row"}
 
 #: A beat that comes in, holds, and goes out: 0, then 1, then 0.
 BEAT = "(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.25, (1-t)/0.25)))"

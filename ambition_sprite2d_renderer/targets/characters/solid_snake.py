@@ -236,7 +236,9 @@ def _snake_curve(anim: str, frame_idx: int, nframes: int) -> tuple[list[Point], 
 
     if anim == "walk":
         amp = 8.0
-        lift = 0.0
+        # The wider sway rises off the ground: its lowest bends lie where the
+        # standing body's do (amplitude 4), not 4 px in the floor.
+        lift = -(amp - 4.0)
         slither = ph
     elif anim == "hiss":
         amp = 5.5

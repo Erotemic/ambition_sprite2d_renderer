@@ -27,6 +27,9 @@ RIG = ROOT / "ambition_sprite2d_renderer/targets/characters/rigged/shock_warden/
 SCALE = 0.52
 FRAME = {"width": 420, "height": 324, "center_x": 210, "ground_y": 225,
          "ankle_h": 0, "supersample": 3, "render_scale": 1, "trim": False}
+#: The walk keeps a foot on the ground the body stands on in every frame, and
+#: the run's lowest stride touches it (``RigDocument.plant_offset``).
+FRAME["plant"] = {"walk": "each", "run": "row"}
 
 
 def expr(code: str) -> dict:

@@ -364,6 +364,12 @@ def compose_rig_frame(
     fx_pieces: bool = False,
 ) -> Image.Image:
     t = doc.frame_time(animation, frame_idx, frame_count)
+    if solved is None and (doc.frame.get("plant") or {}).get(animation):
+        # The pose the document's `frame.plant` puts on the ground
+        # (`RigDocument.plant_offsets`), as `RigDocument.render_frame` draws it.
+        times = [doc.frame_time(animation, k, frame_count) for k in range(frame_count)]
+        lift = doc.plant_offsets(animation, times, padding=padding)[frame_idx]
+        solved = doc.solve(animation, t, channel_overrides=doc.lowered(animation, t, lift))
     if solved is None:
         solved = doc.solve(animation, t)
     world, params = solved

@@ -81,6 +81,9 @@ def _load_doc_cached(path_text: str, mtime_ns: int, size: int) -> RigDocument:
             + (" ..." if len(missing) > 12 else "")
             + "; run targets/characters/rigged/pca_rig_extract.py build"
         )
+    # Her walk keeps a foot on the ground she stands on, and her run's lowest
+    # stride touches it (`RigDocument.plant_offsets`): the run rode 4 px over.
+    doc.frame["plant"] = {"walk": "each", "run": "row"}
     return doc
 
 
@@ -102,8 +105,9 @@ def _frame_solution_cached(
     """Share the solve used by render_frame with the immediately-following metadata pass."""
     del mtime_ns, size
     doc = _doc()
-    t = doc.frame_time(animation, frame_idx, frame_count)
-    return t, doc.solve(animation, t)
+    times = [doc.frame_time(animation, k, frame_count) for k in range(frame_count)]
+    t, lift = times[frame_idx], doc.plant_offsets(animation, times, padding=PADDING)[frame_idx]
+    return t, doc.solve(animation, t, channel_overrides=doc.lowered(animation, t, lift) if lift else None)
 
 
 @profile

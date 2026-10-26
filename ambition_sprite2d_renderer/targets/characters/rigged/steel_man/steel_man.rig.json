@@ -8,7 +8,11 @@
     "ankle_h": 0,
     "supersample": 3,
     "render_scale": 1,
-    "trim": false
+    "trim": false,
+    "plant": {
+      "walk": "each",
+      "run": "row"
+    }
   },
   "svg_source": {
     "path": "../../../../data/characters/steel_man/steel_man.svg",

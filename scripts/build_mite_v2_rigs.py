@@ -51,6 +51,9 @@ PKG = ROOT / "ambition_sprite2d_renderer"
 #: Frame pixels for each SVG unit.
 SCALE = 0.6
 FRAME = {"width": 288, "height": 200, "center_x": 144, "ground_y": 188, "ankle_h": 0, "supersample": 3, "render_scale": 1, "trim": False}
+#: The walk keeps a foot on the ground the body stands on in every frame, and
+#: the run's lowest stride touches it (``RigDocument.plant_offsets``).
+FRAME["plant"] = {"walk": "each", "run": "row"}
 
 POSITIONS = ("rear", "rmid", "fmid", "front")
 

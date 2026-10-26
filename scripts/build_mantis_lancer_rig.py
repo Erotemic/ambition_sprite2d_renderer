@@ -39,6 +39,9 @@ SCALE = 0.5
 #: Its centre line (the thorax), in SVG units: the frame's centre.
 CENTER_X = 250.0
 FRAME = {"width": 304, "height": 240, "center_x": 128, "ground_y": 228, "ankle_h": 0, "supersample": 3, "render_scale": 1, "trim": False}
+#: The walk keeps a foot on the ground the body stands on in every frame, and
+#: the run's lowest stride touches it (``RigDocument.plant_offset``).
+FRAME["plant"] = {"walk": "each", "run": "row"}
 
 JOLT = "(1-t)*(1-t)"
 

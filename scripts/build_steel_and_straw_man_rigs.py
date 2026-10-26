@@ -48,6 +48,9 @@ PKG = ROOT / "ambition_sprite2d_renderer"
 SCALE = 0.5
 CENTER_X, GROUND_Y = art.CX, art.GROUND
 FRAME = {"width": 400, "height": 480, "center_x": 200, "ground_y": 460, "ankle_h": 0, "supersample": 3, "render_scale": 1, "trim": False}
+#: The walk keeps a foot on the ground the body stands on in every frame, and
+#: the run's lowest stride touches it (``RigDocument.plant_offset``).
+FRAME["plant"] = {"walk": "each", "run": "row"}
 
 #: target id -> the art's character key
 CAST = {"steel_man": "steel", "straw_man": "straw"}

@@ -148,6 +148,10 @@ def view_spec(spec: CharacterSpec, view: View, target_height: float) -> Humanoid
         ground_y=FRAME_GROUND,
         target_height=target_height,
         collision_scale=1.7,
+        # A run's feet ride the hips (`motion.run_pose`), so its lowest stride
+        # is put on the ground the body stands on; a walk's feet are planted
+        # by their own targets.
+        plant={"run": "row", "dash": "row"},
     )
 
 

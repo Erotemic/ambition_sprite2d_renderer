@@ -39,6 +39,7 @@ from ambition_sprite2d_renderer.core.draw import blending_draw
 
 from . import _solo_shape_rig as SR
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ...core.measure import union_visible_bbox
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -1181,16 +1182,18 @@ def render_portraits(out_dir: Path, **opts) -> List[Path]:
     return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
 
 
+IDLE_FRAMES = next(n for name, n, _ms in ROWS if name == "idle")
+
+
 def _body_metrics_override(fw: int, fh: int):
+    """The authored body, its floor where the idle feet are drawn: the
+    authored bottom (0.94 of the frame) was over them."""
+    floor = union_visible_bbox(render_frame("idle", k, IDLE_FRAMES) for k in range(IDLE_FRAMES))[3]
+    x, y, w = int(fw * 0.24), int(fh * 0.09), int(fw * 0.55)
     return {
-        "body_pixel_bbox": {
-            "x": int(fw * 0.24),
-            "y": int(fh * 0.09),
-            "w": int(fw * 0.55),
-            "h": int(fh * 0.85),
-        },
-        "feet_pixel": {"x": fw * 0.51, "y": fh * 0.925},
-        "feet_anchor_norm": {"x": 0.01, "y": round(0.5 - 0.925, 6)},
+        "body_pixel_bbox": {"x": x, "y": y, "w": w, "h": floor - y},
+        "feet_pixel": {"x": fw * 0.51, "y": float(floor - 1)},
+        "feet_anchor_norm": {"x": 0.01, "y": round(0.5 - (floor - 1) / fh, 6)},
     }
 
 
