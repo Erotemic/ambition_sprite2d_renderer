@@ -28,7 +28,8 @@ legs and his tail are layers of his own.
 from __future__ import annotations
 
 import math
-from typing import List
+from dataclasses import dataclass
+from typing import Callable, List
 
 from ._ai_era_kit import RGBA, mix, pin, solve
 from ._ai_era_kit import WHITE as _SOLID
@@ -677,6 +678,231 @@ def render_portraits(out_dir, **opts):
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# The professor in 3D comes from the numbers of his own makers and art; his
+# front legs are the legs of the person (``PersonBody``). The rest of the
+# horse is the piece "horse": his own art draws it in his three-quarter view
+# (his ``back`` and ``under_torso`` layers) and from the front
+# (``front_behind``); 3D draws it in the other views, from the numbers of
+# that art: his barrel, his two hind legs drawn with his own bones, their
+# hooves, and his tail. His rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+@dataclass(frozen=True)
+class _Made:
+    """A piece of the look made by ``make(K, J, head)``."""
+
+    make: Callable
+
+    def piece(self, K_, J, head):
+        return self.make(K_, J, head)
+
+
+def _own_horse(J):
+    """His own horse: the ``back`` and ``under_torso`` layers of his first
+    idle frame in his three-quarter view, and ``front_behind`` from the
+    front; under all of the person, as his rows paint it."""
+    count = dict((n, k) for n, k, _ in X.rows)["idle"]
+    root = (X.cx, X.ground - X.b.hip_up)
+
+    def draw(view, far):
+        canvas = K.scratch()
+        home = K.home
+        if abs(O.facing(view)) <= 10.0:
+            stamps = X.front_behind(root)
+        else:
+            ctx = X.frame_context("idle", 0, count)
+            stamps = [st for layer in ("back", "under_torso") for fn in X.layers[layer] for st in fn(ctx)]
+        for piece, at, name, degrees in stamps:
+            K.place(canvas, piece, (home[0] + at[0] - root[0], home[1] + at[1] - root[1]), name, degrees)
+        return K._cut(canvas), 0.0, False
+
+    return O.Sprite("own_horse", (0.0, 0.0, 0.0), draw, when=O.near_turn(45.0, 0.0), lead=-30.0)
+
+
+#: His barrel, chest and rump: ellipsoids ``(middle, radii)`` from his
+#: three-quarter barrel (its back at the withers, its belly, its length) and
+#: his front art (its width).
+_BARREL = ((0.0, -3.5, -28.0), (13.0, 12.5, 34.0))
+_CHEST = ((0.0, -2.0, 0.0), (12.0, 12.0, 9.0))
+_RUMP = ((0.0, -5.0, -52.0), (12.6, 12.0, 13.0))
+#: The blanket on his back: from here to here along him, down to here.
+_BLANKET = (-40.0, -12.0, 2.6)
+
+
+def _horse_paint(ellipsoid):
+    """His coat on one of his ellipsoids: the light along his back, the shade
+    of his belly, and the blanket, which is where along him it is."""
+    (_cx, cy, cz), (_rl, ry, rz) = ellipsoid
+    back, front, low = _BLANKET
+
+    def paint(u, v, lit, far):
+        k = np.sqrt(np.clip(1.0 - ((v - cy) / ry) ** 2, 0.0, 1.0))
+        z = cz + rz * k * np.cos(np.radians(u))
+        out = O.fill(HORSE, len(u))
+        O.put(out, v < WAIST + 4.0, HORSE_LIGHT)
+        O.put(out, v > 3.0, HORSE_DARK)
+        on = (z > back) & (z < front) & (v < low)
+        O.put(out, on, BLANKET)
+        O.put(out, on & ((np.abs(z - back) < 0.9) | (np.abs(z - front) < 0.9) | (np.abs(v - low) < 0.7)), GOLD_DARK)
+        return out
+
+    return paint
+
+
+def _barrel_part(K_, J, head):
+    surfaces = [O.ellipsoid(c, r, _horse_paint((c, r))) for c, r in (_BARREL, _CHEST, _RUMP)]
+    # Sets inside sets on the blanket, each side.
+    lines = [O.circle((sx * 12.8, -6.4, -27.0), (sx, 0.0, 0.0), r, colour, 0.6, slack=1.2)
+             for sx in (-1.0, 1.0) for r, colour in ((6.4, GOLD), (4.4, TEAL), (2.4, GOLD))]
+    lines += [O.circle((sx * 12.9, -6.4, -27.0), (sx, 0.0, 0.0), 0.8, None, fill=TEAL, slack=1.2) for sx in (-1.0, 1.0)]
+    return O.Part("horse", surfaces, lines, base=HORSE, outline=1.3, rim=0.3, shade=0.35, shade_colour=HORSE_DARK, anchor=_BARREL[0])
+
+
+#: His legs start inside his barrel, a little in from its side; this much
+#: nearer, the top of a near leg is on his flank and a far one is behind him,
+#: as his rows paint them (his legs over his barrel, his haunch on it).
+_LEG_LEAD = 10.0
+#: His hind legs: where each starts under his rump, and its hoof on the floor
+#: a little in front of that.
+_HIND_ROOT = -52.0
+_HIND_SIDE = 6.4
+
+
+def _hind(near: bool):
+    side = -1.0 if near else 1.0
+    tag = "near" if near else "far"
+    floor = X.b.hip_up - X.b.ankle_up
+
+    def joints():
+        root = (side * _HIND_SIDE, -2.0, _HIND_ROOT)
+        ankle = (side * _HIND_SIDE, floor, _HIND_ROOT + 3.0)
+        hock, ankle = O.two_bone(root, ankle, HIND_UPPER, HIND_LOWER, (0.0, 0.0, -1.0))
+        return root, hock, ankle
+
+    def leg(K_, J, head):
+        root, hock, ankle = joints()
+
+        def bones(pts, near_):
+            upper = HORSE if near_ else HORSE_DARK
+            lower = SOCK if near_ else SOCK_DARK
+            return [(pts[0], pts[1], lambda edge, n: R.bone(K, f"hind_{tag}_0", n, 9.6, 6.0, upper, edge)),
+                    (pts[1], pts[2], lambda edge, n: R.bone(K, f"hind_{tag}_1", n, 4.8, 3.8, lower, edge))]
+
+        return C.limb_piece(K, f"hind_{tag}", [root, hock, ankle], bones, anchor=hock, lead=_LEG_LEAD)
+
+    def hoof(K_, J, head):
+        return C.shoes(f"hind_{tag}_hoof", joints()[2], _hoof, _front_hoof, _front_hoof)
+
+    return [("horse", _Made(leg)), ("horse", _Made(hoof))]
+
+
+def _tail(K_, J, head):
+    points = [(0.0, -9.0, -63.0), (0.0, -2.0, -67.0), (0.0, 8.0, -69.0), (0.0, 17.0, -69.0), (0.0, 25.0, -67.0)]
+    return W.mane(K, points, 4.4, MANE, (70, 60, 70, 255), back_width=6.4, lead=1.0)
+
+
+#: His coat in 3D, from the numbers of his front coat and his three-quarter
+#: coat: open on the grey waistcoat, the white collar and the dark bow tie,
+#: the light lapels, three buttons, the gold aleph on his chest; its skirt
+#: lies on his back.
+COAT_3D = W.Trunk(
+    rings=[O.Ring(TOP - 0.5, 0.0, 0.3, 4.2, 3.6), O.Ring(TOP + 3.6, 0.0, 0.5, 9.0, 7.2), O.Ring(WAIST - 24.0, 0.0, 0.6, 9.6, 7.6), O.Ring(WAIST - 9.0, 0.0, 0.4, 9.0, 7.2),
+           O.Ring(WAIST - 2.0, 0.0, 0.0, 8.8, 7.6), O.Ring(WAIST + 5.0, 0.0, -3.0, 10.6, 10.6)],
+    garment=W.Garment(COAT, COAT_DARK, radius=9.4, features=[
+        W.Opening(28.0, VEST, top=TOP + 1.0, bottom=WAIST + 2.0), W.Lapels(28.0, TOP, WAIST - 20.0, 12.0, COAT_LIGHT, line=COAT_DARK),
+        W.Neckline(TOP, TOP + 7.0, 18.0, SHIRT), W.Glow(-8.0, TOP + 2.8, 1.6, 1.3, INK, both=True), W.Dot(0.0, TOP + 2.8, 0.8, INK),
+        W.Buttons(0.0, WAIST - 18.0, WAIST - 6.0, 3, 0.7, INK), W.Dot(36.0, WAIST - 21.0, 1.6, GOLD, ring=GOLD_DARK),
+        W.Down(180.0, TOP + 4.0, WAIST + 5.0, COAT_DARK), W.Shade()]),
+    shoulder=((-7.2, WAIST - 30.6, 0.4), (4.4, 4.8, 4.4)),
+)
+
+
+# His head from the side, drawn as the cast draws a head in the numbers of a
+# profile: bare on top, his hair at the side and the back going grey, his ear,
+# his full beard to his collar, the line of his forehead.
+
+
+def _side_hair_shape(d) -> None:
+    K.poly(d, [K.at(-8.8, -6.0), K.at(-10.6, -1.0), K.at(-9.4, 4.0), K.at(-6.0, 6.6), K.at(-2.0, 2.0)], _SOLID)
+    K.poly(d, [K.at(0.6, 4.0), K.at(11.0, 5.0), K.at(10.4, 11.0), K.at(6.4, 15.0), K.at(2.0, 12.6), K.at(-1.0, 8.0)], _SOLID)
+
+
+def _side_hair(d) -> None:
+    K.poly(d, [K.at(-20.0, -9.4), K.at(-1.4, -9.4), K.at(0.6, -5.0), K.at(0.8, -0.6), K.at(-1.8, -0.2), K.at(-2.4, 3.6), K.at(-1.0, 5.4), K.at(-20.0, 8.0)], HAIR)
+    K.poly(d, [K.at(-10.0, -4.0), K.at(-0.2, -3.0), K.at(-0.4, 0.0), K.at(-10.0, 1.0)], HAIR_GREY)
+    for strand in ([(-8.6, -7.0), (-6.0, -4.6)], [(-9.4, 2.0), (-7.0, 3.6)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_GREY, 0.5)
+
+
+def _side_face(d) -> None:
+    K.poly(d, [K.at(0.0, 3.0), K.at(3.2, 4.6), K.at(6.0, 4.2), K.at(9.8, 4.8), K.at(10.8, 6.6), K.at(10.2, 11.0), K.at(6.4, 15.0), K.at(2.0, 12.6), K.at(-1.0, 8.0)],
+           BEARD)
+    K.line(d, [K.at(2.4, 8.0), K.at(4.4, 12.0)], HAIR_GREY, 0.5)
+    K.line(d, [K.at(5.8, 8.6), K.at(6.8, 13.0)], HAIR_GREY, 0.5)
+    K.line(d, [K.at(3.8, -7.6), K.at(6.2, -8.0), K.at(8.6, -7.6)], mix(SKIN, SKIN_DEEP, 0.5), 0.45)
+
+
+_side_head = R.make_head(K, ("canter_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.8, 8.8, 9.2), jaw=(3.4, 4.2, 6.0, 7.6),
+                         nose=((8.0, -1.0), (11.0, 2.8), (10.4, 4.2), (8.0, 4.6)), ear=(-1.6, 1.0, 2.2, 3.2), shape=_side_hair_shape, under=_side_hair,
+                         over=_side_face, far_shade=False)
+_side_eyes = R.make_eyes(K, (6.6, -0.4), None, ink=INK, white=None, lid=SKIN_DEEP, size=1.0)
+_side_brows = R.make_brows(K, [(4.4, -3.6), (6.6, -4.6), (8.8, -3.8)], None, BEARD, 1.5)
+_side_mouth = R.make_mouth(K, (8.6, 7.0), (150, 76, 76, 255), wide=0.45)
+
+
+_FRONT = O.near_turn(0.0)
+
+
+class _CentaurBody(C.PersonBody):
+    """Georg Canter as a body: a person whose legs are the front legs of his
+    horse, and whose own art has the rest of the horse ("horse")."""
+
+    def leg(self, name, hip, knee, ankle, lead=_LEG_LEAD):
+        p = self.person
+        piece = C.limb_piece(K, name, [hip, knee, ankle],
+                             lambda pts, near: C.seg_bones(K, name, pts[0], pts[1], p.thigh(near)) + C.seg_bones(K, name, pts[1], pts[2], p.shin(near)),
+                             anchor=knee, lead=lead)
+        piece.when = C.not_in(_FRONT)
+        return piece
+
+    def own(self, J):
+        out = super().own(J)
+        out["horse"] = _own_horse(J)
+        # From the front his front legs are under the chest of his horse, as
+        # his front art paints them.
+        for side in ("r", "l"):
+            knee, ankle = O.two_bone(J.hips[side], J.ankles[side], self.thigh, self.shin, (0.0, 0.0, 1.0))
+            leg = self.leg(f"front_{side}_leg", J.hips[side], knee, ankle, lead=-12.0)
+            leg.when = _FRONT
+            out[f"front_{side}_leg"] = leg
+        return out
+
+
+ROUND = C.Round(
+    DISPLAY_NAME,
+    _CentaurBody(X, _front_hoof, heads={"side": lambda pose: [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"),
+                                                               (_side_brows(R.brow_mood(pose)), "brows"), (_side_mouth(str(pose["mouth"])), "mouth")]}),
+    C.Look(
+        # Bare on top; his hair at the sides and the back, grey at the
+        # temple; a full beard to his collar.
+        C.auto_head(X, _head, _eyes,
+                    hair=lambda u, v: (np.abs(u) > 58.0) & (v > -9.4) & (v < 6.0),
+                    hair_colour=HAIR, hair_shade=HAIR_GREY,
+                    beard=[O.Ring(4.0, 0.0, 3.0, 6.0, 5.2), O.Ring(8.6, 0.0, 3.8, 5.6, 4.8), O.Ring(12.6, 0.0, 3.8, 3.4, 3.0), O.Ring(15.2, 0.0, 3.4, 0.6, 0.6)],
+                    lines=[O.curve([(sx * 7.6, -4.0, -1.0), (sx * 7.8, -2.0, -2.4), (sx * 7.6, 0.0, -3.6)], HAIR_GREY, 0.8) for sx in (-1.0, 1.0)]),
+        COAT_3D,
+        pieces=[("horse", _Made(_barrel_part)), ("horse", _Made(_tail))] + _hind(True) + _hind(False)),
+    # One hand at his lapel, the other at his side.
+    C.Stance(hands={"r": C.Hand(at=(-2.6, WAIST - 22.0, 8.8), pole=(-0.6, 0.6, -0.4), mode="fist"), "l": C.Hand(l=7.0, pole=(0.4, 0.0, -1.0))}, stagger=1.0))
 
 del STEEL_DARK
 

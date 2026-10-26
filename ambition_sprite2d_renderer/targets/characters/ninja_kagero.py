@@ -356,10 +356,12 @@ X.layers["back"].append(_coil)
 X.layers["over_torso"].append(_talismans)
 
 
-def _blade():
+def _blade(long: float = BLADE):
     """Her blade along +x from her near hand: a short straight edge, a square
-    guard, a grip in red cord."""
+    guard, a grip in red cord. ``long``: the blade as long as a view of the
+    round makes it."""
     g = GUARD_AT
+    BLADE = long
 
     def shape(d) -> None:
         K.rrect(d, K.home[0] - BUTT, K.home[1] - 1.4, K.home[0] + g, K.home[1] + 1.4, 0.8, WHITE)
@@ -376,7 +378,8 @@ def _blade():
         K.line(d, [K.at(g + 1.4, 0.9), K.at(g + BLADE - 3.0, 0.9)], STEEL_LIGHT, 0.6)
         K.line(d, [K.at(g + 1.4, -0.9), K.at(g + BLADE - 4.0, -0.9)], STEEL_DARK, 0.5)
 
-    return K.solid(("kagero_blade",), shape, STEEL, detail, outline=1.0, rim=0.0, shade=0.0, shade_colour=STEEL_DARK)
+    return K.solid(("kagero_blade",) + (() if long == globals()["BLADE"] else (round(long, 1),)), shape, STEEL, detail, outline=1.0, rim=0.0, shade=0.0,
+                   shade_colour=STEEL_DARK)
 
 
 def _held(ctx) -> List[Stamp]:
@@ -661,6 +664,137 @@ def render_portraits(out_dir, **opts):
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# Her own idle frame is her three-quarter view, all of it (her blade, her
+# scarf, her talismans, the coil of her line). The other views are 3D: her
+# head from the side and from the front drawn as the cast draws a head (the
+# hood, the slit, the red eyes; she has no front rows), her jacket and sash
+# from the numbers of her makers, her blade low in front of her, the white
+# ends of her scarf and the tail of her hair behind, the talismans at her
+# near hip and the coil at her far hip. Her rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+from .ninja_shadow_duelist import OwnFrames, big_frame  # noqa: E402
+
+
+def _side_hood_shape(d) -> None:
+    K.oval(d, K.at(-1.0, -2.6), 9.4, 9.2, WHITE)
+    K.oval(d, K.at(-8.6, -4.6), 3.0, 2.6, WHITE)
+
+
+def _side_hood(d) -> None:
+    K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -4.6), K.at(10.0, -4.6), K.at(4.8, -5.0), K.at(2.8, -4.0), K.at(2.2, -1.0), K.at(2.8, 1.4),
+               K.at(5.4, 1.8), K.at(11.0, 1.4), K.at(30.0, 1.4), K.at(30.0, 30.0), K.at(-30.0, 30.0)], HOOD)
+    K.line(d, [K.at(10.0, -4.6), K.at(4.8, -5.0), K.at(2.8, -4.0), K.at(2.2, -1.0), K.at(2.8, 1.4), K.at(5.4, 1.8), K.at(11.0, 1.4)], HOOD_DARK, 0.7)
+    K.line(d, [K.at(-5.4, -9.0), K.at(-7.0, -1.0), K.at(-5.6, 6.6)], HOOD_DARK, 0.6)
+    K.line(d, [K.at(1.4, 4.2), K.at(4.8, 6.4), K.at(8.6, 5.4)], HOOD_DARK, 0.6)
+    K.line(d, [K.at(-2.0, -8.8), K.at(4.4, -10.0), K.at(8.8, -8.6)], GI_LIGHT, 0.5)
+    # The red cord where her hair is tied, at the back of the hood.
+    K.oval(d, K.at(-8.6, -4.6), 2.6, 2.2, HAIR)
+    K.line(d, [K.at(-9.6, -6.6), K.at(-8.0, -2.8)], CORD, 1.0)
+
+
+_side_head = R.make_head(K, ("kagero_side",), SLIT, SLIT, SLIT, skull=(0.0, -2.4, 8.4, 8.4), jaw=(3.0, 3.6, 5.6, 6.6),
+                         nose=((7.2, -0.8), (9.4, 2.6), (8.8, 3.8), (7.2, 4.2)), ear=None, shape=_side_hood_shape, under=_side_hood, far_shade=False)
+
+
+def _side_eyes(mode: str):
+    """Her near eye from the side: a red light in the slit, and its lash."""
+
+    def paint(d) -> None:
+        ex, ey = 6.6, -1.4
+        if mode in ("closed", "wince", "happy"):
+            K.line(d, [K.at(ex - 1.6, ey - 0.2), K.at(ex + 1.6, ey + 0.4)], EYE, 0.7)
+            return
+        tall = 1.9 if mode == "wide" else 1.3
+        K.poly(d, [K.at(ex - 1.6, ey - tall * 0.6), K.at(ex + 1.8, ey - tall * 0.4), K.at(ex + 1.1, ey + tall * 0.8), K.at(ex - 1.2, ey + tall * 0.5)], EYE)
+        K.oval(d, K.at(ex + 0.3, ey + 0.1), 0.7, 0.6, EYE_HOT)
+        K.line(d, [K.at(ex + 1.7, ey - tall * 0.4), K.at(ex + 2.6, ey - tall * 0.4 - 1.2)], SLIT, 0.6)
+
+    return K.piece(("kagero_side_eyes", mode), paint)
+
+
+def _front_hood_shape(d) -> None:
+    K.oval(d, K.at(0.0, -2.0), 8.6, 9.4, WHITE)
+    K.oval(d, K.at(0.0, 3.6), 7.0, 7.6, WHITE)
+
+
+def _front_hood(d) -> None:
+    # Cloth over all of her head but the slit, and the slit is in shadow.
+    K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -1.2), K.at(6.6, -1.2), K.at(6.0, -3.8), K.at(0.0, -4.4), K.at(-6.0, -3.8), K.at(-6.6, -1.2),
+               K.at(-30.0, -1.2)], HOOD)
+    K.poly(d, [K.at(-30.0, -1.2), K.at(-6.6, -1.2), K.at(-6.0, 1.4), K.at(0.0, 2.0), K.at(6.0, 1.4), K.at(6.6, -1.2), K.at(30.0, -1.2), K.at(30.0, 30.0),
+               K.at(-30.0, 30.0)], HOOD)
+    K.line(d, [K.at(6.6, -1.2), K.at(6.0, -3.8), K.at(0.0, -4.4), K.at(-6.0, -3.8), K.at(-6.6, -1.2), K.at(-6.0, 1.4), K.at(0.0, 2.0), K.at(6.0, 1.4),
+               K.at(6.6, -1.2)], HOOD_DARK, 0.7)
+    K.line(d, [K.at(-3.8, 4.8), K.at(0.0, 6.6), K.at(3.8, 4.8)], HOOD_DARK, 0.6)
+    K.line(d, [K.at(-4.8, -8.6), K.at(0.0, -9.8), K.at(4.8, -8.6)], GI_LIGHT, 0.5)
+
+
+def _front_eyes(mode: str):
+    """Her eyes from the front: two red lights in the slit, a lash that
+    flicks up at the outer end of each."""
+
+    def paint(d) -> None:
+        for sx in (-1.0, 1.0):
+            ex, ey = 3.1 * sx, -1.2
+            if mode in ("closed", "wince", "happy"):
+                K.line(d, [K.at(ex + 2.0 * sx, ey - 0.3), K.at(ex - 1.9 * sx, ey + 0.4)], EYE, 0.7)
+                continue
+            tall = 1.9 if mode == "wide" else 1.3
+            K.poly(d, [K.at(ex + 2.2 * sx, ey - tall * 0.6), K.at(ex - 2.0 * sx, ey - tall * 0.4), K.at(ex - 1.3 * sx, ey + tall * 0.8),
+                       K.at(ex + 1.6 * sx, ey + tall * 0.5)], EYE)
+            K.oval(d, K.at(ex - 0.2 * sx, ey + 0.1), 0.8, 0.6, EYE_HOT)
+            K.line(d, [K.at(ex + 2.0 * sx, ey - tall * 0.6), K.at(ex + 3.0 * sx, ey - tall * 0.6 - 1.2)], SLIT, 0.6)
+
+    return K.piece(("kagero_front_eyes", mode), paint)
+
+
+_front_head = R.make_front_head(K, ("kagero_round",), SLIT, SLIT, wide=7.6, jaw=6.2, chin=3.2, shape=_front_hood_shape, hair=_front_hood)
+_BODY = C.PersonBody(X, mirror=("head",), heads={"side": lambda pose: [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes")],
+                                                 "front": lambda pose: [(_front_head(), "head"), (_front_eyes(str(pose["eyes"])), "eyes")]})
+_J = _BODY.joints(2.0)
+#: Her guard: the blade in her near hand low in front of her, its point
+#: forward; her far hand open in front of her chest.
+_WAY = np.array([0.0, math.sin(math.radians(POINT)), math.cos(math.radians(POINT))])
+_NEAR = np.asarray(_J.wrist(True, -1.0))
+
+
+def _held_round(n: int):
+    # The blade as long as the view makes it, and her near hand round it.
+    return O.composed(K, [(_blade(max(5.0, n - GUARD_AT)), "blade"), (X.hand("fist", True), "near_hand")])
+
+
+_HOOD3 = ((0.0, -2.6, -0.6), (8.4, 9.2, 8.4))
+ROUND = OwnFrames(
+    DISPLAY_NAME, _BODY,
+    C.Look(
+        # The hood over all of her head but the slit.
+        C.auto_head(X, _head, hair=lambda u, v: ~((np.abs(u) < 50.0) & (v > -5.0) & (v < 1.6)), hair_colour=HOOD, hair_shade=HOOD_DARK,
+                    volumes=[_HOOD3], ink=EYE, eye_size=1.2),
+        # Her jacket: its cross, her narrow black sash and its white knot, the
+        # folds of her short skirt.
+        C.auto_trunk(X, [W.Path([(-20.0, TOP), (40.0, -18.6)], GI_LIGHT, 0.7), W.Band(-15.4, -10.2, HOOD_DARK), W.Across(-180.0, 180.0, -12.8, SCARF_DARK, width=0.3),
+                         W.Dot(-15.0, -12.6, 1.8, SCARF), W.Down(25.0, -8.0, 4.0, GI_DARK), W.Down(-25.0, -8.0, 4.6, GI_DARK), W.Down(180.0, -28.0, 4.0, GI_DARK)]),
+        # The white ends of her scarf and the tail of her hair behind; the
+        # talismans at her near hip and the coil of her line at her far hip.
+        back_pieces=[W.Mane([(0.0, 11.0, -5.6), (0.0, 17.0, -9.0), (0.0, 23.0, -11.6), (0.0, 29.0, -13.2), (0.0, 35.0, -14.2)], 2.8, SCARF, SCARF_DARK),
+                     W.Mane([(0.0, -4.6, -8.6), (0.0, 1.0, -10.6), (0.0, 7.0, -11.6), (0.0, 13.0, -12.0)], 3.4, HAIR, HAIR_LIGHT),
+                     W.Prop("ofuda", (-7.6, -11.6, 3.0), (-8.0, -1.0, 2.0), lambda n: _ofuda(6), lead=1.0),
+                     W.Prop("coil", (7.4, -9.6, 0.0), (8.0, -9.0, -12.0), lambda n: _coil_part(), lead=1.0)],
+        pieces=[("scarf", W.Worn("scarf", [O.Ring(-38.4, 0.0, 1.0, 3.8, 3.6), O.Ring(-36.6, 0.0, 1.2, 6.0, 5.4), O.Ring(-34.4, 0.0, 0.8, 6.6, 5.8),
+                                           O.Ring(-32.8, 0.0, 0.6, 5.2, 4.6)], W.Garment(SCARF, SCARF_DARK, [W.Shade()]), lead=1.0)),
+                ("blade", W.Prop("blade", tuple(_NEAR), tuple(_NEAR + _WAY * (GUARD_AT + BLADE)), _held_round, lead=4.0))]),
+    # Her guard: the blade low in front of her, her far hand open in front of
+    # her chest.
+    C.Stance(hands={"r": C.Hand(at=tuple(_NEAR), pole=(-0.6, 0.6, -0.4), mode="fist"), "l": C.Hand(at=(3.0, -23.0, 12.0), pole=(1.0, 0.6, -0.4), mode="flat")}, stagger=2.0),
+    frames={45.0: big_frame(X, "idle")}, big=(45.0,))
 
 if __name__ == "__main__":
     raise SystemExit(main())

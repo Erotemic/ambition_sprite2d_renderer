@@ -539,6 +539,157 @@ def render_portraits(out_dir, **opts):
     }, view_width=38.0)
 
 
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# Her trunk and head in 3D come from the numbers of her own makers
+# (``auto_trunk``, ``auto_head``); what they do not say is here, as data.
+# Her rows do not use this.
+
+from types import SimpleNamespace  # noqa: E402
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+class _HopperBody(C.PersonBody):
+    """Her body in the round: as any person's, but each knee is behind her,
+    as a grasshopper's is."""
+
+    def leg(self, name, hip, knee, ankle):
+        knee, _ = O.two_bone(hip, ankle, self.thigh, self.shin, (0.0, 0.0, -1.0))
+        return super().leg(name, hip, knee, ankle)
+
+
+# Her head from the side, drawn as the cast draws a head in the numbers of a
+# profile: the cap and its black peak, her feelers from under it, one large
+# dark eye behind its round lens, the plate at the back of her head.
+
+_SIDE_EYE = (6.4, -0.6)
+_SIDE_FEELERS = [(2.6, -13.0), (0.6, -18.0), (-4.0, -21.6), (-9.6, -21.0)]
+
+
+def _side_cap_shape(d) -> None:
+    K.poly(d, [K.at(-9.6, -7.0), K.at(-10.6, -11.6), K.at(-5.0, -14.6), K.at(5.0, -14.6), K.at(10.0, -11.6), K.at(9.0, -7.0)], _SOLID)
+    K.poly(d, [K.at(6.0, -7.4), K.at(13.6, -5.6), K.at(13.0, -4.2), K.at(5.0, -5.0)], _SOLID)
+    K.stroke(d, [K.at(x, y) for x, y in _SIDE_FEELERS], _SOLID, 1.5)
+
+
+def _side_cap(d) -> None:
+    K.poly(d, [K.at(-20.0, -6.4), K.at(-1.4, -6.4), K.at(-2.6, 1.0), K.at(-5.0, 4.0), K.at(-20.0, 4.0)], GREEN_SHADE)
+    K.poly(d, [K.at(-20.0, -30.0), K.at(20.0, -30.0), K.at(20.0, -7.2), K.at(-20.0, -7.2)], CAP)
+    K.poly(d, [K.at(-10.0, -9.2), K.at(10.0, -9.2), K.at(10.0, -6.8), K.at(-10.0, -6.8)], INK)
+    K.line(d, [K.at(-9.8, -9.4), K.at(9.8, -9.4)], GOLD, 0.7)
+    K.poly(d, [K.at(4.0, -7.4), K.at(14.0, -5.4), K.at(13.0, -3.6), K.at(4.0, -5.2)], INK)
+    K.poly(d, [K.at(-9.6, -12.0), K.at(-4.4, -14.2), K.at(-2.4, -10.4), K.at(-10.0, -9.6)], CAP_SHADE)
+    K.oval(d, K.at(7.6, -11.4), 1.2, 2.2, GOLD, GOLD_DARK, 0.4)
+    K.stroke(d, [K.at(x, y) for x, y in _SIDE_FEELERS], GREEN_SHADE, 1.3)
+
+
+def _side_face(d) -> None:
+    (cx, cy), r = _SIDE_EYE, 3.3
+    K.oval(d, K.at(cx, cy), r * 0.82, r, INK)
+    K.oval(d, K.at(cx - r * 0.25, cy - r * 0.35), r * 0.26, r * 0.3, GREEN_PALE)
+    K.oval(d, K.at(cx, cy), r + 0.4, r + 0.5, LENS, GOLD_DARK, 0.5)
+    K.line(d, [K.at(cx - 3.6, -0.9), K.at(-1.4, -1.6)], GOLD_DARK, 0.5)
+    K.line(d, [K.at(5.2, 4.8), K.at(4.0, 6.8)], GREEN_DEEP, 0.4)
+    K.line(d, [K.at(-0.4, 2.0), K.at(2.0, 6.0), K.at(5.0, 8.6)], GREEN_DEEP, 0.4)
+
+
+_side_head = R.make_head(K, ("hopper_side",), GREEN, GREEN_SHADE, GREEN_DEEP, skull=(0.0, -2.4, 8.8, 8.6), jaw=(3.6, 4.0, 5.6, 6.6), nose=None, ear=None,
+                         shape=_side_cap_shape, under=_side_cap, over=_side_face, far_shade=False)
+_side_mouth = R.make_mouth(K, (8.0, 6.4), (150, 60, 66, 255), wide=0.5, lips=(170, 70, 80, 255))
+
+
+def _side_lids(mode: str):
+    if mode != "closed":
+        return None
+
+    def paint(d) -> None:
+        (cx, cy), r = _SIDE_EYE, 3.3
+        K.oval(d, K.at(cx, cy), r * 0.82, r, GREEN_SHADE)
+        K.line(d, [K.at(cx - r * 0.8, cy + 0.4), K.at(cx + r * 0.8, cy + 0.4)], GREEN_DEEP, 0.6)
+
+    return K.piece(("hopper_side_lids",), paint)
+
+
+def _side_layers(pose):
+    return [(_side_head(), "head"), (_side_lids(str(pose["eyes"])), "lids"), (_side_mouth(str(pose["mouth"])), "mouth")]
+
+
+#: Her front head's numbers for ``auto_head``: its eyes are painted in the
+#: head (and its lids have no numbers), so only the head and mouth count.
+_FRONT_NUMBERS = SimpleNamespace(front_head_layers=SimpleNamespace(spec=SimpleNamespace(
+    head=X.front_head_layers.spec.head, eyes=None, brows=None, mouth=X.front_head_layers.spec.mouth)))
+
+#: Her cap: a white crown, wide and flat, its black band with the gold line
+#: over it, the badge in front; the black peak is a part of its own (in
+#: front only).
+CAP_3D = W.Hat(
+    crown=[O.Ring(-6.6, 0.0, 0.2, 8.4, 8.4), O.Ring(-9.6, 0.0, 0.2, 10.2, 10.0), O.Ring(-13.0, 0.0, 0.2, 10.6, 10.4), O.Ring(-14.6, 0.0, 0.2, 8.0, 7.8),
+           O.Ring(-14.6, 0.0, 0.2, 0.0, 0.0)],
+    brim=None, under=CAP_SHADE,
+    garment=W.Garment(CAP, CAP_SHADE, [W.Band(-9.2, -6.4, INK), W.Band(-9.8, -9.2, GOLD), W.Dot(0.0, -11.4, 2.0, GOLD, GOLD_DARK), W.Shade(-0.4)], radius=10.0))
+
+
+class _Peak:
+    """The black peak of her cap: a loft round the front of her head only."""
+
+    def piece(self, K, J, head):
+        surface = O.loft([O.Ring(-6.8, 0.0, 0.4, 8.6, 8.6), O.Ring(-5.4, 0.0, 3.0, 9.6, 11.4)], O.flat(INK), cols=24, turns=(-62.0, 62.0)).moved(head)
+        return O.Part("peak", [surface], base=INK, outline=1.0, shade=0.0, anchor=(head[0], head[1] - 6.0, head[2] + 10.0), lead=1.0)
+
+
+#: Her feelers, from under her cap at the front, out, up and back.
+FEELERS_3D = W.Antlers([[(s * 1.6, -13.0, 2.0), (s * 3.6, -18.0, 0.0), (s * 7.0, -21.4, -4.0), (s * 10.0, -21.0, -9.0)] for s in (-1.0, 1.0)], 1.3,
+                       GREEN_SHADE, GREEN_DEEP, name="feelers", lead=0.5)
+class _Feelers:
+    """Her feelers in 3D, in the views no art of hers draws them: her own
+    three-quarter view has them in its back layer, her front head and her
+    head from the side in their cap."""
+
+    def piece(self, K, J, head):
+        drawn = FEELERS_3D.piece(K, J, head)
+        draw = drawn.draw
+
+        def only_where_not_drawn(view, far, at):
+            turn = O.facing(view)
+            if abs(turn) <= 10.0 or abs(turn - 45.0) <= 10.0 or abs(abs(turn) - 90.0) <= 10.0:
+                return None
+            return draw(view, far, at)
+
+        drawn.draw = only_where_not_drawn
+        return drawn
+
+
+#: Her wings, folded down her back like the tails of a coat.
+WINGS_3D = W.Cloak([O.Ring(TOP + 5.0, 0.0, -1.2, 5.0, 4.6), O.Ring(-20.0, 0.0, -1.6, 6.6, 6.0), O.Ring(0.0, 0.0, -2.4, 7.6, 7.0), O.Ring(HEM + 6.0, 0.0, -3.4, 8.0, 7.6)],
+                   W.Garment((196, 232, 190, 255), WING_DARK, [W.Down(165.0, TOP + 9.0, HEM + 5.0, WING_DARK), W.Down(-165.0, TOP + 9.0, HEM + 5.0, WING_DARK),
+                                                               W.Down(180.0, TOP + 9.0, HEM + 5.0, WING_DARK)], radius=7.0), turns=(150.0, 210.0))
+
+ROUND = C.Round(
+    DISPLAY_NAME, _HopperBody(X, back_layers=("back",), heads={"side": _side_layers}),
+    C.Look(
+        # Under her cap her head is a grasshopper's: green, no hair, and a
+        # plate at the back of it; large dark eyes behind round glasses.
+        C.auto_head(_FRONT_NUMBERS, _head, None, hair=lambda u, v: (np.abs(u) > 110.0) & (v < 4.0), hair_colour=GREEN_SHADE, hair_shade=GREEN_DEEP,
+                    eye_size=2.6, ink=INK, glasses=O.Glasses("round", (3.4, 3.6), GOLD_DARK, LENS, 0.5)),
+        # Her blue jacket: the white collar and the black tie, two rows of
+        # gold buttons, the ribbons over her heart; the hem of the jacket and
+        # the skirt under it.
+        C.auto_trunk(X, [W.Neckline(TOP - 1.0, TOP + 7.0, 24.0, CAP), W.Strip(0.0, TOP + 0.6, TOP + 7.4, 1.0, INK, flare=-0.3),
+                         W.Buttons(16.0, -17.0, -8.2, 3, 0.9, GOLD), W.Buttons(-16.0, -17.0, -8.2, 3, 0.9, GOLD),
+                         W.Patch(17.0, 28.0, -22.4, -20.6, (206, 70, 70, 255)), W.Patch(28.0, 39.0, -22.4, -20.6, GOLD), W.Patch(39.0, 50.0, -22.4, -20.6, (86, 150, 220, 255)),
+                         W.Across(-180.0, 180.0, -3.0, NAVY_DARK, width=0.4), W.Down(22.0, -2.0, HEM - 1.0, NAVY_DARK), W.Down(-22.0, -2.0, HEM - 1.0, NAVY_DARK),
+                         W.Down(180.0, TOP + 4.0, -3.4, NAVY_DARK)]),
+        head_pieces=[CAP_3D, _Peak()], back_pieces=[WINGS_3D], pieces=[("feelers", _Feelers())]),
+    # Her hands behind her back, as an officer stands.
+    C.Stance(hands={"r": C.Hand(at=(-2.0, -4.0, -9.0), pole=(-1.0, 0.3, -0.6), mode="fist"),
+                    "l": C.Hand(at=(2.0, -4.6, -9.4), pole=(1.0, 0.3, -0.6), mode="fist")}, stagger=1.8))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 del mix

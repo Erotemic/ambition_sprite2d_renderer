@@ -401,11 +401,12 @@ X.layers["front"].append(_horn_front)
 # ---- The great sword -------------------------------------------------------------
 
 
-def _sword():
+def _sword(long: float = BLADE):
     """The sword along +x from his near hand: a long grip in red cord with a
     brass end, a square guard of brass, and a long blade with a little curve,
-    its back up."""
+    its back up. ``long``: the blade as long as a view of the round makes it."""
     g = GUARD_AT
+    BLADE = long
 
     def blade(up: float, down: float):
         top = [(g + t * BLADE, -up - 3.0 * t * t) for t in (0.0, 0.25, 0.5, 0.75, 0.94)]
@@ -428,7 +429,8 @@ def _sword():
         K.line(d, [K.at(g + t * BLADE, 1.2 - 3.0 * t * t) for t in (0.04, 0.3, 0.55, 0.82)], STEEL_LIGHT, 0.7)
         K.line(d, [K.at(g + t * BLADE, -1.2 - 3.0 * t * t) for t in (0.04, 0.3, 0.55, 0.88)], STEEL_DARK, 0.7)
 
-    return K.solid(("oni_leader_sword",), shape, STEEL, detail, outline=1.1, rim=0.0, shade=0.0, shade_colour=STEEL_DARK)
+    return K.solid(("oni_leader_sword",) + (() if long == globals()["BLADE"] else (round(long, 1),)), shape, STEEL, detail, outline=1.1, rim=0.0, shade=0.0,
+                   shade_colour=STEEL_DARK)
 
 
 def lerp_(a: float, b: float, t: float) -> float:
@@ -900,6 +902,187 @@ def render_portraits(out_dir, **opts):
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His own idle frame is his three-quarter view and his own front frame is his
+# front, all of each (the sword planted in front of him, his shoulder guards,
+# his horns). The other views are 3D: his head from the side drawn as the
+# cast draws a head (the helmet, its peak and the guard of his neck, the near
+# horn, the bone mask with its socket, teeth and red eye), his cuirass and
+# skirt of plates from the numbers of his makers, his horns and shoulder
+# guards drawn by their own makers at their places, and the sword planted in
+# front of him, his two hands on the end of its grip. His rows do not use
+# this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+from .ninja_shadow_duelist import OwnFrames, big_frame, first_frame  # noqa: E402
+
+
+def _side_helmet_shape(d) -> None:
+    K.oval(d, K.at(-1.2, -4.6), 10.8, 9.4, WHITE)
+    K.poly(d, [K.at(7.0, -8.0), K.at(14.4, -5.0), K.at(13.6, -2.6), K.at(7.0, -3.6)], WHITE)
+    K.poly(d, [K.at(-8.0, -6.0), K.at(-15.6, -1.0), K.at(-17.0, 6.4), K.at(-12.0, 9.6), K.at(-6.0, 6.0), K.at(-6.6, -2.0)], WHITE)
+    K.poly(d, [K.at(-1.0, 3.0), K.at(10.4, 3.0), K.at(10.6, 9.6), K.at(7.4, 12.6), K.at(1.6, 12.2), K.at(-1.4, 8.6)], WHITE)
+
+
+def _side_helmet(d) -> None:
+    K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -3.8), K.at(12.0, -3.4), K.at(5.0, -4.6), K.at(0.6, -3.4), K.at(-0.4, 2.0), K.at(0.0, 10.0),
+               K.at(-30.0, 12.0)], HELM)
+    K.line(d, [K.at(12.0, -3.4), K.at(5.0, -4.6), K.at(0.6, -3.4), K.at(-0.4, 2.0), K.at(0.0, 9.0)], HELM_DARK, 0.8)
+    for x, bend in ((-5.6, -2.0), (-0.4, 0.0), (5.0, 1.6)):
+        K.line(d, [K.at(x, -5.6), K.at(x + bend * 0.5, -10.0), K.at(x + bend, -13.6)], HELM_LIGHT, 0.5)
+    K.poly(d, [K.at(-11.6, -6.4), K.at(13.6, -5.6), K.at(13.4, -3.8), K.at(-11.4, -4.4)], HELM_LIGHT)
+    K.oval(d, K.at(6.6, -7.4), 1.3, 1.3, BRASS, OUTLINE, 0.4)
+    for k in range(3):
+        y = 0.0 + k * 3.0
+        K.line(d, [K.at(-15.6 - k * 0.4, y), K.at(-6.4, y + 2.6)], LACE, 0.8)
+    K.poly(d, [K.at(0.6, -3.4), K.at(3.0, -3.8), K.at(2.4, 4.0), K.at(0.0, 8.0), K.at(-0.4, 2.0)], BONE_SHADE)
+
+
+def _side_mask(d) -> None:
+    # The socket of his near eye, the hole of the nose, the teeth.
+    K.poly(d, [K.at(6.4, -3.2), K.at(10.6, -3.0), K.at(10.6, 1.0), K.at(8.4, 1.8), K.at(6.4, 0.8)], SOCKET)
+    K.poly(d, [K.at(9.6, 2.4), K.at(11.0, 2.2), K.at(11.0, 4.8), K.at(9.4, 4.6)], BONE_DEEP)
+    K.line(d, [K.at(4.0, 7.0), K.at(7.6, 7.6), K.at(10.6, 6.8)], BONE_DEEP, 0.8)
+    for x in (5.4, 7.2, 9.0):
+        K.line(d, [K.at(x, 5.6), K.at(x + 0.1, 8.8)], BONE_DEEP, 0.5)
+    K.line(d, [K.at(3.6, 9.6), K.at(7.4, 10.6), K.at(10.4, 9.4)], BONE_SHADE, 0.6)
+    K.line(d, [K.at(2.6, 2.6), K.at(4.6, 4.6), K.at(4.2, 7.0)], BONE_SHADE, 0.6)
+
+
+_side_head = R.make_head(K, ("oni_leader_side",), BONE, BONE_SHADE, BONE_DEEP, skull=(0.2, -2.4, 9.4, 9.0), jaw=(3.8, 4.6, 6.6, 7.4), nose=None, ear=None,
+                         shape=_side_helmet_shape, under=_side_helmet, over=_side_mask, far_shade=False)
+
+
+def _side_eyes(mode: str):
+    """The red light in the near socket of his mask."""
+
+    def paint(d) -> None:
+        ex, ey = 8.6, -0.8
+        if mode in ("closed", "wince", "happy"):
+            K.line(d, [K.at(ex - 1.6, ey - 0.4), K.at(ex + 1.6, ey + 0.5)], EYE, 0.7)
+            return
+        tall = 2.0 if mode == "wide" else 1.4
+        K.poly(d, [K.at(ex - 1.7, ey - tall), K.at(ex + 1.8, ey - 0.2), K.at(ex + 1.2, ey + tall * 0.9), K.at(ex - 1.3, ey + tall * 0.5)], EYE)
+        K.oval(d, K.at(ex + 0.3, ey + 0.1), 0.8, 0.7, EYE_HOT)
+
+    return K.piece(("oni_leader_side_eyes", mode), paint)
+
+
+def _side_horn():
+    """The near horn from the side: it goes up from the helmet, and out
+    toward whoever looks is not seen, so it is narrow."""
+    return K.solid(("oni_leader_side_horn",), lambda d: _horn_shape(d, (-0.6, -8.6), -0.4, 1.0), HORN, lambda d: _horn_detail(d, (-0.6, -8.6), -0.4, 1.0),
+                   outline=1.2, rim=0.3, shade=0.3, shade_colour=HORN_DARK)
+
+
+#: Where each horn has its root (from the middle of his head) and each
+#: shoulder guard its top (body space), for the views that are 3D.
+HORN_ROOTS = {"r": (-7.6, -8.4, 0.6), "l": (7.6, -8.4, 0.6)}
+
+
+def _outward(view: O.View, at, centre) -> float:
+    """-1 when ``at`` is to the left of ``centre`` in ``view``, else 1."""
+    ex = view.basis()[0]
+    return -1.0 if float((np.asarray(at) - np.asarray(centre)) @ ex) < 0.0 else 1.0
+
+
+class _Horns:
+    """His horns in the views his own frames do not draw, but for the side
+    views (his head from the side has its horn): each drawn by his own horn
+    maker at its root, going out to the side it is on in that view. His
+    three-quarter head from the left is the mirror of his own, which has no
+    horns, so they are drawn there too."""
+
+    def piece(self, K_, J, head):
+        sprites = []
+        for side, root in HORN_ROOTS.items():
+            at = tuple(np.asarray(head) + root)
+
+            def draw(view, far, at=at):
+                if abs(abs(O.facing(view)) - 90.0) <= 10.0:
+                    return None  # his head from the side has its horn
+                out = _outward(view, at, head)
+                return K.solid(("oni_leader_horn_round", out), lambda d: _horn_shape(d, (0.0, 0.0), out, 0.94), HORN,
+                               lambda d: _horn_detail(d, (0.0, 0.0), out, 0.94), outline=1.2, rim=0.3, shade=0.3, shade_colour=HORN_DARK), 0.0, False
+
+            sprites.append(O.Sprite(f"horn_{side}", at, draw, lead=2.0))
+        return _Group(sprites)
+
+
+class _Sodes:
+    """His shoulder guards in the views that are 3D: drawn by their own maker,
+    hanging from each shoulder over the top of the arm."""
+
+    def piece(self, K_, J, head):
+        sprites = []
+        for side in ("r", "l"):
+            sh = np.asarray(J.shoulders[side]) + np.array([0.0, -1.0, 0.0])
+            sprites.append(O.Sprite(f"sode_{side}", tuple(sh), lambda view, far, near=(side == "r"): (_sode_part(near), 0.0, O.facing(view) < 0.0), lead=6.0))
+        return _Group(sprites)
+
+
+class _Group:
+    """Pieces that go together (both horns, both shoulder guards): what a
+    look gives as one piece. ``when`` is given to each of them."""
+
+    def __init__(self, parts):
+        self.parts = parts
+
+    @property
+    def when(self):
+        return self.parts[0].when
+
+    @when.setter
+    def when(self, value):
+        for part in self.parts:
+            part.when = value
+
+
+_BODY = C.PersonBody(X, mirror=("head",), heads={"side": lambda pose: [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"), (_side_horn(), "horn")]})
+_J = _BODY.joints(2.0)
+#: He waits: the sword planted in front of him, its point on the ground, his
+#: two hands on the end of its grip.
+_WAY = np.array([0.0, math.sin(math.radians(PLANTED)), math.cos(math.radians(PLANTED))])
+_NEAR = np.asarray(_J.wrist(True, -1.0))
+_FAR = _NEAR - _WAY * (BUTT - 3.0) + np.array([2.4, 0.0, 0.0])
+
+
+def _held_round(n: int):
+    # The sword as long as the view makes it, and his near hand round it.
+    return O.composed(K, [(_sword(max(8.0, n - GUARD_AT)), "sword"), (X.hand("fist", True), "near_hand")])
+
+
+_ROWS_OF_PLATES = [W.Across(-180.0, 180.0, v, LACE, width=0.4) for v in np.arange(-31.0, -13.0, 3.6)] + \
+    [W.Across(-180.0, 180.0, v, LACE, width=0.4) for v in np.arange(-3.0, SKIRT - 1.0, 3.8)]
+ROUND = OwnFrames(
+    DISPLAY_NAME, _BODY,
+    C.Look(
+        # The helmet over all of his head but the mask, and the guard of his
+        # neck flared behind.
+        C.auto_head(X, _head, hair=lambda u, v: ~((np.abs(u) < 52.0) & (v > -3.6)), hair_colour=HELM, hair_shade=HELM_DARK,
+                    volumes=[((0.0, -4.6, -0.6), (10.6, 9.6, 10.2))], ink=EYE, eye_size=1.3),
+        # The cuirass and the skirt: rows of plates laced in blue, the light
+        # edge at the top, the red cord at the chest, the sash and its clasp,
+        # the hanging plates of the skirt and their light hem, the mark of the
+        # dojo.
+        C.auto_trunk(X, _ROWS_OF_PLATES + [W.Band(TOP + 2.4, TOP + 5.2, PLATE_LIGHT), W.Dot(0.0, -25.0, 1.4, RED), W.Band(-12.6, -6.6, RED_DARK),
+                                           W.Across(-180.0, 180.0, -9.8, RED, width=0.3), W.Dot(10.0, -9.6, 1.8, BRASS),
+                                           W.Down(-30.0, -6.0, SKIRT, PLATE_DARK, width=0.55), W.Down(10.0, -6.0, SKIRT, PLATE_DARK, width=0.55),
+                                           W.Down(50.0, -6.0, SKIRT, PLATE_DARK, width=0.55), W.Down(180.0, -6.0, SKIRT, PLATE_DARK, width=0.55),
+                                           W.Band(SKIRT - 2.6, SKIRT + 2.0, PLATE_LIGHT), W.Glow(30.0, 8.6, 2.6, 2.8, RED)]),
+        head_pieces=[W.Cloak([O.Ring(-49.0, 0.0, 1.6, 9.6, 9.0), O.Ring(-45.0, 0.0, 0.4, 13.6, 11.6), O.Ring(-41.4, 0.0, -0.6, 15.6, 13.0)],
+                             W.Garment(HELM, HELM_DARK, [W.Across(-180.0, 180.0, v, LACE, width=0.4) for v in (-47.0, -44.0, -42.6)]), turns=(95.0, 265.0)),
+                     ],
+        pieces=[("horns", _Horns()), ("sode", _Sodes()), ("sword", W.Prop("sword", tuple(_NEAR), tuple(_NEAR + _WAY * (GUARD_AT + BLADE)), _held_round, lead=4.0))]),
+    C.Stance(hands={"r": C.Hand(at=tuple(_NEAR), pole=(-0.8, 0.6, -0.2), mode="fist"), "l": C.Hand(at=tuple(_FAR), pole=(1.0, 0.6, -0.2), mode="fist")},
+             stagger=2.0),
+    frames={45.0: big_frame(X, "idle"), 0.0: first_frame(X, "front")}, big=(45.0,))
 
 if __name__ == "__main__":
     raise SystemExit(main())

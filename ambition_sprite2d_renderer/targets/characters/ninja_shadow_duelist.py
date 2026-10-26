@@ -46,12 +46,18 @@ a ``Look`` of this module, a sheet of its own, with his bones and his poses:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import SimpleNamespace
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple
+
+import numpy as np
+from PIL import Image
 
 from ._ai_era_kit import OUTLINE, WHITE, RGBA, pin
 from . import _person_rig as R
+from . import _person_round as O
+from . import _round_cast as C
+from . import _round_wear as W
 from ._person_rig import Build, Person, Stamp, loop, shot
 
 TARGET_NAME = "ninja_shadow_duelist"
@@ -253,6 +259,68 @@ def _metadata(look: Look) -> dict:
     return dict(ACTOR_METADATA, actor={"character_id": f"npc_{look.target}", "display_name": look.display_name}, lineage=lineage)
 
 
+# ---- In the round (``_round_cast``): what the ninjas share -----------------------
+
+
+def _also_not(when, own):
+    return lambda view: (when is None or when(view)) and not own(view)
+
+
+@dataclass
+class OwnFrames(C.Round):
+    """A person in the round whose own frames are some of its views:
+    ``frames`` maps a turn (45: its three-quarter view, 0: its front) to a
+    function that draws the frame of its own row there, all of it (the sword
+    in its hand, its scarf, its sash). The parts of the round are drawn in
+    the other views. ``big``: the turns whose frame is drawn at the scale of
+    the canvas (not reduced)."""
+
+    frames: Dict[float, Callable[[], Image.Image]] = field(default_factory=dict)
+    big: Tuple[float, ...] = ()
+
+    def figure(self) -> O.Figure:
+        fig = super().figure()
+        # A look may give pieces that go together as one (``parts``: both
+        # horns): each is drawn by itself.
+        fig.parts = [p for part in fig.parts for p in (part.parts if isinstance(getattr(part, "parts", None), list) else [part])]
+        own = O.near_turn(*self.frames)
+        for part in fig.parts:
+            part.when = _also_not(part.when, own)
+        body = self.body
+        K = body.K
+
+        def draw(view: O.View, far: bool):
+            turn = min(self.frames, key=lambda t: abs((O.facing(view) - t + 180.0) % 360.0 - 180.0))
+            img = self.frames[turn]()
+            if turn not in self.big:
+                img = img.resize((int(round(img.width * K.scale)), int(round(img.height * K.scale))), Image.Resampling.NEAREST)
+            return (img, (body.cx * K.scale, body.ground * K.scale)), 0.0, False
+
+        fig.parts.append(O.Sprite("own_frame", (0.0, body.hip_up, 0.0), draw, when=own))
+        return fig
+
+
+def big_frame(person: Person, anim: str):
+    """A function that draws the first frame of ``anim`` at the scale of the
+    canvas (as a portrait does)."""
+    count = {name: n for name, n, _ms in person.rows}[anim]
+
+    def frame() -> Image.Image:
+        person._big = True
+        try:
+            return person.render_frame(anim, 0, count)
+        finally:
+            person._big = False
+
+    return frame
+
+
+def first_frame(person: Person, anim: str):
+    """A function that draws the first frame of ``anim``."""
+    count = {name: n for name, n, _ms in person.rows}[anim]
+    return lambda: person.render_frame(anim, 0, count)
+
+
 def _make(look: Look) -> SimpleNamespace:
     """The person of ``look``, and the entry points of its sheet."""
     X = Person(look.target, BUILD, frame=(240, 192), ground=180.0, cx=112.0)
@@ -377,11 +445,13 @@ def _make(look: Look) -> SimpleNamespace:
 
     # ---- The sword and its scabbard -----------------------------------------------
 
-    def _sword():
+    def _sword(long: float = BLADE):
         """The sword along +x from his near hand: a grip in red cord with a brass
         end, a small round guard, and a long narrow blade with a little curve, its
-        back up (a ninjato: a square guard and a straight blade)."""
+        back up (a ninjato: a square guard and a straight blade). ``long``: the
+        blade as long as a view of the round makes it."""
         g = GUARD_AT
+        BLADE = long
         # A katana bends up by 2.4 to its point; a ninjato is straight.
         bend = 0.0 if straight else 2.4
 
@@ -414,12 +484,12 @@ def _make(look: Look) -> SimpleNamespace:
             K.line(d, [K.at(g + t * BLADE, 1.0 - bend * t * t) for t in (0.04, 0.3, 0.55, 0.8)], STEEL_LIGHT, 0.6)
             K.line(d, [K.at(g + t * BLADE, -1.0 - bend * t * t) for t in (0.04, 0.3, 0.55, 0.86)], STEEL_DARK, 0.6)
 
-        return K.solid(("duelist_sword",), shape, STEEL, detail, outline=1.1, rim=0.0, shade=0.0, shade_colour=STEEL_DARK)
+        return K.solid(("duelist_sword",) + (() if long == globals()["BLADE"] else (round(long, 1),)), shape, STEEL, detail, outline=1.1, rim=0.0, shade=0.0,
+                       shade_colour=STEEL_DARK)
 
-    def _scabbard_part():
+    def _scabbard_part(long: float = 40.0):
         """The scabbard along +x from its mouth: black lacquer, a brass mouth and
-        end, and a red cord."""
-        long = 40.0
+        end, and a red cord. ``long``: as long as a view of the round makes it."""
 
         def shape(d) -> None:
             K.rrect(d, K.home[0], K.home[1] - 2.0, K.home[0] + long, K.home[1] + 2.0, 1.6, WHITE)
@@ -430,7 +500,8 @@ def _make(look: Look) -> SimpleNamespace:
             K.line(d, [K.at(3.0, -1.0), K.at(long - 4.0, -1.0)], LACQUER_LIGHT, 0.5)
             K.rrect(d, K.home[0] + 8.0, K.home[1] - 3.0, K.home[0] + 11.0, K.home[1] + 3.0, 0.0, RED)
 
-        return K.solid(("duelist_scabbard",), shape, LACQUER, detail, outline=1.1, rim=0.0, shade=0.0, shade_colour=GI_DARK)
+        return K.solid(("duelist_scabbard",) + (() if long == 40.0 else (round(long, 1),)), shape, LACQUER, detail, outline=1.1, rim=0.0, shade=0.0,
+                       shade_colour=GI_DARK)
 
     def _scabbard(ctx) -> List[Stamp]:
         """At his far hip, in his sash: its mouth is in front of him and its end is
@@ -732,6 +803,93 @@ def _make(look: Look) -> SimpleNamespace:
 
     X.rows = list(X.rows) + [("front", 8, 145)]
 
+    # ---- In the round (``_round_cast``) ----------------------------------------
+    #
+    # His own idle frame is his three-quarter view and his own front frame is
+    # his front, all of each (the sword in his hands, his scarf, his sash).
+    # The other views are 3D: his head from the side drawn as the cast draws
+    # a head, in the numbers of a profile (the hood, the slit, the red eye),
+    # his gi, scarf and sash from the numbers of his makers, the sword in his
+    # guard, the scabbard at his far hip and the ends of his scarf behind.
+    # His rows do not use this.
+
+    def _side_hood_shape(d) -> None:
+        K.oval(d, K.at(-1.0, -2.6), 9.8, 9.6, WHITE)
+        K.poly(d, [K.at(-8.6, -2.0), K.at(-13.0, 0.6), K.at(-12.6, 3.6), K.at(-8.6, 2.0)], WHITE)
+
+    def _side_hood(d) -> None:
+        # All of it is cloth but the slit at his eyes, in front of where his ear is.
+        K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -4.4), K.at(10.0, -4.4), K.at(5.0, -4.8), K.at(3.0, -3.8), K.at(2.4, -0.8), K.at(3.0, 1.8),
+                   K.at(5.6, 2.4), K.at(11.0, 2.0), K.at(30.0, 2.0), K.at(30.0, 30.0), K.at(-30.0, 30.0)], HOOD)
+        K.line(d, [K.at(10.0, -4.4), K.at(5.0, -4.8), K.at(3.0, -3.8), K.at(2.4, -0.8), K.at(3.0, 1.8), K.at(5.6, 2.4), K.at(11.0, 2.0)], HOOD_DARK, 0.7)
+        K.line(d, [K.at(-5.6, -9.0), K.at(-7.4, -1.0), K.at(-6.0, 7.0)], HOOD_DARK, 0.6)
+        K.line(d, [K.at(1.6, 4.6), K.at(5.4, 7.0), K.at(9.4, 6.0)], HOOD_DARK, 0.6)
+        K.line(d, [K.at(0.6, 8.0), K.at(4.6, 10.2), K.at(8.4, 9.2)], HOOD_DARK, 0.5)
+        K.line(d, [K.at(-2.0, -8.6), K.at(4.4, -9.8), K.at(9.0, -8.4)], GI_LIGHT, 0.5)
+        K.oval(d, K.at(-9.4, 0.2), 1.8, 2.2, HOOD_DARK)
+
+    _side_head = R.make_head(K, ("duelist_side",), *face, skull=(0.0, -2.4, 8.8, 8.8), jaw=(3.2, 4.0, 6.0, 7.2),
+                             nose=((7.6, -0.8), (10.0, 2.8), (9.4, 4.2), (7.6, 4.6)), ear=None, shape=_side_hood_shape, under=_side_hood, far_shade=False)
+    SIDE_EYE = (6.8, -1.0)
+
+    def _side_eyes(mode: str):
+        """His near eye from the side: a red light in the slit."""
+
+        def paint(d) -> None:
+            ex, ey = SIDE_EYE
+            if mode in ("closed", "wince", "happy"):
+                K.line(d, [K.at(ex - 1.6, ey - 0.4), K.at(ex + 1.6, ey + 0.5)], EYE, 0.7)
+                return
+            tall = 1.9 if mode == "wide" else 1.3
+            K.poly(d, [K.at(ex - 1.7, ey - tall), K.at(ex + 1.8, ey - 0.1), K.at(ex + 1.2, ey + tall * 0.9), K.at(ex - 1.3, ey + tall * 0.5)], EYE)
+            K.oval(d, K.at(ex + 0.3, ey + 0.1), 0.7, 0.6, EYE_HOT)
+
+        return K.piece(("duelist_side_eyes", mode), paint)
+
+    if band:
+        _side_skin_eyes = R.make_eyes(K, (6.4, -0.6), None, ink=INK, iris=IRIS, lid=SKIN_DEEP, size=0.9)
+        _side_brows = R.make_brows(K, [(4.4, -2.6), (6.4, -3.6), (8.6, -2.8)], None, INK, 1.4)
+        side_layers = lambda pose: [(_side_head(), "head"), (_side_skin_eyes(str(pose["eyes"])), "eyes"),  # noqa: E731
+                                    (_side_brows(min(0, R.brow_mood(pose))), "brows")]
+    else:
+        side_layers = lambda pose: [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes")]  # noqa: E731
+
+    body = C.PersonBody(X, mirror=("head",), heads={"side": side_layers})
+    J = body.joints(2.0)
+    # His guard: his near hand in front of his belly, his far hand behind it on
+    # the end of the grip, the point up in front of him at his throat.
+    way = np.array([0.0, math.sin(math.radians(POINT)), math.cos(math.radians(POINT))])
+    near = np.asarray(J.wrist(True, -1.0))
+    far = near - way * (BUTT - 2.0) + np.array([2.6, 0.0, 0.0])
+
+    def held(n: int):
+        # The sword as long as the view makes it, and his near hand round it.
+        return O.composed(K, [(_sword(max(6.0, n - GUARD_AT)), "sword"), (X.hand("fist", True), "near_hand")])
+
+    def scabbard(n: int):
+        return _scabbard_part(max(6.0, float(n)))
+
+    hood = ((0.0, -2.6, -0.6), (8.8, 9.6, 8.8))
+    round_ = OwnFrames(
+        look.display_name, body,
+        C.Look(
+            # The hood over all of his head but the slit, and its knot behind.
+            C.auto_head(X, _head, hair=lambda u, v: ~((np.abs(u) < 50.0) & (v > -4.8) & (v < 2.2)), hair_colour=HOOD, hair_shade=HOOD_DARK,
+                        volumes=[hood, ((0.0, -0.6, -9.6), (2.6, 2.4, 2.6))], ink=EYE if not band else INK, eye_size=1.2),
+            # His gi: the red at its cross, the wide sash, the edge of its short skirt.
+            C.auto_trunk(X, [W.Path([(-20.0, -38.0), (40.0, -19.0)], GI_LIGHT, 0.7), W.Path([(-8.0, -38.4), (30.0, -22.0)], RED, 0.6),
+                             W.Band(-13.0, -7.0, RED_DARK), W.Across(-180.0, 180.0, -10.0, RED, width=0.4), W.Patch(-40.0, -22.0, -8.0, 3.6, RED),
+                             W.Band(6.6, 8.6, GI_LIGHT), W.Down(180.0, -30.0, 6.0, GI_DARK)]),
+            # The ends of his scarf behind, and the scabbard at his far hip.
+            back_pieces=[W.Mane([(0.0, 11.0, -6.4), (0.0, 16.0, -9.6), (0.0, 21.0, -12.0), (0.0, 26.0, -13.6), (0.0, 31.0, -14.6)], 3.0, RED, RED_DARK),
+                         W.Prop("scabbard", (6.0, -9.0, 7.0), (6.4, 4.0, -30.0), scabbard, lead=-2.0)],
+            pieces=[("scarf", W.Worn("scarf", [O.Ring(-39.4, 0.0, 1.2, 4.0, 3.8), O.Ring(-37.6, 0.0, 1.4, 6.4, 5.8), O.Ring(-35.4, 0.0, 1.0, 7.0, 6.2),
+                                               O.Ring(-33.8, 0.0, 0.8, 5.6, 5.0)], W.Garment(RED, RED_DARK, [W.Shade()]), lead=1.0)),
+                    ("sword", W.Prop("sword", tuple(near), tuple(near + way * (GUARD_AT + BLADE)), held, lead=4.0))]),
+        C.Stance(hands={"r": C.Hand(at=tuple(near), pole=(-0.6, 0.6, -0.4), mode="fist"), "l": C.Hand(at=tuple(far), pole=(1.0, 0.6, -0.2), mode="fist")},
+                 stagger=2.0),
+        frames={45.0: big_frame(X, "idle"), 0.0: first_frame(X, "front")}, big=(45.0,))
+
     metadata = _metadata(look)
     render, main, render_canonical = R.entry_points(X, metadata, look.display_name)
 
@@ -740,7 +898,7 @@ def _make(look: Look) -> SimpleNamespace:
         del opts
         return X.portraits(out_dir, {"default": ("idle", (1,), 0, False), "talking": ("idle", (0, 1, 2, 3, 4, 5, 6, 7), 120, True)}, view_width=30.0)
 
-    return SimpleNamespace(X=X, metadata=metadata, render=render, main=main, render_canonical=render_canonical, render_portraits=render_portraits)
+    return SimpleNamespace(X=X, metadata=metadata, render=render, main=main, render_canonical=render_canonical, render_portraits=render_portraits, round=round_)
 
 
 MADE: Dict[str, SimpleNamespace] = {name: _make(look) for name, look in LOOKS.items()}
@@ -757,6 +915,11 @@ render, main, render_canonical, render_portraits = (MADE[TARGET_NAME].render, MA
                                                     MADE[TARGET_NAME].render_portraits)
 
 TARGETS = {name: {"render": made.render, "actor_metadata": made.metadata, "render_portraits": made.render_portraits} for name, made in MADE.items()}
+
+#: Each blade of the dojo in the round (``_round_cast``), by target; the
+#: duelist himself is ``ROUND``.
+ROUNDS = {name: made.round for name, made in MADE.items()}
+ROUND = ROUNDS[TARGET_NAME]
 
 if __name__ == "__main__":
     raise SystemExit(main())

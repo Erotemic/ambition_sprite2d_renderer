@@ -655,5 +655,118 @@ def render_portraits(out_dir, **opts):
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His trunk and head in 3D come from the numbers of his own makers
+# (``auto_trunk``, ``auto_head``); his head from the side is drawn by the
+# cast's makers in the numbers of a profile; what the numbers do not say is
+# here, as data. His rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+class _Body(C.PersonBody):
+    """He as a body: his near (right) upper arm carries the red armband and
+    its emblem, as his three-quarter rows draw it on the near arm."""
+
+    def arm(self, name, shoulder, elbow, wrist, mode):
+        piece = super().arm(name, shoulder, elbow, wrist, mode)
+        if not name.startswith("r_"):
+            return piece
+
+        def band(img, pts, near):
+            t = (BAND[0] + BAND[1]) / 2.0
+            at = (lerp(pts[0][0], pts[1][0], t), lerp(pts[0][1], pts[1][1], t))
+            K.place(img, F.band(K, lerp(8.6, 7.4, t) + 0.8), at, "armband", math.degrees(math.atan2(pts[1][1] - pts[0][1], pts[1][0] - pts[0][0])))
+            if near:
+                K.place(img, F.emblem(K, 2.3), at, "armband_emblem", 0.0)
+
+        return C.limb_piece(K, name, [shoulder, elbow, wrist],
+                            lambda pts, near: C.seg_bones(K, name, pts[0], pts[1], X.upper_arm(near)) + C.seg_bones(K, name, pts[1], pts[2], X.forearm(near)),
+                            hand=lambda near: X.hand(mode, near), extra=band, lead=3.0)
+
+
+def _side_cap():
+    """His cap from the side: the crown high in front, the band and its red
+    piping, the black visor out in front, the badge on its edge."""
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-9.8, -5.6), K.at(-10.6, -10.0), K.at(-12.6, -13.0), K.at(-9.0, -16.4), K.at(0.4, -17.8), K.at(8.6, -21.0), K.at(13.6, -20.0),
+                   K.at(12.8, -15.4), K.at(9.6, -10.8), K.at(10.0, -6.6)], WHITE)
+        K.poly(d, [K.at(3.4, -6.8), K.at(10.0, -7.0), K.at(15.2, -4.4), K.at(13.6, -3.2), K.at(5.2, -4.2)], WHITE)
+
+    def detail(d) -> None:
+        K.poly(d, [K.at(-20.0, -10.0), K.at(9.8, -10.8), K.at(10.4, -6.2), K.at(-20.0, -5.0)], COLLAR)
+        K.line(d, [K.at(-20.0, -10.2), K.at(9.8, -11.0)], RED, 0.7)
+        K.line(d, [K.at(-12.0, -13.2), K.at(-8.6, -16.2), K.at(0.4, -17.4), K.at(8.6, -20.4), K.at(13.0, -19.6)], RED, 0.7)
+        K.line(d, [K.at(-6.0, -14.8), K.at(2.4, -15.8), K.at(9.4, -18.4)], UNIFORM_LIGHT, 0.6)
+        K.poly(d, [K.at(3.4, -6.8), K.at(10.0, -7.0), K.at(15.2, -4.4), K.at(13.6, -3.2), K.at(5.2, -4.2)], BOOT)
+        K.line(d, [K.at(5.8, -5.8), K.at(10.2, -6.0), K.at(13.8, -4.4)], BOOT_SHINE, 0.5)
+        K.oval(d, K.at(10.6, -14.6), 1.2, 2.6, OUTLINE)
+        K.oval(d, K.at(10.6, -14.6), 0.9, 2.2, DISC)
+
+    return K.solid(("side_cap",), shape, UNIFORM, detail, outline=1.2, rim=0.3, shade=0.35, shade_colour=UNIFORM_DARK)
+
+
+def _side_hair(d) -> None:
+    K.poly(d, [K.at(20.0, -30.0), K.at(20.0, -8.6), K.at(8.0, -8.6), K.at(4.4, -7.4), K.at(1.2, -7.0), K.at(1.0, -1.6), K.at(-0.6, -1.8), K.at(-3.4, 1.0),
+               K.at(-4.4, 5.6), K.at(-2.6, 7.6), K.at(-20.0, 9.0), K.at(-20.0, -30.0)], HAIR)
+    K.line(d, [K.at(-7.6, -4.0), K.at(-7.0, 2.0), K.at(-5.8, 6.0)], HAIR_DARK, 0.5)
+
+
+def _side_face(d) -> None:
+    K.poly(d, [K.at(0.8, -7.0), K.at(20.0, -7.0), K.at(20.0, -3.4), K.at(8.8, -3.0), K.at(1.0, -3.6)], mix(SKIN, SKIN_DEEP, 0.32))
+    K.line(d, [K.at(6.0, 2.6), K.at(5.2, 5.8)], mix(SKIN, SKIN_DEEP, 0.45), 0.5)
+
+
+_side_head = R.make_head(K, ("enforcer_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.6, 9.0, 9.2), jaw=(3.2, 4.4, 7.2, 7.2),
+                         nose=((7.8, -1.8), (11.2, 3.2), (10.4, 4.8), (7.8, 5.2)), ear=(-1.6, 1.2, 2.2, 3.3), under=_side_hair, over=_side_face,
+                         far_shade=False)
+_side_eyes = R.make_eyes(K, (6.6, -0.4), None, ink=INK, white=None, lid=SKIN_DEEP, size=0.9)
+_side_brows = R.make_brows(K, [(4.4, -2.4), (6.6, -3.0), (8.8, -2.4)], None, HAIR_DARK, 1.4)
+_side_mouth = R.make_mouth(K, (8.2, 7.8), MOUTH, wide=0.55)
+
+
+def _side_layers(pose):
+    out = [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"), (_side_brows(R.brow_mood(pose)), "brows"), (_side_mouth(str(pose["mouth"])), "mouth")]
+    if float(pose["cap"]) >= 0.5:
+        out.append((_side_cap(), "cap"))
+    return out
+
+
+#: His cap: the crown high in front, the band with its red piping, the badge;
+#: the black visor in front only (its back is inside the crown).
+CAP_3D = W.Hat(crown=[O.Ring(-6.4, 0.0, 0.6, 8.8, 8.8), O.Ring(-10.8, 0.0, 0.6, 9.0, 9.2), O.Ring(-14.6, 0.0, 0.6, 11.6, 11.8, droop=-2.4),
+                      O.Ring(-16.0, 0.0, 0.8, 10.6, 11.0, droop=-3.2), O.Ring(-16.4, 0.0, 0.8, 0.0, 0.0, droop=-3.2)],
+               brim=None, garment=W.Garment(UNIFORM, UNIFORM_DARK, [W.Band(-10.8, -6.2, COLLAR), W.Band(-11.3, -10.8, RED), W.Dot(0.0, -14.4, 2.4, DISC, ring=OUTLINE),
+                                                                     W.Dot(0.0, -14.4, 1.2, F.COG), W.Shade(-0.4)]), under=UNIFORM_DARK)
+VISOR_3D = W.Worn("visor", [O.Ring(-6.6, 0.0, 3.6, 7.8, 8.8, v=0.0), O.Ring(-4.6, 0.0, 4.8, 8.0, 9.8, droop=1.6, v=1.0), O.Ring(-6.0, 0.0, 3.6, 7.8, 8.8, v=3.0)],
+                  W.Garment(BOOT, BOOT_DARK), on="head")
+
+ROUND = C.Round(
+    DISPLAY_NAME, _Body(X, heads={"side": _side_layers}),
+    C.Look(
+        # Hair cut short under his cap: at the back of it and a short sideburn.
+        C.auto_head(X, _head, _eyes, hair=lambda u, v: (v < -6.4) | ((np.abs(u) > 72.0) & (v < 1.0)) | ((np.abs(u) > 100.0) & (v < 6.0)),
+                    hair_colour=HAIR, hair_shade=HAIR_DARK),
+        # His tunic: four pockets, the placket and its buttons, the cross
+        # strap from his far shoulder, the black belt and its buckle.
+        C.auto_trunk(X, [W.Patch(8.0, 40.0, -29.0, -21.0, UNIFORM_DARK), W.Patch(-40.0, -8.0, -29.0, -21.0, UNIFORM_DARK),
+                         W.Patch(10.0, 42.0, -29.0, -26.0, UNIFORM_LIGHT), W.Patch(-42.0, -10.0, -29.0, -26.0, UNIFORM_LIGHT),
+                         W.Patch(8.0, 42.0, -1.4, 9.0, UNIFORM_DARK), W.Patch(-42.0, -8.0, -1.4, 9.0, UNIFORM_DARK),
+                         W.Patch(10.0, 44.0, -1.4, 1.4, UNIFORM_LIGHT), W.Patch(-44.0, -10.0, -1.4, 1.4, UNIFORM_LIGHT),
+                         W.Down(0.0, TOP + 3.0, 12.0, UNIFORM_DARK, width=0.4), W.Buttons(0.0, -33.0, -12.0, 4, 0.8, METAL),
+                         W.Path([(45.0, TOP - 1.0), (0.0, -22.0), (-60.0, -12.0), (-120.0, -7.0)], BELT, 0.9),
+                         W.Band(-8.6, -4.0, BELT), W.Patch(-9.0, 9.0, -9.0, -3.6, METAL), W.Across(-180.0, 180.0, 11.0, UNIFORM_DARK, width=0.3),
+                         W.Down(180.0, TOP + 3.0, -9.0, UNIFORM_DARK)]),
+        head_pieces=[CAP_3D, VISOR_3D]),
+    # Square on his feet, his chest out, his fists closed at his sides and a
+    # little in front of him.
+    C.Stance(hands={"r": C.Hand(l=-11.6, pole=(-0.4, 0.0, -1.0), mode="fist"), "l": C.Hand(l=11.6, pole=(0.4, 0.0, -1.0), mode="fist")}, stagger=2.0))
+
 if __name__ == "__main__":
     raise SystemExit(main())

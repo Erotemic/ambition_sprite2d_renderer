@@ -51,8 +51,13 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Dict, List, Tuple
 
+import numpy as np
+
 from ._ai_era_kit import OUTLINE, WHITE, RGBA
 from . import _person_rig as R
+from . import _person_round as O
+from . import _round_cast as C
+from . import _round_wear as W
 from ._person_rig import Build, Person, Stamp, loop, shot
 
 TARGET_NAME = "ninja_heavy"
@@ -427,18 +432,19 @@ def _make(look: Look) -> SimpleNamespace:
 
     # ---- The kanabo ----------------------------------------------------------------
 
-    def _kanabo():
+    def _kanabo(length: float = CLUB):
         """The club along +x from his hand: a grip in dark cord with a ring at
         its end, a brass collar, and a body of iron (or of oak) with eight
-        sides and rows of iron studs, wider at its end."""
+        sides and rows of iron studs, wider at its end. ``length``: as long as
+        a view makes it (it is ``CLUB`` long)."""
 
         def shape(d) -> None:
             K.rrect(d, K.home[0] - BUTT, K.home[1] - 2.0, K.home[0] + 16.0, K.home[1] + 2.0, 1.0, WHITE)
             K.oval(d, K.at(-BUTT - 1.2, 0.0), 2.2, 2.2, WHITE)
-            K.poly(d, [K.at(15.0, -3.0), K.at(CLUB - 3.0, -6.4), K.at(CLUB, -4.0), K.at(CLUB, 4.0), K.at(CLUB - 3.0, 6.4), K.at(15.0, 3.0)], WHITE)
+            K.poly(d, [K.at(15.0, -3.0), K.at(length - 3.0, -6.4), K.at(length, -4.0), K.at(length, 4.0), K.at(length - 3.0, 6.4), K.at(15.0, 3.0)], WHITE)
             for k in range(6):
-                x = 22.0 + k * 7.4
-                w = 3.6 + (x - 15.0) / (CLUB - 18.0) * 3.2
+                x = (22.0 + k * 7.4) * length / CLUB
+                w = 3.6 + (x - 15.0) / (length - 18.0) * 3.2
                 K.oval(d, K.at(x, -w - 0.4), 1.5, 1.5, WHITE)
                 K.oval(d, K.at(x, w + 0.4), 1.5, 1.5, WHITE)
 
@@ -449,16 +455,16 @@ def _make(look: Look) -> SimpleNamespace:
                 K.line(d, [K.at(x, -2.4), K.at(x + 2.4, 2.4)], GRIP_DARK, 0.7)
             K.oval(d, K.at(-BUTT - 1.2, 0.0), 2.2, 2.2, BRASS_DARK)
             K.rrect(d, K.home[0] + 14.0, K.home[1] - 4.0, K.home[0] + 18.0, K.home[1] + 4.0, 0.0, BRASS)
-            K.line(d, [K.at(18.0, -1.2), K.at(CLUB - 2.0, -2.0)], club_light, 0.9)
-            K.line(d, [K.at(18.0, 1.6), K.at(CLUB - 2.0, 2.6)], club_dark, 0.8)
+            K.line(d, [K.at(18.0, -1.2), K.at(length - 2.0, -2.0)], club_light, 0.9)
+            K.line(d, [K.at(18.0, 1.6), K.at(length - 2.0, 2.6)], club_dark, 0.8)
             for k in range(6):
-                x = 22.0 + k * 7.4
-                w = 3.6 + (x - 15.0) / (CLUB - 18.0) * 3.2
+                x = (22.0 + k * 7.4) * length / CLUB
+                w = 3.6 + (x - 15.0) / (length - 18.0) * 3.2
                 for y in (-w - 0.4, 0.2, w + 0.4):
                     K.oval(d, K.at(x, y), 1.3, 1.3, IRON_LIGHT if y < 0.0 else BRASS if y == 0.2 else IRON_DARK, OUTLINE, 0.3)
-            K.rrect(d, K.home[0] + CLUB - 3.0, K.home[1] - 7.0, K.home[0] + CLUB + 1.0, K.home[1] + 7.0, 0.0, IRON_DARK)
+            K.rrect(d, K.home[0] + length - 3.0, K.home[1] - 7.0, K.home[0] + length + 1.0, K.home[1] + 7.0, 0.0, IRON_DARK)
 
-        return K.solid(("kanabo",), shape, club, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=club_dark)
+        return K.solid(("kanabo",) if length == CLUB else ("kanabo", round(length, 1)), shape, club, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=club_dark)
 
     def _club(ctx) -> List[Stamp]:
         """The club in his near hand, at the turn the pose says (``club``: 0 is
@@ -674,6 +680,149 @@ def _make(look: Look) -> SimpleNamespace:
 
     X.rows = list(X.rows) + [("front", 8, 145)]
 
+    # ---- In the round (``_round_cast``) ----------------------------------------
+    #
+    # His own art draws his three-quarter view (his club, his pauldron and his
+    # near hand on the grip are his ``front`` layers) and his front; his head
+    # from the side is drawn by the cast's makers in the numbers of a profile;
+    # his gi, his hood and his club are in 3D in the other views. His club is
+    # in front of his arm and his shoulder, and his hand is round it. His rows
+    # do not use this.
+
+    def _side_hood_shape(d) -> None:
+        K.oval(d, K.at(-1.4, -2.6), 10.4, 10.2, WHITE)
+        K.oval(d, K.at(3.4, 4.4), 6.8, 8.0, WHITE)
+        K.poly(d, [K.at(-9.4, -3.0), K.at(-17.0, 0.0), K.at(-18.6, 4.0), K.at(-11.0, 2.6)], WHITE)
+        K.poly(d, [K.at(-9.4, -1.0), K.at(-14.6, 6.0), K.at(-13.6, 10.6), K.at(-9.0, 4.0)], WHITE)
+
+    def _side_hood(d) -> None:
+        K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -4.0), K.at(11.0, -4.0), K.at(5.0, -4.4), K.at(2.2, -3.4), K.at(1.6, -0.6), K.at(2.2, 2.2),
+                   K.at(5.0, 2.8), K.at(12.0, 2.4), K.at(30.0, 2.4), K.at(30.0, 30.0), K.at(-30.0, 30.0)], HOOD)
+        K.line(d, [K.at(11.0, -4.0), K.at(5.0, -4.4), K.at(2.2, -3.4), K.at(1.6, -0.6), K.at(2.2, 2.2), K.at(5.0, 2.8), K.at(12.0, 2.4)], HOOD_DARK, 0.7)
+        K.line(d, [K.at(-6.6, -9.0), K.at(-8.6, 0.0), K.at(-7.0, 8.0)], HOOD_DARK, 0.6)
+        K.line(d, [K.at(2.6, 5.0), K.at(6.4, 7.6), K.at(10.0, 6.6)], HOOD_DARK, 0.6)
+        K.oval(d, K.at(-9.6, -0.4), 2.2, 2.6, HOOD_DARK)
+        K.line(d, [K.at(-11.0, 0.6), K.at(-17.0, 2.6)], HOOD_DARK, 0.6)
+        if look.brow == "headband":
+            K.poly(d, [K.at(-10.4, -9.0), K.at(10.6, -10.4), K.at(11.2, -6.2), K.at(-10.0, -5.0)], LACQUER, OUTLINE, 0.6)
+            K.line(d, [K.at(-10.0, -8.0), K.at(10.8, -9.4)], (214, 84, 76, 255), 0.6)
+            K.oval(d, K.at(-9.6, -7.0), 2.0, 2.2, LACQUER_DARK, OUTLINE, 0.5)
+            return
+        K.poly(d, [K.at(0.4, -10.8), K.at(10.6, -11.2), K.at(11.6, -5.6), K.at(1.0, -5.0)], IRON, OUTLINE, 0.6)
+        K.poly(d, [K.at(1.0, -10.2), K.at(10.4, -10.6), K.at(10.6, -9.0), K.at(1.2, -8.4)], IRON_LIGHT)
+        K.poly(d, [K.at(9.0, -10.6), K.at(10.6, -10.8), K.at(11.2, -5.6), K.at(9.6, -5.4)], LACQUER)
+        K.oval(d, K.at(4.6, -7.0), 0.8, 0.8, BRASS)
+
+    def _side_slit_eyes(mode: str):
+        """His near eye from the side: a red light in the dark slit."""
+
+        def paint(d) -> None:
+            ex, ey = 7.6, -0.6
+            if mode in ("closed", "wince", "happy"):
+                K.line(d, [K.at(ex - 1.6, ey - 0.4), K.at(ex + 1.6, ey + 0.5)], EYE, 0.7)
+                return
+            tall = 2.0 if mode == "wide" else 1.4
+            K.poly(d, [K.at(ex - 1.8, ey - tall), K.at(ex + 1.9, ey - 0.1), K.at(ex + 1.4, ey + tall * 0.9), K.at(ex - 1.4, ey + tall * 0.5)], EYE)
+            K.oval(d, K.at(ex + 0.3, ey + 0.1), 0.7, 0.7, EYE_HOT)
+
+        return K.piece(("heavy_side_eyes", mode), paint)
+
+    _skin = (SKIN, SKIN_SHADE, SKIN_DEEP) if band else (SLIT, SLIT, SLIT)
+    _side_head = R.make_head(K, ("heavy_side",), *_skin, skull=(0.0, -2.4, 9.4, 9.2), jaw=(3.4, 4.2, 6.8, 7.8),
+                             nose=((8.2, -0.6), (10.6, 2.8), (10.0, 4.4), (8.0, 4.8)), ear=None, shape=_side_hood_shape, under=_side_hood,
+                             over=(lambda d: K.line(d, [K.at(6.6, -3.6), K.at(7.8, 1.6)], SKIN_DEEP, 0.5)) if band else None, far_shade=False)
+    if band:
+        _side_eyes = R.make_eyes(K, (7.2, -0.4), None, ink=INK, iris=IRIS, lid=SKIN_DEEP, size=0.9)
+        _side_brows = R.make_brows(K, [(5.0, -3.0), (7.2, -3.6), (9.4, -2.6)], None, INK, 1.5)
+        side_layers = lambda pose: [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"), (_side_brows(min(0, R.brow_mood(pose))), "brows")]  # noqa: E731
+    else:
+        side_layers = lambda pose: [(_side_head(), "head"), (_side_slit_eyes(str(pose["eyes"])), "eyes")]  # noqa: E731
+
+    #: Where his near hand holds the grip at rest (low, in front of him), and
+    #: the far end of the club (up and well back, behind him, not behind his
+    #: head), in body space.
+    grip = (-12.0, -18.0, 12.0)
+    tip = tuple(np.asarray(grip) + CLUB * np.array([-0.18, -0.6, -0.78]) / np.linalg.norm([-0.18, -0.6, -0.78]))
+
+    class _Own:
+        """A piece in 3D in the views his three-quarter art does not draw
+        (that art has it in his ``front`` layers)."""
+
+        def __init__(self, make):
+            self.make = make
+
+        def piece(self, K_, J, head):
+            return self.make(J)
+
+    def _not_own(view) -> bool:
+        return abs(O.facing(view) - 45.0) > 10.0
+
+    def _club_3d(J):
+        elbow, _ = O.two_bone(J.shoulders["r"], grip, BUILD.upper, BUILD.fore, (-1.0, 0.3, -0.6))
+
+        def draw(view, far, at):
+            if not _not_own(view):
+                return None
+            a, b, e = at(grip), at(tip), at(elbow)
+            img = K.new_frame()
+            K.place(img, _kanabo(max(24.0, math.dist(a, b))), a, "kanabo", math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+            # His hand round the grip, over the club.
+            K.place(img, X.hand("fist", True), a, "near_hand_on_club", math.degrees(math.atan2(a[1] - e[1], a[0] - e[0])))
+            return img
+
+        return O.Drawn("club", grip, draw, lead=5.0, joints=[grip, tip])
+
+    def _pauldron_3d(J):
+        shoulder = J.shoulders["r"]
+        elbow, _ = O.two_bone(shoulder, grip, BUILD.upper, BUILD.fore, (-1.0, 0.3, -0.6))
+        top = (shoulder[0] - 2.0, shoulder[1], shoulder[2])
+
+        def draw(view, far, at):
+            if not _not_own(view):
+                return None
+            s, e = at(top), at(elbow)
+            img = K.new_frame()
+            stamps = _pauldron(SimpleNamespace(shoulder=s, elbow=e))
+            for piece, where, name, turn in stamps:
+                K.place(img, piece, where, name, turn)
+            return img
+
+        return O.Drawn("pauldron", top, draw, lead=6.0)
+
+    rope_band = [W.Band(-15.0, -6.0, rope), W.Across(-180.0, 180.0, -15.0, rope_dark, width=0.4), W.Across(-180.0, 180.0, -6.0, rope_dark, width=0.4),
+                 W.Stripes(-14.6, -6.4, 4.4, (rope, rope, rope_dark), slant=-0.35)]
+    papers = [W.Patch(8.0, 18.0, -5.0, 10.4, PAPER), W.Patch(28.0, 38.0, -5.0, 10.4, PAPER)]
+    if bare:
+        chest = [W.Opening(34.0, SKIN, top=TOP - 1.0, bottom=-15.0), W.Down(34.0, TOP, -15.0, GI_LIGHT, width=0.8), W.Down(-34.0, TOP, -15.0, GI_LIGHT, width=0.8)]
+    else:
+        chest = [W.Path([(-28.0, TOP + 1.0), (36.0, -15.0)], GI_LIGHT, 1.0), W.Path([(-24.0, TOP + 1.4), (34.0, -14.0)], LACQUER, 0.5),
+                 W.Path([(28.0, TOP + 1.0), (6.0, -25.0)], GI_LIGHT, 1.0)]
+    gi_3d = W.Trunk(
+        rings=[O.Ring(TOP - 0.4, 0.0, 0.5, 6.4, 6.0), O.Ring(TOP + 4.0, 0.0, 0.0, 17.0, 13.0), O.Ring(-30.0, 0.0, 1.0, 21.6, 17.0),
+               O.Ring(-16.0, 0.0, 2.6, 24.8, 20.0), O.Ring(-6.0, 0.0, 3.0, 25.2, 20.4), O.Ring(2.0, 0.0, 2.0, 23.0, 18.4), O.Ring(14.0, 0.0, 1.0, 21.0, 16.4)],
+        garment=W.Garment(GI, GI_DARK, chest + rope_band + papers + [W.Band(11.0, 13.4, GI_LIGHT), W.Down(-40.0, -28.0, -16.0, GI_DARK),
+                                                                      W.Down(40.0, -28.0, -16.0, GI_DARK), W.Down(180.0, TOP + 4.0, -15.0, GI_DARK), W.Shade()],
+                          radius=22.0),
+        shoulder=((-13.0, -36.4, 0.0), (9.0, 8.6, 8.6)))
+    hood = ((0.0, -2.4, -1.4), (9.6, 10.2, 9.0))
+    #: The hood is over all of his head but the slit (or the band) at his eyes.
+    face_band = lambda u, v: ~((np.abs(u) < 48.0) & (v > -4.4) & (v < 2.6))  # noqa: E731
+    head_3d = O.Head3D(
+        skin=_skin[0], shade=_skin[1], deep=_skin[2], skull=((0.0, -2.4, 0.0), (8.6, 9.2, 8.4)), jaw=((0.0, 4.2, 2.6), (7.6, 7.8, 5.6)),
+        nose=((0.0, 2.0, 8.4), (1.2, 2.4, 2.0)), ear=None, eye=(26.0, -0.6), eye_size=0.9, ink=EYE if not band else INK,
+        hair=face_band, hair_colour=HOOD, hair_shade=HOOD_DARK, volumes=[hood, ((0.0, -0.4, -9.4), (2.4, 2.8, 2.2))],
+        lines=[O.curve([O.on_ellipsoid(*hood, u, -8.0, 0.3)[0] for u in (-70.0, 0.0, 70.0)], LACQUER if look.brow == "headband" else IRON, 2.4)])
+    tails = W.Mane([(0.0, -0.4, -10.0), (-2.6, 3.0, -14.0), (-4.0, 8.0, -15.0)], 3.0, HOOD, HOOD_DARK)
+
+    ROUNDS[look.target] = C.Round(
+        look.display_name,
+        C.PersonBody(X, R.make_back_shoe(K, HOOD, HOOD_DARK, BUILD.ankle_up), front_layers=("front",), heads={"side": side_layers},
+                     mirror=("head",)),
+        C.Look(head_3d, gi_3d, back_pieces=[tails], pieces=[("club", _Own(_club_3d)), ("club", _Own(_pauldron_3d))]),
+        # The club on his near shoulder, his near hand low on its grip in front
+        # of him; his far fist at his side.
+        C.Stance(hands={"r": C.Hand(at=grip, pole=(-1.0, 0.3, -0.6), mode="fist"), "l": C.Hand(l=17.0, pole=(0.4, 0.0, -1.0), mode="fist")}, stagger=2.4))
+
     metadata = _metadata(look)
     render, main, render_canonical = R.entry_points(X, metadata, look.display_name)
 
@@ -685,7 +834,11 @@ def _make(look: Look) -> SimpleNamespace:
     return SimpleNamespace(X=X, metadata=metadata, render=render, main=main, render_canonical=render_canonical, render_portraits=render_portraits)
 
 
+#: Each heavy of the dojo in the round (``_round_cast.Round``), by target;
+#: ``ROUND`` is the Ninja Heavy himself.
+ROUNDS: Dict[str, "C.Round"] = {}
 MADE: Dict[str, SimpleNamespace] = {name: _make(look) for name, look in LOOKS.items()}
+ROUND = ROUNDS[TARGET_NAME]
 
 #: The Ninja Heavy himself, as the module's own names.
 X = MADE[TARGET_NAME].X

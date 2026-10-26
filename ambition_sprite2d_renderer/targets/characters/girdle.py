@@ -525,6 +525,102 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His head and his jacket are drawn by his own code (``_head``, ``_torso``),
+# which keeps no numbers; here are their numbers, as the cast's makers keep
+# them, so his trunk and head in 3D come from them (``auto_trunk``,
+# ``auto_head``). What they do not say is here, as data. His rows do not use
+# this.
+
+from types import SimpleNamespace  # noqa: E402
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+_head.spec = SimpleNamespace(skin=SKIN, shade=SKIN_SHADE, deep=SKIN_DEEP, skull=(0.0, -2.6, 7.8, 9.0), jaw=(2.4, 4.0, 5.4, 7.4),  # type: ignore[attr-defined]
+                             nose=((7.2, -0.8), (9.8, 3.4), (9.2, 4.6), (7.0, 4.8)), ear=(-4.8, 1.0, 2.1, 3.2))
+_torso.spec = SimpleNamespace(kind="torso", colour=SUIT, dark=SUIT_DARK, back=(9.2, 9.6, 8.6, 9.4), front=(8.6, 10.0, 9.4, 10.2), hem_y=9.0,  # type: ignore[attr-defined]
+                              top=FRONT_TOP, shoulders=((-5.4, -31.0), (6.0, -30.8)), shoulder_r=(5.2, 4.8), belly=0.0)
+
+#: His hair, flat to his head and combed straight back.
+_FLAT = ((0.0, -5.0, -1.6), (8.2, 7.8, 8.6))
+
+
+# His head from the side, drawn as the cast draws a head in the numbers of a
+# profile: the high forehead, the hair flat and combed back, the thin nose,
+# the ear at the middle of his head, one round black lens and its arm.
+
+
+def _side_hair_shape(d) -> None:
+    K.oval(d, K.at(-2.6, -5.0), 8.8, 7.6, WHITE)
+
+
+def _side_hair(d) -> None:
+    K.poly(d, [K.at(4.0, 4.4), K.at(5.2, 4.8), K.at(4.6, 9.2), K.at(2.0, 8.0)], mix(SKIN, SKIN_SHADE, 0.45))
+    K.poly(d, [K.at(20.0, -10.2), K.at(8.4, -10.2), K.at(6.2, -9.4), K.at(3.6, -8.4), K.at(1.6, -6.0), K.at(1.0, -3.0), K.at(1.2, 0.6), K.at(-1.0, 0.4),
+               K.at(-3.8, 3.4), K.at(-4.4, 6.4), K.at(-20.0, 6.4), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+    for strand in ([(6.0, -10.6), (1.0, -11.8), (-5.0, -10.0)], [(2.0, -9.2), (-3.0, -9.6), (-7.0, -6.6)], [(-4.6, -5.4), (-7.6, -3.8)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_LIGHT, 0.6)
+
+
+def _side_face(d) -> None:
+    K.line(d, [K.at(9.4, 5.0), K.at(7.8, 5.0), K.at(7.2, 4.2)], SKIN_DEEP, 0.7)
+    K.line(d, [K.at(0.6, 8.2), K.at(2.8, 10.8), K.at(5.4, 11.4)], mix(SKIN, SKIN_DEEP, 0.55), 0.6)
+
+
+def _side_glasses():
+    """One round lens seen from the side, black and heavy, and its arm back
+    to his ear."""
+
+    def paint(d) -> None:
+        K.oval(d, K.at(7.6, -0.4), 1.3, 3.0, LENS, FRAME, 1.0)
+        K.line(d, [K.at(6.4, -0.8), K.at(0.4, -0.6)], FRAME, 0.9)
+
+    return K.piece(("girdle_side_glasses",), paint)
+
+
+_side_head = R.make_head(K, ("girdle_side",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.6, 8.8, 9.0), jaw=(3.2, 4.0, 6.0, 7.4),
+                         nose=((8.0, -0.8), (10.6, 3.4), (10.0, 4.6), (7.8, 4.8)), ear=(-1.6, 1.0, 2.1, 3.2), shape=_side_hair_shape, under=_side_hair,
+                         over=_side_face, far_shade=False)
+_side_eyes = R.make_eyes(K, (6.4, 0.0), None, ink=INK, white=None, lid=SKIN_DEEP, size=0.95)
+_side_brows = R.make_brows(K, [(4.2, -4.4), (6.4, -5.0), (8.6, -4.4)], None, HAIR, 1.0)
+_side_mouth = R.make_mouth(K, (7.8, 8.0), (112, 54, 58, 255), wide=0.55)
+
+
+def _side_layers(pose):
+    mood = 1 if float(pose["brows"]) > 0.5 else -1 if float(pose["brows"]) < -0.5 else 0
+    return [(_side_head(), "head"), (_side_eyes(str(pose["eyes"])), "eyes"), (_side_glasses(), "glasses"), (_side_brows(mood), "brows"),
+            (_side_mouth(str(pose["mouth"])), "mouth")]
+
+
+ROUND = C.Round(
+    "Girdle", C.PersonBody(G, mirror=("head",), heads={"side": _side_layers}),
+    C.Look(
+        # Dark hair flat to his head, combed back from a high forehead with a
+        # point over his nose; round black glasses.
+        C.auto_head(G, _head, _eyes,
+                    hair=lambda u, v: (v < -8.4 + 2.2 * np.clip(np.abs(u) / 60.0, 0.0, 1.0)) | ((np.abs(u) > 70.0) & (v < -0.6))
+                    | ((np.abs(u) > 100.0) & (v < 6.4)),
+                    hair_colour=HAIR, hair_shade=HAIR_LIGHT, volumes=[_FLAT], glasses=O.Glasses("round", (3.0, 3.0), FRAME, LENS, 1.0),
+                    lines=[O.curve([O.on_ellipsoid(*_FLAT, u, v, 0.2)[0] for v in (-12.0, -8.0, -3.0)], HAIR_LIGHT, 0.6) for u in (-150.0, -110.0, 110.0, 150.0)]
+                    + [O.curve([O.on_ellipsoid(*_FLAT, u + 6.0 * t, -11.6 + 3.0 * t, 0.2)[0] for t in (0.0, 0.5, 1.0)], HAIR_LIGHT, 0.6) for u in (-40.0, 20.0)]),
+        # His cream suit of three pieces, buttoned: the waistcoat and the
+        # shirt in the V of his lapels, his dark tie, the pocket square on his
+        # right, a pocket low on each side.
+        C.auto_trunk(G, [W.Opening(30.0, VEST, top=FRONT_TOP + 1.0, bottom=-17.0), W.Lapels(30.0, FRONT_TOP, -18.0, 12.0, SUIT_LIGHT, line=SUIT_DARK),
+                         W.Neckline(FRONT_TOP, -25.0, 16.0, SHIRT), W.Strip(0.0, FRONT_TOP, -23.0, 1.1, TIE, flare=0.3),
+                         W.Down(0.0, -17.0, 9.0, SUIT_DARK), W.Buttons(6.0, -13.0, -7.0, 2, 0.8, SUIT_DARK),
+                         W.Patch(-40.0, -26.0, -26.4, -24.2, SHIRT), W.Across(-60.0, -28.0, -3.4, SUIT_DARK, width=0.4),
+                         W.Across(28.0, 60.0, -3.4, SUIT_DARK, width=0.4), W.Down(180.0, -30.0, 9.0, SUIT_DARK)])),
+    # Very straight, his hands behind his back.
+    C.Stance(hands={"r": C.Hand(at=(-1.8, -2.0, -8.6), pole=(-0.6, 0.3, -1.0)), "l": C.Hand(at=(1.6, -2.6, -8.6), pole=(0.6, 0.3, -1.0))}, stagger=1.6))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 

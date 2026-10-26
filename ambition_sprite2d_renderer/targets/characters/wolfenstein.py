@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import List
 
 from typing import Optional, Tuple
@@ -2531,6 +2532,236 @@ def render_portraits(out_dir, **opts):
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His coat and his head in his three-quarter view are his own art; his head
+# from the side is his own wolf head (``HEAD``) without its far ear: it is
+# drawn near to the side already, a cheat of the kind the cast's heads are.
+# His wolf head from the front is drawn by his own head kit (``_front_wolf``).
+# His coat in 3D comes from the numbers of his own maker (``auto_trunk``); his
+# wolf head from behind is in 3D, a head a fifth larger than a man's, as
+# ``HEAD_SIZE`` draws it. His near arm carries the armband and the rips of
+# his sleeve; the bolts go through his neck. His rows do not use this. He
+# stands upright here: his hunch (his idle row leans) is not in the round.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+class _Body(C.PersonBody):
+    """He as a body: his near (right) arm carries the armband, the rip over
+    his bicep, the ragged end of his sleeve and the seam at his wrist, as his
+    rows draw them on his near arm. His head is low and forward on a short
+    neck, as his idle row carries it (measured from its first frame: the
+    middle of his head 80 pixels over his hips, well in front of his neck)."""
+
+    def joints(self, stagger: float = 0.0):
+        J = super().joints(stagger)
+        J.head = (0.0, -78.0, 20.0)
+        J.throat = (0.0, -61.0, 19.0)
+        return J
+
+    def arm(self, name, shoulder, elbow, wrist, mode):
+        if not name.startswith("r_"):
+            return super().arm(name, shoulder, elbow, wrist, mode)
+
+        def extra(img, pts, near):
+            sh, el, wr = pts
+
+            def turn(a, b):
+                return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+            ctx = SimpleNamespace(pose={"arm": "over"}, shoulder=sh, elbow=el, hand=wr)
+            for piece, at, label, degrees in _arm_rips(ctx) + _armband(ctx):
+                if label == "armband_emblem" and not near:
+                    continue
+                K.place(img, piece, at, label, degrees)
+
+        return C.limb_piece(K, name, [shoulder, elbow, wrist],
+                            lambda pts, near: C.seg_bones(K, name, pts[0], pts[1], X.upper_arm(near)) + C.seg_bones(K, name, pts[1], pts[2], X.forearm(near)),
+                            hand=lambda near: X.hand(mode, near), extra=extra, lead=3.0)
+
+
+def _front_wolf(pose):
+    """His wolf head from the front, drawn by his own head kit (``KH``) in his
+    own ink, in head pixels from its middle: the skull and the ruff, the ears
+    laid back to each side, the muzzle toward you with the black nose on it,
+    the snarl, the eyes of the meme with the dark mask round them, the brows,
+    the seam round his neck, and the jar on his skull."""
+    k, c = KH, LIVING
+    mouth = str(pose["mouth"])
+    eyes_mode = str(pose["eyes"])
+
+    def skull_shape(d) -> None:
+        k.oval(d, k.at(0.0, -2.4), 12.0, 11.0, WHITE)
+        ruff = [(-11.0, -2.0), (-15.6, 1.0), (-12.6, 3.6), (-16.4, 7.6), (-11.6, 9.0), (-12.6, 14.0), (-6.6, 12.6), (-4.0, 17.0), (0.0, 13.6), (4.0, 17.0),
+                (6.6, 12.6), (12.6, 14.0), (11.6, 9.0), (16.4, 7.6), (12.6, 3.6), (15.6, 1.0), (11.0, -2.0)]
+        k.poly(d, [k.at(x, y) for x, y in ruff], WHITE)
+        for sx in (-1.0, 1.0):
+            k.poly(d, [k.at(sx * 7.0, -9.6), k.at(sx * 21.0, -14.6), k.at(sx * 13.0, -4.0)], WHITE)
+
+    def skull_detail(d) -> None:
+        for sx in (-1.0, 1.0):
+            k.poly(d, [k.at(sx * 8.6, -8.6), k.at(sx * 18.4, -13.0), k.at(sx * 12.6, -5.6)], c.EAR_INNER)
+            k.oval(d, k.at(sx * 5.4, -4.6), 5.4, 5.0, c.FUR_DARK)
+            k.line(d, [k.at(sx * 10.0, 2.0), k.at(sx * 13.6, 6.0)], c.FUR_DARK, 0.7)
+        k.poly(d, [k.at(-6.0, 8.0), k.at(6.0, 8.0), k.at(5.0, 14.6), k.at(-5.0, 14.6)], mix(c.FUR, c.FUR_LIGHT, 0.5))
+        # The muzzle toward you, pale, the snarl folds on its bridge.
+        k.oval(d, k.at(0.0, 3.6), 6.2, 6.6, c.FUR_LIGHT)
+        k.line(d, [k.at(0.0, -6.0), k.at(0.0, -1.6)], c.FUR_LIGHT, 1.6)
+        for sx in (-1.0, 1.0):
+            k.line(d, [k.at(sx * 2.0, -2.4), k.at(sx * 3.2, -0.8), k.at(sx * 2.4, 0.6)], c.FUR_DEEP, 0.6)
+        stitches(d, [k.at(-7.0, 15.4), k.at(0.0, 16.8), k.at(7.0, 15.4)], tick=1.4, every=2.2, width=0.55, kit=k, colour=c.STITCH)
+
+    skull = k.solid((c.name, "front_skull"), skull_shape, c.FUR, skull_detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=c.FUR_DEEP)
+
+    def snarl(d) -> None:
+        # The mouth bared under the nose: the gums, the upper teeth, the lower
+        # jaw a little open.
+        gape = 1.0 + _open(mouth) * 0.08
+        k.poly(d, [k.at(-5.0, 6.0), k.at(5.0, 6.0), k.at(3.6, 8.0 + gape), k.at(-3.6, 8.0 + gape)], c.MOUTH)
+        k.line(d, [k.at(-5.2, 6.0), k.at(5.2, 6.0)], c.GUM, 1.0)
+        for x, tall in ((-4.0, 2.6), (-2.0, 1.6), (0.0, 1.6), (2.0, 1.6), (4.0, 2.6)):
+            k.poly(d, [k.at(x - 0.8, 6.0), k.at(x, 6.0 + tall), k.at(x + 0.8, 6.0)], c.TOOTH)
+        k.oval(d, k.at(0.0, 1.8), 3.2, 2.4, c.NOSE, c.OUTLINE, 0.5)
+        k.oval(d, k.at(-0.8, 1.0), 0.9, 0.6, c.NOSE_LIGHT)
+
+    def eyes(d) -> None:
+        for sx in (-1.0, 1.0):
+            e = k.at(sx * 5.4, -4.6)
+            rx, ry = 4.0, 3.9
+            if eyes_mode in ("closed", "dead"):
+                for s_ in (-1.0, 1.0):
+                    k.line(d, [(e[0] - rx * 0.7, e[1] - rx * 0.7 * s_), (e[0] + rx * 0.7, e[1] + rx * 0.7 * s_)], c.OUTLINE, 0.9)
+                continue
+            k.oval(d, e, rx + 0.6, ry + 0.6, c.OUTLINE)
+            k.oval(d, e, rx, ry, c.EYE_WHITE)
+            for ang, length in ((200.0, 0.75), (330.0, 0.7), (110.0, 0.65), (20.0, 0.6)):
+                a = math.radians(ang)
+                k.line(d, [(e[0] + math.cos(a) * rx * 0.95, e[1] + math.sin(a) * ry * 0.95),
+                           (e[0] + math.cos(a) * rx * (0.95 - length * 0.5), e[1] + math.sin(a) * ry * (0.95 - length * 0.5) + 0.3)], c.VEIN, 0.55)
+            size = 0.15 if eyes_mode == "pin" else 0.26
+            at_ = (e[0] - sx * 0.6, e[1] + 0.2)
+            k.oval(d, at_, rx * size, rx * size, c.IRIS)
+            k.oval(d, at_, rx * size * 0.58, rx * size * 0.58, c.OUTLINE)
+        lift = -1.4 if R.brow_mood(pose) > 0 else 0.0
+        for sx in (-1.0, 1.0):
+            k.stroke(d, [k.at(sx * 1.4, -9.0 + lift + (0.0 if lift else 1.0)), k.at(sx * 5.4, -10.4 + lift), k.at(sx * 9.4, -9.4 + lift)], c.FUR_DEEP, 2.0)
+
+    def jar(d) -> None:
+        # The jar on his skull from the front: the steel collar, the glass
+        # dome, the green fluid and the brain in it.
+        half, base, top = JAR_HALF, JAR_BASE, JAR_TOP
+        r = half
+        dome = [k.at(-r, base)] + [k.at(r * math.cos(math.pi + math.pi * j / 24), top + r + r * math.sin(math.pi + math.pi * j / 24)) for j in range(25)] + [k.at(r, base)]
+        k.poly(d, dome, c.GLASS[:3] + (70,))
+        surface = top + 6.0
+        k.poly(d, [(x, max(y, k.at(0.0, surface)[1])) for x, y in dome], c.JAR_FLUID)
+        k.line(d, [k.at(-r + 1.6, surface), k.at(r - 1.6, surface)], c.JAR_FLUID_TOP, 0.8)
+        by = base - 9.4
+        k.line(d, [k.at(0.0, by + 5.0), k.at(0.0, base + 0.5)], c.BRAIN_SHADE, 2.2)
+        k.oval(d, k.at(0.0, by), 8.6, 6.6, c.BRAIN, c.OUTLINE, 0.7)
+        k.line(d, [k.at(0.0, by - 6.0), k.at(0.0, by + 6.0)], c.BRAIN_FISSURE, 0.8)
+        for sx in (-1.0, 1.0):
+            k.line(d, [k.at(sx * 1.4, by - 4.0), k.at(sx * 4.6, by - 2.0), k.at(sx * 2.4, by + 0.6), k.at(sx * 6.0, by + 2.4)], c.BRAIN_SHADE, 0.6)
+        k.poly(d, dome, c.GLASS[:3] + (40,))
+        k.line(d, dome, c.OUTLINE, 1.3)
+        k.line(d, [k.at(-r + 3.0, base - 3.0), k.at(-r + 3.0, top + 10.0), k.at(-r + 5.4, top + 5.0)], c.GLINT, 1.1)
+        k.rrect(d, *k.at(-r - 2.4, base - 0.6), *k.at(r + 2.4, base + 4.2), 1.0, c.BOLT, c.OUTLINE, 0.9)
+        k.line(d, [k.at(-r - 1.4, base + 0.6), k.at(r + 1.4, base + 0.6)], c.COLLAR_LIGHT, 0.7)
+        for x in (-10.0, -5.0, 0.0, 5.0, 10.0):
+            k.oval(d, k.at(x, base + 1.8), 0.8, 0.8, c.BOLT_DARK, c.OUTLINE, 0.4)
+
+    return [(skull, "skull"), (k.piece((c.name, "front_snarl", mouth), snarl), "mouth"),
+            (k.piece((c.name, "front_eyes", eyes_mode, R.brow_mood(pose)), eyes), "eyes"), (k.piece((c.name, "front_jar"), jar), "brain_jar")]
+
+
+def _side_layers(pose):
+    """His wolf head from the side: his own head without its far ear."""
+    return [(piece, label) for piece, label in HEAD.layers(pose) if label != "far_ear"]
+
+
+def _neck_bolts_3d(K_, J, head):
+    """The bolts through his neck, from side to side: a rod with a nut at
+    each end, the near end over his neck and the far end behind it."""
+    y = lerp(J.neck[1], J.throat[1], 0.55)
+    z = lerp(J.neck[2], J.throat[2], 0.55)
+    ends = [(-15.0, y, z), (15.0, y, z)]
+
+    def draw(view, far, at):
+        a, b = at(ends[0]), at(ends[1])
+        length = max(1.0, math.dist(a, b))
+
+        def paint(d) -> None:
+            K.rrect(d, K.home[0] - 1.0, K.home[1] - 2.6, K.home[0] + length + 1.0, K.home[1] + 2.6, 1.0, BOLT_DARK, OUTLINE, 0.6)
+            for x in (0.0, length):
+                K.oval(d, K.at(x, 0.0), 4.2, 4.2, BOLT, OUTLINE, 0.6)
+                K.oval(d, K.at(x, 0.0), 1.8, 1.8, BOLT_DARK)
+
+        img = K.new_frame()
+        K.place(img, K.piece(("bolts_3d", round(length)), paint), a, "bolts", math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+        return img
+
+    return O.Drawn("bolts", tuple(np.mean(ends, axis=0)), draw, lead=2.0, joints=ends)
+
+
+class _Piece:
+    """A piece of the look made by a function of the body's joints."""
+
+    def __init__(self, make):
+        self.make = make
+
+    def piece(self, K_, J, head):
+        return self.make(K_, J, head)
+
+
+#: His wolf head in 3D, in body pixels (a head pixel is ``HEAD_SIZE`` body
+#: pixels): the skull and the ruff, the long muzzle and the black nose, the
+#: eyes that are open too wide, the ears laid back, the jar on his skull.
+_S = HEAD_SIZE
+HEAD_3D = O.Head3D(
+    skin=FUR, shade=FUR_DARK, deep=FUR_DEEP, skull=((0.0, -2.4 * _S, -1.6 * _S), (12.0 * _S, 11.0 * _S, 12.0 * _S)),
+    jaw=((0.0, 7.0 * _S, 5.0 * _S), (7.0 * _S, 5.0 * _S, 9.0 * _S)), nose=((0.0, 1.0 * _S, 13.0 * _S), (5.0 * _S, 4.0 * _S, 9.0 * _S)),
+    nose_tip=((0.0, -1.0 * _S, 22.0 * _S), (2.8 * _S, 2.4 * _S, 2.0 * _S)), ear=None, eye=(32.0, -4.6 * _S), eye_size=2.0, ink=OUTLINE,
+    eye_white=EYE_WHITE, iris=IRIS, brow=(FUR_DEEP, None, -10.0 * _S, 1.8),
+    hair=lambda u, v: (np.abs(u) > 70.0) | (v < -9.0 * _S), hair_colour=FUR, hair_shade=FUR_DARK,
+    volumes=[((0.0, 4.0 * _S, -6.0 * _S), (13.0 * _S, 11.0 * _S, 9.0 * _S))],
+    tufts=[((sx * 6.0 * _S, -9.0 * _S, -4.0 * _S), (sx * 11.0 * _S, -11.0 * _S, -18.0 * _S), 4.0 * _S) for sx in (-1.0, 1.0)],
+    lines=[O.circle((0.0, -1.0 * _S, 23.8 * _S), (0.0, 0.2, 1.0), 2.4 * _S, None, fill=NOSE, slack=1.6),
+           O.curve([(-4.0 * _S, 6.4 * _S, 14.0 * _S), (0.0, 6.8 * _S, 17.0 * _S), (4.0 * _S, 6.4 * _S, 14.0 * _S)], GUM, 1.0),
+           O.curve([(-6.0 * _S, 15.6 * _S, 2.0 * _S), (0.0, 17.0 * _S, 6.0 * _S), (6.0 * _S, 15.6 * _S, 2.0 * _S)], STITCH, 0.6)])
+#: The jar on his skull: its steel collar, and the glass dome over the green
+#: fluid and the brain (it is not glass in 3D: the fluid's colour, the
+#: brain a shape in it).
+_FLUID = mix(JAR_FLUID[:3] + (255,), FUR, 0.15)
+JAR_3D = W.Hat(crown=[O.Ring(-12.4 * _S, 0.0, -4.6 * _S, 13.6 * _S, 13.6 * _S, v=0.0), O.Ring(-17.0 * _S, 0.0, -4.6 * _S, 13.6 * _S, 13.6 * _S, v=0.0),
+                      O.Ring(-17.0 * _S, 0.0, -4.6 * _S, 11.6 * _S, 11.6 * _S), O.Ring(-28.0 * _S, 0.0, -4.6 * _S, 11.6 * _S, 11.6 * _S),
+                      O.Ring(-34.0 * _S, 0.0, -4.6 * _S, 8.0 * _S, 8.0 * _S), O.Ring(-36.0 * _S, 0.0, -4.6 * _S, 0.0, 0.0)],
+               brim=None, garment=W.Garment(_FLUID, mix(_FLUID, OUTLINE, 0.3), [W.Glow(0.0, -24.0 * _S, 9.0 * _S, 6.6 * _S, BRAIN, both=False),
+                                                                             W.Glow(180.0, -24.0 * _S, 9.0 * _S, 6.6 * _S, BRAIN),
+                                                                             W.Band(-17.2, -12.0 * _S, BOLT)]), under=BOLT_DARK)
+
+ROUND = C.Round(
+    DISPLAY_NAME, _Body(X, R.make_back_shoe(K, BOOT, BOOT_DARK, BUILD.ankle_up), heads={"side": _side_layers, "front": _front_wolf}, mirror=("head",)),
+    C.Look(
+        HEAD_3D,
+        # His coat: torn open to the waist over his sewn green chest and his
+        # belly in six blocks; the burst seam of his near shoulder, a patch,
+        # the one button left.
+        C.auto_trunk(X, [W.Opening(30.0, SKIN, top=TOP + 1.0, bottom=-3.0), W.Across(-28.0, 28.0, -29.0, SKIN_DEEP, width=0.5),
+                         W.Across(-24.0, 24.0, -21.0, SKIN_DEEP, width=0.35), W.Across(-24.0, 24.0, -14.6, SKIN_DEEP, width=0.35),
+                         W.Across(-24.0, 24.0, -8.4, SKIN_DEEP, width=0.35), W.Down(0.0, -26.0, -4.0, SKIN_DEEP),
+                         W.Path([(-24.0, -40.0), (0.0, -39.0), (24.0, -41.0)], STITCH, 0.5), W.Path([(-14.0, -12.0), (14.0, -13.0)], STITCH, 0.4),
+                         W.Down(30.0, TOP + 1.0, -3.0, COAT_DARK, width=0.8), W.Down(-30.0, TOP + 1.0, -3.0, COAT_DARK, width=0.8),
+                         W.Patch(-80.0, -40.0, -58.0, -50.0, SKIN_SHADE), W.Patch(-62.0, -32.0, -24.0, -15.0, (70, 64, 70, 255)),
+                         W.Dot(0.0, -4.0, 2.0, COAT_DARK), W.Across(-180.0, 180.0, 12.0, COAT_DARK, width=0.4), W.Down(180.0, TOP + 4.0, 12.0, COAT_DARK)]),
+        head_pieces=[JAR_3D], pieces=[("bolts", _Piece(_neck_bolts_3d))]),
+    # His long arms hang in front of him, his big hands open and loose.
+    C.Stance(hands={"r": C.Hand(l=-15.0, pole=(-0.3, 0.0, -1.0), mode="soft"), "l": C.Hand(l=16.0, pole=(0.3, 0.0, -1.0), mode="soft")}, stagger=3.0))
 
 if __name__ == "__main__":
     raise SystemExit(main())

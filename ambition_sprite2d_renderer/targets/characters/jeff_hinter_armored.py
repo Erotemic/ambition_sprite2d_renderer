@@ -413,6 +413,70 @@ def render(out_dir, **opts):
 
 
 
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# He is the man of ``jeff_hinter`` in the round: the same head from the side
+# and in 3D (his mop), the same stance. What is his own here is his armor on
+# the numbers of his own makers (``auto_trunk``), and the unit of his HUD,
+# which is over his right ear only: so his left views have his head without
+# it, and nothing of him is mirrored. His rows do not use this.
+
+import dataclasses  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+def _side_hud():
+    """The unit over his ear and the pane of light at his eye, from the side."""
+
+    def paint(d) -> None:
+        K.rrect(d, K.home[0] - 3.6, K.home[1] - 1.6, K.home[0] + 0.4, K.home[1] + 3.4, 1.0, ARMOR_LIGHT, ARMOR_DEEP, 0.6)
+        K.oval(d, K.at(-1.6, 0.9), 0.9, 0.9, NET)
+        K.line(d, [K.at(0.4, 0.2), K.at(4.6, -0.6)], NET_DARK, 0.9)
+        K.line(d, [K.at(0.4, 0.2), K.at(4.6, -0.6)], NET, 0.4)
+        K.rrect(d, K.home[0] + 4.8, K.home[1] - 2.6, K.home[0] + 8.2, K.home[1] + 1.6, 0.6, (130, 236, 222, 70), NET, 0.45)
+
+    return K.piece(("hinter_side_hud",), paint)
+
+
+def _side_layers(hud: bool):
+    def layers(pose):
+        return ([(base._side_head(), "head"), (base._side_eyes(str(pose["eyes"])), "eyes"), (base._side_brows(R.brow_mood(pose)), "brows"),
+                 (base._side_mouth(str(pose["mouth"])), "mouth")] + ([(_side_hud(), "hud")] if hud else []))
+
+    return layers
+
+
+#: His HUD in 3D: the unit over his right ear and its light.
+_HUD_3D = [O.circle((-9.0, 1.0, -0.4), (-1.0, 0.0, 0.0), 2.2, ARMOR_DEEP, 0.6, fill=ARMOR_LIGHT, slack=1.4),
+           O.circle((-9.4, 1.0, -0.4), (-1.0, 0.0, 0.0), 0.8, None, fill=NET, slack=1.6)]
+_PLATE, _BELLY = mix(ARMOR, ARMOR_LIGHT, 0.36), mix(ARMOR, ARMOR_LIGHT, 0.14)
+_CIRCUIT = [[(-10.0, -24.6), (-22.0, -24.6), (-30.0, -26.6)], [(10.0, -24.6), (22.0, -24.6), (30.0, -26.6)], [(0.0, -21.6), (0.0, -19.0)]]
+
+ROUND = C.Round(
+    DISPLAY_NAME, C.PersonBody(X, mirror=(), heads={"left": base.X.head_layers, "side": _side_layers(True), "side_left": _side_layers(False)}),
+    C.Look(
+        dataclasses.replace(base.ROUND.look.head, lines=list(base.ROUND.look.head.lines) + _HUD_3D),
+        # Slate plates closed on him: the high collar, the plate of his chest
+        # and its core, the three plates of his belly, the belt and its lit
+        # lock, the mesh of the surface under all of it, and the unit on his
+        # back with its three lit slits.
+        C.auto_trunk(X, [W.Across(-180.0, 180.0, y, WIRE, width=0.3) for y in (-30.0, -23.0, -16.0, -9.0, -2.0)]
+                     + [W.Band(TOP - 2.0, TOP + 3.4, ARMOR_LIGHT), W.Across(-180.0, 180.0, TOP + 3.6, ARMOR_DEEP, width=0.4),
+                        W.Patch(-62.0, 62.0, TOP + 5.2, -17.8, _PLATE), W.Across(-62.0, 62.0, -17.6, ARMOR_DEEP, width=0.6)]
+                     + [p for y in (-15.4, -10.2, -5.0) for p in (W.Patch(-38.0, 38.0, y, y + 3.6, _BELLY), W.Across(-38.0, 38.0, y + 3.9, ARMOR_DEEP, width=0.3))]
+                     + [W.Band(0.6, 3.8, ARMOR_DEEP), W.Patch(-8.0, 8.0, 1.2, 3.4, NET_DARK), W.Patch(-4.0, 4.0, 1.8, 2.8, NET),
+                        W.Dot(0.0, -24.6, 3.0, ARMOR_DEEP), W.Dot(0.0, -24.6, 2.0, NET_DARK), W.Dot(0.0, -24.6, 1.0, NET)]
+                     + [W.Path(c, NET_DARK, 0.6) for c in _CIRCUIT] + [W.Path(c, NET, 0.25) for c in _CIRCUIT]
+                     + [W.Patch(158.0, 180.0, -29.4, -12.0, ARMOR_DARK), W.Patch(-180.0, -158.0, -29.4, -12.0, ARMOR_DARK)]
+                     + [W.Across(162.0, 180.0, y, NET, width=0.3) for y in (-26.0, -22.0, -18.0)]
+                     + [W.Across(-180.0, -162.0, y, NET, width=0.3) for y in (-26.0, -22.0, -18.0)])),
+    base.ROUND.stance)
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 del loop, OUTLINE

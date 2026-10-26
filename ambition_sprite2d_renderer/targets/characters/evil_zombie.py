@@ -242,83 +242,90 @@ def _open(mouth: str) -> float:
     return {"big": 5.6, "open": 3.6, "o": 2.8, "grit": 0.6}.get(mouth, 2.2)
 
 
-def _jaw(mouth: str):
+def _jaw(mouth: str, dx: float = 0.0):
     """His lower jaw, from the middle of his head: it hangs open, more for a
-    groan or a bite."""
+    groan or a bite. ``dx``: that far forward (a head seen from the side)."""
     drop = _open(mouth)
 
+    def at(x: float, y: float) -> Point:
+        return K.at(x + dx, y)
+
     def shape(d) -> None:
-        K.poly(d, [K.at(0.6, 6.4), K.at(8.4, 5.6 + drop * 0.5), K.at(8.0, 8.0 + drop), K.at(5.0, 10.8 + drop), K.at(1.4, 10.2 + drop * 0.6),
-                   K.at(-1.6, 7.8)], WHITE)
+        K.poly(d, [at(0.6, 6.4), at(8.4, 5.6 + drop * 0.5), at(8.0, 8.0 + drop), at(5.0, 10.8 + drop), at(1.4, 10.2 + drop * 0.6),
+                   at(-1.6, 7.8)], WHITE)
 
     def detail(d) -> None:
         # The mouth between the jaws, and his lower teeth.
-        K.poly(d, [K.at(4.2, 5.0), K.at(9.0, 4.6), K.at(8.6, 5.8 + drop * 0.5), K.at(4.4, 6.6 + drop * 0.3)], MOUTH)
+        K.poly(d, [at(4.2, 5.0), at(9.0, 4.6), at(8.6, 5.8 + drop * 0.5), at(4.4, 6.6 + drop * 0.3)], MOUTH)
         for x in (5.4, 6.8):
-            K.poly(d, [K.at(x - 0.5, 6.6 + drop * 0.4), K.at(x, 5.4 + drop * 0.4), K.at(x + 0.5, 6.5 + drop * 0.4)], TOOTH)
-        K.line(d, [K.at(1.4, 9.0 + drop * 0.5), K.at(5.0, 9.8 + drop)], SKIN_DEEP, 0.5)
+            K.poly(d, [at(x - 0.5, 6.6 + drop * 0.4), at(x, 5.4 + drop * 0.4), at(x + 0.5, 6.5 + drop * 0.4)], TOOTH)
+        K.line(d, [at(1.4, 9.0 + drop * 0.5), at(5.0, 9.8 + drop)], SKIN_DEEP, 0.5)
 
-    return K.solid(("jaw", round(drop, 1)), shape, SKIN_SHADE, detail, outline=1.1, rim=0.2, shade=0.3, shade_colour=SKIN_DEEP)
+    return K.solid(("jaw", round(drop, 1)) + ((dx,) if dx else ()), shape, SKIN_SHADE, detail, outline=1.1, rim=0.2, shade=0.3, shade_colour=SKIN_DEEP)
 
 
-def _upper_mouth():
+def _upper_mouth(dx: float = 0.0):
     """The dark of his open mouth under his top lip, and his top teeth."""
 
     def paint(d) -> None:
-        K.poly(d, [K.at(4.0, 4.6), K.at(8.8, 4.2), K.at(9.0, 5.6), K.at(4.4, 6.0)], MOUTH)
-        for x in (5.6, 7.2):
+        K.poly(d, [K.at(4.0 + dx, 4.6), K.at(8.8 + dx, 4.2), K.at(9.0 + dx, 5.6), K.at(4.4 + dx, 6.0)], MOUTH)
+        for x in (5.6 + dx, 7.2 + dx):
             K.poly(d, [K.at(x - 0.5, 4.6), K.at(x, 5.8), K.at(x + 0.5, 4.6)], TOOTH)
 
-    return K.piece(("upper_mouth",), paint)
+    return K.piece(("upper_mouth",) + ((dx,) if dx else ()), paint)
 
 
 #: The helmet sits back on his head, up off his brow, so his eyes show.
 HELMET_AT = (-0.8, -1.8)
 
 
-def H(x: float, y: float) -> Point:
-    return K.at(x + HELMET_AT[0], y + HELMET_AT[1])
+def H(x: float, y: float, at: Point = HELMET_AT) -> Point:
+    return K.at(x + at[0], y + at[1])
 
 
-def _helmet():
+def _helmet(at: Point = HELMET_AT):
     """His steel helmet, from the middle of his head: a deep dome, a short
     brim over his brow, a skirt that flares out over his ear and his neck. It
     sits crooked, back on his head; it is dented and its paint is gone in
     places. A loose chin strap hangs from it."""
 
+    def h(x: float, y: float) -> Point:
+        return H(x, y, at)
+
     def shape(d) -> None:
-        K.oval(d, H(-1.0, -8.0), 10.2, 7.6, WHITE)
-        K.poly(d, [H(-11.2, -6.0), H(-10.6, 1.0), H(-13.4, 4.6), H(-8.6, 4.4), H(-5.4, -0.6), H(0.0, -2.6), H(6.4, -3.4),
-                   H(10.6, -2.6), H(10.4, -6.0)], WHITE)
+        K.oval(d, h(-1.0, -8.0), 10.2, 7.6, WHITE)
+        K.poly(d, [h(-11.2, -6.0), h(-10.6, 1.0), h(-13.4, 4.6), h(-8.6, 4.4), h(-5.4, -0.6), h(0.0, -2.6), h(6.4, -3.4),
+                   h(10.6, -2.6), h(10.4, -6.0)], WHITE)
 
     def detail(d) -> None:
         # The rim, round the skirt and the brim.
-        K.line(d, [H(-13.0, 4.0), H(-8.8, 3.8), H(-5.4, -1.2), H(0.0, -3.2), H(6.4, -4.0), H(10.4, -3.4)], HELMET_DARK, 0.9)
-        K.line(d, [H(-11.0, 1.0), H(-8.0, -1.4), H(-6.0, -4.8)], HELMET_DARK, 0.6)
+        K.line(d, [h(-13.0, 4.0), h(-8.8, 3.8), h(-5.4, -1.2), h(0.0, -3.2), h(6.4, -4.0), h(10.4, -3.4)], HELMET_DARK, 0.9)
+        K.line(d, [h(-11.0, 1.0), h(-8.0, -1.4), h(-6.0, -4.8)], HELMET_DARK, 0.6)
         # The light on the dome.
-        K.line(d, [H(-7.4, -11.6), H(-2.6, -14.0), H(3.0, -13.6)], HELMET_LIGHT, 0.8)
+        K.line(d, [h(-7.4, -11.6), h(-2.6, -14.0), h(3.0, -13.6)], HELMET_LIGHT, 0.8)
         # A dent, and a scrape to the bare steel.
-        K.line(d, [H(3.0, -11.6), H(5.2, -9.4), H(5.0, -7.0)], HELMET_DARK, 0.8)
-        K.line(d, [H(3.8, -11.8), H(6.0, -9.6)], HELMET_LIGHT, 0.4)
-        K.line(d, [H(-4.0, -8.0), H(-0.6, -9.6)], METAL, 0.5)
-        K.oval(d, H(-8.4, -4.0), 1.6, 1.2, mix(HELMET, RUST, 0.6))
-        K.oval(d, H(1.2, -5.2), 1.0, 0.8, mix(HELMET, RUST, 0.5))
+        K.line(d, [h(3.0, -11.6), h(5.2, -9.4), h(5.0, -7.0)], HELMET_DARK, 0.8)
+        K.line(d, [h(3.8, -11.8), h(6.0, -9.6)], HELMET_LIGHT, 0.4)
+        K.line(d, [h(-4.0, -8.0), h(-0.6, -9.6)], METAL, 0.5)
+        K.oval(d, h(-8.4, -4.0), 1.6, 1.2, mix(HELMET, RUST, 0.6))
+        K.oval(d, h(1.2, -5.2), 1.0, 0.8, mix(HELMET, RUST, 0.5))
         # The regime's mark on its side, faded.
-        K.oval(d, H(-4.0, -7.4), 2.6, 2.6, mix(HELMET, F.DISC, 0.55))
-        F.cog(K, d, H(-4.0, -7.4), 2.0, mix(HELMET, F.COG, 0.55), mix(HELMET, F.DISC, 0.55))
+        K.oval(d, h(-4.0, -7.4), 2.6, 2.6, mix(HELMET, F.DISC, 0.55))
+        F.cog(K, d, h(-4.0, -7.4), 2.0, mix(HELMET, F.COG, 0.55), mix(HELMET, F.DISC, 0.55))
 
-    return K.solid(("helmet",), shape, HELMET, detail, outline=1.2, rim=0.3, shade=0.35, shade_colour=HELMET_DARK)
+    return K.solid(("helmet",) + ((at,) if at != HELMET_AT else ()), shape, HELMET, detail, outline=1.2, rim=0.3, shade=0.35, shade_colour=HELMET_DARK)
 
 
-def _strap():
+def _strap(dx: float = 0.0):
     """The chin strap, loose: it hangs from the skirt by his ear."""
+    pts = [K.at(-6.6 + dx, 2.4), K.at(-5.4 + dx, 7.4), K.at(-3.0 + dx, 10.6)]
 
     def paint(d) -> None:
-        K.line(d, [K.at(-6.6, 2.4), K.at(-5.4, 7.4), K.at(-3.0, 10.6)], OUTLINE, 1.3)
-        K.line(d, [K.at(-6.6, 2.4), K.at(-5.4, 7.4), K.at(-3.0, 10.6)], STRAP, 0.7)
-        K.oval(d, K.at(-3.0, 10.6), 0.8, 0.8, METAL, OUTLINE, 0.3)
+        K.line(d, pts, OUTLINE, 1.3)
+        K.line(d, pts, STRAP, 0.7)
+        K.oval(d, pts[-1], 0.8, 0.8, METAL, OUTLINE, 0.3)
 
-    return K.piece(("strap",), paint)
+    return K.piece(("strap",) + ((dx,) if dx else ()), paint)
 
 
 def _head_layers(pose):
@@ -562,6 +569,270 @@ def render_portraits(out_dir, **opts):
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# He stoops at rest (``lean`` 14, his hips down a little), so in the round
+# his trunk, neck and head lean forward about his hips as his rows lean
+# them (``LeaningBody``). His tunic in 3D is written from the numbers of his
+# own ``_torso`` (it keeps none); his head from the side and from the front
+# is drawn with his own makers and the cast's, in the numbers of those
+# views. His near cheek is gone, so his head is not the same on both sides.
+# His rows do not use this.
+
+import dataclasses  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+class LeaningBody(C.PersonBody):
+    """A person who rests leaned forward (a stoop, a crouch: the ``lean``
+    and the ``hip`` of the rest pose) as a body in the round: its trunk, neck
+    and head turned forward about its hips as its rows turn them, its hips
+    as low as they are at rest, and its own trunk and head art turned with
+    them. (A candidate for ``_round_cast``; the Failed Prototype uses it.)"""
+
+    def _rest(self):
+        return self.person.full(dict(self.person.rest, **self.pose))
+
+    def tilt(self, p, degrees: float, about=(0.0, 0.0, 0.0)):
+        """``p`` turned forward ``degrees`` (its top toward +z) about ``about``."""
+        a = math.radians(degrees)
+        x, y, z = (np.asarray(p, float) - np.asarray(about, float))
+        return tuple(np.asarray(about, float) + (x, y * math.cos(a) + z * math.sin(a), -y * math.sin(a) + z * math.cos(a)))
+
+    def drop(self) -> float:
+        return float(self._rest()["hip"][1]) * self.person.U
+
+    def joints(self, stagger: float = 0.0):
+        J = super().joints(stagger)
+        rest = J.rest
+        lean = float(rest["lean"])
+        hdx, hdy, turn = rest["head"]
+        down = np.array([0.0, self.drop(), 0.0])
+
+        def leaned(p):
+            return tuple(np.asarray(self.tilt(p, lean)) + down)
+
+        neck = leaned(J.neck)
+        head_up = self.tilt(np.asarray(J.head) - np.asarray(J.neck), lean * 0.5 + float(turn) * 0.3)
+        U = self.person.U
+        head = tuple(np.asarray(neck) + head_up + (0.0, hdy * U, hdx * U * math.sqrt(2.0)))
+        throat = tuple(np.asarray(head) + self.tilt((0.0, 4.0, -0.4), lean * 0.35 + float(turn)))
+        return SimpleNamespace(**dict(vars(J), shoulders={k: leaned(v) for k, v in J.shoulders.items()},
+                                      hips={k: tuple(np.asarray(v) + down) for k, v in J.hips.items()}, neck=neck, head=head, throat=throat))
+
+    def own(self, J):
+        out = super().own(J)
+        rest = J.rest
+        lean, turn = float(rest["lean"]), float(rest["head"][2])
+
+        def turned(sprite, degrees: float, anchor=None):
+            draw = sprite.draw
+
+            def turned_draw(view, far):
+                made = draw(view, far)
+                if made is None or made[0] is None:
+                    return made
+                piece, d, mirrored = made
+                return piece, d + (degrees if abs(O.facing(view)) > 10.0 else 0.0), mirrored
+
+            return dataclasses.replace(sprite, draw=turned_draw, anchor=sprite.anchor if anchor is None else anchor)
+
+        out["trunk"] = turned(out["trunk"], lean, (0.0, self.drop(), 0.0))
+        out["head"] = turned(out["head"], lean * 0.35 + turn)
+        return out
+
+    def leaned_rings(self, rings):
+        """Level rings of a trunk (from the hips, up), each moved as its
+        height is moved by the lean: a stooped trunk."""
+        lean, down = float(self._rest()["lean"]), self.drop()
+        out = []
+        for r in rings:
+            _x, y, z = self.tilt((r.l, r.y, r.z), lean)
+            out.append(dataclasses.replace(r, y=y + down, z=z))
+        return out
+
+
+# His head from the side, drawn with his own makers (the jaw, the mouth, the
+# strap, the helmet) and the cast's (``make_head``) in the numbers of a
+# profile: the sunk socket and its glow, the bruise, and from the right the
+# hole in his cheek with his teeth in it.
+
+
+def _side_face(hole: bool):
+    def paint(d) -> None:
+        K.oval(d, K.at(0.0, 3.4), 3.0, 2.4, mix(SKIN, BRUISE, 0.55))
+        K.line(d, [K.at(6.4, 1.6), K.at(5.2, 5.0), K.at(6.2, 7.4)], SKIN_DEEP, 0.55)
+        K.line(d, [K.at(-2.0, 5.0), K.at(0.4, 9.8), K.at(3.8, 11.4)], mix(SKIN, SKIN_DEEP, 0.6), 0.6)
+        K.oval(d, K.at(6.6, -1.0), 2.6, 2.7, SOCKET)
+        K.line(d, [K.at(4.0, -3.6), K.at(6.6, -4.4), K.at(9.0, -3.2)], SKIN_DEEP, 0.7)
+        if hole:
+            pts = [K.at(1.0, 4.6), K.at(4.6, 4.0), K.at(6.0, 5.6), K.at(4.8, 8.2), K.at(1.4, 7.6)]
+            K.poly(d, pts, MOUTH)
+            K.line(d, [K.at(1.2, 5.4), K.at(5.6, 5.0)], GUM, 0.6)
+            for x in (2.0, 3.2, 4.4):
+                K.rrect(d, K.at(x, 0.0)[0] - 0.45, K.at(0.0, 5.2)[1], K.at(x, 0.0)[0] + 0.45, K.at(0.0, 6.6)[1], 0.2, TOOTH)
+            K.line(d, pts + [pts[0]], SKIN_DEEP, 0.45)
+
+    return paint
+
+
+_SIDE_HEADS = {hole: R.make_head(K, ("zombie_side", hole), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.6, 8.8, 9.0), jaw=(2.8, 4.8, 6.6, 6.8),
+                                 nose=((7.8, -1.6), (10.4, 2.8), (9.6, 4.0), (7.8, 4.4)), ear=(-1.6, 1.4, 2.0, 3.0), over=_side_face(hole), far_shade=False)
+               for hole in (True, False)}
+
+
+def _side_eyes(mode: str):
+    """The glow in his one socket seen from the side."""
+
+    def paint(d) -> None:
+        if mode in ("closed", "dead"):
+            return
+        c = K.at(6.8, -0.8)
+        K.oval(d, c, 1.6, 1.8, mix(SOCKET, GLOW, 0.4))
+        K.oval(d, c, 0.9, 1.0, GLOW)
+
+    return K.piece(("side_eyes", mode), paint)
+
+
+def _side_layers(hole: bool):
+    return lambda pose: [(_strap(3.0), "strap"), (_jaw(str(pose["mouth"]), 1.6), "jaw"), (_SIDE_HEADS[hole](), "head"), (_upper_mouth(1.6), "upper_mouth"),
+                         (_side_eyes(str(pose["eyes"])), "eyes"), (_helmet((0.4, -1.8)), "helmet")]
+
+
+# His left three-quarter view: his head as it is, but the cheek whole (the
+# hole is in his right cheek). It is drawn facing right and mirrored.
+_WHOLE = R.make_head(K, ("zombie_whole",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.6, 7.8, 9.0), jaw=(2.0, 4.8, 6.0, 6.8),
+                     nose=((7.0, -1.6), (9.6, 2.8), (8.8, 4.0), (7.0, 4.4)), ear=(-4.8, 1.4, 2.0, 3.0),
+                     over=lambda d: (K.oval(d, K.at(-1.6, 3.4), 3.0, 2.4, mix(SKIN, BRUISE, 0.55)),
+                                     K.line(d, [K.at(4.8, 1.6), K.at(3.6, 5.0), K.at(4.6, 7.4)], SKIN_DEEP, 0.55),
+                                     K.line(d, [K.at(-3.6, 5.0), K.at(-1.2, 9.8), K.at(2.2, 11.4)], mix(SKIN, SKIN_DEEP, 0.6), 0.6),
+                                     K.oval(d, K.at(*NEAR_EYE), 3.0, 2.7, SOCKET), K.oval(d, K.at(FAR_EYE[0] + 0.2, FAR_EYE[1]), 2.2, 2.4, SOCKET),
+                                     K.line(d, [K.at(-0.2, -3.4), K.at(2.6, -4.2), K.at(5.2, -3.0)], SKIN_DEEP, 0.7)))
+
+
+def _left_layers(pose):
+    return [(_strap(), "strap"), (_jaw(str(pose["mouth"])), "jaw"), (_WHOLE(), "head"), (_upper_mouth(), "upper_mouth"), (_eyes(str(pose["eyes"])), "eyes"),
+            (_helmet(), "helmet")]
+
+
+# His head from the front, drawn with the cast's front makers: the sockets
+# and their glow, the jaw hanging open, the hole in his right cheek (on the
+# left as we look at him), and his crooked helmet.
+
+
+def _front_face(d) -> None:
+    K.oval(d, K.at(3.6, 3.6), 2.6, 2.0, mix(SKIN, BRUISE, 0.55))
+    for sx, r in ((-1.0, 2.8), (1.0, 2.5)):
+        K.oval(d, K.at(3.4 * sx, -0.8), r, r * 0.95, SOCKET)
+    K.line(d, [K.at(-0.3, 0.6), K.at(-1.2, 3.6), K.at(0.0, 4.4), K.at(1.2, 3.6)], SKIN_DEEP, 0.6)
+    # The mouth hangs open; the lower teeth.
+    K.poly(d, [K.at(-2.4, 6.2), K.at(2.6, 6.0), K.at(2.2, 9.6), K.at(-2.0, 9.8)], MOUTH)
+    for x in (-1.2, 0.0, 1.2):
+        K.poly(d, [K.at(x - 0.45, 6.2), K.at(x, 7.4), K.at(x + 0.45, 6.2)], TOOTH)
+    # The hole in his right cheek, and his teeth in it.
+    hole = [K.at(-6.2, 3.8), K.at(-3.4, 4.2), K.at(-2.6, 6.2), K.at(-3.6, 8.0), K.at(-6.0, 7.0)]
+    K.poly(d, hole, MOUTH)
+    for x in (-5.2, -4.2):
+        K.rrect(d, K.at(x, 0.0)[0] - 0.4, K.at(0.0, 5.0)[1], K.at(x, 0.0)[0] + 0.4, K.at(0.0, 6.4)[1], 0.2, TOOTH)
+    K.line(d, hole + [hole[0]], SKIN_DEEP, 0.45)
+
+
+def _front_helmet():
+    """His helmet from the front: the dome back on his head and crooked, the
+    skirt out over each ear, the short brim, a dent."""
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-11.6, -1.6), K.at(-10.4, -10.4), K.at(-4.0, -15.6), K.at(4.4, -15.0), K.at(10.4, -9.2), K.at(12.0, -0.6), K.at(9.0, -3.4),
+                   K.at(-8.6, -4.6)], WHITE)
+
+    def detail(d) -> None:
+        K.line(d, [K.at(-11.4, -1.8), K.at(-8.6, -4.6), K.at(0.0, -4.2), K.at(9.0, -3.4), K.at(11.8, -0.8)], HELMET_DARK, 0.9)
+        K.line(d, [K.at(-6.6, -11.6), K.at(-1.6, -14.0), K.at(3.6, -13.6)], HELMET_LIGHT, 0.8)
+        K.line(d, [K.at(4.0, -12.0), K.at(6.0, -9.6), K.at(5.8, -7.2)], HELMET_DARK, 0.8)
+        K.oval(d, K.at(-7.4, -6.6), 1.4, 1.0, mix(HELMET, RUST, 0.6))
+
+    return K.solid(("helmet_front",), shape, HELMET, detail, outline=1.2, rim=0.3, shade=0.35, shade_colour=HELMET_DARK)
+
+
+def _front_eyes(mode: str):
+    def paint(d) -> None:
+        if mode in ("closed", "dead"):
+            return
+        for sx, r in ((-1.0, 1.0), (1.0, 0.9)):
+            c = K.at(3.4 * sx + 0.2, -0.6)
+            K.oval(d, c, 1.9 * r, 1.9 * r, mix(SOCKET, GLOW, 0.4))
+            K.oval(d, c, 1.15 * r, 1.15 * r, GLOW)
+
+    return K.piece(("front_eyes", mode), paint)
+
+
+_FRONT_HEAD = R.front_face(R.make_front_head(K, ("zombie",), SKIN, SKIN_DEEP, wide=7.6, jaw=6.0, chin=4.6, ears=SKIN, face=_front_face), _front_eyes,
+                           extra=[(_front_helmet, "helmet")])
+
+# Neither his head nor his tunic is the same on both sides (the hole in his
+# cheek, the pocket and the rip on his right): his left views are their own.
+BODY = LeaningBody(X, heads={"front": _FRONT_HEAD, "left": _left_layers, "side": _side_layers(True), "side_left": _side_layers(False)}, mirror=())
+
+#: His stance in the round: his near arm out in front of him, his far arm
+#: hanging, as he rests.
+STANCE = C.Stance(hands={"r": C.Hand(l=-5.0, pole=(-0.4, 0.4, -1.0)), "l": C.Hand(l=7.0, pole=(0.4, 0.0, -1.0))}, stagger=2.4)
+_J = BODY.joints(STANCE.stagger)
+_ELBOW, _ = O.two_bone(_J.shoulders["r"], _J.wrist(True, -5.0), BUILD.upper, BUILD.fore, (-0.4, 0.4, -1.0))
+_SHOULDER = np.asarray(_J.shoulders["r"])
+_BAND = tuple(_SHOULDER + 0.36 * (np.asarray(_ELBOW) - _SHOULDER))
+
+#: His tunic, from the numbers of his own ``_torso``: level rings from his
+#: neck to his torn hem, leaned as he leans.
+TUNIC_3D = W.Trunk(
+    rings=BODY.leaned_rings([O.Ring(TOP - 0.5, 0.0, 0.2, 5.0, 4.4), O.Ring(TOP + 4.0, 0.0, 0.0, 10.2, 8.4), O.Ring(-27.0, 0.0, 0.0, 10.6, 8.8),
+                             O.Ring(-16.0, 0.0, 0.0, 10.4, 8.6), O.Ring(-4.0, 0.0, 0.0, 10.0, 8.4), O.Ring(12.0, 0.0, 0.0, 10.8, 9.0)]),
+    garment=W.Garment(UNIFORM, UNIFORM_DARK, radius=10.0, features=[
+        # The placket and its two buttons left, the pocket with its flap
+        # hanging, the rip over his ribs, the slack belt and its buckle,
+        # stains, the seam down his back.
+        W.Down(25.0, TOP + 3.0, 11.0, UNIFORM_DARK, width=0.5), W.Dot(25.0, -26.0, 0.75, METAL, OUTLINE), W.Dot(25.0, -12.0, 0.75, METAL, OUTLINE),
+        W.Patch(-12.0, 12.0, -29.0, -21.6, UNIFORM_DARK), W.Across(-12.0, 12.0, -27.0, UNIFORM_LIGHT, width=0.6),
+        W.Patch(-40.0, -10.0, -20.0, -13.0, SKIN_SHADE), W.Across(-38.0, -12.0, -17.0, SKIN_DEEP, width=0.3),
+        W.Band(-8.4, -3.8, BELT), W.Dot(25.0, -5.6, 1.6, METAL, OUTLINE),
+        W.Glow(10.0, -1.2, 2.6, 1.8, STAIN), W.Glow(-30.0, 6.0, 3.6, 2.4, mix(UNIFORM, STAIN, 0.45)), W.Glow(-110.0, -28.0, 2.6, 3.4, mix(UNIFORM, GRIME, 0.6)),
+        W.Down(180.0, TOP + 4.0, 10.0, UNIFORM_DARK, width=0.5), W.Shade()]),
+    shoulder=(tuple(np.asarray(BODY.tilt((-4.6, -33.4, 0.0), float(X.full(X.rest)["lean"]))) + (0.0, BODY.drop(), 0.0)), (6.0, 6.2, 5.6)),
+    collar=(BODY.leaned_rings([O.Ring(TOP - 3.0, 0.0, 0.4, 5.6, 5.0), O.Ring(TOP + 0.6, 0.0, 0.2, 6.6, 6.0)]),
+            W.Garment(UNIFORM, UNIFORM_DARK, [W.Patch(-30.0, 30.0, TOP - 4.0, TOP + 2.0, COLLAR), W.Shade()])))
+
+#: His helmet in 3D for the views from behind: the deep dome back on his
+#: head, the skirt out over his ears and his neck, the loose strap.
+HELMET_3D = W.Hat(
+    crown=[O.Ring(-6.4, 0.0, -1.6, 9.6, 9.4), O.Ring(-10.6, 0.0, -1.6, 9.0, 8.8), O.Ring(-13.6, 0.0, -1.6, 6.6, 6.4), O.Ring(-15.0, 0.0, -1.6, 3.0, 3.0),
+           O.Ring(-15.4, 0.0, -1.6, 0.0, 0.0)],
+    brim=[O.Ring(-6.6, 0.0, -1.6, 9.6, 9.4, v=0.0), O.Ring(-1.4, 0.0, -2.4, 12.0, 11.4, droop=-4.6, v=1.0),
+          O.Ring(-0.8, 0.0, -2.4, 12.0, 11.4, droop=-4.6, v=2.0), O.Ring(-6.0, 0.0, -1.6, 9.4, 9.2, v=3.0)],
+    garment=W.Garment(HELMET, HELMET_DARK, [W.Glow(-60.0, -10.0, 1.8, 1.2, mix(HELMET, RUST, 0.6)), W.Shade(-0.4)]), under=HELMET_DARK,
+    lines=[O.curve([(-9.6, -1.0, 0.0), (-8.6, 4.4, 1.0), (-5.6, 8.6, 2.6)], STRAP, 0.7)])
+
+ROUND = C.Round(
+    DISPLAY_NAME, BODY,
+    C.Look(
+        # His dead head under the helmet: grey skin, a short crop under the
+        # helmet's skirt behind.
+        C.auto_head(X, _head, None, hair=lambda u, v: (np.abs(u) > 100.0) & (v < 2.0), hair_colour=SKIN_DEEP, hair_shade=SOCKET,
+                    eye_white=None, ink=GLOW),
+        TUNIC_3D, head_pieces=[HELMET_3D],
+        back_pieces=[
+            # The regime's band on his near arm and the torn end of its
+            # sleeve at the elbow.
+            W.Prop("armband", _BAND, tuple(_ELBOW), lambda n: F.band(K, 9.0), lead=5.0),
+            W.Pinned("armband_emblem", _BAND, lambda: F.emblem(K, 2.3), lead=6.0),
+            W.Prop("torn_sleeve", tuple(_ELBOW), _J.wrist(True, -5.0), lambda n: _rag(), lead=5.0),
+        ]),
+    STANCE)
 
 if __name__ == "__main__":
     raise SystemExit(main())

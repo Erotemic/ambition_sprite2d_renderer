@@ -391,5 +391,113 @@ def render_portraits(out_dir, **opts):
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# His trunk in 3D comes from the numbers of his own maker (``auto_trunk``);
+# his helmet from the side and from the front is drawn as his own helmet is
+# drawn (``_helmet``), in the numbers of those views; the plates of his near
+# arm and knee are his own pieces, put on the limbs of his stance. His rows
+# do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+
+def _side_helmet():
+    """His helmet from the side, from the middle of his head: the dome, the
+    guard straight down behind, the face plate in front with its slit."""
+
+    def shape(d) -> None:
+        K.oval(d, K.at(-1.0, -3.0), 10.8, 10.4, WHITE)
+        K.rrect(d, K.home[0] - 12.0, K.home[1] - 4.0, K.home[0] - 3.0, K.home[1] + 10.4, 1.4, WHITE)
+        K.poly(d, [K.at(1.0, -8.0), K.at(10.6, -7.0), K.at(12.4, -1.0), K.at(11.8, 7.0), K.at(8.0, 11.4), K.at(1.0, 11.0)], WHITE)
+
+    def detail(d) -> None:
+        K.poly(d, [K.at(3.0, -6.4), K.at(20.0, -6.4), K.at(20.0, 20.0), K.at(3.0, 20.0)], mix(IRON, IRON_DARK, 0.4))
+        K.line(d, [K.at(3.0, -6.4), K.at(3.2, 11.0)], IRON_DEEP, 0.6)
+        K.line(d, [K.at(-11.0, -6.0), K.at(-4.0, -13.0), K.at(4.0, -12.8), K.at(10.4, -7.4)], IRON_LIGHT, 1.0)
+        K.line(d, [K.at(-12.0, -4.4), K.at(3.0, -5.6)], IRON_DEEP, 0.7)
+        rivets(d, [K.at(-9.4, -4.4), K.at(-5.4, -4.8), K.at(-1.6, -5.2), K.at(-7.4, 7.6)], 0.65)
+        K.poly(d, [K.at(5.6, -2.6), K.at(12.8, -2.4), K.at(12.8, 0.2), K.at(5.6, 0.0)], SLIT)
+        K.oval(d, K.at(10.2, -1.2), 1.0, 0.7, GLINT)
+        for x, y in ((7.4, 4.0), (9.8, 4.0), (7.4, 6.4), (9.8, 6.4), (11.4, 5.2)):
+            K.oval(d, K.at(x, y), 0.55, 0.55, SLIT)
+
+    return K.solid(("helmet_side",), shape, IRON, detail, outline=1.3, rim=0.4, shade=0.35, shade_colour=IRON_DEEP)
+
+
+def _front_helmet():
+    """His helmet from the front: the dome with its ridge, the guard out at
+    each side, the face plate with its slit and the red glint in it."""
+
+    def shape(d) -> None:
+        K.oval(d, K.at(0.0, -3.0), 10.6, 10.4, WHITE)
+        K.poly(d, [K.at(-11.4, -2.0), K.at(-11.8, 9.6), K.at(-6.0, 11.4), K.at(6.0, 11.4), K.at(11.8, 9.6), K.at(11.4, -2.0)], WHITE)
+
+    def detail(d) -> None:
+        for sx in (-1.0, 1.0):
+            K.poly(d, [K.at(8.4 * sx, -4.0), K.at(20.0 * sx, -4.0), K.at(20.0 * sx, 20.0), K.at(8.4 * sx, 20.0)], IRON_DARK)
+        K.rrect(d, K.home[0] - 7.4, K.home[1] - 6.4, K.home[0] + 7.4, K.home[1] + 11.0, 1.6, mix(IRON, IRON_DARK, 0.4), IRON_DEEP, 0.6)
+        K.line(d, [K.at(0.0, -13.4), K.at(0.0, -6.6)], IRON_LIGHT, 1.0)
+        K.line(d, [K.at(-10.6, -5.2), K.at(0.0, -6.0), K.at(10.6, -5.2)], IRON_DEEP, 0.7)
+        rivets(d, [K.at(x, -5.4 - 0.004 * x * x) for x in (-8.6, -4.4, 4.4, 8.6)], 0.65)
+        K.poly(d, [K.at(-6.0, -2.6), K.at(6.0, -2.6), K.at(6.0, 0.2), K.at(-6.0, 0.2)], SLIT)
+        K.oval(d, K.at(2.6, -1.2), 1.0, 0.7, GLINT)
+        for x, y in ((-2.4, 4.0), (0.0, 4.0), (2.4, 4.0), (-1.2, 6.4), (1.2, 6.4)):
+            K.oval(d, K.at(x, y), 0.55, 0.55, SLIT)
+
+    return K.solid(("helmet_front",), shape, IRON, detail, outline=1.3, rim=0.4, shade=0.35, shade_colour=IRON_DEEP)
+
+
+#: His helmet in 3D, for the views from behind: the dome, the face plate a
+#: darker iron, the guard over his neck, the ridge, the band and the slit.
+_DOME = ((0.0, -3.0, -0.4), (10.2, 10.4, 10.2))
+HELMET_3D = O.Head3D(
+    skin=IRON, shade=IRON_DARK, deep=IRON_DEEP, skull=_DOME, jaw=((0.0, 4.6, 3.0), (7.4, 6.4, 5.6)), nose=((0.0, 3.0, 8.0), (0.6, 0.6, 0.6)), ear=None,
+    eye=(24.0, -1.2), eye_size=0.5, ink=GLINT,
+    hair=lambda u, v: (np.abs(u) < 62.0) & (v > -6.2), hair_colour=mix(IRON, IRON_DARK, 0.4), hair_shade=IRON_DARK,
+    volumes=[((0.0, 4.2, -5.6), (9.6, 7.0, 5.6))],
+    lines=[O.curve([O.on_ellipsoid(*_DOME, u, v, 0.2)[0] for u, v in ((0.0, -9.0), (0.0, -12.6), (180.0, -12.6), (180.0, -9.0))], IRON_LIGHT, 1.0),
+           O.curve([O.on_ellipsoid(*_DOME, u, -5.6, 0.2)[0] for u in range(-180, 181, 30)], IRON_DEEP, 0.7),
+           O.curve([O.on_ellipsoid(*_DOME, u, -1.2, 0.3)[0] for u in (-40.0, -20.0, 0.0, 20.0, 40.0)], SLIT, 1.4)])
+
+#: How he stands in the round: his hands in the grip of the gun at his hip,
+#: as at rest (the gun is the held prop, not drawn here).
+STANCE = C.Stance(hands={"r": C.Hand(l=-4.0, pole=(-0.6, 0.2, -1.0), mode="fist"), "l": C.Hand(l=4.0, pole=(0.6, 0.2, -1.0), mode="fist")}, stagger=2.4)
+BODY = C.PersonBody(X, heads={"side": lambda pose: [(_side_helmet(), "helmet")], "front": lambda pose: [(_front_helmet(), "helmet")]})
+
+# Where his near arm and knee are in that stance, for the plates on them.
+_J = BODY.joints(STANCE.stagger)
+_ELBOW, _ = O.two_bone(_J.shoulders["r"], _J.wrist(True, -4.0), BUILD.upper, BUILD.fore, (-0.6, 0.2, -1.0))
+_KNEE, _ = O.two_bone(_J.hips["r"], _J.ankles["r"], BUILD.thigh, BUILD.shin, (0.0, 0.0, 1.0))
+_SHOULDER = np.asarray(_J.shoulders["r"])
+_BAND = tuple(_SHOULDER + 0.5 * (np.asarray(_ELBOW) - _SHOULDER))
+
+ROUND = C.Round(
+    DISPLAY_NAME, BODY,
+    C.Look(
+        HELMET_3D,
+        # The breastplate with its ridge and the lame at its foot, rivets in
+        # two rows, his belt and buckle, the tunic under the plate.
+        C.auto_trunk(X, [W.Band(-5.0, 30.0, UNIFORM), W.Across(-180.0, 180.0, 12.4, UNIFORM_DARK, width=0.6), W.Band(-9.0, -4.6, BELT),
+                         W.Dot(0.0, -6.8, 1.6, IRON_LIGHT, OUTLINE), W.Down(0.0, TOP + 3.0, -10.0, IRON_LIGHT, width=0.5),
+                         W.Across(-180.0, 180.0, -14.0, IRON_DEEP, width=0.5)]
+                     + [W.Dot(u, v, 0.75, RIVET, OUTLINE) for u in (-45.0, -15.0, 15.0, 45.0) for v in (TOP + 4.0, -11.0)]),
+        back_pieces=[
+            # The iron collar round his neck.
+            W.Worn("gorget", [O.Ring(TOP - 2.0, 0.0, 0.2, 7.0, 6.4), O.Ring(TOP + 1.0, 0.0, 0.2, 8.4, 7.6), O.Ring(TOP + 3.0, 0.0, 0.2, 8.0, 7.2)],
+                   W.Garment(IRON, IRON_DEEP, [W.Across(-180.0, 180.0, TOP + 0.6, IRON_DEEP, width=0.5), W.Shade()]), lead=2.0),
+            # The plate over his near shoulder and the regime's band on that
+            # arm, along the arm; his knee plate.
+            W.Prop("pauldron", tuple(_SHOULDER + (0.0, -1.6, 0.0)), _BAND, lambda n: _pauldron(), lead=6.0),
+            W.Prop("armband", _BAND, tuple(_ELBOW), lambda n: F.band(K, 11.0, 6.4), lead=5.0),
+            W.Pinned("armband_emblem", tuple(np.asarray(_BAND) + (0.0, 0.0, 0.0)), lambda: F.emblem(K, 2.8), lead=6.0),
+            W.Pinned("knee_plate", tuple(np.asarray(_KNEE) + (0.0, 0.0, 1.0)), _knee, lead=4.0),
+        ]),
+    STANCE)
+
 if __name__ == "__main__":
     raise SystemExit(main())

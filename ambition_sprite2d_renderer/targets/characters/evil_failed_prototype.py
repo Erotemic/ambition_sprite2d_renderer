@@ -254,13 +254,14 @@ def _jaw_points(open_: float) -> List[Point]:
     return [(HINGE[0] + p[0], HINGE[1] + p[1]) for p in (turned((x - HINGE[0], y - HINGE[1]), open_) for x, y in pts)]
 
 
-def _jaw(open_: float):
+def _jaw(open_: float, dx: float = 0.0):
     """His crooked lower jaw, open ``open_`` degrees; his tongue lolls out
-    of it when it is open."""
+    of it when it is open. ``dx``: that far forward (a head seen from the
+    side)."""
     jaw = _jaw_points(open_)
 
     def at(p: Point) -> Point:
-        return K.at(*p)
+        return K.at(p[0] + dx, p[1])
 
     teeth = []
     for t, tall in ((0.35, 1.4), (0.7, 2.2)):
@@ -287,7 +288,7 @@ def _jaw(open_: float):
         if lolls:
             K.poly(d, [at(p) for p in tongue], TONGUE)
 
-    return K.solid(("jaw", round(open_, 1)), shape, FUR, detail, outline=1.1, rim=0.2, shade=0.3, shade_colour=FUR_DEEP)
+    return K.solid(("jaw", round(open_, 1)) + ((dx,) if dx else ()), shape, FUR, detail, outline=1.1, rim=0.2, shade=0.3, shade_colour=FUR_DEEP)
 
 
 def _skull():
@@ -585,6 +586,280 @@ def render_portraits(out_dir, **opts):
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
+
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# He is hunched at rest (``lean`` 32, his hips down), so in the round his
+# trunk, neck and head lean forward about his hips as his rows lean them
+# (``evil_zombie.LeaningBody``). His gown in 3D is written from the numbers
+# of his own ``_torso`` (it keeps none). His head from the side and from the
+# front is drawn as his own head is drawn (``_skull``, ``_jaw``, ``_eyes``),
+# in the numbers of those views. Nothing of him matches, so no side of him
+# is the mirror of the other: from the right his torn ear, his large eye, the
+# sewn patch and the bolt; from the left a whole ear and a small eye. His
+# rows do not use this.
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+from .evil_zombie import LeaningBody  # noqa: E402
+
+
+def _one_eye(c: Point, r: float, look: Point, mode: str, d) -> None:
+    """One of his eyes at the frame point ``c``, as ``_eyes`` draws each."""
+    if mode in ("closed", "dead"):
+        q = r * 0.7
+        for s_ in (-1.0, 1.0):
+            K.line(d, [(c[0] - q, c[1] - q * s_), (c[0] + q, c[1] + q * s_)], OUTLINE, 0.7)
+        return
+    K.oval(d, c, r + 0.5, r + 0.5, OUTLINE)
+    K.oval(d, c, r, r, EYE_WHITE)
+    for ang in (200.0, 330.0, 110.0):
+        a = math.radians(ang)
+        K.line(d, [(c[0] + math.cos(a) * r * 0.95, c[1] + math.sin(a) * r * 0.95), (c[0] + math.cos(a) * r * 0.5, c[1] + math.sin(a) * r * 0.5)], VEIN, 0.4)
+    p_ = (c[0] + look[0] * r * 0.4, c[1] + look[1] * r * 0.4)
+    K.oval(d, p_, r * 0.3, r * 0.3, IRIS)
+    K.oval(d, p_, r * 0.17, r * 0.17, OUTLINE)
+
+
+def _side_skull(right: bool):
+    """His head from the side, facing right, from its middle: the skull, the
+    long muzzle with its teeth and nose, the ruff behind; from the right the
+    torn ear and the sewn patch, from the left the whole ear."""
+    ruff = [(-7.0, -6.0), (-11.4, -4.4), (-9.6, -2.0), (-12.4, 0.6), (-9.4, 2.4), (-11.0, 6.4), (-6.6, 5.6), (-6.0, 9.6), (-2.6, 7.6), (0.4, 9.4),
+            (2.0, 6.0), (0.0, 2.0)]
+    ear = ([(-3.4, -6.0), (-7.6, -12.4), (-8.4, -9.6), (-10.6, -11.0), (-9.8, -5.6), (-6.0, -3.0)] if right
+           else [(-2.0, -6.2), (-4.4, -15.0), (-7.6, -5.4)])
+    muzzle = [(3.0, -5.0), (8.4, -5.6), (12.6, -4.0), (16.2, -2.4), (17.2, -0.6), (16.6, 1.4), (14.6, 2.4), (13.8, 3.4), (5.6, 3.6), (3.6, 2.4)]
+    lip = [(5.6, 3.6), (9.6, 3.8), (13.6, 3.4)]
+    teeth = [[(x - 0.7, 3.4), (x, 3.4 + tall), (x + 0.7, 3.4)] for x, tall in ((6.8, 1.2), (8.6, 1.6), (12.2, 2.6), (13.6, 1.2))]
+
+    def at(p_: Point) -> Point:
+        return K.at(*p_)
+
+    def shape(d) -> None:
+        K.oval(d, K.at(-2.0, -1.6), 8.0, 6.8, WHITE)
+        K.oval(d, K.at(4.0, 1.0), 5.6, 4.6, WHITE)
+        K.poly(d, [at(p_) for p_ in ruff], WHITE)
+        K.poly(d, [at(p_) for p_ in muzzle], WHITE)
+        K.poly(d, [at(p_) for p_ in ear], WHITE)
+        for tooth in teeth:
+            K.poly(d, [at(p_) for p_ in tooth], WHITE)
+
+    def detail(d) -> None:
+        if right:
+            K.poly(d, [at((-4.4, -5.6)), at((-7.0, -10.0)), at((-9.2, -6.0)), at((-6.6, -4.0))], EAR_INNER)
+            patch = [at((-6.6, -5.0)), at((-2.0, -6.6)), at((-0.6, -3.0)), at((-4.0, -0.6)), at((-7.6, -1.8))]
+            K.poly(d, patch, SKIN)
+            stitches(d, patch + [patch[0]], tick=0.7, every=1.4, width=0.35)
+        else:
+            K.poly(d, [at((-3.0, -6.6)), at((-4.4, -12.6)), at((-6.4, -6.2))], EAR_INNER)
+        K.poly(d, [at((3.2, 0.0)), at((9.6, 1.0)), at((14.6, 2.0)), at((14.2, 4.0)), at((3.6, 4.6)), at((0.6, 2.6))], FUR_LIGHT)
+        K.oval(d, K.at(5.0, -2.4), 3.8 if right else 3.0, 3.4 if right else 2.8, FUR_DARK)
+        for x in (9.6, 11.6):
+            K.line(d, [K.at(x - 0.6, -4.6), K.at(x + 0.3, -3.4), K.at(x - 0.2, -2.2)], FUR_DEEP, 0.5)
+        for a, b in (((-7.0, -2.0), (-9.6, 0.6)), ((-5.0, 4.0), (-7.4, 6.6)), ((-1.6, 6.0), (-2.4, 8.4))):
+            K.line(d, [at(a), at(b)], FUR_DARK, 0.6)
+        K.line(d, [at(p_) for p_ in lip], GUM, 0.7)
+        for tooth in teeth:
+            K.poly(d, [at(p_) for p_ in tooth], TOOTH)
+        K.oval(d, K.at(16.0, -0.8), 1.8, 1.6, NOSE)
+
+    return K.solid(("skull_side", right), shape, FUR, detail, outline=1.1, rim=0.3, shade=0.35, shade_colour=FUR_DEEP)
+
+
+def _side_eye(right: bool):
+    """His one eye seen from the side: the large one from the right, the small
+    one from the left; and its brow."""
+
+    def made(mode: str):
+        def paint(d) -> None:
+            _one_eye(K.at(5.0, -2.4), 2.9 if right else 1.8, (0.6, 0.2), mode, d)
+            K.stroke(d, [K.at(2.6, -6.6), K.at(5.0, -7.4), K.at(7.4, -6.4)] if right else [K.at(3.4, -4.8), K.at(5.4, -5.8), K.at(7.2, -5.6)],
+                     FUR_DEEP, 1.3)
+
+        return K.piece(("side_eye", right, mode), paint)
+
+    return made
+
+
+def _side_layers(right: bool):
+    eye = _side_eye(right)
+    return lambda pose: ([(_jaw(_open(str(pose["mouth"])), 1.6), "jaw"), (_side_skull(right), "skull"), (eye(str(pose["eyes"])), "eyes")]
+                         + ([(_seam_and_bolt(), "seam")] if right else []))
+
+
+def _left_layers(pose):
+    """His left three-quarter view, drawn facing right and mirrored: his own
+    head, but the ear whole, the eyes the other way round, no patch and no
+    bolt (they are on his right)."""
+    return [(_jaw(_open(str(pose["mouth"]))), "jaw"), (_left_skull(), "skull"), (_left_eyes(str(pose["eyes"])), "eyes"), (_brows(0), "brows")]
+
+
+def _left_skull():
+    ruff = [(-6.0, -6.0), (-10.4, -4.4), (-8.6, -2.0), (-11.4, 0.6), (-8.4, 2.4), (-10.0, 6.4), (-5.6, 5.6), (-5.0, 9.6), (-1.6, 7.6), (1.4, 9.4),
+            (3.0, 6.0), (1.0, 2.0)]
+    ear = [(-1.6, -6.2), (-4.4, -14.6), (-7.0, -5.4)]
+    far_ear = [(0.6, -7.4), (-1.6, -13.6), (-4.0, -7.6)]
+    muzzle = [(2.0, -5.0), (7.0, -5.6), (11.0, -4.0), (14.6, -2.4), (15.6, -0.6), (15.0, 1.4), (13.0, 2.4), (12.2, 3.4), (4.0, 3.6), (2.0, 2.4)]
+    teeth = [[(x - 0.7, 3.4), (x, 3.4 + tall), (x + 0.7, 3.4)] for x, tall in ((5.2, 1.2), (7.0, 1.6), (10.6, 2.6), (12.0, 1.2))]
+
+    def at(p_: Point) -> Point:
+        return K.at(*p_)
+
+    def shape(d) -> None:
+        K.poly(d, [at(p_) for p_ in far_ear], WHITE)
+        K.oval(d, K.at(-1.0, -1.6), 7.4, 6.8, WHITE)
+        K.oval(d, K.at(3.0, 1.0), 5.4, 4.6, WHITE)
+        K.poly(d, [at(p_) for p_ in ruff], WHITE)
+        K.poly(d, [at(p_) for p_ in muzzle], WHITE)
+        K.poly(d, [at(p_) for p_ in ear], WHITE)
+        for tooth in teeth:
+            K.poly(d, [at(p_) for p_ in tooth], WHITE)
+
+    def detail(d) -> None:
+        K.poly(d, [at(p_) for p_ in far_ear], FUR_DARK)
+        K.poly(d, [at((-2.6, -6.6)), at((-4.4, -12.4)), at((-6.0, -6.0))], EAR_INNER)
+        K.poly(d, [at((1.6, 0.0)), at((8.0, 1.0)), at((13.0, 2.0)), at((12.6, 4.0)), at((2.0, 4.6)), at((-1.0, 2.6))], FUR_LIGHT)
+        K.oval(d, at(NEAR_EYE), 3.0, 2.8, FUR_DARK)
+        for a, b in (((-6.0, -2.0), (-8.6, 0.6)), ((-4.0, 4.0), (-6.4, 6.6)), ((-0.6, 6.0), (-1.4, 8.4))):
+            K.line(d, [at(a), at(b)], FUR_DARK, 0.6)
+        K.line(d, [at(p_) for p_ in UPPER_LIP], GUM, 0.7)
+        for tooth in teeth:
+            K.poly(d, [at(p_) for p_ in tooth], TOOTH)
+        K.oval(d, K.at(14.4, -0.8), 1.8, 1.6, NOSE)
+
+    return K.solid(("skull_left",), shape, FUR, detail, outline=1.1, rim=0.3, shade=0.35, shade_colour=FUR_DEEP)
+
+
+def _left_eyes(mode: str):
+    def paint(d) -> None:
+        _one_eye(K.at(*NEAR_EYE), 1.8, (0.4, -0.3), mode, d)
+        _one_eye(K.at(*FAR_EYE), 2.4, (-0.5, 0.3), mode, d)
+
+    return K.piece(("left_eyes", mode), paint)
+
+
+def _front_skull():
+    """His head from the front: the skull and the ruff round it, his torn
+    right ear (on the left as we look at him) and his whole left one, the
+    muzzle toward us with its nose, the jaw hanging, the sewn patch."""
+
+    def shape(d) -> None:
+        K.oval(d, K.at(0.0, -1.6), 7.6, 6.8, WHITE)
+        for sx in (-1.0, 1.0):
+            K.poly(d, [K.at(5.0 * sx, -2.0), K.at(9.6 * sx, 0.0), K.at(8.4 * sx, 3.0), K.at(10.0 * sx, 6.0), K.at(5.6 * sx, 7.4), K.at(2.0 * sx, 6.0)], WHITE)
+        K.poly(d, [K.at(-3.6, -5.6), K.at(-7.6, -11.6), K.at(-8.0, -9.0), K.at(-10.0, -10.0), K.at(-9.0, -4.6), K.at(-6.0, -3.0)], WHITE)
+        K.poly(d, [K.at(3.0, -6.0), K.at(7.0, -14.4), K.at(8.6, -4.6)], WHITE)
+        K.oval(d, K.at(0.0, 3.4), 4.4, 3.8, WHITE)
+        K.poly(d, [K.at(-3.6, 5.4), K.at(3.6, 5.4), K.at(2.8, 9.6), K.at(-2.8, 9.6)], WHITE)
+
+    def detail(d) -> None:
+        K.poly(d, [K.at(-4.2, -5.6), K.at(-7.2, -9.6), K.at(-8.2, -5.4), K.at(-5.6, -4.0)], EAR_INNER)
+        K.poly(d, [K.at(4.2, -6.0), K.at(6.6, -12.0), K.at(7.6, -5.4)], EAR_INNER)
+        patch = [K.at(-5.6, -5.4), K.at(-1.4, -6.6), K.at(-0.6, -3.4), K.at(-3.6, -1.6), K.at(-6.4, -2.6)]
+        K.poly(d, patch, SKIN)
+        stitches(d, patch + [patch[0]], tick=0.7, every=1.4, width=0.35)
+        K.oval(d, K.at(0.0, 3.4), 4.4, 3.8, FUR_LIGHT)
+        K.oval(d, K.at(-3.4, -1.8), 3.8, 3.4, FUR_DARK)
+        K.poly(d, [K.at(-3.6, 5.4), K.at(3.6, 5.4), K.at(2.8, 9.6), K.at(-2.8, 9.6)], MOUTH)
+        for x, tall in ((-2.2, 1.4), (-0.8, 1.0), (0.8, 1.0), (2.2, 1.6)):
+            K.poly(d, [K.at(x - 0.6, 5.4), K.at(x, 5.4 + tall), K.at(x + 0.6, 5.4)], TOOTH)
+        K.line(d, [K.at(-3.6, 5.4), K.at(3.6, 5.4)], GUM, 0.7)
+        K.oval(d, K.at(0.0, 1.8), 2.2, 1.7, NOSE)
+        for a, b in (((-6.0, 2.0), (-8.6, 4.6)), ((6.0, 2.0), (8.6, 4.6))):
+            K.line(d, [K.at(*a), K.at(*b)], FUR_DARK, 0.6)
+
+    return K.solid(("skull_front",), shape, FUR, detail, outline=1.1, rim=0.3, shade=0.35, shade_colour=FUR_DEEP)
+
+
+def _front_eyes(mode: str):
+    """His eyes from the front: the large one on his right, the small one on
+    his left, looking two ways; his brows that do not match."""
+
+    def paint(d) -> None:
+        _one_eye(K.at(-3.4, -1.8), 2.9, (-0.5, 0.3), mode, d)
+        _one_eye(K.at(3.4, -2.4), 1.8, (0.4, -0.3), mode, d)
+        K.stroke(d, [K.at(-6.0, -5.6), K.at(-3.4, -6.6), K.at(-0.8, -5.6)], FUR_DEEP, 1.3)
+        K.stroke(d, [K.at(1.6, -4.4), K.at(3.4, -5.4), K.at(5.4, -5.0)], FUR_DEEP, 1.2)
+        # His one bolt, out of the right of his neck.
+        K.rrect(d, K.at(-9.4, 0.0)[0], K.at(0.0, 11.4)[1], K.at(-5.4, 0.0)[0], K.at(0.0, 13.2)[1], 0.3, BOLT_DARK, OUTLINE, 0.4)
+        K.oval(d, K.at(-9.4, 12.3), 1.6, 1.6, BOLT, OUTLINE, 0.4)
+
+    return K.piece(("front_eyes", mode), paint)
+
+
+def _back_paw():
+    """A paw seen from its heel, from its ankle: the heel pad and the toes
+    either side of it, no lower than his paws stand."""
+    au = BUILD.ankle_up
+
+    def shape(d) -> None:
+        K.oval(d, K.at(0.0, 0.4), 3.0, 2.8, WHITE)
+        K.oval(d, K.at(0.0, au - 1.6), 4.4, 2.0, WHITE)
+
+    def detail(d) -> None:
+        K.oval(d, K.at(0.0, au - 1.2), 2.2, 1.2, FUR_DEEP)
+
+    return K.solid(("back_paw",), shape, FUR, detail, outline=1.1, rim=0.3, shade=0.35, shade_colour=FUR_DEEP)
+
+
+BODY = LeaningBody(X, _back_paw,
+                   heads={"front": lambda pose: [(_front_skull(), "skull"), (_front_eyes(str(pose["eyes"])), "eyes")], "left": _left_layers,
+                          "side": _side_layers(True), "side_left": _side_layers(False)},
+                   mirror=())
+
+#: His stance in the round: crouched, his long arms hanging in front of him,
+#: as he rests.
+STANCE = C.Stance(hands={"r": C.Hand(l=-4.0, pole=(-0.4, 0.4, -1.0), mode="soft"), "l": C.Hand(l=4.6, pole=(0.4, 0.4, -1.0), mode="soft")}, stagger=2.0)
+_J = BODY.joints(STANCE.stagger)
+_ELBOW, _ = O.two_bone(_J.shoulders["r"], _J.wrist(True, -4.0), BUILD.upper, BUILD.fore, (-0.4, 0.4, -1.0))
+_SHOULDER = np.asarray(_J.shoulders["r"])
+_BAND = tuple(_SHOULDER + 0.3 * (np.asarray(_ELBOW) - _SHOULDER))
+_LEAN = float(X.full(X.rest)["lean"])
+
+#: His gown, from the numbers of his own ``_torso``: level rings from his
+#: neck to the torn hem, leaned as he is hunched.
+GOWN_3D = W.Trunk(
+    rings=BODY.leaned_rings([O.Ring(TOP - 0.5, 0.0, 0.2, 4.0, 3.6), O.Ring(TOP + 3.0, 0.0, 0.0, 8.0, 6.8), O.Ring(-18.0, 0.0, 0.0, 9.4, 7.6),
+                             O.Ring(-4.0, 0.0, 0.0, 9.4, 7.6), O.Ring(14.0, 0.0, 0.0, 10.0, 8.2)]),
+    garment=W.Garment(GOWN, GOWN_DARK, radius=9.0, features=[
+        # The tear on his right side with his sewn skin in it, the stains,
+        # his number, the seam and the tie down his back, the light line by
+        # the hem, the hem torn in points.
+        W.Patch(-50.0, -20.0, -18.4, -9.6, SKIN_SHADE), W.Across(-46.0, -24.0, -14.4, STITCH, width=0.35),
+        W.Glow(5.0, -4.0, 2.6, 1.8, mix(GOWN, STAIN, 0.6)), W.Glow(-40.0, 6.0, 2.0, 2.8, mix(GOWN, STAIN, 0.5)),
+        W.Path([(-4.0, -25.0), (-4.0, -21.0), (0.0, -21.0), (0.0, -25.0), (-4.0, -25.0)], FUR_DEEP, 0.35),
+        W.Path([(4.0, -25.0), (8.0, -25.0), (5.0, -21.0)], FUR_DEEP, 0.35),
+        W.Down(180.0, TOP + 3.4, 10.0, GOWN_DARK, width=0.5), W.Across(150.0, 180.0, -14.0, GOWN_DARK, width=0.6),
+        W.Across(-180.0, 180.0, 9.6, GOWN_LIGHT, width=0.4), W.PointedHem(11.0, 14.6, 3.0, FUR_DEEP), W.Shade()]),
+    shoulder=(tuple(np.asarray(BODY.tilt((-4.4, -26.6, 0.0), _LEAN)) + (0.0, BODY.drop(), 0.0)), (4.6, 5.0, 4.4)))
+
+#: His wolf's head in 3D, for the views from behind: the skull and the long
+#: muzzle, his torn ear and his whole one, the ruff round the back of his
+#: neck, the sewn patch and the bolt on his right.
+_SKULL = ((0.0, -1.6, -1.0), (7.0, 6.8, 7.0))
+HEAD_3D = O.Head3D(
+    skin=FUR, shade=FUR_DARK, deep=FUR_DEEP, skull=_SKULL, jaw=((0.0, 1.8, 5.0), (3.6, 3.4, 6.0)), nose=((0.0, -0.4, 10.6), (2.2, 2.0, 2.4)), ear=None,
+    eye=(28.0, -2.4), eye_size=1.0, eye_white=EYE_WHITE, iris=IRIS, ink=OUTLINE,
+    hair_colour=FUR, hair_shade=FUR_DARK, volumes=[((0.0, 3.4, -3.4), (8.0, 6.4, 6.0))],
+    tufts=[((-4.0, -6.0, -1.0), (-5.6, -11.6, -1.8), 2.6), ((4.0, -6.0, -1.0), (5.4, -14.2, -1.6), 2.6)],
+    lines=[O.circle((0.0, -0.6, 12.8), (0.0, 0.0, 1.0), 1.6, None, fill=NOSE, slack=1.2),
+           O.circle(O.on_ellipsoid(*_SKULL, -40.0, -6.0, 0.2)[0], O.on_ellipsoid(*_SKULL, -40.0, -6.0)[1], 2.6, STITCH, 0.35, fill=SKIN, slack=1.0),
+           O.circle((-6.6, 12.6, -1.0), (-1.0, 0.0, 0.0), 1.6, OUTLINE, 0.4, fill=BOLT, slack=1.0)])
+
+ROUND = C.Round(
+    DISPLAY_NAME, BODY,
+    C.Look(
+        HEAD_3D, GOWN_3D,
+        back_pieces=[
+            # The regime's band on his near arm.
+            W.Prop("armband", _BAND, tuple(_ELBOW), lambda n: F.band(K, 8.6, 4.8), lead=5.0),
+            W.Pinned("armband_emblem", _BAND, lambda: F.emblem(K, 2.2), lead=6.0),
+        ]),
+    STANCE)
 
 if __name__ == "__main__":
     raise SystemExit(main())

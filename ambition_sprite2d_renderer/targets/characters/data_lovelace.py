@@ -568,6 +568,142 @@ def render_portraits(out_dir, **opts):
     }, still="portrait", view_width=38.0)
 
 
+# ---- In the round (``_round_cast``) --------------------------------------------
+#
+# Her head in 3D comes from the numbers of her own makers (``auto_head``).
+# Her trunk is drawn by her own ``_torso``, which keeps no numbers, so its
+# rings here are the numbers of her front and three-quarter trunk: the
+# barrel, the ball of her waist, the bell, its base and her wheels. Her
+# rows do not use this.
+
+from types import SimpleNamespace  # noqa: E402
+
+import numpy as np  # noqa: E402
+
+from . import _person_round as O  # noqa: E402
+from . import _round_cast as C  # noqa: E402
+from . import _round_wear as W  # noqa: E402
+
+_FOOT = FLOOR - 7.0
+
+#: Her trunk: the riveted barrel of her chest and what is on it (the number
+#: wheels, the dial, the slot of her cards), the ball of her waist, the bell
+#: of bronze with its band of teal, its seams and its band of punched card,
+#: and the base under it.
+TRUNK_3D = W.Trunk(
+    rings=[O.Ring(TOP + 1.0, 0.0, 0.4, 6.0, 5.4), O.Ring(TOP + 3.0, 0.0, 0.4, 9.4, 8.4), O.Ring(-14.0, 0.0, 0.4, 9.4, 8.4), O.Ring(-12.0, 0.0, 0.4, 4.4, 4.0),
+           O.Ring(-9.6, 0.0, 0.4, 4.6, 4.2), O.Ring(-8.0, 0.0, 0.4, 6.4, 5.8), O.Ring(_FOOT, 0.0, 0.4, 13.4, 12.0), O.Ring(_FOOT, 0.0, 0.4, 14.2, 12.8),
+           O.Ring(FLOOR - 2.6, 0.0, 0.4, 14.2, 12.8)],
+    garment=W.Garment(BRASS, BRASS_DARK, radius=9.4, features=[
+        W.Across(-180.0, 180.0, TOP + 5.0, BRASS_DARK, width=0.3), W.Across(-180.0, 180.0, -15.4, BRASS_DARK, width=0.3)]
+        + [W.Dot(u, v, 0.7, BRASS_DEEP) for u in (-150.0, -110.0, -70.0, -40.0, -13.0, 13.0, 40.0, 70.0, 110.0, 150.0) for v in (TOP + 3.0, -13.6)]
+        + [W.Patch(-27.0, 27.0, -30.4, -25.6, INK)] + [W.Patch(-23.0 + k * 16.5, -11.0 + k * 16.5, -29.7, -26.3, CARD) for k in range(3)]
+        + [W.Dot(-33.0, -21.0, 2.5, ENAMEL, BRASS_DEEP), W.Patch(-10.0, 44.0, -21.8, -20.4, INK), W.Patch(-2.4, 36.6, -21.0, -18.4, CARD),
+           W.Band(-12.0, -8.0, BRASS_DEEP), W.Band(-8.0, _FOOT, BRONZE), W.Band(-5.6, -2.8, TEAL)]
+        + [W.Down(u, -2.4, _FOOT - 5.4, BRASS, spread=8.0 * np.sign(u) if u else 0.0) for u in (-120.0, -40.0, 0.0, 40.0, 120.0)]
+        + [W.Band(_FOOT - 5.2, _FOOT - 0.8, CARD)]
+        + [W.Dot(-180.0 + k * 15.0, _FOOT - 3.6 + 1.2 * (k % 2), 0.6, INK) for k in range(24) if (k * 7) % 5 != 0]
+        + [W.Band(_FOOT - 0.6, FLOOR, BRASS_DEEP), W.Shade()]),
+    shoulder=((8.6, -30.4, 0.4), (3.8, 4.2, 4.0)))
+#: Her four wheels under her base.
+WHEELS_3D = W.Worn("wheels", [O.Ring(FLOOR - 4.0, 0.0, 0.4, 1.0, 1.0), O.Ring(FLOOR - 3.0, 0.0, 0.4, 1.0, 1.0)], W.Garment(INK, INK),
+                   lumps=[((x, FLOOR - 3.0, z), (1.4, 3.0, 3.0)) for x in (-9.0, 9.0) for z in (-5.6, 6.4)])
+
+
+# Her head from the side, drawn as the cast draws a head in the numbers of a
+# profile: the copper cap in the shape of her hair, its knot behind and the
+# spring at her ear, her aerial, the enamel plate of her face with one lens
+# and the grille.
+
+_SIDE_EYE = (7.2, -1.0)
+
+
+def _side_cap_shape(d) -> None:
+    K.oval(d, K.at(-1.6, -5.2), 9.6, 6.8, _SOLID)
+    K.oval(d, K.at(-10.0, -2.6), 3.4, 3.2, _SOLID)
+    K.rrect(d, K.home[0] - 3.6, K.home[1] + 0.6, K.home[0] + 0.2, K.home[1] + 9.6, 1.4, _SOLID)
+    K.stroke(d, [K.at(-1.6, -11.0), K.at(-2.6, -18.6)], _SOLID, 1.3)
+    K.oval(d, K.at(-2.7, -19.4), 1.6, 1.6, _SOLID)
+
+
+def _side_cap(d) -> None:
+    K.poly(d, [K.at(20.0, -9.2), K.at(9.6, -9.2), K.at(6.6, -7.0), K.at(3.0, -4.6), K.at(1.0, -2.0), K.at(0.2, 0.4), K.at(0.2, 12.0), K.at(-20.0, 12.0),
+               K.at(-20.0, -26.0), K.at(20.0, -26.0)], COPPER)
+    for strand in ([(-6.0, -10.4), (-1.6, -11.6), (2.4, -10.8)], [(5.0, -10.8), (7.6, -9.4)], [(-7.0, -6.0), (-4.0, -3.6)]):
+        K.line(d, [K.at(x, y) for x, y in strand], COPPER_LIGHT, 0.6)
+    K.oval(d, K.at(-10.0, -2.6), 1.9, 1.7, None, COPPER_DARK, 0.5)  # type: ignore[arg-type]
+    spring = [K.at(-3.2 + 3.2 * (k % 2), 1.4 + k * 1.3) for k in range(7)]
+    K.line(d, spring, COPPER_DARK, 1.3)
+    K.line(d, spring, COPPER_LIGHT, 0.5)
+    K.stroke(d, [K.at(-1.6, -11.0), K.at(-2.6, -18.6)], BRASS_DARK, 0.8)
+    K.oval(d, K.at(-2.7, -19.4), 1.3, 1.3, LIGHT)
+
+
+def _side_face(d) -> None:
+    plate = [K.at(2.0, -6.6), K.at(8.6, -7.0), K.at(11.0, -3.0), K.at(11.2, 3.4), K.at(8.8, 7.6), K.at(3.8, 7.8), K.at(1.6, 4.0)]
+    K.poly(d, plate, ENAMEL)
+    K.line(d, plate + plate[:1], BRASS_DEEP, 0.6)
+    (cx, cy), r = _SIDE_EYE, 2.7
+    K.oval(d, K.at(cx, cy), r * 0.7 + 0.7, r + 0.7, BRASS, BRASS_DEEP, 0.5)
+    K.oval(d, K.at(cx, cy), r * 0.7, r, INK)
+    K.oval(d, K.at(cx, cy), r * 0.44, r * 0.62, TEAL)
+    K.oval(d, K.at(cx + 0.4, cy), r * 0.22, r * 0.3, LIGHT)
+    _rivets(d, [(0.4, -1.0), (0.6, 3.0)])
+
+
+_side_head = R.make_head(K, ("lovelace_side",), BRASS, BRASS_DARK, BRASS_DEEP, skull=(0.0, -2.2, 9.2, 8.4), jaw=(3.0, 3.6, 6.8, 5.8), nose=None, ear=None,
+                         shape=_side_cap_shape, under=_side_cap, over=_side_face, far_shade=False)
+
+
+def _side_lids(mode: str):
+    if mode != "closed":
+        return None
+
+    def paint(d) -> None:
+        (cx, cy), r = _SIDE_EYE, 2.7
+        K.oval(d, K.at(cx, cy), r * 0.7, r, BRASS_DARK)
+        K.line(d, [K.at(cx - r * 0.7, cy), K.at(cx + r * 0.7, cy)], BRASS_DEEP, 0.6)
+
+    return K.piece(("lovelace_side_lids",), paint)
+
+
+def _side_grille(mode: str):
+    lit = {"open": 2, "big": 3, "o": 2, "smile": 1}.get(mode, 0)
+
+    def paint(d) -> None:
+        K.rrect(d, K.home[0] + 7.8, K.home[1] + 4.2, K.home[0] + 10.8, K.home[1] + 6.6, 0.6, INK, BRASS_DEEP, 0.4)
+        for k in range(2):
+            K.line(d, [K.at(8.8 + k * 1.2, 4.8), K.at(8.8 + k * 1.2, 6.0)], LIGHT if k < lit else ENAMEL_DEEP, 0.6)
+
+    return K.piece(("lovelace_side_grille", lit), paint)
+
+
+def _side_layers(pose):
+    return [(_side_head(), "head"), (_side_lids(str(pose["eyes"])), "lids"), (_side_grille(str(pose["mouth"])), "grille")]
+
+
+#: Her front head's numbers for ``auto_head``: its lenses are painted in
+#: the head and its grille has no numbers, so only the head counts.
+_FRONT_NUMBERS = SimpleNamespace(front_head_layers=SimpleNamespace(spec=SimpleNamespace(head=X.front_head_layers.spec.head, eyes=None, brows=None, mouth=None)))
+_CAP = ((0.0, -4.8, -1.0), (8.8, 6.8, 8.8))
+
+ROUND = C.Round(
+    DISPLAY_NAME, C.PersonBody(X, lambda: None, mirror=("head",), heads={"side": _side_layers}),
+    C.Look(
+        # The copper cap in the shape of her hair: all of her head but the
+        # plate of her face, a knot behind, a spring at each ear; her aerial.
+        C.auto_head(_FRONT_NUMBERS, _head, None, hair=lambda u, v: ~((np.abs(u) < 56.0) & (v > -6.6)), hair_colour=COPPER, hair_shade=COPPER_DARK,
+                    volumes=[_CAP, ((0.0, -2.6, -9.4), (3.4, 3.2, 3.2))] + [((s * 7.2, 4.6, -0.6), (1.8, 4.6, 1.8)) for s in (-1.0, 1.0)],
+                    eye_size=1.6, ink=INK, eye_white=INK, iris=TEAL,
+                    lines=[O.curve([O.on_ellipsoid(*_CAP, u, v, 0.2)[0] for v in (-11.0, -8.0)], COPPER_LIGHT, 0.6) for u in (-130.0, -60.0, 60.0, 130.0)]),
+        TRUNK_3D,
+        head_pieces=[W.Antlers([[(0.0, -11.0, -1.0), (0.0, -18.6, -1.6)]], 0.8, BRASS_DARK, BRASS_DEEP, name="aerial", lead=0.5)],
+        pieces=[("trunk", WHEELS_3D)]),
+    # Her grips one on the other in front of her, as a person of rank stands.
+    C.Stance(hands={"r": C.Hand(at=(1.0, -14.0, 10.6), pole=(-1.0, 0.3, -0.4), mode="fist"),
+                    "l": C.Hand(at=(3.2, -13.0, 10.2), pole=(1.0, 0.3, -0.4), mode="fist")}))
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 del mix
