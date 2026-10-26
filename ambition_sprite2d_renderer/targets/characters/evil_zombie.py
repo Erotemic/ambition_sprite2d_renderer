@@ -580,9 +580,6 @@ TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 # views. His near cheek is gone, so his head is not the same on both sides.
 # His rows do not use this.
 
-import dataclasses  # noqa: E402
-from types import SimpleNamespace  # noqa: E402
-
 import numpy as np  # noqa: E402
 
 from . import _person_round as O  # noqa: E402
@@ -590,73 +587,9 @@ from . import _round_cast as C  # noqa: E402
 from . import _round_wear as W  # noqa: E402
 
 
-class LeaningBody(C.PersonBody):
-    """A person who rests leaned forward (a stoop, a crouch: the ``lean``
-    and the ``hip`` of the rest pose) as a body in the round: its trunk, neck
-    and head turned forward about its hips as its rows turn them, its hips
-    as low as they are at rest, and its own trunk and head art turned with
-    them. (A candidate for ``_round_cast``; the Failed Prototype uses it.)"""
-
-    def _rest(self):
-        return self.person.full(dict(self.person.rest, **self.pose))
-
-    def tilt(self, p, degrees: float, about=(0.0, 0.0, 0.0)):
-        """``p`` turned forward ``degrees`` (its top toward +z) about ``about``."""
-        a = math.radians(degrees)
-        x, y, z = (np.asarray(p, float) - np.asarray(about, float))
-        return tuple(np.asarray(about, float) + (x, y * math.cos(a) + z * math.sin(a), -y * math.sin(a) + z * math.cos(a)))
-
-    def drop(self) -> float:
-        return float(self._rest()["hip"][1]) * self.person.U
-
-    def joints(self, stagger: float = 0.0):
-        J = super().joints(stagger)
-        rest = J.rest
-        lean = float(rest["lean"])
-        hdx, hdy, turn = rest["head"]
-        down = np.array([0.0, self.drop(), 0.0])
-
-        def leaned(p):
-            return tuple(np.asarray(self.tilt(p, lean)) + down)
-
-        neck = leaned(J.neck)
-        head_up = self.tilt(np.asarray(J.head) - np.asarray(J.neck), lean * 0.5 + float(turn) * 0.3)
-        U = self.person.U
-        head = tuple(np.asarray(neck) + head_up + (0.0, hdy * U, hdx * U * math.sqrt(2.0)))
-        throat = tuple(np.asarray(head) + self.tilt((0.0, 4.0, -0.4), lean * 0.35 + float(turn)))
-        return SimpleNamespace(**dict(vars(J), shoulders={k: leaned(v) for k, v in J.shoulders.items()},
-                                      hips={k: tuple(np.asarray(v) + down) for k, v in J.hips.items()}, neck=neck, head=head, throat=throat))
-
-    def own(self, J):
-        out = super().own(J)
-        rest = J.rest
-        lean, turn = float(rest["lean"]), float(rest["head"][2])
-
-        def turned(sprite, degrees: float, anchor=None):
-            draw = sprite.draw
-
-            def turned_draw(view, far):
-                made = draw(view, far)
-                if made is None or made[0] is None:
-                    return made
-                piece, d, mirrored = made
-                return piece, d + (degrees if abs(O.facing(view)) > 10.0 else 0.0), mirrored
-
-            return dataclasses.replace(sprite, draw=turned_draw, anchor=sprite.anchor if anchor is None else anchor)
-
-        out["trunk"] = turned(out["trunk"], lean, (0.0, self.drop(), 0.0))
-        out["head"] = turned(out["head"], lean * 0.35 + turn)
-        return out
-
-    def leaned_rings(self, rings):
-        """Level rings of a trunk (from the hips, up), each moved as its
-        height is moved by the lean: a stooped trunk."""
-        lean, down = float(self._rest()["lean"]), self.drop()
-        out = []
-        for r in rings:
-            _x, y, z = self.tilt((r.l, r.y, r.z), lean)
-            out.append(dataclasses.replace(r, y=y + down, z=z))
-        return out
+#: A person who rests leaned forward, as a body in the round
+#: (``_round_cast.LeaningBody``; the Failed Prototype uses it too).
+LeaningBody = C.LeaningBody
 
 
 # His head from the side, drawn with his own makers (the jaw, the mouth, the

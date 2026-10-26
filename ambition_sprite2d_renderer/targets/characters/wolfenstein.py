@@ -2552,17 +2552,19 @@ from . import _round_cast as C  # noqa: E402
 from . import _round_wear as W  # noqa: E402
 
 
-class _Body(C.PersonBody):
-    """He as a body: his near (right) arm carries the armband, the rip over
-    his bicep, the ragged end of his sleeve and the seam at his wrist, as his
-    rows draw them on his near arm. His head is low and forward on a short
-    neck, as his idle row carries it (measured from its first frame: the
-    middle of his head 80 pixels over his hips, well in front of his neck)."""
+class _Body(C.LeaningBody):
+    """He as a body, hunched as he rests (``LeaningBody``: his trunk leaned
+    forward about his hips, his head low and forward). His near (right) arm
+    carries the armband, the rip over his bicep, the ragged end of his sleeve
+    and the seam at his wrist, as his rows draw them on his near arm. His
+    head hangs lower than a lean of a man's neck puts it: between his
+    shoulders, well in front of them, as his idle row carries it (measured
+    from its first frame: the middle of his head 78 pixels over his hips)."""
 
     def joints(self, stagger: float = 0.0):
         J = super().joints(stagger)
-        J.head = (0.0, -78.0, 20.0)
-        J.throat = (0.0, -61.0, 19.0)
+        J.head = (0.0, -76.0, 22.0)
+        J.throat = (0.0, -60.0, 19.0)
         return J
 
     def arm(self, name, shoulder, elbow, wrist, mode):
@@ -2584,6 +2586,89 @@ class _Body(C.PersonBody):
         return C.limb_piece(K, name, [shoulder, elbow, wrist],
                             lambda pts, near: C.seg_bones(K, name, pts[0], pts[1], X.upper_arm(near)) + C.seg_bones(K, name, pts[1], pts[2], X.forearm(near)),
                             hand=lambda near: X.hand(mode, near), extra=extra, lead=3.0)
+
+
+def _jar_on_end(k: Kit, c: HeadInk, x: float = 0.0):
+    """The jar on his skull seen end on (from the front or from behind: it is
+    round, and the brain in it is two halves either way), ``x`` head pixels
+    across from the middle of the head: the steel collar, the glass dome,
+    the green fluid and the brain in it."""
+
+    def paint(d) -> None:
+        half, base, top = JAR_HALF, JAR_BASE, JAR_TOP
+        r = half
+        dome = ([k.at(x - r, base)] + [k.at(x + r * math.cos(math.pi + math.pi * j / 24), top + r + r * math.sin(math.pi + math.pi * j / 24))
+                                       for j in range(25)] + [k.at(x + r, base)])
+        k.poly(d, dome, c.GLASS[:3] + (70,))
+        surface = top + 6.0
+        k.poly(d, [(px, max(py, k.at(0.0, surface)[1])) for px, py in dome], c.JAR_FLUID)
+        k.line(d, [k.at(x - r + 1.6, surface), k.at(x + r - 1.6, surface)], c.JAR_FLUID_TOP, 0.8)
+        by = base - 9.4
+        k.line(d, [k.at(x, by + 5.0), k.at(x, base + 0.5)], c.BRAIN_SHADE, 2.2)
+        k.oval(d, k.at(x, by), 8.6, 6.6, c.BRAIN, c.OUTLINE, 0.7)
+        k.line(d, [k.at(x, by - 6.0), k.at(x, by + 6.0)], c.BRAIN_FISSURE, 0.8)
+        for sx in (-1.0, 1.0):
+            k.line(d, [k.at(x + sx * 1.4, by - 4.0), k.at(x + sx * 4.6, by - 2.0), k.at(x + sx * 2.4, by + 0.6), k.at(x + sx * 6.0, by + 2.4)],
+                   c.BRAIN_SHADE, 0.6)
+        for bx, byy, br in ((5.4, -4.0, 0.8), (6.0, -10.0, 0.6), (-6.4, -15.0, 0.8)):
+            k.oval(d, k.at(x + bx, base + byy), br, br, c.BUBBLE)
+        k.poly(d, dome, c.GLASS[:3] + (40,))
+        k.line(d, dome, c.OUTLINE, 1.3)
+        k.line(d, [k.at(x - r + 3.0, base - 3.0), k.at(x - r + 3.0, top + 10.0), k.at(x - r + 5.4, top + 5.0)], c.GLINT, 1.1)
+        k.rrect(d, *k.at(x - r - 2.4, base - 0.6), *k.at(x + r + 2.4, base + 4.2), 1.0, c.BOLT, c.OUTLINE, 0.9)
+        k.line(d, [k.at(x - r - 1.4, base + 0.6), k.at(x + r + 1.4, base + 0.6)], c.COLLAR_LIGHT, 0.7)
+        for rx in (-10.0, -5.0, 0.0, 5.0, 10.0):
+            k.oval(d, k.at(x + rx, base + 1.8), 0.8, 0.8, c.BOLT_DARK, c.OUTLINE, 0.4)
+
+    return k.piece((c.name, "jar_on_end", round(x, 1)), paint)
+
+
+def _back_wolf(quarter: bool):
+    """His wolf head from behind, drawn by his own head kit (``KH``) in his
+    own ink, in head pixels from its middle: the back of the skull and the
+    ruff, the backs of his ears laid flat, the seam round his neck, the jar
+    on his skull. ``quarter``: from behind three quarters, going away to the
+    right: the end of his muzzle shows past his cheek, the near ear is the
+    larger, and his head is a little to the left of his neck."""
+    k, c = KH, LIVING
+    cx = -1.6 if quarter else 0.0
+
+    def layers(pose):
+        def shape(d) -> None:
+            k.oval(d, k.at(cx, -2.4), 12.0, 11.0, WHITE)
+            ruff = [(-11.0, -2.0), (-15.6, 1.0), (-12.6, 3.6), (-16.4, 7.6), (-11.6, 9.0), (-12.6, 14.0), (-6.6, 12.6), (-4.0, 17.0), (0.0, 13.6),
+                    (4.0, 17.0), (6.6, 12.6), (12.6, 14.0), (11.6, 9.0), (16.4, 7.6), (12.6, 3.6), (15.6, 1.0), (11.0, -2.0)]
+            k.poly(d, [k.at(cx + x, y) for x, y in ruff], WHITE)
+            for sx, big in ((-1.0, 0.85 if quarter else 1.0), (1.0, 1.15 if quarter else 1.0)):
+                k.poly(d, [k.at(cx + sx * 6.4, -9.0), k.at(cx + sx * (6.4 + 13.6 * big), -14.0 - 1.6 * big), k.at(cx + sx * 12.6, -3.6)], WHITE)
+            if quarter:
+                # The end of his muzzle, past his cheek: its top, its pale
+                # underside, the black tip of his nose.
+                k.poly(d, [k.at(7.0, -5.0), k.at(15.0, -4.0), k.at(19.6, -1.0), k.at(19.0, 3.0), k.at(15.0, 5.6), k.at(8.0, 6.0)], WHITE)
+
+        def detail(d) -> None:
+            # The backs of his ears, in shade; a dark nape; fur on the skull
+            # and the ruff.
+            for sx, big in ((-1.0, 0.85 if quarter else 1.0), (1.0, 1.15 if quarter else 1.0)):
+                k.poly(d, [k.at(cx + sx * 7.4, -8.6), k.at(cx + sx * (6.4 + 12.0 * big), -13.4 - 1.4 * big), k.at(cx + sx * 11.8, -4.4)], c.FUR_DARK)
+            # The ruff, darker under the skull, in tufts.
+            for x in (-9.0, -4.6, 0.0, 4.6, 9.0):
+                k.poly(d, [k.at(cx + x - 2.6, 8.6), k.at(cx + x, 15.0 - abs(x) * 0.2), k.at(cx + x + 2.6, 8.6)], c.FUR_DARK)
+            for a, b in (((-6.0, -8.0), (-9.0, -3.0)), ((6.0, -8.0), (9.0, -3.0)), ((0.0, -12.0), (0.0, -6.0)), ((-10.0, 3.0), (-13.0, 8.0)),
+                         ((10.0, 3.0), (13.0, 8.0)), ((-4.0, 9.0), (-5.0, 14.0)), ((4.0, 9.0), (5.0, 14.0))):
+                k.line(d, [k.at(cx + a[0], a[1]), k.at(cx + b[0], b[1])], c.FUR_DEEP, 0.7)
+            if quarter:
+                k.poly(d, [k.at(9.0, 2.0), k.at(15.0, 2.4), k.at(18.6, 2.0), k.at(15.0, 5.4), k.at(8.6, 5.6)], c.FUR_LIGHT)
+                k.line(d, [k.at(9.0, 2.4), k.at(14.0, 2.8), k.at(18.4, 2.2)], c.GUM, 0.9)
+                k.poly(d, [k.at(16.4, 2.4), k.at(17.2, 4.6), k.at(18.0, 2.2)], c.TOOTH)
+                k.oval(d, k.at(19.0, -0.8), 2.0, 2.0, c.NOSE, c.OUTLINE, 0.5)
+            stitches(d, [k.at(cx - 8.0, 15.2), k.at(cx - 3.0, 16.6), k.at(cx + 3.0, 16.6), k.at(cx + 8.0, 15.2)], tick=1.4, every=2.2, width=0.55, kit=k,
+                     colour=c.STITCH)
+
+        skull = k.solid((c.name, "back_skull", quarter), shape, c.FUR, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=c.FUR_DEEP)
+        return [(skull, "skull"), (_jar_on_end(k, c, cx + (1.0 if quarter else 0.0)), "brain_jar")]
+
+    return layers
 
 
 def _front_wolf(pose):
@@ -2648,36 +2733,20 @@ def _front_wolf(pose):
             at_ = (e[0] - sx * 0.6, e[1] + 0.2)
             k.oval(d, at_, rx * size, rx * size, c.IRIS)
             k.oval(d, at_, rx * size * 0.58, rx * size * 0.58, c.OUTLINE)
-        lift = -1.4 if R.brow_mood(pose) > 0 else 0.0
+        if R.brow_mood(pose) > 0:
+            for sx in (-1.0, 1.0):
+                k.stroke(d, [k.at(sx * 1.4, -10.4), k.at(sx * 5.4, -11.8), k.at(sx * 9.4, -10.8)], c.FUR_DEEP, 2.0)
+            return
+        # Mean: his brows come down hard to the top of his nose in a V, as
+        # the inner end of each comes down in his three-quarter head; they cut
+        # into the tops of his eyes, and the fur between them is furrowed.
         for sx in (-1.0, 1.0):
-            k.stroke(d, [k.at(sx * 1.4, -9.0 + lift + (0.0 if lift else 1.0)), k.at(sx * 5.4, -10.4 + lift), k.at(sx * 9.4, -9.4 + lift)], c.FUR_DEEP, 2.0)
-
-    def jar(d) -> None:
-        # The jar on his skull from the front: the steel collar, the glass
-        # dome, the green fluid and the brain in it.
-        half, base, top = JAR_HALF, JAR_BASE, JAR_TOP
-        r = half
-        dome = [k.at(-r, base)] + [k.at(r * math.cos(math.pi + math.pi * j / 24), top + r + r * math.sin(math.pi + math.pi * j / 24)) for j in range(25)] + [k.at(r, base)]
-        k.poly(d, dome, c.GLASS[:3] + (70,))
-        surface = top + 6.0
-        k.poly(d, [(x, max(y, k.at(0.0, surface)[1])) for x, y in dome], c.JAR_FLUID)
-        k.line(d, [k.at(-r + 1.6, surface), k.at(r - 1.6, surface)], c.JAR_FLUID_TOP, 0.8)
-        by = base - 9.4
-        k.line(d, [k.at(0.0, by + 5.0), k.at(0.0, base + 0.5)], c.BRAIN_SHADE, 2.2)
-        k.oval(d, k.at(0.0, by), 8.6, 6.6, c.BRAIN, c.OUTLINE, 0.7)
-        k.line(d, [k.at(0.0, by - 6.0), k.at(0.0, by + 6.0)], c.BRAIN_FISSURE, 0.8)
-        for sx in (-1.0, 1.0):
-            k.line(d, [k.at(sx * 1.4, by - 4.0), k.at(sx * 4.6, by - 2.0), k.at(sx * 2.4, by + 0.6), k.at(sx * 6.0, by + 2.4)], c.BRAIN_SHADE, 0.6)
-        k.poly(d, dome, c.GLASS[:3] + (40,))
-        k.line(d, dome, c.OUTLINE, 1.3)
-        k.line(d, [k.at(-r + 3.0, base - 3.0), k.at(-r + 3.0, top + 10.0), k.at(-r + 5.4, top + 5.0)], c.GLINT, 1.1)
-        k.rrect(d, *k.at(-r - 2.4, base - 0.6), *k.at(r + 2.4, base + 4.2), 1.0, c.BOLT, c.OUTLINE, 0.9)
-        k.line(d, [k.at(-r - 1.4, base + 0.6), k.at(r + 1.4, base + 0.6)], c.COLLAR_LIGHT, 0.7)
-        for x in (-10.0, -5.0, 0.0, 5.0, 10.0):
-            k.oval(d, k.at(x, base + 1.8), 0.8, 0.8, c.BOLT_DARK, c.OUTLINE, 0.4)
+            k.poly(d, [k.at(sx * 0.6, -10.6), k.at(sx * 1.4, -6.4), k.at(sx * 5.4, -7.6), k.at(sx * 10.4, -10.2), k.at(sx * 10.6, -13.4)], c.FUR_DARK)
+            k.stroke(d, [k.at(sx * 1.2, -6.6), k.at(sx * 5.6, -8.4), k.at(sx * 10.6, -12.2)], c.FUR_DEEP, 2.6)
+            k.line(d, [k.at(sx * 0.8, -8.0), k.at(sx * 1.6, -11.4)], c.FUR_DEEP, 0.7)
 
     return [(skull, "skull"), (k.piece((c.name, "front_snarl", mouth), snarl), "mouth"),
-            (k.piece((c.name, "front_eyes", eyes_mode, R.brow_mood(pose)), eyes), "eyes"), (k.piece((c.name, "front_jar"), jar), "brain_jar")]
+            (k.piece((c.name, "front_eyes", eyes_mode, R.brow_mood(pose)), eyes), "eyes"), (_jar_on_end(k, c), "brain_jar")]
 
 
 def _side_layers(pose):
@@ -2745,20 +2814,28 @@ JAR_3D = W.Hat(crown=[O.Ring(-12.4 * _S, 0.0, -4.6 * _S, 13.6 * _S, 13.6 * _S, v
                                                                              W.Glow(180.0, -24.0 * _S, 9.0 * _S, 6.6 * _S, BRAIN),
                                                                              W.Band(-17.2, -12.0 * _S, BOLT)]), under=BOLT_DARK)
 
+#: His shoulders and hips across, from his three-quarter view (he has no
+#: front art): his shoulders are a man's and a half. His heavy boots from
+#: the toe and the heel, as wide as his own boot. His hips a little low, as
+#: his idle row breathes out: his knees bent.
+BODY = _Body(X, R.make_back_shoe(K, BOOT, BOOT_DARK, BUILD.ankle_up, wide=2.2), mirror=("head",), span=(17.7, 9.9),
+             front_shoe=R.make_front_shoe(K, BOOT, BOOT_DARK, BUILD.ankle_up, wide=2.2), pose={"hip": (0.0, 3.0)},
+             heads={"side": _side_layers, "front": _front_wolf, "back": _back_wolf(False), "back_quarter": _back_wolf(True)})
+
 ROUND = C.Round(
-    DISPLAY_NAME, _Body(X, R.make_back_shoe(K, BOOT, BOOT_DARK, BUILD.ankle_up), heads={"side": _side_layers, "front": _front_wolf}, mirror=("head",)),
+    DISPLAY_NAME, BODY,
     C.Look(
         HEAD_3D,
         # His coat: torn open to the waist over his sewn green chest and his
         # belly in six blocks; the burst seam of his near shoulder, a patch,
         # the one button left.
-        C.auto_trunk(X, [W.Opening(30.0, SKIN, top=TOP + 1.0, bottom=-3.0), W.Across(-28.0, 28.0, -29.0, SKIN_DEEP, width=0.5),
+        BODY.leaned_trunk(C.auto_trunk(X, [W.Opening(30.0, SKIN, top=TOP + 1.0, bottom=-3.0), W.Across(-28.0, 28.0, -29.0, SKIN_DEEP, width=0.5),
                          W.Across(-24.0, 24.0, -21.0, SKIN_DEEP, width=0.35), W.Across(-24.0, 24.0, -14.6, SKIN_DEEP, width=0.35),
                          W.Across(-24.0, 24.0, -8.4, SKIN_DEEP, width=0.35), W.Down(0.0, -26.0, -4.0, SKIN_DEEP),
                          W.Path([(-24.0, -40.0), (0.0, -39.0), (24.0, -41.0)], STITCH, 0.5), W.Path([(-14.0, -12.0), (14.0, -13.0)], STITCH, 0.4),
                          W.Down(30.0, TOP + 1.0, -3.0, COAT_DARK, width=0.8), W.Down(-30.0, TOP + 1.0, -3.0, COAT_DARK, width=0.8),
                          W.Patch(-80.0, -40.0, -58.0, -50.0, SKIN_SHADE), W.Patch(-62.0, -32.0, -24.0, -15.0, (70, 64, 70, 255)),
-                         W.Dot(0.0, -4.0, 2.0, COAT_DARK), W.Across(-180.0, 180.0, 12.0, COAT_DARK, width=0.4), W.Down(180.0, TOP + 4.0, 12.0, COAT_DARK)]),
+                         W.Dot(0.0, -4.0, 2.0, COAT_DARK), W.Across(-180.0, 180.0, 12.0, COAT_DARK, width=0.4), W.Down(180.0, TOP + 4.0, 12.0, COAT_DARK)])),
         head_pieces=[JAR_3D], pieces=[("bolts", _Piece(_neck_bolts_3d))]),
     # His long arms hang in front of him, his big hands open and loose.
     C.Stance(hands={"r": C.Hand(l=-15.0, pole=(-0.3, 0.0, -1.0), mode="soft"), "l": C.Hand(l=16.0, pole=(0.3, 0.0, -1.0), mode="soft")}, stagger=3.0))

@@ -30,7 +30,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
@@ -104,26 +104,34 @@ def shoes(name: str, ankle: Sequence[float], side: Callable[[bool], object], fro
     return O.Sprite(name, tuple(ankle), draw, dims=True, lead=3.0)
 
 
-def own_turns(front: bool, mirror: bool = True, side: bool = False, side_left: Optional[bool] = None) -> Callable[[O.View], bool]:
+def own_turns(front: bool, mirror: bool = True, side: bool = False, side_left: Optional[bool] = None, back: bool = False,
+              back_quarter: bool = False) -> Callable[[O.View], bool]:
     """The views a character's own art is drawn for (``own_art``). ``mirror``:
     it has a left three-quarter view; ``side_left``: a left side view (by
-    default, when it has a right one and ``mirror``)."""
+    default, when it has a right one and ``mirror``); ``back``,
+    ``back_quarter``: a view from behind, and from behind three quarters
+    (each side)."""
     side_left = side and mirror if side_left is None else side_left
-    turns = (45.0,) + ((-45.0,) if mirror else ()) + ((0.0,) if front else ()) + ((90.0,) if side else ()) + ((-90.0,) if side_left else ())
+    turns = ((45.0,) + ((-45.0,) if mirror else ()) + ((0.0,) if front else ()) + ((90.0,) if side else ()) + ((-90.0,) if side_left else ())
+             + ((180.0,) if back else ()) + ((135.0, -135.0) if back_quarter else ()))
     return O.near_turn(*turns)
 
 
 def own_art(name: str, anchor: Sequence[float], three_quarter: Optional[Callable[[], object]], front: Optional[Callable[[], object]] = None, *,
             side: Optional[Callable[[], object]] = None, left: Optional[Callable[[], object]] = None,
-            side_left: Optional[Callable[[], object]] = None, degrees: float = 0.0, lead: float = 0.0, mirror: bool = True) -> O.Sprite:
+            side_left: Optional[Callable[[], object]] = None, back: Optional[Callable[[], object]] = None,
+            back_quarter: Optional[Callable[[], object]] = None, degrees: float = 0.0, lead: float = 0.0, mirror: bool = True) -> O.Sprite:
     """A piece of a character's own art in the views it is drawn for: its
     three-quarter view, its mirror for the left (``mirror``: only a piece that
     is the same on both sides; a pocket on one side is not), its front view
     and its side view if it has them (a head made with the cast's front or
     side makers, for a character drawn in one view). ``left``, ``side_left``:
     the other side of a piece that is not the same on both sides, drawn as
-    its right is (facing right) and mirrored. Another piece draws the other
-    views (``not_in(sprite.when)``)."""
+    its right is (facing right) and mirrored. ``back``, ``back_quarter``: the
+    piece from behind, and from behind three quarters (drawn going away to
+    the right; mirrored for the left), for a piece that 3D cannot draw as the
+    cast would (a wolf's head). Another piece draws the other views
+    (``not_in(sprite.when)``)."""
     left = left if left is not None else (three_quarter if mirror else None)
     side_left = side_left if side_left is not None else (side if mirror else None)
 
@@ -134,9 +142,14 @@ def own_art(name: str, anchor: Sequence[float], three_quarter: Optional[Callable
         if abs(abs(turn) - 90.0) <= 10.0:
             art = side_left if turn < 0.0 else side
             return (art() if art is not None else None), 0.0, turn < 0.0
+        if abs(abs(turn) - 180.0) <= 10.0:
+            return (back() if back is not None else None), 0.0, False
+        if abs(abs(turn) - 135.0) <= 10.0:
+            return (back_quarter() if back_quarter is not None else None), 0.0, turn < 0.0
         return (left if turn < 0.0 else three_quarter)(), degrees, turn < 0.0  # type: ignore[misc]
 
-    return O.Sprite(name, tuple(anchor), draw, when=own_turns(front is not None, left is not None, side is not None, side_left is not None), lead=lead)
+    return O.Sprite(name, tuple(anchor), draw, when=own_turns(front is not None, left is not None, side is not None, side_left is not None,
+                                                              back is not None, back_quarter is not None), lead=lead)
 
 
 def not_in(when: Optional[Callable[[O.View], bool]]) -> Optional[Callable[[O.View], bool]]:
@@ -206,6 +219,12 @@ class PersonBody(Body):
     the layers of its own art behind it (a cloak, hair, a staff), drawn in
     its three-quarter view. ``mirror``: which of its head and trunk are the
     same on both sides, so their mirror is its left three-quarter view.
+    ``front_shoe``: its shoe from the toe, for a person with no front art
+    (default: its own ``front_shoe``).
+    ``span``: how far to the side its shoulders and its hips are, for a
+    person whose ``front_span`` its front art does not give (from its
+    three-quarter view: half the across of a pair is ``x_far - x_near`` over
+    the root of 2).
     ``pose``: what to change in its rest pose to stand as it does in the
     round (a blanket it is wrapped in at rest). ``front_layers``: the layers
     of its own art over it (that blanket, its arms inside), drawn in its
@@ -214,13 +233,16 @@ class PersonBody(Body):
     ``head_layers`` is, drawn with the cast's makers: ``"side"`` (from the
     right), and for a head that is not the same on both sides ``"left"`` and
     ``"side_left"`` (its left, drawn facing right; it is mirrored);
-    ``"front"`` in place of its own front head, to agree with the others,
+    ``"back"`` and ``"back_quarter"`` (from behind, drawn by its own makers
+    where 3D would not draw it as the cast does), and ``"front"`` in place of
+    its own front head, to agree with the others,
     or for a person with no front art (drawn with the cast's front makers
     in the numbers of its three-quarter head)."""
 
     def __init__(self, person, back_shoe: Optional[Callable[[], object]] = None, *, back_layers: Sequence[str] = (),
                  mirror: Sequence[str] = ("head", "trunk"), anim: str = "idle", heads: Optional[Dict[str, Callable]] = None,
-                 pose: Optional[Dict[str, object]] = None, front_layers: Sequence[str] = ()) -> None:
+                 pose: Optional[Dict[str, object]] = None, front_layers: Sequence[str] = (), span: Optional[Tuple[float, float]] = None,
+                 front_shoe: Optional[Callable[[], object]] = None) -> None:
         self.person = person
         self.K = person.K
         self.frame, self.cx, self.ground, self.hip_up = person.frame, person.cx, person.ground, person.b.hip_up
@@ -237,6 +259,8 @@ class PersonBody(Body):
         self.anim = anim
         self.heads = dict(heads or {})
         self.pose = dict(pose or {})
+        self.span = span
+        self.front_shoe = front_shoe or person.front_shoe
         self.front_layers = tuple(front_layers)
 
     def joints(self, stagger: float = 0.0) -> SimpleNamespace:
@@ -250,7 +274,7 @@ class PersonBody(Body):
 
         person = self.person
         b, U = person.b, person.U
-        sw, hw = person.front_span
+        sw, hw = self.span or person.front_span
         rest = person.full(dict(person.rest, **self.pose))
         foot = hw + FRONT_REST["lf"][0] * U
         up = b.hip_up - b.ankle_up
@@ -300,7 +324,7 @@ class PersonBody(Body):
         return O.Drawn("neck", tuple(base), draw)
 
     def shoes(self, name, ankle):
-        return shoes(name, ankle, self.person.shoe, self.person.front_shoe, self.back_shoe)
+        return shoes(name, ankle, self.person.shoe, self.front_shoe, self.back_shoe)
 
     def own(self, J):
         from ._person_rig import FRONT_REST
@@ -450,6 +474,91 @@ def own_layers(person, layers: Sequence[str], *, anim: str = "idle", lead: float
         return K._cut(canvas), 0.0, False
 
     return O.Sprite("own_" + "_".join(layers), (0.0, 0.0, 0.0), draw, when=O.near_turn(*((45.0, 0.0) if in_front else (45.0,))), lead=lead)
+
+
+class LeaningBody(PersonBody):
+    """A person who rests leaned forward (a stoop, a crouch: the ``lean``
+    and the ``hip`` of the rest pose) as a body in the round: its trunk, neck
+    and head turned forward about its hips as its rows turn them, its hips
+    as low as they are at rest, and its own trunk and head art turned with
+    them."""
+
+    def _rest(self):
+        return self.person.full(dict(self.person.rest, **self.pose))
+
+    def tilt(self, p, degrees: float, about=(0.0, 0.0, 0.0)):
+        """``p`` turned forward ``degrees`` (its top toward +z) about ``about``."""
+        a = math.radians(degrees)
+        x, y, z = (np.asarray(p, float) - np.asarray(about, float))
+        return tuple(np.asarray(about, float) + (x, y * math.cos(a) + z * math.sin(a), -y * math.sin(a) + z * math.cos(a)))
+
+    def drop(self) -> float:
+        return float(self._rest()["hip"][1]) * self.person.U
+
+    def joints(self, stagger: float = 0.0):
+        J = super().joints(stagger)
+        rest = J.rest
+        lean = float(rest["lean"])
+        hdx, hdy, turn = rest["head"]
+        down = np.array([0.0, self.drop(), 0.0])
+
+        def leaned(p):
+            return tuple(np.asarray(self.tilt(p, lean)) + down)
+
+        neck = leaned(J.neck)
+        head_up = self.tilt(np.asarray(J.head) - np.asarray(J.neck), lean * 0.5 + float(turn) * 0.3)
+        U = self.person.U
+        head = tuple(np.asarray(neck) + head_up + (0.0, hdy * U, hdx * U * math.sqrt(2.0)))
+        throat = tuple(np.asarray(head) + self.tilt((0.0, 4.0, -0.4), lean * 0.35 + float(turn)))
+        return SimpleNamespace(**dict(vars(J), shoulders={k: leaned(v) for k, v in J.shoulders.items()},
+                                      hips={k: tuple(np.asarray(v) + down) for k, v in J.hips.items()}, neck=neck, head=head, throat=throat))
+
+    def own(self, J):
+        out = super().own(J)
+        rest = J.rest
+        lean, turn = float(rest["lean"]), float(rest["head"][2])
+
+        def turned(sprite, degrees: float, anchor=None):
+            draw = sprite.draw
+
+            def turned_draw(view, far):
+                made = draw(view, far)
+                if made is None or made[0] is None:
+                    return made
+                piece, d, mirrored = made
+                # A lean forward turns a piece in the picture as much as the
+                # view sees it from the side: all of it three quarters (as
+                # the rows turn it), none of it from the front or behind.
+                f = O.facing(view)
+                seen = 1.0 if abs(abs(f) - 45.0) <= 10.0 else abs(math.sin(math.radians(f)))
+                return piece, d + degrees * (seen if seen > 0.2 else 0.0), mirrored
+
+            return replace(sprite, draw=turned_draw, anchor=sprite.anchor if anchor is None else anchor)
+
+        out["trunk"] = turned(out["trunk"], lean, (0.0, self.drop(), 0.0))
+        out["head"] = turned(out["head"], lean * 0.35 + turn)
+        return out
+
+    def leaned_rings(self, rings):
+        """Level rings of a trunk (from the hips, up), each moved as its
+        height is moved by the lean: a stooped trunk."""
+        lean, down = float(self._rest()["lean"]), self.drop()
+        out = []
+        for r in rings:
+            _x, y, z = self.tilt((r.l, r.y, r.z), lean)
+            out.append(replace(r, y=y + down, z=z))
+        return out
+
+
+    def leaned_trunk(self, trunk):
+        """A trunk of ``_round_wear`` (``auto_trunk``) leaned as the body is:
+        its rings and its shoulders."""
+        shoulder = trunk.shoulder
+        if shoulder is not None:
+            centre, radii = shoulder
+            _x, y, z = self.tilt(centre, float(self._rest()["lean"]))
+            shoulder = ((centre[0], y + self.drop(), z), radii)
+        return replace(trunk, rings=self.leaned_rings(trunk.rings), shoulder=shoulder)
 
 
 # ---- A look from the numbers of a person's makers ---------------------------
@@ -670,7 +779,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     return 0
 
 
-__all__ = ["auto_head", "auto_trunk", "RigBody", "lifted_joints", "Body", "Hand", "Look", "PersonBody", "Round", "Stance", "limb_piece", "not_in", "own_art", "own_layers", "own_turns", "seg_bones", "shoes"]
+__all__ = ["auto_head", "auto_trunk", "RigBody", "lifted_joints", "Body", "Hand", "LeaningBody", "Look", "PersonBody", "Round", "Stance", "limb_piece", "not_in", "own_art", "own_layers", "own_turns", "seg_bones", "shoes"]
 
 
 if __name__ == "__main__":
