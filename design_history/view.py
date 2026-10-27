@@ -16,11 +16,13 @@ from .store import commit_info, git
 
 def lineage_view(
     name: str, spec: dict, *, store: Path | None, cache: Path | None, blamer: Blamer | None,
-    current: set[str], ledger: dict | None = None,
+    current: set[str], ledger: dict | None = None, include_attribution: bool = True,
 ) -> dict:
     """The record of lineage `name`. With no `store`, or an era commit that is
     not in it, the era keeps its commit and label only (`in_store: false`).
-    With no `blamer`, no generator authorship is measured."""
+    With no `blamer`, no generator authorship is measured. Disable
+    `include_attribution` to read commits and cached images without the model
+    timeline or resource ledger."""
     eras = []
     timeline = None
     for era in spec.get("eras") or []:
@@ -34,21 +36,22 @@ def lineage_view(
         sha = git(store, "rev-parse", "--verify", "-q", f"{era['commit']}^{{commit}}", check=False).strip() if store else ""
         if sha:
             info = commit_info(store, sha)
-            if timeline is None:
-                from .models import from_store
-
-                timeline = blamer.timeline if blamer is not None else from_store(store, ledger or {}, cache)
-            pin = attribute(info, ledger or {}, timeline)
-            drawn = sorted({a.models[0] for (c, _), a in curated().items() if c == sha})  # a commit-pinned drawing
-            if drawn:
-                row["drawn_by"] = drawn
             row.update({
                 "in_store": True,
                 "sha": sha,
                 "date": info.date,
                 "subject": info.subject,
-                "pin": {"models": list(pin.models), "basis": pin.basis, "note": pin.note, "label": pin.label()},
             })
+            if include_attribution:
+                if timeline is None:
+                    from .models import from_store
+
+                    timeline = blamer.timeline if blamer is not None else from_store(store, ledger or {}, cache)
+                pin = attribute(info, ledger or {}, timeline)
+                row["pin"] = {"models": list(pin.models), "basis": pin.basis, "note": pin.note, "label": pin.label()}
+                drawn = sorted({a.models[0] for (c, _), a in curated().items() if c == sha})
+                if drawn:
+                    row["drawn_by"] = drawn
             if blamer is not None:
                 target, files, how = era_generator(store, sha, blamer.prefix(sha) or "", spec, era, current)
                 row["target"] = target
