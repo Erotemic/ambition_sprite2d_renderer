@@ -17,6 +17,8 @@ The old ``render``/``install`` commands remain as a stable compatibility shim.
 
 from __future__ import annotations
 
+INSPECTION = {"concept": "training_dummy", "identity_kind": "unnamed_archetype", "visual_family": "training_equipment"}
+
 import math
 from dataclasses import asdict, dataclass
 

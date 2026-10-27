@@ -336,6 +336,8 @@ class Target:
         # True for a row of a file that holds several jobs (the faction
         # lineup): the file alone does not name the job.
         self._lineup_row = False
+        self._inspection: dict | None = None
+        self._publish_parameters: dict = {}
 
     # -- constructors -----------------------------------------------------
 
@@ -370,8 +372,17 @@ class Target:
         self._install_fn = install
         self._render_canonical_fn = render_canonical
         self._render_portraits_fn = render_portraits
-        self._actor_metadata = dict(actor_metadata or {})
+        self._actor_metadata = actor_metadata or {}
         return self
+
+    @property
+    def _actor_metadata(self):
+        value = self._actor_metadata_value
+        return dict(value() if callable(value) else value)
+
+    @_actor_metadata.setter
+    def _actor_metadata(self, value):
+        self._actor_metadata_value = value
 
     @classmethod
     def from_config(cls, *, config_path: Path, category: str) -> "Target":
@@ -410,6 +421,12 @@ class Target:
         )
         self._config_path = config_path
         self._job = job
+        def inspection():
+            from .character_generators import get_generator
+            return {"available": get_generator(job.target).default_animations(), "selected": list(job.animations),
+                    "visual_family": job.visual.get("family"), "concept": job.visual.get("concept"),
+                    "identity_kind": job.visual.get("identity_kind", "unknown"), "lineage": job.lineage or None}
+        self._inspection = inspection
         return self
 
     # -- render / install (dispatch by authoring kind) --------------------
@@ -660,6 +677,7 @@ class DiscoveryReport(NamedTuple):
 
     targets: Dict[str, Target]
     warnings: List[str]
+    failures: tuple[str, ...] = ()
 
 
 def _targets_dir() -> Path:
@@ -749,7 +767,7 @@ def _build_module_target(
         )
     )
     portrait_install_subdir = getattr(mod, "PORTRAIT_INSTALL_SUBDIR", None)
-    return Target.from_module(
+    target = Target.from_module(
         name=stem,
         category=category,
         module_path=dotted,
@@ -763,6 +781,8 @@ def _build_module_target(
         portrait_install_subdir=portrait_install_subdir,
         actor_metadata=getattr(mod, "ACTOR_METADATA", None),
     )
+    target._inspection = getattr(mod, "INSPECTION", None)
+    return target
 
 
 def _build_module_targets(
@@ -828,13 +848,16 @@ def _build_module_targets(
             install_subdir=install_subdir,
             portrait_install_subdir=portrait_install_subdir,
             actor_metadata=merge_actor_metadata(
-                getattr(mod, "ACTOR_METADATA", None), spec.get("actor_metadata")
+                getattr(mod, "ACTOR_METADATA", None), None if callable(spec.get("actor_metadata")) else spec.get("actor_metadata")
             ),
         )
         # The data files this one target is made of, when the module makes
         # many targets from data (a chargen spec each): the provenance names
         # them as the target's source.
         built.data_sources = tuple(Path(path) for path in spec.get("data", ()))
+        if callable(spec.get("actor_metadata")):
+            built._actor_metadata = spec["actor_metadata"]
+        built._inspection = spec.get("inspection")
         results.append(built)
     return results
 
@@ -848,6 +871,7 @@ def discover_module_targets() -> DiscoveryReport:
     """
     targets: Dict[str, Target] = {}
     warnings: List[str] = []
+    failures: List[str] = []
     module_categories = ("characters", "props", "tiles", "icons", "projectiles")
     for category in module_categories:
         for stem, dotted in _walk_category(category):
@@ -859,6 +883,7 @@ def discover_module_targets() -> DiscoveryReport:
                 warnings.append(
                     f"{category}/{stem}: import failed ({type(ex).__name__}: {ex})"
                 )
+                failures.append(warnings[-1])
                 continue
             multi = getattr(mod, "TARGETS", None)
             if isinstance(multi, dict):
@@ -902,7 +927,7 @@ def discover_module_targets() -> DiscoveryReport:
                     f"{category}/{stem}: shadows an earlier target of the same name"
                 )
             targets[stem] = _build_module_target(mod, stem, category, dotted, render)
-    return DiscoveryReport(targets=targets, warnings=warnings)
+    return DiscoveryReport(targets=targets, warnings=warnings, failures=tuple(failures))
 
 
 def _discover_yaml_configs(
@@ -997,6 +1022,7 @@ def discover_all_targets() -> DiscoveryReport:
     return DiscoveryReport(
         targets=targets,
         warnings=module_report.warnings + main_warnings + review_warnings + shadow_warnings,
+        failures=module_report.failures + tuple(main_warnings + review_warnings + shadow_warnings),
     )
 
 

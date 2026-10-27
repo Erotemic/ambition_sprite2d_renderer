@@ -2645,7 +2645,10 @@ def _entry(target: str) -> dict:
         del opts
         return person.render(out_dir, META[target])
 
-    return {"render": render, "actor_metadata": META[target]}
+    return {"render": render, "actor_metadata": META[target],
+            "inspection": {"visual_family": "cryptography_crew", "identity_kind": "named",
+                           "concept": f"cryptography:{target}", "available": [r[0] for r in person.rows],
+                           "selected": [r[0] for r in person.rows]}}
 
 
 def frame_of(target: str) -> Callable[[str, int, int], object]:

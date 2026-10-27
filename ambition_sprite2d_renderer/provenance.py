@@ -68,12 +68,12 @@ def repo_root() -> Path:
 
 def asset_root() -> Path:
     """The runtime asset root the sprite, background and terrain publishes write into."""
-    return repo_root() / "crates" / "ambition_platformer2d_actor_monolith" / "assets"
+    return Path(os.environ.get("AMBITION_ART_ASSET_ROOT", repo_root() / "crates" / "ambition_platformer2d_actor_monolith" / "assets"))
 
 
 def provenance_root() -> Path:
     """The root of the records: a sibling of the asset root, not inside it."""
-    return asset_root().parent / "asset_provenance"
+    return Path(os.environ.get("AMBITION_ART_PROVENANCE_ROOT", asset_root().parent / "asset_provenance"))
 
 
 def record_dir(dest: Path) -> Path | None:
@@ -259,16 +259,27 @@ def record_target_install(target: Any, dest_root: Path, copied: Iterable[Path]) 
 
         recorded = reads.recorded()
         generator = target_generator(target)
+        from .products import target_plan
+        plan = target_plan(target)
+        copied = list(copied)
+        installed = {Path(path).relative_to(dest_root).as_posix() for path in copied}
+        if set(plan["required"]) - installed:
+            raise ValueError("The required publication members were not installed")
+        complete = recorded is not None
         if recorded is None:
             # Not a recording publish: the authoring sources are the inputs known.
             recorded = [repo_root() / rel for rel in {generator["source"], generator["module_source"], *generator["data"]} if rel]
+        from .products import generation, target_plan
+        inputs = _inputs(recorded)
         return write_record(
             directory,
             target.name,
             generator=generator,
             dest=Path(dest_root),
             outputs=[(Path(path), None) for path in copied],
-            inputs=_inputs(recorded),
+            inputs=inputs,
+            extra={"generation": generation(inputs, reads.directories(), target._publish_parameters, complete=complete),
+                   "plan": plan},
         )
     except Exception as ex:  # noqa: BLE001 - a record never fails a publish
         print(f"[provenance] warning: no record for {getattr(target, 'name', target)}: {ex}", file=sys.stderr)
@@ -290,6 +301,8 @@ class Book:
         #: `terrain`): a plan record's inputs are its modules.
         self.package = package
         self.units: dict[str, list[tuple[Path, dict[str, Any] | None]]] = {}
+        from . import read_record
+        read_record.exclude(self.dest)
 
     def add(self, unit: str, path: Path, fn: Callable | None) -> None:
         self.units.setdefault(unit, []).append((Path(path), made_by(fn)))
@@ -299,7 +312,10 @@ class Book:
             directory = record_dir(self.dest)
             if directory is None:
                 return []
-            inputs = _inputs(renderer_modules(), hashed=basis == "rendered")
+            from . import read_record
+            from .products import generation
+            recorded = read_record.recorded()
+            inputs = _inputs(recorded if recorded is not None else renderer_modules(), hashed=basis == "rendered")
             return [
                 write_record(
                     directory,
@@ -309,6 +325,7 @@ class Book:
                     outputs=outputs,
                     inputs=inputs,
                     basis=basis,
+                    extra={"generation": generation(inputs, read_record.directories(), {}, complete=recorded is not None and basis == "rendered")},
                 )
                 for unit, outputs in self.units.items()
             ]

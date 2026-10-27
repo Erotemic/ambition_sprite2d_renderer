@@ -24,6 +24,9 @@ from typing import Callable
 from PIL import Image
 
 from .. import provenance
+if __name__ == "__main__":
+    from .. import read_record
+    read_record.start(provenance.repo_root(), [provenance.asset_root(), Path(__file__).resolve().parents[2] / ".cache"])
 from . import decor, doors, fixtures, motes, ornaments, shimmer, skins, two_state, water_backdrops
 
 #: One published file: its skin or biome, its name, the callable that draws

@@ -614,6 +614,8 @@ def _targets_json() -> dict:
     for name, tgt in sorted(_ALL_TARGETS.items()):
         row = provenance.target_generator(tgt)
         row["outputs"] = tgt.claimed_install_names()
+        from ..products import target_plan
+        row["product"] = target_plan(tgt)
         row["runtime_review"] = tgt.category == "characters" and name in RUNTIME_REVIEW_NPCS
         targets[name] = row
     return {
@@ -990,6 +992,7 @@ def _publish_target(
 
     target = _get_target(target_name)
     out_dir = generated_dir(target_name)
+    target._publish_parameters = opts
     target.render_sheet(out_dir, **opts)
     if target.supports_portraits:
         target.render_portraits(out_dir, **opts)

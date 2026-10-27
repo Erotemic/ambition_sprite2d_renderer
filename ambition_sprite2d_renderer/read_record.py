@@ -147,6 +147,31 @@ def recorded() -> list[str] | None:
     return sorted(os.path.join(_root, rel) for rel in _files | _modules())
 
 
+def directories() -> list[dict]:
+    """The directory membership that a recorded publication used."""
+    return [{"path": rel, "members": sorted(os.listdir(os.path.join(_root, rel)))}
+            for rel in sorted(_dirs or ()) if os.path.isdir(os.path.join(_root, rel))]
+
+
+def merge(files: list[str], directories: list[dict]) -> None:
+    """Add the input observations of a rendering worker."""
+    if _files is None or _dirs is None:
+        return
+    for path in files:
+        rel = _relative(path)
+        if rel:
+            _files.add(rel)
+        elif path.endswith(".py") and os.path.realpath(path).startswith(_root + os.sep):
+            _files.add(os.path.relpath(os.path.realpath(path), _root))
+    for item in directories:
+        _dirs.add(item["path"])
+
+
+def exclude(path: Path) -> None:
+    global _excluded
+    _excluded = (*_excluded, os.path.realpath(path))
+
+
 def write(path: Path) -> None:
     """Write the record: `f <file>` and `d <directory>` lines, relative to the
     repository, sorted. Written whole, then moved into place."""
@@ -228,6 +253,7 @@ def main(argv: list[str]) -> int:
     start(Path(spec["root"]), [Path(path) for path in spec["excluded"]])
     target = _one_target(spec)
     out_dir, opts = Path(spec["out_dir"]), spec["opts"]
+    target._publish_parameters = opts
     target.render_sheet(out_dir, **opts)
     if target.supports_portraits:
         target.render_portraits(out_dir, **opts)
@@ -237,4 +263,5 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    from ambition_sprite2d_renderer import read_record as recorder
+    sys.exit(recorder.main(sys.argv[1:]))

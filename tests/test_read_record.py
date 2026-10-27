@@ -73,3 +73,32 @@ read_record.write(Path({str(tmp_path / "record.reads")!r}))
     # Control: a module of the package that the process did not import.
     assert f"{package}/authoring/faction_lineup.py" not in lines, lines
     assert not [line for line in lines if ".venv" in line], lines
+
+
+def test_the_publish_entry_point_and_installer_share_one_input_recorder(tmp_path):
+    import json
+    import os
+    module = tmp_path / 'probe.py'
+    module.write_text("""from pathlib import Path
+from PIL import Image
+SHEET_FILES = ['probe.png']
+def render(out_dir, **opts):
+    color = Path(__file__).with_name('ink.txt').read_text().strip()
+    path = Path(out_dir) / 'probe.png'
+    Image.new('RGBA', (8, 8), color).save(path)
+    return [path]
+""")
+    (tmp_path / 'ink.txt').write_text('#ff0000')
+    spec = {'name':'probe','kind':'module','category':'props','module_path':'probe','config_path':None,
+            'out_dir':str(tmp_path/'render'),'dest_root':str(tmp_path/'sprites'),'opts':{'seed':3},
+            'reads':str(tmp_path/'probe.reads'),'root':str(tmp_path),
+            'excluded':[str(tmp_path/'render'),str(tmp_path/'sprites'),str(tmp_path/'records')]}
+    result = subprocess.run([sys.executable,'-m','ambition_sprite2d_renderer.read_record',json.dumps(spec)],
+        cwd=RENDERER, capture_output=True, text=True, env=dict(os.environ,
+            PYTHONPATH=str(tmp_path)+os.pathsep+str(RENDERER), AMBITION_REPO_ROOT=str(tmp_path),
+            AMBITION_ART_PROVENANCE_DIR=str(tmp_path/'records')))
+    assert result.returncode == 0, result.stderr
+    receipt = json.loads((tmp_path/'records/probe.json').read_text())
+    assert receipt['generation']['complete']
+    assert receipt['generation']['parameters'] == {'seed':3}
+    assert any(row['path']=='ink.txt' and row['sha256'] for row in receipt['inputs'])

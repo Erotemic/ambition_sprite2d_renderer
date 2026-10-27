@@ -830,6 +830,14 @@ def write_debug_views(
     return written
 
 
+def product_plans() -> dict:
+    """The runtime atlas roots published by the sprite publisher."""
+    return {"atlas:" + tier: {"id": "atlas:" + tier, "kind": "atlas", "root": "sprite_packs/" + tier,
+        "generator": {"family": "ultrapack", "id": "ultrapack", "source": "tools/ambition_sprite2d_renderer/ambition_sprite2d_renderer/authoring/ultrapack.py"},
+        "required": ["ultrapack.json"], "optional": [], "metadata": {}, "source": None, "tiers": [],
+        "repair": "./scripts/regen/sprites.sh"} for tier in ("full", "half", "quarter", "potato")}
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """The publish's road to one tier: ``python -m
     ambition_sprite2d_renderer.authoring.ultrapack``.
@@ -894,6 +902,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             jobs=args.jobs,
             stems=stems,
         )
+    from ..products import conversion_evidence, accept_conversion, parents_of
+    from ..provenance import renderer_modules
+    catalog_path = args.out / f"{args.name}.json"
+    catalog = json.loads(catalog_path.read_text())
+    inputs = list(renderer_modules())
+    for stem in catalog["targets"]:
+        layout = args.from_rendered / f"{stem}_spritesheet.yaml"
+        inputs.append(layout)
+        import yaml
+        metadata = yaml.safe_load(layout.read_text())
+        images = metadata.get("images") or [metadata.get("image", f"{stem}_spritesheet.png")]
+        inputs.extend(layout.parent / image for image in images)
+    if args.pack_plan:
+        inputs.append(args.pack_plan)
+    evidence = conversion_evidence(inputs, {"kind": "ultrapack", "scale": args.scale, "minimum": args.min_frame_px,
+        "page_size": args.page_size, "runtime_only": args.runtime_only, "parents": parents_of(inputs), "targets": sorted(catalog["targets"])})
+    accept_conversion(args.out, args.name, evidence, [catalog_path] + [args.out / name for name in catalog["pages"]])
     print(f"ultrapack '{args.name}' @ scale {args.scale:g}: {how}")
     for path in written:
         print(path)

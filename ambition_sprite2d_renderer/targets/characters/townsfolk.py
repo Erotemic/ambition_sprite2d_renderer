@@ -45,6 +45,23 @@ def _metadata(path: Path) -> dict:
     return actor_metadata(spec, character_id=game["character_id"], description=game["description"])
 
 
+def publication_rows(game: dict) -> list[str]:
+    rows = game.get("rows", "townsfolk")
+    return list({"townsfolk": TOWNSFOLK_ROWS, "full": PUBLISH_ROWS}[rows] if isinstance(rows, str) else rows)
+
+
+def inspection(path: Path) -> dict:
+    """Describe source support and the selected profile without drawing frames."""
+    from ambition_sprite2d_renderer.chargen.body import build
+    from ambition_sprite2d_renderer.chargen.motion import build_library
+    from ambition_sprite2d_renderer.chargen.sheets import COMPOSED
+    spec, game = load(path)
+    return {"available": sorted(set(build_library(build(spec), game.get("grip", "blade"))) | set(COMPOSED)),
+            "selected": publication_rows(game), "profile": game.get("rows", "townsfolk"),
+            "visual_family": spec.family, "species": spec.head.species, "body_base": spec.base,
+            "concept": game.get("concept"), "identity_kind": game.get("identity_kind", "unknown")}
+
+
 def _make(path: Path):
     target = path.name.removesuffix(".chargen.yaml")
 
@@ -52,8 +69,7 @@ def _make(path: Path):
         del opts
         spec, game = load(path)
         meta = actor_metadata(spec, character_id=game["character_id"], description=game["description"])
-        rows = game.get("rows", "townsfolk")
-        rows = {"townsfolk": TOWNSFOLK_ROWS, "full": PUBLISH_ROWS}.get(rows, rows) if isinstance(rows, str) else rows
+        rows = publication_rows(game)
         return publish_sheet(spec, Path(out_dir), target=target, metadata=meta, rows=list(rows), grip=game.get("grip", "blade"))
 
     return target, render
@@ -63,7 +79,7 @@ def _targets() -> Dict[str, dict]:
     out: Dict[str, dict] = {}
     for path in sorted(SPECS.glob("*.chargen.yaml")):
         target, render = _make(path)
-        out[target] = {"render": render, "actor_metadata": _metadata(path), "data": [path]}
+        out[target] = {"render": render, "actor_metadata": lambda path=path: _metadata(path), "data": [path], "inspection": lambda path=path: inspection(path)}
     return out
 
 

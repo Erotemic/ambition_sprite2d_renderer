@@ -26,22 +26,31 @@ from pathlib import Path
 from PIL import Image
 
 from .. import provenance
+if __name__ == "__main__":
+    from .. import read_record
+    read_record.start(provenance.repo_root(), [provenance.asset_root(), Path(__file__).resolve().parents[2] / ".cache"])
 from . import foregrounds, room_look_sky, scenes, sky_parts
 
 # A shared machine: this is the most jobs a publish starts.
 MAX_JOBS = 6
 
 
-def _render(job: tuple[str, str]) -> tuple[str, str, Image.Image | None]:
+def _render(job: tuple[str, str]) -> tuple:
     theme, layer = job
-    return theme, layer, scenes.render(theme, layer)
+    from .. import read_record
+    if read_record.recorded() is None:
+        read_record.start(provenance.repo_root(), [provenance.asset_root(), Path(__file__).resolve().parents[2] / ".cache"])
+    image = scenes.render(theme, layer)
+    return theme, layer, image, read_record.recorded() or [], read_record.directories()
 
 
 def _render_all(themes: list[str]) -> dict[str, dict[str, Image.Image]]:
     jobs = [(theme, layer) for theme in themes for layer in scenes.LAYERS]
     out: dict[str, dict[str, Image.Image]] = {theme: {} for theme in themes}
     with ProcessPoolExecutor(max_workers=min(MAX_JOBS, len(jobs))) as pool:
-        for theme, layer, image in pool.map(_render, jobs):
+        from .. import read_record
+        for theme, layer, image, files, directories in pool.map(_render, jobs):
+            read_record.merge(files, directories)
             out[theme][layer] = image
     return out
 
