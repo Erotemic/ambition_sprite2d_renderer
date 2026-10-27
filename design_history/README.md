@@ -150,6 +150,13 @@ second time.
 
 ## Curated lineages
 
+Use `current_products` to claim exact runtime manifest paths, such as
+`sprites/gnu_ton_boss/giant_gnu_spritesheet.ron`, when one target publishes
+several characters. These claims select current art in the inspector. The
+`ids`, `pick`, and `eras` still select historical renders. Use `continues` for
+the previous lineage of the same character. Use `split_from` for a list of
+shared origins. A split keeps each current character separate.
+
 Written from the survey sheets (2026-10-07): Alice, Bob, Emmy (`noether`), the
 player robot, the four vikings (and a combined `vikings` sheet), the
 Mockingbird, the raptor stalker, GNU-ton (the scholar riding the gnu), the giant

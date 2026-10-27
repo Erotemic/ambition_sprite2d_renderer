@@ -66,5 +66,7 @@ def lineage_view(
         "summary": spec.get("summary", ""),
         "targets": lineage_targets(spec),
         "current_targets": [t for t in lineage_targets(spec) if t in current],
+        "split_from": spec.get("split_from", []),
+        "continues": spec.get("continues"),
         "eras": eras,
     }

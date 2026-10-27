@@ -220,6 +220,7 @@ lineages:
         note: "Current design."
   gnu_ton:
     name: GNU-ton (the scholar riding the giant gnu)
+    current_products: [sprites/gnu_ton_boss/gnu_ton_boss_spritesheet.ron]
     ids: [gnu_ton_boss]
     paths: ['gnu_ton']
     pick: 'frame:rest@gnu_ton_boss'
@@ -244,6 +245,11 @@ lineages:
         note: "Claude Opus 5.5 declared."
   giant_gnu:
     name: The giant gnu, alone
+    split_from: [gnu_ton]
+    current_products:
+      - sprites/gnu_ton_boss/giant_gnu_spritesheet.ron
+      - sprites/gnu_ton_boss/giant_gnu_fist_spritesheet.ron
+      - sprites/gnu_ton_boss/giant_gnu_hands_spritesheet.ron
     ids: [gnu_ton_boss]
     paths: ['gnu_ton']
     pick: 'frame:rest@giant_gnu'
@@ -270,6 +276,8 @@ lineages:
         note: "Jon chose it in rounds of stills: a mythical giant, a slope for a back, a gnu's horns, a plain face. Claude Opus 5.5 declared."
   gnu_ton_scholar:
     name: The scholar (GNU-ton), alone
+    split_from: [gnu_ton]
+    current_products: [sprites/gnu_ton_boss/gnu_ton_rider_spritesheet.ron]
     ids: [gnu_ton_boss]
     paths: ['gnu_ton']
     pick: 'frame:rest@gnu_ton_rider'
@@ -290,6 +298,11 @@ lineages:
         note: "A smooth, outlined redraw. Claude Opus 5.5 declared."
   gnu_ton_scholar_rig:
     name: The scholar (GNU-ton), as an SVG rig
+    continues: gnu_ton_scholar
+    current_products:
+      - sprites/gnu_ton_scholar_fighter_spritesheet.ron
+      - sprites/gnu_ton_scholar_villain_spritesheet.ron
+      - sprites/gnu_ton_scholar_boss_spritesheet.ron
     # `gnu_ton_scholar_boss` is the boss sheet: the same SVG and bones, its own rows.
     ids: [gnu_ton_scholar_fighter, gnu_ton_scholar_villain, gnu_ton_scholar_boss]
     paths: ['gnu_ton_scholar']

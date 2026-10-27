@@ -42,6 +42,32 @@ def test_sheet_label_fonts_are_cached_by_size():
     assert font(14) is not font(11)
 
 
+def test_pirate_body_metadata_follows_one_crop_translation(tmp_path, monkeypatch):
+    import math
+    import yaml
+    from PIL import ImageDraw
+    from ambition_sprite2d_renderer.targets.characters import pirate_heavy as pirate
+
+    spec = next(iter(pirate.VARIANTS.values()))
+    x0, y0, x1, y1 = pirate._body_box(spec)
+    box = (math.floor(x0), math.floor(y0), math.ceil(x1), math.ceil(y1))
+
+    def draw(*_):
+        image = Image.new("RGBA", pirate.WORK_FRAME_SIZE)
+        ImageDraw.Draw(image).rectangle((box[0], box[1], box[2] - 1, box[3] - 1), fill="green")
+        return image
+
+    monkeypatch.setattr(pirate, "ROWS", [("idle", 1, 100)])
+    monkeypatch.setattr(pirate, "_draw_variant", draw)
+    monkeypatch.setattr(pirate, "publish_rig_flipbook", lambda *_: {})
+    pirate.render_variant(spec, tmp_path)
+    manifest = yaml.safe_load(next(tmp_path.glob("*_spritesheet.yaml")).read_text())
+    body = manifest["body_metrics"]["body_pixel_bbox"]
+    feet = manifest["body_metrics"]["feet_pixel"]
+    assert body == {"x": 10, "y": 10, "w": box[2] - box[0], "h": box[3] - box[1]}
+    assert feet == {"x": 10 + body["w"] / 2, "y": 10 + body["h"]}
+
+
 
 def test_trimmed_preview_uses_local_opaque_label_drawing():
     from ambition_sprite2d_renderer.authoring.sheet_build import _trimmed_labeled_preview

@@ -1225,16 +1225,15 @@ def _body_box(spec: VariantSpec) -> Tuple[float, float, float, float]:
     return (cx - half, ground + top, cx + half, ground)
 
 
-def _body_metrics(spec: VariantSpec, frame_transform: dict):
+def _body_metrics(spec: VariantSpec):
     """The ``body_metrics_fn`` of a variant. Without it the box is the alpha
     box of the first frame, and that has the cleaver in it: the body the world
     collides with was twice as wide as she is."""
 
     def metrics(fw: int, fh: int) -> dict:
-        dx, dy = frame_transform.get("dx", 0), frame_transform.get("dy", 0)
         x0, y0, x1, y1 = _body_box(spec)
-        x, y = int(math.floor(x0 + dx)), int(math.floor(y0 + dy))
-        w, h = int(math.ceil(x1 + dx)) - x, int(math.ceil(y1 + dy)) - y
+        x, y = int(math.floor(x0)), int(math.floor(y0))
+        w, h = int(math.ceil(x1)) - x, int(math.ceil(y1)) - y
         feet = (x + w / 2.0, float(y + h))
         return {
             "body_pixel_bbox": {"x": x, "y": y, "w": w, "h": h},
@@ -1264,8 +1263,7 @@ def render_variant(spec: VariantSpec, out_dir: str | Path, **opts) -> List[Path]
         frame_size=frame_size,
         crop_margin=10,
         auto_crop=True,
-        # reads `frame_transform`, which `build_sheet` fills before it asks
-        body_metrics_fn=_body_metrics(spec, frame_transform),
+        body_metrics_fn=_body_metrics(spec),
     )
     parts = publish_rig_flipbook(target_name, ROWS, render_frame, outputs, frame_transform, out_dir)
     return [
