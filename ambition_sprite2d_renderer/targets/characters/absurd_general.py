@@ -10,8 +10,8 @@ going for a general specific sort of vibe (although again, we are not copying
 the character, this is just inspiration)". Before that day he was a preset of
 the toon template, which cannot have these proportions.
 
-The rows are the six he has always had: ``idle``, ``walk``, ``talk``,
-``interact`` (a salute), ``celebrate``, ``hit``.
+The death row ends with the General on his back. The game holds this last
+frame for the corpse.
 """
 
 from __future__ import annotations
@@ -57,6 +57,7 @@ ACTOR_METADATA = {
         "interaction.use": {"animation": "interact", "events": []},
         "emote.celebrate": {"animation": "celebrate", "events": []},
         "combat.hit": {"animation": "hit", "events": []},
+        "life.death": {"animation": "death", "events": []},
     },
     "tags": ["human", "officer", "hub", "faction_leader", "svg_rigged"],
 }
@@ -65,6 +66,12 @@ ACTOR_METADATA = {
 @lru_cache(maxsize=1)
 def _doc() -> RigDocument:
     return RigDocument.load(RIG_PATH)
+
+
+def INSPECTION() -> dict:
+    """List the source clips and the clips selected for publication."""
+    rows = [name for name, _, _ in _doc().rows()]
+    return {"available": rows, "selected": rows, "visual_family": "svg_rigged"}
 
 
 def _render_frame(animation: str, frame_idx: int, frame_count: int):

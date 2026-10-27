@@ -12,9 +12,8 @@ Each bone rests at no turn, so a channel of a clip is the turn of that bone
 from the drawing, in degrees (positive turns clockwise on the screen). He
 stands with his arms akimbo; a clip turns an arm a long way to raise it.
 
-The rows are the six the General has always had: ``idle``, ``walk``,
-``talk``, ``interact``, ``celebrate``, ``hit``. His cap is a bone of its own:
-it lags his head a little, and a blow knocks it back.
+The rows include a death fall that ends with the General on his back.
+His cap has its own bone. It moves after his head when he takes a blow.
 """
 
 from __future__ import annotations
@@ -40,12 +39,15 @@ OUT = PKG / "targets" / "characters" / "rigged" / "absurd_general" / "absurd_gen
 #: Frame pixels for each SVG unit.
 SCALE = 0.35
 #: He stands at the middle of his frame, so a row can be mirrored about it.
-FRAME = {"width": 232, "height": 224, "center_x": 116, "ground_y": 214, "ankle_h": 0, "supersample": 3, "render_scale": 1, "trim": False}
+FRAME = {"width": 232, "height": 224, "center_x": 116, "ground_y": 214, "ankle_h": 0, "supersample": 3, "render_scale": 1, "trim": False,
+         "plant": {"death": "each"}}
 
 #: A beat that comes in, holds, and goes out: 0, then 1, then 0.
 BEAT = "(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.25, (1-t)/0.25)))"
 #: A jolt: 1 at once, then it dies away.
 JOLT = "(1-t)*(1-t)"
+FALL = "(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.15)/0.65)))"
+SETTLE = "(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.65)/0.3)))"
 
 
 def expr(text: str) -> dict:
@@ -148,6 +150,26 @@ CLIPS = {
             "near_leg": expr(f"-14*{JOLT}"),
             "far_leg": expr(f"10*{JOLT}"),
             **mouth("True"),
+            **eyes("True"),
+        },
+    },
+    # He falls onto his back. The last frame is the corpse pose.
+    "death": {
+        "loop": False, "frames": 10, "duration_ms": 95,
+        "channels": {
+            "body": expr(f"-90*{FALL}"),
+            "root_x": expr(f"48*{FALL}"),
+            "root_y": expr(f"-30*{FALL}"),
+            "torso": expr(f"-8*sin(pi*t)*(1-{FALL})"),
+            "head": expr(f"-12*sin(pi*t) + 8*{SETTLE}"),
+            "hat": expr(f"-24*sin(pi*t) + 10*{SETTLE}"),
+            "near_arm_upper": expr(f"55*sin(pi*t) - 12*{SETTLE}"),
+            "near_arm_lower": expr(f"-30*sin(pi*t) + 18*{SETTLE}"),
+            "far_arm_upper": expr(f"-45*sin(pi*t) + 12*{SETTLE}"),
+            "far_arm_lower": expr(f"20*sin(pi*t)"),
+            "near_leg": expr(f"-22*sin(pi*t) - 8*{SETTLE}"),
+            "far_leg": expr(f"18*sin(pi*t) + 5*{SETTLE}"),
+            **mouth("t < 0.65"),
             **eyes("True"),
         },
     },
