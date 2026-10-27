@@ -2014,7 +2014,7 @@ lineages:
     paths: ['townsfolk/tower_tanaka\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   tower_voss:
-    name: Drill Sergeant Voss
+    name: Drill Sergeant Casey
     ids: [tower_voss]
     paths: ['townsfolk/tower_voss\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
