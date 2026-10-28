@@ -236,18 +236,6 @@ def render_canonical(out_dir: str | Path, **opts) -> Path:
     return _build(out_dir)["canonical_transparent"]
 
 
-def install(render_dir: str | Path, dest_root: str | Path) -> Iterable[Path]:
-    render_dir = Path(render_dir)
-    dest_root = Path(dest_root)
-    dest_root.mkdir(parents=True, exist_ok=True)
-    installed: List[Path] = []
-    for name in SHEET_FILES:
-        src = render_dir / name
-        if src.exists():
-            dst = dest_root / name
-            copy2(src, dst)
-            installed.append(dst)
-    return installed
 
 
 __all__ = ["ACTOR_METADATA", "ROWS", "TARGET_NAME", "install", "render", "render_canonical", "render_frame"]

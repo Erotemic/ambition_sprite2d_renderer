@@ -54,8 +54,12 @@ def _discover() -> Dict[str, dict]:
         try:
             doc = json.loads(path.read_text(encoding="utf8"))
             name = str(doc.get("name", path.stem))
-        except Exception:
-            continue  # malformed doc: skip registration, GUI can still open it
+        except Exception as error:
+            name = path.name.removesuffix(".rig.json")
+            targets[name] = _make_entry(path)
+            targets[name]["data"] = [path]
+            targets[name]["inspection"] = {"state": "invalid", "errors": [str(error)]}
+            continue
         # A dedicated character module is a stronger publication contract than
         # the generic loose-rig adapter (it can freshness-check canonical SVGs,
         # add render overscan, portraits/effects, actor metadata, etc.). Keep the
@@ -64,6 +68,7 @@ def _discover() -> Dict[str, dict]:
         if (characters_dir / f"{name}.py").exists():
             continue
         targets[name] = _make_entry(path, doc.get("actor_metadata"))
+        targets[name]["data"] = [path]
     return targets
 
 

@@ -274,24 +274,3 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     return outputs
 
 
-def install(render_dir: str | Path, dest_root: str | Path) -> Iterable[Path]:
-    """Install under ``assets/sprites/entities`` from the normal sprite root.
-
-    ``scripts/regen/sprites.sh --target sanic_support_entities`` passes the normal
-    ``assets/sprites`` root for non-``entities`` targets. Keep this target
-    additive by giving it its own install hook instead of editing the shell
-    script's special cases.
-    """
-    render_dir = Path(render_dir)
-    dest_root = Path(dest_root)
-    dest_dir = dest_root / INSTALL_SUBDIR
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    installed: List[Path] = []
-    for name in SHEET_FILES:
-        src = render_dir / name
-        if not src.exists():
-            continue
-        dst = dest_dir / name
-        dst.write_bytes(src.read_bytes())
-        installed.append(dst)
-    return installed

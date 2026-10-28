@@ -35,45 +35,7 @@ def test_portrait_files_can_report_multiple_targets_in_one_process(monkeypatch, 
         "boss\tboss/boss_portraits.ron",
     ]
 
-def test_publish_many_deduplicates_targets_and_uses_quiet_batch_path(monkeypatch):
-    calls: list[tuple[str, Path, bool]] = []
 
-    def fake_publish(name, dest_root, *, quiet=False, **opts):
-        assert opts == {}
-        calls.append((name, dest_root, quiet))
-        return [dest_root / f"{name}.png"]
-
-    def fake_bulk(op_name, names, op):
-        assert op_name == "publish-many"
-        for name in names:
-            op(name)
-        return 0
-
-    monkeypatch.setattr(commands, "_publish_target", fake_publish)
-    monkeypatch.setattr(commands, "_bulk_over", fake_bulk)
-    dest = Path("sprites")
-
-    rc = commands._cmd_publish_many(
-        argparse.Namespace(
-            targets=["alice", "alice", "boss"],
-            dest_root=dest,
-            quiet=True,
-            quality_scale=None,
-            downsample=None,
-            published_list=None,
-        )
-    )
-
-    assert rc == 0
-    assert calls == [("alice", dest, True), ("boss", dest, True)]
-
-def test_parser_accepts_explicit_publish_batch():
-    args = build_parser().parse_args(
-        ["publish-many", "--quiet", "--dest-root", "sprites", "alice", "boss"]
-    )
-    assert args.targets == ["alice", "boss"]
-    assert args.dest_root == Path("sprites")
-    assert args.quiet is True
 
 
 def test_draw_review_reuses_loaded_jobs_and_emits_progress(

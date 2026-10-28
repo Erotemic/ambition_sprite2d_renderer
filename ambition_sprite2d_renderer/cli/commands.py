@@ -176,29 +176,6 @@ def validate_adapter_config_dirs(*config_dirs: str | Path) -> int:
     return len(jobs)
 
 
-# Review configs whose generated spritesheets are loaded at runtime via
-# the sandbox NPC sprite registry. `draw-all` skips `configs/review/`
-# by design (those are art-iteration review jobs), but these specific
-# ones produce assets the game needs. `draw-runtime-npcs` renders +
-# installs them in one shot so a fresh checkout can boot with full
-# NPC art without invoking `draw-character` ten times.
-RUNTIME_REVIEW_NPCS: tuple[str, ...] = (
-    # absurd_general is NOT here any more: the General is the rigged module
-    # target `targets/characters/absurd_general.py`, published by `publish`.
-    "architect",
-    # erdish is NOT here any more: he is the rigged module target
-    # `targets/characters/erdish.py`, published by `publish`.
-    "merchant_prototype",
-    "oiler",
-    "vault_keeper",
-    # The cryptography crew: only Alice is still a review-config NPC. Bob is
-    # the SVG-rigged module target `bob`, and the other eleven (Craig, Eve,
-    # Judy, Mallory, Olivia, Peggy, Sybil, Trent, Trudy, Victor, Walter) are
-    # the rigged module targets of `targets/characters/crypto_crew.py`. All of
-    # them are published by `publish`.
-    "alice",
-)
-
 
 def _get_target(name: str) -> Target:
     """Look up a target from the unified registry.
@@ -575,33 +552,10 @@ def _cmd_ldtk_manifest(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_audit_installed(args: argparse.Namespace) -> int:
-    """`audit-installed` — name the installed files no producer claims.
-
-    ⛔ REPORT ONLY, and there is no flag that changes that. Deciding an asset is
-    dead is a maintainer's call; this command only produces the list to decide
-    from. See `devtools/installed_audit.py` for why the obvious garbage
-    collector would have deleted live assets.
-
-    Exit codes are the verdict: 0 clean, 1 orphans found, 2 refused because the
-    target registry could not be trusted to say what is claimed.
-    """
-    from ..devtools.installed_audit import audit, format_json, format_report
-
-    install_root = (
-        Path(args.sprites_dir) if args.sprites_dir else sandbox_sprites_dir()
-    )
-    if not install_root.is_dir():
-        print(f"error: no such install root: {install_root}", file=sys.stderr)
-        return 2
-    result = audit(install_root)
-    if args.format == "json":
-        print(format_json(result))
-    else:
-        print(format_report(result, verbose=args.verbose))
-    if result.refused:
-        return 2
-    return 1 if result.orphans else 0
+def _cmd_audit_installed(args):
+    from ..publication import audit
+    print(json.dumps(audit(Path(args.sprites_dir).parent if args.sprites_dir else None), indent=1))
+    return 0
 
 
 def _targets_json() -> dict:
@@ -614,9 +568,9 @@ def _targets_json() -> dict:
     for name, tgt in sorted(_ALL_TARGETS.items()):
         row = provenance.target_generator(tgt)
         row["outputs"] = tgt.claimed_install_names()
-        from ..products import target_plan
-        row["product"] = target_plan(tgt)
-        row["runtime_review"] = tgt.category == "characters" and name in RUNTIME_REVIEW_NPCS
+        from ..publication import definition
+        row["product"] = definition(tgt)
+        row["runtime_review"] = tgt.category == "characters" and tgt._config_path is not None and "review" in tgt._config_path.parts
         targets[name] = row
     return {
         "schema": "ambition.sprite_targets.v1",
@@ -636,7 +590,7 @@ def _cmd_list_targets(args: argparse.Namespace) -> int:
     for target in sorted(GENERATORS):
         generator = get_generator(target)
         print(f"  {target}: {', '.join(generator.default_animations())}")
-    print("# registered targets (unified — works with render/install/canonical):")
+    print("# registered targets (unified — works with render/publish/canonical):")
     by_category: dict[str, list[str]] = {cat: [] for cat in CATEGORIES}
     for name, tgt in _ALL_TARGETS.items():
         by_category.setdefault(tgt.category, []).append(name)
@@ -648,7 +602,7 @@ def _cmd_list_targets(args: argparse.Namespace) -> int:
         for name in names:
             marker = (
                 "  (runtime)"
-                if category == "characters" and name in RUNTIME_REVIEW_NPCS
+                if category == "characters" and _ALL_TARGETS[name]._config_path is not None and "review" in _ALL_TARGETS[name]._config_path.parts
                 else ""
             )
             print(f"    {name}{marker}")
@@ -974,32 +928,6 @@ def _target_render_opts(args: argparse.Namespace) -> dict[str, object]:
     return opts
 
 
-@profile
-def _publish_target(
-    target_name: str,
-    dest_root: Path,
-    *,
-    quiet: bool = False,
-    **opts,
-) -> List[Path]:
-    """Render and install one complete target bundle with one registry lookup.
-
-    The older composition routed through three independently user-facing CLI
-    helpers, causing repeated lookups and printing generated paths that were
-    immediately copied elsewhere. Full regeneration uses this compact seam and
-    may suppress per-file output while retaining per-target progress lines.
-    """
-
-    target = _get_target(target_name)
-    out_dir = generated_dir(target_name)
-    target._publish_parameters = opts
-    target.render_sheet(out_dir, **opts)
-    if target.supports_portraits:
-        target.render_portraits(out_dir, **opts)
-    copied = list(target.install(out_dir, dest_root))
-    if not quiet:
-        print_paths(copied)
-    return copied
 
 
 @profile
@@ -1044,17 +972,6 @@ def _render_target_bundle(target_name: str, **opts) -> List[Path]:
     return paths
 
 
-@profile
-def _install_target(target_name: str, dest_root: Path) -> List[Path]:
-    target = _get_target(target_name)
-    out_dir = generated_dir(target_name)
-    # Every Target implements `install` with a
-    # default copy-each-SHEET_FILES; targets that need custom behavior
-    # (e.g. mockingbird_boss with its subdirectory of part files)
-    # override the method.
-    copied = list(target.install(out_dir, dest_root))
-    print_paths(copied)
-    return copied
 
 
 @profile
@@ -1187,227 +1104,14 @@ def _cmd_portrait_files(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_install(args: argparse.Namespace) -> int:
-    """`install [<name>]` — install one target's files, or every tack-on's."""
-    if args.target:
-        copied = _install_target(args.target, args.dest_root)
-        return 0 if copied else 1
-    return _bulk_over(
-        "install",
-        _module_target_names(),
-        lambda name: _install_target(name, args.dest_root),
-    )
 
 
-@profile
-def _cmd_publish(args: argparse.Namespace) -> int:
-    """Publish gameplay plus supported portraits, then install the bundle."""
-    opts = _target_render_opts(args)
-    if args.target:
-        copied = _publish_target(args.target, args.dest_root, **opts)
-        return 0 if copied else 1
-
-    return _bulk_over(
-        "publish",
-        _module_target_names(),
-        lambda name: _publish_target(name, args.dest_root, **opts),
-    )
 
 
-@profile
-def _cmd_publish_many(args: argparse.Namespace) -> int:
-    """Publish an explicit target batch after one registry discovery pass."""
-
-    opts = _target_render_opts(args)
-    names = list(dict.fromkeys(args.targets))
-    published = _PublishedList(args.published_list)
-    workers = min(render_workers(), len(names))
-    # A batch that records each target's reads renders each target in a process
-    # of its own, so it takes the pool even on one worker.
-    if workers > 1 or os.environ.get(read_record.READS_ENV):
-        return _publish_in_parallel(
-            names, Path(args.dest_root), args.quiet, opts, workers, published
-        )
-
-    def publish(name: str) -> None:
-        _publish_target(name, args.dest_root, quiet=args.quiet, **opts)
-        published.add(name)
-
-    return _bulk_over("publish-many", names, publish)
 
 
-class _PublishedList:
-    """The targets of a batch that published, one name for each line.
-
-    A batch with one failure exits 1. Without this list the caller cannot tell
-    which targets are current, so it must render all of them again."""
-
-    def __init__(self, path: str | None) -> None:
-        self.path = Path(path) if path else None
-        if self.path is not None:
-            self.path.write_text("")
-
-    def add(self, name: str) -> None:
-        if self.path is not None:
-            with self.path.open("a") as file:
-                file.write(name + "\n")
 
 
-#: The seconds each target took in the last parallel batch. A batch starts the
-#: slowest known targets first, so that one slow target does not run alone at
-#: the end: in a regen of 144 tack-on targets on 7 processes, the last target
-#: ran alone for about 230 s. A target with no record counts as the slowest.
-PUBLISH_SECONDS = Path(__file__).resolve().parents[2] / ".cache" / "publish_seconds.json"
-
-
-def _read_publish_seconds(path: Path) -> dict[str, float]:
-    try:
-        return {str(k): float(v) for k, v in json.loads(path.read_text()).items()}
-    except (OSError, ValueError, AttributeError):
-        return {}
-
-
-def _longest_first(names: list[str], seconds: dict[str, float]) -> list[str]:
-    return sorted(names, key=lambda name: -seconds.get(name, float("inf")))
-
-
-def _publish_one(
-    name: str, dest_root: Path, quiet: bool, opts: dict
-) -> tuple[str | None, float]:
-    """Publish one target: the failure text or None, and its seconds.
-    Module-level, so a process pool can run it."""
-    started = time.perf_counter()
-    try:
-        _publish_target(name, dest_root, quiet=quiet, **opts)
-        return None, time.perf_counter() - started
-    except (Exception, SystemExit) as ex:  # noqa: BLE001 - reported per target
-        # An unknown target exits. In a worker that would break the pool and
-        # lose the result of each other target.
-        return f"{type(ex).__name__}: {ex}", time.perf_counter() - started
-
-
-def _publish_in_parallel(
-    names: list[str],
-    dest_root: Path,
-    quiet: bool,
-    opts: dict,
-    workers: int,
-    published: "_PublishedList",
-) -> int:
-    """`publish-many` on `workers` processes. Each target installs only its
-    own files. Exit 1 when one target failed, as the serial batch does."""
-    from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-
-    for line in _REPORT.warnings:
-        print(f"discovery warning: {line}", file=sys.stderr)
-    started = time.perf_counter()
-    print(f"publish-many: {len(names)} target(s) on {workers} worker(s)", flush=True)
-    failures: list[str] = []
-    seconds = _read_publish_seconds(PUBLISH_SECONDS)
-    order = _longest_first(names, seconds)
-    # A batch that records each target's reads (`read_record`) publishes each
-    # target in an interpreter of its own, which a thread starts and waits on.
-    reads_dir = os.environ.get(read_record.READS_ENV)
-    excluded = (DEFAULT_ASSET_DIR, PUBLISH_SECONDS.parent, Path(dest_root))
-
-    def recorded(name: str) -> tuple[str | None, float]:
-        target = _ALL_TARGETS.get(name)
-        if target is None:
-            return f"unknown target: {name!r}", 0.0
-        return read_record.publish_in_subprocess(
-            target,
-            generated_dir(name),
-            Path(dest_root),
-            opts,
-            Path(reads_dir) / f"{name}.reads",
-            repo_root(),
-            excluded,
-        )
-
-    pool_kind = ThreadPoolExecutor if reads_dir else ProcessPoolExecutor
-    with pool_kind(max_workers=workers) as pool:
-        # A pool takes the submitted jobs in order, so the order is the schedule.
-        futures = {
-            (
-                pool.submit(recorded, name)
-                if reads_dir
-                else pool.submit(_publish_one, name, dest_root, quiet, opts)
-            ): name
-            for name in order
-        }
-        for done, future in enumerate(as_completed(futures), 1):
-            name = futures[future]
-            error, took = future.result()
-            if error is None:
-                seconds[name] = round(took, 2)
-            mark = "ok" if error is None else f"FAILED ({error})"
-            print(
-                f"[{done}/{len(names)}] publish-many {name}: {mark} | elapsed {time.perf_counter() - started:.0f}s",
-                flush=True,
-            )
-            if error is None:
-                published.add(name)
-            else:
-                failures.append(name)
-    try:
-        PUBLISH_SECONDS.parent.mkdir(parents=True, exist_ok=True)
-        PUBLISH_SECONDS.write_text(json.dumps(seconds, indent=1, sort_keys=True))
-    except OSError as ex:
-        print(f"publish-many: the seconds of this batch were not kept: {ex}", file=sys.stderr)
-    if failures:
-        print(f"publish-many: {len(failures)} failure(s): {', '.join(failures)}", file=sys.stderr)
-        return 1
-    return 0
-
-
-@profile
-def _cmd_regenerate_all(args: argparse.Namespace) -> int:
-    """Single-button regen: render + install every sprite the sandbox
-    runtime can consume.
-
-    Composes three existing convenience commands so a fresh checkout
-    only needs one invocation to be art-current:
-
-    1. `draw-all --out-dir <sandbox assets>` — the runtime adapter-driven
-       sheets (the `RUNTIME_ADAPTER_CONFIG_STEMS` publication contract).
-    2. `publish` (no target) — every module target under `targets/`.
-    3. `draw-runtime-npcs` — the RUNTIME_REVIEW_NPCS roster of
-       review-config toon NPCs the runtime sprite registry expects.
-
-    Errors in any sub-step are reported but don't abort the others.
-    """
-    dest = Path(args.dest_root)
-    print("# step 1/3: draw-all (adapter sheets) -> sandbox assets")
-    failures: list[str] = []
-    try:
-        outputs = draw_all(DEFAULT_CONFIG_DIR, dest)
-        print_paths(outputs)
-    except Exception as ex:  # noqa: BLE001
-        print(f"error: draw-all failed: {ex}", file=sys.stderr)
-        failures.append("draw-all")
-
-    print("\n# step 2/3: publish (every tack-on target)")
-    publish_args = argparse.Namespace(target=None, dest_root=dest)
-    rc = _cmd_publish(publish_args)
-    if rc != 0:
-        failures.append("publish")
-
-    print("\n# step 3/3: draw-runtime-npcs (review-config NPCs)")
-    npc_args = argparse.Namespace(
-        review_dir=str(DEFAULT_REVIEW_CONFIG_DIR), out_dir=str(dest)
-    )
-    rc = _cmd_draw_runtime_npcs(npc_args)
-    if rc != 0:
-        failures.append("draw-runtime-npcs")
-
-    if failures:
-        print(
-            f"\nregenerate-all completed with failure(s): {', '.join(failures)}",
-            file=sys.stderr,
-        )
-        return 1
-    print("\nregenerate-all OK")
-    return 0
 
 
 def _cmd_debug_hitboxes(args: argparse.Namespace) -> int:
@@ -1469,45 +1173,6 @@ def _resolve_sheet_yaml(value: str | Path) -> Path | None:
 
 
 @profile
-def _cmd_draw_runtime_npcs(args: argparse.Namespace) -> int:
-    """Render + install every review-config NPC that the runtime sprite
-    registry expects at boot. These configs live under `configs/review/`
-    so `draw-all` skips them by default; this one walks the
-    [`RUNTIME_REVIEW_NPCS`] tuple and runs `draw-character` for each."""
-    review_dir = Path(args.review_dir)
-    out_dir = Path(args.out_dir)
-    failures: list[str] = []
-    all_outputs: List[Path] = []
-    for stem in RUNTIME_REVIEW_NPCS:
-        cfg = review_dir / f"{stem}.yaml"
-        if not cfg.exists():
-            print(
-                f"error: missing review config for runtime NPC {stem!r}: {cfg}",
-                file=sys.stderr,
-            )
-            failures.append(stem)
-            continue
-        try:
-            paths = draw_character(cfg, out_dir)
-            all_outputs.extend(paths)
-        except Exception as ex:  # noqa: BLE001
-            print(
-                f"error: rendering runtime NPC {stem!r} failed: {ex}",
-                file=sys.stderr,
-            )
-            failures.append(stem)
-    print_paths(all_outputs)
-    if failures:
-        print(
-            f"\ndraw-runtime-npcs completed with {len(failures)} failure(s): "
-            + ", ".join(failures),
-            file=sys.stderr,
-        )
-        return 1
-    return 0
-
-
-@profile
 def _cmd_ultrapack(args: argparse.Namespace) -> int:
     """Pool every target's frames into shared uniform atlas pages at one quality
     tier. Writes pages + catalog (runtime artifacts) to ``--out``; the labeled
@@ -1551,4 +1216,22 @@ def _cmd_ultrapack(args: argparse.Namespace) -> int:
         f"{len(pack.pages)} pages ({pack.fill_fraction() * 100:.1f}% fill)"
     )
     print_paths(written)
+    return 0
+
+
+def _cmd_publish(args):
+    from ..publication import build
+    build(requested=[args.target] if args.target else ())
+    return 0
+
+
+def _cmd_publish_many(args):
+    from ..publication import build
+    build(requested=list(dict.fromkeys(args.targets)))
+    return 0
+
+
+def _cmd_regenerate_all(args):
+    from ..publication import build
+    build()
     return 0

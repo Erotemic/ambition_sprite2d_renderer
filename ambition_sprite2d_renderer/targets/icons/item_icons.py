@@ -1383,3 +1383,14 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     """Render every ability/item icon in ``ICON_SPECS`` into ``out_dir``."""
     size = opts.get("size", (64, 64))
     return write_item_icons(out_dir, size=size)
+
+
+def render_props(out_dir: str | Path, **opts) -> List[Path]:
+    return write_gauntlet_props(out_dir) + [write_mark_beacon_prop(out_dir)]
+
+
+TARGETS = {
+    "item_icons": {"render": render, "sheet_files": SHEET_FILES},
+    "item_props": {"render": render_props, "install_subdir": "props",
+                   "sheet_files": [spec.filename for spec in (*GAUNTLET_ICON_SPECS, *HELD_ITEM_ICON_SPECS)] + ["mark_beacon.png"]},
+}

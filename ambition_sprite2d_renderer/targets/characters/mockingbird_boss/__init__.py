@@ -78,24 +78,3 @@ def render_canonical(out_dir: str | Path, **opts) -> Path:
     return out_dir / f"{TARGET_NAME}_canonical_transparent.png"
 
 
-def install(render_dir: str | Path, dest_root: str | Path) -> List[Path]:
-    render_dir = Path(render_dir)
-    install_dir = Path(dest_root) / INSTALL_SUBDIR
-    copied = list(
-        sprite_generator.install_outputs(
-            render_dir=render_dir,
-            install_dir=install_dir,
-        )
-    )
-    # Optional actor-contract sidecar emitted by registry/discovery's
-    # post-render hook. Custom boss installers bypass the default copy helper,
-    # so carry it explicitly when present.
-    actor_src = render_dir / f"{TARGET_NAME}_actor.ron"
-    if actor_src.exists():
-        install_dir.mkdir(parents=True, exist_ok=True)
-        actor_dst = install_dir / actor_src.name
-        import shutil
-
-        shutil.copy2(actor_src, actor_dst)
-        copied.append(actor_dst)
-    return copied

@@ -31,8 +31,7 @@ Two command families:
       validate-configs            Check adapter configs without rendering.
       draw-character <config>     One config: canonical + spritesheet + YAML.
       draw-factions               Music-faction lineup review render.
-      draw-runtime-npcs           Render + install the curated review-NPC subset.
-      regenerate-all              draw-all + publish + draw-runtime-npcs.
+      regenerate-all              Publish the runtime collection.
       spritesheet <config> <out>  One config's sheet to a specific path.
       single <config> <out>       One frame from a config.
 
@@ -68,9 +67,7 @@ from .commands import (
     _cmd_draw_factions,
     _cmd_draw_review,
     _cmd_validate_configs,
-    _cmd_draw_runtime_npcs,
     _cmd_gifs,
-    _cmd_install,
     _cmd_ldtk_manifest,
     _cmd_list_targets,
     _cmd_publish,
@@ -104,15 +101,6 @@ def _add_optional_target_arg(p: argparse.ArgumentParser) -> None:
             "target id — name from `list`. Omit to bulk over every "
             "registered tack-on target (characters/props/tiles/icons)."
         ),
-    )
-
-
-def _add_dest_root_arg(p: argparse.ArgumentParser) -> None:
-    p.add_argument(
-        "--dest-root",
-        type=Path,
-        default=sandbox_sprites_dir(),
-        help="install destination (default: crates/ambition_platformer2d_actor_monolith/assets/sprites)",
     )
 
 
@@ -160,7 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
     # With a name: act on that target. Without a name: bulk over every
     # tack-on target (characters/props/tiles/icons). The YAML adapter
     # surface is bulk-rendered separately via `draw-all` /
-    # `draw-runtime-npcs` because those have surface-specific semantics.
+    # `draw-all` because its output is for review.
 
     p = sub.add_parser(
         "canonical",
@@ -235,53 +223,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.set_defaults(func=_cmd_portrait_files)
 
-    p = sub.add_parser(
-        "install",
-        help=(
-            "Copy a single target's rendered files into the sandbox sprites "
-            "dir, or bulk-install every tack-on target if no name is given."
-        ),
-    )
+    p = sub.add_parser("publish", help="Build and publish one accepted target bundle.")
     _add_optional_target_arg(p)
-    _add_dest_root_arg(p)
-    p.set_defaults(func=_cmd_install)
-
-    p = sub.add_parser(
-        "publish",
-        help=(
-            "gameplay sheet + native portraits + install for one target, or "
-            "bulk for every tack-on target "
-            "if no name is given."
-        ),
-    )
-    _add_optional_target_arg(p)
-    _add_dest_root_arg(p)
-    _add_quality_render_args(p)
     p.set_defaults(func=_cmd_publish)
-
-    p = sub.add_parser(
-        "publish-many",
-        help=(
-            "Render and install an explicit target batch in one process, "
-            "amortizing registry discovery across the batch."
-        ),
-    )
-    p.add_argument("targets", metavar="TARGET", nargs="+")
-    _add_dest_root_arg(p)
-    _add_quality_render_args(p)
-    p.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Print target progress but suppress per-file path listings.",
-    )
-    p.add_argument(
-        "--published-list",
-        metavar="PATH",
-        help=(
-            "Write the name of each target that published to PATH, one for "
-            "each line, so a caller can keep the work of a batch that failed."
-        ),
-    )
+    p = sub.add_parser("publish-many", help="Build and publish one accepted target selection.")
+    p.add_argument("targets", nargs="+")
     p.set_defaults(func=_cmd_publish_many)
 
     p = sub.add_parser(
@@ -444,40 +390,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.set_defaults(func=_cmd_gifs)
 
-    p = sub.add_parser(
-        "draw-runtime-npcs",
-        help=(
-            "Render + install every review-config NPC the runtime sprite "
-            "registry expects at boot — the RUNTIME_REVIEW_NPCS roster in "
-            "cli/commands.py (the single authoritative list). These live "
-            "under configs/review/ so draw-all skips them by default."
-        ),
-    )
-    p.add_argument(
-        "--review-dir",
-        default=str(DEFAULT_REVIEW_CONFIG_DIR),
-    )
-    p.add_argument(
-        "--out-dir",
-        default=str(sandbox_sprites_dir()),
-        help="install destination (default: crates/ambition_platformer2d_actor_monolith/assets/sprites)",
-    )
-    p.set_defaults(func=_cmd_draw_runtime_npcs)
-
-    p = sub.add_parser(
-        "regenerate-all",
-        help=(
-            "One-shot: draw-all + publish + draw-runtime-npcs, all installed "
-            "into sandbox assets. Brings a fresh checkout's sprite directory "
-            "up to date in one command."
-        ),
-    )
-    p.add_argument(
-        "--dest-root",
-        type=Path,
-        default=sandbox_sprites_dir(),
-        help="install destination (default: crates/ambition_platformer2d_actor_monolith/assets/sprites)",
-    )
+    p = sub.add_parser("regenerate-all", help="Publish the runtime collection as one selection.")
     p.set_defaults(func=_cmd_regenerate_all)
 
     p = sub.add_parser(

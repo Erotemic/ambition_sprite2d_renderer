@@ -133,9 +133,8 @@ def _make(target: str):
 
 #: Only a target whose rig document is built registers.
 TARGETS = {
-    target: {"render": _make(target), "actor_metadata": actor_metadata(target)}
+    target: {"render": _make(target), "data": [_rig_path(target)], "actor_metadata": lambda target=target: actor_metadata(target)}
     for target in CAST
-    if _rig_path(target).exists()
 }
 
 __all__ = ["CAST", "TARGETS", "actor_metadata"]

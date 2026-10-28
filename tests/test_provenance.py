@@ -40,22 +40,6 @@ def test_a_record_names_each_output_its_digest_and_the_callable_that_drew_it(tmp
     assert out["made_by"]["source"].endswith("ambition_sprite2d_renderer/provenance.py") and out["made_by"]["line"] > 0
 
 
-def test_an_install_records_its_target_and_files(tmp_path, monkeypatch):
-    from ambition_sprite2d_renderer.registry.discovery import Target
-
-    monkeypatch.setenv(provenance.ENV, str(tmp_path / "records"))
-    target = Target(name="probe_prop", category="props", sheet_files=("probe_prop_spritesheet.png",), kind="module")
-    target.module_path = "ambition_sprite2d_renderer.provenance"
-    render_dir = tmp_path / "render"
-    render_dir.mkdir()
-    (render_dir / "probe_prop_spritesheet.png").write_bytes(b"sheet")
-    target.install(render_dir, tmp_path / "sprites")
-    record = json.loads((tmp_path / "records" / "probe_prop.json").read_text())
-    assert record["generator"]["id"] == "probe_prop"
-    assert record["generator"]["command"] == "./scripts/regen/sprites.sh --target probe_prop"
-    assert record["generator"]["source"].endswith("ambition_sprite2d_renderer/provenance.py")
-    assert [o["path"] for o in record["outputs"]] == ["probe_prop_spritesheet.png"]
-    assert any(i["path"].endswith("provenance.py") and i["sha256"] for i in record["inputs"])
 
 
 def test_the_terrain_plan_is_what_draw_writes_and_draw_records_it(tmp_path, monkeypatch):

@@ -2287,28 +2287,3 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
 INSTALL_SUBDIR = "entities"
 
 
-def install(render_dir: str | Path, dest_root: str | Path) -> List[Path]:
-    """Install entity textures under ``assets/sprites/entities``.
-
-    The runtime's `EntitySprite::asset_path` resolves the `entities/` subdirectory,
-    so every publication path must use the same layout.
-    (queue D21).
-
-    ⭐ the sibling target `sanic_support_entities` had already solved this the
-    right way, and its docstring says why: *"keep this target additive by giving
-    it its own install hook instead of editing the shell script's special
-    cases."* One rule, in one place, that both callers get.
-    """
-    render_dir = Path(render_dir)
-    dest_root = Path(dest_root)
-    dest_dir = dest_root / INSTALL_SUBDIR
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    installed: List[Path] = []
-    for filename in SHEET_FILES:
-        src = render_dir / filename
-        if not src.exists():
-            continue
-        dst = dest_dir / filename
-        dst.write_bytes(src.read_bytes())
-        installed.append(dst)
-    return installed

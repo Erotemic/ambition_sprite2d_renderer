@@ -15,11 +15,6 @@ TIERS = {"half": "_0_5x", "quarter": "_0_25x", "potato": "_potato"}
 REVIEW = ("_canonical.png", "_canonical_transparent.png", "_preview_labeled.png", "_parts_debug.png", "_debug.png")
 
 
-def runtime_required(rel: str) -> bool:
-    """The runtime publication set. Review files and optional companions stay optional."""
-    name = Path(rel).name
-    return not (name == "canonicals_contact_sheet.png" or name.endswith(REVIEW + ("_parts.png",))
-                or (rel.endswith(".ron") and not rel.endswith(("_spritesheet.ron", "_portraits.ron"))))
 
 
 class Digests:
@@ -82,41 +77,13 @@ def generation(inputs: list[dict], directories: list[dict], parameters: dict, *,
     return {**value, "complete": complete, "key": key(value)}
 
 
-def target_plan(target) -> dict:
-    from .provenance import target_generator
-
-    generator = target_generator(target)
-    outputs = target.claimed_install_names()
-    errors = []
-    try:
-        metadata = dict(target._actor_metadata)
-    except Exception as error:
-        metadata = {}
-        errors.append(f"metadata: {error}")
-    try:
-        description = getattr(target, "_inspection", None)
-        if callable(description):
-            description = description()
-    except Exception as error:
-        description = None
-        errors.append(f"source support: {error}")
-    if errors:
-        description = dict(description or {}, state="unavailable", errors=errors)
-    return {"id": f"target:{target.name}", "kind": {"characters": "actor", "props": "prop", "tiles": "tile",
-            "icons": "icon", "projectiles": "projectile"}.get(target.category, target.category),
-            "root": "sprites", "generator": generator,
-            "required": [p for p in outputs if runtime_required(p)],
-            "optional": [p for p in outputs if not runtime_required(p)],
-            "metadata": metadata, "source": description,
-            "generator_family": target._job.target if target._job is not None else target.module_path,
-            "tiers": list(TIERS), "repair": generator["command"]}
 
 
 def describe(targets: dict) -> tuple[dict, list[str]]:
     """Use the same plans as sprite, background and terrain publication. Draw nothing."""
     from .provenance import asset_root
 
-    units = {f"target:{name}": target_plan(target) for name, target in targets.items()}
+    units = {}
     from .authoring.ultrapack import product_plans
     units.update(product_plans())
     warnings = [f"{uid}: {unit['source']['errors']}" for uid, unit in units.items() if (unit.get("source") or {}).get("errors")]
@@ -148,7 +115,7 @@ def evaluate(plan: dict, record: dict | None, root: Path, repo: Path, hashes: Di
     members = set(plan["required"])
     if record:
         members.update(row["path"] for row in record.get("outputs", [])
-                       if row.get("path") and (plan["root"] != "sprites" or runtime_required(row["path"])))
+                       if row.get("path"))
     missing = sorted(rel for rel in members if not (root / rel).is_file())
     if missing:
         reasons.append({"code": "missing", "members": missing})
@@ -206,28 +173,22 @@ def evaluate(plan: dict, record: dict | None, root: Path, repo: Path, hashes: Di
 
 
 def inventory(repo: Path, *, deep: bool = False) -> dict:
-    from .registry import discover_all_targets
+    from . import publication
     from .provenance import asset_root, provenance_root, read_record
-    report = discover_all_targets()
-    units, warnings = describe(report.targets)
+    report = publication.inventory(deep=deep)
+    other, warnings = describe({})
     hashes = Digests(Path(__file__).resolve().parents[1] / ".cache/art_inputs.json", deep=deep)
-    for unit in units.values():
-        name = unit['generator']['id'] + (".quality" if unit["kind"] == "atlas" else "")
-        record = read_record(provenance_root() / unit["root"] / f"{name}.json")
-        if unit["kind"] == "atlas" and record:
-            unit["required"] = record["plan"]["required"]
-            unit["derived_from"] = ["target:" + name for name in record.get("generation", {}).get("parameters", {}).get("targets", [])]
+    for uid, unit in other.items():
+        if unit["kind"] == "atlas":
+            continue
+        record = read_record(provenance_root() / unit["root"] / f"{unit['generator']['id']}.json")
         unit["status"] = evaluate(unit, record, asset_root() / unit["root"], repo, hashes)
         unit["receipt"] = record
-    receipts = []
-    for path in sorted(provenance_root().rglob("*.json")):
-        record = read_record(path)
-        if record and record.get("root") and record.get("generator"):
-            receipts.append({key: record.get(key) for key in ("root", "generator", "outputs", "basis", "renderer", "written_at")})
+        report["units"][uid] = unit
+    report["warnings"] += warnings
+    report["complete"] = report["complete"] and not warnings
     hashes.save()
-    complete = not warnings and not report.failures
-    warnings += list(report.warnings)
-    return {"schema": "ambition.art_products.v1", "complete": complete, "warnings": warnings, "units": units, "receipts": receipts}
+    return report
 
 
 def main() -> int:

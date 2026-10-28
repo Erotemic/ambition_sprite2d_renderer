@@ -89,102 +89,8 @@ GENERATOR_MODULE_STEMS: frozenset[str] = frozenset(
 # ---- Shared install helpers --------------------------------------------------
 
 
-def install_companions(fname: str) -> List[str]:
-    """Sidecars that ride along with ``fname`` whenever it is installed.
-
-    Runtime-compatible sheets have long shipped ``*_spritesheet.ron`` next to
-    their YAML manifests, and the renderer also emits optional ``*_actor.ron``
-    contracts. Both are copied opportunistically rather than declared, so a
-    target's ``SHEET_FILES`` under-states what it installs — which is why this
-    rule is a named function and not a closure: the installer copies by it and
-    the install audit claims by it, and the two must not drift.
-    """
-    out: List[str] = []
-    if fname.endswith(".yaml"):
-        out.append(fname[:-5] + ".ron")
-    stem = None
-    for suffix in ("_spritesheet.yaml", "_spritesheet.ron", "_spritesheet.png"):
-        if fname.endswith(suffix):
-            stem = fname[: -len(suffix)]
-            break
-    if stem:
-        out.append(f"{stem}_actor.ron")
-        # The optional semantic body rig (`authoring.body_rig`), for a target
-        # that publishes one.
-        out.append(f"{stem}_body_rig.ron")
-        # The optional transform flipbook (`authoring.part_flipbook`): its draw
-        # table and its atlas page.
-        out.append(f"{stem}_parts.ron")
-        out.append(f"{stem}_parts.png")
-    return out
 
 
-def _copy_sheet_files(
-    sheet_files: "Sequence[str]",
-    render_dir: Path,
-    dest_root: Path,
-) -> List[Path]:
-    """Copy every listed sheet file plus optional generated sidecars.
-
-    Runtime-compatible sheets have long shipped ``*_spritesheet.ron`` next to
-    their YAML manifests. The renderer now also emits optional
-    ``*_actor.ron`` contracts; copy them opportunistically so old targets and
-    old manifests keep working while new metadata can ride along.
-    """
-    copied: List[Path] = []
-    copied_names: set[str] = set()
-    listed = set(sheet_files)
-
-    def copy_if_exists(fname: str) -> None:
-        if fname in copied_names:
-            return
-        src = render_dir / fname
-        if not src.exists():
-            return
-        dst = dest_root / fname
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        # ⛔⛔ NEVER PUBLISH THROUGH A SYMLINK. An asset-mirrored git worktree
-        # (`scripts/mirror_assets_for_worktree.py` in the game repo) points every
-        # generated asset at the MAIN checkout's copy, file by file, so that a
-        # regenerated sheet lands as a real file in the worktree and main never
-        # sees it. `shutil.copy2` opens the destination for writing, and an
-        # open-for-write FOLLOWS the link — measured 2026-09-02, the target's
-        # bytes changed and the link stayed — so publishing from a worktree
-        # silently rewrote the assets every other session builds and gates from.
-        if dst.is_symlink():
-            dst.unlink()
-        shutil.copy2(src, dst)
-        copied.append(dst)
-        copied_names.add(fname)
-
-    def page_siblings_for(fname: str) -> List[str]:
-        """Extra page PNGs: of a split sheet, `<stem>_spritesheet.1.png`,
-        `.2.png`, … emitted next to `<stem>_spritesheet.png` when the sheet was
-        too tall for one texture; and of a part flipbook whose parts fill more
-        than one atlas page, `<stem>_parts_1.png`, … next to
-        `<stem>_parts.png` (`PartFlipbook.page_names`). Empty for the common
-        single-page case."""
-        out: List[str] = []
-        for suffix, glob, sep in (("_spritesheet.png", "_spritesheet.*.png", "_spritesheet."), ("_parts.png", "_parts_*.png", "_parts_")):
-            if not fname.endswith(suffix):
-                continue
-            stem = fname[: -len(suffix)]
-            for src in render_dir.glob(f"{stem}{glob}"):
-                middle = src.name[len(stem) + len(sep) : -len(".png")]
-                if middle.isdigit():
-                    out.append(src.name)
-        return sorted(out)
-
-    for fname in sheet_files:
-        copy_if_exists(fname)
-        for companion in install_companions(fname):
-            if companion not in listed:
-                copy_if_exists(companion)
-                for page in page_siblings_for(companion):
-                    copy_if_exists(page)
-        for page in page_siblings_for(fname):
-            copy_if_exists(page)
-    return copied
 
 
 # ---- Target ------------------------------------------------------------------
@@ -328,7 +234,6 @@ class Target:
         self._render_fn: Optional[Callable] = None
         self._render_canonical_fn: Optional[Callable] = None
         self._render_portraits_fn: Optional[Callable] = None
-        self._install_fn: Optional[Callable] = None
         self._actor_metadata: Dict[str, Any] = {}
         # Config-authored fields.
         self._config_path: Optional[Path] = None
@@ -350,7 +255,6 @@ class Target:
         module_path: str,
         render: Callable,
         sheet_files: Tuple[str, ...],
-        install: Optional[Callable] = None,
         render_canonical: Optional[Callable] = None,
         render_portraits: Optional[Callable] = None,
         portrait_files: Tuple[str, ...] = (),
@@ -369,7 +273,6 @@ class Target:
         )
         self.module_path = module_path
         self._render_fn = render
-        self._install_fn = install
         self._render_canonical_fn = render_canonical
         self._render_portraits_fn = render_portraits
         self._actor_metadata = actor_metadata or {}
@@ -497,33 +400,9 @@ class Target:
 
     @profile
     def install(self, render_dir: Path, dest_root: Path) -> List[Path]:
-        """Install every declared gameplay and portrait product.
-
-        Module targets may override gameplay installation with a module-level
-        ``install`` (for example, a multipart boss that ships a subdirectory).
-        Declared portrait files are still copied by the common target contract.
-        """
-        render_dir = Path(render_dir)
-        dest_root = Path(dest_root)
-        dest_root.mkdir(parents=True, exist_ok=True)
-        sheet_dest = (
-            dest_root / self.install_subdir if self.install_subdir else dest_root
-        )
-        portrait_dest = (
-            dest_root / self.portrait_install_subdir
-            if self.portrait_install_subdir
-            else dest_root
-        )
-        if self._install_fn is not None:
-            copied = list(self._install_fn(render_dir, dest_root))
-        else:
-            copied = _copy_sheet_files(self.sheet_files, render_dir, sheet_dest)
-        copied.extend(_copy_sheet_files(self.portrait_files, render_dir, portrait_dest))
-        # The record of which generator made these files (`provenance.py`).
-        from .. import provenance
-
-        provenance.record_target_install(self, dest_root, copied)
-        return copied
+        """Install the producer's complete declared products through one owner."""
+        from ..artifacts import install
+        return install(self, Path(render_dir), Path(dest_root))
 
     # -- claimed install surface ------------------------------------------
 
@@ -537,29 +416,12 @@ class Target:
         one machine happened to render. A target that has never been rendered
         here still claims its files.
 
-        Two things this cannot see, both of which the install audit handles
-        separately: page siblings (``*_spritesheet.1.png``, which the installer
-        discovers by globbing the render dir) and any file a custom module-level
-        ``install`` hook copies without declaring it in ``SHEET_FILES``.
+        Page membership can depend on rendered pixels. The artifact collector
+        resolves those references after a clean render.
         """
-        claimed: List[str] = []
-        seen: set[str] = set()
-
-        def add(subdir: str | None, fname: str) -> None:
-            rel = f"{subdir}/{fname}" if subdir else fname
-            if rel not in seen:
-                seen.add(rel)
-                claimed.append(rel)
-
-        for group, subdir in (
-            (self.sheet_files, self.install_subdir),
-            (self.portrait_files, self.portrait_install_subdir),
-        ):
-            for fname in group:
-                add(subdir, fname)
-                for companion in install_companions(fname):
-                    add(subdir, companion)
-        return claimed
+        from ..artifacts import required_names
+        return list(dict.fromkeys((Path((self.portrait_install_subdir if name in self.portrait_files else self.install_subdir) or "") / name).as_posix()
+                                 for name in required_names(self)))
 
     # -- module-authored strategy -----------------------------------------
 
@@ -748,9 +610,6 @@ def _build_module_target(
     sheet_files = _with_actor_sidecar(
         stem, getattr(mod, "SHEET_FILES", default_sheet_files(stem))
     )
-    install_fn = getattr(mod, "install", None)
-    if not callable(install_fn):
-        install_fn = None
     render_canonical_fn = getattr(mod, "render_canonical", None)
     if not callable(render_canonical_fn):
         render_canonical_fn = None
@@ -773,7 +632,6 @@ def _build_module_target(
         module_path=dotted,
         render=render,
         sheet_files=sheet_files,
-        install=install_fn,
         render_canonical=render_canonical_fn,
         render_portraits=render_portraits_fn,
         portrait_files=portrait_files,
@@ -782,6 +640,8 @@ def _build_module_target(
         actor_metadata=getattr(mod, "ACTOR_METADATA", None),
     )
     target._inspection = getattr(mod, "INSPECTION", None)
+    target.publication_root = getattr(mod, "PUBLICATION_ROOT", "sprites")
+    target.publication_tiers = getattr(mod, "PUBLICATION_TIERS", ["full", "half", "quarter", "potato"])
     return target
 
 
@@ -804,9 +664,6 @@ def _build_module_targets(
         sheet_files = _with_actor_sidecar(
             sub_name, spec.get("sheet_files", default_sheet_files(sub_name))
         )
-        install_fn = spec.get("install")
-        if install_fn is not None and not callable(install_fn):
-            install_fn = None
         render_canonical_fn = spec.get("render_canonical")
         if render_canonical_fn is not None and not callable(render_canonical_fn):
             render_canonical_fn = None
@@ -841,8 +698,7 @@ def _build_module_targets(
             module_path=dotted,
             render=render,
             sheet_files=sheet_files,
-            install=install_fn,
-            render_canonical=render_canonical_fn,
+                render_canonical=render_canonical_fn,
             render_portraits=render_portraits_fn,
             portrait_files=portrait_files,
             install_subdir=install_subdir,

@@ -1,37 +1,8 @@
-"""The authored files one target's render reads, for the publish's cache key.
+"""Record source files read by one isolated render worker.
 
-`scripts/regen/sprites.sh` keys each sheet on the files it is made of. It
-guessed the data half by name (a rig at `rigged/<name>.rig.json`, the
-directory `data/characters/<name>/`), and a target that reads another
-target's art (`gnu_ton_scholar_fighter` draws `gnu_ton_scholar_villain.svg`)
-or a nested rig document kept its key when that file changed: a stale sheet
-(review of 2026-10-14). The files a render opens are the answer, so the render
-records them.
-
-The record is exact only when the process has read nothing before the
-target's own module: a second target that reads a shared SVG from an
-in-process cache opens nothing, and a module that parses its rig when it is
-imported opens it once, in whatever process imported it first. Discovery
-imports every target module. So a recorded target is published by
-[`publish_in_subprocess`]: a new interpreter that starts recording, imports
-only that target's module (or reads its config) and publishes it.
-
-What is recorded: each file under the repository that the render opens to
-read, each directory it lists (a glob that finds a new file is a new input),
-and each renderer module the process imported. Not recorded: other Python
-source, the directories the import system lists, the tool's own environment
-(`.venv`, which the toolchain fingerprint keys), the render's own outputs
-(`generated/`, the destination root) and `.cache/`.
-
-The modules are the render's code. The publish keyed every sheet on the
-whole renderer core (68 files), so an edit to one of them made every sheet
-stale: 56 min of renders (measured 2026-10-15). Ten sampled renders each
-imported 15 to 69 of the core's files, and 35 of the files were imported by
-none of them. The process imports only its target's module, so the modules
-it has at the end are the code that ran.
-A loose rig document is registered by `targets/characters/rigged.py`, which
-reads every loose document when it is imported, so the record of each loose
-rig target has all of them: more than it needs, never less.
+The worker starts recording before it loads its target. This includes shared
+art and modules loaded at import time. Source membership records absent inputs.
+The publication owner copies these sources before it starts the worker.
 """
 
 from __future__ import annotations
@@ -183,43 +154,6 @@ def write(path: Path) -> None:
     partial.replace(path)
 
 
-def publish_in_subprocess(
-    target: Any,
-    out_dir: Path,
-    dest_root: Path,
-    opts: dict,
-    reads_path: Path,
-    root: Path,
-    excluded: Iterable[Path],
-) -> tuple[str | None, float]:
-    """Publish `target` in a new interpreter that records its reads into
-    `reads_path`: the failure text or None, and the seconds."""
-    spec = {
-        "name": target.name,
-        "kind": target.kind,
-        "category": target.category,
-        "module_path": target.module_path,
-        "config_path": str(target._config_path) if target._config_path else None,
-        "lineup_row": getattr(target, "_lineup_row", False),
-        "out_dir": str(out_dir),
-        "dest_root": str(dest_root),
-        "opts": opts,
-        "reads": str(reads_path),
-        "root": str(root),
-        "excluded": [str(path) for path in excluded],
-    }
-    started = time.perf_counter()
-    done = subprocess.run(
-        [sys.executable, "-m", "ambition_sprite2d_renderer.read_record", json.dumps(spec)],
-        capture_output=True,
-        text=True,
-        cwd=Path(__file__).resolve().parents[1],
-    )
-    took = time.perf_counter() - started
-    if done.returncode != 0:
-        tail = (done.stderr or done.stdout).strip().splitlines()[-3:]
-        return f"exit {done.returncode}: {' | '.join(tail)}", took
-    return None, took
 
 
 def _one_target(spec: dict) -> Any:
@@ -248,20 +182,5 @@ def _one_target(spec: dict) -> Any:
     return discovery._build_module_target(module, stem, spec["category"], dotted, module.render)
 
 
-def main(argv: list[str]) -> int:
-    spec = json.loads(argv[0])
-    start(Path(spec["root"]), [Path(path) for path in spec["excluded"]])
-    target = _one_target(spec)
-    out_dir, opts = Path(spec["out_dir"]), spec["opts"]
-    target._publish_parameters = opts
-    target.render_sheet(out_dir, **opts)
-    if target.supports_portraits:
-        target.render_portraits(out_dir, **opts)
-    target.install(out_dir, Path(spec["dest_root"]))
-    write(Path(spec["reads"]))
-    return 0
 
 
-if __name__ == "__main__":
-    from ambition_sprite2d_renderer import read_record as recorder
-    sys.exit(recorder.main(sys.argv[1:]))

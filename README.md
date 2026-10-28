@@ -48,6 +48,13 @@
 > until that seam is real. Two half-built homes for the same thing is worse than
 > one badly-named one.
 
+The publication entry point is `scripts/regen/sprites.sh` in the parent
+repository. It plans registered products, builds from a source snapshot, and
+selects immutable bundles. `--plan`, `--check`, `--audit`, and
+`--resolve-layout` expose publication evidence. See the parent repository's
+`docs/tools/sprite-publication.md`. Rendering commands remain available for
+source previews; custom targets do not install runtime files.
+
 Procedural 2D sprite renderer for Ambition. Discovery unifies registered
 outputs into one `Target` registry while preserving plural authoring methods.
 Two registration surfaces share the package:

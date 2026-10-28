@@ -59,9 +59,8 @@ from ambition_sprite2d_renderer.targets.characters import player_robot_v3 as pla
 
 import render_director_vanity_dialog as dialog
 
-REPO_ROOT = ROOT.parents[1]
-PAYLOAD_DIR = REPO_ROOT / "game" / "ambition_content" / "assets" / "vanity_card_made_this_meme"
-MANIFEST = REPO_ROOT / "game" / "ambition_content" / "assets" / "data" / "vanity_card_made_this_meme.ron"
+PAYLOAD_DIR = ROOT / "generated" / "director_card"
+MANIFEST = PAYLOAD_DIR / "manifest.ron"
 ASSET_PREFIX = "vanity_card_made_this_meme"
 
 # Raster scale for the exported part images, relative to canvas pixels. The card

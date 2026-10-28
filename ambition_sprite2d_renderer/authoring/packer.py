@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Hashable, List, Sequence, Tuple
 
 from PIL import Image
+from ..image_io import MAX_TEXTURE_SIDE
 from ..profiling import profile
 
 
@@ -87,7 +88,7 @@ def _trim(image: Image.Image, logical_size: Tuple[int, int], trim: bool):
 def pack_frames(
     frames: Sequence[FrameInput],
     *,
-    max_dim: int = 16384,
+    max_dim: int = MAX_TEXTURE_SIDE,
     page_size: int = 4096,
     padding: int = 1,
     trim: bool = True,
@@ -340,7 +341,7 @@ def _maxrects(sizes: List[Tuple[int, int]], bin_w: int, bin_h: int) -> List[Tupl
 def pack_frames_grouped(
     groups: Dict[Hashable, Sequence[FrameInput]],
     *,
-    max_dim: int = 16384,
+    max_dim: int = MAX_TEXTURE_SIDE,
     page_size: int = 4096,
     padding: int = 1,
     trim: bool = True,

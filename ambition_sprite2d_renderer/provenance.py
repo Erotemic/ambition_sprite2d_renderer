@@ -248,42 +248,6 @@ def target_generator(target: Any) -> dict[str, Any]:
     }
 
 
-def record_target_install(target: Any, dest_root: Path, copied: Iterable[Path]) -> Path | None:
-    """Record a target's install. Never fails the publish: a record that
-    cannot be written is a warning."""
-    try:
-        directory = record_dir(dest_root)
-        if directory is None:
-            return None
-        from . import read_record as reads
-
-        recorded = reads.recorded()
-        generator = target_generator(target)
-        from .products import target_plan
-        plan = target_plan(target)
-        copied = list(copied)
-        installed = {Path(path).relative_to(dest_root).as_posix() for path in copied}
-        if set(plan["required"]) - installed:
-            raise ValueError("The required publication members were not installed")
-        complete = recorded is not None
-        if recorded is None:
-            # Not a recording publish: the authoring sources are the inputs known.
-            recorded = [repo_root() / rel for rel in {generator["source"], generator["module_source"], *generator["data"]} if rel]
-        from .products import generation, target_plan
-        inputs = _inputs(recorded)
-        return write_record(
-            directory,
-            target.name,
-            generator=generator,
-            dest=Path(dest_root),
-            outputs=[(Path(path), None) for path in copied],
-            inputs=inputs,
-            extra={"generation": generation(inputs, reads.directories(), target._publish_parameters, complete=complete),
-                   "plan": plan},
-        )
-    except Exception as ex:  # noqa: BLE001 - a record never fails a publish
-        print(f"[provenance] warning: no record for {getattr(target, 'name', target)}: {ex}", file=sys.stderr)
-        return None
 
 
 # ---- backgrounds and terrain -----------------------------------------------------------------
@@ -357,61 +321,8 @@ class Book:
 # ---- backfill -------------------------------------------------------------------------------
 
 
-def _sheet_cache(cache_dir: Path) -> dict[str, tuple[str, dict[str, str]]]:
-    """`.cache/sheets/<target>`: the cache key, and the digest of each output."""
-    out = {}
-    sheets = cache_dir / "sheets"
-    if not sheets.is_dir():
-        return out
-    for path in sheets.iterdir():
-        lines = path.read_text().splitlines()
-        if not lines:
-            continue
-        digests = {}
-        for line in lines[1:]:
-            if " " in line:
-                sha, rel = line.split(" ", 1)
-                digests[rel] = sha
-        out[path.name] = (lines[0], digests)
-    return out
 
 
-def backfill_sprites(sprites_dir: Path, cache_dir: Path, directory: Path) -> tuple[int, int]:
-    """Write a `cache` record for each target whose outputs on disk match the
-    digests in `.cache/sheets` and that has no record vouching for them yet.
-    The written and the skipped counts."""
-    from .registry.discovery import discover_all_targets
-
-    targets = discover_all_targets().targets
-    written = skipped = 0
-    for name, (key, digests) in sorted(_sheet_cache(cache_dir).items()):
-        target = targets.get(name)
-        if target is None or not digests:
-            skipped += 1
-            continue
-        paths = [sprites_dir / rel for rel in digests]
-        if not all(p.is_file() and digest(p) == digests[rel] for p, rel in zip(paths, digests)):
-            skipped += 1
-            continue
-        existing = read_record(directory / f"{name}.json")
-        if existing and {o["path"]: o["sha256"] for o in existing.get("outputs", [])} == digests:
-            skipped += 1
-            continue
-        reads = cache_dir / "reads" / f"{name}.reads"
-        recorded = [repo_root() / line[2:] for line in reads.read_text().splitlines() if line.startswith("f ")] if reads.is_file() else []
-        write_record(
-            directory,
-            name,
-            generator=target_generator(target),
-            dest=sprites_dir,
-            outputs=[(p, None) for p in paths],
-            inputs=_inputs(recorded, hashed=False),
-            basis="cache",
-            # The commit of the render that made these bytes is not known here.
-            extra={"cache_key": key, "renderer": None},
-        )
-        written += 1
-    return written, skipped
 
 
 def backfill_plan(book: Book, directory: Path) -> tuple[int, int]:
@@ -428,13 +339,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ambition_sprite2d_renderer.provenance", description=__doc__.split("\n", 1)[0])
     sub = parser.add_subparsers(dest="command", required=True)
     fill = sub.add_parser("backfill", help="record already-published art that has no record yet")
-    fill.add_argument("--families", default="sprites,backgrounds,sky_parts,terrain")
+    fill.add_argument("--families", default="backgrounds,sky_parts,terrain")
     args = parser.parse_args(argv)
     families = set(args.families.split(","))
     root = asset_root()
-    if "sprites" in families:
-        n, s = backfill_sprites(root / "sprites", _RENDERER / ".cache", provenance_root() / "sprites")
-        print(f"sprites: {n} records written, {s} skipped (record current, no cache digest, or outputs changed)")
     if "backgrounds" in families:
         from .backgrounds.__main__ import plan as background_plan
 

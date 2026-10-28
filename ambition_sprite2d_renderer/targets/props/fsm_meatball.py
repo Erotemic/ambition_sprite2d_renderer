@@ -124,18 +124,6 @@ def render_canonical(out_dir: str | Path, **opts) -> Path:
     return outputs["canonical_transparent"]
 
 
-def install(render_dir: str | Path, dest_root: str | Path) -> Iterable[Path]:
-    render_dir = Path(render_dir)
-    dest_root = Path(dest_root)
-    dest_root.mkdir(parents=True, exist_ok=True)
-    installed: List[Path] = []
-    for name in SHEET_FILES:
-        src = render_dir / name
-        if src.exists():
-            dst = dest_root / name
-            dst.write_bytes(src.read_bytes())
-            installed.append(dst)
-    return installed
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:

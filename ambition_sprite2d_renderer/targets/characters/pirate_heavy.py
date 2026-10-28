@@ -1341,25 +1341,6 @@ def render(out_dir: str | Path, variant: str = "all", **opts) -> List[Path]:
 # function walks every variant subdir and copies its PNG + YAML +
 # RON to the destination sprites folder (flat, per-variant
 # filenames). Mirrors the pattern in `sandbag.install`.
-def install(out_dir: "Path | str", dest_root: "Path | str") -> List["Path"]:
-    import shutil
-
-    out_dir = Path(out_dir)
-    dest_root = Path(dest_root)
-    dest_root.mkdir(parents=True, exist_ok=True)
-    copied: List[Path] = []
-    for slug in VARIANTS.keys():
-        target = f"{BASE_TARGET_NAME}_{slug}"
-        sources = [out_dir / slug / f"{target}_spritesheet.{ext}" for ext in ("png", "yaml", "ron")]
-        # The part flipbook `render_variant` published beside the sheet.
-        sources += sorted((out_dir / slug).glob(f"{target}_parts*"))
-        for src in sources:
-            if not src.exists():
-                continue
-            dst = dest_root / src.name
-            shutil.copy2(src, dst)
-            copied.append(dst)
-    return copied
 
 
 def main(argv: list[str] | None = None) -> int:

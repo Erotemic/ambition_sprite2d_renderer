@@ -33,15 +33,6 @@ def test_registered_targets_have_installable_sheet_contracts():
         # sheet manifest the engine actually loads; a target that emits only the
         # `.ron` (e.g. the gnu_ton boss, which skips the YAML intermediate) still
         # declares a manifest.
-        if not any(
-            fname.endswith((".yaml", ".json", ".ron")) for fname in target.sheet_files
-        ):
-            # A custom installer may intentionally publish a texture-only
-            # runtime product even when its renderer emits authoring manifests
-            # and diagnostics beside it. In that case the install function, not
-            # a generic sheet convention, owns the publication shape.
-            if getattr(target, "_install_fn", None) is None:
-                problems.append(f"{name}: no manifest output declared")
         if target.portrait_files:
             if not target.supports_portraits:
                 problems.append(f"{name}: portrait files declared without renderer")

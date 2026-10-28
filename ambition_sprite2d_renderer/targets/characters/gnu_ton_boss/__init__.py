@@ -73,12 +73,3 @@ def render_portraits(out_dir: str | Path, **opts) -> List[Path]:
     return outputs
 
 
-def install(render_dir: str | Path, dest_root: str | Path) -> List[Path]:
-    render_dir = Path(render_dir)
-    install_dir = Path(dest_root) / INSTALL_SUBDIR
-    return list(
-        sprite_generator.install_outputs(
-            render_dir=render_dir,
-            install_dir=install_dir,
-        )
-    )
