@@ -30,7 +30,7 @@ import math
 from dataclasses import dataclass
 from typing import Any, Dict, Hashable, List, Sequence, Tuple
 
-from PIL import Image
+from PIL import Image, ImageChops
 from ..profiling import profile
 
 
@@ -82,6 +82,36 @@ def _trim(image: Image.Image, logical_size: Tuple[int, int], trim: bool):
     x0, y0, x1, y1 = bbox
     return image.crop((x0, y0, x1, y1)), x0, y0
 
+
+def prepare_frame_for_linear_sampling(page, rect, padding):
+    """Extend edge colour into alpha-zero texels within one frame's storage.
+
+    Linear filtering reads colour before alpha blending. A black transparent
+    texel can darken an overlapping part even when that part covers the cut.
+    Keep alpha and all covered texels unchanged. Do not cross frame gutters.
+    """
+    gutter = min(padding, 1)
+    x, y, w, h = rect
+    box = (max(0, x - gutter), max(0, y - gutter),
+           min(page.width, x + w + gutter), min(page.height, y + h + gutter))
+    region = page.crop(box)
+    alpha = region.getchannel("A")
+    if not alpha.getbbox() or alpha.getextrema()[0] > 0:
+        return
+    source = region.copy()
+    covered = alpha.point(lambda value: 255 if value else 0)
+    filled = covered.copy()
+    for offset in ((1, 0), (-1, 0), (0, 1), (0, -1),
+                   (1, 1), (-1, 1), (1, -1), (-1, -1)):
+        adjacent = Image.new("RGBA", region.size)
+        adjacent.paste(source, offset)
+        mask = Image.new("L", region.size)
+        mask.paste(covered, offset)
+        take = ImageChops.subtract(mask, filled)
+        region.paste(adjacent, (0, 0), take)
+        filled = ImageChops.lighter(filled, mask)
+    region.putalpha(alpha)
+    page.paste(region, box[:2])
 
 @profile
 def pack_frames(
@@ -161,6 +191,8 @@ def pack_frames(
 
     if trim:
         _assert_lossless(trimmed, placements, pages)
+    for p in placements.values():
+        prepare_frame_for_linear_sampling(pages[p.page], (p.x, p.y, p.w, p.h), padding)
     return PackResult(pages=pages, placements=placements)
 
 
@@ -426,6 +458,8 @@ def pack_frames_grouped(
     if trim:
         all_frames = [fr for gk in group_keys for fr in groups[gk]]
         _assert_lossless(all_frames, placements, pages)
+    for p in placements.values():
+        prepare_frame_for_linear_sampling(pages[p.page], (p.x, p.y, p.w, p.h), padding)
     return PackResult(pages=pages, placements=placements), group_page
 
 

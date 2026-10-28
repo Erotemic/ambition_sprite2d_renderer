@@ -152,3 +152,30 @@ def test_shelf_packer_is_deterministic_and_non_overlapping():
         for ox, oy, ow, oh, _orid in by_page.setdefault(page, []):
             assert x + w <= ox or ox + ow <= x or y + h <= oy or oy + oh <= y
         by_page[page].append((x, y, w, h, rid))
+
+
+def test_linear_sampling_keeps_coverage_and_each_frames_own_edge_colour():
+    images = []
+    for colour in ((240, 20, 40), (20, 180, 240)):
+        image = Image.new("RGBA", (6, 6))
+        for y, alpha in enumerate((32, 128, 255, 192), start=1):
+            for x in range(1, 5):
+                image.putpixel((x, y), (*colour, alpha))
+        images.append(image)
+    packed = pack_frames([
+        FrameInput(key=i, image=image, logical_size=image.size)
+        for i, image in enumerate(images)
+    ], trim=False)
+    for i, source in enumerate(images):
+        p = packed.placements[i]
+        page = packed.pages[p.page]
+        region = page.crop((p.x, p.y, p.x + p.w, p.y + p.h))
+        assert region.getchannel("A").tobytes() == source.getchannel("A").tobytes()
+        for y in range(source.height):
+            for x in range(source.width):
+                pixel = source.getpixel((x, y))
+                if pixel[3]:
+                    assert region.getpixel((x, y)) == pixel
+        # The cut's transparent neighbour has this frame's colour, not black
+        # or the colour of the next packed frame.
+        assert region.getpixel((0, 2)) == (*source.getpixel((1, 2))[:3], 0)
