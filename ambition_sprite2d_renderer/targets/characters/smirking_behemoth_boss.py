@@ -553,8 +553,15 @@ _RIM_DY = 38.0
 #: times and a bottom band (frame rows). Every row of the strips is alike:
 #: straight panel sides, below the inner panel's upper corners (where the rim
 #: starts) and above its lower corners.
-_BODY_STRIP_Y = (SMIRKING_BODY_Y1 + 38.0, SMIRKING_BODY_Y2 - 60.0)
 _BODY_STRIPS = 3
+# Source context covers the filter at reduced quality tiers. Repeated rows and
+# their context must stay between the panel corners, on whole frame pixels.
+_BODY_FILTER_CONTEXT = 8
+_BODY_STRIP_INSET = _BODY_STRIPS * math.ceil(_BODY_FILTER_CONTEXT / _BODY_STRIPS)
+_BODY_STRIP_Y = (
+    SMIRKING_BODY_Y1 + _RIM_DY + _BODY_STRIP_INSET,
+    SMIRKING_BODY_Y2 - 60.0 - _BODY_STRIP_INSET,
+)
 
 
 def _draw_body(draw: ImageDraw.ImageDraw, g: Dict[str, float]) -> None:
@@ -894,6 +901,7 @@ def _place_body(img: Image.Image, g: Dict[str, float]) -> None:
     """The slab as its left half and that half mirrored, each cut into a top
     band, ``_BODY_STRIPS`` copies of one strip and a bottom band."""
     mid = (g["body_x1"] + g["body_x2"]) * 0.5
+    context = _s(_BODY_FILTER_CONTEXT)
     y0, y1 = _BODY_STRIP_Y
     step = (y1 - y0) / _BODY_STRIPS
     bands = [("top", SMIRKING_BODY_Y1 - 2.0, y0, SMIRKING_BODY_Y1 - 2.0)] + [("strip", y0, y0 + step, y0 + k * step) for k in range(_BODY_STRIPS)] + [("bottom", y1, SMIRKING_BODY_Y2, y1)]
@@ -902,11 +910,14 @@ def _place_body(img: Image.Image, g: Dict[str, float]) -> None:
         if cached is None:
             canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
             _draw_body(blending_draw(canvas), g)
-            half = canvas.crop((_s(g["body_x1"]), _s(top), _s(mid), _s(bottom)))
+            half = canvas.crop((
+                _s(g["body_x1"]) - context, _s(top) - context,
+                _s(mid) + context, _s(bottom) + context,
+            ))
             cached = _FEATURES[("body", band)] = (half, half.transpose(Image.FLIP_LEFT_RIGHT))
         left, right = cached
-        shape_rig.place(img, (left, (0.0, 0.0)), (_s(g["body_x1"]), _s(at)), 0.0, f"body_{k}_l")
-        shape_rig.place(img, (right, (0.0, 0.0)), (_s(mid), _s(at)), 0.0, f"body_{k}_r")
+        shape_rig.place(img, (left, (context, context)), (_s(g["body_x1"]), _s(at)), 0.0, f"body_{k}_l")
+        shape_rig.place(img, (right, (context, context)), (_s(mid), _s(at)), 0.0, f"body_{k}_r")
 
 
 #: The two burst sizes (radius, frame pixels): each burst draws the nearer.

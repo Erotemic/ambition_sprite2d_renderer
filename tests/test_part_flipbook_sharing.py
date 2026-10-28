@@ -231,3 +231,36 @@ def test_a_half_keeps_a_transparent_border_on_its_cut_side():
     width, height = alpha.size
     for x in range(width - PART_BORDER, width):
         assert max(alpha.getpixel((x, y)) for y in range(height)) == 0, f"column {x} of {width} is drawn"
+
+
+def test_filtered_mirrored_halves_do_not_darken_their_overlap():
+    part = _symmetric(34)
+    flipbook = PartFlipbook(
+        "sym", (96, 72), (48.0, 66.0),
+        [PartRaster("limb", part, (5.0, 7.0))],
+        {"idle": (0.1, [[PartDraw(0, (-10.0, -30.0), 0.3, (1.0, 1.0), "limb")]])},
+        placement=PLACEMENT_CONTINUOUS,
+    )
+    split = _split_symmetric_parts(
+        flipbook, {("idle", 0): flipbook.recompose("idle", 0)},
+    )
+    split.pack()
+    half = split.parts[0].image
+    edge = half.getchannel("A").getbbox()[2] - 1
+    page, x, y, _w, _h = split.rects[0]
+    opaque = split.pages[page].getpixel((x + edge, y + 7))
+    transparent = split.pages[page].getpixel((x + edge + 1, y + 7))
+    assert opaque[3] == 255 and transparent[3] == 0
+    # A linear sample at the cut is drawn over the other half's opaque interior.
+    sampled_alpha = (opaque[3] + transparent[3]) / (2.0 * 255.0)
+    def linear(channel):
+        value = channel / 255.0
+        return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+
+    expected = tuple(linear(channel) for channel in opaque[:3])
+    clear_rgb = tuple(linear(channel) for channel in transparent[:3])
+    composed = tuple(
+        (solid + clear) * 0.5 * sampled_alpha + solid * (1.0 - sampled_alpha)
+        for solid, clear in zip(expected, clear_rgb)
+    )
+    assert composed == expected, "the cut's transparent RGB darkens the other half"

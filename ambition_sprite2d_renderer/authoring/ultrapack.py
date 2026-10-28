@@ -47,7 +47,7 @@ from PIL import Image, ImageDraw
 from ..profiling import profile
 from ..yaml_io import safe_load
 
-from .packer import FrameInput, _trim, pack_frames
+from .packer import FrameInput, _trim, pack_frames, prepare_frame_for_linear_sampling
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
 
@@ -188,7 +188,7 @@ def _reconstruct_logical(page: Image.Image, rect: dict, src_w: int, src_h: int) 
     crop = page.crop((x, y, x + w, y + h))
     off = rect.get("off") or (0, 0)
     logical = Image.new("RGBA", (src_w, src_h), (0, 0, 0, 0))
-    logical.paste(crop, (int(off[0]), int(off[1])))
+    logical.alpha_composite(crop, (int(off[0]), int(off[1])))
     return logical
 
 
@@ -658,8 +658,9 @@ def _apply_patch(
             x, y = entry["x"], entry["y"]
             # Clear the rect first: a pixel the new frame leaves transparent
             # must not keep the old frame's colour.
-            page.paste((0, 0, 0, 0), (x, y, x + entry["w"], y + entry["h"]))
+            page.paste((0, 0, 0, 0), (x - 1, y - 1, x + entry["w"] + 1, y + entry["h"] + 1))
             page.alpha_composite(image, (x, y))
+            prepare_frame_for_linear_sampling(page, (x, y, entry["w"], entry["h"]), 1)
         records[path.name] = _keep_or_write(path, page, ledger)
         written.append(path)
     catalog_path.write_text(json.dumps(catalog, indent=1, sort_keys=True))
