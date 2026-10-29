@@ -26,15 +26,17 @@ from typing import Dict, List, Tuple
 from .family import family_of
 from .geometry import Loft, RingKey, gauss, smoothstep, wrap180
 
-SPECIES = ("human", "horse", "dog", "cat", "bird", "sea_lion", "alligator")
+SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator")
 #: A species' head height against a human's of the same build.
-HEAD_SCALE = {"human": 1.0, "horse": 1.16, "dog": 1.05, "cat": 0.98, "bird": 1.0, "sea_lion": 1.02, "alligator": 0.64}
+HEAD_SCALE = {"human": 1.0, "horse": 1.16, "dog": 1.05, "cat": 0.98, "bird": 1.0, "pigeon": 0.94, "sea_lion": 1.02, "alligator": 0.64}
 #: Coats: fur and feathers, by species.
 COATS: Dict[str, Tuple[str, ...]] = {
     "horse": ("#7a4a2c", "#5c3a24", "#a8672f", "#2e2622", "#8d8a86", "#c9a26a", "#e6dfd2", "#4a3528"),
     "dog": ("#c08a4e", "#8a5a34", "#e4cfa6", "#3a3230", "#a9a39b", "#d7a45c", "#6e4a33", "#f0e8da"),
     "cat": ("#d68c4a", "#8b8580", "#3a3436", "#e8dcc8", "#b97a46", "#c9b9a4", "#5e5550", "#f2ece2"),
     "bird": ("#3f6f9e", "#c9473a", "#e3c24a", "#5b8f4f", "#ece6da", "#2e2c34", "#8a6a9e", "#d98a3e"),
+    # Blue-bar grey, ash red, white, brown, black: the town pigeon's morphs.
+    "pigeon": ("#8b94a3", "#7a8292", "#9aa2ae", "#5d6370", "#a77a68", "#e9e6e0", "#6b5a50", "#3c3d44"),
     "sea_lion": ("#c9a876", "#b8946a", "#d4b384", "#a9804f", "#4e3628", "#5c4232", "#3e3029", "#6b4a32"),
     # Dark olive to near black hides.
     "alligator": ("#3d4a2e", "#2f3a26", "#4a5434", "#2a2f24", "#424a30", "#55603a", "#33392a", "#262a20", "#efece3"),
@@ -67,6 +69,9 @@ class HeadModel:
     muzzle_alpha: float = 75.0
     #: The neck's front (the throat) is in the muzzle's colour too.
     throat: bool = False
+    #: The neck is iridescent (a pigeon's): green over purple at its sides
+    #: and front, from this ``f`` of the head down; 0 for none.
+    sheen: float = 0.0
     #: Where the neck enters the head (a fraction ``f``): the neck's top ring
     #: is fitted inside the head's ring there, and the head turns about its
     #: centre. ``None``: the human neck, which meets the head under the jaw.
@@ -226,36 +231,50 @@ def _horse(fig) -> HeadModel:
 
 
 def _dog(fig) -> HeadModel:
-    """A broad skull, a muzzle of middle length ending in a big dark nose,
-    jowls; the ears as the spec says (floppy or pointed)."""
+    """A broad round skull with a clear STOP at the eyes: the muzzle steps
+    forward from under the brow and runs out level, a boxy block with a big
+    dark nose on its tip; the lower jaw is shorter and sits under it, and the
+    upper lip hangs over it at the sides. The ears as the spec says (floppy
+    flaps that hang past the cheeks, or pointed and upright). No hair: a
+    human haircut on a dog reads as a toupee."""
     hh = fig.hh
     m = fig.spec.head.muzzle
+    mz = 0.36 * m
     rows = [
-        (0.00, 0.0, 0.0, 0.0, -0.05, 2.0),
-        (0.13, 0.35, 0.36, 0.42, -0.05, 2.0),
-        (0.28, 0.4, 0.41, 0.45, -0.03, 2.0),
-        (0.44, 0.38, 0.42 + 0.06 * m, 0.38, 0.0, 2.1),
-        (0.58, 0.3, 0.5 + 0.12 * m, 0.3, 0.05 * m, 2.3),
-        (0.7, 0.27, 0.52 + 0.14 * m, 0.27, 0.07 * m, 2.4),
-        (0.82, 0.28, 0.44 + 0.1 * m, 0.25, 0.06 * m, 2.3),
-        (0.93, 0.24, 0.36 + 0.06 * m, 0.22, 0.05 * m, 2.1),
-        (1.00, 0.12, 0.28, 0.18, 0.05, 2.0),
+        (0.00, 0.0, 0.0, 0.0, -0.06, 2.0),
+        (0.08, 0.3, 0.3, 0.34, -0.06, 2.0),
+        (0.18, 0.4, 0.39, 0.43, -0.05, 2.0),
+        (0.3, 0.44, 0.43, 0.46, -0.04, 2.1),
+        (0.4, 0.43, 0.46, 0.45, -0.03, 2.1),
+        # The stop: the muzzle steps out from under the brow.
+        (0.45, 0.39, 0.5, 0.43, -0.03, 2.2),
+        (0.5, 0.34, 0.46 + mz, 0.41, -0.02, 2.6),
+        (0.6, 0.33, 0.48 + mz, 0.38, -0.02, 2.7),
+        (0.69, 0.33, 0.48 + mz, 0.35, -0.02, 2.7),
+        # Under the lip line the lower jaw is set back.
+        (0.74, 0.29, 0.4 + 0.8 * mz, 0.32, -0.02, 2.6),
+        (0.86, 0.25, 0.32 + 0.6 * mz, 0.28, -0.02, 2.3),
+        (0.95, 0.2, 0.26 + 0.3 * mz, 0.24, -0.02, 2.1),
+        (1.00, 0.1, 0.18, 0.18, -0.02, 2.0),
     ]
     layout = {
-        "eye_f": 0.42, "brow_f": 0.34, "eye_alpha": 28.0, "eye_w": 0.12, "iris": 0.72, "nose_tip_f": 0.6, "mouth_f": 0.84,
-        "mouth_alpha": 30.0, "nose": "dog", "pupil": "round",
+        "eye_f": 0.395, "brow_f": 0.315, "eye_alpha": 31.0, "eye_w": 0.13, "iris": 0.78, "nose_tip_f": 0.535, "mouth_f": 0.705,
+        "mouth_alpha": 62.0, "nose": "dog", "pupil": "round",
     }
 
     def relief(alpha: float, y: float) -> float:
         f = (y - fig.crown) / hh
         al = wrap180(alpha)
-        v = 0.05 * m * gauss(f, 0.6, 0.05) * gauss(al, 0.0, 14.0)
-        v += 0.018 * gauss(f, 0.33, 0.05) * (gauss(al, 26.0, 14.0) + gauss(al, -26.0, 14.0))
-        v += 0.025 * gauss(f, 0.82, 0.07) * (gauss(al, 40.0, 20.0) + gauss(al, -40.0, 20.0))
+        # The brows over the stop, and the furrow between them.
+        v = 0.03 * gauss(f, 0.36, 0.035) * (gauss(al, 24.0, 12.0) + gauss(al, -24.0, 12.0))
+        # Full cheeks behind the muzzle, and the upper lip (the flews) hanging at its sides.
+        v += 0.03 * gauss(f, 0.62, 0.08) * (gauss(al, 62.0, 16.0) + gauss(al, -62.0, 16.0))
+        v += 0.02 * gauss(f, 0.69, 0.025) * (gauss(al, 50.0, 18.0) + gauss(al, -50.0, 18.0))
         return hh * v
 
     ears = "dog_floppy" if fig.spec.head.ears in ("default", "floppy") else "dog_pointed"
-    return HeadModel("dog", _rows(fig.fy, hh, rows), [relief], layout, ears=ears, hair="tuft", muzzle_f=0.55, neck_f=0.7)
+    return HeadModel("dog", _rows(fig.fy, hh, rows), [relief], layout, ears=ears, hair="none", muzzle_f=0.48, muzzle_alpha=70.0,
+                     neck_f=0.72)
 
 
 # ---- cat ------------------------------------------------------------------------------------
@@ -312,6 +331,34 @@ def _bird(fig) -> HeadModel:
         "mouth_alpha": 0.0, "nose": "bird", "pupil": "round", "beak": 0.34 * fig.spec.head.muzzle,
     }
     return HeadModel("bird", _rows(fig.fy, hh, rows), [], layout, ears="none", hair="crest", neck_f=0.72)
+
+
+# ---- pigeon ---------------------------------------------------------------------------------
+
+
+def _pigeon(fig) -> HeadModel:
+    """A town pigeon: a small round head that flows into a thick neck (no
+    chin), the forehead sloping down into a short slim dark beak with the
+    white cere puffed over its base; round orange eyes set on the sides; no
+    crest, no ears; the neck iridescent green over purple."""
+    hh = fig.hh
+    rows = [
+        (0.00, 0.0, 0.0, 0.0, 0.0, 2.0),
+        (0.08, 0.28, 0.3, 0.32, 0.0, 2.0),
+        (0.22, 0.4, 0.43, 0.43, 0.0, 2.0),
+        (0.38, 0.44, 0.48, 0.45, 0.02, 2.0),
+        (0.54, 0.42, 0.46, 0.42, 0.02, 2.0),
+        (0.68, 0.34, 0.37, 0.36, 0.0, 2.0),
+        # The ball of the head narrows into the thick iridescent neck.
+        (0.8, 0.28, 0.29, 0.32, -0.02, 2.0),
+        (1.00, 0.27, 0.27, 0.32, -0.03, 2.0),
+    ]
+    layout = {
+        "eye_f": 0.36, "brow_f": 0.28, "eye_alpha": 50.0, "eye_w": 0.135, "iris": 0.95, "nose_tip_f": 0.46, "mouth_f": 0.48,
+        "mouth_alpha": 0.0, "nose": "pigeon", "pupil": "round", "beak": 0.23 * fig.spec.head.muzzle, "beak_w": 0.6, "beak_h": 0.85,
+        "beak_col": "#3e3a3e", "cere": 1.0, "beak_droop": 0.035,
+    }
+    return HeadModel("pigeon", _rows(fig.fy, hh, rows), [], layout, ears="none", hair="none", neck_f=0.7, sheen=0.6)
 
 
 # ---- sea lion -------------------------------------------------------------------------------
@@ -434,7 +481,7 @@ def _alligator(fig) -> HeadModel:
                      throat=True, neck_f=0.62, skull_keys=_rows(fig.fy, hh, skull))
 
 
-_BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird": _bird, "sea_lion": _sea_lion, "alligator": _alligator}
+_BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird": _bird, "pigeon": _pigeon, "sea_lion": _sea_lion, "alligator": _alligator}
 
 
 def head_model(fig) -> HeadModel:

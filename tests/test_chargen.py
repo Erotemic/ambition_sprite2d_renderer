@@ -210,7 +210,7 @@ def test_the_rig_derives_from_the_spec_for_many_seeds(tmp_path):
     from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
     from ambition_sprite2d_renderer.chargen.rig import CELL_H, CELL_W
 
-    specs = S.crowd(3, 31) + [S.crowd(1, 32 + i, species=sp)[0] for i, sp in enumerate(("horse", "dog", "cat", "bird", "sea_lion", "alligator"))]
+    specs = S.crowd(3, 31) + [S.crowd(1, 32 + i, species=sp)[0] for i, sp in enumerate(("horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator"))]
     for n, spec in enumerate(specs):
         rigs = _rest_rigs(spec, tmp_path / str(n))
         for view, path in rigs.items():
@@ -244,12 +244,13 @@ def test_the_rig_derives_from_the_spec_for_many_seeds(tmp_path):
     S.crowd(2, 2, species="dog")[1],
     S.crowd(2, 3, species="cat")[1],
     S.crowd(2, 4, species="bird")[1],
+    S.crowd(2, 6, species="pigeon")[1],
     S.crowd(2, 5, species="sea_lion")[1],
     S.generate("broad_male", 7, {"outfit": {"outer": "field_jacket", "outer_open": False, "hat": "helmet", "accessories": ["webbing"]}}),
     S.generate("broad_female", 61, {"family": "crew", "hair": {"style": "bun"}, "outfit": {
         "outer": "field_jacket", "outer_open": False, "hat": "campaign", "shoes": "boots", "accessories": ["webbing"], "wardrobe": ["hat:helmet"]}}),
     _gator_geisha(),
-], ids=["robe", "horse", "dog", "cat", "bird", "sea_lion", "soldier", "crew_soldier", "gator_geisha"])
+], ids=["robe", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "soldier", "crew_soldier", "gator_geisha"])
 def test_every_library_clip_poses_without_audit_errors_in_every_view(spec, tmp_path):
     from ambition_sprite2d_renderer.authoring.pose_audit import audit_document
     from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
@@ -344,7 +345,7 @@ def test_every_species_head_draws_in_every_view():
         for dv in drawn:
             assert any(p.name == "head" for p in dv.parts), (species, dv.view.key)
             assert _alpha_box(render_view(spec, dv.view, 0.5)) is not None
-        if species == "bird":
+        if species in ("bird", "pigeon"):
             # From behind, the beak is drawn under the head, not over it.
             back = {p.name for p in drawn[-1].parts}
             assert "head_behind" in back
