@@ -869,12 +869,14 @@ EYE_LASER_FRAMES = 6
 
 
 def eye_laser(body: RigBody) -> List[Key]:
-    """The eye laser burns: a braced glare. Loops on its own clock for as long
-    as the beam burns.
+    """The eye laser burns: a braced pose with the whole visor lit. Loops on
+    its own clock for as long as the beam burns.
 
-    The game draws the beam from the EYES along the facing, so the head is
-    level and pushed forward to the target, and the eyes are wide open (the
-    fierce face with almost no squint). The hands do not fire, so both fists
+    The game draws the beam from the front of the VISOR along the facing, so
+    the head is level and pushed forward to the target. The face is the open
+    face (not the fierce face: two angry eyes looked evil). The renderer
+    fills all of its visor with a red glow (`player_robot_v3._place_visor_glow`),
+    so no eye shows. The hands do not fire, so both fists
     go down and back, out of the line of the beam. The torso leans back a
     little against the push of the beam, and the feet are planted wide. A
     small tremble of the head and the torso on each frame shows that the
@@ -893,7 +895,7 @@ def eye_laser(body: RigBody) -> List[Key]:
         keys.append(Key(
             at=u, near=(140.0 + 2.0 * tremble, 118.0, 0.0), far=(118.0 - 2.0 * tremble, 122.0),
             torso=-5.0 + 0.8 * tremble, head=0.5 - 1.2 * tremble, lunge=2.0, drop=3.5 + 0.4 * tremble,
-            squash=0.97, shoulder=-2.0, feet=wide, blade=0.0, squint=0.05, face="fierce",
+            squash=0.97, shoulder=-2.0, feet=wide, blade=0.0, squint=0.0, face="open",
             ease="linear"))
     return keys
 

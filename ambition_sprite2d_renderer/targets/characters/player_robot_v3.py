@@ -21,6 +21,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import numpy as np
 from PIL import Image, ImageFilter
 
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -429,45 +430,99 @@ def _hit_sparks():
     return fx_piece(("v3_hit_sparks",), (-16 * K, -16 * K, 16 * K, 16 * K), paint)
 
 
-# -- the eye laser's glow --------------------------------------------------------
+# -- the eye laser's visor glow --------------------------------------------------
 
-#: The two eyes of the fierce face (the face of `eye_laser`), back eye first,
-#: in the frame of the head: frame pixels from the head's origin (the neck),
-#: with the head not turned. Measured off the drawn eyes of the row.
-EYE_LASER_EYES = ((13.3, -12.8), (25.0, -12.3))
-#: How bright the glow is on each frame of the loop: it pulses, and the game
-#: draws the beam itself.
+#: The face of `eye_laser` (the open face). The glow takes the shape of its
+#: visor, so the glow covers all of the visor and no eye shows.
+EYE_LASER_FACE = "face_open"
+#: How bright the bloom and the hot band are on each frame of the loop: they
+#: pulse. The red fill of the visor does not pulse. The game draws the beam.
 EYE_LASER_PULSE = (1.0, 0.8, 0.95, 0.74, 1.0, 0.86)
+#: The bezel: this many frame pixels of the visor's black edge stay black
+#: around the red fill, so the visor keeps its shape in the white head.
+_VISOR_BEZEL = 1.0
+#: The bloom: how far (frame pixels) the red light spreads past the visor.
+_VISOR_BLOOM = 1.8
 
 
-def _eye_glow():
-    """The red bloom of a burning eye: blurred, so one raster for all frames."""
+def _visor_mask(doc: RigDocument) -> Tuple["np.ndarray", Tuple[float, float]]:
+    """The visor of the eye laser's face as an alpha mask (0..1) at the effect
+    scale ``K``, and the neck (the head's pivot) in it."""
+    part = next(p for p in doc.parts if p["name"] == EYE_LASER_FACE)
+    image, pivot = doc.sprite_image(part, K)
+    # The eyes are in the visor, so the alpha of the face is the visor.
+    return np.asarray(image.getchannel("A"), dtype=np.float32) / 255.0, pivot
+
+
+def _visor_pieces(doc: RigDocument):
+    """The three pieces of the burning visor, each ``(image, pivot)`` in the
+    frame of the head (the pivot is the neck), at the effect scale ``K``:
+
+    - ``bloom``: soft red light on the white shell a little past the visor's
+      edge (not on the bezel, which stays black);
+    - ``fill``: the visor filled red, darker at its top and bottom, inside a
+      thin black bezel;
+    - ``band``: a white-hot band across the middle of the visor, hottest at
+      the front, where the game starts the beam.
+    """
 
     def make():
-        blur = 2.6 * K
-        r = 6.0 * K
-        margin = int(math.ceil(3 * blur + r)) + 2
-        image = Image.new("RGBA", (2 * margin, 2 * margin), (0, 0, 0, 0))
-        d = blending_draw(image)
-        o = float(margin)
-        d.ellipse((o - r, o - r, o + r, o + r), fill=(255, 36, 28, 255))
-        return image.filter(ImageFilter.GaussianBlur(radius=blur)), (o, o)
+        mask, (px, py) = _visor_mask(doc)
+        blur = _VISOR_BLOOM * K
+        pad = int(math.ceil(3 * blur)) + 2
+        full = np.pad(mask, pad)
+        pivot = (px + pad, py + pad)
+        hard = Image.fromarray((full > 0.5).astype(np.uint8) * 255, "L")
+        # The red fill stops inside the bezel.
+        bezel = 2 * int(round(_VISOR_BEZEL * K)) + 1
+        inner = np.asarray(hard.filter(ImageFilter.MinFilter(bezel)).filter(
+            ImageFilter.GaussianBlur(0.6 * K)), dtype=np.float32) / 255.0
+        ys, xs = np.nonzero(full > 0.5)
+        top, bottom = float(ys.min()), float(ys.max())
+        back, ahead = float(xs.min()), float(xs.max())
+        yy, xx = np.mgrid[0:full.shape[0], 0:full.shape[1]].astype(np.float32)
+        # 0 on the middle line of the visor, 1 at its top and bottom edge.
+        off = np.clip(np.abs(yy - (top + bottom) / 2.0) / ((bottom - top) / 2.0), 0.0, 1.0)
+        # 0 at the back of the visor, 1 at its front.
+        along = np.clip((xx - back) / max(1.0, ahead - back), 0.0, 1.0)
 
-    return _raster(("v3_eye_glow",), make)
+        def rgba(r, g, b, alpha) -> Image.Image:
+            out = np.stack([r, g, b, np.clip(alpha, 0.0, 1.0) * 255.0], axis=-1)
+            return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGBA")
+
+        ones = np.ones_like(full)
+        glow = np.asarray(hard.filter(ImageFilter.MaxFilter(bezel)).filter(
+            ImageFilter.GaussianBlur(blur)), dtype=np.float32) / 255.0
+        # The light is only outside the visor: on the bezel it made the
+        # visor's edge a red blur.
+        outside = 1.0 - np.asarray(hard, dtype=np.float32) / 255.0
+        bloom = rgba(255 * ones, 60 * ones, 48 * ones, 0.7 * glow * outside)
+        # Red that is brighter near the middle line and toward the front.
+        heat = (1.0 - off ** 2) * (0.75 + 0.25 * along)
+        fill = rgba(205 + 50 * heat, 24 + 86 * heat ** 2, 30 + 46 * heat ** 2, inner)
+        # The band: a soft stripe on the middle line, wider and hotter at
+        # the front.
+        stripe = np.exp(-(off / (0.34 + 0.12 * along)) ** 2) * (0.55 + 0.45 * along)
+        band = rgba(255 * ones, 214 + 30 * stripe, 190 + 50 * stripe, inner * stripe)
+        return {name: (piece, pivot) for name, piece in
+                (("bloom", bloom), ("fill", fill), ("band", band))}
+
+    return _raster(("v3_visor_glow", doc.name, EYE_LASER_FACE), make)
 
 
-def _place_eye_glow(front: _FxLayer, world, frame_idx: int) -> None:
-    """A red glow with a white-hot core on each eye, over the visor."""
+def _place_visor_glow(front: _FxLayer, world, params, frame_idx: int, doc: RigDocument) -> None:
+    """The whole visor burns red: a bloom, the red fill and a pulsing hot band,
+    on the visor in the frame of the head bone (they follow the head)."""
     head = world["head"]
-    a = math.radians(head.angle)
-    c, s = math.cos(a), math.sin(a)
+    # The head is not squashed or seen from its other side in this row: the
+    # pieces are not.
+    assert params.get("bone.head.flip_x", 0.0) < 0.5, "eye_laser: head flip_x"
+    assert abs(params.get("bone.head.scale_y", 1.0) - 1.0) < 1e-3, "eye_laser: head scale_y"
+    pieces = _visor_pieces(doc)
     pulse = EYE_LASER_PULSE[frame_idx % len(EYE_LASER_PULSE)]
-    for index, (x, y) in enumerate(EYE_LASER_EYES):
-        at = (head.origin[0] + x * c - y * s, head.origin[1] + x * s + y * c)
-        front.put(_eye_glow(), at, 0.0, f"eye_glow{index}", pulse)
-        # The hot disc covers the cyan eye; the white core does not pulse.
-        front.put(_disc(3.4, (255, 74, 52, 255), None, 0, "eye_hot"), at, 0.0, f"eye_hot{index}")
-        front.put(_disc(1.8, (255, 246, 236, 255), None, 0, "eye_core"), at, 0.0, f"eye_core{index}")
+    front.put(pieces["bloom"], head.origin, head.angle, "visor_bloom", pulse)
+    front.put(pieces["fill"], head.origin, head.angle, "visor_fill")
+    front.put(pieces["band"], head.origin, head.angle, "visor_band", 0.55 + 0.45 * pulse)
 
 
 def _render_body(doc: RigDocument, clip: str, t: float, solved) -> Image.Image:
@@ -528,10 +583,10 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
         pulse = 0.55 + 0.45 * math.sin((t + 0.1) * math.pi)
         front.put(_disc(float(round(3 + 4 * pulse)), (25, 233, 255, 75), (193, 128, 255, 220), 2, "orb"), base, 0.0, "orb")
 
-    # The eye laser: the game draws the beam from the eyes, and the row makes
-    # the eyes burn.
+    # The eye laser: the game draws the beam from the front of the visor, and
+    # the row makes all of the visor burn red.
     if effect == "eye_laser":
-        _place_eye_glow(front, world, frame_idx)
+        _place_visor_glow(front, world, params, frame_idx, doc)
 
     if effect == "hit":
         front.put(_hit_sparks(), (78, 48), 0.0, "hit_sparks")
