@@ -12,7 +12,6 @@ from ambition_sprite2d_renderer.chargen.rig import draw_views
 from ambition_sprite2d_renderer.chargen.spec import generate, validate
 from ambition_sprite2d_renderer.targets.characters.townsfolk import SPECS, load
 
-NIKOBOLT = SPECS / "science_nikobolt.chargen.yaml"
 
 ART = """<svg xmlns="http://www.w3.org/2000/svg" data-overlay-ref="height:172 head:26.66">
   <g data-view="front">
@@ -106,9 +105,16 @@ def test_a_spec_without_an_overlay_does_not_write_the_field():
     assert "overlay" not in _human().to_dict()
 
 
-def test_nikobolt_draws_his_overlay_in_every_view():
-    spec, _game = load(NIKOBOLT)
-    assert spec.overlay == "nikobolt_tesseract"
+OVERLAID = sorted(p for p in SPECS.glob("*.chargen.yaml") if "overlay:" in p.read_text())
+
+
+def test_nikobolt_and_coulomba_have_overlays():
+    assert {p.name for p in OVERLAID} >= {"science_nikobolt.chargen.yaml", "science_coulomba.chargen.yaml"}
+
+
+@pytest.mark.parametrize("path", OVERLAID, ids=lambda p: p.name.split(".")[0])
+def test_a_resident_draws_its_overlay_in_every_view(path: Path):
+    spec, _game = load(path)
     ov = overlay.load(spec.overlay)
     _fig, views = draw_views(spec)
     for dv in views:
@@ -116,7 +122,9 @@ def test_nikobolt_draws_his_overlay_in_every_view():
         parts = {p.name: p for p in dv.parts}
         assert groups, dv.view.key
         for name, g in groups.items():
-            if g.els:
+            if g.mode == "over":
+                assert len(parts[name + "__overlay"].els) == len(g.els), (dv.view.key, name)
+            elif g.els:
                 assert len(parts[name].els) == len(g.els), (dv.view.key, name)
             else:
                 assert name not in parts, (dv.view.key, name)

@@ -454,7 +454,9 @@ def legwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     y0 = fig.y_belt - 0.05 * T
     skirted = o.bottom in ("skirt", "long_skirt")
     if skirted:
-        shaded_region(ctx, pt, shell, y0, fig.y_hipw, col)
+        # Down to the crotch: the pelvis (underwear) paints over the skirt's
+        # halves on the legs, so the skirt must cover all of it.
+        shaded_region(ctx, pt, shell, y0, fig.y_crotch, col)
     else:
         def crotch(a: float, y: float) -> float:
             al = abs(wrap180(a))
