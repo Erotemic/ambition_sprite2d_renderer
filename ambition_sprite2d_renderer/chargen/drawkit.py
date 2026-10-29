@@ -220,14 +220,14 @@ def outfit_plan(fig: Figure) -> Dict[str, object]:
     }[o.top]
     tucked = o.tucked and o.top != "tunic"
     plan["tucked"] = tucked
-    plan["top_hem"] = fig.y_waist + 0.04 * T if tucked else top_hem
+    plan["top_hem"] = fig.y_belt + 0.04 * T if tucked else top_hem
     outer = o.outer
     knee_y = fig.joints["right_knee"][1]
     # Hems near the feet are measured from the soles (geta raise them).
     sole = fig.sole_y
     hem = {"hip": fig.y_hipw + 0.12 * T, "knee": knee_y + 0.06 * T, "ankle": sole - 0.075 * fig.H}[o.outer_length]
     if outer == "vest":
-        hem = fig.y_waist + 0.16 * T
+        hem = fig.y_belt + 0.16 * T
     if outer == "cardigan" and o.outer_length == "ankle":
         hem = knee_y + 0.06 * T
     if outer == "apron":

@@ -47,6 +47,8 @@ class Figure:
     y_chest: float
     y_under: float
     y_waist: float
+    #: Where clothes are worn at the waist (``Proportions.belt``).
+    y_belt: float
     y_hipw: float
     y_hip: float
     y_crotch: float
@@ -99,7 +101,7 @@ def build(spec: CharacterSpec) -> Figure:
     T = y_hip - y_sh
     fig = Figure(
         spec=spec, H=H, hh=hh, k=k, female=female, crown=crown, chin=chin, y_nb=y_nb, y_sh=y_sh,
-        y_chest=y_sh + 0.23 * T, y_under=y_sh + 0.42 * T, y_waist=y_sh + 0.62 * T, y_hipw=y_sh + 0.9 * T, y_hip=y_hip,
+        y_chest=y_sh + 0.23 * T, y_under=y_sh + 0.42 * T, y_waist=y_sh + 0.62 * T, y_belt=y_sh + P.belt * T, y_hipw=y_sh + 0.9 * T, y_hip=y_hip,
         y_crotch=y_hip + 0.036 * H,
     )
     fig.species = species
