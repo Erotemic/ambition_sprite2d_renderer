@@ -48,7 +48,7 @@ HAZARD = (64, 64)
 HAZARD_EDGE = (64, 12)
 
 #: The skins whose ladder is steel. Each other one has a ladder of wood.
-STEEL = {"lab", "alarm", "undertown", "hub", "basement", "boss", "eclipse", "hub_clean", "hub_corrupt", "castle_godwin", "castle_godwin_lab", "castle_godwin_throne", "orbital", "orbital_truss", "military_tower"}
+STEEL = {"lab", "alarm", "undertown", "hub", "basement", "boss", "eclipse", "hub_clean", "hub_corrupt", "castle_godwin", "castle_godwin_lab", "castle_godwin_throne", "orbital", "orbital_truss", "military_tower", "eureka_heights"}
 
 
 def ladder(theme_key: str) -> Image.Image:

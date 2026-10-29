@@ -527,6 +527,49 @@ def extinguisher(tile: Tile, c: dict) -> None:
     tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, G - 0.8, x1, G)), c["dark"], 0.6)
 
 
+# -- Eureka, the institute town of the Science dimension. These things have
+# no shade under them (no drop shadows).
+
+
+def campus_bench(tile: Tile, c: dict) -> None:
+    """A park bench of slats on iron legs, by a path of the campus."""
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 8.0, G - 5.4, M - 7.0, G), _box(p, dx, dy, M + 7.0, G - 5.4, M + 8.0, G),
+                                          _box(p, dx, dy, M - 8.0, G - 10.0, M - 7.2, G - 5.4), _box(p, dx, dy, M + 7.2, G - 10.0, M + 8.0, G - 5.4))), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 9.0, G - 5.8, M + 9.0, G - 4.8)), c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M - 8.6, G - 10.0 + k * 1.6, M + 8.6, G - 9.1 + k * 1.6) for k in range(3)]), c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M - 8.6, G - 10.0 + k * 1.6, M + 8.6, G - 9.6 + k * 1.6) for k in range(3)]), c["wood_light"], 0.5)
+
+
+def telescope(tile: Tile, c: dict) -> None:
+    """A small brass telescope on a tripod, pointed at the sky."""
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M, G - 9.0), (M + x, G)], 0.55) for x in (-4.4, 0.6, 4.6)]), c["metal"])
+    tube = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 5.6, G - 7.6), (M - 4.8, G - 9.2), (M + 6.4, G - 15.4), (M + 5.6, G - 17.0)]))
+    tile.put(tube, c["wood"])
+    tile.put(tube * (tile.y < G - 12.0), c["wood_light"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M + 4.6, G - 14.0), (M + 7.2, G - 15.6), (M + 6.2, G - 17.8), (M + 3.6, G - 16.2)])), c["glow"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 9.0, 1.0)), c["dark"])
+
+
+def bike_rack(tile: Tile, c: dict) -> None:
+    """A rack of bent steel hoops with one bicycle in it."""
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M + x, G), (M + x, G - 5.0), (M + x + 2.0, G - 6.6), (M + x + 4.0, G - 5.0), (M + x + 4.0, G)], 0.5) for x in (-9.0, -3.0, 3.0)]), c["metal"])
+    wheels = tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - 2.8, 2.8) for x in (-2.8, 4.4)])
+    hubs = tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - 2.8, 2.1) for x in (-2.8, 4.4)])
+    tile.put(np.clip(wheels - hubs, 0.0, 1.0), c["dark"], 0.85)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 2.8, G - 2.8), (M + 0.6, G - 6.2), (M + 4.4, G - 2.8), (M + 1.0, G - 2.8), (M + 0.6, G - 6.2), (M + 1.4, G - 7.6)], 0.5)), c["bloom"])
+    tile.alpha *= tile.y < G
+
+
+def notice_board(tile: Tile, c: dict) -> None:
+    """A board of the campus on two posts, papers pinned to it."""
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 6.0, G - 8.0, M - 5.0, G), _box(p, dx, dy, M + 5.0, G - 8.0, M + 6.0, G))), c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 7.0, G - 16.0, M + 7.0, G - 8.0)), c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 6.2, G - 15.2, M + 6.2, G - 8.8)), _mix(c["wood_light"], c["stone_light"], 0.5))
+    for x, y, w, h in ((-5.4, 14.6, 3.6, 4.4), (-1.2, 14.2, 3.0, 3.2), (2.4, 14.8, 3.4, 4.8), (-0.8, 10.6, 3.6, 1.6)):
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M + x, G - y, M + x + w, G - y + h)), c["stone_light"])
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x + w * 0.5, G - y + 0.4, 0.35)), c["bloom"])
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -577,6 +620,12 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "military_tower": ((ammo_crate, sandbags, jerrycan, oil_drum, extinguisher, ammo_stack), _palette((20, 22, 18), (110, 108, 98), (183, 167, 122), (84, 90, 52), (74, 82, 88), (91, 97, 54), (150, 52, 42), (255, 198, 124))),
     "skybridge": ((bush, flowers, column_stub, grass_tuft, planter, flowers), _palette((86, 100, 142), (160, 172, 204), (224, 230, 244), (150, 120, 90), (130, 144, 180), (106, 176, 96), (255, 150, 170), (255, 236, 150))),
     "open_sky": ((grass_tuft, rock, flowers, bush, grass_tuft, rock), _palette((104, 92, 92), (176, 164, 150), (232, 222, 204), (150, 112, 74), (140, 136, 140), (116, 178, 90), (255, 190, 110), (255, 240, 170))),
+    # Eureka, the institute town: benches, a telescope, a bike rack, a
+    # notice board, flowers and tufts of the lawn. `wood` is the benches'
+    # slats, `glow` a telescope's lens and `bloom` a bicycle's paint.
+    "eureka": ((campus_bench, flowers, telescope, bike_rack, grass_tuft, notice_board), _palette((40, 46, 40), (204, 190, 160), (240, 232, 214), (120, 84, 56), (64, 72, 82), (92, 150, 72), (196, 60, 52), (190, 226, 246))),
+    # High on the space elevator: the car's deck lights, consoles and freight.
+    "eureka_heights": ((floor_light, console, floor_light, crate, coil, floor_light), _palette((10, 14, 28), (64, 76, 96), (132, 150, 172), (90, 76, 60), (70, 84, 104), (70, 140, 110), (255, 120, 92), (150, 210, 255))),
     "eclipse": ((obelisk, crystal, rock, obelisk, rock, crystal), _palette((10, 12, 36), (40, 46, 104), (84, 90, 164), (60, 60, 110), (44, 50, 110), (60, 150, 140), (172, 112, 255), (92, 232, 200))),
 }
 

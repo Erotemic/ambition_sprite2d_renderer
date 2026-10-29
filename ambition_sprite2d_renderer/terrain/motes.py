@@ -90,6 +90,10 @@ MOTES = {
     # Dust in the light of a station deck, and starlight glints in the trusses.
     "orbital": (_dot, (210, 230, 255)),
     "orbital_truss": (_twinkle, (200, 226, 255)),
+    # Pollen in the sun on the campus of Eureka, and glints of ice high on
+    # the space elevator.
+    "eureka": (_dot, (255, 240, 180)),
+    "eureka_heights": (_twinkle, (220, 240, 255)),
     "basement": (_glow, (255, 190, 110)),
     # Drops of water that fall from the vault.
     "undertown": (_dot, (196, 232, 218)),
