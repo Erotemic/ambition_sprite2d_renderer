@@ -808,14 +808,21 @@ class WolfHead:
 
         return k.solid((c.name, "ear", near, degrees), shape, c.FUR if near else c.FUR_DARK, detail, outline=1.3, rim=0.3, shade=0.3, shade_colour=c.FUR_DEEP)
 
-    def eyes(self, mode: str, look: Point = (0.0, 0.0)):
+    def eyes(self, mode: str, look: Point = (0.0, 0.0), bloodshot: bool = False):
         """His eyes. Open, they are the eyes of the meme: white all round, small
-        pupils that look at you, red veins."""
+        pupils that look at you, red veins.
+
+        ``bloodshot``: the same eyes gone red with blood, to be drawn over them
+        as much as he is hurt (a ``wounded`` track): the white flushed red, a
+        red rim, thick veins all round, the pupil ringed in red. Shut eyes, and
+        eyes lit by his charge, have none."""
         k, c = self.k, self.c
 
         def paint(d) -> None:
             for (ex, ey), rx, ry in ((NEAR_EYE, 4.6, 4.4), (FAR_EYE, 3.5, 3.7)):
                 e = k.at(ex, ey)
+                if bloodshot and mode in ("closed", "dead", "wince", "glazed", "lit", "lit_green"):
+                    continue
                 if mode in ("closed", "dead"):
                     r = rx * 0.7
                     for s in (-1.0, 1.0):
@@ -844,17 +851,37 @@ class WolfHead:
                     continue
                 wide = 0.7 if mode == "pin" else 0.0
                 k.oval(d, e, rx + 0.6 + wide, ry + 0.6 + wide, c.OUTLINE)
-                k.oval(d, e, rx + wide, ry + wide, c.EYE_WHITE)
-                for ang, length in ((200.0, 0.75), (330.0, 0.7), (110.0, 0.65), (20.0, 0.6)):
-                    a = math.radians(ang)
-                    k.line(d, [(e[0] + math.cos(a) * rx * 0.95, e[1] + math.sin(a) * ry * 0.95),
-                               (e[0] + math.cos(a) * rx * (0.95 - length * 0.5), e[1] + math.sin(a) * ry * (0.95 - length * 0.5) + 0.3)], c.VEIN, 0.55)
+                if bloodshot:
+                    # Flushed with blood: a dark red rim, the white gone red,
+                    # and thick veins all round, each with a branch.
+                    k.oval(d, e, rx + wide, ry + wide, BLOOD_RIM)
+                    k.oval(d, e, (rx + wide) * 0.9, (ry + wide) * 0.9, BLOOD_WHITE)
+                    # Each vein crooked, of its own length, forked once.
+                    for ang, reach, kink in ((205.0, 0.5, 0.3), (250.0, 0.3, -0.25), (320.0, 0.45, 0.2), (15.0, 0.38, -0.3),
+                                             (60.0, 0.28, 0.25), (115.0, 0.48, -0.2), (160.0, 0.32, 0.3)):
+                        a = math.radians(ang)
+
+                        def on(r: float, da: float = 0.0) -> Point:
+                            return (e[0] + math.cos(a + da) * rx * r, e[1] + math.sin(a + da) * ry * r)
+
+                        p0, p1, p2 = on(0.92), on(0.92 - reach * 0.5, kink), on(0.92 - reach, kink * 0.4)
+                        k.line(d, [p0, p1, p2], BLOOD_VEIN, 0.7)
+                        k.line(d, [p1, on(0.92 - reach * 0.75, kink + 0.4 * math.copysign(1.0, kink))], BLOOD_VEIN, 0.4)
+                else:
+                    k.oval(d, e, rx + wide, ry + wide, c.EYE_WHITE)
+                    for ang, length in ((200.0, 0.75), (330.0, 0.7), (110.0, 0.65), (20.0, 0.6)):
+                        a = math.radians(ang)
+                        k.line(d, [(e[0] + math.cos(a) * rx * 0.95, e[1] + math.sin(a) * ry * 0.95),
+                                   (e[0] + math.cos(a) * rx * (0.95 - length * 0.5), e[1] + math.sin(a) * ry * (0.95 - length * 0.5) + 0.3)], c.VEIN, 0.55)
                 if mode == "roll":
                     # Rolled back: a sliver of iris under the top lid.
                     k.oval(d, (e[0], e[1] - ry * 0.95), rx * 0.3, rx * 0.16, c.IRIS)
                     continue
                 at_ = (e[0] - 0.4 * rx / 4.0 + look[0], e[1] + 0.2 + look[1])
                 size = 0.15 if mode == "pin" else 0.26
+                if bloodshot:
+                    # The pupil ringed in red.
+                    k.oval(d, at_, rx * size * 1.4, rx * size * 1.4, BLOOD_RIM)
                 k.oval(d, at_, rx * size, rx * size, c.IRIS)
                 k.oval(d, at_, rx * size * 0.58, rx * size * 0.58, c.OUTLINE)
                 if mode == "heavy":
@@ -870,7 +897,8 @@ class WolfHead:
                                (e[0] - rx - 1.0, e[1] + ry * 0.15)], c.FUR_DARK)
                     k.line(d, [(e[0] - rx - 0.6, e[1] + ry * 0.15), (e[0] + rx + 0.6, e[1] - ry * 0.1)], c.OUTLINE, 0.8)
 
-        return k.piece((c.name, "eyes", mode, round(look[0], 1), round(look[1], 1)), paint)
+        key = (c.name, "eyes", mode, round(look[0], 1), round(look[1], 1)) + (("bloodshot",) if bloodshot else ())
+        return k.piece(key, paint)
 
     def brows(self, mood: int):
         """Heavy dark fur over his eyes, the inner ends down."""
@@ -952,6 +980,13 @@ class WolfHead:
                 (self.ear(True, ears), "near_ear"),
                 (self.eyes(str(pose["eyes"]), look), "eyes"),  # type: ignore[arg-type]
                 (self.brows(R.brow_mood(pose)), "brows"), (self.seam(), "seam")]
+
+
+#: Eyes gone red with blood (``WolfHead.eyes(bloodshot=True)``), in any ink:
+#: the white flushed red, its rim and its veins dark red.
+BLOOD_WHITE: RGBA = (255, 168, 150, 255)
+BLOOD_RIM: RGBA = (176, 12, 34, 255)
+BLOOD_VEIN: RGBA = (150, 0, 26, 255)
 
 
 #: His head in his own colours.

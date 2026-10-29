@@ -28,8 +28,10 @@ Its ward (Jon, 2026-10-24: "default inugami should not have ghost fire around
 its head, we should add them only during the chase where the wolf is
 effectively invincible"): the four blue hitodama circle it only in the
 ``ward_`` rows, which the fight draws while the ward is lit (the chase). The
-ward kindles in ``ward_kindle``, Kagero's talismans hold it in ``ward_bound``,
-and it breaks in ``dispel``. His lightning is still in it: ``storm_tell``.
+ward kindles in ``ward_kindle``, Kagero's spell holds it in ``ward_bound``, and
+it breaks in ``dispel``. Her talismans are not in its rows: they are the game's
+worn gear ``kagero_ofuda`` (Jon, 2026-10-29), which it wears from when they
+strike it until it dies, over whatever row it is drawn in. His lightning is still in it: ``storm_tell``.
 
 Rows: the rise (the head comes off the body; it is his own head until the
 fire catches), the float, the drift and the hunt, its crash out of the arena,
@@ -111,6 +113,9 @@ SPIRIT = W.HeadInk(
     BUBBLE=(255, 236, 230, 200), GLINT=W.GLINT, GLINT_FAINT=W.GLINT_FAINT, BOLT=(220, 150, 160, 255), BOLT_DARK=(140, 60, 80, 255),
     COLLAR_LIGHT=(255, 210, 210, 255),
 )
+#: How much its bloodshot eyes show in its own frames: none (the game shows
+#: them as much as it is hurt). A preview may set it to see them.
+WOUNDED_PREVIEW = 0.0
 #: As a spirit it is a little transparent: the whole head fades as one
 #: picture, so its pieces do not show through each other.
 SPIRIT_OPACITY = 0.9
@@ -226,26 +231,6 @@ def _arc(p0: Point, p1: Point, seed: int):
         K.line(d, [K.at(*q) for q in pts], W.ARC_CORE, 1.8)
 
     return K.piece(("arc", p0, p1, seed), paint)
-
-
-def _ofuda(left: float):
-    """Kagero's paper talisman, stuck on it: a white slip with a red seal,
-    along +y. ``left`` (0-1) is how much is not yet burnt away."""
-    left = _r(left, 0.125)
-
-    def paint(d) -> None:
-        tall = 22.0 * left
-        if tall < 1.0:
-            return
-        K.poly(d, [K.at(-4.0, 0.0), K.at(4.0, 0.0), K.at(4.0, tall), K.at(-4.0, tall)], (244, 240, 228, 255), INK, 1.0)
-        if tall > 8.0:
-            K.line(d, [K.at(0.0, 2.5), K.at(0.0, min(tall - 2.0, 10.0))], (196, 36, 42, 255), 1.6)
-        if tall > 14.0:
-            K.oval(d, K.at(0.0, 15.0), 2.0, 2.0, (196, 36, 42, 255))
-        if left < 1.0:
-            K.line(d, [K.at(-4.0, tall), K.at(4.0, tall)], FIRE_MID, 2.0)
-
-    return K.piece(("ofuda", left), paint)
 
 
 def _glow(radius: float):
@@ -375,7 +360,7 @@ SLACK = P(at=(0.0, 8.0), rot=10.0, sq=0.97, mouth="loll", eyes="heavy", ears=-10
 #: THE STORM: head back to the vault, jaws open, eyes rolled up; his
 #: lightning crawls over it.
 STORM_UP = P(at=(-4.0, -2.0), rot=-34.0, sq=1.04, mouth="big", eyes="roll", ears=-26.0, brows=1.0, look=(0.4, -1.0), flame=1.3, trail=110.0)
-#: Held by her talismans: it strains against them, its fire beaten low.
+#: Held by her spell: it strains against it, its fire beaten low.
 BOUND = P(at=(-2.0, 2.0), rot=-8.0, sq=0.97, mouth="grit", eyes="wince", ears=-40.0, brows=1.0, look=(0.0, 0.0), flame=0.8, trail=150.0)
 #: Struck.
 STRUCK = P(at=(-6.0, -2.0), rot=-14.0, mouth="big", eyes="wince", ears=-20.0, brows=1.0, flame=1.2, trail=140.0)
@@ -416,7 +401,7 @@ def _pose(anim: str, i: int, n: int) -> Pose:
         pose = keys(u, [(0.0, FLOAT), (0.2, HOWL_DRAW, "out"), (0.35, HOWL, "snap"), (0.85, HOWL, "hold"), (1.0, dict(HOWL, rot=-30.0))])
         return dict(pose, rot=float(pose["rot"]) + (_jitter(i, 2.0) if 0.35 <= u < 0.85 else 0.0))  # type: ignore[arg-type]
     if anim == "ward_bound":
-        # It strains against the talismans: a shake, side to side.
+        # It strains against her spell: a shake, side to side.
         return dict(BOUND, rot=-8.0 + 6.0 * s, at=(2.0 * c, 2.0 + 1.5 * abs(s)), mouth="grit" if i % 4 < 2 else "big")
     if anim == "dispel":
         # The ward breaks: it is thrown back, then shakes itself and faces you.
@@ -631,8 +616,7 @@ def _spirits(img: Image.Image, anim: str, i: int, behind: bool) -> None:
 
 
 def _effects_over(img: Image.Image, anim: str, pose: Pose, i: int, n: int) -> None:
-    """What the moves throw: his lightning over it, her talismans on it,
-    the howl's rings, the stitches burning, the fire catching."""
+    """What the moves throw: his lightning over it, the howl's rings, the stitches burning, the fire catching."""
     u = R.shot(i, n)
     centre = _head_point(pose, (2.0, -6.0))
     if anim == "storm_tell" and u >= 0.3:
@@ -642,13 +626,6 @@ def _effects_over(img: Image.Image, anim: str, pose: Pose, i: int, n: int) -> No
             if (i + k) % 3 != 2:
                 a0 = _head_point(pose, p0)
                 K.place(img, _arc(a0, _head_point(pose, p1), i * 7 + k), a0, f"arc_{k}")
-    if anim in ("ward_bound", "dispel"):
-        # Her talismans, stuck on its brow and its jaw; they burn away as
-        # the ward breaks.
-        burn = 0.0 if anim == "ward_bound" else min(1.0, u / 0.4)
-        if burn < 1.0:
-            for k, (p0, a) in enumerate((((-6.0, -30.0), -20.0), ((6.0, -26.0), 12.0), ((14.0, -6.0), 40.0), ((-14.0, -10.0), -50.0))):
-                K.place(img, _ofuda(1.0 - burn), _head_point(pose, p0), f"ofuda_{k}", a + float(pose["rot"]))  # type: ignore[arg-type]
     if anim == "dispel" and u < 0.3:
         K.place(img, R.burst(K, 44.0, ONIBI_CORE, ONIBI_OUT, 12), centre, "ward_breaks")
     if anim == "ward_kindle" and 0.2 <= u < 0.4:
@@ -701,6 +678,13 @@ def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     at = _head_point(pose, (0.0, 0.0))
     for part, name in head.layers(pose):
         K.place(img, part, at, name, turn, sq)
+        if name == "eyes" and spirit:
+            # The same eyes gone bloodshot, over them, at no opacity: the game
+            # shows them as much as it is hurt (a `wounded` track; Jon,
+            # 2026-10-29: "eyes should get redder and more bloodshot as damage
+            # against them increases"). A baked frame is the head unhurt.
+            K.place(img, head.eyes(str(pose["eyes"]), pose["look"], bloodshot=True), at, "eyes_wounded", turn, sq,  # type: ignore[arg-type]
+                    opacity=WOUNDED_PREVIEW)
     if spirit:
         K.place(img, _torn_threads(-float(pose["trail"]) + 180.0 - turn), at, "torn", turn, sq)  # type: ignore[arg-type]
         _licks(img, pose, frame_idx)

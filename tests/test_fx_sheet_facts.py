@@ -14,7 +14,7 @@ FX_TARGETS = [
     "generic_action_fx", "generic_world_fx", "generic_exotic_fx", "generic_explosions",
     "george_booul_vfx", "oiler_vfx", "pirate_admiral_vfx", "ninja_shadow_oni_leader_vfx",
     "pca_vfx", "patent_clerk_vfx", "carl_stargan_vfx", "noether_vfx", "gnu_ton_vfx",
-    "projectile_polygon_vfx",
+    "projectile_polygon_vfx", "ninja_kagero_vfx",
 ]
 
 
