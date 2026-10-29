@@ -1392,7 +1392,7 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     # scholar conducts (`giant_gnu_fist`), so drawing them here as well put four
     # fists on screen, two of which never moved.
     giant_alias_path = outdir / f"{GIANT_TARGET_NAME}_spritesheet.png"
-    giant_body_page.save(str(giant_alias_path), "PNG")
+    shutil.copyfile(giant_body_path, giant_alias_path)
     outputs.append(giant_alias_path)
 
     giant_page_names = [f"{GIANT_TARGET_NAME}_spritesheet.png"] + [
