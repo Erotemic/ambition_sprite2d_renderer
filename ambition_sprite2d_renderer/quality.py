@@ -1544,6 +1544,7 @@ def generate_parallax_variants(
     asset_root: Path,
     *,
     tiers: tuple[Variant, ...] = VARIANTS,
+    tier_roots: dict[str, Path] | None = None,
     selectors: tuple[str, ...] = (),
     force: bool = False,
     clean: bool = False,
@@ -1557,6 +1558,10 @@ def generate_parallax_variants(
     """
     from ambition_sprite2d_renderer.products import conversion_current
     clock = clock or PhaseClock()
+    def output_root(variant):
+        root = (tier_roots or {}).get(variant.suffix, asset_root)
+        return root / "backgrounds" / f"parallax_layers_{variant.suffix}"
+
     src = asset_root / "backgrounds" / "parallax_layers"
     if not src.exists():
         print(f"skip missing parallax root: {src}")
@@ -1564,7 +1569,7 @@ def generate_parallax_variants(
 
     if clean:
         for variant in tiers:
-            tier_root = asset_root / "backgrounds" / f"parallax_layers_{variant.suffix}"
+            tier_root = output_root(variant)
             if tier_root.exists():
                 shutil.rmtree(tier_root)
 
@@ -1579,7 +1584,7 @@ def generate_parallax_variants(
     for png in layers:
         rel = png.relative_to(src)
         for variant in tiers:
-            dst = asset_root / "backgrounds" / f"parallax_layers_{variant.suffix}" / rel
+            dst = output_root(variant) / rel
             evidence = _conversion((png,), dst, variant, "parallax")
             if force or not conversion_current(dst.parent, dst.stem, evidence):
                 with clock.phase("parallax png", unit=rel.as_posix()):
@@ -1596,7 +1601,7 @@ def generate_parallax_variants(
                 missing.append(dst)
 
     for variant in tiers:
-        dst_root = asset_root / "backgrounds" / f"parallax_layers_{variant.suffix}"
+        dst_root = output_root(variant)
         print(
             f"parallax {variant.suffix}: {built[variant.suffix]} built, "
             f"{len(layers) - built[variant.suffix]} already current "
@@ -1666,7 +1671,7 @@ def main() -> None:
 
     tiers = resolve_tiers(tuple(args.tier))
     selectors = tuple(args.target)
-    from .content_library import repo_root, runtime_root
+    from .content_library import repo_root, runtime_root, quality_root
     if args.library:
         os.environ["AMBITION_CONTENT_LIBRARY"] = str((repo_root() / args.library).resolve())
     if args.asset_root and not args.backgrounds_only:
@@ -1688,6 +1693,7 @@ def main() -> None:
     if not args.sprites_only:
         generate_parallax_variants(
             asset_root,
+            tier_roots=None if args.asset_root else {tier.suffix: quality_root(tier.suffix) for tier in tiers},
             tiers=tiers,
             selectors=selectors,
             force=args.force,
@@ -1703,7 +1709,7 @@ def main() -> None:
         if not args.sprites_only:
             print(
                 "    file://"
-                f"{asset_root}/backgrounds/parallax_layers_{variant.suffix}"
+                f"{asset_root if args.asset_root else quality_root(variant.suffix)}/backgrounds/parallax_layers_{variant.suffix}"
             )
     print(f"    file://{asset_root}")
 

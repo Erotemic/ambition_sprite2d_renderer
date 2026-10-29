@@ -34,3 +34,8 @@ def publication_root(repo: Path | None = None) -> Path:
 def provenance_root(repo: Path | None = None) -> Path | None:
     path = read(repo).get("provenance")
     return manifest_path(repo).parent / relative(path) if path else None
+
+
+def quality_root(suffix: str, repo: Path | None = None) -> Path:
+    role = {"0_5x": "half", "0_25x": "quarter", "potato": "potato"}[suffix]
+    return manifest_path(repo).parent / relative(read(repo)["asset_roots"][role])

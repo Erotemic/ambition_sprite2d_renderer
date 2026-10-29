@@ -87,11 +87,15 @@ def record_dir(dest: Path) -> Path | None:
     env = os.environ.get(ENV)
     if env:
         return Path(env)
-    try:
-        rel = Path(dest).resolve().relative_to(asset_root().resolve())
-    except ValueError:
-        return None
-    return provenance_root() / rel
+    from .content_library import manifest_path, read
+    for role, declared in read()["asset_roots"].items():
+        root = manifest_path().parent / declared
+        try:
+            rel = Path(dest).resolve().relative_to(root.resolve())
+        except ValueError:
+            continue
+        return provenance_root() / rel
+    return None
 
 
 def _repo_relative(path: Path | str) -> str:
