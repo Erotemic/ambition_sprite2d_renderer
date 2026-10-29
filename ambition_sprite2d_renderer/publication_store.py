@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import fcntl
+import sys
 import errno
 import hashlib
 import json
@@ -128,16 +129,38 @@ class Store:
                 defects.append({"code": "changed-output", "path": logical})
         return defects
 
-    def publish(self, replacements: dict[str, str], base: str | None, *, replace: bool = False, hashes=None) -> dict:
-        """A changed base refuses publication. Builds can run without this lock."""
+    def publish(self, replacements: dict[str, str], base, *, replace: bool = False, hashes=None) -> dict:
+        """Select ``replacements`` and return the new selection.
+
+        ``base`` is the selection the caller planned against: the selection
+        itself, or only its generation. Builds and publications do not wait on
+        each other. When another publication moved the selection after the
+        caller planned, the caller's CHANGES are merged onto the newer
+        selection: each unit the caller added, replaced or removed relative to
+        its base. A unit that both changed is the caller's (the last writer
+        wins per unit). With only a generation, the changes are
+        ``replacements``.
+
+        A bundle whose recorded parent is not the selected one is still
+        selected. It is listed in ``stale`` with its reason, so a status query
+        reports it and the next build of that unit replaces it.
+        """
         self.root.mkdir(parents=True, exist_ok=True)
         with (self.root / ".publish.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             previous = self.selected()
-            if previous["generation"] != base:
-                raise ValueError("The published selection changed. Plan the request again.")
-            bundles = dict(replacements) if replace else previous["bundles"] | replacements
+            planned = base.get("generation") if isinstance(base, dict) else base
+            if previous["generation"] != planned:
+                before = base.get("bundles", {}) if isinstance(base, dict) else {}
+                changed = {unit: key for unit, key in replacements.items() if before.get(unit) != key}
+                removed = set(before) - set(replacements) if replace and isinstance(base, dict) else set()
+                bundles = {unit: key for unit, key in previous["bundles"].items() if unit not in removed} | changed
+                print(f"publication: another publication moved the selection; merged {len(changed)} changed and "
+                      f"{len(removed)} removed unit(s) onto it", file=sys.stderr)
+            else:
+                bundles = dict(replacements) if replace else previous["bundles"] | replacements
             files = {}
+            stale: dict[str, list[str]] = {}
             managed_roots = set(MANAGED_ROOTS)
             for unit, key in sorted(bundles.items()):
                 manifest = self.bundle(key)
@@ -147,7 +170,7 @@ class Store:
                     raise ValueError(f"Incomplete bundle: {unit}")
                 for parent, expected in manifest["parents"].items():
                     if bundles.get(parent) != expected:
-                        raise ValueError(f"Changed bundle dependency: {unit}: {parent}")
+                        stale.setdefault(unit, []).append(f"parent {parent} is not the one it was built from")
                 managed_roots.update(manifest.get("roots", [logical.split("/", 1)[0] for logical, item in manifest["files"].items() if item["role"] == "runtime"]))
                 for logical, item in manifest["files"].items():
                     if item["role"] != "runtime":
@@ -157,6 +180,10 @@ class Store:
                     files[logical] = dict(item, unit=unit, bundle=key, path=f"bundles/{key}/{item['path']}")
             roots = sorted(managed_roots)
             selection = {"schema": SCHEMA, "bundles": bundles, "files": files, "roots": roots}
+            if stale:
+                selection["stale"] = stale
+                for unit, reasons in sorted(stale.items()):
+                    print(f"publication: {unit} is stale: {'; '.join(reasons)}", file=sys.stderr)
             selection["generation"] = identity(selection)
             write_json(self.root / "published.json", selection)
             return selection

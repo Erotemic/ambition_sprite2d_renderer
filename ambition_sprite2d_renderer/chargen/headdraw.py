@@ -91,11 +91,14 @@ def _animal_ears(fig: Figure, kind: str, sgn: float) -> Tuple[List[Vec3], List[V
         inner = _leaf(add3(base, (sgn * 0.012 * hh, -0.03 * hh, 0.014 * hh)), axis, across, 0.26 * hh, 0.08 * hh)
         return outer, inner, sgn * 40.0
     if kind == "dog_floppy":
-        base = sk.point(sgn * 64.0, fig.fy(0.13), 0.0)
-        axis = norm3((sgn * 0.25, 1.0, -0.15))
-        across = norm3((0.0, 0.15, 1.0))
-        outer = _leaf(base, axis, across, 0.5 * hh, 0.24 * hh, droop=(sgn * 0.04 * hh, 0.0, -0.04 * hh))
-        return outer, [], sgn * 85.0
+        # A leather flap from the top of the skull, folded over and hanging
+        # past the cheek; its front edge turned out so it reads from the front.
+        base = sk.point(sgn * 70.0, fig.fy(0.11), 0.0)
+        axis = norm3((sgn * 0.4, 1.0, -0.12))
+        across = norm3((sgn * 0.45, 0.0, 1.0))
+        outer = _cupped(_leaf(base, axis, across, 0.56 * hh, 0.3 * hh, droop=(-sgn * 0.1 * hh, 0.0, -0.03 * hh)),
+                        (sgn * 1.0, -0.2, -0.45), 0.05 * hh)
+        return outer, [], sgn * 90.0
     if kind == "dog_pointed":
         base = sk.point(sgn * 42.0, fig.fy(0.08), 0.0)
         axis = norm3((sgn * 0.45, -1.0, 0.05))
@@ -136,6 +139,17 @@ def coat_colors(ctx: Ctx) -> Tuple[str, str]:
     return skin, skin
 
 
+def sheen_colors(coat: str) -> Tuple[str, str]:
+    """A pigeon's neck: iridescent green over purple, on its coat."""
+    return mix(coat, "#3f9a6a", 0.4), mix(coat, "#8a4f9a", 0.36)
+
+
+def sheen_patch(reach: float) -> Callable[[float, float], float]:
+    """The iridescent patch's margin: round the neck's sides and front, not
+    its back."""
+    return lambda a, y: (reach - abs(abs(wrap180(a)) - 60.0)) * 0.02
+
+
 #: Face paint (``face.makeup``): white oshiroi, and the red of the lips and
 #: the corners of the eyes.
 PAINT = "#f6f1e8"
@@ -169,11 +183,15 @@ def head_parts(ctx: Ctx) -> List[Part]:
     elif model.ears != "none":
         for _n, _side, sgn in SIDES:
             outer, inner, face_a = _animal_ears(fig, model.ears, sgn)
-            ears.append((ctx.view.facing(face_a) > 0.15, outer, inner, model.ears in ("horse", "dog_pointed", "cat")))
+            # A hanging flap is outside the head: over it unless it is on the far side.
+            front = ctx.view.facing(face_a) > (-0.3 if model.ears == "dog_floppy" else 0.15)
+            ears.append((front, outer, inner, model.ears in ("horse", "dog_pointed", "cat")))
     inner_col = mix(skin, "#e8a7a0", 0.45) if fig.species != "human" else ctx.skin_sh
+    # A dog's hanging ears are its markings: the hair colour on the coat.
+    ear_col = mix(skin, ctx.hair, 0.7) if model.ears == "dog_floppy" else skin
     for front, outer, inner, upright in ears:
         if not front and not upright:
-            pt.region([hull(ctx.p(q) for q in outer)], skin, smooth=True)
+            pt.region([hull(ctx.p(q) for q in outer)], ear_col, smooth=True)
     hd = fig.head
     shaded_region(ctx, pt, hd, hd.top, hd.bottom, skin, shade_frac=0.17, shade_cap=0.12 * hh)
     if model.muzzle_f:
@@ -184,11 +202,21 @@ def head_parts(ctx: Ctx) -> List[Part]:
             return min(f - mf, (model.muzzle_alpha - abs(wrap180(a))) * 0.01)
 
         pt.flat(loft_region(ctx.view, hd.shell(0.02), fig.fy(mf), hd.bottom, muzzle_m), muzzle)
+    if model.sheen:
+        side = sheen_patch(45.0)
+        sf = model.sheen
+
+        def sheen_m(a: float, y: float) -> float:
+            # Its top edge curves: highest at the sides, lower toward the throat.
+            top = sf + 0.1 * math.cos(math.radians(wrap180(a)))
+            return min(side(a, y), ((y - fig.crown) / hh - top) * 4.0)
+
+        pt.flat(loft_region(ctx.view, hd.shell(0.02), fig.fy(sf), hd.bottom, sheen_m), sheen_colors(skin)[0])
     if painted(ctx):
         _face_paint(ctx, pt)
     for front, outer, inner, upright in ears:
         if front and not upright:
-            pt.region([hull(ctx.p(q) for q in outer)], skin, smooth=True)
+            pt.region([hull(ctx.p(q) for q in outer)], ear_col, smooth=True)
             if inner:
                 pt.flat([hull(ctx.p(q) for q in inner)], inner_col, smooth=True)
             if model.ears == "human":
@@ -225,13 +253,15 @@ def _species_features(ctx: Ctx, pt: Paint, behind: Paint) -> None:
                 pts = [ctx.p(add3(c, (0.028 * hh * math.cos(t) * 0.7, 0.04 * hh * math.sin(t), 0.0))) for t in (2 * math.pi * i / 10 for i in range(10))]
                 pt.flat([pts], "#2a1d1a", smooth=True)
     elif kind == "dog":
-        c = hd.point(0.0, fig.fy(lay["nose_tip_f"]), 0.02 * hh)
-        blob = [add3(c, (0.09 * hh * math.cos(t) * math.cos(u), 0.055 * hh * math.sin(u) - 0.01 * hh, 0.05 * hh * math.sin(t) * math.cos(u)))
-                for t in (2 * math.pi * i / 10 for i in range(10)) for u in (math.radians(d) for d in (-70, -30, 0, 30, 70))]
+        # A big nose on the tip of the muzzle, wider at the top.
+        c = hd.point(0.0, fig.fy(lay["nose_tip_f"]), 0.025 * hh)
+        blob = [add3(c, (0.12 * hh * math.cos(t) * math.cos(u) * (1.0 - 0.25 * math.sin(u)), 0.07 * hh * math.sin(u) - 0.01 * hh,
+                         0.06 * hh * math.sin(t) * math.cos(u)))
+                for t in (2 * math.pi * i / 12 for i in range(12)) for u in (math.radians(d) for d in (-70, -30, 0, 30, 70))]
         if ctx.view.depth(c) > -0.05 * hh or abs(ctx.view.s) > 0.5:
             pt.region([hull(ctx.p(q) for q in blob)], "#2a2224", smooth=True)
-            hl = ctx.p(add3(c, (0.02 * hh, -0.03 * hh, 0.04 * hh)))
-            pt.dot(hl, 0.012 * hh * 2.0, "#6a5e62")
+            hl = ctx.p(add3(c, (0.03 * hh, -0.04 * hh, 0.05 * hh)))
+            pt.dot(hl, 0.016 * hh * 2.0, "#6a5e62")
         # The line down from the nose to the mouth.
         for run in surface_line(ctx, hd, [(0.0, fig.fy(lay["nose_tip_f"] + 0.05)), (0.0, fig.fy(lay["mouth_f"] - 0.01))], out=0.1, thresh=0.25):
             pt.line(run, shade(ctx.skin, 0.45), FINE)
@@ -249,7 +279,7 @@ def _species_features(ctx: Ctx, pt: Paint, behind: Paint) -> None:
                     pt.line([ctx.p(p0), ctx.p(p1)], shade(ctx.skin, 0.5), FINE * 0.6, smooth=False)
         for run in surface_line(ctx, hd, [(0.0, fig.fy(lay["nose_tip_f"] + 0.03)), (0.0, fig.fy(lay["mouth_f"] - 0.005))], out=0.1, thresh=0.25):
             pt.line(run, shade(ctx.skin, 0.45), FINE)
-    elif kind == "bird":
+    elif kind in ("bird", "pigeon"):
         _beak(ctx, pt if ctx.view.c > -0.05 else behind, open_=0.0)
     elif kind == "sea_lion":
         _sea_lion_nose(ctx, pt)
@@ -454,15 +484,21 @@ def _sea_lion_nose(ctx: Ctx, pt: Paint) -> None:
 
 
 def _beak(ctx: Ctx, pt: Paint, open_: float) -> None:
+    """A beak on the front of the head at ``mouth_f``: ``beak`` long,
+    ``beak_w`` as wide and ``beak_h`` as deep as a songbird's, in ``beak_col``, its tip turned down
+    by ``beak_droop``; a ``cere`` (a pigeon's) is the white puff over its
+    base."""
     fig = ctx.fig
     hd = fig.head
     hh = fig.hh
     lay = fig.face
     yb = fig.fy(lay["mouth_f"])
     ln = lay.get("beak", 0.34) * hh
-    col = "#e0a23a"
-    base = [hd.point(a, yb + dy * hh, -0.01 * hh) for a in (-22, -11, 0, 11, 22) for dy in (-0.07, 0.07)]
-    tip = add3(hd.point(0.0, yb, 0.0), (0.0, 0.02 * hh, ln))
+    w = lay.get("beak_w", 1.0)
+    bh = lay.get("beak_h", 1.0) * w
+    col = lay.get("beak_col", "#e0a23a")
+    base = [hd.point(a * w, yb + dy * bh * hh, -0.01 * hh) for a in (-22, -11, 0, 11, 22) for dy in (-0.07, 0.07)]
+    tip = add3(hd.point(0.0, yb, 0.0), (0.0, (0.02 + lay.get("beak_droop", 0.0)) * hh, ln))
     upper = base + [add3(tip, (0.0, -0.01 * hh, 0.0))]
     upper = [q for q in upper if q[1] <= yb + 0.01 * hh] + [tip]
     lower = [q for q in base if q[1] >= yb] + [tip]
@@ -470,8 +506,12 @@ def _beak(ctx: Ctx, pt: Paint, open_: float) -> None:
         lower = [add3(q, (0.0, open_ * 0.12 * hh * (1.0 if q is not tip else 1.6), -open_ * 0.02 * hh)) for q in lower]
         gap = hull([ctx.p(q) for q in lower] + [ctx.p(q) for q in base if q[1] >= yb])
         pt.flat([gap], "#5a2a26", smooth=True)
-    pt.region([hull(ctx.p(q) for q in lower)], shade(col, 0.15), smooth=True, outline=0.45)
+    pt.region([hull(ctx.p(q) for q in lower)], shade(col, 0.15) if luminance(col) > 0.3 else light(col, 0.12), smooth=True, outline=0.45)
     pt.region([hull(ctx.p(q) for q in upper)], col, smooth=True, outline=0.45)
+    if lay.get("cere"):
+        c = add3(hd.point(0.0, yb - 0.065 * bh * hh, 0.0), (0.0, 0.0, 0.16 * ln))
+        puff = _ellipsoid(c, 0.05 * w * hh, 0.026 * hh, 0.07 * hh)
+        pt.region([hull(ctx.p(q) for q in puff)], "#e4e0d8", smooth=True, outline=0.3)
 
 
 # ---- hair ----------------------------------------------------------------------------------------
@@ -500,7 +540,7 @@ def hair_thickness(fig: Figure, style: Optional[str] = None) -> float:
         # A wig: as thick on any head.
         return 0.05 * hh
     if fig.species != "human":
-        return {"horse": 0.04, "dog": 0.04, "cat": 0.04, "bird": 0.05, "sea_lion": 0.0, "alligator": 0.0}[fig.species] * hh
+        return {"horse": 0.04, "dog": 0.0, "cat": 0.04, "bird": 0.05, "pigeon": 0.0, "sea_lion": 0.0, "alligator": 0.0}[fig.species] * hh
     return {
         "buzz": 0.012, "short": 0.03 + 0.03 * v, "side_part": 0.035 + 0.035 * v, "curly": 0.05 + 0.06 * v, "afro": 0.16 + 0.12 * v,
         "pixie": 0.035 + 0.025 * v, "bob": 0.045 + 0.04 * v, "long": 0.035 + 0.04 * v, "ponytail": 0.025, "bun": 0.025, "braid": 0.025,
@@ -1033,7 +1073,7 @@ def _eye_geometry(fig: Figure, sgn: float, e: Expression) -> Dict[str, object]:
     s = fig.spec.face
     hh = fig.hh
     lay = fig.face
-    shape = s.eye_shape if fig.species == "human" else {"horse": "almond", "dog": "round", "cat": "almond", "bird": "round",
+    shape = s.eye_shape if fig.species == "human" else {"horse": "almond", "dog": "round", "cat": "almond", "bird": "round", "pigeon": "round",
                                                                 "sea_lion": "round", "alligator": "almond"}[fig.species]
     ratio = {"almond": 0.42, "round": 0.56, "narrow": 0.3, "hooded": 0.36, "downturned": 0.42, "upturned": 0.42}[shape]
     if fig.species == "human":
@@ -1111,7 +1151,7 @@ def _draw_eye(ctx: Ctx, pt: Paint, g: Dict[str, object], e: Expression) -> None:
         cut = clip_convex(iris, clip)
         if len(cut) >= 3:
             eye_col = fig.spec.palette.eyes if fig.species == "human" else {"horse": "#3a261c", "dog": "#4a2e1e", "cat": "#9aa83a",
-                                                                             "bird": "#2a2020", "sea_lion": "#1e1612",
+                                                                             "bird": "#2a2020", "pigeon": "#d8681f", "sea_lion": "#1e1612",
                                                                              "alligator": "#c4405a" if luminance(ctx.skin) > 0.75 else
                                                                              "#b39a3c"}[fig.species]
             if fig.species == "human" and family_of(fig.spec).face.pupil == "dot":
@@ -1284,7 +1324,7 @@ def _mouth(ctx: Ctx, pt: Paint, e: Expression) -> None:
     fig = ctx.fig
     hd = fig.head
     kind = fig.face["nose"]
-    if kind == "bird":
+    if kind in ("bird", "pigeon"):
         # From behind, the beak is the fixed one drawn under the head.
         if ctx.view.c > -0.05:
             _beak(ctx, pt, e.open)

@@ -398,13 +398,14 @@ class Kit:
     tint: Optional[Tuple[Tuple[int, int, int], float]] = None
     tint_skip: Tuple[str, ...] = ()
 
-    def place(self, img: Image.Image, part: Optional[Part], at: Point, name: str, degrees: float = 0.0, scale_y: float = 1.0) -> None:
+    def place(self, img: Image.Image, part: Optional[Part], at: Point, name: str, degrees: float = 0.0, scale_y: float = 1.0,
+              opacity: float = 1.0) -> None:
         if part is not None:
             if self.tint is not None and name not in self.tint_skip:
                 from ._toon_rig import tinted
 
                 part = tinted(part, *self.tint)
-            shape_rig.place(img, part, (at[0] * self.scale, at[1] * self.scale), degrees, name, scale_y)
+            shape_rig.place(img, part, (at[0] * self.scale, at[1] * self.scale), degrees, name, scale_y, opacity)
 
     def put(self, img: Image.Image, key: tuple, paint: Callable, at: Point, name: str, degrees: float = 0.0) -> None:
         self.place(img, self.piece(key, paint), at, name, degrees)

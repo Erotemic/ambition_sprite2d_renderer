@@ -64,7 +64,7 @@ HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", 
         "campaign")
 #: ``obi``: the wide sash of a kimono, knotted at the back (``outfit.obi_knot``).
 ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders", "webbing", "dog_tags", "obi")
-SPECIES = ("human", "horse", "dog", "cat", "bird", "sea_lion", "alligator")
+SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator")
 EAR_STYLES = ("default", "floppy", "pointed")
 #: Face paint: ``geisha`` is white face paint (oshiroi) with red lips; on an
 #: animal, a pale painted face and red on the jaw line.
