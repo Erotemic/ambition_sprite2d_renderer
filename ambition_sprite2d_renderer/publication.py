@@ -30,6 +30,13 @@ def store_root() -> Path:
     return Path(os.environ.get("AMBITION_ART_STORE", publication_root()))
 
 
+def publish_sprites(store: Store, replacements: dict, selected: dict, *, replace: bool) -> dict:
+    bundles = {unit: key for unit, key in selected["bundles"].items()
+               if not replace or not unit.startswith(("target:", "atlas:"))}
+    bundles.update(replacements)
+    return store.publish(bundles, selected["generation"], replace=True)
+
+
 def policy() -> dict:
     from .yaml_io import safe_load
     path = library_path().parent / library()["producers"]["sprites"]["policy"]
@@ -415,7 +422,7 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True) -> dic
     if not publish:
         return {"exact": True, "bundles": replacements,
                 "files": sorted({logical for key in replacements.values() for logical in store.bundle(key)["files"]})}
-    return store.publish(replacements, selected["generation"], replace=not requested)
+    return publish_sprites(store, replacements, selected, replace=not requested)
 
 
 def inventory(*, deep=False, requested=None) -> dict:
@@ -549,7 +556,7 @@ def adopt_existing(asset_root: Path, *, scope="runtime") -> dict:
         if catalog.is_file():
             files = {f"sprite_packs/{tier}/{path.name}":(path,"runtime",tier) for path in [catalog]+[catalog.parent/page for page in json.loads(catalog.read_text())["pages"]]}
             replacements["atlas:"+tier] = store.accept("atlas:"+tier,files,None,parents=parents)
-    return store.publish(replacements, selected["generation"], replace=True)
+    return publish_sprites(store, replacements, selected, replace=True)
 
 
 def main(argv=None):
