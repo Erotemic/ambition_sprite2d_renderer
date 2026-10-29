@@ -23,13 +23,17 @@ def repo_root() -> Path:
     return Path(os.environ.get("AMBITION_REPO_ROOT", RENDERER.parents[1]))
 
 
+from .content_library import manifest_path as library_path, read as library, publication_root
+
+
 def store_root() -> Path:
-    return Path(os.environ.get("AMBITION_ART_STORE", repo_root() / "crates/ambition_platformer2d_actor_monolith/art_publication"))
+    return Path(os.environ.get("AMBITION_ART_STORE", publication_root()))
 
 
 def policy() -> dict:
     from .yaml_io import safe_load
-    return safe_load((RENDERER / "ambition_sprite2d_renderer/data/publication.yaml").read_text())
+    path = library_path().parent / library()["producers"]["sprites"]["policy"]
+    return safe_load(path.read_text())
 
 
 def discover():
@@ -37,7 +41,8 @@ def discover():
     return discover_all_targets()
 
 
-def names_in(scope: str, requested=()) -> tuple[list[str], object]:
+def names_in(scope: str | None, requested=()) -> tuple[list[str], object]:
+    scope = scope or library()["producers"]["sprites"]["collection"]
     report = discover()
     names = list(dict.fromkeys(requested)) if requested else sorted(report.targets) if scope == "all" else policy()["collections"][scope]
     missing = sorted(set(names) - report.targets.keys())
@@ -67,7 +72,8 @@ def definition(target) -> dict:
             "repair": f"./scripts/regen/sprites.sh --target {target.name}"}
 
 
-def plan(scope="runtime", requested=()) -> dict:
+def plan(scope=None, requested=()) -> dict:
+    scope = scope or library()["producers"]["sprites"]["collection"]
     names, report = names_in(scope, requested)
     return {"schema": "ambition.art_plan.v1", "scope": scope, "complete": not report.failures,
             "warnings": report.warnings, "failures": report.failures,
@@ -78,10 +84,11 @@ def plan(scope="runtime", requested=()) -> dict:
 def source_files() -> dict[str, Path]:
     root = repo_root()
     files = {}
-    for directory in (RENDERER / "ambition_sprite2d_renderer", RENDERER / "assets", RENDERER / "scripts", root / "scripts"):
+    for directory in (RENDERER / "ambition_sprite2d_renderer", RENDERER / "assets", RENDERER / "scripts", *[library_path().parent / path for path in library()["producers"]["sprites"].get("sources", [])]):
         for path in directory.rglob("*"):
             if path.is_file() and not any(part in ("__pycache__", ".cache", ".venv", "build", ".profiles") for part in path.parts) and path.suffix != ".pyc":
                 files[path.relative_to(root).as_posix()] = path
+    files[library_path().relative_to(root).as_posix()] = library_path()
     for name in ("pyproject.toml", "uv.lock"):
         path = RENDERER / name
         if path.is_file():
@@ -164,8 +171,7 @@ def _worker(spec: dict) -> int:
         if path.is_file() and path.resolve() not in runtime_sources:
             files[f"review/{path.relative_to(rendered).as_posix()}"] = [str(path), "review", "full"]
     if output_root == "sprites" and any(tier != "full" for tier in spec["tiers"]):
-        sys.path.insert(0, str(root / "scripts"))
-        from generate_visual_quality_variants import (VARIANTS, SheetSource, build_sheet_variant,
+        from .quality import (VARIANTS, SheetSource, build_sheet_variant,
             build_parts_variant, build_portrait_variant, resize_png, portrait_claims, sheet_page_claims,
             part_flipbook_claims, publish_source_quality_target)
         full = work / "assets/sprites"
@@ -222,10 +228,10 @@ def validate_metadata(files: dict) -> None:
                     if row[1] == "runtime" and logical.endswith("_spritesheet.ron")})
     if not roots:
         return
-    binary = Path(os.environ.get("AMBITION_ART_CONTENT_BIN", repo_root() / "target/debug/ambition_content_check"))
+    binary = Path(os.environ.get("AMBITION_ART_CONTENT_BIN", repo_root() / "target/debug/ambition_content"))
     if not binary.is_file():
-        raise ValueError("Build the metadata validator first: cargo build -p ambition_content_schemas --bin ambition_content_check")
-    command = [str(binary), str(repo_root() / "game/ambition_content/assets"), "--inspect-art", "--no-asset-check"]
+        raise ValueError("Build the metadata validator first: cargo build -p ambition_content_cli --bin ambition_content")
+    command = [str(binary), "--inspect-art"]
     for root in roots:
         command += ["--sheet-root", root]
     done = subprocess.run(command, capture_output=True, text=True)
@@ -289,7 +295,8 @@ def build_packs(store: Store, bundles: dict, report, sources: dict, chain: dict,
                 "--out", str(out), "--state", str(work / (tier+".state.json")), "--runtime-only", "--scale", str(scale),
                 "--min-frame-px", str(minimum), "--page-size", str(page_size), "--pack-plan", "ambition_sprite2d_renderer/data/pack_plan.yaml", "--jobs", "1"]
             done = subprocess.run(command, cwd=renderer, capture_output=True, text=True,
-                                  env=dict(os.environ, PYTHONPATH=str(renderer), AMBITION_REPO_ROOT=str(snapshot)))
+                                  env=dict(os.environ, PYTHONPATH=str(renderer), AMBITION_REPO_ROOT=str(snapshot),
+                                           AMBITION_CONTENT_LIBRARY=library_path().relative_to(repo_root()).as_posix()))
             if done.returncode:
                 raise ValueError(f"Atlas {tier}: {done.stderr[-3000:]}")
             catalog = out / "ultrapack.json"
@@ -300,7 +307,7 @@ def build_packs(store: Store, bundles: dict, report, sources: dict, chain: dict,
     return result
 
 
-def build(scope="runtime", requested=(), *, force=False, jobs=1, publish=True) -> dict:
+def build(scope=None, requested=(), *, force=False, jobs=1, publish=True) -> dict:
     names, report = names_in(scope, requested)
     if report.failures:
         raise ValueError(f"Target discovery failed: {report.failures}")
@@ -368,7 +375,7 @@ def build(scope="runtime", requested=(), *, force=False, jobs=1, publish=True) -
                     inputs = {path: original[path] for path in result["reads"] if path in original}
                     # The recipe owner and collection policy affect every build.
                     for path, sha in original.items():
-                        if path.endswith(("/publication.py", "/artifacts.py", "/publication_store.py", "/publication.yaml", "/generate_visual_quality_variants.py")):
+                        if path.endswith(("/publication.py", "/artifacts.py", "/publication_store.py", "/sprites.yaml", "/library.json", "/quality.py")):
                             inputs[path] = sha
                     recipe = {"inputs": inputs, "membership": identity(sorted(original)), "toolchain": chain, "quality": True, "tiers": getattr(target, "publication_tiers", list(TIERS))}
                     key = store.accept("target:" + name, {k: (Path(v[0]), v[1], v[2]) for k,v in result["files"].items()}, recipe)
@@ -472,7 +479,7 @@ def inventory(*, deep=False, requested=None) -> dict:
 def audit(asset_root: Path | None = None) -> dict:
     store = Store(store_root())
     selected = store.selected()
-    asset_root = asset_root or repo_root() / "crates/ambition_platformer2d_actor_monolith/assets"
+    asset_root = asset_root or repo_root() / "game/ambition_content_library/generated/runtime"
     unmanaged = []
     for root in selected.get("roots", MANAGED_ROOTS):
         for path in (asset_root / root).rglob("*"):
@@ -548,9 +555,10 @@ def adopt_existing(asset_root: Path, *, scope="runtime") -> dict:
 def main(argv=None):
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--library", type=Path)
     parser.add_argument("--worker")
     parser.add_argument("--target", action="append", default=[])
-    parser.add_argument("--scope", default="runtime", choices=("runtime", "all"))
+    parser.add_argument("--scope", help="declared collection, or all registered targets")
     parser.add_argument("--plan", action="store_true")
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--list-outputs", action="store_true")
@@ -563,6 +571,8 @@ def main(argv=None):
     parser.add_argument("--adopt-existing", type=Path)
     parser.add_argument("--jobs", type=int, default=min(6, max(1, (os.cpu_count() or 2)//2)))
     args = parser.parse_args(argv)
+    if args.library:
+        os.environ["AMBITION_CONTENT_LIBRARY"] = (repo_root() / args.library).resolve().relative_to(repo_root()).as_posix()
     if args.worker:
         return _worker(json.loads(args.worker))
     try:

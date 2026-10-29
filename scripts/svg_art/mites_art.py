@@ -1140,7 +1140,7 @@ def write_cast() -> List[Path]:
 # ---------------------------------------------------------------------------------------------
 
 BG = (216, 221, 227, 255)
-ROBOT_SHEET = Path(__file__).resolve().parents[4] / "crates/ambition_platformer2d_actor_monolith/assets/sprites/player_robot_v3_spritesheet.png"
+ROBOT_SHEET = Path(__file__).resolve().parents[4] / "game/ambition_content_library/generated/runtime/sprites/player_robot_v3_spritesheet.png"
 #: The robot's first idle frame and its body height in sheet px (its manifest's
 #: ``idle`` rect and ``body_pixel_bbox``): 91 sheet px stand 48 world px.
 ROBOT_IDLE = (1788, 2007, 71, 101)

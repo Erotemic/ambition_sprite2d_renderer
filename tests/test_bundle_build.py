@@ -13,7 +13,10 @@ def test_source_changes_invalidate_the_bundle_and_an_inflight_edit_keeps_the_sel
     package = renderer / "ambition_sprite2d_renderer"
     shutil.copytree(publication.RENDERER / "ambition_sprite2d_renderer", package,
                     ignore=shutil.ignore_patterns("__pycache__"))
-    (package / "data/publication.yaml").write_text("collections: {runtime: [bundle_probe]}\nstatic_props: {}\n")
+    library = tmp_path / "repo/game/ambition_content_library"
+    (library / "authored").mkdir(parents=True)
+    (library / "library.json").write_text('{"schema":"ambition.content_library.v1","id":"fixture","version":"1","asset_roots":{"generated":"generated/runtime"},"publication":"generated/art_publication","provenance":"generated/asset_provenance","producers":{"sprites":{"collection":"runtime","policy":"authored/sprites.yaml","sources":["authored"]}}}')
+    (library / "authored/sprites.yaml").write_text("collections: {runtime: [bundle_probe]}\nstatic_props: {}\n")
     module = package / "targets/props/bundle_probe.py"
     module.write_text('''from pathlib import Path
 from PIL import Image

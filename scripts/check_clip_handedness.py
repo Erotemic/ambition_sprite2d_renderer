@@ -219,7 +219,7 @@ def main() -> int:
     parser.add_argument("targets", nargs="*", help="sheet targets; default all rigged")
     parser.add_argument(
         "--assets",
-        default="../../../crates/ambition_platformer2d_actor_monolith/assets/sprites",
+        default="../../../game/ambition_content_library/generated/runtime/sprites",
         help="published sprite directory",
     )
     parser.add_argument("-v", "--verbose", action="store_true")

@@ -68,12 +68,17 @@ def repo_root() -> Path:
 
 def asset_root() -> Path:
     """The runtime asset root the sprite, background and terrain publishes write into."""
-    return Path(os.environ.get("AMBITION_ART_ASSET_ROOT", repo_root() / "crates" / "ambition_platformer2d_actor_monolith" / "assets"))
+    from .content_library import runtime_root
+    return Path(os.environ.get("AMBITION_ART_ASSET_ROOT", runtime_root()))
 
 
 def provenance_root() -> Path:
-    """The root of the records: a sibling of the asset root, not inside it."""
-    return Path(os.environ.get("AMBITION_ART_PROVENANCE_ROOT", asset_root().parent / "asset_provenance"))
+    """The selected library's record root."""
+    from .content_library import provenance_root as declared_root
+    root = os.environ.get("AMBITION_ART_PROVENANCE_ROOT") or declared_root()
+    if root is None:
+        raise ValueError("The selected library declares no provenance root")
+    return Path(root)
 
 
 def record_dir(dest: Path) -> Path | None:

@@ -437,7 +437,7 @@ def build_parser() -> argparse.ArgumentParser:
         "yaml_or_target",
         help=(
             "Either: a path to the sheet's YAML manifest "
-            "(e.g. `crates/ambition_platformer2d_actor_monolith/assets/sprites/boss_spritesheet.yaml`); "
+            "(e.g. `game/ambition_content_library/generated/runtime/sprites/boss_spritesheet.yaml`); "
             "OR a short target name (e.g. `boss`) that resolves to the "
             "expected `<sandbox_sprites>/<target>_spritesheet.yaml`."
         ),
