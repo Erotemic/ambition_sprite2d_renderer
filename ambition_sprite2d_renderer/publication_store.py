@@ -77,7 +77,7 @@ class Store:
         return value
 
     def accept(self, unit: str, files: dict[str, tuple[Path, str, str]], recipe: dict | None,
-               *, parents: dict[str, str] | None = None) -> str:
+               *, parents: dict[str, str] | None = None, roots: list[str] | None = None) -> str:
         """Accept only the exact members supplied by a completed producer."""
         if not files:
             raise ValueError(f"Empty bundle: {unit}")
@@ -90,6 +90,8 @@ class Store:
             rows[logical] = {"path": relative(physical), "sha256": digest(source), "bytes": source.stat().st_size,
                              "role": role, "tier": tier}
         manifest = {"schema": BUNDLE_SCHEMA, "unit": unit, "recipe": recipe, "parents": parents or {}, "files": rows}
+        if roots is not None:
+            manifest["roots"] = sorted({relative(root) for root in roots})
         key = identity(manifest)
         destination = self.root / "bundles" / key
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -126,7 +128,7 @@ class Store:
                 defects.append({"code": "changed-output", "path": logical})
         return defects
 
-    def publish(self, replacements: dict[str, str], base: str | None, *, replace: bool = False) -> dict:
+    def publish(self, replacements: dict[str, str], base: str | None, *, replace: bool = False, hashes=None) -> dict:
         """A changed base refuses publication. Builds can run without this lock."""
         self.root.mkdir(parents=True, exist_ok=True)
         with (self.root / ".publish.lock").open("a") as lock:
@@ -136,22 +138,24 @@ class Store:
                 raise ValueError("The published selection changed. Plan the request again.")
             bundles = dict(replacements) if replace else previous["bundles"] | replacements
             files = {}
+            managed_roots = set(MANAGED_ROOTS)
             for unit, key in sorted(bundles.items()):
                 manifest = self.bundle(key)
                 if manifest["unit"] != unit:
                     raise ValueError(f"Bundle owner mismatch: {unit}")
-                if self.integrity(key):
+                if self.integrity(key, hashes=hashes):
                     raise ValueError(f"Incomplete bundle: {unit}")
                 for parent, expected in manifest["parents"].items():
                     if bundles.get(parent) != expected:
                         raise ValueError(f"Changed bundle dependency: {unit}: {parent}")
+                managed_roots.update(manifest.get("roots", [logical.split("/", 1)[0] for logical, item in manifest["files"].items() if item["role"] == "runtime"]))
                 for logical, item in manifest["files"].items():
                     if item["role"] != "runtime":
                         continue
                     if logical in files:
                         raise ValueError(f"Two producers own {logical}")
                     files[logical] = dict(item, unit=unit, bundle=key, path=f"bundles/{key}/{item['path']}")
-            roots = sorted(set(MANAGED_ROOTS) | {name.split("/", 1)[0] for name in files})
+            roots = sorted(managed_roots)
             selection = {"schema": SCHEMA, "bundles": bundles, "files": files, "roots": roots}
             selection["generation"] = identity(selection)
             write_json(self.root / "published.json", selection)

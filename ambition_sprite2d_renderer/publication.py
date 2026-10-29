@@ -85,7 +85,7 @@ def source_files() -> dict[str, Path]:
     root = repo_root()
     files = {}
     for directory in (RENDERER / "ambition_sprite2d_renderer", RENDERER / "assets", RENDERER / "scripts", *[library_path().parent / path for path in library()["producers"]["sprites"].get("sources", [])]):
-        for path in directory.rglob("*"):
+        for path in ([directory] if directory.is_file() else directory.rglob("*")):
             if path.is_file() and not any(part in ("__pycache__", ".cache", ".venv", "build", ".profiles") for part in path.parts) and path.suffix != ".pyc":
                 files[path.relative_to(root).as_posix()] = path
     files[library_path().relative_to(root).as_posix()] = library_path()

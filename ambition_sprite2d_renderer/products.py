@@ -83,10 +83,15 @@ def describe(targets: dict) -> tuple[dict, list[str]]:
     """Use the same plans as sprite, background and terrain publication. Draw nothing."""
     from .provenance import asset_root
 
+    from .content_library import read
+    producers = read().get("producers", {})
     units = {}
-    from .authoring.ultrapack import product_plans
-    units.update(product_plans())
+    if "sprites" in producers:
+        from .authoring.ultrapack import product_plans
+        units.update(product_plans())
     warnings = [f"{uid}: {unit['source']['errors']}" for uid, unit in units.items() if (unit.get("source") or {}).get("errors")]
+    if "backgrounds" not in producers:
+        return units, warnings
     try:
         from .backgrounds.__main__ import plan, parts_plan
         from .terrain.__main__ import plan as terrain_plan
@@ -109,7 +114,7 @@ def describe(targets: dict) -> tuple[dict, list[str]]:
 
 
 def evaluate(plan: dict, record: dict | None, root: Path, repo: Path, hashes: Digests,
-             *, tiers: bool = True) -> dict:
+             *, tiers: bool = True, publication: dict | None = None) -> dict:
     """Decide missing members, source changes and byte changes from one accepted receipt."""
     reasons = []
     members = set(plan["required"])
@@ -137,11 +142,19 @@ def evaluate(plan: dict, record: dict | None, root: Path, repo: Path, hashes: Di
         from .provenance import read_record, provenance_root
         changed_parents = []
         for parent in known.get("parameters", {}).get("parents", []):
-            accepted = read_record(provenance_root() / parent["path"]) or {}
+            accepted = read_record(provenance_root() / parent["path"], publication) or {}
             if accepted.get("generation", {}).get("key") != parent["key"] or output_key(accepted) != parent["outputs"]:
                 changed_parents.append(parent["path"])
         if changed_parents:
             reasons.append({"code": "stale-parent-bundle", "members": changed_parents})
+        published_parents = known.get("parameters", {}).get("published_parents", {})
+        if published_parents:
+            from .content_library import publication_root
+            from .publication_store import Store
+            selected = publication if publication is not None else Store(publication_root()).selected()
+            retired = [unit for unit, key in published_parents.items() if selected["bundles"].get(unit) != key]
+            if retired:
+                reasons.append({"code": "stale-parent-bundle", "members": retired})
         changed_outputs = [item["path"] for item in record.get("outputs", [])
                            if item["path"] in members and item["path"] not in missing and hashes.file(root / item["path"]) != item.get("sha256")]
         if changed_outputs:
@@ -154,7 +167,13 @@ def evaluate(plan: dict, record: dict | None, root: Path, repo: Path, hashes: Di
     if tiers:
         for tier in plan.get("tiers", []):
             suffix = TIERS[tier]
-            tier_root = root.with_name(root.name + suffix)
+            from .content_library import runtime_root, quality_root
+            try:
+                relative = root.resolve().relative_to(runtime_root().resolve())
+            except ValueError:
+                tier_root = root.with_name(root.name + suffix)
+            else:
+                tier_root = quality_root(suffix.removeprefix("_")) / relative.parent / (root.name + suffix)
             absent = [rel for rel in plan["required"] if not rel.endswith((".yaml", ".yml")) and not (tier_root / rel).is_file()]
             components = set()
             for rel in plan["required"]:
@@ -174,15 +193,43 @@ def evaluate(plan: dict, record: dict | None, root: Path, repo: Path, hashes: Di
 
 def inventory(repo: Path, *, deep: bool = False) -> dict:
     from . import publication
-    from .provenance import asset_root, provenance_root, read_record
-    report = publication.inventory(deep=deep)
+    from .content_library import read, publication_root
+    from .publication_store import Store
+    from .provenance import provenance_root, read_record
+    store = Store(publication_root())
+    selected = store.selected()
+    report = publication.inventory(deep=deep) if "sprites" in read().get("producers", {}) else {
+        "schema": "ambition.art_products.v1", "complete": True, "warnings": [], "units": {},
+        "receipts": [], "publication": selected, "store": str(store.root)}
+    selected = report["publication"]
+    files = {logical: store.root / member["path"] for logical, member in selected["files"].items()}
     other, warnings = describe({})
     hashes = Digests(Path(__file__).resolve().parents[1] / ".cache/art_inputs.json", deep=deep)
     for uid, unit in other.items():
         if unit["kind"] == "atlas":
             continue
-        record = read_record(provenance_root() / unit["root"] / f"{unit['generator']['id']}.json")
-        unit["status"] = evaluate(unit, record, asset_root() / unit["root"], repo, hashes)
+        record = read_record(provenance_root() / unit["root"] / f"{unit['generator']['id']}.json", selected)
+        sample = next(((rel, files[unit["root"] + "/" + rel]) for rel in unit["required"] if unit["root"] + "/" + rel in files), None)
+        if sample is None:
+            unit["status"] = {"state": "missing", "reasons": [{"code": "missing-publication"}], "tiers": {}, "required": unit["required"], "repair": unit["repair"]}
+        else:
+            rel, physical = sample
+            root = physical.parents[len(Path(rel).parts) - 1]
+            unit["status"] = evaluate(unit, record, root, repo, hashes, tiers=False, publication=selected)
+            for tier in unit.get("tiers", []):
+                logical_root = unit["root"] + TIERS[tier]
+                checks = {}
+                for rel in unit["required"]:
+                    logical = logical_root + "/" + rel
+                    path = files.get(logical)
+                    if path is None:
+                        checks[rel] = {"state": "missing"}
+                        continue
+                    receipt = read_record(provenance_root() / logical_root / (Path(rel).stem + ".quality.json"), selected)
+                    checks[rel] = evaluate({"root": logical_root, "required": [path.name], "repair": unit["repair"]}, receipt, path.parent, repo, hashes, tiers=False, publication=selected)
+                states = {check["state"] for check in checks.values()}
+                state = "missing" if "missing" in states else "stale" if states & {"stale", "partial"} else "unknown" if "unknown" in states else "current"
+                unit["status"]["tiers"][tier] = {"state": state, "components": checks, "missing": [rel for rel, status in checks.items() if status["state"] == "missing"]}
         unit["receipt"] = record
         report["units"][uid] = unit
     report["warnings"] += warnings

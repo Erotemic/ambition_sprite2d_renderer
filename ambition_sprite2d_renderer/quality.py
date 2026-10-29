@@ -53,6 +53,7 @@ import argparse
 import fnmatch
 import multiprocessing
 import os
+import json
 import re
 import time
 from contextlib import contextmanager
@@ -1478,7 +1479,8 @@ def _conversion(inputs: tuple[Path, ...], destination: Path, variant: Variant, k
         complete = generation.get("complete", False)
     return conversion_evidence(paths, {"kind": kind, "tier": variant.suffix,
         "scale": variant.nominal_scale, "minimum": variant.min_frame_px, "parents": parents_of(list(inputs)),
-        "source_members": sorted(str(path.resolve()) for path in inputs)}, complete=complete)
+        "source_members": sorted(str(path.resolve()) for path in inputs),
+        "published_parents": json.loads(os.environ.get("AMBITION_ART_PUBLISHED_PARENTS", "{}"))}, complete=complete)
 
 
 def _accept_variant(destination: Path, evidence: dict) -> None:
@@ -1626,6 +1628,7 @@ def main() -> None:
         help="override the root for background conversions",
     )
     parser.add_argument("--library", type=Path, help="selected content library manifest")
+    parser.add_argument("--source-root", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--sprites-only", action="store_true")
     parser.add_argument("--backgrounds-only", action="store_true")
     parser.add_argument(
@@ -1671,12 +1674,18 @@ def main() -> None:
 
     tiers = resolve_tiers(tuple(args.tier))
     selectors = tuple(args.target)
-    from .content_library import repo_root, runtime_root, quality_root
+    from .content_library import repo_root, runtime_root, quality_root, read
     if args.library:
         os.environ["AMBITION_CONTENT_LIBRARY"] = str((repo_root() / args.library).resolve())
     if args.asset_root and not args.backgrounds_only:
         raise SystemExit("--asset-root requires --backgrounds-only; select sprite output with --library")
-    asset_root = (args.asset_root or runtime_root()).resolve()
+    producers = read().get("producers", {})
+    if not args.asset_root:
+        args.backgrounds_only |= "sprites" not in producers
+        args.sprites_only |= "backgrounds" not in producers
+    if args.sprites_only and args.backgrounds_only:
+        raise SystemExit("The selected library has no matching quality producer inputs")
+    asset_root = (args.source_root or args.asset_root or runtime_root()).resolve()
     clock = PhaseClock()
     started = time.perf_counter()
 

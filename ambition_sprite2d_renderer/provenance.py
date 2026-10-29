@@ -87,9 +87,12 @@ def record_dir(dest: Path) -> Path | None:
     env = os.environ.get(ENV)
     if env:
         return Path(env)
-    from .content_library import manifest_path, read
-    for role, declared in read()["asset_roots"].items():
-        root = manifest_path().parent / declared
+    from .content_library import manifest_path, read, quality_root
+    roots = [asset_root()]
+    roots += [quality_root(suffix) for suffix in ("0_5x", "0_25x", "potato")
+              if {"0_5x": "half", "0_25x": "quarter", "potato": "potato"}[suffix] in read()["asset_roots"]]
+    roots += [manifest_path().parent / declared for declared in read()["asset_roots"].values()]
+    for root in roots:
         try:
             rel = Path(dest).resolve().relative_to(root.resolve())
         except ValueError:
@@ -218,7 +221,34 @@ def write_record(
     return path
 
 
-def read_record(path: Path) -> dict[str, Any] | None:
+@functools.lru_cache(maxsize=2)
+def _published_records(root: str, bundles: tuple) -> dict[str, Path]:
+    from .publication_store import Store
+    store = Store(Path(root))
+    records = {}
+    for unit, key in bundles:
+        if not unit.startswith("producer:"):
+            continue
+        for logical, member in store.bundle(key)["files"].items():
+            if logical.startswith("review/provenance/"):
+                records[logical.removeprefix("review/provenance/")] = store.root / "bundles" / key / member["path"]
+    return records
+
+
+def read_record(path: Path, publication: dict | None = None) -> dict[str, Any] | None:
+    if not os.environ.get("AMBITION_PRODUCER_WORKER") and not os.environ.get("AMBITION_ART_PROVENANCE_ROOT"):
+        try:
+            relative = Path(path).resolve().relative_to(provenance_root().resolve()).as_posix()
+        except (ValueError, KeyError, OSError):
+            pass
+        else:
+            from .content_library import publication_root
+            from .publication_store import Store
+            root = publication_root()
+            selected = publication if publication is not None else Store(root).selected()
+            path = _published_records(str(root), tuple(sorted(selected["bundles"].items()))).get(relative)
+            if path is None:
+                return None
     try:
         record = json.loads(Path(path).read_text())
     except (OSError, ValueError):

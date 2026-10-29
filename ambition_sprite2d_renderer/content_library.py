@@ -24,6 +24,8 @@ def read(repo: Path | None = None) -> dict:
 
 
 def runtime_root(repo: Path | None = None) -> Path:
+    if os.environ.get("AMBITION_GENERATION_ROOT"):
+        return Path(os.environ["AMBITION_GENERATION_ROOT"])
     return manifest_path(repo).parent / relative(read(repo)["asset_roots"]["generated"])
 
 
@@ -38,4 +40,6 @@ def provenance_root(repo: Path | None = None) -> Path | None:
 
 def quality_root(suffix: str, repo: Path | None = None) -> Path:
     role = {"0_5x": "half", "0_25x": "quarter", "potato": "potato"}[suffix]
+    if os.environ.get("AMBITION_GENERATION_ROOT"):
+        return Path(os.environ["AMBITION_GENERATION_ROOT"]).parent / role
     return manifest_path(repo).parent / relative(read(repo)["asset_roots"][role])
