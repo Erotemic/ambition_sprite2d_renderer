@@ -429,6 +429,47 @@ def _hit_sparks():
     return fx_piece(("v3_hit_sparks",), (-16 * K, -16 * K, 16 * K, 16 * K), paint)
 
 
+# -- the eye laser's glow --------------------------------------------------------
+
+#: The two eyes of the fierce face (the face of `eye_laser`), back eye first,
+#: in the frame of the head: frame pixels from the head's origin (the neck),
+#: with the head not turned. Measured off the drawn eyes of the row.
+EYE_LASER_EYES = ((13.3, -12.8), (25.0, -12.3))
+#: How bright the glow is on each frame of the loop: it pulses, and the game
+#: draws the beam itself.
+EYE_LASER_PULSE = (1.0, 0.8, 0.95, 0.74, 1.0, 0.86)
+
+
+def _eye_glow():
+    """The red bloom of a burning eye: blurred, so one raster for all frames."""
+
+    def make():
+        blur = 2.6 * K
+        r = 6.0 * K
+        margin = int(math.ceil(3 * blur + r)) + 2
+        image = Image.new("RGBA", (2 * margin, 2 * margin), (0, 0, 0, 0))
+        d = blending_draw(image)
+        o = float(margin)
+        d.ellipse((o - r, o - r, o + r, o + r), fill=(255, 36, 28, 255))
+        return image.filter(ImageFilter.GaussianBlur(radius=blur)), (o, o)
+
+    return _raster(("v3_eye_glow",), make)
+
+
+def _place_eye_glow(front: _FxLayer, world, frame_idx: int) -> None:
+    """A red glow with a white-hot core on each eye, over the visor."""
+    head = world["head"]
+    a = math.radians(head.angle)
+    c, s = math.cos(a), math.sin(a)
+    pulse = EYE_LASER_PULSE[frame_idx % len(EYE_LASER_PULSE)]
+    for index, (x, y) in enumerate(EYE_LASER_EYES):
+        at = (head.origin[0] + x * c - y * s, head.origin[1] + x * s + y * c)
+        front.put(_eye_glow(), at, 0.0, f"eye_glow{index}", pulse)
+        # The hot disc covers the cyan eye; the white core does not pulse.
+        front.put(_disc(3.4, (255, 74, 52, 255), None, 0, "eye_hot"), at, 0.0, f"eye_hot{index}")
+        front.put(_disc(1.8, (255, 246, 236, 255), None, 0, "eye_core"), at, 0.0, f"eye_core{index}")
+
+
 def _render_body(doc: RigDocument, clip: str, t: float, solved) -> Image.Image:
     """The rig's frame (``render_at``)."""
     return doc.render_at(clip, t, solved=solved)
@@ -486,6 +527,11 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
     if effect == "charge":
         pulse = 0.55 + 0.45 * math.sin((t + 0.1) * math.pi)
         front.put(_disc(float(round(3 + 4 * pulse)), (25, 233, 255, 75), (193, 128, 255, 220), 2, "orb"), base, 0.0, "orb")
+
+    # The eye laser: the game draws the beam from the eyes, and the row makes
+    # the eyes burn.
+    if effect == "eye_laser":
+        _place_eye_glow(front, world, frame_idx)
 
     if effect == "hit":
         front.put(_hit_sparks(), (78, 48), 0.0, "hit_sparks")

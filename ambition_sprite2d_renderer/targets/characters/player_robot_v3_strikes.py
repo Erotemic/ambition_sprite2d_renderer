@@ -863,6 +863,41 @@ def aim(body: RigBody) -> List[Key]:
     return [held(0.0, 0.0), held(0.5, 1.0), held(1.0, 0.0)]
 
 
+#: The frames of the `eye_laser` loop. The keys below put one key on each
+#: frame, so each frame shows its key exactly.
+EYE_LASER_FRAMES = 6
+
+
+def eye_laser(body: RigBody) -> List[Key]:
+    """The eye laser burns: a braced glare. Loops on its own clock for as long
+    as the beam burns.
+
+    The game draws the beam from the EYES along the facing, so the head is
+    level and pushed forward to the target, and the eyes are wide open (the
+    fierce face with almost no squint). The hands do not fire, so both fists
+    go down and back, out of the line of the beam. The torso leans back a
+    little against the push of the beam, and the feet are planted wide. A
+    small tremble of the head and the torso on each frame shows that the
+    power continues.
+    """
+    wide = {"near": (-5.0, 0.0, 0.0), "far": (6.0, 0.0, 0.0)}
+    keys = []
+    for i in range(EYE_LASER_FRAMES + 1):
+        u = i / EYE_LASER_FRAMES
+        # A fast shake (each frame the other way) on a slow sway (one time
+        # in the loop). The frame count is even, so the last key is the
+        # first and the loop closes.
+        shake = math.cos(i * math.pi)
+        sway = math.sin(u * 2.0 * math.pi)
+        tremble = 0.6 * shake + 0.4 * sway
+        keys.append(Key(
+            at=u, near=(140.0 + 2.0 * tremble, 118.0, 0.0), far=(118.0 - 2.0 * tremble, 122.0),
+            torso=-5.0 + 0.8 * tremble, head=0.5 - 1.2 * tremble, lunge=2.0, drop=3.5 + 0.4 * tremble,
+            squash=0.97, shoulder=-2.0, feet=wide, blade=0.0, squint=0.05, face="fierce",
+            ease="linear"))
+    return keys
+
+
 # The game draws a held item in the hand of the blade arm: where the hand part
 # is, turned as the hand part is turned (`rendering::posed_hand` in the game).
 # A hand that is not turned holds the item this many degrees above level, so
@@ -960,6 +995,7 @@ STRIKES: Dict[str, Callable[[RigBody], List[Key]]] = {
     "item_swing": item_swing,
     "shoot": shoot,
     "aim": aim,
+    "eye_laser": eye_laser,
 }
 
 

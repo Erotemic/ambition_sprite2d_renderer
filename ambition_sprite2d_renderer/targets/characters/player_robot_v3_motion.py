@@ -182,6 +182,9 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("victory_hold", 8, 114),
     ("loss", 8, 110),
     ("aim", 6, 100),
+    # The eye laser burns: the game shows this row for as long as the beam
+    # burns, and loops it. The game draws the beam from the eyes.
+    ("eye_laser", 6, 60),
     ("interact", 6, 90),
     # Petting a pettable character: 2.0 s, the sim's `PET_SECONDS`.
     ("pet", 16, 125),
@@ -411,6 +414,7 @@ POSE_ALIASES: Final[dict[str, str]] = {
     "trip_attack": "ledge_getup_attack",
     "trip_roll": "roll",
     "item_hold": "aim",
+    "eye_laser": "aim",
     "item_hold_crouch": "crouch",
     "item_heavy_pickup": "pickup",
     "item_heavy_carry": "walk",
@@ -475,6 +479,8 @@ LOOPING_ROWS: Final[frozenset[str]] = frozenset(
         "victory_hold",
         "loss",
         "aim",
+        # Shown while the eye laser burns, for as long as it burns.
+        "eye_laser",
         "hover",
         "float_glide",
         "charge",
