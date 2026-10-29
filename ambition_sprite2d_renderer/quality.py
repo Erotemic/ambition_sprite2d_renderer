@@ -39,7 +39,7 @@ and decodes its page PNGs once for all three tiers instead of three times.
     --tier 0_5x         only that quality tier (repeatable)
     --force             rebuild even when the outputs are newer than the source
     --clean             delete each selected tier root first (whole-tier only)
-    --jobs N            build on N processes [default: 1]
+    --jobs N            build on N processes [default: up to 6]
 
 Without ``--force``, the publication owner checks the accepted conversion
 receipt against its source bundles, converter inputs, parameters, and outputs. An
@@ -1653,7 +1653,7 @@ def main() -> None:
         action="store_true",
         help="rebuild sprite bundles and clear selected background tiers",
     )
-    parser.add_argument("--jobs", type=int, default=1, help="build on N processes")
+    parser.add_argument("--jobs", type=int, default=min(6, max(1, (os.cpu_count() or 2)//2)), help="build on N processes")
     args = parser.parse_args()
 
     if args.sprites_only and args.backgrounds_only:
