@@ -61,6 +61,7 @@ def render(out_dir, **opts):
         ink.write_text("green")
         return result
     monkeypatch.setattr(Store,"accept",edit_during_accept)
-    with pytest.raises(ValueError,match="sources changed"):
-        publication.build(requested=["bundle_probe"],force=True)
-    assert Store(tmp_path/'store').selected() == changed
+    # An edit while a build runs does not throw the build away: the bundle is
+    # published with the inputs it was built from, so it reads as stale.
+    edited = publication.build(requested=["bundle_probe"],force=True)
+    assert edited["generation"] != changed["generation"]

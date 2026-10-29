@@ -34,7 +34,7 @@ def publish_sprites(store: Store, replacements: dict, selected: dict, *, replace
     bundles = {unit: key for unit, key in selected["bundles"].items()
                if not replace or not unit.startswith(("target:", "atlas:"))}
     bundles.update(replacements)
-    return store.publish(bundles, selected["generation"], replace=True)
+    return store.publish(bundles, selected, replace=True)
 
 
 def policy() -> dict:
@@ -235,9 +235,13 @@ def validate_metadata(files: dict) -> None:
                     if row[1] == "runtime" and logical.endswith("_spritesheet.ron")})
     if not roots:
         return
+    # The game's own parser is an extra check, run only when a built validator
+    # is already there. Art never waits on cargo: without it the check is not
+    # run, and the game's loader still reports metadata it cannot read.
     binary = Path(os.environ.get("AMBITION_ART_CONTENT_BIN", repo_root() / "target/debug/ambition_content"))
     if not binary.is_file():
-        raise ValueError("Build the metadata validator first: cargo build -p ambition_content_cli --bin ambition_content")
+        print(f"art: Rust metadata check not run (no {binary})", file=sys.stderr)
+        return
     command = [str(binary), "--inspect-art"]
     for root in roots:
         command += ["--sheet-root", root]
@@ -356,6 +360,7 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True) -> dic
              for unit, key in selected["bundles"].items()}
     pending.sort(key=lambda name: -sizes.get("target:" + name, 0))
     print(f"art: {len(names)} targets, {len(pending)} builds, {len(replacements)} current", file=sys.stderr, flush=True)
+    failures: list[str] = []
     if pending:
         with source_snapshot(sources) as (snapshot, original):
             snapshot_renderer = snapshot / RENDERER.relative_to(repo_root())
@@ -387,7 +392,6 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True) -> dic
                     recipe = {"inputs": inputs, "membership": identity(sorted(original)), "toolchain": chain, "quality": True, "tiers": getattr(target, "publication_tiers", list(TIERS))}
                     key = store.accept("target:" + name, {k: (Path(v[0]), v[1], v[2]) for k,v in result["files"].items()}, recipe)
                     return name, key
-            failures = []
             with ThreadPoolExecutor(max_workers=min(6, max(1, jobs))) as pool:
                 futures = {pool.submit(render, name): name for name in pending}
                 try:
@@ -403,26 +407,28 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True) -> dic
                     for future in futures:
                         future.cancel()
                     raise
-            if failures:
-                raise ValueError(f"{len(failures)} target builds failed. The published selection was kept.\n" + "\n".join(failures))
+            # A source that changes while targets render does not throw the
+            # run away: each bundle records the inputs it was built from, so a
+            # status query reports it stale and the next build replaces it.
             now = source_files()
             used = {name: sha for key in replacements.values() for name, sha in (store.bundle(key)["recipe"] or {}).get("inputs", {}).items()}
-            if identity(sorted(now)) != identity(sorted(original)) or any(name not in now or digest(now[name]) != expected for name, expected in used.items()):
-                raise ValueError("Authored sources changed during generation. The published selection was kept.")
+            moved = sorted(name for name, expected in used.items() if name not in now or digest(now[name]) != expected)
+            if moved:
+                print(f"art: {len(moved)} source(s) changed during generation; their bundles are stale: "
+                      + ", ".join(moved[:10]), file=sys.stderr)
             if toolchain() != chain:
-                raise ValueError("The rendering toolchain changed during generation.")
+                print("art: the rendering toolchain changed during generation; the new bundles are stale", file=sys.stderr)
     candidate = selected["bundles"] | replacements
     replacements.update(build_packs(store, candidate, report, sources, chain, force=force))
-    used = {name: sha for key in replacements.values() for name, sha in (store.bundle(key)["recipe"] or {}).get("inputs", {}).items()}
-    latest = source_files()
-    if set(latest) != set(sources) or any(name not in latest or digest(latest[name]) != sha for name, sha in used.items()):
-        raise ValueError("Authored sources changed before publication. The previous selection was kept.")
-    if toolchain() != chain:
-        raise ValueError("The rendering toolchain changed before publication.")
     if not publish:
         return {"exact": True, "bundles": replacements,
                 "files": sorted({logical for key in replacements.values() for logical in store.bundle(key)["files"]})}
-    return publish_sprites(store, replacements, selected, replace=not requested)
+    published = publish_sprites(store, replacements, selected, replace=not requested)
+    # The targets that built are published; the ones that failed keep their
+    # previous bundle, and the run reports them.
+    if failures:
+        raise ValueError(f"{len(failures)} target build(s) failed; the others were published.\n" + "\n".join(failures))
+    return published
 
 
 def inventory(*, deep=False, requested=None) -> dict:
