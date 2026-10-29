@@ -1,27 +1,29 @@
 {
   "clip": "air_up",
-  "note": "vertical shot, driving him down.",
+  "note": "air_up: keys in devtools/polygon_keys.py, fitted to the Smash stage's clock; the hit window is the clock's active frames.",
+  "effect": "muzzle",
+  "facing": "east",
   "strike": {
     "base": "cannon",
     "tip": "cannon"
   },
-  "effect": "muzzle",
-  "facing": "east",
   "hitbox": {
     "active": [
       2,
       3
     ],
-    "extend": 1.0
+    "extend": 1.06
   },
   "muzzle": {
-    "reach": 3.4,
-    "flare": 0.3,
-    "alpha": 213,
-    "core_alpha": 238,
+    "reach": 2.6,
+    "flare": 0.36,
+    "alpha": 215,
+    "core_alpha": 245,
     "blur": 1.3,
-    "window": 2,
-    "falloff": 2.6,
-    "bloom": 1.05
-  }
+    "window": 1,
+    "falloff": 2.4,
+    "bloom": 1.0
+  },
+  "airborne": true,
+  "pixel_invariants": []
 }

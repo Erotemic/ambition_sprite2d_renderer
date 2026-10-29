@@ -77,6 +77,21 @@ def _lerp(a, b, t):
     return tuple(int(round(x + (y - x) * t)) for x, y in zip(a, b))
 
 
+def _axis_at(a, b, t: float):
+    """The axis between two frames' axes, `t` of the way from `a` to `b`: the
+    base moves straight, the blade TURNS (the short way round) and its length
+    changes. A chord between the two tips is not where a swing went; this is.
+    """
+    (b0, p0), (b1, p1) = a, b
+    base = (b0[0] + (b1[0] - b0[0]) * t, b0[1] + (b1[1] - b0[1]) * t)
+    a0 = math.atan2(p0[1] - b0[1], p0[0] - b0[0])
+    a1 = math.atan2(p1[1] - b1[1], p1[0] - b1[0])
+    turn = (a1 - a0 + math.pi) % (2.0 * math.pi) - math.pi
+    angle = a0 + turn * t
+    length = math.hypot(p0[0] - b0[0], p0[1] - b0[1]) * (1.0 - t) + math.hypot(p1[0] - b1[0], p1[1] - b1[1]) * t
+    return base, (base[0] + math.cos(angle) * length, base[1] + math.sin(angle) * length)
+
+
 def blade_axis(image: Image.Image):
     """(base, tip) of the blade in image space, base being the end nearer the body."""
     px = image.load()
@@ -160,9 +175,15 @@ def draw_ground(images, y: float, colour=(122, 112, 134)):
 def draw_trail(images, window: int = 3, subdiv: int = 5, inner: float = 0.58,
                alpha: int = 120, blur: float = 0.8, core_alpha: int = 150, active=None,
                body_rgb=None, core_rgb=None, falloff: float = 1.7, axes=None,
-               blade_width: float = 0.0):
+               blade_width: float = 0.0, edge_width: float = 0.0, taper: float = 0.0):
     """`window`/`inner`/`alpha` are what separate a tilt from a smash: a smash
     wants a longer, wider, brighter ribbon so the commitment reads.
+
+    `edge_width` draws the ARC itself: a hot line along the path of the tip
+    over the whole window, so the sweep reads as a bright arc at game scale
+    and not as a flat fan. `taper` (0..1) thins the fill toward the hilt, so
+    the ribbon is a crescent with its weight at the tip. Both are 0 for the
+    older flat ribbon.
 
     `falloff` is how fast a segment dims with age, and it has to move with
     `window`: stretching the window so the hit volume can grow also stretches
@@ -193,23 +214,56 @@ def draw_trail(images, window: int = 3, subdiv: int = 5, inner: float = 0.58,
                 a = int(alpha * (1.0 - age) ** falloff)
                 if a <= 2:
                     continue
-                b0 = _lerp(axes[j0][0], axes[j1][0], t0)
-                p0 = _lerp(axes[j0][1], axes[j1][1], t0)
-                b1 = _lerp(axes[j0][0], axes[j1][0], t1)
-                p1 = _lerp(axes[j0][1], axes[j1][1], t1)
+                b0, p0 = _axis_at(axes[j0], axes[j1], t0)
+                b1, p1 = _axis_at(axes[j0], axes[j1], t1)
                 f = inner + (1.0 - inner) * 0.55 * age
                 seg = Image.new("RGBA", base.size, (0, 0, 0, 0))
-                blending_draw(seg).polygon(
-                    [_lerp(b0, p0, f), p0, p1, _lerp(b1, p1, f)], fill=body_rgb + (a,)
-                )
+                if taper > 0.0:
+                    # The fill in two bands: a pale one near the hilt and a
+                    # full one at the tip, so the ribbon is a crescent.
+                    mid = f + (1.0 - f) * 0.55
+                    blending_draw(seg).polygon(
+                        [_lerp(b0, p0, f), _lerp(b0, p0, mid), _lerp(b1, p1, mid), _lerp(b1, p1, f)],
+                        fill=body_rgb + (int(a * (1.0 - taper)),),
+                    )
+                    blending_draw(seg).polygon(
+                        [_lerp(b0, p0, mid), p0, p1, _lerp(b1, p1, mid)], fill=body_rgb + (a,)
+                    )
+                else:
+                    blending_draw(seg).polygon(
+                        [_lerp(b0, p0, f), p0, p1, _lerp(b1, p1, f)], fill=body_rgb + (a,)
+                    )
                 trail.alpha_composite(seg)
         trail = trail.filter(ImageFilter.GaussianBlur(blur))
+        if edge_width > 0.0:
+            # The arc: the tip's path over the window, hot at the blade and
+            # thinning back along the sweep. It is drawn after the blur, so
+            # it stays sharp.
+            arc = Image.new("RGBA", base.size, (0, 0, 0, 0))
+            draw = blending_draw(arc)
+            for k in range(window, 0, -1):
+                j0, j1 = i - k, i - k + 1
+                if j0 < 0 or j1 >= len(images) or axes[j0] is None or axes[j1] is None:
+                    continue
+                if live is not None and (j0 not in live or j1 not in live):
+                    continue
+                age = (k - 1) / window
+                width = max(1, round(edge_width * (1.0 - 0.6 * age)))
+                a = int(core_alpha * (1.0 - age) ** max(0.5, falloff * 0.6))
+                if a <= 2:
+                    continue
+                tips = [_axis_at(axes[j0], axes[j1], q / 8.0)[1] for q in range(9)]
+                draw.line(tips, fill=core_rgb + (a,), width=width, joint="curve")
+                r = width / 2.0
+                for x, y in (tips[0], tips[-1]):
+                    draw.ellipse((x - r, y - r, x + r, y + r), fill=core_rgb + (a,))
+            trail.alpha_composite(arc.filter(ImageFilter.GaussianBlur(0.4)))
         core_live = live is None or (i in live and i - 1 in live)
         if i > 0 and core_live and axes[i] and axes[i - 1]:
             core = Image.new("RGBA", base.size, (0, 0, 0, 0))
+            steps = [_axis_at(axes[i - 1], axes[i], q / 6.0) for q in range(7)]
             blending_draw(core).polygon(
-                [_lerp(axes[i - 1][0], axes[i - 1][1], 0.80), axes[i - 1][1],
-                 axes[i][1], _lerp(axes[i][0], axes[i][1], 0.80)],
+                [_lerp(b, p, 0.80) for b, p in steps] + [p for _b, p in reversed(steps)],
                 fill=core_rgb + (core_alpha,),
             )
             trail.alpha_composite(core.filter(ImageFilter.GaussianBlur(0.5)))
@@ -346,10 +400,8 @@ def draw_wind(images, window: int = 3, subdiv: int = 6, inner: float = 0.34,
                     a = int(alpha * (1.0 - age) ** falloff)
                     if a <= 2:
                         continue
-                    b0 = _lerp(axes[j0][0], axes[j1][0], t0)
-                    p0 = _lerp(axes[j0][1], axes[j1][1], t0)
-                    b1 = _lerp(axes[j0][0], axes[j1][0], t1)
-                    p1 = _lerp(axes[j0][1], axes[j1][1], t1)
+                    b0, p0 = _axis_at(axes[j0], axes[j1], t0)
+                    b1, p1 = _axis_at(axes[j0], axes[j1], t1)
                     seg = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
                     blending_draw(seg).polygon(
                         [_lerp(b0, p0, near), _lerp(b0, p0, far),
@@ -754,10 +806,21 @@ def hit_polygon(axes, i, reach: float = 1.0, linger: int | None = None, first: i
     """
     pts = []
     start = first if linger is None else max(first, i - linger + 1)
+    # The blade between two live frames as well: a swing turns, so the hull
+    # of the frames' blades alone misses the belly of the arc the ribbon draws.
+    samples = []
     for j in range(start, i + 1):
         if axes[j] is None:
             continue
-        base, tip = axes[j]
+        if samples and j - 1 >= start and axes[j - 1] is not None:
+            samples.extend(_axis_at(axes[j - 1], axes[j], q / 4.0) for q in range(1, 4))
+        samples.append(axes[j])
+    if len(samples) == 1 and i - 1 >= 0 and axes[i - 1] is not None:
+        # A window of ONE frame (a fast smash's clock): one blade is a line,
+        # not a volume. The sweep in from the frame before is where the blade
+        # was drawn going (the ribbon shows it), so the volume covers that.
+        samples = [_axis_at(axes[i - 1], axes[i], q / 4.0) for q in range(1, 4)] + samples
+    for base, tip in samples:
         if extend != 1.0:
             tip = (base[0] + (tip[0] - base[0]) * extend,
                    base[1] + (tip[1] - base[1]) * extend)
@@ -994,8 +1057,46 @@ def draw_mend(images, active=None, rings: int = 3, rise: float = 26.0,
 #: Which drawing function each authored effect uses. A spec names one of these,
 #: and the hit volume below is built from the SAME name, so an effect cannot be
 #: added that draws light in a shape nothing hits in.
+def draw_glint(images, active=None, strength=None, size: float = 9.0, spin: float = 37.0,
+               body_rgb=None, core_rgb=None, axes=None):
+    """A spark at the TIP of the axis: four rays and a hot dot, a different
+    size and turn on each frame. The held charge of a smash: the weapon is
+    live and nothing has left it yet, so there is no sweep to draw. `strength`
+    is one value (0..1) per frame; a frame at 0 draws nothing. No hit volume
+    comes from it (a charge spec names no `hitbox`)."""
+    live = None if active is None else set(active)
+    body_rgb = tuple(body_rgb) if body_rgb else MUZZLE_HOT
+    core_rgb = tuple(core_rgb) if core_rgb else MUZZLE_CORE
+    axes = axes if axes is not None else [blade_axis(im) for im in images]
+    out = []
+    for i, base_im in enumerate(images):
+        layer = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
+        k = 1.0 if not strength else float(strength[i % len(strength)])
+        if (live is None or i in live) and axes[i] is not None and k > 0.02:
+            x, y = axes[i][1]
+            r = size * (0.35 + 0.65 * k)
+            draw = blending_draw(layer)
+            halo = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
+            blending_draw(halo).ellipse((x - r * 0.8, y - r * 0.8, x + r * 0.8, y + r * 0.8), fill=body_rgb + (int(150 * k),))
+            layer.alpha_composite(halo.filter(ImageFilter.GaussianBlur(2.0)))
+            for ray in range(4):
+                a = math.radians(spin * i + ray * 90.0)
+                length = r if ray % 2 == 0 else r * 0.55
+                draw.line([(x - math.cos(a) * length, y - math.sin(a) * length),
+                           (x + math.cos(a) * length, y + math.sin(a) * length)],
+                          fill=core_rgb + (int(235 * k),), width=2)
+            d = 1.0 + 1.6 * k
+            draw.ellipse((x - d, y - d, x + d, y + d), fill=core_rgb + (int(240 * k),))
+        comp = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
+        rigdoc.composite_layer(comp, layer, name="swing")
+        rigdoc.composite_canvas(comp, base_im)
+        out.append(comp)
+    return out
+
+
 EFFECT_DRAW = {
     "trail": lambda: draw_trail,
+    "glint": lambda: draw_glint,
     "poke": lambda: draw_poke,
     "wind": lambda: draw_wind,
     "reentry": lambda: draw_reentry,

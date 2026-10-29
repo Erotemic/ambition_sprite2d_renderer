@@ -1,0 +1,33 @@
+{
+  "clip": "smash_charge",
+  "note": "The held smash: the body shakes one pixel each frame and the weapon's point sparks. No hit window: nothing has left the weapon yet.",
+  "effect": "glint",
+  "facing": "east",
+  "glint": {
+    "strength": [
+      1.0,
+      0.3,
+      0.7,
+      0.15,
+      0.9,
+      0.45,
+      0.6,
+      0.2
+    ],
+    "size": 14.0,
+    "body_rgb": [
+      186,
+      246,
+      255
+    ],
+    "core_rgb": [
+      244,
+      252,
+      255
+    ]
+  },
+  "strike": {
+    "base": "cannon",
+    "tip": "cannon"
+  }
+}

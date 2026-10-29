@@ -1,28 +1,31 @@
 {
   "clip": "air_forward",
-  "note": "forward air: a heavy hook swept from overhead down through the front.",
+  "note": "air_forward: keys in devtools/polygon_keys.py, fitted to the Smash stage's clock; the hit window is the clock's active frames.",
+  "effect": "reentry",
+  "facing": "east",
   "strike": {
     "base": "near_arm_l",
     "tip": "near_arm_hand"
   },
-  "effect": "reentry",
-  "facing": "east",
   "hitbox": {
     "active": [
       2,
-      3,
-      4
+      3
     ],
     "extend": 1.06
   },
   "reentry": {
     "window": 3,
-    "spread": 0.76,
-    "extend": 1.1,
-    "alpha": 124,
-    "core_alpha": 228,
+    "spread": 0.8,
+    "extend": 1.12,
+    "trail": 0.55,
+    "alpha": 140,
+    "core_alpha": 235,
     "blur": 1.6,
-    "falloff": 1.9,
-    "trail": 0.95
-  }
+    "falloff": 1.7
+  },
+  "airborne": true,
+  "pixel_invariants": [
+    "hitbox_in_front"
+  ]
 }

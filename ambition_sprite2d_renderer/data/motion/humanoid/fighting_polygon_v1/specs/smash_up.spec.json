@@ -1,141 +1,24 @@
 {
   "clip": "smash_up",
-  "note": "up smash. Charge with the blade dropped low and BEHIND, then one rising vertical arc up through the east, over the head, finishing high to the west. Live only across the overhead pass, which is where an up smash actually threatens.",
+  "note": "smash_up: keys in devtools/polygon_keys.py, fitted to the Smash stage's clock; the hit window is the clock's active frames.",
+  "effect": "trail",
   "facing": "west",
-  "sword_deg": [
-    100,
-    74,
-    60,
-    58,
-    18,
-    330,
-    286,
-    250
-  ],
-  "elbow": [
-    -40,
-    -66,
-    -78,
-    -76,
-    -44,
-    -12,
-    -4,
-    -18
-  ],
-  "torso": [
-    0,
-    6,
-    10,
-    10,
-    2,
-    -8,
-    -14,
-    -10
-  ],
-  "off_hand": {
-    "0": [
-      -26,
-      -94
-    ],
-    "1": [
-      -20,
-      -100
-    ],
-    "2": [
-      -16,
-      -104
-    ],
-    "3": [
-      -16,
-      -104
-    ],
-    "4": [
-      -34,
-      -86
-    ],
-    "5": [
-      -56,
-      -66
-    ],
-    "6": [
-      -64,
-      -58
-    ],
-    "7": [
-      -56,
-      -68
-    ]
-  },
-  "body": {
-    "root_y": [
-      0,
-      6,
-      10,
-      10,
-      4,
-      -6,
-      -10,
-      -4
-    ],
-    "near_leg_u": [
-      0,
-      8,
-      13,
-      13,
-      5,
-      -4,
-      -8,
-      -3
-    ],
-    "near_leg_l": [
-      0,
-      -8,
-      -13,
-      -13,
-      -5,
-      4,
-      8,
-      3
-    ],
-    "far_leg_u": [
-      0,
-      -6,
-      -10,
-      -10,
-      -4,
+  "hitbox": {
+    "active": [
       3,
-      6,
-      2
-    ],
-    "far_leg_l": [
-      0,
-      6,
-      10,
-      10,
-      4,
-      -3,
-      -6,
-      -2
-    ]
-  },
-  "ground_contacts": {
-    "1": [
-      "near_leg_foot"
-    ],
-    "2": [
-      "near_leg_foot"
-    ],
-    "3": [
-      "near_leg_foot"
+      4
     ]
   },
   "trail": {
-    "window": 6,
-    "inner": 0.38,
-    "blur": 1.2,
+    "window": 5,
+    "subdiv": 8,
+    "inner": 0.4,
     "alpha": 215,
-    "core_alpha": 225,
-    "falloff": 0.95,
+    "core_alpha": 250,
+    "blur": 1.3,
+    "falloff": 1.1,
+    "taper": 0.5,
+    "edge_width": 4.0,
     "body_rgb": [
       212,
       104,
@@ -143,23 +26,15 @@
     ],
     "core_rgb": [
       255,
-      242,
+      244,
       255
-    ]
-  },
-  "hitbox": {
+    ],
     "active": [
-      5,
-      6,
-      7
+      2,
+      3,
+      4,
+      5
     ]
   },
-  "invariants": [
-    "monotonic_decreasing",
-    "starts_near:100"
-  ],
-  "pixel_invariants": [
-    "feet_on_ground"
-  ],
-  "todo": "The rise is carried by the shoulder alone. A real up smash also drives from the legs and lifts the whole body; that wants a rising-stance sprite the rig does not have."
+  "pixel_invariants": []
 }

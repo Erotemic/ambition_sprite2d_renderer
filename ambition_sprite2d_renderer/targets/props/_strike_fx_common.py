@@ -28,6 +28,9 @@ Rows (the names `SlashSource` reads):
 
 Styles:
 
+- ``arc``: a bright arc whose head travels from the hand to the tip over the
+  first half of the row, the tail after it; it thins and goes out on the
+  follow through (the three polygons).
 - ``blade``: a crescent with a hard bright edge and fibres behind it.
 - ``impact``: a fist or a kick: speed streaks along the blow and a burst
   where it lands.
@@ -411,7 +414,45 @@ def _draw_energy(draw, path: Path_, pal: Palette, p: float, mote: str) -> None:
             _mote(draw, mote, x, y, size * 1.7 * (0.5 + 0.5 * life), _rgba(pal.core), _rgba(pal.edge))
 
 
+def _draw_arc(draw, path: Path_, pal: Palette, p: float, mote: str) -> None:
+    """A bright arc that TRAVELS with the blow. Its head goes from the hand's
+    end to the tip over the first half of the row, its tail follows, and the
+    whole thins and goes out on the follow through. Nothing is drawn ahead of
+    the head: the air the blow has not come to is empty, and no frame is the
+    same at both ends."""
+    head = min(1.0, 0.45 + 0.6 * _smooth(0.0, 0.55, p))
+    tail = 0.92 * _smooth(0.22, 1.0, p)
+    if head - tail < 0.04:
+        return
+    thin = 1.0 - 0.5 * _smooth(0.5, 1.0, p)
+    span = head - tail
+    # A soft rim, the body, and a hot core that goes out as the blow spends.
+    draw.polygon(_scaled(_band(path, tail, head, thin, 0.0)), fill=_rgba(pal.edge, 0.9))
+    draw.polygon(_scaled(_band(path, tail + 0.04 * span, head, thin * 0.84, 0.05)), fill=_rgba(pal.body))
+    core = 1.0 - _smooth(0.4, 0.95, p)
+    if core > 0.04:
+        draw.polygon(_scaled(_band(path, tail + 0.25 * span, head, thin * 0.42, 0.09)), fill=_rgba(pal.core, 0.55 + 0.45 * core))
+    # The head: a hot cap at the leading end.
+    hx, hy = _point(path, head)
+    r = max(1.5, min(_width(path, min(head, 0.94)) * 0.16 * thin, HALF * 0.14))
+    draw.ellipse(((hx - r) * SUPER, (hy - r) * SUPER, (hx + r) * SUPER, (hy + r) * SUPER), fill=_rgba(pal.core))
+    # Fibres behind the head, along the arc: they say it moved.
+    for k, (off, alpha) in enumerate(((1.28, 0.7), (1.62, 0.45))):
+        t0 = max(tail, head - 0.5 + 0.1 * k)
+        if head - 0.03 - t0 > 0.05:
+            draw.polygon(_scaled(_band(path, t0, head - 0.03, thin * off * 0.1 + 0.02, thin * off * 0.9)),
+                         fill=_rgba(_mix(pal.body, pal.core, 0.7), alpha * (1.0 - 0.6 * p)))
+    # Bits off the arc as it spends, never ahead of the head.
+    if p > 0.2:
+        fly = _smooth(0.2, 1.0, p)
+        for bit in _bits(path, 5, 17):
+            x, y, size, life = _bit_at(path, bit, fly)
+            if bit[0] < head and _inside_frame(x, y):
+                _mote(draw, mote, x, y, size * 1.5 * life, _rgba(pal.core), _rgba(pal.accent))
+
+
 STYLES: Dict[str, Callable] = {
+    "arc": _draw_arc,
     "blade": _draw_blade,
     "impact": _draw_impact,
     "ink": _draw_ink,

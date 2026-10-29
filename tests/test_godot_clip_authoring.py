@@ -64,6 +64,12 @@ def _track(clip: dict, target: str) -> dict:
     return next(item for item in clip["tracks"] if item["target"] == target)
 
 
+#: The sword's jab refers to its named `contact` pose on this frame
+#: (`devtools/polygon_keys`: 12 frames of 19 ms, the contact at frame 3).
+JAB_CONTACT_FRAME = 3
+JAB_CONTACT_AT = round(JAB_CONTACT_FRAME * 0.019, 6)
+
+
 def _key_at(track: dict, at_s: float) -> dict:
     return next(key for key in track["keys"] if key["at_s"] == pytest.approx(at_s))
 
@@ -120,7 +126,7 @@ def test_one_animation_transform_edit_changes_only_one_clip(tmp_path, capsys):
     repo, _binding_obj, output = _expected_export(tmp_path, isolated=True)
     raw = json.loads(output["expected_clip_export"].read_text(encoding="utf8"))
     rotation = _track(_clip(raw, "jab"), "bone.near_arm_u.rotation_deg")
-    _key_at(rotation, 0.09)["value"] += 17.0
+    _key_at(rotation, JAB_CONTACT_AT)["value"] += 17.0
     edited = _write_export(tmp_path, raw)
 
     clip_dir = repo / "ambition_sprite2d_renderer/data/motion/humanoid/fighting_polygon_v1/clips"
@@ -138,7 +144,7 @@ def test_clip_local_edit_becomes_sparse_track_without_mutating_named_pose(tmp_pa
     repo, _binding_obj, output = _expected_export(tmp_path, isolated=True)
     raw = json.loads(output["expected_clip_export"].read_text(encoding="utf8"))
     rotation = _track(_clip(raw, "jab"), "bone.near_arm_u.rotation_deg")
-    _key_at(rotation, 0.09)["value"] += 12.0
+    _key_at(rotation, JAB_CONTACT_AT)["value"] += 12.0
     edited = _write_export(tmp_path, raw)
 
     changed, _worst = apply_clip_export(edited, repo=repo, check_only=False)
@@ -148,11 +154,11 @@ def test_clip_local_edit_becomes_sparse_track_without_mutating_named_pose(tmp_pa
         (repo / "ambition_sprite2d_renderer/data/motion/humanoid/fighting_polygon_v1/clips/jab.clip.json")
         .read_text(encoding="utf8")
     )
-    pose_key = source["pose_keys"][2]
+    pose_key = source["pose_keys"][JAB_CONTACT_FRAME]
     assert pose_key["pose"] == "humanoid/fighting_polygon/jab/contact"
     assert "overrides" not in pose_key
     saved = next(track for track in source["tracks"] if track["target"] == "bone.near_arm_u.rotation_deg")
-    assert _key_at(saved, 0.09)["value"] == pytest.approx(-_key_at(rotation, 0.09)["value"])
+    assert _key_at(saved, JAB_CONTACT_AT)["value"] == pytest.approx(-_key_at(rotation, JAB_CONTACT_AT)["value"])
 
 
 def test_individual_property_key_can_be_inserted_at_arbitrary_time(tmp_path):
@@ -171,14 +177,14 @@ def test_individual_property_key_can_be_inserted_at_arbitrary_time(tmp_path):
     )
     saved = next(track for track in source["tracks"] if track["target"] == "bone.near_arm_u.rotation_deg")
     assert _key_at(saved, 0.073)["value"] == pytest.approx(77.0)
-    assert source["pose_keys"][2]["pose"] == "humanoid/fighting_polygon/jab/contact"
+    assert source["pose_keys"][JAB_CONTACT_FRAME]["pose"] == "humanoid/fighting_polygon/jab/contact"
 
 
 def test_individual_property_key_can_be_deleted(tmp_path):
     repo, _binding_obj, output = _expected_export(tmp_path, isolated=True)
     raw = json.loads(output["expected_clip_export"].read_text(encoding="utf8"))
     rotation = _track(_clip(raw, "jab"), "bone.near_arm_u.rotation_deg")
-    rotation["keys"] = [key for key in rotation["keys"] if abs(key["at_s"] - 0.09) > 1e-8]
+    rotation["keys"] = [key for key in rotation["keys"] if abs(key["at_s"] - JAB_CONTACT_AT) > 1e-8]
     edited = _write_export(tmp_path, raw)
 
     changed, _worst = apply_clip_export(edited, repo=repo, check_only=False)
@@ -188,14 +194,14 @@ def test_individual_property_key_can_be_deleted(tmp_path):
         .read_text(encoding="utf8")
     )
     saved = next(track for track in source["tracks"] if track["target"] == "bone.near_arm_u.rotation_deg")
-    assert all(abs(key["at_s"] - 0.09) > 1e-8 for key in saved["keys"])
+    assert all(abs(key["at_s"] - JAB_CONTACT_AT) > 1e-8 for key in saved["keys"])
 
 
 def test_rotation_winding_is_not_normalized_on_import(tmp_path):
     repo, _binding_obj, output = _expected_export(tmp_path, isolated=True)
     raw = json.loads(output["expected_clip_export"].read_text(encoding="utf8"))
     rotation = _track(_clip(raw, "jab"), "bone.near_arm_u.rotation_deg")
-    contact = _key_at(rotation, 0.09)
+    contact = _key_at(rotation, JAB_CONTACT_AT)
     original = contact["value"]
     contact["value"] = original + 360.0
     edited = _write_export(tmp_path, raw)
@@ -208,7 +214,7 @@ def test_rotation_winding_is_not_normalized_on_import(tmp_path):
         .read_text(encoding="utf8")
     )
     saved = next(track for track in source["tracks"] if track["target"] == "bone.near_arm_u.rotation_deg")
-    assert _key_at(saved, 0.09)["value"] == pytest.approx(-(original + 360.0))
+    assert _key_at(saved, JAB_CONTACT_AT)["value"] == pytest.approx(-(original + 360.0))
 
 
 def test_clip_export_omits_sprite_publication_sampling(tmp_path):

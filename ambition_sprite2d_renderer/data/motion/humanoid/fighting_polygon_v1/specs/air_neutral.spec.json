@@ -1,66 +1,49 @@
 {
   "clip": "air_neutral",
-  "note": "neutral air: two hits on a diagonal, like a down smash turned onto its side. First in front and BELOW her, then behind and ABOVE, the blade sweeping an ellipse round through the east between them. The two hits are separate windows -- one accumulating volume across both would claim the space the move only passes through.",
-  "facing": "west",
-  "airborne": true,
-  "sword_deg": [
-    170,
-    135,
-    90,
-    45,
-    0,
-    315
-  ],
-  "elbow": [
-    -46,
-    -20,
-    -6,
-    -6,
-    -18,
-    -36
-  ],
-  "torso": [
-    6,
-    10,
-    6,
-    0,
-    -8,
-    -14
-  ],
+  "note": "air_neutral: keys in devtools/polygon_keys.py, fitted to the Smash stage's clock; the hit window is the clock's active frames.",
   "effect": "trail",
+  "facing": "west",
+  "hitbox": {
+    "active": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
   "trail": {
     "window": 4,
-    "inner": 0.46,
-    "blur": 0.9,
-    "alpha": 150,
-    "core_alpha": 170,
-    "falloff": 1.5,
+    "subdiv": 8,
+    "inner": 0.5,
+    "alpha": 190,
+    "core_alpha": 245,
+    "blur": 1.0,
+    "falloff": 1.3,
+    "taper": 0.55,
+    "edge_width": 3.0,
     "body_rgb": [
       150,
       96,
-      232
+      230
     ],
     "core_rgb": [
-      216,
-      190,
-      252
-    ]
-  },
-  "hitbox": {
+      236,
+      220,
+      255
+    ],
     "active": [
-      [
-        1,
-        2
-      ],
-      [
-        4,
-        5
-      ]
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
     ]
   },
-  "invariants": [
-    "monotonic_decreasing",
-    "starts_near:170"
-  ],
-  "todo": "No directional placement rule fits: the first hit is front-low and the second is behind-high, and the rules judge one direction per clip. Per-window rules are the fix when a second two-sided move needs them."
+  "airborne": true,
+  "pixel_invariants": []
 }
