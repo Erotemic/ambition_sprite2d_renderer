@@ -135,7 +135,7 @@
   }
   function syncTop() {
     $("name").value = spec.name; $("base").value = spec.base; $("seed").value = spec.seed;
-    $("family").value = spec.family || "standard"; $("species").value = spec.head.species;
+    $("family").value = spec.family || "standard"; $("species").value = spec.head.species; $("overlay").value = spec.overlay || "";
   }
   function changed(dotted, value) {
     set(dotted, value);
@@ -335,6 +335,11 @@
     base: pick(Object.keys(S.bases)), seed: Math.floor(Math.random() * 100000),
     family: pick(Object.keys(S.families)), head: { species: pick(S.choices["head.species"]) } }));
   $("family").addEventListener("change", () => { spec.family = $("family").value; draw(); });
+  // An overlay is one person's art: off is the generated drawing.
+  $("overlay").addEventListener("change", () => {
+    if ($("overlay").value) spec.overlay = $("overlay").value; else delete spec.overlay;
+    draw();
+  });
   $("species").addEventListener("change", () => changed("head.species", $("species").value));
   $("face").addEventListener("change", () => { face = $("face").value; draw(); });
   $("zoom").addEventListener("input", (e) => $("views").style.setProperty("--tile", e.target.value + "px"));
@@ -368,6 +373,7 @@
     const opts = (list, label) => list.map((k) => `<option value="${esc(k)}">${esc(label ? label(k) : k)}</option>`).join("");
     $("base").innerHTML = opts(Object.keys(S.bases), (k) => S.bases[k]);
     $("family").innerHTML = opts(Object.keys(S.families));
+    $("overlay").innerHTML = opts(["", ...S.overlays], (k) => k || "none");
     $("species").innerHTML = opts(S.choices["head.species"]);
     $("face").innerHTML = opts(S.faces);
     const viewOpts = opts(S.views.map((v) => v.key), (k) => S.views.find((v) => v.key === k).label);

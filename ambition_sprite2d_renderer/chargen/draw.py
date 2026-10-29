@@ -290,6 +290,11 @@ def _draw_view(fig: Figure, view: View, canvas: Canvas) -> List[Part]:
     from .extras import extra_parts
 
     parts += extra_parts(ctx, zmap)
+    # Hand-drawn art over the parts (``spec.overlay``): none unless the spec
+    # names one.
+    from .overlay import apply as apply_overlay
+
+    parts = apply_overlay(fig, view, canvas, parts, view_joints(fig, view))
     for item in fig.spec.outfit.wardrobe:
         slot, _, kind = item.partition(":")
         alt_spec = _with_slot(fig.spec, slot, kind)

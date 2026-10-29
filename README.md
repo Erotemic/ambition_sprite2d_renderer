@@ -804,6 +804,23 @@ outline, a cool shade and a light rim. The Iron Bastion garrison
 one row to `FAMILIES`; do not fork a drawing module. `chargen new --family`,
 `chargen cast --family`; `chargen bases` lists the families.
 
+**Overlays** (`chargen/overlay.py`, `spec.overlay`) are hand-drawn art on
+the parts of one character: the 3D figure places, the 2D art draws. A spec
+names a file in `data/overlays/<name>.overlay.svg`: one cell per view key
+(`data-view`), and in a cell one group per rig part
+(`data-overlay-part`). A group either replaces the part's drawing or draws
+over it as a new part on the same bone (`data-overlay-mode`). Its paths are
+in SVG units with an anchor joint of the view at (0, 0)
+(`data-overlay-anchor`: `neck` is the head's pivot, `waist` the torso's, a
+`*_grip` a hand's, a `*_hip` a coat skirt's). The art follows two measures
+of the figure (`data-overlay-scale`; the file's `data-overlay-ref` holds the
+measures of the figure it was drawn on), so it grows with a taller character
+or a longer trunk. A group's own `transform` only places it over the
+generated SVG in an editor. A left view is the mirror of its right twin. A
+spec without an overlay does not write the field; the studio switches it
+(`overlay`). Nikobolt Tesseract (`data/townsfolk/science_nikobolt.chargen.yaml`)
+is drawn this way.
+
 **How a character is drawn.** `body.py` turns a spec into 3D joints and
 *lofts*: bodies of horizontal rings (torso, neck, head with the face's relief
 as radial bumps). `geometry.py` projects them: a loft's silhouette is the

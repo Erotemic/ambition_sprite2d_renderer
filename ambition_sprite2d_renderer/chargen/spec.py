@@ -17,6 +17,10 @@ Families (``family.py``): the look a spec is drawn in (``standard``, the
 default, or ``crew``). A family does not change what the seed draws: it
 changes how the body numbers become a drawing. A standard spec does not
 write its family, so its record (and its SVG) stays as it was.
+
+Overlays (``overlay.py``): ``overlay`` names hand-drawn art that draws over
+or replaces parts of the generated drawing, in every view. The figure
+places it and the art draws it. A spec without one does not write the field.
 """
 
 from __future__ import annotations
@@ -222,6 +226,9 @@ class CharacterSpec:
     head: Head = field(default_factory=Head)
     #: The family the spec is drawn in (``family.FAMILIES``).
     family: str = "standard"
+    #: Hand-drawn art over its parts (``overlay.py``: the name of a file in
+    #: ``data/overlays``), or "" for none. The seed does not draw it.
+    overlay: str = ""
 
     @property
     def sex(self) -> str:
@@ -232,6 +239,8 @@ class CharacterSpec:
         if d["family"] == "standard":
             # The default is not written: a standard record stays as it was.
             del d["family"]
+        if not d["overlay"]:
+            del d["overlay"]
         for (section, name), default in OPTIONAL_DEFAULTS.items():
             if d[section][name] == default:
                 del d[section][name]
@@ -389,6 +398,11 @@ def validate(spec: CharacterSpec) -> List[str]:
 
     if spec.family not in FAMILIES:
         errors.append(f"family {spec.family!r} is not one of {sorted(FAMILIES)}")
+    if spec.overlay:
+        from .overlay import available
+
+        if spec.overlay not in available():
+            errors.append(f"overlay {spec.overlay!r} is not one of {available()}")
     for key, (lo, hi) in BOUNDS.items():
         v = _get(spec, key)
         if not isinstance(v, (int, float)) or isinstance(v, bool):
