@@ -614,6 +614,8 @@ def accessory_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         shaded_region(ctx, pt, ends.shell(0.3), fig.y_nb, fig.y_chest + 0.02 * T, shade(col, 0.1), lambda a, y: (6.0 - abs(wrap180(a) + 7.0)) * 0.3)
         shaded_region(ctx, pt, ring, ring.top, ring.bottom, col)
         out.append(Part("torso__scarf", "torso", 34.0, pt.els, "Scarf", feature="acc:scarf"))
+    if "bow_tie" in o.accessories:
+        out += _bow_tie(ctx, zmap)
     if "webbing" in o.accessories:
         out += _webbing(ctx, zmap)
     if "obi" in o.accessories:
@@ -632,6 +634,24 @@ def accessory_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         if pt.els:
             out.append(Part("torso__dog_tags", "torso", zmap["torso"] + LAYER["top"] + 0.08, pt.els, "Dog tags", feature="acc:dog_tags"))
     return out
+
+
+def _bow_tie(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
+    """A bow tie in the accent colour under the collar: two wings that are
+    narrow at the knot, and the knot over them. It is drawn larger than life
+    so that it shows at game scale."""
+    fig, o = ctx.fig, ctx.fig.spec.outfit
+    if not visible(ctx, 0.0, 0.1):
+        return []
+    col = o.accent_color
+    c = fig.torso.shell(0.9).point(0.0, fig.y_nb + 0.6 + 0.045 * fig.T, 0.0)
+    pt = ctx.new()
+    for sgn in (-1.0, 1.0):
+        wing = [(0.5, -0.6, 0.3), (3.2, -1.7, -0.2), (2.8, 0.0, -0.3), (3.2, 1.7, -0.2), (0.5, 0.6, 0.3)]
+        pt.region([[ctx.p(add3(c, (sgn * x, y, z))) for x, y, z in wing]], col if sgn > 0 else shade(col, 0.15), outline=FINE)
+    knot = [(-0.75, -0.8, 0.5), (0.75, -0.8, 0.5), (0.75, 0.8, 0.5), (-0.75, 0.8, 0.5)]
+    pt.region([[ctx.p(add3(c, d)) for d in knot]], shade(col, 0.2), outline=FINE)
+    return [Part("torso__bow_tie", "torso", zmap["torso"] + LAYER["acc"] + 0.05, pt.els, "Bow tie", feature="acc:bow_tie")]
 
 
 def _webbing(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
