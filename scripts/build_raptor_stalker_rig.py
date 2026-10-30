@@ -198,7 +198,7 @@ def death(i: int, n: int, t: float) -> Pose:
 def notice(i: int, n: int, t: float) -> Pose:
     """Startled by its foe: drawn up tall, head high, jaws open, the arm
     feathers flared and the tail fan up. Held, with a shiver."""
-    up = track([0.7, 1.0, 0.95], t)
+    up = track([0.92, 1.0, 0.96], t)
     p: Pose = {
         "root_y": -4.0 * up,
         "pelvis": -10.0 * up,
@@ -219,9 +219,9 @@ def notice(i: int, n: int, t: float) -> Pose:
 def windup(i: int, n: int, t: float) -> Pose:
     """The telegraph of its strike: crouched low with the weight back, the
     head drawn back on a coiled neck with the jaws open, the claws drawn
-    back and the tail up. Settled into, then held with a shiver."""
+    back and the tail up. Held, with a shiver (the game loops it)."""
     shake = track([0, 1.5, -1.5], t)
-    sink = 0.8 if i == 0 else 1.0
+    sink = 0.92 if i == 0 else 1.0
     p: Pose = {
         "root_x": -12.0 * sink + shake,
         "root_y": 24.0 * sink,

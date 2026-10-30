@@ -179,7 +179,7 @@ def death(i: int, n: int, t: float) -> Pose:
 def notice(i: int, n: int, t: float) -> Pose:
     """Startled by its foe: the head thrown up so the frill stands tall, the
     beak open, the tail up, a forefoot set back. Held, with a shiver."""
-    up = track([0.7, 1.0, 0.95], t)
+    up = track([0.92, 1.0, 0.96], t)
     p: Pose = {
         "root_x": -4.0 * up,
         "root_y": -3.0 * up,
@@ -197,7 +197,7 @@ def notice(i: int, n: int, t: float) -> Pose:
 def windup(i: int, n: int, t: float) -> Pose:
     """The telegraph of the gore: rocked back on its haunches, the head down
     so the horns point at its foe, and a forefoot pawing the ground."""
-    sink = 0.8 if i == 0 else 1.0
+    sink = 0.92 if i == 0 else 1.0
     shake = track([0, 1.2, -1.2], t)
     p: Pose = {
         "root_x": -14.0 * sink + shake,

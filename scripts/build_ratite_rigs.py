@@ -462,7 +462,7 @@ def clips(b: Bird) -> Dict[str, Callable[[int, int, float], Pose]]:
         """Startled by its foe: drawn up tall, head up and back, beak open,
         wings or arms thrown up and the tail raised. Held, with a shiver."""
         p = standing()
-        up = K([0.7, 1, 0.95], t)
+        up = K([0.92, 1, 0.96], t)
         p["root_y"] = -0.05 * b.leg * up
         p["body"] = -12.0 * up
         p["neck"] = -26.0 * up
@@ -552,11 +552,11 @@ def clips(b: Bird) -> Dict[str, Callable[[int, int, float], Pose]]:
                "stab": windup_stab, "lunge": windup_lunge}
 
     def windup(i: int, n: int, t: float) -> Pose:
-        """The telegraph of the attack: a held anticipation pose, settled
-        into on the first frame and shivering after."""
+        """The telegraph of the attack: a held anticipation pose with a
+        shiver (the game loops it)."""
         p = windups[b.attack](t, K([0, 1.5, -1.5], t))
         if i == 0:
-            p["root_x"] = 0.8 * p["root_x"]
+            p["root_x"] = 0.92 * p["root_x"]
         p.update(eyes("angry"))
         return p
 
