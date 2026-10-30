@@ -16,6 +16,8 @@ y 880), the bamboo lookout's platforms (x 1540..1700: y 704 and 576).
   ladder beside them is the engine's Climbable), a conch on a hook.
 - `pass_falls`: a small fall over mossed rock into a pool at the east wall,
   and by the path a row of stone jizo with red bibs.
+- `pass_scoreboard`: the referee's tally board by the way in: the day's
+  bouts counted in 正, the visitors' column a nought.
 
 Everyday mountain things, drawn with care: no costume and no joke at the
 culture's cost. Animations: ``idle``, 1 frame each. No drop shadows.
@@ -135,7 +137,29 @@ def falls(c, k):
     c.put(c.mask(lambda p: [p.ellipse(x, FLOOR - 3, 3, 2.5) for x in (1918, 1924, 1962)]), (170, 168, 160))
 
 
+def scoreboard(c, k):
+    """The referee's tally board by the way in: a board of bamboo slats on
+    two posts, the day's bouts counted in 正, the visitors' column
+    a nought."""
+    x0, x1, top = 214, 286, FLOOR - 96
+    c.put(c.mask(lambda p: [p.rect(x, top - 6, x + 5, FLOOR) for x in (x0 + 4, x1 - 9)]), TIMBER)
+    board = c.mask(box(x0, top, x1, top + 54))
+    c.put(board, (200, 180, 130))
+    c.put(board * c.mask(lambda p: [p.rect(x, top, x + 1, top + 54) for x in range(x0 + 6, x1, 6)]), (170, 150, 104))
+    c.put(c.mask(lambda p: p.rect(x0 + 44, top + 4, x0 + 45.2, top + 50)), TIMBER)
+    # The day's bouts counted in 正, five strokes to the character.
+    marks = []
+    for g in range(3):
+        cx, cy = x0 + 10 + g * 11, top + 8
+        marks += [[(cx - 4, cy), (cx + 4, cy)], [(cx, cy), (cx, cy + 12)], [(cx, cy + 6), (cx + 3.5, cy + 6)],
+                  [(cx - 3, cy + 5), (cx - 3, cy + 12)], [(cx - 5, cy + 12), (cx + 5, cy + 12)]]
+    c.put(c.mask(lambda p: [p.line(m, 1.0) for m in marks]), (30, 26, 24))
+    c.put(c.mask(lambda p: p.rect(x0 + 8, top + 34, x0 + 30, top + 36)), VERMILION)
+    c.put(c.mask(lambda p: p.ring(x0 + 59, top + 30, 6, 1.4)), (30, 26, 24))
+
+
 PIECES: Dict[str, Piece] = {
+    "pass_scoreboard": Piece((200, FLOOR - 110, 300, FLOOR), scoreboard),
     "pass_bamboo": Piece((0, 300, 880, FLOOR), bamboo),
     "pass_bridge": Piece((870, 770, 1430, 960), bridge),
     "pass_lookout": Piece((1530, 500, 1740, FLOOR), lookout),

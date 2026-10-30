@@ -1,0 +1,31 @@
+# A resident made by the character generator; see targets/characters/townsfolk.py.
+schema: ambition-chargen-v1
+name: Matsuda
+base: average_male
+seed: 312
+body:
+  height_cm: 166
+  age: 0.75
+hair:
+  style: short
+  facial: mustache
+palette:
+  skin: '#e2b490'
+  hair: '#c4c0ba'
+outfit:
+  top: tunic
+  sleeves: long
+  neckline: v
+  top_color: '#2e3c5a'
+  outer: none
+  bottom: trousers
+  bottom_color: '#5a5650'
+  shoes: shoes
+  hat: none
+  accessories: [belt]
+  accent_color: '#b0453a'
+game:
+  character_id: npc_village_matsuda
+  description: A resident of the Ninja Village (gate address SILENT), a mountain village of the ninja dimension. Generated
+    by chargen; it parodies no one, and its look is everyday village dress, not a costume. Matsuda referees the Bamboo Pass,
+    where every visitor is an opponent, and keeps the count.
