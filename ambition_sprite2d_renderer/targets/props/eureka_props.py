@@ -660,6 +660,194 @@ def observatory_room(c, k):
     c.light(c.mask(lambda p: p.ellipse(ox, g - 50, 80, 50), blur=26), PAL["lamp"], 0.16)
 
 
+# ---------------------------------------------------------------------------
+# Tesseract Laboratories inside
+# ---------------------------------------------------------------------------
+
+LAB_W, LAB_FLOOR, LAB_CEILING = 1280, 512, 32
+LAB_CRATE = (200, 296, 432)
+LAB_GANTRY_WEST = (320, 560, 352)
+LAB_GANTRY_EAST = (720, 960, 288)
+LAB_BENCH = (1000, 1160, 464)
+COIL_WEST_X, COIL_EAST_X, TOROID_Y = 440, 840, 150
+BRICK = (150, 82, 62)
+IRON = (58, 62, 72)
+IRON_LIGHT = (120, 128, 142)
+COPPER_WIRE = (196, 118, 64)
+ARC = (196, 220, 255)
+ARC_CORE = (250, 252, 255)
+
+
+def bolt_points(rng, a, b, n=14, jag=14.0):
+    """A jagged path from `a` to `b`: lightning, frozen."""
+    pts = [a]
+    for i in range(1, n):
+        t = i / n
+        x = a[0] + (b[0] - a[0]) * t
+        y = a[1] + (b[1] - a[1]) * t
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        length = math.hypot(dx, dy) or 1.0
+        nx, ny = -dy / length, dx / length
+        off = rng.uniform(-jag, jag) * math.sin(math.pi * t)
+        pts.append((x + nx * off, y + ny * off))
+    pts.append(b)
+    return pts
+
+
+def arc(c, pts, width=2.2, glow=1.0):
+    """Lightning along `pts`: a white core, a blue sheath, a glow."""
+    c.light(c.mask(lambda p: p.line(pts, width * 7), blur=6), ARC, 0.45 * glow)
+    c.put(c.mask(lambda p: p.line(pts, width * 2.2)), ARC, 0.9)
+    c.put(c.mask(lambda p: p.line(pts, width)), ARC_CORE)
+
+
+def tesla_coil(c, x, base_y, top_y, r_toroid=46.0, tag="coil"):
+    """A tall Tesla coil: a plinth, a copper-wound column, a toroid on top."""
+    b = Batch(c)
+    b.add(IRON, 1.0, box(x - 40, base_y - 26, x + 40, base_y))
+    b.add(IRON_LIGHT, 1.0, box(x - 40, base_y - 26, x + 40, base_y - 24))
+    b.add((40, 44, 52), 1.0, box(x - 22, base_y - 44, x + 22, base_y - 26))
+    b.draw()
+    col0, col1 = top_y + 18, base_y - 44
+    c.put(c.mask(box(x - 13, col0, x + 13, col1)), (70, 48, 34))
+    turns = c.mask(lambda p: [p.rect(x - 13, y, x + 13, y + 1.1) for y in np.arange(col0 + 2, col1, 2.6)])
+    c.put(turns, COPPER_WIRE)
+    c.tone(c.mask(box(x - 13, col0, x + 13, col1)) * np.clip((c.x - x) / 13, -1, 1), -0.3)
+    # The toroid, a fat ring seen side-on, lit from the arc.
+    tor = c.mask(lambda p: p.ellipse(x, top_y, r_toroid, r_toroid * 0.32))
+    c.put(tor, (176, 182, 194))
+    c.tone(tor * np.clip((top_y - c.y) / (r_toroid * 0.32), -1, 1), 0.25)
+    c.put(c.mask(lambda p: p.ellipse(x, top_y + 3, r_toroid * 0.55, r_toroid * 0.12)), (110, 116, 130))
+    c.light(c.mask(lambda p: p.ellipse(x - r_toroid * 0.4, top_y - 5, 10, 3), blur=1.5), (255, 255, 255), 0.6)
+
+
+def lab_room(c, k):
+    """Tesseract Laboratories inside: a brick hall with tall windows, two great
+    coils with an arc between their toroids, riveted gantries (y 352, 288)
+    round them, a Van de Graaff sphere, the crate (y 432), the bench (y 464)
+    with a Jacob's ladder and a bulb lit with no wires, the pigeon coops and
+    the director's chalkboard of currents, and his office door."""
+    x0, x1 = 16, LAB_W - 16
+    g = LAB_FLOOR
+    k.ground = g
+    ashlar(c, x0, LAB_CEILING, x1, g, BRICK, 6, 14, "lab_brick", 0.12)
+    c.tone(c.mask(box(x0, LAB_CEILING, x1, g)), -0.25)
+    # Tall windows, night outside, between iron pilasters.
+    # Between the pilasters (every 170 from x 126).
+    for wx in (381, 721):
+        k.window(wx, 70, 70, 190, "arch", lit=0.0, frame=IRON_LIGHT, tag=("lab_window", wx))
+    b = Batch(c)
+    for px in np.arange(x0 + 110, x1, 170):
+        b.add(IRON, 1.0, box(px - 6, LAB_CEILING, px + 6, g))
+        b.add(IRON_LIGHT, 1.0, box(px - 6, LAB_CEILING, px - 4, g))
+    # Roof trusses.
+    b.add(IRON, 1.0, box(x0, LAB_CEILING, x1, LAB_CEILING + 10))
+    for tx in np.arange(x0, x1, 85):
+        b.add(IRON, 1.0, lambda p, tx=tx: p.line([(tx, LAB_CEILING + 10), (tx + 42, LAB_CEILING + 38), (tx + 85, LAB_CEILING + 10)], 2.2))
+    b.add(IRON, 1.0, box(x0, LAB_CEILING + 36, x1, LAB_CEILING + 40))
+    b.draw()
+    # Floor plates.
+    c.put(c.mask(box(x0, g - 6, x1, g)), (70, 72, 80))
+    # The pigeon coops over the door: the director keeps pigeons.
+    cx0, cy0 = 30, 150
+    c.put(c.mask(box(cx0, cy0, cx0 + 170, cy0 + 96)), OAK_DARK)
+    b = Batch(c)
+    for row in range(2):
+        for col in range(4):
+            hx, hy = cx0 + 8 + col * 41, cy0 + 8 + row * 44
+            b.add(scale(OAK_DARK, 0.4), 1.0, lambda p, hx=hx, hy=hy: p.arch(hx, hy, hx + 34, hy + 38))
+            b.add(OAK_LIGHT, 1.0, box(hx - 2, hy + 38, hx + 36, hy + 41))
+    b.draw()
+    rng = c.rand("pigeons")
+    for col, row in ((0, 0), (2, 0), (1, 1), (3, 1)):
+        hx, hy = cx0 + 8 + col * 41 + 17, cy0 + 8 + row * 44 + 30
+        grey = rng.choice(((150, 154, 168), (120, 124, 140), (180, 182, 190)))
+        c.put(c.mask(lambda p: (p.ellipse(hx, hy, 9, 7), p.ellipse(hx + 7, hy - 7, 4.5))), grey)
+        c.put(c.mask(lambda p: p.ellipse(hx + 7, hy - 3, 4, 2.4)), (90, 140, 120), 0.8)
+        c.put(c.mask(lambda p: p.poly([(hx + 11, hy - 8), (hx + 15, hy - 7), (hx + 11, hy - 6)])), (60, 56, 52))
+        c.put(c.mask(lambda p: p.ellipse(hx + 8, hy - 8, 0.9)), (230, 120, 40))
+    # The two great coils, and the arc between them.
+    tesla_coil(c, COIL_WEST_X, g, TOROID_Y, tag="coil_w")
+    tesla_coil(c, COIL_EAST_X, g, TOROID_Y + 10, r_toroid=40, tag="coil_e")
+    rng = c.rand("arcs")
+    arc(c, bolt_points(rng, (COIL_WEST_X + 44, TOROID_Y), (COIL_EAST_X - 38, TOROID_Y + 10), 18, 26), 2.0, 1.2)
+    arc(c, bolt_points(rng, (COIL_WEST_X + 30, TOROID_Y - 8), (COIL_WEST_X + 140, TOROID_Y - 80), 8, 14), 1.2, 0.7)
+    arc(c, bolt_points(rng, (COIL_EAST_X - 20, TOROID_Y), (COIL_EAST_X + 60, LAB_CEILING + 40), 9, 12), 1.2, 0.7)
+    arc(c, bolt_points(rng, (COIL_WEST_X - 40, TOROID_Y + 4), (COIL_WEST_X - 120, TOROID_Y + 60), 7, 10), 1.0, 0.6)
+    c.light(c.mask(lambda p: p.ellipse((COIL_WEST_X + COIL_EAST_X) / 2, TOROID_Y + 30, 260, 120), blur=60), ARC, 0.18)
+    # The gantries round the coils: riveted girders whose tops are the walk
+    # lines, on posts to the floor, with a rail behind.
+    for gx0, gx1, gy in (LAB_GANTRY_WEST, LAB_GANTRY_EAST):
+        b = Batch(c)
+        for px in (gx0 + 10, gx1 - 14):
+            b.add(IRON, 1.0, box(px, gy + 12, px + 6, g))
+        b.add(IRON, 1.0, box(gx0, gy, gx1, gy + 12))
+        b.add(IRON, 0.9, box(gx0, gy - 30, gx1, gy - 28))
+        for rx in np.arange(gx0 + 2, gx1, 16):
+            b.add(IRON, 0.9, box(rx, gy - 30, rx + 1.4, gy))
+        b.draw()
+        c.put(c.mask(lambda p: [p.ellipse(x, gy + 6, 1.3) for x in np.arange(gx0 + 6, gx1, 12)]), IRON_LIGHT)
+        c.put(c.mask(lambda p: [p.line([(x, gy + 12), (x + 30, gy + 40)], 1.4) for x in (gx0 + 16, gx1 - 50)]), IRON)
+        edge_line(c, gx0, gx1, gy, IRON_LIGHT, 4)
+    # The Van de Graaff sphere by the door.
+    vx = 120
+    c.put(c.mask(box(vx - 7, g - 110, vx + 7, g - 8)), (200, 170, 120))
+    c.put(c.mask(box(vx - 20, g - 10, vx + 20, g)), IRON)
+    sph = c.mask(lambda p: p.ellipse(vx, g - 128, 26))
+    c.put(sph, (200, 206, 216))
+    c.tone(sph * np.clip((c.x - vx + (c.y - g + 128) * 0.6) / 26, -1, 1), -0.35)
+    c.light(c.mask(lambda p: p.ellipse(vx - 9, g - 138, 7, 5), blur=2), (255, 255, 255), 0.7)
+    # The crate (y 432): stencilled with the lab's bolt.
+    cx0_, cx1_, cy = LAB_CRATE
+    c.put(c.mask(box(cx0_, cy, cx1_, g)), (128, 96, 60))
+    c.put(c.mask(lambda p: (p.rect(cx0_, cy, cx1_, cy + 3), p.rect(cx0_, g - 3, cx1_, g), p.line([(cx0_ + 4, g - 4), (cx1_ - 4, cy + 4)], 2.5))), (92, 68, 42))
+    c.put(c.mask(lambda p: p.poly([(cx0_ + 52, cy + 14), (cx0_ + 38, cy + 44), (cx0_ + 50, cy + 44), (cx0_ + 42, cy + 70), (cx0_ + 62, cy + 36), (cx0_ + 50, cy + 36)])), (232, 200, 80))
+    edge_line(c, cx0_ - 2, cx1_ + 2, cy, (170, 130, 84), 4)
+    # The bench (y 464) and its apparatus.
+    bx0, bx1, by = LAB_BENCH
+    c.put(c.mask(box(bx0, by, bx1, by + 8)), OAK)
+    c.put(c.mask(lambda p: (p.rect(bx0 + 6, by + 8, bx0 + 14, g), p.rect(bx1 - 14, by + 8, bx1 - 6, g))), OAK_DARK)
+    edge_line(c, bx0 - 2, bx1 + 2, by, OAK_LIGHT, 4)
+    jx = bx0 + 30  # a Jacob's ladder: two rods, a climbing arc
+    c.put(c.mask(lambda p: (p.line([(jx - 3, by), (jx - 8, by - 70)], 1.4), p.line([(jx + 3, by), (jx + 8, by - 70)], 1.4))), (200, 200, 210))
+    c.put(c.mask(box(jx - 10, by - 6, jx + 10, by)), IRON)
+    arc(c, bolt_points(c.rand("jacob"), (jx - 6.5, by - 50), (jx + 6.5, by - 52), 5, 2), 0.9, 0.8)
+    wx_ = bx0 + 90  # the bulb lit with no wires
+    bulb(c, wx_, by - 30, 9.0, (255, 240, 170), 1.3)
+    c.light(c.mask(lambda p: p.ellipse(wx_, by - 30, 26), blur=10), (255, 230, 150), 0.7)
+    c.put(c.mask(lambda p: p.ellipse(wx_ + 30, by - 4, 10, 4)), (60, 60, 70))
+    c.put(c.mask(lambda p: [p.ring(wx_ + 30, by - 16, r, 0.7) for r in (4, 7, 10)]), (120, 200, 255), 0.5)
+    for i, (tx_, col) in enumerate(((bx1 - 34, (120, 220, 160)), (bx1 - 20, (230, 120, 220)))):
+        c.put(c.mask(lambda p: (p.rect(tx_ - 3, by - 34, tx_ + 3, by), p.ellipse(tx_, by - 34, 3))), col, 0.8)
+        c.light(c.mask(lambda p: p.ellipse(tx_, by - 18, 8, 18), blur=5), col, 0.4)
+    # The director's chalkboard: alternating current beats a crossed-out
+    # direct one.
+    kx0, ky0, kx1, ky1 = 990, 108, 1134, 222
+    c.put(c.mask(box(kx0 - 4, ky0 - 4, kx1 + 4, ky1 + 6)), OAK)
+    board = c.mask(box(kx0, ky0, kx1, ky1))
+    c.put(board, BOARD)
+    c.tone(board * (c.noise("lab_chalk", 8, 6, 3) - 0.5), 0.35)
+    wave = [(kx0 + 12 + t * 146, ky0 + 40 - 20 * math.sin(t * math.tau * 2)) for t in np.linspace(0, 1, 60)]
+    c.put(c.mask(lambda p: (p.line(wave, 0.9), p.line([(kx0 + 10, ky0 + 40), (kx1 - 10, ky0 + 40)], 0.4))), CHALK, 0.85)
+    c.put(c.mask(lambda p: (p.line([(kx0 + 14, ky0 + 88), (kx1 - 14, ky0 + 88)], 1.0), p.line([(kx0 + 30, ky0 + 74), (kx1 - 30, ky0 + 102)], 1.4), p.line([(kx0 + 30, ky0 + 102), (kx1 - 30, ky0 + 74)], 1.4))), CHALK, 0.85)
+    c.put(c.mask(lambda p: p.ring(kx0 + 150, ky0 + 18, 6, 0.8)), CHALK, 0.85)
+    c.put(c.mask(lambda p: p.line([(kx0 + 146, ky0 + 18), (kx0 + 154, ky0 + 18)], 0.8)), CHALK, 0.85)
+    # The director's office: a door with frosted glass and a lit lamp inside.
+    ox0, ox1 = 1178, 1244
+    c.put(c.mask(box(ox0 - 6, g - 130, ox1 + 6, g)), OAK_DARK)
+    c.put(c.mask(box(ox0, g - 124, ox1, g)), OAK)
+    frost = c.mask(box(ox0 + 8, g - 116, ox1 - 8, g - 66))
+    c.put(frost, (210, 220, 210))
+    c.light(frost, (255, 220, 150), 0.35)
+    c.put(c.mask(lambda p: p.ellipse(ox1 - 10, g - 56, 2.2)), BRASS)
+    # Cable spools and a coil of cable on the floor.
+    for sx_, r in ((660, 26), (700, 18)):
+        c.put(c.mask(lambda p: p.ellipse(sx_, g - r, r)), (110, 80, 50))
+        c.put(c.mask(lambda p: p.ellipse(sx_, g - r, r * 0.62)), COPPER_WIRE)
+        c.put(c.mask(lambda p: p.ellipse(sx_, g - r, r * 0.2)), (60, 44, 30))
+    c.put(c.mask(lambda p: p.line([(COIL_WEST_X + 30, g - 30), (560, g - 6), (640, g - 4), (680, g - 26)], 3)), (40, 40, 44))
+
+
 PIECES: Dict[str, Piece] = {
     # The quad.
     "eureka_patent_front": Piece((PO_X0 - 14, PO_CORNICE - 100, PO_X1 + 14, STREET), patent_front),
@@ -667,6 +855,7 @@ PIECES: Dict[str, Piece] = {
     # Inside.
     "eureka_patent_room": Piece((16, PO_CEILING, 1008, PO_FLOOR), patent_room),
     "eureka_observatory_room": Piece((0, 0, OBS_W, OBS_FLOOR), observatory_room),
+    "eureka_lab_room": Piece((16, LAB_CEILING, LAB_W - 16, LAB_FLOOR), lab_room),
 }
 
 TARGETS = targets(PIECES, PAL)
