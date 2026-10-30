@@ -20,58 +20,58 @@
       "state": {
         "root": {
           "position": [
-            -0.402,
-            -63.9141
+            -6.0296,
+            -47.0312
           ]
         },
         "bones": {
           "cannon": {
-            "rotation_deg": 82.6813
+            "rotation_deg": 60.385
           },
           "far_arm_hand": {
-            "rotation_deg": 0.1827
+            "rotation_deg": 2.7412
           },
           "far_arm_l": {
-            "rotation_deg": 1.3508
+            "rotation_deg": 20.2622
           },
           "far_arm_u": {
-            "rotation_deg": 1.0112
+            "rotation_deg": 15.1684
           },
           "far_leg_foot": {
-            "rotation_deg": -46.7427
+            "rotation_deg": -48.3411
           },
           "far_leg_l": {
-            "rotation_deg": 100.474
+            "rotation_deg": 102.3201
           },
           "far_leg_u": {
-            "rotation_deg": -38.9127
+            "rotation_deg": -41.7012
           },
           "head": {
-            "rotation_deg": 1.0741
+            "rotation_deg": 16.1111
           },
           "near_arm_hand": {
-            "rotation_deg": 0.0616
+            "rotation_deg": 0.9235
           },
           "near_arm_l": {
-            "rotation_deg": 1.8472
+            "rotation_deg": 27.7076
           },
           "near_arm_u": {
-            "rotation_deg": -0.385
+            "rotation_deg": -5.7745
           },
           "near_leg_foot": {
-            "rotation_deg": -28.2531
+            "rotation_deg": -27.0334
           },
           "near_leg_l": {
-            "rotation_deg": 65.6188
+            "rotation_deg": 64.0778
           },
           "near_leg_u": {
-            "rotation_deg": -17.5472
+            "rotation_deg": -19.7666
           },
           "pelvis": {
-            "rotation_deg": 0.1815
+            "rotation_deg": 2.7222
           },
           "torso": {
-            "rotation_deg": 0.337
+            "rotation_deg": 5.0556
           }
         }
       }

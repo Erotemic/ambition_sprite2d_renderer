@@ -20,8 +20,8 @@
       "state": {
         "root": {
           "position": [
-            -0.201,
-            21.9077
+            -3.0148,
+            24.7215
           ]
         },
         "bones": {
@@ -32,43 +32,43 @@
             "rotation_deg": -33.035
           },
           "far_arm_u": {
-            "rotation_deg": -52.1377
+            "rotation_deg": -47.9896
           },
           "far_leg_foot": {
-            "rotation_deg": -13.355
+            "rotation_deg": -13.9813
           },
           "far_leg_l": {
-            "rotation_deg": 36.0618
+            "rotation_deg": 38.6506
           },
           "far_leg_u": {
-            "rotation_deg": -27.6327
+            "rotation_deg": -29.9582
           },
           "head": {
-            "rotation_deg": -18.1481
+            "rotation_deg": -20.2222
           },
           "near_arm_hand": {
             "rotation_deg": 4.124
           },
           "near_arm_l": {
-            "rotation_deg": -8.5188
+            "rotation_deg": -5.9262
           },
           "near_arm_u": {
-            "rotation_deg": 52.1435
+            "rotation_deg": 58.8842
           },
           "near_leg_foot": {
-            "rotation_deg": -9.9989
+            "rotation_deg": -11.0326
           },
           "near_leg_l": {
-            "rotation_deg": 42.5159
+            "rotation_deg": 45.3753
           },
           "near_leg_u": {
-            "rotation_deg": -19.4429
+            "rotation_deg": -21.6316
           },
           "pelvis": {
-            "rotation_deg": 4.9259
+            "rotation_deg": 5.2889
           },
           "torso": {
-            "rotation_deg": 9.1481
+            "rotation_deg": 9.8222
           }
         }
       }

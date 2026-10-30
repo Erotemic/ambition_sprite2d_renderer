@@ -106,8 +106,9 @@ class Key:
     `feet` places boots (see `Foot`); an unlisted boot stays planted, and in
     the `air` every boot rides with the body. `aim` turns the beast's cannon
     (forward-relative degrees), `None` keeps it with the head. `ease` shapes
-    the approach INTO this key: "out" arrives fast (a cut), "in" gathers (a
-    wind-up), "smooth" both, "linear" neither.
+    the approach INTO this key: "out" arrives fast (a cut), "gather" moves at
+    once and settles (a wind-up), "in" holds and then moves, "smooth" both,
+    "linear" neither.
     """
 
     at: float
@@ -128,6 +129,11 @@ _EASES: Dict[str, Callable[[float], float]] = {
     "smooth": lambda u: u * u * (3.0 - 2.0 * u),
     "out": lambda u: 1.0 - (1.0 - u) ** 3,
     "in": lambda u: u ** 3,
+    # A wind-up: the body starts into the coil at once and settles into it,
+    # so a slow move shows its gather over the whole startup. Cubic "in" held
+    # the rest pose for most of a long startup and snapped into the coil on
+    # its last frame (a Falcon-paced up tilt read as standing, then a swing).
+    "gather": lambda u: 1.0 - (1.0 - u) ** 2,
 }
 
 
@@ -360,7 +366,7 @@ def pp_jab(b: Body, a0: int, a1: int) -> List[Key]:
     return [
         b.rest_key(0.0),
         Key(at=F(a0 - 1), near=(140.0, 172.0, 2.0), far=(60.0, 20.0, 10.0), torso=-6.0, head=-3.0,
-            lunge=-3.0, drop=2.0, ease="in"),
+            lunge=-3.0, drop=2.0, ease="gather"),
         Key(at=F(a0), near=(22.0, 6.0, 0.0), far=(130.0, 120.0, 110.0), torso=8.0, head=2.0, lunge=2.0,
             drop=2.5, feet={"near": (6.0, 0.0, 0.0)}, ease="out"),
         Key(at=F(c), near=(4.0, -3.0, -2.0), far=(140.0, 125.0, 115.0), torso=14.0, head=4.0, lunge=6.0,
@@ -379,7 +385,7 @@ def pp_tilt_forward(b: Body, a0: int, a1: int) -> List[Key]:
         b.rest_key(0.0),
         # Low coil: the blade trailing behind, point down, the body sunk.
         Key(at=F(a0 - 1), near=(135.0, 120.0, 140.0), far=(70.0, 30.0, 20.0), torso=-6.0, head=-2.0,
-            lunge=-3.0, drop=3.0, feet={"far": (-2.0, 0.0, 0.0)}, ease="in"),
+            lunge=-3.0, drop=3.0, feet={"far": (-2.0, 0.0, 0.0)}, ease="gather"),
         # Smear: the blade sweeping up through the front, low.
         Key(at=F(a0), near=(55.0, 40.0, 42.0), far=(120.0, 110.0, 100.0), torso=8.0, head=3.0,
             lunge=3.0, drop=4.0, feet={"near": (6.0, 0.0, 0.0)}, ease="out"),
@@ -401,7 +407,7 @@ def pp_tilt_up(b: Body, a0: int, a1: int) -> List[Key]:
         b.rest_key(0.0),
         # Crouch with the blade low in front: the arc has somewhere to come from.
         Key(at=F(a0 - 1), near=(60.0, 45.0, 35.0), far=(110.0, 100.0, 95.0), torso=10.0, head=5.0,
-            drop=6.0, ease="in"),
+            drop=6.0, ease="gather"),
         Key(at=F(a0), near=(-25.0, -45.0, -48.0), far=(120.0, 115.0, 105.0), torso=0.0, head=-10.0,
             drop=1.0, ease="out"),
         # The vertical, up on the toes, the head back after the blade.
@@ -420,11 +426,11 @@ def pp_tilt_down(b: Body, a0: int, a1: int) -> List[Key]:
     low = {"near": (-4.0, 0.0, 0.0), "far": (6.0, 0.0, 0.0)}
     out = {"near": (-4.0, 0.0, 0.0), "far": (10.0, 0.0, 0.0)}
     poke = 24.0
-    crouch = Key(at=0.0, torso=10.0, head=4.0, drop=14.0, feet=low, ease="in")
+    crouch = Key(at=0.0, torso=10.0, head=4.0, drop=14.0, feet=low, ease="gather")
     return [
         crouch,
         Key(at=F(a0 - 1), near=(140.0, 175.0, poke), far=(60.0, 20.0, 10.0), torso=12.0, head=0.0,
-            lunge=-2.0, drop=14.0, feet=low, ease="in"),
+            lunge=-2.0, drop=14.0, feet=low, ease="gather"),
         Key(at=F(a0), near=(poke + 30.0, poke + 8.0, poke), far=(120.0, 110.0, 100.0), torso=18.0, head=3.0,
             lunge=3.0, drop=14.0, feet=out, ease="out"),
         Key(at=F(c), near=(poke + 6.0, poke, poke), far=(130.0, 115.0, 105.0), torso=24.0, head=5.0,
@@ -445,7 +451,7 @@ def pp_dash_attack(b: Body, a0: int, a1: int) -> List[Key]:
         Key(at=0.0, near=(150.0, 160.0, -150.0), far=(50.0, 30.0, 20.0), torso=14.0, head=-4.0,
             drop=4.0, feet={"near": (-4.0, 2.0, 18.0), "far": (4.0, 0.0, 0.0)}),
         Key(at=F(a0 - 1), near=(160.0, 175.0, -140.0), far=(60.0, 40.0, 30.0), torso=16.0, head=-6.0,
-            lunge=-1.0, drop=5.0, feet={"near": (-4.0, 2.0, 18.0), "far": (4.0, 0.0, 0.0)}, ease="in"),
+            lunge=-1.0, drop=5.0, feet={"near": (-4.0, 2.0, 18.0), "far": (4.0, 0.0, 0.0)}, ease="gather"),
         # Smear: launched, the blade coming over the top.
         Key(at=F(a0), near=(-50.0, -70.0, -60.0), far=(140.0, 130.0, 120.0), torso=22.0, head=-6.0,
             lunge=8.0, drop=5.0, feet=run, ease="out"),
@@ -471,7 +477,7 @@ def pp_smash_forward(b: Body, a0: int, a1: int) -> List[Key]:
             lunge=-3.0, drop=3.0),
         # Full coil, held: the blade overhead and past vertical behind, both hands.
         Key(at=F(a0 - 1), near=(-110.0, -140.0, -150.0), far=(-95.0, -140.0, -150.0), torso=-14.0, head=-6.0,
-            lunge=-4.0, drop=4.5, feet={"far": (-2.0, 1.0, 10.0)}, ease="in"),
+            lunge=-4.0, drop=4.5, feet={"far": (-2.0, 1.0, 10.0)}, ease="gather"),
         # Smear: over the top and coming down in front, a big step.
         Key(at=F(a0), near=(-35.0, -50.0, -40.0), far=(-30.0, -60.0, -50.0), torso=10.0, head=3.0,
             lunge=5.0, drop=5.0, feet=step, ease="out"),
@@ -496,7 +502,7 @@ def pp_smash_up(b: Body, a0: int, a1: int) -> List[Key]:
         b.rest_key(0.0),
         # Deep squat, the blade low and back, both hands.
         Key(at=F(a0 - 1), near=(120.0, 150.0, 165.0), far=(100.0, 150.0, 165.0), torso=14.0, head=6.0,
-            lunge=-1.0, drop=10.0, ease="in"),
+            lunge=-1.0, drop=10.0, ease="gather"),
         # The spring: the blade sweeping up the front.
         Key(at=F(a0), near=(-15.0, -35.0, -30.0), far=(-5.0, -30.0, -30.0), torso=4.0, head=-12.0,
             lunge=1.0, drop=-3.0, feet={"near": (-1.0, 4.0, 25.0), "far": (1.0, 5.0, 25.0)}, ease="out"),
@@ -506,7 +512,7 @@ def pp_smash_up(b: Body, a0: int, a1: int) -> List[Key]:
             lunge=1.0, drop=-9.0, feet=spring, ease="out"),
         # Landing back into a crouch.
         Key(at=F(a1 + 3), near=(-150.0, -175.0, -185.0), far=(-260.0, -270.0, -275.0), torso=6.0, head=-10.0,
-            drop=5.0, ease="in"),
+            drop=5.0, ease="gather"),
         Key(at=F(a1 + 5), near=(-245.0, -255.0, -265.0), far=(-262.0, -268.0, -275.0), torso=2.0, drop=1.0),
         b.rest_key(1.0, turn=-1),
     ]
@@ -522,7 +528,7 @@ def pp_smash_down(b: Body, a0: int, a1: int) -> List[Key]:
         b.rest_key(0.0),
         # Sink wide, the blade gathered high in front.
         Key(at=F(a0 - 1), near=(-20.0, -50.0, -35.0), far=(110.0, 100.0, 90.0), torso=4.0, head=2.0,
-            drop=9.0, feet=wide, ease="in"),
+            drop=9.0, feet=wide, ease="gather"),
         Key(at=F(a0), near=(62.0, 48.0, 55.0), far=(130.0, 125.0, 115.0), torso=20.0, head=-4.0,
             lunge=2.0, drop=11.0, feet=wide, ease="out"),
         Key(at=F(c), near=(118.0, 132.0, 125.0), far=(60.0, 40.0, 30.0), torso=-6.0, head=-4.0,
@@ -545,7 +551,7 @@ def pp_air_neutral(b: Body, a0: int, a1: int) -> List[Key]:
     ring = [((25.0, 5.0, 0.0), 8.0), ((-70.0, -88.0, -90.0), -4.0), ((-160.0, -175.0, -180.0), -8.0),
             ((100.0, 95.0, 90.0), 4.0), ((30.0, 10.0, 0.0), 8.0)]
     keys = [b.rest_key(0.0), Key(at=F(max(0, a0 - 1)), near=(60.0, 40.0, 30.0), far=(120.0, 110.0, 100.0),
-                                 torso=6.0, head=3.0, ease="in")]
+                                 torso=6.0, head=3.0, ease="gather")]
     span = max(1, a1 - a0)
     for i, (near, lean) in enumerate(ring):
         at = F(a0 + span * i / (len(ring) - 1))
@@ -561,9 +567,9 @@ def pp_air_forward(b: Body, a0: int, a1: int) -> List[Key]:
     return _air([
         b.rest_key(0.0),
         Key(at=F(a0 - 2), near=(-135.0, -155.0, -130.0), far=(60.0, 20.0, 10.0), torso=-8.0, head=-4.0,
-            lunge=-2.0, feet={"near": (-6.0, 6.0, 30.0)}, ease="in"),
+            lunge=-2.0, feet={"near": (-6.0, 6.0, 30.0)}, ease="gather"),
         Key(at=F(a0 - 1), near=(-105.0, -125.0, -100.0), far=(70.0, 30.0, 20.0), torso=-4.0, head=-2.0,
-            lunge=-1.0, feet={"near": (-6.0, 6.0, 30.0)}, ease="in"),
+            lunge=-1.0, feet={"near": (-6.0, 6.0, 30.0)}, ease="gather"),
         Key(at=F(a0), near=(5.0, -10.0, -5.0), far=(140.0, 125.0, 115.0), torso=16.0, head=6.0, lunge=4.0,
             feet={"near": (-8.0, 5.0, 35.0), "far": (5.0, 10.0, 10.0)}, ease="out"),
         Key(at=F(c), near=(25.0, 10.0, 15.0), far=(145.0, 130.0, 120.0), torso=20.0, head=7.0, lunge=4.0,
@@ -581,7 +587,7 @@ def pp_air_back(b: Body, a0: int, a1: int) -> List[Key]:
         b.rest_key(0.0),
         # Gathered: the blade across the chest in front.
         Key(at=F(a0 - 1), near=(40.0, -30.0, -20.0), far=(110.0, 110.0, 100.0), torso=10.0, head=4.0,
-            feet={"far": (6.0, 10.0, 0.0)}, ease="in"),
+            feet={"far": (6.0, 10.0, 0.0)}, ease="gather"),
         # Smear: over the head on its way back.
         Key(at=F(a0), near=(-110.0, -130.0, -120.0), far=(80.0, 50.0, 40.0), torso=-6.0, head=-8.0,
             lunge=-1.0, feet={"near": (-6.0, 4.0, 30.0), "far": (6.0, 12.0, 0.0)}, ease="out"),
@@ -600,7 +606,7 @@ def pp_air_up(b: Body, a0: int, a1: int) -> List[Key]:
     return _air([
         b.rest_key(0.0),
         Key(at=F(a0 - 1), near=(40.0, 20.0, 10.0), far=(110.0, 110.0, 100.0), torso=8.0, head=4.0,
-            feet={"near": (-3.0, 9.0, 20.0), "far": (3.0, 11.0, 15.0)}, ease="in"),
+            feet={"near": (-3.0, 9.0, 20.0), "far": (3.0, 11.0, 15.0)}, ease="gather"),
         Key(at=F(a0), near=(-40.0, -55.0, -45.0), far=(120.0, 120.0, 110.0), torso=-2.0, head=-14.0,
             drop=-1.0, feet={"near": (-2.0, 5.0, 30.0), "far": (2.0, 6.0, 30.0)}, ease="out"),
         Key(at=F(c), near=(-85.0, -95.0, -90.0), far=(130.0, 135.0, 125.0), torso=-6.0, head=-26.0,
@@ -619,7 +625,7 @@ def pp_air_down(b: Body, a0: int, a1: int) -> List[Key]:
         b.rest_key(0.0),
         # Raised overhead first, so the stab has a direction.
         Key(at=F(a0 - 1), near=(-110.0, -120.0, -95.0), far=(70.0, 40.0, 30.0), torso=-6.0, head=-6.0,
-            feet={"near": (-2.0, 3.0, 20.0), "far": (2.0, 4.0, 15.0)}, ease="in"),
+            feet={"near": (-2.0, 3.0, 20.0), "far": (2.0, 4.0, 15.0)}, ease="gather"),
         Key(at=F(a0), near=(20.0, 30.0, 25.0), far=(130.0, 125.0, 115.0), torso=10.0, head=6.0, drop=-1.0,
             feet={"near": (-5.0, 8.0, 30.0), "far": (0.0, 10.0, 25.0)}, ease="out"),
         Key(at=F(c), near=(92.0, 88.0, 90.0), far=(150.0, 145.0, 135.0), torso=16.0, head=10.0, drop=-2.0,
@@ -663,7 +669,7 @@ def pg_jab(b: Body, a0: int, a1: int) -> List[Key]:
     return [
         b.rest_key(0.0),
         Key(at=F(a0 - 1), near=(125.0, 175.0, 185.0), far=guard, torso=-5.0, head=-2.0, lunge=-2.0,
-            drop=1.5, ease="in"),
+            drop=1.5, ease="gather"),
         Key(at=F(a0), near=(15.0, 4.0, 0.0), far=guard, torso=8.0, head=2.0, lunge=3.0, drop=2.0,
             feet={"near": (6.0, 0.0, 0.0)}, ease="out"),
         Key(at=F(c), near=(2.0, -2.0, 0.0), far=guard, torso=14.0, head=4.0, lunge=6.0, drop=2.5,
@@ -682,7 +688,7 @@ def pg_tilt_forward(b: Body, a0: int, a1: int) -> List[Key]:
     return [
         b.rest_key(0.0),
         Key(at=F(a0 - 1), near=(160.0, 195.0, 200.0), far=(70.0, 10.0, -10.0), torso=-10.0, head=-4.0,
-            lunge=-3.0, drop=3.0, feet={"far": (-2.0, 0.0, 0.0)}, ease="in"),
+            lunge=-3.0, drop=3.0, feet={"far": (-2.0, 0.0, 0.0)}, ease="gather"),
         Key(at=F(a0), near=(45.0, 15.0, 5.0), far=(110.0, 80.0, 70.0), torso=8.0, head=2.0, lunge=4.0,
             drop=3.0, feet={"near": (6.0, 0.0, 0.0)}, ease="out"),
         Key(at=F(c), near=(0.0, 0.0, 0.0), far=(130.0, 110.0, 100.0), torso=18.0, head=5.0, lunge=9.0,
@@ -701,7 +707,7 @@ def pg_tilt_up(b: Body, a0: int, a1: int) -> List[Key]:
     return [
         b.rest_key(0.0),
         Key(at=F(a0 - 1), near=(120.0, 165.0, 185.0), far=(70.0, 0.0, -20.0), torso=8.0, head=4.0,
-            drop=7.0, ease="in"),
+            drop=7.0, ease="gather"),
         Key(at=F(a0), near=(30.0, -30.0, -45.0), far=(110.0, 90.0, 80.0), torso=2.0, head=-6.0, lunge=2.0,
             drop=2.0, ease="out"),
         Key(at=F(c), near=(-85.0, -92.0, -95.0), far=(130.0, 125.0, 115.0), torso=-6.0, head=-18.0, lunge=2.0,
@@ -718,11 +724,11 @@ def pg_tilt_down(b: Body, a0: int, a1: int) -> List[Key]:
     # A low sweep kick from a crouch, the near boot.
     c = _contact(a0, a1)
     crouch = Key(at=0.0, near=(60.0, 140.0, 170.0), far=(100.0, 150.0, 175.0), torso=14.0, head=4.0, drop=14.0,
-                 feet={"near": (-6.0, 0.0, 0.0), "far": (6.0, 0.0, 0.0)}, ease="in")
+                 feet={"near": (-6.0, 0.0, 0.0), "far": (6.0, 0.0, 0.0)}, ease="gather")
     return [
         crouch,
         Key(at=F(a0 - 1), near=(60.0, 140.0, 170.0), far=(100.0, 150.0, 175.0), torso=18.0, head=4.0, drop=15.0,
-            feet={"near": (-14.0, 2.0, -20.0), "far": (6.0, 0.0, 0.0)}, ease="in"),
+            feet={"near": (-14.0, 2.0, -20.0), "far": (6.0, 0.0, 0.0)}, ease="gather"),
         Key(at=F(a0), near=(40.0, 110.0, 140.0), far=(110.0, 160.0, 180.0), torso=10.0, head=2.0, drop=14.0,
             feet={"near": (14.0, 5.0, -10.0), "far": (6.0, 0.0, 0.0)}, ease="out"),
         Key(at=F(c), near=(30.0, 100.0, 130.0), far=(110.0, 160.0, 180.0), torso=4.0, head=0.0, drop=14.0,
@@ -742,7 +748,7 @@ def pg_dash_attack(b: Body, a0: int, a1: int) -> List[Key]:
         Key(at=0.0, near=(170.0, 150.0, 140.0), far=(40.0, 20.0, 10.0), torso=14.0, head=-4.0, drop=4.0,
             feet={"near": (-4.0, 2.0, 18.0), "far": (4.0, 0.0, 0.0)}),
         Key(at=F(a0 - 1), near=(185.0, 170.0, 160.0), far=(50.0, 30.0, 20.0), torso=16.0, head=-6.0,
-            lunge=-1.0, drop=5.0, feet={"near": (-4.0, 2.0, 18.0), "far": (4.0, 0.0, 0.0)}, ease="in"),
+            lunge=-1.0, drop=5.0, feet={"near": (-4.0, 2.0, 18.0), "far": (4.0, 0.0, 0.0)}, ease="gather"),
         Key(at=F(a0), near=(60.0, 30.0, 20.0), far=(140.0, 130.0, 120.0), torso=24.0, head=-6.0,
             lunge=8.0, drop=5.0, feet=run, ease="out"),
         Key(at=F(c), near=(0.0, -5.0, -5.0), far=(150.0, 140.0, 130.0), torso=28.0, head=-8.0,
@@ -767,7 +773,7 @@ def pg_smash_forward(b: Body, a0: int, a1: int) -> List[Key]:
             drop=3.0),
         # Cocked: the fist drawn far back, the chest turned away, weight back.
         Key(at=F(a0 - 1), near=(165.0, 200.0, 210.0), far=(60.0, -10.0, -30.0), torso=-14.0, head=-6.0,
-            lunge=-5.0, drop=4.5, feet={"far": (-3.0, 1.0, 10.0)}, ease="in"),
+            lunge=-5.0, drop=4.5, feet={"far": (-3.0, 1.0, 10.0)}, ease="gather"),
         Key(at=F(a0), near=(12.0, 4.0, 0.0), far=(130.0, 120.0, 110.0), torso=14.0, head=4.0, lunge=8.0,
             drop=4.0, feet=step, ease="out"),
         Key(at=F(c), near=(0.0, -2.0, 0.0), far=(140.0, 130.0, 120.0), torso=22.0, head=7.0, lunge=13.0,
@@ -789,7 +795,7 @@ def pg_smash_up(b: Body, a0: int, a1: int) -> List[Key]:
     return [
         b.rest_key(0.0),
         Key(at=F(a0 - 1), near=(130.0, 175.0, 195.0), far=(80.0, 20.0, 0.0), torso=14.0, head=6.0, lunge=-1.0,
-            drop=11.0, ease="in"),
+            drop=11.0, ease="gather"),
         Key(at=F(a0), near=(20.0, -40.0, -55.0), far=(120.0, 110.0, 100.0), torso=4.0, head=-12.0, lunge=1.0,
             drop=-3.0, feet={"near": (-1.0, 4.0, 25.0), "far": (1.0, 5.0, 25.0)}, ease="out"),
         Key(at=F(c), near=(-85.0, -92.0, -95.0), far=(140.0, 140.0, 130.0), torso=-6.0, head=-24.0, lunge=1.0,
@@ -797,7 +803,7 @@ def pg_smash_up(b: Body, a0: int, a1: int) -> List[Key]:
         Key(at=F(a1 + 1), near=(-105.0, -115.0, -120.0), far=(140.0, 140.0, 130.0), torso=-10.0, head=-28.0,
             lunge=1.0, drop=-10.0, feet=spring, ease="out"),
         Key(at=F(a1 + 3), near=(-80.0, -60.0, -50.0), far=(110.0, 100.0, 90.0), torso=6.0, head=-8.0, drop=5.0,
-            ease="in"),
+            ease="gather"),
         Key(at=F(a1 + 5), near=(90.0, 130.0, 160.0), far=(100.0, 140.0, 165.0), torso=2.0, drop=1.0),
         b.rest_key(1.0),
     ]
@@ -810,7 +816,7 @@ def pg_smash_down(b: Body, a0: int, a1: int) -> List[Key]:
     return [
         b.rest_key(0.0),
         Key(at=F(a0 - 1), near=(50.0, 120.0, 150.0), far=(120.0, 160.0, 180.0), torso=12.0, head=4.0, drop=10.0,
-            feet={"near": (-12.0, 3.0, -15.0), "far": (6.0, 0.0, 0.0)}, ease="in"),
+            feet={"near": (-12.0, 3.0, -15.0), "far": (6.0, 0.0, 0.0)}, ease="gather"),
         Key(at=F(a0), near=(40.0, 100.0, 130.0), far=arms, torso=-8.0, head=-2.0, drop=8.0,
             feet={"near": (40.0, 18.0, 10.0), "far": (6.0, 0.0, 0.0)}, ease="out"),
         Key(at=F(c), near=(80.0, 150.0, 180.0), far=(110.0, 40.0, 20.0), torso=20.0, head=6.0, drop=9.0,
@@ -828,7 +834,7 @@ def pg_air_neutral(b: Body, a0: int, a1: int) -> List[Key]:
     return _air([
         b.rest_key(0.0),
         Key(at=F(max(0, a0 - 1)), near=(80.0, 140.0, 170.0), far=(110.0, 150.0, 175.0), torso=6.0, head=2.0,
-            feet={"near": (6.0, 16.0, 30.0), "far": (-2.0, 14.0, 20.0)}, ease="in"),
+            feet={"near": (6.0, 16.0, 30.0), "far": (-2.0, 14.0, 20.0)}, ease="gather"),
         Key(at=F(a0), near=(100.0, 150.0, 175.0), far=(130.0, 160.0, 180.0), torso=-12.0, head=-4.0,
             feet={"near": (30.0, 18.0, 20.0), "far": (-6.0, 14.0, 25.0)}, ease="out"),
         Key(at=F(a0 + 1), near=(110.0, 155.0, 180.0), far=(140.0, 165.0, 185.0), torso=-16.0, head=-6.0,
@@ -847,9 +853,9 @@ def pg_air_forward(b: Body, a0: int, a1: int) -> List[Key]:
     return _air([
         b.rest_key(0.0),
         Key(at=F(a0 - 2), near=(-130.0, -150.0, -160.0), far=(70.0, 20.0, 0.0), torso=-8.0, head=-4.0,
-            lunge=-2.0, feet={"near": (-6.0, 6.0, 30.0)}, ease="in"),
+            lunge=-2.0, feet={"near": (-6.0, 6.0, 30.0)}, ease="gather"),
         Key(at=F(a0 - 1), near=(-100.0, -120.0, -130.0), far=(80.0, 30.0, 10.0), torso=-4.0, head=-2.0,
-            lunge=-1.0, feet={"near": (-6.0, 6.0, 30.0)}, ease="in"),
+            lunge=-1.0, feet={"near": (-6.0, 6.0, 30.0)}, ease="gather"),
         Key(at=F(a0), near=(0.0, -10.0, -15.0), far=(130.0, 120.0, 110.0), torso=16.0, head=6.0, lunge=4.0,
             feet={"near": (-8.0, 5.0, 35.0), "far": (5.0, 10.0, 10.0)}, ease="out"),
         Key(at=F(c), near=(25.0, 15.0, 10.0), far=(140.0, 130.0, 120.0), torso=22.0, head=8.0, lunge=4.0,
@@ -867,7 +873,7 @@ def pg_air_back(b: Body, a0: int, a1: int) -> List[Key]:
     return _air([
         b.rest_key(0.0),
         Key(at=F(a0 - 1), near=(40.0, -30.0, -40.0), far=(110.0, 110.0, 100.0), torso=10.0, head=4.0,
-            feet={"far": (6.0, 10.0, 0.0)}, ease="in"),
+            feet={"far": (6.0, 10.0, 0.0)}, ease="gather"),
         Key(at=F(a0), near=(-120.0, -150.0, -160.0), far=(80.0, 50.0, 40.0), torso=-6.0, head=-8.0, lunge=-1.0,
             feet={"near": (-6.0, 4.0, 30.0), "far": (6.0, 12.0, 0.0)}, ease="out"),
         Key(at=F(c), near=(-178.0, -180.0, -180.0), far=(60.0, 30.0, 20.0), torso=-18.0, head=-14.0, lunge=-3.0,
@@ -885,7 +891,7 @@ def pg_air_up(b: Body, a0: int, a1: int) -> List[Key]:
     return _air([
         b.rest_key(0.0),
         Key(at=F(a0 - 1), near=(60.0, 120.0, 150.0), far=(120.0, 150.0, 175.0), torso=10.0, head=4.0,
-            feet={"near": (14.0, 10.0, 20.0), "far": (-4.0, 14.0, 20.0)}, ease="in"),
+            feet={"near": (14.0, 10.0, 20.0), "far": (-4.0, 14.0, 20.0)}, ease="gather"),
         Key(at=F(a0), near=(80.0, 130.0, 160.0), far=(130.0, 160.0, 180.0), torso=-6.0, head=-10.0, drop=-1.0,
             feet={"near": (48.0, 26.0, 60.0), "far": (-6.0, 14.0, 25.0)}, ease="out"),
         # The boot up in front of the body, clear of it, the body leaning away.
@@ -905,7 +911,7 @@ def pg_air_down(b: Body, a0: int, a1: int) -> List[Key]:
     return _air([
         b.rest_key(0.0),
         Key(at=F(a0 - 1), near=(60.0, 120.0, 150.0), far=(120.0, 150.0, 175.0), torso=8.0, head=6.0, drop=-2.0,
-            feet={"near": (6.0, 30.0, 60.0), "far": (-4.0, 24.0, 40.0)}, ease="in"),
+            feet={"near": (6.0, 30.0, 60.0), "far": (-4.0, 24.0, 40.0)}, ease="gather"),
         Key(at=F(a0), near=(70.0, 130.0, 160.0), far=(110.0, 140.0, 170.0), torso=14.0, head=10.0, drop=0.0,
             feet={"near": (4.0, 4.0, 70.0), "far": (-6.0, 22.0, 40.0)}, ease="out"),
         Key(at=F(c), near=(80.0, 140.0, 170.0), far=(110.0, 140.0, 170.0), torso=16.0, head=10.0, drop=1.0,
@@ -968,7 +974,7 @@ def _shot(b: Body, a0: int, a1: int, aim: float, *, coil_drop: float = 4.0, coil
     keys = [
         start or b.rest_key(0.0, air=air),
         Key(at=F(a0 - 1), near=arms_coil[0], far=arms_coil[1], torso=coil_lean, head=0.6 * aim - 8.0,
-            aim=aim - 6.0, lunge=-2.0, drop=coil_drop, feet=fc, ease="in"),
+            aim=aim - 6.0, lunge=-2.0, drop=coil_drop, feet=fc, ease="gather"),
         Key(at=F(a0), near=arms_fire[0], far=arms_fire[1], torso=6.0, head=0.6 * aim, aim=aim, lunge=2.0,
             drop=coil_drop * 0.5, feet=ff, ease="out"),
         Key(at=F(c), near=arms_fire[0], far=arms_fire[1], torso=4.0, head=0.6 * aim + 2.0, aim=aim, lunge=1.0,
@@ -998,7 +1004,7 @@ def pj_tilt_up(b, a0, a1):
 
 def pj_tilt_down(b, a0, a1):
     crouch = Key(at=0.0, near=(90.0, 140.0, 170.0), far=(100.0, 150.0, 175.0), torso=12.0, head=10.0, drop=12.0,
-                 aim=20.0, feet={"near": (-5.0, 0.0, 0.0), "far": (6.0, 0.0, 0.0)}, ease="in")
+                 aim=20.0, feet={"near": (-5.0, 0.0, 0.0), "far": (6.0, 0.0, 0.0)}, ease="gather")
     keys = _shot(b, a0, a1, 40.0, coil_drop=14.0, coil_lean=10.0, recoil=3.0,
                  feet_coil={"near": (-5.0, 0.0, 0.0), "far": (6.0, 0.0, 0.0)},
                  feet_fire={"near": (-5.0, 0.0, 0.0), "far": (10.0, 0.0, 0.0)},
@@ -1015,7 +1021,7 @@ def pj_dash_attack(b, a0, a1):
         Key(at=0.0, near=arms[0], far=arms[1], torso=14.0, head=-4.0, aim=0.0, drop=4.0,
             feet={"near": (-4.0, 2.0, 18.0), "far": (4.0, 0.0, 0.0)}),
         Key(at=F(a0 - 1), near=arms[0], far=arms[1], torso=10.0, head=-6.0, aim=-6.0, lunge=2.0, drop=5.0,
-            feet=run, ease="in"),
+            feet=run, ease="gather"),
         Key(at=F(a0), near=arms[0], far=arms[1], torso=20.0, head=0.0, aim=0.0, lunge=8.0, drop=5.0, feet=run,
             ease="out"),
         Key(at=F(a0 + 1), near=arms[0], far=arms[1], torso=8.0, head=-4.0, aim=2.0, lunge=6.0, drop=5.5,
@@ -1038,7 +1044,7 @@ def pj_smash_forward(b, a0, a1):
         b.rest_key(0.0),
         Key(at=F(1), near=arms[0], far=arms[1], torso=-6.0, head=-6.0, aim=-8.0, lunge=-2.0, drop=4.0),
         Key(at=F(a0 - 1), near=arms[0], far=arms[1], torso=-14.0, head=-12.0, aim=-14.0, lunge=-6.0, drop=10.0,
-            feet={"far": (-4.0, 0.0, 0.0)}, ease="in"),
+            feet={"far": (-4.0, 0.0, 0.0)}, ease="gather"),
         Key(at=F(a0), near=(70.0, 120.0, 150.0), far=(90.0, 140.0, 170.0), torso=12.0, head=2.0, aim=0.0,
             lunge=5.0, drop=5.0, feet=brace, ease="out"),
         Key(at=F(a1), near=(70.0, 120.0, 150.0), far=(90.0, 140.0, 170.0), torso=10.0, head=3.0, aim=0.0,
@@ -1066,7 +1072,7 @@ def pj_air_neutral(b, a0, a1):
     # The cannon sweeps from forward-down up over the front across the window.
     arms = ((90.0, 140.0, 170.0), (100.0, 150.0, 175.0))
     keys = [b.rest_key(0.0, air=True),
-            Key(at=F(max(0, a0 - 1)), near=arms[0], far=arms[1], torso=4.0, head=10.0, aim=30.0, ease="in")]
+            Key(at=F(max(0, a0 - 1)), near=arms[0], far=arms[1], torso=4.0, head=10.0, aim=30.0, ease="gather")]
     span = max(1, a1 - a0)
     for i, aim in enumerate((20.0, -10.0, -40.0, -70.0)):
         keys.append(Key(at=F(a0 + span * i / 3), near=arms[0], far=arms[1], torso=4.0 - 4.0 * i,
