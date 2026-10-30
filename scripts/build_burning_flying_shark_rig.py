@@ -10,7 +10,8 @@ drawing cannot state: the frame, the rows and the clips. It never draws.
     uv run python scripts/build_burning_flying_shark_rig.py
 
 The clips keep the sheet contract the game already reads: the same four rows,
-frame counts and durations as before the SVG redesign.
+frame counts and durations as before the SVG redesign; ``notice`` and
+``windup`` are the telegraph rows the game pins before a fight.
 """
 
 from __future__ import annotations
@@ -80,11 +81,59 @@ def dive(i: int, n: int, t: float) -> Pose:
     return p
 
 
+def notice(i: int, n: int, t: float) -> Pose:
+    """It has seen you: pulled up short in the air, its head snapped round and
+    down onto you, the jaws parted, the fins flung out and the flames flaring.
+    The game loops it, so every frame is the whole pose with a shiver."""
+    shiver = track([0, 1, -1], t)
+    p = F.swim(0.0, tail=0.0, fin=0.0, bob=0.0)
+    p["root_x"] = -4.0
+    p["root_y"] = -5.0
+    p["body"] = -6.0 + 0.5 * shiver
+    p["head"] = 8.0 + shiver
+    p["jaw"] = 14.0 + 2.0 * shiver
+    p["near_pec"] = -24.0 + 2.0 * shiver
+    p["far_pec"] = -18.0 - 2.0 * shiver
+    p["dorsal"] = -6.0
+    p["tail1"] = 6.0
+    p["tail2"] = 10.0
+    p["fluke"] = 14.0 + 2.0 * shiver
+    p["fx.flame"] = 1.0
+    p["fx.flare"] = 0.6
+    p.update(eyes("angry"))
+    return p
+
+
+def windup(i: int, n: int, t: float) -> Pose:
+    """The bite held back: reared away from you with its jaws gaping, the body
+    coiled into a bow (the head and the tail both drawn up), the fins
+    cocked, the flames roaring. Every frame is the whole pose with a shiver."""
+    shiver = track([0, 1, -1], t)
+    p = F.swim(0.0, tail=0.0, fin=0.0, bob=0.0)
+    p["root_x"] = -14.0 + 0.6 * shiver
+    p["root_y"] = -6.0
+    p["body"] = -12.0 + 0.8 * shiver
+    p["head"] = -12.0
+    p["jaw"] = 40.0 + 2.0 * shiver
+    p["near_pec"] = -22.0 + 2.0 * shiver
+    p["far_pec"] = -16.0 - 2.0 * shiver
+    p["dorsal"] = 6.0
+    p["tail1"] = 16.0
+    p["tail2"] = 22.0 - shiver
+    p["fluke"] = 26.0 + 2.0 * shiver
+    p["fx.flame"] = 1.0
+    p["fx.flare"] = 0.8 + 0.2 * abs(shiver)
+    p.update(eyes("angry"))
+    return p
+
+
 CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "idle": idle,
     "fly": fly,
     "chomp": chomp,
     "dive": dive,
+    "notice": notice,
+    "windup": windup,
 }
 
 DEFAULTS: Pose = {"eye.open": 1.0, "jaw": 4.0}
@@ -105,6 +154,10 @@ SPEC = F.fish_spec(
         ("fly", 8, 90, True),
         ("chomp", 6, 82, False),
         ("dive", 8, 82, True),
+        # The game holds ``notice`` on first sight of its foe and ``windup``
+        # over its bite's startup (the telegraph).
+        ("notice", 3, 110, False),
+        ("windup", 3, 90, False),
     ],
     clips=CLIPS,
     defaults=DEFAULTS,

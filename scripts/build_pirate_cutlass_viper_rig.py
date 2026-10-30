@@ -12,7 +12,9 @@ limb swings back, the torso leans forward).
 
 The rows are the ten she has always had: ``idle``, ``walk``, ``turn_right``,
 ``profile_right``, ``turn_left``, ``profile_left``, ``slash``, ``taunt``,
-``hurt``, ``death``. She is drawn from the side only: ``turn_right`` lowers
+``hurt``, ``death``; and the two the game pins before a fight, ``notice``
+and ``windup`` (both loop on its clock, so every frame is the whole pose with
+a shiver). She is drawn from the side only: ``turn_right`` lowers
 her guard into ``profile_right``, her stance at ease, and the target draws
 ``turn_left`` and ``profile_left`` as their mirror images (the rows here are
 the same motion, facing right). The frame's centre is her pelvis, so a
@@ -199,6 +201,51 @@ CLIPS = {
             "coat": expr(f"-12*{ramp(0.3, 0.9)}"),
             **eyes("t > 0.3"),
         },
+    },
+}
+
+
+def held(*values: float) -> dict:
+    """One value per frame of a held three-frame row (the game loops it)."""
+    return {"keys": [[i / (len(values) - 1), v, "linear"] for i, v in enumerate(values)]}
+
+
+def held_legs(near_u: float, far_u: float, near_l: float, far_l: float) -> dict:
+    """``legs`` for a held pose: constant turns, each boot kept flat."""
+    return legs(str(near_u), str(far_u), str(near_l), str(far_l))
+
+
+# She has seen you: drawn up tall, her head snapped up and round to you, the
+# cutlass brought up into a high guard, the free arm flung out at you.
+CLIPS["notice"] = {
+    "loop": False, "frames": 3, "duration_ms": 110,
+    "channels": {
+        "root_y": expr("3"),
+        "torso": expr("-6"),
+        "head": held(-12.0, -13.5, -11.0),
+        "near_arm_u": held(-34.0, -35.0, -33.0), "near_arm_l": expr("-20"), "near_hand": held(-6.0, -9.0, -4.0),
+        "far_arm_u": held(-78.0, -80.0, -77.0), "far_arm_l": expr("-14"), "far_hand": expr("-10"),
+        "coat": expr("4"),
+        **held_legs(-8.0, 6.0, 4.0, 2.0),
+        **eyes(),
+    },
+}
+
+# The rising cut held back: down in a deep lunge, her weight on the back foot,
+# the cutlass drawn far back low behind her hip, the free arm out in front of
+# her at you, her head up and on you.
+CLIPS["windup"] = {
+    "loop": False, "frames": 3, "duration_ms": 90,
+    "channels": {
+        "root_x": held(-5.0, -4.6, -5.4),
+        "root_y": expr("8"),
+        "torso": held(8.0, 8.6, 7.6),
+        "head": held(-14.0, -13.0, -14.6),
+        "near_arm_u": held(64.0, 66.0, 63.0), "near_arm_l": expr("14"), "near_hand": held(112.0, 114.0, 110.0),
+        "far_arm_u": held(-62.0, -60.0, -63.0), "far_arm_l": expr("-18"), "far_hand": expr("-16"),
+        "coat": expr("10"),
+        **held_legs(-26.0, 22.0, 30.0, 12.0),
+        **eyes(),
     },
 }
 

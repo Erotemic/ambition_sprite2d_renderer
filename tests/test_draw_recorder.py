@@ -156,7 +156,7 @@ def test_component_scene_round_trips(tmp_path: Path) -> None:
 
     scene = pc.build_scene("pirate_raider")
     stats = scene.stats()
-    assert stats["parts"] >= 8 and stats["frames"] == 38
+    assert stats["parts"] >= 8 and stats["frames"] == sum(n for _anim, n, _ms in pc.rows_of("pirate_raider"))
     assert stats["part_uses"] > stats["parts"]   # real reuse across frames
     path = scene.save(tmp_path / "pirate_raider.svg")
     loaded = ComponentScene.load(path)

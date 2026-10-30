@@ -1376,6 +1376,477 @@
         }
       }
     },
+    "notice": {
+      "loop": false,
+      "frames": 3,
+      "duration_ms": 110,
+      "channels": {
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              -5.0,
+              "linear"
+            ],
+            [
+              0.5,
+              -5.6,
+              "linear"
+            ],
+            [
+              1.0,
+              -4.6,
+              "linear"
+            ]
+          ]
+        },
+        "body": {
+          "keys": [
+            [
+              0.0,
+              -6.0,
+              "linear"
+            ],
+            [
+              0.5,
+              -6.8,
+              "linear"
+            ],
+            [
+              1.0,
+              -5.4,
+              "linear"
+            ]
+          ]
+        },
+        "mandible_near": {
+          "keys": [
+            [
+              0.0,
+              20.0,
+              "linear"
+            ],
+            [
+              0.5,
+              23.0,
+              "linear"
+            ],
+            [
+              1.0,
+              18.0,
+              "linear"
+            ]
+          ]
+        },
+        "mandible_far": {
+          "keys": [
+            [
+              0.0,
+              -16.0,
+              "linear"
+            ],
+            [
+              0.5,
+              -18.0,
+              "linear"
+            ],
+            [
+              1.0,
+              -14.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_rear_foot_x": {
+          "const": -50.952
+        },
+        "far_rear_foot_y": {
+          "const": -3.6
+        },
+        "near_rear_foot_x": {
+          "const": -74.64
+        },
+        "near_rear_foot_y": {
+          "const": 0.0
+        },
+        "far_rmid_foot_x": {
+          "const": -30.792
+        },
+        "far_rmid_foot_y": {
+          "const": -3.6
+        },
+        "near_rmid_foot_x": {
+          "const": -49.44
+        },
+        "near_rmid_foot_y": {
+          "const": 0.0
+        },
+        "far_fmid_foot_x": {
+          "const": 44.472
+        },
+        "far_fmid_foot_y": {
+          "const": -3.6
+        },
+        "near_fmid_foot_x": {
+          "const": 44.64
+        },
+        "near_fmid_foot_y": {
+          "const": 0.0
+        },
+        "far_front_foot_x": {
+          "const": 64.632
+        },
+        "far_front_foot_y": {
+          "const": -3.6
+        },
+        "near_front_foot_x": {
+          "const": 69.84
+        },
+        "near_front_foot_y": {
+          "const": 0.0
+        },
+        "fuse": {
+          "keys": [
+            [
+              0.0,
+              4.0,
+              "linear"
+            ],
+            [
+              0.5,
+              6.0,
+              "linear"
+            ],
+            [
+              1.0,
+              3.0,
+              "linear"
+            ]
+          ]
+        },
+        "spark_0a": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "spark_0b": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "spark_1a": {
+          "keys": [
+            [
+              0.0,
+              1.0,
+              "linear"
+            ],
+            [
+              0.5,
+              1.0,
+              "linear"
+            ],
+            [
+              1.0,
+              1.0,
+              "linear"
+            ]
+          ]
+        }
+      }
+    },
+    "windup": {
+      "loop": false,
+      "frames": 3,
+      "duration_ms": 90,
+      "channels": {
+        "root_x": {
+          "keys": [
+            [
+              0.0,
+              -7.0,
+              "linear"
+            ],
+            [
+              0.5,
+              -6.4,
+              "linear"
+            ],
+            [
+              1.0,
+              -7.4,
+              "linear"
+            ]
+          ]
+        },
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              -2.0,
+              "linear"
+            ],
+            [
+              0.5,
+              -2.4,
+              "linear"
+            ],
+            [
+              1.0,
+              -1.8,
+              "linear"
+            ]
+          ]
+        },
+        "body": {
+          "keys": [
+            [
+              0.0,
+              -15.0,
+              "linear"
+            ],
+            [
+              0.5,
+              -14.0,
+              "linear"
+            ],
+            [
+              1.0,
+              -15.8,
+              "linear"
+            ]
+          ]
+        },
+        "mandible_near": {
+          "keys": [
+            [
+              0.0,
+              36.0,
+              "linear"
+            ],
+            [
+              0.5,
+              38.0,
+              "linear"
+            ],
+            [
+              1.0,
+              34.0,
+              "linear"
+            ]
+          ]
+        },
+        "mandible_far": {
+          "keys": [
+            [
+              0.0,
+              -28.0,
+              "linear"
+            ],
+            [
+              0.5,
+              -30.0,
+              "linear"
+            ],
+            [
+              1.0,
+              -26.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_rear_foot_x": {
+          "const": -50.952
+        },
+        "far_rear_foot_y": {
+          "const": -3.6
+        },
+        "near_rear_foot_x": {
+          "const": -74.64
+        },
+        "near_rear_foot_y": {
+          "const": 0.0
+        },
+        "far_rmid_foot_x": {
+          "const": -30.792
+        },
+        "far_rmid_foot_y": {
+          "const": -3.6
+        },
+        "near_rmid_foot_x": {
+          "const": -49.44
+        },
+        "near_rmid_foot_y": {
+          "const": 0.0
+        },
+        "far_fmid_foot_x": {
+          "const": 44.472
+        },
+        "far_fmid_foot_y": {
+          "const": -3.6
+        },
+        "near_fmid_foot_x": {
+          "const": 44.64
+        },
+        "near_fmid_foot_y": {
+          "const": 0.0
+        },
+        "far_front_foot_x": {
+          "const": 64.632
+        },
+        "far_front_foot_y": {
+          "const": -3.6
+        },
+        "near_front_foot_x": {
+          "const": 69.84
+        },
+        "near_front_foot_y": {
+          "const": 0.0
+        },
+        "fuse": {
+          "keys": [
+            [
+              0.0,
+              -16.0,
+              "linear"
+            ],
+            [
+              0.5,
+              -14.0,
+              "linear"
+            ],
+            [
+              1.0,
+              -17.0,
+              "linear"
+            ]
+          ]
+        },
+        "shell_0": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shell_1": {
+          "keys": [
+            [
+              0.0,
+              1.0,
+              "linear"
+            ],
+            [
+              0.5,
+              1.0,
+              "linear"
+            ],
+            [
+              1.0,
+              1.0,
+              "linear"
+            ]
+          ]
+        },
+        "spark_0a": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "spark_0b": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "spark_1a": {
+          "keys": [
+            [
+              0.0,
+              1.0,
+              "linear"
+            ],
+            [
+              0.5,
+              1.0,
+              "linear"
+            ],
+            [
+              1.0,
+              1.0,
+              "linear"
+            ]
+          ]
+        }
+      }
+    },
     "death": {
       "loop": false,
       "frames": 8,

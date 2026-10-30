@@ -890,6 +890,35 @@ def front(i: int, n: int):
 
 X.rows = list(X.rows) + [("front", 8, 145)] + [(name, frames, 50) for name, frames, _fn in FIGHT]
 
+
+# ---- The telegraph ----------------------------------------------------------------
+#
+# The game holds ``notice`` while he first looks at his foe and ``windup`` over
+# his cut's startup. Both loop on its clock, so every frame is the whole pose
+# with a shiver.
+
+
+@X.row
+def notice(i: int, n: int):
+    # He has seen you: the sword comes up off the ground in his near hand, its
+    # point on you, and his far hand points you out; his head is up, his eyes
+    # flare.
+    s = (0.0, 1.0, -1.0)[i % 3]
+    return P(hip=(-1.0, 0.0), lean=-3.0, head=(0.0, -0.3, -7.0 + s), na=(14.0, 10.0), nh="fist", fa=(22.0, -6.0 + 0.5 * s), fh="point", fht=40.0,
+             nf=(-9.0, 0.0, 0.0), ff=(9.0, 0.0, 0.0), blade=-14.0 + 2.0 * s, eyes="wide", brows=-1.0, hem=(1.0, 1.0))
+
+
+@X.row
+def windup(i: int, n: int):
+    # The great cut held back: down on bent knees, the sword high over his far
+    # shoulder in both hands, its point behind him, his mask on you.
+    s = (0.0, 1.0, -1.0)[i % 3]
+    return hold((-4.0, -9.0 + 0.4 * s), -152.0 + 2.0 * s, hip=(-5.0, 7.0), lean=-12.0, head=(0.0, 0.0, -4.0 + s), nab=-1.0, fab=-1.0,
+                nf=(-13.0, 0.0, 0.0), ff=(11.0, 0.0, 0.0), eyes="wide", hem=(5.0, 2.0))
+
+
+X.rows = list(X.rows) + [("notice", 3, 110), ("windup", 3, 90)]
+
 ROWS = X.rows
 _render_frame = X.render_frame
 render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)

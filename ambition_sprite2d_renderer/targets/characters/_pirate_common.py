@@ -634,8 +634,9 @@ def draw_hair(draw, head_center, tilt, pal, look: Look):
                  look.hair, pal.outline, width=3)
 
 
-def draw_face(draw, head_center, tilt, pal, look: Look, x_eyes=False, blink=False, mouth_open=0.0):
-    """The head and the face on it, in the head's own frame."""
+def draw_face(draw, head_center, tilt, pal, look: Look, x_eyes=False, blink=False, mouth_open=0.0, wide=False):
+    """The head and the face on it, in the head's own frame. ``wide``: startled,
+    the lids up off the eyes and the brows raised (the ``notice`` row)."""
     white = (250, 248, 240, 255)
     with draw.part("face", head_center, tilt):
         # The ear, behind the head.
@@ -665,6 +666,10 @@ def draw_face(draw, head_center, tilt, pal, look: Look, x_eyes=False, blink=Fals
                     line(draw, [(ex - 6, eye_y), (ex + 6, eye_y + 1)], pal.outline, width=3)
                 else:
                     poly(draw, _oval(ex, eye_y + 1, 5.5, 5.5), white, pal.outline, width=2)
+                    if wide:
+                        # The pupil small, in the middle of the white.
+                        circle(draw, (ex + 1.5, eye_y + 1.0), 2.2, pal.outline)
+                        continue
                     circle(draw, (ex + 1.8, eye_y + 1.8), 3.0, pal.outline)
                     if look.gentle:
                         continue
@@ -679,7 +684,11 @@ def draw_face(draw, head_center, tilt, pal, look: Look, x_eyes=False, blink=Fals
                     if look.lashes:
                         out = ex - 6.5 if ex == far else ex + 6.5
                         line(draw, [(out, eye_y - 1.5), (out - toward * 4.0, eye_y - 5.0)], pal.outline, width=2)
-            if look.gentle:
+            if wide:
+                # Up off the eyes, still low at the nose: a startle, not fear.
+                line(draw, [(far - 8, eye_y - 14), (far + 7, eye_y - 10)], pal.outline, width=4)
+                line(draw, [(near - 7, eye_y - 10), (near + 8, eye_y - 14)], pal.outline, width=4)
+            elif look.gentle:
                 line(draw, [(far - 7, eye_y - 11), (far + 6, eye_y - 12)], pal.outline, width=3)
                 line(draw, [(near - 6, eye_y - 12), (near + 7, eye_y - 11)], pal.outline, width=3)
             else:
@@ -826,6 +835,25 @@ def _hand(draw, r: float, pal) -> None:
     the width of the body is measured by."""
     circle(draw, (0, 0), r, pal.outline)
     circle(draw, (0, 0), r - 2.6, pal.skin)
+
+
+def _pointing_hand(draw, r: float, pal) -> None:
+    """A hand with its first finger out along +x: the fist of ``_hand`` and a
+    finger, drawn as the fist is (ink, then skin inside it)."""
+    line(draw, [(0, 0), (r + 9.0, -1.0)], pal.outline, width=round(2 * (r - 4.0)))
+    circle(draw, (0, 0), r, pal.outline)
+    line(draw, [(0, 0), (r + 8.0, -1.0)], pal.skin, width=round(2 * (r - 6.6)))
+    circle(draw, (0, 0), r - 2.6, pal.skin)
+
+
+def _pistol(draw, pal) -> None:
+    """A flintlock, its muzzle along +x from the grip at the origin: a long iron
+    barrel, a gold lock, and a wooden butt that curls down behind the hand."""
+    wood = (104, 62, 34, 255)
+    poly(draw, [(-4, -7), (8, -8), (5, 3), (-7, 17), (-18, 21), (-19, 12), (-10, 3)], wood, pal.outline, width=3)
+    poly(draw, [(0, -12), (54, -12), (54, -2), (0, -2)], pal.metal, pal.outline, width=3)
+    poly(draw, [(50, -15), (58, -15), (58, 1), (50, 1)], _shade(pal.metal, 0.7), pal.outline, width=3)
+    poly(draw, [(-4, -16), (9, -16), (9, -8), (-4, -8)], pal.gold, pal.outline, width=2)
 
 
 def _draw_robe(draw, chest, global_tilt, pal, look: Look) -> None:
@@ -999,8 +1027,18 @@ def paint_character(
     back_hand = joints["back_hand"].point
     draw_limb(draw, "back_arm", back_shoulder, back_elbow, back_hand, pal.coat,
               (22 * b, 19 * b, 16 * b), pal.outline, 4, cuff=pal.coat2)
-    with draw.part("back_hand", back_hand, 0.0):
-        _hand(draw, 9.0, pal)
+    back_aim = math.degrees(math.atan2(back_hand[1] - back_elbow[1], back_hand[0] - back_elbow[0]))
+    if pose.get("pistol"):
+        # A flintlock in the free hand, its barrel down the line of the arm.
+        with draw.part("pistol", back_hand, back_aim):
+            _pistol(draw, pal)
+    if pose.get("point"):
+        # The finger pointed at the foe, down the line of the arm.
+        with draw.part("back_hand_point", back_hand, back_aim):
+            _pointing_hand(draw, 9.0, pal)
+    else:
+        with draw.part("back_hand", back_hand, 0.0):
+            _hand(draw, 9.0, pal)
     _end(draw)
 
     # The arm with the sword, in front of the body.
@@ -1047,6 +1085,7 @@ def paint_character(
         x_eyes=pose["x_eyes"],
         blink=pose["blink"],
         mouth_open=pose["mouth_open"],
+        wide=bool(pose.get("wide")),
     )
     draw_hat(draw, head_center, face_tilt + pose["hat_tilt"], pal, look)
     _end(draw)
@@ -1639,4 +1678,87 @@ def render_pirate_portraits(target: str, out_dir, *, kind: str | None = None,
     return write_portrait_sheet(target, clips, Path(out_dir), still_clip="portrait")
 
 
+# ── notice and windup: the telegraph rows ────────────────────────────────────
+#
+# The game pins ``notice`` while a pirate stands and looks at a foe it has just
+# seen, and ``windup`` over its strike's (or its shot's) startup. Both loop on
+# the game's clock, so every frame is the whole pose with a small shiver.
+
+#: The fighters of the crew that have the two rows, and how each strikes:
+#: ``cutlass`` (drawn back over the shoulder), ``gun_sword`` (the game's
+#: gun-sword in the sword hand, aimed) or ``pistol`` (a flintlock in the free
+#: hand, aimed; the cutlass kept back).
+TELEGRAPH_STRIKES = {
+    "pirate_raider": "gun_sword",
+    "pirate_quartermaster": "cutlass",
+    "pirate_lookout": "pistol",
+}
+TELEGRAPH_ROWS = [("notice", 3, 110), ("windup", 3, 90)]
+
+
+def telegraph_pose(kind: str, anim: str, frame_idx: int, nframes: int) -> dict:
+    """``notice`` and ``windup`` of ``kind``; every other row as the family's."""
+    if anim not in ("notice", "windup"):
+        return animation_pose(anim, frame_idx, nframes)
+    s = (0.0, 1.0, -1.0)[frame_idx % 3]
+    pose = home_pose()
+    strike = TELEGRAPH_STRIKES[kind]
+    if anim == "notice":
+        # He has seen you: drawn up with his head up and turned to you, the
+        # eyes wide, a shout, the free hand pointing you out and the weapon
+        # brought up in front of him.
+        pose.update(
+            body_tilt=-6.0, root_x=-1.0,
+            left_thigh=18.0, left_shin=22.0, right_thigh=-24.0, right_shin=-10.0,
+            sword_upper=12.0 + s, sword_fore=-162.0 - s, weapon=-100.0 + 2.0 * s,
+            off_upper=-86.0 + 1.5 * s, off_fore=-92.0 - 1.5 * s,
+            head_tilt=-10.0 + s, hat_tilt=-4.0, coat_sway=4.0,
+            shoulder_bounce=-2.0, mouth_open=0.5 + 0.06 * s, wide=True, point=True,
+        )
+    elif strike == "cutlass":
+        # The cut held back: the cutlass drawn back over his shoulder, his
+        # weight on the back foot, the free hand out at you, teeth bared.
+        pose.update(
+            body_tilt=-11.0, root_x=-4.0,
+            left_thigh=26.0, left_shin=36.0, right_thigh=-30.0, right_shin=-8.0,
+            sword_upper=-168.0 + s, sword_fore=-205.0 - 2.0 * s, weapon=-138.0 + 2.0 * s,
+            off_upper=-62.0 + s, off_fore=-82.0 - s,
+            head_tilt=-2.0 + 0.5 * s, hat_tilt=-3.0, coat_sway=10.0,
+            mouth_open=0.3 + 0.04 * s,
+        )
+    elif strike == "gun_sword":
+        # The aim: the gun-sword level at you at the end of a straight arm,
+        # the free hand bracing the wrist, the feet braced wide and his chin
+        # down along the arm. The game draws the gun-sword and points it.
+        pose.update(
+            body_tilt=-3.0, root_x=-2.0,
+            left_thigh=28.0, left_shin=36.0, right_thigh=-32.0, right_shin=-14.0,
+            sword_upper=-84.0 + 0.6 * s, sword_fore=-92.0 - 0.6 * s, weapon=-4.0,
+            off_upper=-58.0 + s, off_fore=-112.0 - s,
+            head_tilt=5.0, hat_tilt=2.0, coat_sway=6.0,
+            mouth_open=0.24 + 0.03 * s,
+        )
+    else:
+        # The aim: a flintlock out at the end of her straight free arm, sighted
+        # down, the cutlass kept back and low behind her, her feet braced.
+        pose.update(
+            body_tilt=-3.0, root_x=-2.0,
+            left_thigh=28.0, left_shin=36.0, right_thigh=-30.0, right_shin=-12.0,
+            off_upper=-84.0 + 0.6 * s, off_fore=-90.0 - 0.6 * s,
+            sword_upper=24.0 + s, sword_fore=10.0 - s, weapon=148.0,
+            head_tilt=5.0, hat_tilt=2.0, coat_sway=6.0,
+            mouth_open=0.0, pistol=True,
+        )
+    return planted(pose)
+
+
+def _register_telegraph_rows() -> None:
+    from functools import partial
+
+    for kind in TELEGRAPH_STRIKES:
+        ROWS[kind] = list(ANIMATIONS) + TELEGRAPH_ROWS
+        POSES[kind] = partial(telegraph_pose, kind)
+
+
 _register_fighting_rows()
+_register_telegraph_rows()

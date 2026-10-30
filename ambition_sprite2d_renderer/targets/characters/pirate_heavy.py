@@ -146,6 +146,11 @@ ROWS: List[Tuple[str, int, int]] = [
     ("taunt", 6, 110),
     ("hurt", 4, 90),
     ("death", 8, 110),
+    # The game holds ``notice`` while she first looks at her foe and
+    # ``windup`` over her strike's (or her shot's) startup. Both loop on its
+    # clock, so every frame is the whole pose with a shiver.
+    ("notice", 3, 110),
+    ("windup", 3, 90),
 ]
 
 OUTLINE = (20, 16, 18, 255)
@@ -440,6 +445,7 @@ class Pose:
     mouth: float = 0.05
     blink: bool = False
     x_eyes: bool = False
+    wide: bool = False  # startled: the lids up off the eyes, the brows raised
     swoosh: Optional[Tuple[float, float, float]] = None  # from, to (degrees of the haft), strength
     chips: bool = False
     body_rot: float = 0.0  # the whole body about the ground between her feet
@@ -552,6 +558,37 @@ def pose_for(anim: str, i: int, n: int) -> Pose:
         if drop > 0.0:
             # from where her hand was, down to the deck
             p.loose_weapon = (_lerp_p((69.0, -57.0), (58.0, -9.0), drop), _lerp(-66.0, -2.0, drop) - 14.0 * math.sin(drop * math.pi))
+    elif anim == "notice":
+        # She has seen you: drawn up, her head up and turned to you, eyes wide
+        # and a shout, the cleaver brought up across her and the free elbow out.
+        k = (0.0, 1.0, -1.0)[i % 3]
+        p.pelvis = (-3.0, HIP_Y - 1.0)
+        p.lean = -6.0 + 0.5 * k
+        p.twist = 0.15
+        p.head_tilt = -9.0 + k
+        p.r_hand = (58.0, -112.0 + k)
+        p.weapon = -84.0 + 2.0 * k
+        p.l_hand = (-50.0, -88.0 - k)
+        p.l_foot, p.r_foot = (-24.0, 0.0), (24.0, 0.0)
+        p.mouth = 0.55 + 0.05 * k
+        p.wide = True
+        p.skirt_sway = 3.0
+        p.hair_swing = 4.0 + k
+    elif anim == "windup":
+        # The chop held back: the cleaver over and behind her head, her weight
+        # back on the far foot, the free fist out at you, her teeth bared.
+        k = (0.0, 1.0, -1.0)[i % 3]
+        p.pelvis = (-12.0, HIP_Y + 3.0)
+        p.lean = -18.0 + 0.8 * k
+        p.twist = 0.3
+        p.head_tilt = -6.0
+        p.r_hand = (22.0, -178.0 + k)
+        p.weapon = -156.0 + 2.0 * k
+        p.l_hand = (16.0, -100.0 - k)
+        p.l_foot, p.r_foot = (-28.0, 0.0), (20.0, 0.0)
+        p.mouth = 0.32 + 0.03 * k
+        p.skirt_sway = 8.0
+        p.hair_swing = 9.6 + k
     return p
 
 
@@ -569,6 +606,29 @@ def _hold_a_gun(pose: Pose, anim: str, frame_idx: int) -> None:
     pose.chips = False
     pose.r_bend = 1.0
     if anim == "taunt":
+        return
+    k = (0.0, 1.0, -1.0)[frame_idx % 3]
+    if anim == "notice":
+        # The gun-sword brought up before her, its muzzle up.
+        pose.r_hand = (56.0, -108.0 + k)
+        pose.weapon = -ITEM_REST_ANGLE - 34.0
+        return
+    if anim == "windup":
+        # The aim: the gun-sword level at you at the end of her straight lead
+        # arm, the free fist drawn in at her chest, her feet braced wide and
+        # her chin down along the arm.
+        pose.pelvis = (2.0, HIP_Y + 2.0)
+        pose.lean = 4.0 + 0.4 * k
+        pose.twist = 0.5
+        pose.head_tilt = 5.0
+        pose.r_hand = (80.0, -116.0 + 0.6 * k)
+        pose.weapon = 0.0
+        pose.l_hand = (24.0, -104.0)
+        pose.l_bend = 1.0
+        pose.l_foot, pose.r_foot = (-30.0, 0.0), (32.0, 0.0)
+        pose.mouth = 0.24 + 0.03 * k
+        pose.skirt_sway = 2.0
+        pose.hair_swing = -4.0 + k
         return
     lift = pose.r_hand[1] + 57.0 if anim in ("idle", "walk") else 0.0
     pose.r_hand = (62.0, -84.0 + lift)
@@ -929,7 +989,7 @@ def _paint_mane(d, spec: VariantSpec) -> None:
 HEAD = 1.16
 
 
-def _paint_head(d, spec: VariantSpec, mouth: float, blink: bool, x_eyes: bool) -> None:
+def _paint_head(d, spec: VariantSpec, mouth: float, blink: bool, x_eyes: bool, wide: bool = False) -> None:
     """The head, turned three quarters to the way she faces, its middle at
     ``HOME``."""
     pal = spec.palette
@@ -1002,12 +1062,17 @@ def _paint_head(d, spec: VariantSpec, mouth: float, blink: bool, x_eyes: bool) -
             circle(P(ix, iy), r, pal.iris, OUTLINE, 0.8)
             circle(P(ix + 0.2, iy + 0.1), r * 0.5, OUTLINE, None, 0)
             circle(P(ix - 0.8, iy - 0.6), 0.55, WHITE, None, 0)
-        # the lids come down over the top of the irises
-        lid = _mix(skin, dark, 0.25)
-        poly([P(-3.6, 0.4), P(7.4, 2.8), P(7.4, 0.2), P(-3.6, -2.2)], lid, None, 0)
-        poly([P(10.0, 2.8), P(17.4, 0.4), P(17.4, -2.2), P(10.0, 0.2)], lid, None, 0)
-        line([P(-3.9, 0.3), P(7.6, 2.9)], OUTLINE, 2.0)
-        line([P(9.8, 2.9), P(17.6, 0.3)], OUTLINE, 2.0)
+        if wide:
+            # startled: the lids are up off the irises
+            line([P(-3.9, 0.3), P(7.6, 2.9)], OUTLINE, 1.2)
+            line([P(9.8, 2.9), P(17.6, 0.3)], OUTLINE, 1.2)
+        else:
+            # the lids come down over the top of the irises
+            lid = _mix(skin, dark, 0.25)
+            poly([P(-3.6, 0.4), P(7.4, 2.8), P(7.4, 0.2), P(-3.6, -2.2)], lid, None, 0)
+            poly([P(10.0, 2.8), P(17.4, 0.4), P(17.4, -2.2), P(10.0, 0.2)], lid, None, 0)
+            line([P(-3.9, 0.3), P(7.6, 2.9)], OUTLINE, 2.0)
+            line([P(9.8, 2.9), P(17.6, 0.3)], OUTLINE, 2.0)
         # the lashes at the outer corners
         lashes = (
             ((-3.8, 0.4), (-7.6, -1.2)), ((-2.6, 0.6), (-5.8, -3.2)), ((-1.0, 0.9), (-3.0, -3.6)), ((-2.4, 4.2), (-5.2, 5.0)),
@@ -1018,11 +1083,12 @@ def _paint_head(d, spec: VariantSpec, mouth: float, blink: bool, x_eyes: bool) -
     if not x_eyes:
         # the brows: an arch at the outer end, thick and low at the nose
         brow = _mix(pal.hair, OUTLINE, 0.6)
-        poly([P(-6.4, -3.6), P(-1.5, -6.6), P(8.2, -1.6), P(8.0, 1.4), P(-0.5, -3.2), P(-6.0, -2.2)], brow, None, 0)
-        poly([P(9.4, 1.4), P(9.4, -1.6), P(14.6, -6.2), P(18.2, -4.6), P(18.0, -3.2), P(14.6, -3.4)], brow, None, 0)
-        line([P(8.4, -4.6), P(8.9, -1.8)], _mix(dark, OUTLINE, 0.4), 1.0)
+        up = -3.2 if wide else 0.0  # startled: raised off the eyes
+        poly([P(-6.4, -3.6 + up), P(-1.5, -6.6 + up), P(8.2, -1.6 + up), P(8.0, 1.4 + up), P(-0.5, -3.2 + up), P(-6.0, -2.2 + up)], brow, None, 0)
+        poly([P(9.4, 1.4 + up), P(9.4, -1.6 + up), P(14.6, -6.2 + up), P(18.2, -4.6 + up), P(18.0, -3.2 + up), P(14.6, -3.4 + up)], brow, None, 0)
+        line([P(8.4, -4.6 + up), P(8.9, -1.8 + up)], _mix(dark, OUTLINE, 0.4), 1.0)
         if spec.brow_notch:
-            line([P(1.2, -6.4), P(2.6, -1.6)], skin, 1.3)
+            line([P(1.2, -6.4 + up), P(2.6, -1.6 + up)], skin, 1.3)
     if spec.cheek_scar:
         scar = _mix(dark, OUTLINE, 0.35)
         line([P(-6.0, 8.0), P(-2.5, 12.5), P(0.0, 18)], scar, 1.3)
@@ -1172,7 +1238,8 @@ def _draw_variant(
 
     # the head: one piece for each face
     mouth = round(pose.mouth, 3)
-    put(("head", slug, pose.blink, pose.x_eyes, mouth), lambda d: _paint_head(d, spec, mouth, pose.blink, pose.x_eyes), J.head, "head", J.head_rot)
+    head_key = ("head", slug, pose.blink, pose.x_eyes, mouth) + (("wide",) if pose.wide else ())
+    put(head_key, lambda d: _paint_head(d, spec, mouth, pose.blink, pose.x_eyes, pose.wide), J.head, "head", J.head_rot)
 
     # the arms: the far one, then the one with the cleaver
     for side, shoulder, elbow, hand in (

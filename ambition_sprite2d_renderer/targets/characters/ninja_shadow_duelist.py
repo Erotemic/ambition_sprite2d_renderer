@@ -654,8 +654,29 @@ def _make(look: Look) -> SimpleNamespace:
         ready = X.full(P())
         return X.keys(shot(i, n), [(0.0, LOW), (0.35, LOW), (1.0, ready)])
 
+    # The game holds ``notice`` while he first looks at his foe and ``windup``
+    # over his cut's startup (the telegraph). Both loop on its clock, so every
+    # frame is the whole pose with a shiver.
+
+    @X.row
+    def notice(i: int, n: int):
+        # He has seen you: his head snaps up and round to you, his eyes wide,
+        # and the sword comes up before him, upright, in both hands.
+        s = (0.0, 1.0, -1.0)[i % 3]
+        return guard((13.0, 9.0), -76.0 + 2.0 * s, hip=(-1.0, 1.0), lean=-2.0, head=(0.0, -0.4, -12.0 + s), eyes="wide", brows=1.0,
+                     nf=(-9.0, 0.0, 0.0), ff=(10.0, 0.0, 0.0))
+
+    @X.row
+    def windup(i: int, n: int):
+        # The cut made ready: down in a deep crouch, the sword reversed low in
+        # his near hand with its blade back along his arm, his far hand flat
+        # out at you, his head up and on you.
+        s = (0.0, 1.0, -1.0)[i % 3]
+        return P(hip=(-2.0, 12.0 + 0.4 * s), lean=24.0, head=(1.0, 0.5, -20.0 + s), na=(6.0, 16.0), nh="fist", fa=(21.0, 5.0 + 0.5 * s), fh="flat",
+                 nf=(-13.0, 0.0, 0.0), ff=(13.0, 0.0, 0.0), blade=176.0 + 1.5 * s, eyes="wide", brows=-1.0, hem=(4.0, 2.0))
+
     X.rows = [("idle", 8, 120), ("walk", 8, 95), ("run", 8, 75), ("jump", 6, 95), ("fall", 6, 95), ("slash", 8, 68), ("hit", 5, 90), ("death", 8, 110),
-              ("blink_out", 6, 62), ("blink_in", 6, 62), ("dash", 6, 58)]
+              ("blink_out", 6, 62), ("blink_in", 6, 62), ("dash", 6, 58), ("notice", 3, 110), ("windup", 3, 90)]
 
     # ---- What the sword does ----------------------------------------------------------
 

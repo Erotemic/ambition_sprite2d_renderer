@@ -94,8 +94,10 @@ def test_scene_contains_and_places_every_expected_part(kind: str) -> None:
             assert pid in all_frames, f"{kind}: part {name!r} ({pid}) is never placed"
     # Minimal: parts are deduped. The limbs, hands and collar are parts too
     # (each bone once per length): measured 2026-10-03, 35 (raider) and 34
-    # (admiral), 15 of them the face's expressions.
-    assert len(scene.parts) < 40, len(scene.parts)
+    # (admiral), 15 of them the face's expressions. The telegraph rows
+    # (``notice``, ``windup``) add the startled faces, a pointing hand and the
+    # lookout's pistol: 41 (raider), measured 2026-10-30.
+    assert len(scene.parts) < 48, len(scene.parts)
 
 
 @pytest.mark.parametrize("kind", ROLES)

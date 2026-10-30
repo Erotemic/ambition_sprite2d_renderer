@@ -18,7 +18,10 @@ targets on the stepping curve of ``authoring/surface_gait.Gait``.
 The rows are the seven the enemies use: ``idle``, ``walk``, ``run``,
 ``slash`` (the mandibles snap; the hit is live 0.30-0.52 for the exploding
 mite and 0.32-0.56 for the dividing mite, as before), ``hit``, ``death``,
-``dash``.
+``dash``; and the two the game pins before a fight: ``notice`` (it rises on
+its legs, nose up, mandibles open) and ``windup`` (reared back over its back
+legs, mandibles gaping, held for the snap). Both loop on the game's clock, so
+every frame is the whole pose with a shiver.
 
 - ``death`` of the dividing mite: it strains, the ring goes hot, and the two
   lobes pull apart left and right (the game puts a Puppy Slug where each goes).
@@ -149,6 +152,27 @@ def snap(m: Mite, start: float, end: float, n: int = 8) -> dict:
 JOLT = "(1-t)*(1-t)"
 
 
+def held(*values: float) -> dict:
+    """One value per frame of a held three-frame row (the game loops it)."""
+    return keys(list(values))
+
+
+def telegraph_clips(m: Mite) -> Dict[str, dict]:
+    """``notice``: it has seen you; it rises on its legs with its nose up and
+    its mandibles open. ``windup``: the snap held back; reared far back over
+    its back legs, its mandibles gaping. Every frame is the whole pose."""
+    return {
+        "notice": {"loop": False, "frames": 3, "duration_ms": 110, "channels": {
+            "root_y": held(-5.0, -5.6, -4.6), "body": held(-6.0, -6.8, -5.4),
+            "mandible_near": held(20.0, 23.0, 18.0), "mandible_far": held(-16.0, -18.0, -14.0),
+            **m.feet()}},
+        "windup": {"loop": False, "frames": 3, "duration_ms": 90, "channels": {
+            "root_x": held(-7.0, -6.4, -7.4), "root_y": held(-2.0, -2.4, -1.8), "body": held(-15.0, -14.0, -15.8),
+            "mandible_near": held(36.0, 38.0, 34.0), "mandible_far": held(-28.0, -30.0, -26.0),
+            **m.feet()}},
+    }
+
+
 def common_clips(m: Mite, live: tuple) -> Dict[str, dict]:
     return {
         "idle": {"loop": True, "frames": 8, "duration_ms": 130, "channels": {
@@ -176,6 +200,7 @@ def common_clips(m: Mite, live: tuple) -> Dict[str, dict]:
             "root_x": expr(f"-5*{JOLT}"), "root_y": expr(f"-2*{JOLT}"), "body": expr(f"-12*{JOLT}"),
             "mandible_near": expr(f"26*{JOLT}"), "mandible_far": expr(f"-20*{JOLT}"),
             **m.feet()}},
+        **telegraph_clips(m),
     }
 
 
@@ -194,6 +219,11 @@ def dividing_clips(m: Mite) -> Dict[str, dict]:
         ch["bone.front_lobe.x"] = expr("0.5*sin(tau*t)")
     clips["slash"]["channels"]["front_feeler"] = expr("-12*sin(pi*t)")
     clips["slash"]["channels"]["rear_feeler"] = expr("8*sin(pi*t)")
+    # notice: the feelers flung up and out; windup: laid back along the lobes,
+    # and the waist pinched (the cell bunched for the snap)
+    clips["notice"]["channels"].update(front_feeler=held(-22.0, -25.0, -20.0), rear_feeler=held(16.0, 18.0, 14.0))
+    clips["windup"]["channels"].update(front_feeler=held(18.0, 20.0, 16.0), rear_feeler=held(-14.0, -15.0, -13.0),
+                                       **{"bone.rear_lobe.x": held(1.2, 1.4, 1.0), "bone.front_lobe.x": held(-1.2, -1.4, -1.0)})
     # death: it strains, the ring goes hot, and the lobes pull apart
     n = 8
     split, tilt, jitter, hot, strand = [], [], [], [], []
@@ -227,11 +257,21 @@ SPARK_FLICKER = "1 if floor(t*8+0.01) % 2 == 0 else 0"
 def exploding_clips(m: Mite) -> Dict[str, dict]:
     clips = common_clips(m, (0.30, 0.52))
     for row, ch in ((r, c["channels"]) for r, c in clips.items()):
+        if row in ("notice", "windup"):
+            continue
         sway = {"idle": "5*sin(tau*t)", "walk": "8*sin(2*tau*t+0.6)", "run": "-14+6*sin(2*tau*t)", "dash": "-22+4*sin(2*tau*t)",
                 "slash": "10*sin(pi*t)", "hit": f"-24*{JOLT}"}[row]
         ch["fuse"] = expr(sway)
         ch["spark_0a"] = expr(SPARK_FLICKER)
         ch["spark_0b"] = expr(f"1 - ({SPARK_FLICKER})")
+    # notice: the fuse stands up stiff and its spark flares
+    clips["notice"]["channels"].update(fuse=held(4.0, 6.0, 3.0), spark_0a=held(0.0, 0.0, 0.0), spark_0b=held(0.0, 0.0, 0.0),
+                                       spark_1a=held(1.0, 1.0, 1.0))
+    # windup: about to burst. The shell cracks and glows along its seams, the
+    # fuse is whipped back and its spark roars (its own fuse stays long: the
+    # crack is the threat, not the count-down).
+    clips["windup"]["channels"].update(fuse=held(-16.0, -14.0, -17.0), shell_0=held(0.0, 0.0, 0.0), shell_1=held(1.0, 1.0, 1.0),
+                                       spark_0a=held(0.0, 0.0, 0.0), spark_0b=held(0.0, 0.0, 0.0), spark_1a=held(1.0, 1.0, 1.0))
     # death: the fuse burns down while the shell swells and goes white hot
     n = 8
     stage = [0 if i < 3 else (1 if i < 5 else 2) for i in range(n)]
