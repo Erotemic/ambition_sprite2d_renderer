@@ -11,6 +11,12 @@ and 872, each 48 wide); a closet's floor (y 256).
   the audience's empty chairs at the front, a scoreboard of probabilities.
 - `math_goat`: a goat, standing, unimpressed.
 - `math_car`: a red convertible with a bow on it.
+- `math_closet_curtain`: the velvet curtain of a closet, floor to ceiling
+  (x 160 to its east wall). It is the look of a `LockWall` that the host
+  opens; the goat and the car are the looks of the walls behind it.
+- `math_prize_case`: the glass case of tonight's prize, east of the stage
+  (x 1000, 96 wide, 88 tall): the look of a `LockWall` that opens for a
+  winner. The prize chest (the game's) stands in it.
 
 Animations: ``idle``, 1 frame each. No drop shadows.
 """
@@ -34,6 +40,11 @@ DOOR_W = 48
 CURTAIN = (150, 26, 40)
 CURTAIN_DARK = (96, 16, 28)
 LAMP = (255, 226, 150)
+#: The prize case (x0, y0, x1, y1) and a closet's curtain (x0 to its east
+#: wall, its ceiling to its floor): the walls of `make_specs.py`.
+PRIZE_CASE = (1000, FLOOR - 88, 1096, FLOOR)
+CLOSET_W, CLOSET_FLOOR = 480, 256
+CLOSET_CURTAIN = (160, CEILING, CLOSET_W - 16, CLOSET_FLOOR)
 
 
 def digit(c, n, cx, cy, s, colour):
@@ -84,7 +95,8 @@ def ballroom(c, k):
     c.put(c.mask(box(16, g - 10, W - 16, g)), WOOD_DARK)
     c.put(c.mask(lambda p: [p.ellipse(x, g - 8, 5, 3) for x in range(330, 960, 40)]), LAMP)
     c.light(c.mask(lambda p: p.poly([(320, g), (960, g), (920, g - 240), (360, g - 240)]), blur=20), LAMP, 0.18)
-    for x in list(range(110, 300, 50)) + list(range(1000, 1240, 50)):
+    # The audience's chairs; east of the stage they leave room for the prize case.
+    for x in list(range(110, 300, 50)) + list(range(PRIZE_CASE[2] + 24, 1240, 50)):
         c.put(c.mask(lambda p: (p.rect(x, g - 30, x + 26, g - 24), p.rect(x + 22, g - 56, x + 26, g - 24), p.rect(x + 2, g - 24, x + 5, g), p.rect(x + 21, g - 24, x + 24, g))), CLARET)
     infinity(c, W / 2, CEILING + 22, 18, GOLD, 2.4)
 
@@ -120,10 +132,70 @@ def car(c, k):
     c.put(c.mask(lambda p: (p.line([(bx, by), (bx - 8, by + 22)], 2), p.line([(bx, by), (bx + 10, by + 22)], 2))), GOLD)
 
 
+def closet_curtain(c, k):
+    """Red velvet in folds, two halves that meet in the middle, a gold-fringed
+    valance at the top and a gold fringe at the floor."""
+    x0, y0, x1, y1 = CLOSET_CURTAIN
+    mid = (x0 + x1) / 2
+    cloth = c.mask(box(x0, y0, x1, y1))
+    c.put(cloth, CURTAIN)
+    # The folds: each half gathers toward its outer edge.
+    for a, b in ((x0, mid), (mid, x1)):
+        phase = (c.x - a) / (b - a)
+        fold = np.sin(phase * np.pi * 7.0) * (0.55 + 0.45 * np.abs(phase - 0.5) * 2)
+        half = cloth * ((c.x >= a) & (c.x < b))
+        c.tone(half * np.clip(-fold, 0, 1), -0.38)
+        c.tone(half * np.clip(fold, 0, 1), 0.16)
+    # Where the halves meet, and the shade of the floor.
+    c.put(c.mask(lambda p: p.rect(mid - 1.2, y0, mid + 1.2, y1)), CURTAIN_DARK)
+    c.tone(cloth * np.clip((c.y - (y1 - 60)) / 60, 0, 1), -0.2)
+    # The valance: a deeper red, scalloped, with its gold edge and fringe.
+    c.put(c.mask(box(x0, y0, x1, y0 + 26)), CURTAIN_DARK)
+    c.put(c.mask(lambda p: [p.ellipse(x, y0 + 26, 13, 8) for x in np.arange(x0 + 13, x1, 26)]) * c.mask(box(x0, y0 + 26, x1, y0 + 34)), CURTAIN_DARK)
+    c.put(c.mask(box(x0, y0 + 22, x1, y0 + 25)), GOLD)
+    c.put(c.mask(lambda p: [p.line([(x, y0 + 25), (x, y0 + 34)], 1.2) for x in np.arange(x0 + 3, x1, 5)]), GOLD, 0.85)
+    # The fringe at the floor.
+    c.put(c.mask(box(x0, y1 - 8, x1, y1 - 6)), GOLD)
+    c.put(c.mask(lambda p: [p.line([(x, y1 - 6), (x, y1)], 1.2) for x in np.arange(x0 + 2, x1, 4)]), GOLD, 0.85)
+    # A gold tassel on a cord at the seam, at chest height.
+    ty = y1 - 70
+    c.put(c.mask(lambda p: (p.ellipse(mid, ty, 5, 6), p.poly([(mid - 4, ty + 4), (mid + 4, ty + 4), (mid + 7, ty + 22), (mid - 7, ty + 22)]))), GOLD)
+    c.tone(c.mask(lambda p: p.poly([(mid, ty + 4), (mid + 4, ty + 4), (mid + 7, ty + 22), (mid, ty + 22)])), -0.25)
+    c.put(c.mask(lambda p: p.line([(mid, y0 + 34), (mid, ty - 5)], 1.0)), GOLD, 0.8)
+
+
+def prize_case(c, k):
+    """A glass case on a gold-trimmed base: brass posts at its corners, a
+    lid, panes with a cool tint and the streaks of the stage lights on them.
+    The chest stands in it; through the glass it is all seen."""
+    x0, y0, x1, y1 = PRIZE_CASE
+    base = 10
+    # The panes: a faint tint, brighter at the top, and two streaks.
+    glass = c.mask(box(x0 + 3, y0 + 6, x1 - 3, y1 - base))
+    c.put(glass, (190, 220, 240), 0.16)
+    c.put(glass * np.clip(1 - (c.y - y0) / (y1 - y0), 0, 1), (230, 245, 255), 0.12)
+    for sx, w in ((x0 + 16, 7), (x0 + 30, 3), (x1 - 26, 5)):
+        c.put(c.mask(lambda p: p.poly([(sx, y0 + 8), (sx + w, y0 + 8), (sx + w - 14, y1 - base - 4), (sx - 14, y1 - base - 4)])) * glass, (250, 252, 255), 0.22)
+    # The base: dark wood, a gold band, a brass plate on its front.
+    c.put(c.mask(box(x0, y1 - base, x1, y1)), WOOD)
+    c.tone(c.mask(box(x0, y1 - base / 2, x1, y1)), -0.3)
+    c.put(c.mask(box(x0, y1 - base, x1, y1 - base + 2)), GOLD)
+    c.put(c.mask(box((x0 + x1) / 2 - 14, y1 - base + 3, (x0 + x1) / 2 + 14, y1 - 2)), BRASS)
+    # The posts and the lid.
+    for px_ in (x0, x1 - 3):
+        c.put(c.mask(box(px_, y0 + 4, px_ + 3, y1 - base)), BRASS)
+    c.put(c.mask(box(x0 - 1, y0, x1 + 1, y0 + 6)), BRASS)
+    c.tone(c.mask(box(x0 - 1, y0 + 4, x1 + 1, y0 + 6)), -0.3)
+    c.put(c.mask(lambda p: p.ellipse((x0 + x1) / 2, y0 - 1, 6, 3)), GOLD)
+    c.put(c.mask(lambda p: p.line([(x0 + 3, y0 + 6), (x1 - 3, y0 + 6)], 0.8)), (240, 250, 255), 0.6)
+
+
 PIECES: Dict[str, Piece] = {
     "math_ballroom_room": Piece((16, CEILING, W - 16, FLOOR), ballroom),
     "math_goat": Piece((0, 0, 100, 80), goat),
     "math_car": Piece((0, 0, 210, 90), car),
+    "math_closet_curtain": Piece(CLOSET_CURTAIN, closet_curtain),
+    "math_prize_case": Piece(PRIZE_CASE, prize_case),
 }
 
 TARGETS = targets(PIECES, PAL)
