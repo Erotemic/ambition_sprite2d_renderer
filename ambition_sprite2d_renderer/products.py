@@ -18,7 +18,7 @@ REVIEW = ("_canonical.png", "_canonical_transparent.png", "_preview_labeled.png"
 
 
 class Digests:
-    """Hash shared inputs once. A persistent cache uses file identity and change times."""
+    """Hash shared inputs once. A persistent cache keys each file by its size and mtime."""
 
     def __init__(self, path: Path | None = None, *, deep: bool = False):
         self.path, self.deep = path, deep
@@ -27,12 +27,34 @@ class Digests:
         except (OSError, ValueError):
             self.cache = {}
         self.seen = {}
+        self.dirs: dict[str, str] = {}
 
     def file(self, path: Path) -> str | None:
-        path = path.resolve()
+        # One report asks for the same inputs many times; skip the resolve (an lstat per
+        # path component) for a path already answered.
+        raw = str(path)
+        if raw in self.seen:
+            return self.seen[raw]
+        self.seen[raw] = digest = self._file(path)
+        return digest
+
+    def _real(self, path: Path) -> Path:
+        """`path.resolve()`, resolving each directory once: on a shared filesystem
+        every component's lstat is a round trip, and inputs share directories."""
+        parent = os.path.abspath(path.parent)
+        real_parent = self.dirs.get(parent)
+        if real_parent is None:
+            real_parent = self.dirs[parent] = os.path.realpath(parent)
+        candidate = os.path.join(real_parent, path.name)
+        return Path(os.path.realpath(candidate) if os.path.islink(candidate) else candidate)
+
+    def _file(self, path: Path) -> str | None:
+        path = self._real(path)
         try:
             st = path.stat()
-            signature = [st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns]
+            # Size and mtime only: the tree is shared between machines (virtiofs), where
+            # device, inode and ctime differ for one file and would rehash every input.
+            signature = [st.st_size, st.st_mtime_ns]
             key = str(path)
             if key in self.seen:
                 return self.seen[key]
@@ -51,7 +73,8 @@ class Digests:
     def save(self):
         if self.path:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            temp = self.path.with_suffix(".partial")
+            # A per-process name: two reports at once must not move each other's file.
+            temp = self.path.with_suffix(f".{os.getpid()}.partial")
             temp.write_text(json.dumps(self.cache, separators=(",", ":")))
             temp.replace(self.path)
 

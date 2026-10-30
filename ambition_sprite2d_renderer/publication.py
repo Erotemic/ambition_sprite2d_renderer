@@ -37,10 +37,19 @@ def publish_sprites(store: Store, replacements: dict, selected: dict, *, replace
     return store.publish(bundles, selected, replace=True)
 
 
+_POLICY: dict = {}
+
+
 def policy() -> dict:
+    """The sprite policy file, parsed once per file version (a report asks once per target)."""
+    import copy
     from .yaml_io import safe_load
     path = library_path().parent / library()["producers"]["sprites"]["policy"]
-    return safe_load(path.read_text())
+    st = path.stat()
+    stamp = (str(path), st.st_size, st.st_mtime_ns)
+    if _POLICY.get("stamp") != stamp:
+        _POLICY.update(stamp=stamp, data=safe_load(path.read_text()))
+    return copy.deepcopy(_POLICY["data"])
 
 
 def discover():

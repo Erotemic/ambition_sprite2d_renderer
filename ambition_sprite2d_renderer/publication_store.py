@@ -54,6 +54,8 @@ def write_json(path: Path, value) -> None:
 class Store:
     def __init__(self, root: Path):
         self.root = Path(root)
+        #: Verified manifests by key. A bundle is immutable: its key is its manifest's digest.
+        self._bundles: dict[str, str] = {}
 
     def selected(self) -> dict:
         path = self.root / "published.json"
@@ -70,11 +72,15 @@ class Store:
         return value
 
     def bundle(self, key: str) -> dict:
+        if key in self._bundles:
+            return json.loads(self._bundles[key])
         if len(key) != 64 or any(c not in "0123456789abcdef" for c in key):
             raise ValueError("Invalid bundle identity")
-        value = json.loads((self.root / "bundles" / key / "manifest.json").read_text())
+        text = (self.root / "bundles" / key / "manifest.json").read_text()
+        value = json.loads(text)
         if value.get("schema") != BUNDLE_SCHEMA or identity(value) != key:
             raise ValueError(f"Invalid bundle manifest: {key}")
+        self._bundles[key] = text
         return value
 
     def accept(self, unit: str, files: dict[str, tuple[Path, str, str]], recipe: dict | None,
@@ -123,9 +129,16 @@ class Store:
         defects = []
         for logical, item in manifest["files"].items():
             path = self.root / "bundles" / key / relative(item["path"])
-            if not path.is_file():
+            if deep and hashes is not None:
+                # The digest cache stats the file once; None means it is not a readable file.
+                found = hashes.file(path)
+                if found is None:
+                    defects.append({"code": "missing", "path": logical})
+                elif found != item["sha256"]:
+                    defects.append({"code": "changed-output", "path": logical})
+            elif not path.is_file():
                 defects.append({"code": "missing", "path": logical})
-            elif deep and (hashes.file(path) if hashes is not None else digest(path)) != item["sha256"]:
+            elif deep and digest(path) != item["sha256"]:
                 defects.append({"code": "changed-output", "path": logical})
         return defects
 
