@@ -69,29 +69,54 @@ def pools(c, k):
     c.put(c.mask(lambda p: p.line(tusk, 6)), BONE)
 
 
+def tapered(c, pts, w0, w1, colour, under=None):
+    """A bone or tusk along `pts`, `w0` wide at its root and `w1` at its tip;
+    none of it under `under` (the ground it goes into)."""
+    n = len(pts) - 1
+    m = c.mask(lambda p: [p.line([pts[i], pts[i + 1]], w0 + (w1 - w0) * i / n) for i in range(n)])
+    c.put(m if under is None else m * (c.y < under), colour)
+
+
 def mammoth(c, k):
     x0, x1, back = MAMMOTH_BACK
-    # The spine along the walk line, vertebrae on it.
-    c.put(c.mask(box(x0, back, x1, back + 12)), BONE)
-    c.put(c.mask(lambda p: [p.ellipse(x, back + 2, 7, 6) for x in range(x0 + 6, x1, 16)]), BONE)
-    c.put(c.mask(lambda p: [p.rect(x - 1, back + 2, x + 1, back + 12) for x in range(x0 + 14, x1, 16)]), BONE_DARK)
+    # The spine along the walk line: a row of rounded vertebrae, each with
+    # its short process, flat on top where it is walked.
+    c.put(c.mask(box(x0, back + 2, x1, back + 12)), BONE_DARK)
+    c.put(c.mask(lambda p: [p.ellipse(x, back + 6, 8, 6) for x in range(x0 + 8, x1, 16)]), BONE)
+    c.put(c.mask(lambda p: [p.rect(x - 2, back, x + 2, back + 4) for x in range(x0 + 8, x1, 16)]), BONE)
     edge_line(c, x0 + 4, x1 - 4, back, BONE, 3)
-    # The ribs down into the tar, the legs' long bones.
-    ribs = []
-    for i, x in enumerate(np.linspace(x0 + 40, x1 - 60, 9)):
-        ribs.append([(x, back + 10), (x - 22, back + 40), (x - 18, FLOOR + 4)])
-    c.put(c.mask(lambda p: [p.line(r, 4.4) for r in ribs]), BONE)
-    c.put(c.mask(lambda p: (p.line([(x0 + 30, back + 10), (x0 + 10, FLOOR + 4)], 9), p.line([(x1 - 40, back + 10), (x1 - 20, FLOOR + 4)], 9))), BONE_DARK)
-    # The skull at the west end, down, its tusks curling out over the tar.
-    sx, sy = x0 - 20, back + 36
-    skull = c.mask(lambda p: p.poly([(sx + 30, back - 6), (sx - 20, back + 4), (sx - 34, sy + 10), (sx - 10, sy + 34), (sx + 34, sy + 20)]))
+    # The ribs: curved, each out from the spine and down into the tar,
+    # longest over the chest (the west), the far side's behind and darker.
+    for far in (True, False):
+        ribs = []
+        for i, x in enumerate(np.linspace(x0 + 30, x1 - 70, 10)):
+            depth = FLOOR + 6 - back
+            bow = 26 - i * 1.6
+            ribs.append([(x + (6 if far else 0) - bow * math.sin(t * math.pi * 0.8), back + 10 + depth * t) for t in np.linspace(0, 1, 9)])
+        for r in ribs:
+            tapered(c, r, 5.0 if not far else 3.6, 2.6, BONE_DARK if far else BONE)
+    # The legs' long bones going down into the tar, a knob at each joint.
+    for lx, top in ((x0 + 24, back + 10), (x1 - 34, back + 10)):
+        c.put(c.mask(lambda p: p.line([(lx, top), (lx - 10, FLOOR + 6)], 10)), BONE_DARK)
+        c.put(c.mask(lambda p: p.ellipse(lx - 5, (top + FLOOR) / 2 + 6, 8, 7)), BONE_DARK)
+    # The skull at the west end, bowed: a high domed crown, a deep socket
+    # for the eye, the heavy sheath of the tusks down into the tar.
+    skull = c.mask(lambda p: (p.ellipse(562, 474, 40, 44),
+                              p.poly([(530, 448), (600, 470), (604, 512), (560, 548), (512, 572), (494, 552), (506, 500)])))
     c.put(skull, BONE)
-    c.put(c.mask(lambda p: p.ellipse(sx - 4, sy - 6, 7, 6)), (60, 52, 40))
-    c.tone(skull * np.clip((c.y - back) / 60, 0, 1), -0.2)
-    for side, w in ((-1, 9), (1, 7)):
-        tusk = [(sx - 20 + 70 * math.cos(t) * (0.9 if side > 0 else 1.0) - 50, sy + 26 - 60 * math.sin(t) * (1 if side < 0 else 0.8)) for t in np.linspace(-0.2, 2.6, 26)]
-        c.put(c.mask(lambda p: p.line(tusk, w)), BONE)
-    c.tone(c.mask(lambda p: p.rect(x0 - 120, FLOOR - 8, x1, FLOOR + 6)), -0.3)
+    c.tone(skull * np.clip((c.y - 440) / 130, 0, 1), -0.22)
+    c.tone(skull * np.clip((c.x - 540) / 60, 0, 1) * np.clip((500 - c.y) / 50, 0, 1), 0.12)
+    c.put(c.mask(lambda p: p.ellipse(548, 492, 11, 9)), (52, 44, 34))
+    c.put(c.mask(lambda p: p.ellipse(520, 526, 2.6, 6)), (96, 84, 64))
+    # The tusks, out of their sheath, curving forward and up: a spiral.
+    for far, (cx, cy) in ((True, (470, 512)), (False, (458, 520))):
+        pts = []
+        for t in np.linspace(0, 1, 28):
+            a = math.radians(40 + 215 * t)
+            r = 62 - 18 * t
+            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+        tapered(c, pts, 10 if not far else 8, 3, BONE_DARK if far else BONE, under=FLOOR)
+    c.tone(c.mask(lambda p: p.rect(POOLS[0][0], FLOOR - 8, x1, FLOOR + 6)), -0.3)
 
 
 def dig_camp(c, k):
@@ -141,7 +166,7 @@ def scattered_bones(c, k):
 
 PIECES: Dict[str, Piece] = {
     "tar_pits_pools": Piece((500, 440, 1720, 640), pools),
-    "tar_pits_mammoth": Piece((440, 410, 860, 600), mammoth),
+    "tar_pits_mammoth": Piece((380, 410, 860, 600), mammoth),
     "tar_pits_dig_camp": Piece((1730, 360, 2380, FLOOR + 4), dig_camp),
     "tar_pits_bones": Piece((120, 500, 520, 600), scattered_bones),
 }
