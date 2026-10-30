@@ -1353,13 +1353,27 @@ SURFACES = {"shoulder_left": SHOULDER_L, "shoulder_right": SHOULDER_R}
 def surfaces(pose: dict) -> dict:
     """Where each standing surface of ``pose`` is, in pixels of the published
     frame: ``{name: (a, b)}``, the left end first. The epaulets lean and lift
-    with the torso (`_body_map`), and so do their tops."""
+    with the torso (`_body_map`), and so do their tops. ``hump`` is the two
+    ends of the walk line of the hump (`hump_line_world`) where the barrel is
+    drawn: the game carries the whole line by the move of its ends."""
     body_map = _body_map(pose)
     out = {}
     for name, (x0, x1, top) in SURFACES.items():
         a, b = (to_frame(pc.apply(body_map, p)) for p in ((x0, top), (x1, top)))
         out[name] = (a, b) if a[0] <= b[0] else (b, a)
+    barrel = _barrel_placed(pose["stance"]).full()
+    out["hump"] = tuple(to_frame(pc.apply(barrel, p)) for p in _hump_ends())
     return out
+
+
+def _hump_ends():
+    """The two ends of the walk line of the hump at rest, in design units:
+    the rump's end and the torso's edge (`hump_line_world`)."""
+    top = hump_top(_SLOPED)
+    (ax, ay), (bx, by) = top[0], top[1]
+    i = min(len(top) - 2, max(0, int((TORSO_EDGE_X - top[0][0]) / (top[1][0] - top[0][0]))))
+    (cx, cy), (dx, dy) = top[i], top[i + 1]
+    return ((ax, ay - TRIM_OVER), (TORSO_EDGE_X, cy + (dy - cy) * (TORSO_EDGE_X - cx) / (dx - cx) - TRIM_OVER))
 
 
 def surface_anchors(found: dict, frame_size) -> dict:
@@ -1860,6 +1874,25 @@ BARREL_SNAP = 0.02
 _BARREL_AXIS = math.degrees(math.atan2(_BARREL_REST[1][1] - _BARREL_REST[0][1], _BARREL_REST[1][0] - _BARREL_REST[0][0]))
 
 
+def _barrel_placed(st, name="beast", z=30.0, body=()):
+    """The barrel of the beast (drawn once at rest, in `_SLOPED`) placed in
+    stance ``st``: turned about its rump to the slope of the stance, and
+    stretched along it."""
+    rump, top = _barrel_ends(st)
+    (r0, t0) = _BARREL_REST
+    turn = math.degrees(math.atan2(top[1] - rump[1], top[0] - rump[0])) - _BARREL_AXIS
+    stretch = _rest_length(rump, top) / _rest_length(r0, t0)
+    barrel_map = pc.chain(pc.T(rump[0] - r0[0], rump[1] - r0[1]), pc.R(turn, *r0))
+    # Near its rest length the barrel is painted as drawn, not turned to its
+    # axis. Turned, its quad reaches far past the frame (187 px in `death`),
+    # and the game then cannot read the giant as one image: no impostor cell
+    # holds it, so a portal does not draw it through and a hit does not flash.
+    axis = _BARREL_AXIS
+    if abs(stretch - 1.0) < BARREL_SNAP:
+        axis, stretch = 90.0, 1.0
+    return pc.Placed(name, z, pc.Piece(tuple(body), origin=r0, axis=axis, reach=1150.0), barrel_map, stretch)
+
+
 def _body_map(pose: dict):
     """The map of the chest, the head and the arms: lifted to the stance, and
     leaned about the seat (the scholar stays on it)."""
@@ -1893,22 +1926,8 @@ def scene_for(pose: dict, *, arms: bool = False, horns: str = "gnu") -> pc.Scene
     tail_map = pc.chain(pc.T(tx - 352, ty - 716), pc.R(swing, 352, 716))
     for name, z, body in _harvest(tail):
         scene.add(name, z, pc.Piece(body, origin=(352.0, 716.0), reach=400.0), tail_map)
-    # The barrel of the beast, drawn once at rest, turns about its rump to the
-    # slope of this stance, and stretches along it.
-    rump, top = _barrel_ends(st)
-    (r0, t0) = _BARREL_REST
-    turn = math.degrees(math.atan2(top[1] - rump[1], top[0] - rump[0])) - _BARREL_AXIS
-    stretch = _rest_length(rump, top) / _rest_length(r0, t0)
-    barrel_map = pc.chain(pc.T(rump[0] - r0[0], rump[1] - r0[1]), pc.R(turn, *r0))
-    # Near its rest length the barrel is painted as drawn, not turned to its
-    # axis. Turned, its quad reaches far past the frame (187 px in `death`),
-    # and the game then cannot read the giant as one image: no impostor cell
-    # holds it, so a portal does not draw it through and a hit does not flash.
-    axis = _BARREL_AXIS
-    if abs(stretch - 1.0) < BARREL_SNAP:
-        axis, stretch = 90.0, 1.0
     for name, z, body in _harvest(beast, _SLOPED):
-        scene.add(name, z, pc.Piece(body, origin=r0, axis=axis, reach=1150.0), barrel_map, stretch)
+        scene.items.append(_barrel_placed(st, name, z, body))
     # The chest, the head and the arms are drawn in one place and lifted to the
     # stance, and leaned about the seat (the scholar stays on it).
     body_map = _body_map(pose)
