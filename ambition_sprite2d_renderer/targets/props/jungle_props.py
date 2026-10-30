@@ -7,6 +7,7 @@ by `tools/ambition_ldtk_tools/specs/scenery_overlay.py`.
 - `jungle_nest`: a nest of speckled eggs in a ring of twigs (one egg hatching).
 - `jungle_idol_head`: a toppled stone head, mossed, a fern growing out of it.
 - `jungle_ribcage`: the bones of something very big, half sunk.
+- `jungle_ranger_hut`: the trail ranger's hut by the gate.
 
 Animations: ``idle``, 1 frame each. No drop shadows.
 """
@@ -84,7 +85,34 @@ def ribcage(c, k):
     c.put(c.mask(lambda p: p.ellipse(160, g, 170, 12)) * (c.y < g), (70, 90, 50))
 
 
+def ranger_hut(c, k):
+    """The trail ranger's hut by the gate: timber on stilts, a thatch of palm,
+    the trail's map on a board (a dotted way past a skull to a crown), a
+    bell, a first-aid box, a basket of coconuts."""
+    g = 150
+    wood, wood_dark, thatch = (128, 92, 58), (82, 58, 38), (176, 150, 84)
+    c.put(c.mask(lambda p: [p.rect(x, g - 40, x + 6, g) for x in (20, 190)]), wood_dark)
+    c.put(c.mask(box(10, g - 46, 210, g - 38)), wood)
+    c.put(c.mask(box(30, g - 112, 190, g - 46)), wood)
+    c.put(c.mask(lambda p: [p.rect(30, y, 190, y + 0.8) for y in range(int(g - 104), int(g - 46), 8)]), wood_dark)
+    c.put(c.mask(box(46, g - 100, 86, g - 46)), (40, 34, 28))
+    roof = c.mask(lambda p: p.poly([(0, g - 108), (110, g - 146), (220, g - 108), (210, g - 100), (10, g - 100)]))
+    c.put(roof, thatch)
+    c.put(roof * c.mask(lambda p: [p.line([(x, g - 146 + abs(x - 110) * 0.34), (x + 4, g - 100)], 1.0) for x in range(6, 216, 7)]), scale(thatch, 0.75))
+    # The map: a dotted trail past a skull to a crown.
+    c.put(c.mask(box(100, g - 100, 176, g - 56)), (232, 222, 190))
+    c.put(c.mask(lambda p: [p.ellipse(106 + i * 6, g - 72 - 10 * math.sin(i / 2), 1.2) for i in range(11)]), (150, 60, 50))
+    c.put(c.mask(lambda p: (p.ellipse(132, g - 86, 4), p.poly([(160, g - 88), (166, g - 96), (170, g - 88), (174, g - 96), (176, g - 84), (160, g - 84)]))), (90, 80, 70))
+    # The bell, the first-aid box, the coconuts.
+    c.put(c.mask(lambda p: (p.rect(196, g - 100, 198, g - 80), p.poly([(190, g - 70), (204, g - 70), (201, g - 82), (193, g - 82)]))), (200, 160, 70))
+    c.put(c.mask(box(32, g - 34, 56, g - 46 + 30)), (230, 230, 230))
+    c.put(c.mask(lambda p: (p.rect(42, g - 32, 46, g - 20), p.rect(38, g - 28, 50, g - 24))), (200, 50, 50))
+    c.put(c.mask(lambda p: p.poly([(150, g), (190, g), (194, g - 22), (146, g - 22)])), (150, 120, 70))
+    c.put(c.mask(lambda p: [p.ellipse(x, g - 24, 7) for x in (156, 168, 180)]), (100, 70, 40))
+
+
 PIECES: Dict[str, Piece] = {
+    "jungle_ranger_hut": Piece((0, 0, 220, 150), ranger_hut),
     "jungle_fern_clump": Piece((0, 0, 230, 120), fern_clump),
     "jungle_fallen_log": Piece((0, 0, 260, 60), fallen_log),
     "jungle_nest": Piece((0, 0, 180, 70), nest),
