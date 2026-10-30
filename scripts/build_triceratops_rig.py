@@ -11,7 +11,8 @@ clips. It never draws.
     uv run python scripts/build_triceratops_rig.py
 
 The rows have the names the game reads: ``slash`` is the thrust of its horns,
-``taunt`` is a forefoot that paws the ground.
+``taunt`` is a forefoot that paws the ground, ``windup`` is the horns
+lowered before the thrust and ``notice`` is the start when it sees its foe.
 """
 
 from __future__ import annotations
@@ -175,6 +176,45 @@ def death(i: int, n: int, t: float) -> Pose:
     return p
 
 
+def notice(i: int, n: int, t: float) -> Pose:
+    """Startled by its foe: the head thrown up so the frill stands tall, the
+    beak open, the tail up, a forefoot set back. Held, with a shiver."""
+    up = track([0.7, 1.0, 0.95], t)
+    p: Pose = {
+        "root_x": -4.0 * up,
+        "root_y": -3.0 * up,
+        "pelvis": -4.0 * up,
+        "neck": -12.0 * up,
+        "head": -18.0 * up + track([0, 0, 2], t),
+        "jaw": track([12, 20, 16], t),
+        "tail": 14.0 * up,
+    }
+    p.update(feet(t, near_fore_x=[-6, -8, -8]))
+    p.update(eyes("open"))
+    return p
+
+
+def windup(i: int, n: int, t: float) -> Pose:
+    """The telegraph of the gore: rocked back on its haunches, the head down
+    so the horns point at its foe, and a forefoot pawing the ground."""
+    sink = 0.8 if i == 0 else 1.0
+    shake = track([0, 1.2, -1.2], t)
+    p: Pose = {
+        "root_x": -14.0 * sink + shake,
+        "root_y": -2.0 * sink,
+        "pelvis": 4.0 * sink,
+        "neck": 12.0,
+        "head": 16.0,
+        "jaw": 6.0,
+        "tail": 14.0 + shake,
+        "fx.dust": track([0, 0.9, 0.2], t),
+    }
+    p.update(feet(t, near_hind_x=[-6, -6, -6], far_hind_x=[-6, -6, -6], far_fore_x=[-4, -4, -4],
+                  near_fore_x=[14, -14, 8], near_fore_lift=[18, 0, 14], near_fore_pitch=[22, 0, 18]))
+    p.update(eyes("angry"))
+    return p
+
+
 CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "idle": idle,
     "walk": walk,
@@ -185,6 +225,8 @@ CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "taunt": paw,
     "hurt": hurt,
     "death": death,
+    "notice": notice,
+    "windup": windup,
 }
 
 DEFAULTS: Pose = {**{f"{leg}_x": x for leg, x in REST_X.items()}, "eye.open": 1.0, "jaw": 2.0}
@@ -216,6 +258,10 @@ SPEC = Q.CreatureSpec(
         ("taunt", 8, 110, False),
         ("hurt", 4, 92, False),
         ("death", 8, 110, False),
+        # The game holds ``notice`` while it first sees its foe, and
+        # ``windup`` over a melee move's startup before the attack row.
+        ("notice", 3, 120, False),
+        ("windup", 3, 90, False),
     ],
     clips=CLIPS,
     defaults=DEFAULTS,

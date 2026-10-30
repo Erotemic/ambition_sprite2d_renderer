@@ -3704,6 +3704,227 @@
      ]
     }
    }
+  },
+  "notice": {
+   "loop": false,
+   "frames": 3,
+   "duration_ms": 120,
+   "channels": {
+    "body": {
+     "keys": [
+      [
+       0.0,
+       -8.4
+      ],
+      [
+       0.5,
+       -12.0
+      ],
+      [
+       1.0,
+       -11.4
+      ]
+     ]
+    },
+    "eye.angry": {
+     "const": 0.0
+    },
+    "eye.dead": {
+     "const": 0.0
+    },
+    "eye.open": {
+     "const": 1.0
+    },
+    "eye.shut": {
+     "const": 0.0
+    },
+    "far_foot_lift": {
+     "const": 0.0
+    },
+    "far_foot_x": {
+     "const": -7.0
+    },
+    "far_wing": {
+     "keys": [
+      [
+       0.0,
+       -10.08
+      ],
+      [
+       0.5,
+       -16.4
+      ],
+      [
+       1.0,
+       -11.68
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       8.4
+      ],
+      [
+       0.5,
+       12.0
+      ],
+      [
+       1.0,
+       8.4
+      ]
+     ]
+    },
+    "jaw": {
+     "keys": [
+      [
+       0.0,
+       18.0
+      ],
+      [
+       0.5,
+       26.0
+      ],
+      [
+       1.0,
+       22.0
+      ]
+     ]
+    },
+    "near_foot_lift": {
+     "const": 0.0
+    },
+    "near_foot_x": {
+     "const": 1.0
+    },
+    "near_wing": {
+     "keys": [
+      [
+       0.0,
+       -12.6
+      ],
+      [
+       0.5,
+       -16.0
+      ],
+      [
+       1.0,
+       -19.1
+      ]
+     ]
+    },
+    "neck": {
+     "keys": [
+      [
+       0.0,
+       -18.2
+      ],
+      [
+       0.5,
+       -26.0
+      ],
+      [
+       1.0,
+       -24.7
+      ]
+     ]
+    },
+    "root_y": {
+     "keys": [
+      [
+       0.0,
+       -0.63
+      ],
+      [
+       0.5,
+       -0.9
+      ],
+      [
+       1.0,
+       -0.855
+      ]
+     ]
+    },
+    "tail": {
+     "keys": [
+      [
+       0.0,
+       15.4
+      ],
+      [
+       0.5,
+       22.0
+      ],
+      [
+       1.0,
+       20.9
+      ]
+     ]
+    }
+   }
+  },
+  "windup": {
+   "loop": false,
+   "frames": 3,
+   "duration_ms": 90,
+   "channels": {
+    "body": {
+     "const": -14.0
+    },
+    "eye.angry": {
+     "const": 1.0
+    },
+    "eye.dead": {
+     "const": 0.0
+    },
+    "eye.open": {
+     "const": 0.0
+    },
+    "eye.shut": {
+     "const": 0.0
+    },
+    "far_foot_lift": {
+     "const": 0.0
+    },
+    "far_foot_x": {
+     "const": -7.0
+    },
+    "head": {
+     "const": 2.0
+    },
+    "jaw": {
+     "const": 4.0
+    },
+    "near_foot_lift": {
+     "const": 0.0
+    },
+    "near_foot_x": {
+     "const": 1.0
+    },
+    "neck": {
+     "const": -22.0
+    },
+    "root_x": {
+     "keys": [
+      [
+       0.0,
+       -2.4
+      ],
+      [
+       0.5,
+       -2.625
+      ],
+      [
+       1.0,
+       -3.375
+      ]
+     ]
+    },
+    "root_y": {
+     "const": 1.08
+    }
+   }
   }
  },
  "sprite_tuning": {
