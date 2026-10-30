@@ -17,7 +17,8 @@ vault (to y 64), the shaft down from the well (x 16..80), the barrel rack
   the engine's) in its fall of daylight at the west end; the desk where the customs stamps
   are forged; an idol under a sheet, plainly cursed, glowing; a crate of
   undeclared chickens; crates with customs tags left blank; the barrels,
-  racked; the still; a bricked-up arch to the sea.
+  racked; the still; the arch to the sea, its bricks knocked through: the
+  smugglers' tunnel east.
 
 Animations: ``idle``, 1 frame. No drop shadows.
 """
@@ -196,14 +197,18 @@ def vault(c, k):
     c.put(c.mask(box(s0, 16, s1, CEIL)), STONE_DARK)
     c.light(c.mask(lambda p: p.poly([(s0, 16), (s1, 16), (s1 + 30, FLOOR), (s0 - 30, FLOOR)]), blur=10), (250, 244, 220), 0.22)
 
-    # The bricked-up arch to the sea, and its grate.
+    # The arch to the sea, its bricks knocked through: the smugglers' tunnel
+    # beyond, dark, going east; the bricks on the floor, the grate leant by.
     ax = 1500
     c.put(c.mask(lambda p: (p.ellipse(ax, FLOOR - 120, 60), p.rect(ax - 60, FLOOR - 120, ax + 60, FLOOR))), STONE)
     inner = c.mask(lambda p: (p.ellipse(ax, FLOOR - 120, 50), p.rect(ax - 50, FLOOR - 120, ax + 50, FLOOR)))
-    c.put(inner, BRICK_DARK)
-    c.put(inner * c.mask(lambda p: [p.rect(ax - 50, y, ax + 50, y + 1.4) for y in range(FLOOR - 170, FLOOR, 10)]), MORTAR, 0.6)
-    c.put(c.mask(lambda p: [p.rect(x, FLOOR - 60, x + 3, FLOOR) for x in range(ax - 40, ax + 44, 14)]), (60, 60, 64))
-    c.put(c.mask(lambda p: p.rect(ax - 44, FLOOR - 62, ax + 44, FLOOR - 58)), (60, 60, 64))
+    c.put(inner, (34, 24, 22))
+    c.tone(inner * np.clip((c.x - (ax - 50)) / 100, 0, 1), -0.4)
+    # What is left of the bricking at its edges.
+    c.put(inner * c.mask(lambda p: [p.rect(ax - 50, y, ax - 50 + 8 + (y * 7) % 22, y + 9) for y in range(FLOOR - 170, FLOOR, 10)]), BRICK_DARK)
+    c.put(c.mask(lambda p: [p.rect(ax - 70 + i * 17, FLOOR - 7 - (i % 3) * 3, ax - 56 + i * 17, FLOOR - (i % 3) * 3) for i in range(8)]), BRICK)
+    c.put(c.mask(lambda p: [p.line([(ax + 70 + i * 3, FLOOR), (ax + 54 + i * 3, FLOOR - 60)], 2) for i in range(0, 30, 10)]), (60, 60, 64))
+    c.put(c.mask(lambda p: p.line([(ax + 52, FLOOR - 58), (ax + 82, FLOOR - 58)], 2)), (60, 60, 64))
 
 
 PIECES: Dict[str, Piece] = {
