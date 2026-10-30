@@ -9,8 +9,6 @@
   },
   "hitbox": {
     "active": [
-      2,
-      3,
       4
     ],
     "extend": 1.06

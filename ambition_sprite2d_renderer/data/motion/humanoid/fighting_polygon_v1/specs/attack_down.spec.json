@@ -5,7 +5,7 @@
   "facing": "west",
   "hitbox": {
     "active": [
-      3
+      4
     ]
   },
   "poke": {

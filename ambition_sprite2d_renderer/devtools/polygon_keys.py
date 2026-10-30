@@ -39,22 +39,31 @@ ATTACK_FRAMES = 12
 #: How far above the standing feet an airborne row rides, in px.
 AIR_RISE = -6.0
 
-#: The Smash stage's clocks: (first active, last active, total) ticks at 60 Hz.
-#: The two humanoids are fast, the beast is heavy.
+#: The Smash stage's clocks: (first active, last active, total) ticks at 60 Hz,
+#: read from each fighter's facet (`data/fighters/*_polygon.ron`, written by
+#: `scripts/smash_retime.py`): the sword is Marth's pace, the brawler Captain
+#: Falcon's, the beast a zoner's. Re-run `apply` when a facet's clocks change.
 SMASH_CLOCKS = {
-    "fast": {
-        "jab": (2, 4, 15), "attack_side": (5, 8, 24), "attack_up": (4, 9, 21),
-        "attack_down": (5, 7, 22), "dash_attack": (5, 12, 34), "smash_forward": (13, 16, 42),
-        "smash_up": (8, 13, 36), "smash_down": (6, 11, 40), "air_neutral": (3, 22, 38),
-        "air_forward": (8, 11, 40), "air_back": (6, 10, 30), "air_up": (4, 8, 28),
-        "air_down": (6, 14, 40),
+    "sword": {
+        "jab": (5, 5, 22), "attack_side": (8, 9, 32), "attack_up": (6, 11, 30),
+        "attack_down": (7, 7, 22), "dash_attack": (12, 14, 42), "smash_forward": (10, 12, 47),
+        "smash_up": (13, 15, 50), "smash_down": (6, 19, 60), "air_neutral": (6, 17, 46),
+        "air_forward": (6, 8, 34), "air_back": (7, 9, 44), "air_up": (5, 7, 32),
+        "air_down": (9, 11, 50),
     },
-    "heavy": {
-        "jab": (5, 7, 20), "attack_side": (9, 12, 36), "attack_up": (8, 13, 32),
-        "attack_down": (7, 10, 30), "dash_attack": (9, 16, 44), "smash_forward": (18, 21, 54),
-        "smash_up": (12, 17, 48), "smash_down": (8, 14, 50), "air_neutral": (6, 26, 48),
-        "air_forward": (14, 17, 54), "air_back": (9, 13, 40), "air_up": (7, 11, 38),
-        "air_down": (10, 20, 52),
+    "falcon": {
+        "jab": (3, 3, 17), "attack_side": (9, 10, 30), "attack_up": (17, 18, 37),
+        "attack_down": (10, 11, 27), "dash_attack": (7, 14, 37), "smash_forward": (19, 20, 54),
+        "smash_up": (22, 25, 57), "smash_down": (19, 22, 57), "air_neutral": (7, 21, 42),
+        "air_forward": (14, 15, 39), "air_back": (10, 12, 32), "air_up": (7, 9, 33),
+        "air_down": (16, 17, 44),
+    },
+    "zoner": {
+        "jab": (3, 4, 18), "attack_side": (5, 7, 27), "attack_up": (7, 9, 26),
+        "attack_down": (6, 7, 28), "dash_attack": (8, 13, 40), "smash_forward": (14, 16, 47),
+        "smash_up": (11, 14, 44), "smash_down": (7, 12, 46), "air_neutral": (3, 19, 41),
+        "air_forward": (11, 13, 44), "air_back": (7, 9, 36), "air_up": (5, 8, 34),
+        "air_down": (8, 15, 48),
     },
 }
 
@@ -78,10 +87,13 @@ def F(frame: float) -> float:
 
 
 def active_frames(name: str, clocks: str) -> List[int]:
-    """The frames of a row whose centre is inside the move's active window."""
+    """The frames of a row whose centre is inside the move's active window, or,
+    for a window narrower than a frame (a one-tick jab), the frame that holds
+    the window's centre."""
     first, last, total = SMASH_CLOCKS[clocks][name]
     lo, hi = first / total, (last + 1) / total
-    return [i for i in range(ATTACK_FRAMES) if lo <= F(i) <= hi]
+    inside = [i for i in range(ATTACK_FRAMES) if lo <= F(i) <= hi]
+    return inside or [min(int((lo + hi) * 0.5 * ATTACK_FRAMES), ATTACK_FRAMES - 1)]
 
 
 @dataclass(frozen=True)
@@ -1190,9 +1202,9 @@ def charge_spec(fighter: str, strike=None) -> dict:
 
 
 FIGHTERS = {
-    "pointed_polygon": ("fast", POINTED, POINTED_EFFECTS, None, pp_smash_charge),
-    "pugnacious_polygon": ("fast", BRAWLER, BRAWLER_EFFECTS, BRAWLER_STRIKE, pg_smash_charge),
-    "projectile_polygon": ("heavy", BEAST, BEAST_EFFECTS, {name: ("cannon", "cannon") for name in list(BEAST) + ["smash_charge"]}, pj_smash_charge),
+    "pointed_polygon": ("sword", POINTED, POINTED_EFFECTS, None, pp_smash_charge),
+    "pugnacious_polygon": ("falcon", BRAWLER, BRAWLER_EFFECTS, BRAWLER_STRIKE, pg_smash_charge),
+    "projectile_polygon": ("zoner", BEAST, BEAST_EFFECTS, {name: ("cannon", "cannon") for name in list(BEAST) + ["smash_charge"]}, pj_smash_charge),
 }
 
 
