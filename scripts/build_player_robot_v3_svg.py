@@ -28,7 +28,7 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_back import (
     author_back_rows,
 )
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_front import author_front_rows
-from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crouch import reauthor_crouch
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crouch import reauthor_crouch, reauthor_landing
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_double_jump import author_double_jump
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_turn import author_turnaround
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_gait import author_gaits
@@ -648,6 +648,7 @@ def build_doc() -> dict:
     # a build is the whole rig and no second pass can be forgotten.
     solved = RigDocument(doc)
     reauthor_crouch(solved)
+    reauthor_landing(solved)
     author_double_jump(solved)
     author_turnaround(solved)
     author_gaits(solved)

@@ -386,4 +386,81 @@ def reauthor_crouch(doc: RigDocument) -> dict:
     return report
 
 
-__all__ = ["reauthor_crouch"]
+#: The landings, frame by frame: how far the body drops onto its legs (frame
+#: px, the feet planted), how far the head sinks onto the shoulders, and the
+#: head's height as a scale. The impact squashes the head wide and flat while
+#: the legs fold, it springs back a little TALL, and it settles to the stand.
+#: The squash is authored in the drawing, not applied by the game, so a hard
+#: landing can go deeper and hold longer than a light one.
+LANDINGS = {
+    "land": {
+        "drop": (8.0, 10.0, 5.0, 0.0, 0.0, 0.0),
+        "sink": (3.0, 4.0, 1.5, -1.5, -0.5, 0.0),
+        "head_scale": (0.82, 0.78, 0.92, 1.06, 1.02, 1.0),
+    },
+    "land_hard": {
+        "drop": (10.0, CROUCH_DROP, CROUCH_DROP, 8.0, 3.0, 0.0, 0.0, 0.0),
+        "sink": (4.0, 5.0, 5.0, 3.0, 1.0, -1.5, -0.5, 0.0),
+        "head_scale": (0.76, 0.72, 0.74, 0.84, 0.96, 1.08, 1.03, 1.0),
+    },
+}
+#: The arms on the impact: thrown out from the fall, then they come down with
+#: the body (scaled by how deep the frame's drop is).
+LANDING_ARMS = {"far_arm_u": 34.0, "far_arm_l": 20.0, "near_arm_u": -30.0, "near_arm_l": -12.0}
+
+
+def reauthor_landing(doc: RigDocument) -> dict:
+    """Key `land` and `land_hard` as a squash and a spring: the legs fold
+    under the dropped body with both feet where they stand (`pose_at`), the
+    head sinks and squashes, rebounds a little tall, and settles."""
+    p = Poser(doc)
+    p.clear()
+    rest_world = p.solve()
+    rest = {
+        side: {
+            "ankle": rest_world[f"{side}_leg_foot"].origin,
+            "foot_angle": rest_world[f"{side}_leg_foot"].angle,
+        }
+        for side in ("far", "near")
+    }
+    # Each drop is solved on the way DOWN from the stand, each seeded by the
+    # shallower one before it, as the crouch is: seeded by a deeper fold, a
+    # shallow one took the other branch and knelt with its shin flat.
+    standing = {"root_y": 0.0, "_ankle_error": 0.0}
+    for side in ("far", "near"):
+        for part in ("u", "l", "foot"):
+            standing[f"{side}_leg_{part}"] = 0.0
+    solved = {0.0: standing}
+    seed = standing
+    for drop in sorted({d for shape in LANDINGS.values() for d in shape["drop"] if d > 0.0}):
+        seed = solved[drop] = pose_at(p, rest, drop, seed=seed)
+    worst = 0.0
+    for clip_name, shape in LANDINGS.items():
+        frames = []
+        for drop, sink, head_scale in zip(shape["drop"], shape["sink"], shape["head_scale"]):
+            amount = drop / CROUCH_DROP
+            frame = dict(solved[drop])
+            worst = max(worst, frame["_ankle_error"])
+            for key in ("torso", "head", "pelvis"):
+                frame[key] = CROUCH_SHAPE[key] * amount
+            for key, value in LANDING_ARMS.items():
+                frame[key] = value * amount
+            frame["eye_squint"] = 0.35 * amount
+            frame["bone.head.y"] = sink
+            frame["bone.head.scale_y"] = head_scale
+            frames.append(frame)
+        channels = doc.data["clips"][clip_name]["channels"]
+        authored = {key for key in frames[0] if not key.startswith("_")}
+        for key in authored:
+            channels[key] = keyed([f[key] for f in frames])
+        for key in channels:
+            if key in authored or key in ("face_open_vis", "head_look", "blink_vis"):
+                continue
+            channels[key] = keyed([HEAD_CHANNEL_RESTS.get(key, 0.0)] * len(frames))
+        doc.data["clips"][clip_name]["frames"] = len(frames)
+        doc.data["clips"][clip_name]["loop"] = False
+    p.drop()
+    return {"worst_ankle_error": worst}
+
+
+__all__ = ["reauthor_crouch", "reauthor_landing"]
