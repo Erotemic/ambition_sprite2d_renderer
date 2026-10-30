@@ -848,6 +848,106 @@ def lab_room(c, k):
     c.put(c.mask(lambda p: p.line([(COIL_WEST_X + 30, g - 30), (560, g - 6), (640, g - 4), (680, g - 26)], 3)), (40, 40, 44))
 
 
+# ---------------------------------------------------------------------------
+# The Test Range, out of town west of the gate court
+# ---------------------------------------------------------------------------
+
+RANGE_W, RANGE_FLOOR = 2816, 704
+GANTRY = ((680, 820, 624), (760, 900, 544), (680, 820, 464), (760, 900, 384))
+ROCKET_X = 960
+BUNKER = (1700, 1960, 576)
+TOWER = ((2280, 2400, 560), (2320, 2440, 416))
+CONCRETE = (176, 172, 160)
+HAZARD = (236, 190, 40)
+WHITE = (240, 240, 236)
+RED = (200, 50, 40)
+
+
+def hazard_band(c, x0, y0, x1, y1):
+    m = c.mask(box(x0, y0, x1, y1))
+    c.put(m, HAZARD)
+    stripes = (((c.x + c.y) // 8) % 2).astype(np.float32)
+    c.put(m * stripes, (30, 30, 30))
+
+
+def range_rocket(c, k):
+    """The rocket on its pad, and the gantry beside it (its walk lines are the
+    room's ledges)."""
+    g = RANGE_FLOOR
+    # The pad.
+    c.put(c.mask(box(860, g - 20, 1080, g)), CONCRETE)
+    hazard_band(c, 860, g - 24, 1080, g - 20)
+    # The rocket: a tall white body, a red nose, fins, a scorched base.
+    rx = ROCKET_X
+    body = c.mask(box(rx - 26, 230, rx + 26, g - 40))
+    c.put(body, WHITE)
+    c.tone(body * np.clip((c.x - rx) / 26, -1, 1), -0.25)
+    c.put(c.mask(lambda p: p.poly([(rx - 26, 230), (rx + 26, 230), (rx, 150)])), RED)
+    c.put(c.mask(lambda p: [p.rect(rx - 26, y, rx + 26, y + 6) for y in (300, 420, 560)]), (40, 40, 48))
+    c.put(c.mask(lambda p: (p.poly([(rx - 26, g - 120), (rx - 56, g - 40), (rx - 26, g - 60)]), p.poly([(rx + 26, g - 120), (rx + 56, g - 40), (rx + 26, g - 60)]))), RED)
+    c.put(c.mask(lambda p: p.poly([(rx - 18, g - 40), (rx + 18, g - 40), (rx + 24, g - 22), (rx - 24, g - 22)])), (60, 60, 66))
+    # A porthole and a hand-painted name (a star; the label says the name).
+    c.put(c.mask(lambda p: p.ellipse(rx, 270, 9)), (40, 60, 90))
+    c.light(c.mask(lambda p: p.ellipse(rx - 3, 266, 3), blur=1), (255, 255, 255), 0.5)
+    # The gantry: a lattice tower with its walk lines and an arm to the rocket.
+    gx0, gx1 = 680, 900
+    lattice = c.mask(lambda p: (p.rect(gx0 + 4, 300, gx0 + 10, g), p.rect(gx1 - 10, 300, gx1 - 4, g),
+                                [p.line([(gx0 + 7, y), (gx1 - 7, y + 40)], 1.6) for y in range(300, g - 40, 40)],
+                                [p.line([(gx1 - 7, y), (gx0 + 7, y + 40)], 1.6) for y in range(300, g - 40, 40)]))
+    c.put(lattice, RED)
+    for x0, x1, y in GANTRY:
+        c.put(c.mask(box(x0, y, x1, y + 8)), (90, 90, 96))
+        edge_line(c, x0, x1, y, (160, 160, 168), 4)
+    c.put(c.mask(box(900, 380, rx - 26, 386)), (90, 90, 96))
+    c.put(c.mask(lambda p: p.line([(900, 300), (rx - 26, 300)], 2)), (90, 90, 96))
+
+
+def range_bunker(c, k):
+    """The blast bunker: thick concrete, its roof walked on, a slit window."""
+    g = RANGE_FLOOR
+    x0, x1, top = BUNKER
+    m = c.mask(lambda p: p.poly([(x0 - 20, g), (x0, top), (x1, top), (x1 + 20, g)]))
+    c.put(m, CONCRETE)
+    c.tone(m * (c.noise("bunker", 10, 4, 3) - 0.5), 0.25)
+    c.put(c.mask(lambda p: [p.rect(x, top + 4, x + 1, g) for x in np.arange(x0 + 40, x1, 60)]), scale(CONCRETE, 0.8), 0.6)
+    c.put(c.mask(box(x0 + 60, top + 30, x1 - 60, top + 42)), (20, 24, 28))
+    c.light(c.mask(box(x0 + 64, top + 32, x1 - 64, top + 40)), (120, 220, 140), 0.4)
+    edge_line(c, x0, x1, top, (200, 196, 184), 5)
+    hazard_band(c, x0 + 20, g - 26, x0 + 70, g - 4)
+    # Scorch on its face from the rocket's side.
+    c.tone(m * np.clip(1 - (c.x - x0 + 20) / 80, 0, 1), -0.35)
+
+
+def range_tower(c, k):
+    """The observation tower and the range's furniture: craters, scorch,
+    warning posts, a windsock."""
+    g = RANGE_FLOOR
+    (a0, a1, ay), (b0, b1, by) = TOWER
+    for x in (2290, 2430):
+        c.put(c.mask(box(x - 4, by, x + 4, g)), (80, 80, 88))
+    c.put(c.mask(lambda p: [p.line([(2290, y), (2430, y + 60)], 1.4) for y in range(by + 20, g - 60, 60)]), (80, 80, 88))
+    for x0, x1, y in TOWER:
+        c.put(c.mask(box(x0, y, x1, y + 8)), (100, 100, 108))
+        edge_line(c, x0, x1, y, (170, 170, 176), 4)
+    cab = c.mask(box(b0 + 6, by - 70, b1 - 6, by))
+    c.put(cab, (90, 96, 104))
+    glass = c.mask(box(b0 + 14, by - 60, b1 - 14, by - 30))
+    k.glass(glass, 0.15, by - 60, by - 30, "tower_glass")
+    c.put(c.mask(lambda p: p.poly([(b0, by - 70), (b1, by - 70), (b1 - 20, by - 84), (b0 + 20, by - 84)])), (60, 66, 74))
+    # A windsock on the cab's roof.
+    c.put(c.mask(lambda p: p.line([(b1 - 20, by - 84), (b1 - 20, by - 130)], 1.4)), (60, 60, 64))
+    c.put(c.mask(lambda p: p.poly([(b1 - 20, by - 130), (b1 + 20, by - 124), (b1 + 18, by - 116), (b1 - 20, by - 120)])), (240, 120, 40))
+    c.put(c.mask(lambda p: [p.rect(b1 - 8 + i * 9, by - 130, b1 - 4 + i * 9, by - 117) for i in range(3)]), WHITE, 0.8)
+    # Warning posts and craters along the range (this piece spans it).
+    for x in (300, 1300, 2000, 2600):
+        c.put(c.mask(box(x - 2, g - 50, x + 2, g)), (60, 60, 64))
+        c.put(c.mask(lambda p: p.poly([(x - 14, g - 64), (x + 14, g - 64), (x, g - 40)])), HAZARD)
+        c.put(c.mask(lambda p: (p.rect(x - 1, g - 60, x + 1, g - 50), p.ellipse(x, g - 46, 1.2))), (30, 30, 30))
+    for x, r in ((520, 60), (1460, 80), (2150, 50)):
+        c.put(c.mask(lambda p: p.ellipse(x, g, r, 10)) * (c.y < g), (70, 60, 52))
+        c.tone(c.mask(lambda p: p.ellipse(x, g, r * 1.6, 16), blur=8) * (c.y < g), -0.3)
+
+
 PIECES: Dict[str, Piece] = {
     # The quad.
     "eureka_patent_front": Piece((PO_X0 - 14, PO_CORNICE - 100, PO_X1 + 14, STREET), patent_front),
@@ -856,6 +956,13 @@ PIECES: Dict[str, Piece] = {
     "eureka_patent_room": Piece((16, PO_CEILING, 1008, PO_FLOOR), patent_room),
     "eureka_observatory_room": Piece((0, 0, OBS_W, OBS_FLOOR), observatory_room),
     "eureka_lab_room": Piece((16, LAB_CEILING, LAB_W - 16, LAB_FLOOR), lab_room),
+    # Out of town: the Test Range.
+    "eureka_range_rocket": Piece((660, 140, 1100, RANGE_FLOOR), range_rocket),
+    "eureka_range_bunker": Piece((1670, 560, 1990, RANGE_FLOOR), range_bunker),
+    # One drawing of the range's furniture, in two frames (a frame is at most
+    # a sheet's page wide): the tower's end, and the field west of the bunker.
+    "eureka_range_tower": Piece((1960, 270, 2700, RANGE_FLOOR), range_tower),
+    "eureka_range_field": Piece((200, 560, 1660, RANGE_FLOOR), range_tower),
 }
 
 TARGETS = targets(PIECES, PAL)
