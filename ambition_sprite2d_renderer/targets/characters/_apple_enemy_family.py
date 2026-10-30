@@ -32,7 +32,7 @@ BAD_ROWS = (
     ("death", 7, 100),
     ("notice", 4, 110),
     ("windup", 4, 90),
-    ("attack_side", 7, 75),
+    ("attack_side", 20, 65),
 )
 GRAVITY_ROWS = (
     ("idle", 8, 115),
@@ -54,9 +54,10 @@ GRAVITY_ROWS = (
 # (None plays it through), and the hop/lean of the pose.
 DERIVED_ROWS = {
     "bad_apple": {
-        "notice": ("chomp", 7, (0, 1, 1, 1), "hop"),
+        "notice": ("idle", 6, (0, 0, 0, 0), "hop"),
         "windup": ("chomp", 7, (3, 3, 3, 3), "lean"),
-        "attack_side": ("chomp", 7, None, None),
+        # Its own: the roll (`_bad_roll`).
+        "attack_side": ("chomp", 7, None, "roll"),
     },
     # The Gravity Apple's are drawn by its own art (`_gravity_apple_art.DERIVED`).
     "gravity_apple": {},
@@ -229,7 +230,7 @@ def _bad_maw(bite: float) -> str:
     return jaw + upper + lower + wrinkles
 
 
-def _face(animation: str, frame: int, count: int, gravity: bool) -> str:
+def _face(animation: str, frame: int, count: int, gravity: bool, look: str | None = None) -> str:
     """Animate facial performance independently of runtime whole-body rotation.
 
     A gameplay rolling pose must rotate the sprite/actor continuously; the
@@ -299,8 +300,25 @@ def _face(animation: str, frame: int, count: int, gravity: bool) -> str:
 
     if not gravity and not hurt and not dying:
         face_eyes = _bad_eyes(glance, blink_scale, bite)
+    # The notice: a startle (eyes gone round and wide, brows up, a small O),
+    # hardening into a glare (a hard squint, brows down, teeth set).
+    if look == "startle":
+        face_eyes = (
+            '<path d="M150 268 Q166 228 207 232 Q234 250 224 300 Q190 328 158 298Z" '
+            'fill="#fff6d8" stroke="#351c25" stroke-width="9"/>'
+            '<path d="M286 246 Q316 222 346 244 Q366 268 352 306 Q316 320 291 296Z" '
+            'fill="#fff6d8" stroke="#351c25" stroke-width="9"/>'
+            '<circle cx="196" cy="272" r="9" fill="#251b29"/>'
+            '<circle cx="326" cy="268" r="8" fill="#251b29"/>'
+        )
+    elif look == "glare":
+        face_eyes = _bad_eyes(glance + 8, blink_scale, 1.0)
 
     brow_lift = (-8 * charge if gravity else 7 * bite) + 3 * math.sin(phase)
+    if look == "startle":
+        brow_lift = -22
+    elif look == "glare":
+        brow_lift = 12
     if gravity:
         brows = (
             f'<path d="M148 {_n(237+brow_lift)} Q183 {_n(211+brow_lift)} 218 {_n(228+brow_lift)} '
@@ -346,6 +364,10 @@ def _face(animation: str, frame: int, count: int, gravity: bool) -> str:
             '<path d="M260 391 Q275 383 289 393" stroke="#f8b7c8" '
             'stroke-width="5" fill="none"/></g>'
         )
+    elif look == "startle":
+        mouth = '<ellipse cx="262" cy="378" rx="17" ry="21" fill="#200810" stroke="#351018" stroke-width="9"/>'
+    elif look == "glare":
+        mouth = _bad_maw(0.12)
     else:
         mouth = _bad_maw(bite)
     # Small cheeks are part of the face/fruit, never detached contact shading.
@@ -487,6 +509,8 @@ def frame_svg(kind: str, animation: str, frame: int, count: int) -> str:
     derived = DERIVED_ROWS[kind].get(animation)
     if derived is not None:
         source, source_count, frames, pose = derived
+        if pose == "roll":
+            return _bad_roll(frame, count)
         if frames is None:
             return _frame_svg(kind, source, round(frame * (source_count - 1) / max(1, count - 1)), source_count)
         progress = frame / max(1, count - 1)
@@ -494,11 +518,36 @@ def frame_svg(kind: str, animation: str, frame: int, count: int) -> str:
             nudge = (0.0, -14 * math.sin(math.pi * min(1.0, progress * 1.6)), .96, 1.05)
         else:
             nudge = (-7.0 + (1.2 if frame % 2 else -1.2), 2.0, .93, 1.07)
-        return _frame_svg(kind, source, frames[frame], source_count, nudge)
+        look = None
+        if kind == "bad_apple" and animation == "notice":
+            look = "startle" if frame < 2 else "glare"
+        return _frame_svg(kind, source, frames[frame], source_count, nudge, look)
     return _frame_svg(kind, animation, frame, count)
 
 
-def _frame_svg(kind: str, animation: str, frame: int, count: int, nudge=(0.0, 0.0, 1.0, 1.0)) -> str:
+# The Bad Apple's chomp (`bad_apple_chomp` in the game's character catalog):
+# the times its `attack_side` row is drawn to. The row is played by the move's
+# progress over the whole move, so its frames fall on these phases.
+BAD_CHOMP_S = (0.45, 0.25, 0.6)
+
+
+def _bad_roll(frame: int, count: int) -> str:
+    """The Bad Apple's attack: reared back over the windup (its `windup` row
+    is drawn then), one whole tumble forward over the strike, jaws first, and
+    a dizzy wobble after, where it can be hit."""
+    windup, active, recover = BAD_CHOMP_S
+    t = frame / count * (windup + active + recover)
+    if t < windup:
+        return _frame_svg("bad_apple", "chomp", 3, 7, (-7.0, 2.0, .93, 1.07, 0.0))
+    if t < windup + active:
+        turn = (t - windup) / active
+        return _frame_svg("bad_apple", "chomp", 3, 7, (10.0 * turn, -10 * math.sin(math.pi * turn), 1.0, 1.0, 360.0 * turn))
+    after = (t - windup - active) / recover
+    wobble = 9.0 * math.sin(after * math.tau * 2.5) * (1.0 - after)
+    return _frame_svg("bad_apple", "hurt" if after < 0.35 else "idle", 0, 3 if after < 0.35 else 6, (0.0, 0.0, 1.03, .97, wobble))
+
+
+def _frame_svg(kind: str, animation: str, frame: int, count: int, nudge=(0.0, 0.0, 1.0, 1.0), look: str | None = None) -> str:
     """`frame_svg` of one of the authored rows, moved by `nudge` (dx, dy, sx, sy)."""
     gravity = kind == "gravity_apple"
     phase = frame / count * math.tau
@@ -538,7 +587,7 @@ def _frame_svg(kind: str, animation: str, frame: int, count: int, nudge=(0.0, 0.
         sy *= 1.0 - .33 * progress_eased
         y += 12 * progress_eased
 
-    fruit = _body(gravity) + _face(animation, frame, count, gravity) + _leaf_and_stem(gravity, animation, frame, count)
+    fruit = _body(gravity) + _face(animation, frame, count, gravity, look) + _leaf_and_stem(gravity, animation, frame, count)
     pieces: list[str] = []
     if gravity:
         orbit_back, orbit_front = _gravity_fx(animation, frame, count)
@@ -553,7 +602,7 @@ def _frame_svg(kind: str, animation: str, frame: int, count: int, nudge=(0.0, 0.
     sy *= nudge[3]
     root = _g(
         "character_pose", "root", 0, "".join(pieces),
-        f"translate({_n(256 + x)} {_n(254 + y)}) "
+        f"translate({_n(256 + x)} {_n(254 + y)}) rotate({_n(nudge[4] if len(nudge) > 4 else 0.0)}) "
         f"scale({_n(sx)} {_n(sy)}) translate(-256 -254)",
     )
     return (
