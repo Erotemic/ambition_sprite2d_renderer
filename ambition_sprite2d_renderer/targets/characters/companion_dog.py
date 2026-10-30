@@ -68,6 +68,7 @@ ACTOR_METADATA = {
         "locomotion.walk": {"animation": "walk", "events": []},
         "locomotion.run": {"animation": "run", "events": []},
         "locomotion.jump": {"animation": "jump", "events": []},
+        "locomotion.fall": {"animation": "fall", "events": []},
         "interaction.use": {"animation": "happy", "events": []},
         "interaction.talk": {"animation": "sit_idle", "events": []},
         "vocalization.bark": {"animation": "bark", "events": []},

@@ -974,6 +974,52 @@
           "expr": "1 if 0.1 < t < 0.93 else 0"
         }
       }
+    },
+    "fall": {
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 90,
+      "channels": {
+        "root_y": {
+          "expr": "0.8*sin(tau*t)"
+        },
+        "head": {
+          "expr": "6+1.5*sin(tau*t)"
+        },
+        "ear": {
+          "expr": "-22+5*sin(tau*t)"
+        },
+        "tail_base": {
+          "expr": "14+4*sin(tau*t)"
+        },
+        "tail_tip": {
+          "expr": "10+8*sin(tau*t+0.8)"
+        },
+        "near_fore_upper": {
+          "expr": "-30+5*sin(tau*t)"
+        },
+        "near_fore_lower": {
+          "expr": "12-4*sin(tau*t)"
+        },
+        "far_fore_upper": {
+          "expr": "-24-5*sin(tau*t)"
+        },
+        "far_fore_lower": {
+          "expr": "10+4*sin(tau*t)"
+        },
+        "near_hind_upper": {
+          "expr": "26-5*sin(tau*t)"
+        },
+        "near_hind_lower": {
+          "expr": "-10+4*sin(tau*t)"
+        },
+        "far_hind_upper": {
+          "expr": "20+5*sin(tau*t)"
+        },
+        "far_hind_lower": {
+          "expr": "-8-4*sin(tau*t)"
+        }
+      }
     }
   }
 }
