@@ -43,6 +43,8 @@ STAIR = ((560, 656, 704), (600, 664, 640))
 AWNING = (1000, 1200, 656)
 HALL_STEPS = ((1440, 1536, 704), (1520, 1616, 640))
 TERRACE = (1600, 2320, 576)
+#: The lecture hall's arch that is the stair down to the collider.
+COLLIDER_ARCH = 1800
 LAB_DOOR = (2440, 2488)
 TRIM = (238, 230, 210)
 GLASS = (150, 200, 226)
@@ -95,10 +97,22 @@ def lecture_hall(c, k):
     # Tall windows between columns, lit.
     cols = list(range(t0 + 20, t1, 90))
     for a, b in zip(cols, cols[1:]):
+        if a == COLLIDER_ARCH:
+            continue
         w = c.mask(lambda p: p.arch(a + 22, ty + 40, b - 8, STREET - 30))
         c.put(w, (60, 80, 100))
         c.light(w, LAMP, 0.35)
         c.put(w * c.mask(lambda p: [p.rect(x, ty + 40, x + 1.4, STREET) for x in np.arange(a + 30, b - 8, 12)]), (90, 80, 70))
+    # One arch is the stair down to the collider (the quad's door zone,
+    # x 1828..1876): a doorway to the street, its door, the ring's plaque.
+    a, b = COLLIDER_ARCH, COLLIDER_ARCH + 90
+    c.put(c.mask(lambda p: p.arch(a + 22, ty + 40, b - 8, STREET)), (24, 28, 36))
+    c.put(c.mask(lambda p: [p.rect(a + 26, y, b - 12, y + 2) for y in range(STREET - 40, STREET, 10)]), (50, 56, 66))
+    c.put(c.mask(box(a + 28, STREET - 96, a + 76, STREET)), (60, 90, 120))
+    c.put(c.mask(lambda p: p.rect(a + 32, STREET - 90, a + 72, STREET - 60)), (150, 200, 226), 0.6)
+    c.put(c.mask(lambda p: p.ellipse(a + 68, STREET - 46, 2.4)), (220, 200, 120))
+    c.put(c.mask(lambda p: p.ellipse(a + 52, ty + 66, 13)), (40, 70, 140))
+    c.put(c.mask(lambda p: p.ring(a + 52, ty + 66, 8, 2)), (240, 220, 140))
     b = Batch(c)
     for x in cols:
         b.add(TRIM, 1.0, box(x, ty + 16, x + 18, STREET - 8))
