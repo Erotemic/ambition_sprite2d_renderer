@@ -147,9 +147,12 @@ def curiosities(c, k):
 
 
 PIECES: Dict[str, Piece] = {
-    # One drawing in two frames (a frame is at most a sheet's page wide).
-    "woods_far_west": Piece((40, 300, 1200, FLOOR), far_trees),
-    "woods_far_east": Piece((1200, 300, W - 40, FLOOR), far_trees),
+    # One drawing in two frames (a frame is at most a sheet's page wide) that overlap by 16: a frame's edge column is
+    # filtered soft, so a seam where two frames only meet shows the sky
+    # through it; overlapped, the later frame's soft edge lies on the
+    # earlier frame's same pixels.
+    "woods_far_west": Piece((40, 300, 1208, FLOOR), far_trees),
+    "woods_far_east": Piece((1192, 300, W - 40, FLOOR), far_trees),
     "woods_great_tree": Piece((420, 20, 1000, FLOOR), great_tree),
     "woods_curiosities": Piece((1080, 400, 2300, FLOOR), curiosities),
 }

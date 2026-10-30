@@ -104,8 +104,12 @@ def spur(c, k):
 
 
 PIECES: Dict[str, Piece] = {
-    "spur_west": Piece((16, CEILING, 1280, FLOOR + 32), spur),
-    "spur_east": Piece((1280, CEILING, 2544, FLOOR + 32), spur),
+    # One drawing in two frames that overlap by 16: a frame's edge column is
+    # filtered soft, so a seam where two frames only meet shows the sky
+    # through it; overlapped, the later frame's soft edge lies on the
+    # earlier frame's same pixels.
+    "spur_west": Piece((16, CEILING, 1288, FLOOR + 32), spur),
+    "spur_east": Piece((1272, CEILING, 2544, FLOOR + 32), spur),
 }
 
 TARGETS = targets(PIECES, PAL)
