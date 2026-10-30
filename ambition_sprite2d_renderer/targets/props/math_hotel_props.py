@@ -207,10 +207,41 @@ def corridor_room(c, k):
     c.put(c.mask(lambda p: (p.rect(dd + 12, g - 76, dd + 22, g - 54), p.ring(dd + 17, g - 78, 3, 0.8))), (240, 220, 120))
 
 
+# The lift's shaft (640 x 1600): the car runs at x 320..448; the landing's top
+# is y 1572 (40 under the car's top, 68 over the shaft's bottom).
+SHAFT_W, SHAFT_H = 640, 1600
+SHAFT_CAR_X0, SHAFT_CAR_X1 = 320, 448
+SHAFT_LANDING = SHAFT_H - 68 + 40
+
+
+def lift_shaft(c, k):
+    """The shaft: brick, the car's rails and cables, a brass band at each
+    floor, the landing and its gate."""
+    m = c.mask(box(16, 0, SHAFT_W - 16, SHAFT_H))
+    c.put(m, (70, 44, 40))
+    rows = ((c.y // 10) % 2).astype(np.float32)
+    joints = (((c.y % 10) < 1) | ((((c.x + rows * 12) % 24) < 1))).astype(np.float32)
+    c.put(m * joints, (44, 28, 26), 0.8)
+    c.tone(m * (c.noise("shaft", 6, 20, 2) - 0.5), 0.2)
+    for x in (SHAFT_CAR_X0 - 10, SHAFT_CAR_X1 + 4):
+        c.put(c.mask(box(x, 0, x + 6, SHAFT_H)), (110, 116, 126))
+        c.put(c.mask(box(x, 0, x + 2, SHAFT_H)), (170, 176, 186))
+    for x in (370, 384, 398):
+        c.put(c.mask(box(x - 0.8, 0, x + 0.8, SHAFT_H)), (40, 40, 44))
+    for y in range(SHAFT_H - 360, 100, -320):
+        c.put(c.mask(box(16, y + 30, SHAFT_W - 16, y + 36)), BRASS)
+        if y < 600:  # the high floors: an infinity on their bands
+            infinity(c, 560, y + 10, 10, GOLD, 1.0)
+    c.put(c.mask(box(16, SHAFT_LANDING, SHAFT_CAR_X0 - 32, SHAFT_H)), (90, 60, 44))
+    edge_line(c, 16, SHAFT_CAR_X0 - 32, SHAFT_LANDING, (170, 120, 80), 5)
+    c.put(c.mask(lambda p: [p.line([(x, SHAFT_LANDING - 110), (x + 18, SHAFT_LANDING)], 1.2) for x in np.arange(120, 260, 12)] + [p.line([(x + 18, SHAFT_LANDING - 110), (x, SHAFT_LANDING)], 1.2) for x in np.arange(120, 260, 12)]), BRASS, 0.9)
+
+
 PIECES: Dict[str, Piece] = {
     "math_hotel_entrance": Piece((BAY_X0, VAULT, BAY_X1, STREET), hotel_entrance),
     "math_hotel_lobby_room": Piece((16, LOBBY_CEILING, LOBBY_W - 16, LOBBY_FLOOR), lobby_room),
     "math_hotel_corridor_room": Piece((0, CORR_CEILING, CORR_W, CORR_FLOOR), corridor_room),
+    "math_hotel_lift_shaft": Piece((16, 0, SHAFT_W - 16, SHAFT_H), lift_shaft),
 }
 
 TARGETS = targets(PIECES, PAL)
