@@ -144,8 +144,8 @@ def _doc() -> RigDocument:
 
 
 #: Rows the game asks for by its own names, drawn from the rig's clips. Its
-#: melee move (``striker_swipe``) plays ``attack_side``: the bite.
-ROW_ALIASES = {"attack_side": "bite"}
+#: melee move (``raptor_pounce``, a leap) plays ``attack_side``: the pounce.
+ROW_ALIASES = {"attack_side": "pounce"}
 
 #: The sheet's rows are the rig's clips, in the rig's order (the game reads
 #: them by name), then each alias.
