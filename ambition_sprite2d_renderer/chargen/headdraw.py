@@ -531,6 +531,10 @@ _HAIRLINES: Dict[str, list] = {
     "bun": _TIGHT,
     "braid": _TIGHT,
     "balding": _SHORT,
+    # Highest at the part and lower to each temple (two curtains), the hair
+    # over the top of the ear, short at the nape.
+    "center_part": [(0, 0.13), (8, 0.155), (20, 0.19), (36, 0.23), (54, 0.31), (64, 0.54), (78, 0.5), (87, 0.4), (104, 0.42),
+                    (124, 0.64), (180, 0.74)],
 }
 
 
@@ -544,7 +548,7 @@ def hair_thickness(fig: Figure, style: Optional[str] = None) -> float:
     return {
         "buzz": 0.012, "short": 0.03 + 0.03 * v, "side_part": 0.035 + 0.035 * v, "curly": 0.05 + 0.06 * v, "afro": 0.16 + 0.12 * v,
         "pixie": 0.035 + 0.025 * v, "bob": 0.045 + 0.04 * v, "long": 0.035 + 0.04 * v, "ponytail": 0.025, "bun": 0.025, "braid": 0.025,
-        "balding": 0.022, "bald": 0.0,
+        "balding": 0.022, "bald": 0.0, "center_part": 0.024 + 0.024 * v,
     }.get(st, 0.03) * hh
 
 
@@ -579,6 +583,16 @@ def _hair_loft(fig: Figure, st: str) -> Loft:
             return _amp * (0.5 + 0.5 * math.sin(math.radians(alpha * _n) + y / _hh * 18.0))
 
         loft.bumps.append(scallop)
+    if st == "center_part":
+        # Each half of the hair swells a little where it turns back from the
+        # part, so the front of the head shows the parting as a notch.
+        amp = (0.025 + 0.02 * fig.spec.hair.volume) * fig.hh
+
+        def wings(alpha: float, y: float, _amp=amp, _fig=fig) -> float:
+            f = (y - _fig.crown) / _fig.hh
+            return _amp * gauss(abs(wrap180(alpha)), 24.0, 16.0) * smoothstep(-0.02, 0.06, f) * (1.0 - smoothstep(0.16, 0.3, f))
+
+        loft.bumps.append(wings)
     return loft
 
 
@@ -637,7 +651,9 @@ def hair_parts(ctx: Ctx, style: str, feature: str) -> List[Part]:
             if style not in ("buzz", "balding"):
                 pt.flat(column_bands(ctx.view, loft, loft.top, loft.bottom, m, side="right", frac=0.1, cap=0.05 * fig.hh, step=0.4, y_from=0.02,
                                      y_to=0.4), light(col, 0.22))
-            if fig.species == "human" and style not in ("buzz", "balding", "afro"):
+            if fig.species == "human" and style == "center_part":
+                _center_part_lines(ctx, pt, loft, m, col)
+            elif fig.species == "human" and style not in ("buzz", "balding", "afro"):
                 sh = shade(col, 0.32)
                 for a0 in (-150, -110, -70, -35, 0, 35, 70, 110, 150, 180):
                     pts = []
@@ -659,6 +675,28 @@ def hair_parts(ctx: Ctx, style: str, feature: str) -> List[Part]:
     if back.els:
         out.append(Part("hair_back", "head", 1.0 if ctx.view.c > 0.3 else 36.0, back.els, "Hair - Back", feature=feature))
     return out
+
+
+def _center_part_lines(ctx: Ctx, pt: Paint, loft: Loft, m: Callable[[float, float], float], col: str) -> None:
+    """The part down the middle of the head, and the combed lines that leave
+    it and curve back over each side."""
+    fig = ctx.fig
+    sh = shade(col, 0.32)
+    for k, a0 in enumerate((5.0, 14.0, 26.0, 40.0)):
+        for sgn in (-1.0, 1.0):
+            pts = []
+            for i in range(9):
+                u = i / 8.0
+                a, y = sgn * (a0 + 95.0 * u), fig.fy(0.05 + 0.03 * k + 0.3 * u * u)
+                if m(a, y) < 0.02:
+                    break
+                pts.append((a, y))
+            for run in surface_line(ctx, loft, pts, out=0.05, thresh=0.2):
+                if len(run) >= 3:
+                    pt.line(run, sh, FINE * 0.9)
+    if visible(ctx, 0.0, 0.15):
+        for run in surface_line(ctx, loft, [(0.0, fig.fy(f)) for f in (0.0, 0.05, 0.1, 0.15, 0.19)], out=0.05):
+            pt.line(run, shade(col, 0.5), FINE * 1.3)
 
 
 def _ellipsoid(c: Vec3, rx: float, ry: float, rz: float) -> List[Vec3]:

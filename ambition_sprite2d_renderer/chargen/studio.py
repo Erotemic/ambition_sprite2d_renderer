@@ -47,10 +47,12 @@ def schema() -> Dict[str, Any]:
     from .face import FACES
     from .family import FAMILIES
     from .geometry import VIEWS
+    from .overlay import available
 
     return {
         "bases": {k: b.display_name for k, b in S.BASES.items()},
         "families": {k: f.description for k, f in FAMILIES.items()},
+        "overlays": available(),
         "bounds": {k: list(v) for k, v in S.BOUNDS.items()},
         "choices": {k: list(v) for k, v in S.CHOICES.items()},
         "colors": list(S.COLORS),

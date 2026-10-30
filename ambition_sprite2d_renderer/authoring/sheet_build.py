@@ -666,6 +666,10 @@ def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
     rows_per_page = max(1, max_dim // fh)
     num_pages = max(1, (len(rendered_rows) + rows_per_page - 1) // rows_per_page)
     page_sheets, page_draws = [], []
+    from ..core.memory_budget import require_images
+
+    require_images([(page_w, fh * min(rows_per_page, len(rendered_rows) - p * rows_per_page)) for p in range(num_pages)],
+                   f"sheet pages of {target!r}")
     for p in range(num_pages):
         rows_on_page = min(rows_per_page, len(rendered_rows) - p * rows_per_page)
         img = Image.new("RGBA", (page_w, fh * rows_on_page), (0, 0, 0, 0))

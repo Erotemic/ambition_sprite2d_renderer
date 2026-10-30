@@ -30,7 +30,7 @@ from . import spec as S
 #: ``outfit.accessories`` the value is an item the list must hold.
 REQUIRES: Dict[str, Tuple[str, Tuple[Any, ...]]] = {
     "hair.length": ("hair.style", ("long", "ponytail", "braid")),
-    "hair.volume": ("hair.style", ("short", "side_part", "curly", "afro", "bob", "pixie", "long", "bun")),
+    "hair.volume": ("hair.style", ("short", "side_part", "curly", "afro", "bob", "pixie", "long", "bun", "center_part")),
     "hair.ornaments": ("hair.style", ("nihongami",)),
     "hair.ornament_color": ("hair.style", ("nihongami",)),
     "outfit.outer_color": ("outfit.outer", tuple(o for o in S.OUTERS if o != "none")),

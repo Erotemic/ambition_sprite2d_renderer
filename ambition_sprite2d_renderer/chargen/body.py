@@ -47,6 +47,8 @@ class Figure:
     y_chest: float
     y_under: float
     y_waist: float
+    #: Where clothes are worn at the waist (``Proportions.belt``).
+    y_belt: float
     y_hipw: float
     y_hip: float
     y_crotch: float
@@ -99,7 +101,7 @@ def build(spec: CharacterSpec) -> Figure:
     T = y_hip - y_sh
     fig = Figure(
         spec=spec, H=H, hh=hh, k=k, female=female, crown=crown, chin=chin, y_nb=y_nb, y_sh=y_sh,
-        y_chest=y_sh + 0.23 * T, y_under=y_sh + 0.42 * T, y_waist=y_sh + 0.62 * T, y_hipw=y_sh + 0.9 * T, y_hip=y_hip,
+        y_chest=y_sh + 0.23 * T, y_under=y_sh + 0.42 * T, y_waist=y_sh + 0.62 * T, y_belt=y_sh + P.belt * T, y_hipw=y_sh + 0.9 * T, y_hip=y_hip,
         y_crotch=y_hip + 0.036 * H,
     )
     fig.species = species
@@ -140,9 +142,13 @@ def build(spec: CharacterSpec) -> Figure:
             return 4.2 * _k * _b * gauss(y, _y, 0.22 * _T) * gauss(wrap180(alpha), 0.0, 55.0)
         bumps.append(belly)
     if female and b.bust > 0.0:
-        def bust(alpha: float, y: float, _b=b.bust, _k=k, _y=fig.y_chest + 0.05 * T, _T=T) -> float:
+        # The bust point is high on the chest, a third of the way from the
+        # base of the neck to the waist: a long slope down from the
+        # collarbone to it, and a rounder fall under it.
+        def bust(alpha: float, y: float, _b=b.bust, _k=k, _y=fig.y_nb + 0.34 * (fig.y_waist - fig.y_nb), _T=T) -> float:
             al = wrap180(alpha)
-            return 3.0 * _k * _b * gauss(y, _y, 0.085 * _T) * (gauss(al, 30.0, 22.0) + gauss(al, -30.0, 22.0))
+            fall = gauss(y, _y, (0.14 if y < _y else 0.075) * _T)
+            return 3.0 * _k * _b * fall * (gauss(al, 28.0, 22.0) + gauss(al, -28.0, 22.0))
         bumps.append(bust)
     fig.torso = Loft(torso_keys, bumps)
 

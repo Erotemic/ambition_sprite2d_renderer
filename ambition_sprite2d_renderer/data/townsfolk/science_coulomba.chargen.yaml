@@ -1,0 +1,47 @@
+# A resident made by the character generator; see targets/characters/townsfolk.py.
+# Coulomba Tesseract, Nikobolt Tesseract's wife: a white pigeon in the
+# Science dimension. The generator places her; the art in
+# data/overlays/coulomba_tesseract.overlay.svg draws her head, beak, lashes,
+# hat, gloves and clothes. Her clothes take the colours of a pigeon's neck: a
+# teal bolero over a lilac blouse, a plum sash and a trumpet skirt. The colours
+# below are the ones the generator uses for the parts the overlay keeps
+# (the forearms of the sleeves, the cloth between the legs).
+schema: ambition-chargen-v1
+name: Coulomba Tesseract
+base: slim_female
+seed: 2
+overlay: coulomba_tesseract
+body:
+  height_cm: 165
+  age: 0.4
+head:
+  species: pigeon
+  muzzle: 1.0
+palette:
+  skin: '#e9e6e0'
+  eyes: '#d2702c'
+outfit:
+  top: blouse
+  sleeves: long
+  neckline: collar
+  top_color: '#efe6f3'
+  outer: jacket
+  outer_length: hip
+  outer_color: '#2b6a60'
+  bottom: long_skirt
+  bottom_color: '#684a8a'
+  shoes: boots
+  shoe_color: '#2c2522'
+  hat: none
+  accessories: []
+  accent_color: '#c9a24a'
+game:
+  character_id: npc_science_coulomba
+  description: Coulomba Tesseract is Nikobolt Tesseract's wife, a pigeon-headed resident of the Science dimension. She
+    is an invented character, not a person. Her name joins Columba (the genus of pigeons) and the coulomb (the unit of
+    electric charge). Her white pigeon nods to Nikola Tesla's well-known fondness for a white pigeon. The overlay art
+    draws her head and her beak in each mouth shape. She is also a gentle parody of Charles-Augustin de Coulomb, who
+    measured the force between charges. Her side curls are the rolls of his powdered wig, and a gold plus sign (a
+    positive charge) is on her brooch, her buckle and her bolero. Nikobolt carries the minus sign; opposite charges
+    attract.
+  rows: full

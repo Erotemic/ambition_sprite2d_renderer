@@ -12,6 +12,10 @@ angles), in every pose of her sheet.
 * Her own gear: ``_alice_v2_gear.py`` (her bob, the pencil on her ear, the map
   tube, the cipher wheel, the range pole and the sealed letter), drawn into
   the same SVG and rigs through ``chargen.extras``.
+* Her hand-drawn overlay: ``data/overlays/alice_v2.overlay.svg``
+  (``chargen.overlay``), over the generated parts and her gear: her bob and
+  its band, a softer jaw, lashes and red lips, and an open jacket with
+  notched lapels that hangs loose from her shoulders.
 * Her motion: ``_alice_v2_motion.py`` (her rows and her own clips on the
   generator's pose kit; the library's for the rest).
 * This module: the rigs, the effects her clips key (``fx.*``), the hit

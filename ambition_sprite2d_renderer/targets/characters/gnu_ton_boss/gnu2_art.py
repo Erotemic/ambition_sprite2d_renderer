@@ -49,13 +49,13 @@ _FUR_TO_GNU2 = dict(
     horn="#e4e4f1", horn_light="#ffffff", horn_shade="#bcb8d5",
     horn_deep="#817d9e", hoof="#454159", hoof_light="#827d96",
     iris="#bd77fa", iris_dark="#8152bc", pupil="#26153e",
-    moss="#60cade", moss_dark="#3285a0", bronze="#858aa3",
+    trim="#60cade", trim_dark="#3285a0", bronze="#858aa3",
     bronze_dark="#535770", gold="#a8afc6", gold_light="#d9e6f0",
     gold_dark="#737d9d", cloth="#694a90", cloth_dark="#3c2d64",
     iris_hot="#e38bff", flower="#e5e4f5", white="#f7f4ff",
 )
 _RECOLOR = {v.lower(): _FUR_TO_GNU2[k] for k, v in g.C.items() if k in _FUR_TO_GNU2}
-_RECOLOR.update({"#9cc46a": A["cyan_light"], "#ffffff": A["glow_light"]})
+_RECOLOR.update({"#ffffff": A["glow_light"]})
 _HEX = re.compile(r"#[0-9a-fA-F]{6}\b")
 
 
@@ -131,7 +131,7 @@ def _synthetic_tail():
 
 
 def _barrel_plates():
-    """Side hull segments, avoiding the platform top / cyan moss strip."""
+    """Side hull segments, avoiding the platform top / cyan trim strip."""
     o = [
         # Deep inset under all plates to anchor them visually to the coat.
         _shape([(399, 672), (430, 574), (562, 507), (685, 486), (781, 507),

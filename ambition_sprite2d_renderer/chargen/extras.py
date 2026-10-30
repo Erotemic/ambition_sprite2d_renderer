@@ -43,4 +43,9 @@ def extra_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     return out
 
 
-__all__ = ["ExtraParts", "extra_parts", "using"]
+def active() -> bool:
+    """Whether a target's gear is drawn (inside a ``using`` block)."""
+    return bool(_EXTRAS.get())
+
+
+__all__ = ["ExtraParts", "active", "extra_parts", "using"]

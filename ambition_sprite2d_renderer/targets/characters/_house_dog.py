@@ -134,6 +134,7 @@ def actor_metadata(actor: Dict[str, str], looks: List[str]) -> Dict[str, Any]:
             "locomotion.walk": {"animation": "walk", "events": []},
             "locomotion.run": {"animation": "run", "events": []},
             "locomotion.jump": {"animation": "jump", "events": []},
+            "locomotion.fall": {"animation": "fall", "events": []},
             "interaction.use": {"animation": "happy", "events": []},
             "interaction.talk": {"animation": "sit_idle", "events": []},
             "vocalization.bark": {"animation": "bark", "events": []},

@@ -126,20 +126,29 @@ def test_the_published_sheets_carry_the_seams():
 def test_each_shoulder_surface_is_on_the_drawn_epaulet(anim, frame, count):
     """The game stands a body on the surface the sheet publishes
     (`surface:<name>:a` / `:b`): in each frame it is the top of the epaulet
-    that is drawn (its moss is just under it), however the torso leans or
-    lifts. An arm in front of the epaulet may hide one point."""
+    that is drawn (the heavy ink of its trim's top line on it, the gold rail just
+    under that), however the torso leans or lifts. An arm in front of the
+    epaulet may hide one point."""
     image = g.render_giant(anim, frame, count)
 
-    def moss(px):
-        r, green, b, a = px
-        return a >= 128 and green > r + 20 and green > b + 20
+    def ink(px):
+        r, g_, b, a = px
+        return a >= 128 and max(r, g_, b) < 70
+
+    def trim(px):
+        # The gold rail or the crimson band of `giant_art.stand_trim`.
+        r, _green, b, a = px
+        return a >= 128 and r >= 150 and r > b + 80
 
     hits = []
     for name, (a, b) in sg._giant_surfaces(anim, frame, count).items():
+        if name not in g.SURFACES:
+            continue
         for u in (0.3, 0.5, 0.7):
             x, y = a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u
-            hits.append((name, round(x), round(y), moss(image.getpixel((int(round(x)), int(round(y + 3)))))))
-    assert sum(hit for *_, hit in hits) >= len(hits) - 1, f"{anim}[{frame}]: no moss under the surface at {hits}"
+            column = [image.getpixel((int(round(x)), int(round(y)) + d)) for d in range(16)]
+            hits.append((name, round(x), round(y), ink(column[1]) and any(trim(px) for px in column[3:])))
+    assert sum(hit for *_, hit in hits) >= len(hits) - 1, f"{anim}[{frame}]: no trim under the surface at {hits}"
 
 
 def test_the_published_giant_sheet_carries_its_shoulder_surfaces():
@@ -147,4 +156,26 @@ def test_the_published_giant_sheet_carries_its_shoulder_surfaces():
     out = sg._with_seam_anchors(rows, sg._giant_seams, sg.FRAME_SIZE, sg._giant_surfaces)
     anchors = out[0]["rects"][1]["anchors"]
     surfaces = {key for key in anchors if key.startswith("surface:")}
-    assert surfaces == {f"surface:{name}:{end}" for name in ("shoulder_left", "shoulder_right") for end in "ab"}
+    assert surfaces == {f"surface:{name}:{end}" for name in ("shoulder_left", "shoulder_right", "hump") for end in "ab"}
+
+
+@pytest.mark.parametrize("anim", ["rest", "walk", "buck"])
+def test_the_hump_surface_is_the_walk_line_where_the_barrel_is_drawn(anim):
+    """The two ends of `surface:hump` are the ends of the hump's walk line
+    (`hump_line_world`, the catalog's `mount.slope`) carried by the barrel:
+    at the stance the line is typed in they are its ends, and in each frame
+    the trim of the hump is drawn just under the line between them."""
+    cx, cy = g.BODY_BBOX[0] + g.BODY_BBOX[2] * 0.5, g.BODY_BBOX[1] + g.BODY_BBOX[3] * 0.5
+    rest = g.surfaces(dict(g.pose_for("rest", 0.0), stance=g._SLOPED))["hump"]
+    world = [((x - cx) * g.WORLD_PER_PIXEL, (y - cy) * g.WORLD_PER_PIXEL) for x, y in rest]
+    line = g.hump_line_world()
+    for got, want in zip(world, (line[0], line[-1])):
+        assert math.dist(got, want) < 1.0, (world, line)
+    count = dict((n, c) for n, c, _ in sg.ANIMATIONS)[anim]
+    for f in range(0, count, max(1, count // 3)):
+        a, b = sg._giant_surfaces(anim, f, count)["hump"]
+        image = g.render_giant(anim, f, count)
+        # The rump's end of the line is on the hump's trim (the torso covers its other end).
+        x, y = a[0] + (b[0] - a[0]) * 0.08, a[1] + (b[1] - a[1]) * 0.08
+        column = [image.getpixel((int(round(x)), int(round(y)) + d)) for d in range(-6, 10)]
+        assert any(px[3] >= 128 and max(px[:3]) < 70 for px in column), f"{anim}[{f}] at {(x, y)}"

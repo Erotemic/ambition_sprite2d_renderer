@@ -38,11 +38,14 @@ from ..profiling import profile
 @dataclass
 class FrameInput:
     """One frame to pack. ``image`` is rendered at the LOGICAL frame size
-    (after any uniform per-sheet crop); ``logical_size`` is that ``(W, H)``."""
+    (after any uniform per-sheet crop); ``logical_size`` is that ``(W, H)``.
+    A frame already cut down to its content gives ``offset``: where its top
+    left sits in the logical frame (a big sheet holds less that way)."""
 
     key: Hashable
     image: Image.Image
     logical_size: Tuple[int, int]
+    offset: Tuple[int, int] = (0, 0)
 
 
 @dataclass
@@ -139,6 +142,8 @@ def pack_frames(
     trimmed: List[Tuple[FrameInput, Image.Image, int, int]] = []
     for fr in frames:
         timg, ox, oy = _trim(fr.image, fr.logical_size, trim)
+        if timg.size != (1, 1) or timg.getpixel((0, 0))[3]:
+            ox, oy = ox + fr.offset[0], oy + fr.offset[1]
         tw, th = timg.size
         if tw + 2 * padding > page_cap or th + 2 * padding > page_cap:
             raise ValueError(
@@ -169,6 +174,9 @@ def pack_frames(
         ew, eh = page_extent[binid]
         page_extent[binid] = (max(ew, x + w), max(eh, y + h))
 
+    from ..core.memory_budget import require_images
+
+    require_images([(max(1, w), max(1, h)) for (w, h) in page_extent], "packed sheet pages")
     pages = [Image.new("RGBA", (max(1, w), max(1, h)), background) for (w, h) in page_extent]
 
     placements: Dict[Hashable, FramePlacement] = {}
@@ -409,6 +417,8 @@ def pack_frames_grouped(
         trimmed: List[Tuple[FrameInput, Image.Image, int, int]] = []
         for fr in frames:
             timg, ox, oy = _trim(fr.image, fr.logical_size, trim)
+            if timg.size != (1, 1) or timg.getpixel((0, 0))[3]:
+                ox, oy = ox + fr.offset[0], oy + fr.offset[1]
             tw, th = timg.size
             if tw + 2 * padding > max_dim or th + 2 * padding > max_dim:
                 raise ValueError(f"frame {fr.key!r} is {tw}x{th}, exceeding the {max_dim}px limit")
@@ -439,6 +449,10 @@ def pack_frames_grouped(
         page_extent[page] = (max(ew, bx + bw), max(eh, by + bh))
 
     num_pages = (max(page_extent) + 1) if page_extent else 0
+    from ..core.memory_budget import require_images
+
+    require_images([(max(1, page_extent.get(p, (1, 1))[0]), max(1, page_extent.get(p, (1, 1))[1])) for p in range(num_pages)],
+                   "packed sheet pages")
     pages = [
         Image.new("RGBA", (max(1, page_extent.get(p, (1, 1))[0]), max(1, page_extent.get(p, (1, 1))[1])), background)
         for p in range(num_pages)

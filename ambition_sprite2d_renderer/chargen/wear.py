@@ -79,7 +79,7 @@ def opening(fig: Figure, half: float, lapel: float):
 
 def skirt_loft(fig: Figure, y_top: float, hem: float, t: float, flare: float) -> Loft:
     tk = fig.torso
-    w, h, c = tk.section(fig.y_waist), tk.section(fig.y_hipw), tk.section(fig.y_crotch)
+    w, h, c = tk.section(y_top), tk.section(fig.y_hipw), tk.section(fig.y_crotch)
     knee = fig.joints["right_knee"]
     leg_x = abs(knee[0]) + fig.leg_r[1] + 1.2
     keys = [
@@ -254,8 +254,8 @@ def top_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     out += sleeve_parts(ctx, "top", feature, reach, 0.45 + (0.25 if o.top == "sweater" else 0.0), o.top_color, zmap,
                         rolled=o.sleeves == "rolled")
     if lower:
-        tk = skirt_loft(fig, fig.y_waist, plan["top_hem"], 0.9, 1.08)
-        out += lobe_parts(ctx, "top", feature, tk, fig.y_waist, plan["top_hem"], o.top_color, z=(21.0, 21.5))
+        tk = skirt_loft(fig, fig.y_belt, plan["top_hem"], 0.9, 1.08)
+        out += lobe_parts(ctx, "top", feature, tk, fig.y_belt, plan["top_hem"], o.top_color, z=(21.0, 21.5))
         out += drape_parts(ctx, "top", feature, zmap)
     return out
 
@@ -297,7 +297,7 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     col = o.outer_color
     top = fig.torso.top
     hem = plan["outer_hem"]
-    torso_bottom = min(hem, fig.y_waist + 0.06 * T) if hem > fig.y_crotch - 0.05 * T else min(hem, fig.y_crotch)
+    torso_bottom = min(hem, fig.y_belt + 0.06 * T) if hem > fig.y_crotch - 0.05 * T else min(hem, fig.y_crotch)
     pt = ctx.new()
     out: List[Part] = []
     lower_margin = None
@@ -314,9 +314,9 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
             for run in surface_line(ctx, shell, [(sgn * a, y) for a, y in straps], out=0.1, thresh=0.0):
                 pt.line(run, INK, 1.25, smooth=True)
                 pt.line(run, col, 0.7, smooth=True)
-        pt.flat(loft_region(ctx.view, shell, fig.y_waist - 0.025 * T, fig.y_waist + 0.025 * T), shade(col, 0.15))
+        pt.flat(loft_region(ctx.view, shell, fig.y_belt - 0.025 * T, fig.y_belt + 0.025 * T), shade(col, 0.15))
         if visible(ctx, 180.0, 0.4):
-            c = shell.point(180.0, fig.y_waist, 0.5)
+            c = shell.point(180.0, fig.y_belt, 0.5)
             k = 1 if ctx.view.c < 0 else -1
             for dx in (-1.0, 1.0):
                 bow = [ctx.p(add3(c, d)) for d in ((0, -0.6, 0), (dx * 3.2 * k, -1.8, 0), (dx * 3.2 * k, 1.6, 0), (0, 0.6, 0))]
@@ -327,7 +327,7 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         line = [(lerp(-34.0, 12.0, i / 10.0), lerp(fig.y_nb + 0.5, fig.y_under, i / 10.0)) for i in range(11)]
         for run in surface_line(ctx, shell, line, out=0.1):
             pt.line(run, INK, FINE * 1.3)
-        pt.region(loft_region(ctx.view, shell.shell(0.3), fig.y_waist - 0.04 * T, fig.y_waist + 0.04 * T), o.accent_color, outline=FINE)
+        pt.region(loft_region(ctx.view, shell.shell(0.3), fig.y_belt - 0.04 * T, fig.y_belt + 0.04 * T), o.accent_color, outline=FINE)
     elif o.outer == "field_jacket":
         _field_jacket(ctx, pt, shell, torso_bottom)
     else:
@@ -355,15 +355,15 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
                             cuff=o.outer in ("coat", "jacket", "field_jacket"), wide=2.0 if o.outer == "robe" else 0.0)
     if hem > torso_bottom + 0.02 * T:
         flare = {"robe": 1.3, "coat": 1.2, "apron": 1.0, "cardigan": 1.1, "jacket": 1.05, "vest": 1.0}.get(o.outer, 1.1)
-        lo = skirt_loft(fig, fig.y_waist, hem, t + 0.6, flare)
+        lo = skirt_loft(fig, fig.y_belt, hem, t + 0.6, flare)
 
         def extra(p: Paint, side: str) -> None:
             if o.outer == "robe":
-                p.region(loft_region(ctx.view, lo.shell(0.3), fig.y_waist - 0.04 * T, fig.y_waist + 0.04 * T, half_of(side)),
+                p.region(loft_region(ctx.view, lo.shell(0.3), fig.y_belt - 0.04 * T, fig.y_belt + 0.04 * T, half_of(side)),
                          o.accent_color, outline=FINE)
 
         # An apron is a front panel only: drawn whole it would show on the back.
-        out += lobe_parts(ctx, "outer", feature, lo, fig.y_waist, hem, col, lower_margin, z=(32.0, 32.5), extra=extra,
+        out += lobe_parts(ctx, "outer", feature, lo, fig.y_belt, hem, col, lower_margin, z=(32.0, 32.5), extra=extra,
                           solid=o.outer != "apron")
         out += drape_parts(ctx, "outer", feature, zmap)
     return out
@@ -401,7 +401,7 @@ def _field_jacket(ctx: Ctx, pt: Paint, shell: Loft, bottom: float) -> None:
     pocket = shell.shell(0.12)
     for sgn in (-1.0, 1.0):
         for c, w, y0, y1 in ((sgn * 33.0, 13.0, fig.y_chest - 0.03 * T, fig.y_chest + 0.13 * T),
-                             (sgn * 36.0, 15.0, fig.y_waist + 0.07 * T, bottom - 0.04 * T)):
+                             (sgn * 36.0, 15.0, fig.y_belt + 0.07 * T, bottom - 0.04 * T)):
             if not visible(ctx, c, 0.05):
                 continue
             box = all_of(_box(c, w, y0, y1), front)
@@ -414,9 +414,9 @@ def _field_jacket(ctx: Ctx, pt: Paint, shell: Loft, bottom: float) -> None:
                 pt.dot(ctx.p(pocket.point(c, fy1 - 0.012 * T, 0.4)), 0.3, button)
     # The cloth belt and its buckle.
     belt = shell.shell(0.3)
-    pt.region(loft_region(ctx.view, belt, fig.y_waist - 0.03 * T, fig.y_waist + 0.03 * T), shade(col, 0.18), outline=FINE * 0.8)
+    pt.region(loft_region(ctx.view, belt, fig.y_belt - 0.03 * T, fig.y_belt + 0.03 * T), shade(col, 0.18), outline=FINE * 0.8)
     if visible(ctx, 0.0, 0.3):
-        cb = belt.point(0.0, fig.y_waist, 0.2)
+        cb = belt.point(0.0, fig.y_belt, 0.2)
         q = [ctx.p(add3(cb, d)) for d in ((-1.3, -1.1, 0), (1.3, -1.1, 0), (1.3, 1.1, 0), (-1.3, 1.1, 0))]
         pt.region([q], button, outline=FINE * 0.7)
     _shoulder_straps(ctx, pt, shell, col, button)
@@ -451,10 +451,12 @@ def legwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     out: List[Part] = []
     pt = ctx.new()
     shell = fig.torso.shell(0.45)
-    y0 = fig.y_waist - 0.05 * T
+    y0 = fig.y_belt - 0.05 * T
     skirted = o.bottom in ("skirt", "long_skirt")
     if skirted:
-        shaded_region(ctx, pt, shell, y0, fig.y_hipw, col)
+        # Down to the crotch: the pelvis (underwear) paints over the skirt's
+        # halves on the legs, so the skirt must cover all of it.
+        shaded_region(ctx, pt, shell, y0, fig.y_crotch, col)
     else:
         def crotch(a: float, y: float) -> float:
             al = abs(wrap180(a))
@@ -464,10 +466,10 @@ def legwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
 
         shaded_region(ctx, pt, shell, y0, fig.y_crotch, col, crotch)
         if o.bottom == "trousers" and visible(ctx, 0.0, 0.3):
-            for run in surface_line(ctx, shell, [(0.0, fig.y_waist + 0.05 * T), (0.0, fig.y_crotch - 0.02 * T)], out=0.1, thresh=0.3):
+            for run in surface_line(ctx, shell, [(0.0, fig.y_belt + 0.05 * T), (0.0, fig.y_crotch - 0.02 * T)], out=0.1, thresh=0.3):
                 pt.line(run, shade(col, 0.35), FINE)
     if plan["tucked"]:
-        pt.region(loft_region(ctx.view, shell.shell(0.1), fig.y_waist - 0.03 * T, fig.y_waist + 0.035 * T), shade(col, 0.1), outline=FINE * 0.8)
+        pt.region(loft_region(ctx.view, shell.shell(0.1), fig.y_belt - 0.03 * T, fig.y_belt + 0.035 * T), shade(col, 0.1), outline=FINE * 0.8)
     out.append(Part("pelvis__legwear", "pelvis", zmap["pelvis"] + LAYER["legwear"], pt.els, "Legwear", feature=feature))
     j = fig.joints
     rt, rk, rc, ra = fig.leg_r
@@ -492,8 +494,8 @@ def legwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
                 out.append(part)
     if skirted:
         flare = 1.12 if o.bottom == "skirt" else 1.28
-        sk = skirt_loft(fig, fig.y_waist, plan["bottom_hem"], 0.5, flare)
-        out += lobe_parts(ctx, "legwear", feature, sk, fig.y_waist, plan["bottom_hem"], col, z=(12.9, 16.0))
+        sk = skirt_loft(fig, fig.y_belt, plan["bottom_hem"], 0.5, flare)
+        out += lobe_parts(ctx, "legwear", feature, sk, fig.y_belt, plan["bottom_hem"], col, z=(12.9, 16.0))
         out += drape_parts(ctx, "legwear", feature, zmap)
     return out
 
@@ -579,17 +581,17 @@ def accessory_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         pt = ctx.new()
         if plan["tucked"] or o.top == "tunic":
             if plan["tucked"]:
-                _belt(ctx, pt, fig.torso.shell(0.6), fig.y_waist + 0.01 * T)
+                _belt(ctx, pt, fig.torso.shell(0.6), fig.y_belt + 0.01 * T)
                 out.append(Part("pelvis__belt", "pelvis", zmap["pelvis"] + LAYER["acc"], pt.els, "Belt", feature="acc:belt"))
             else:
-                _belt(ctx, pt, fig.torso.shell(1.3), fig.y_waist)
+                _belt(ctx, pt, fig.torso.shell(1.3), fig.y_belt)
                 out.append(Part("torso__belt", "torso", 33.2, pt.els, "Belt", feature="acc:belt"))
         else:
-            _belt(ctx, pt, fig.torso.shell(0.55), fig.y_waist)
+            _belt(ctx, pt, fig.torso.shell(0.55), fig.y_belt)
             out.append(Part("torso__belt", "torso", zmap["torso"] + LAYER["acc"], pt.els, "Belt", feature="acc:belt"))
     if "suspenders" in o.accessories:
         pt = ctx.new()
-        pt.flat(loft_region(ctx.view, fig.torso.shell(0.4), fig.torso.top, fig.y_waist + 0.06 * T, bands([22.0, -22.0, 158.0, -158.0], 3.4)),
+        pt.flat(loft_region(ctx.view, fig.torso.shell(0.4), fig.torso.top, fig.y_belt + 0.06 * T, bands([22.0, -22.0, 158.0, -158.0], 3.4)),
                 o.accent_color)
         out.append(Part("torso__suspenders", "torso", zmap["torso"] + LAYER["top"] + 0.05, pt.els, "Suspenders", feature="acc:suspenders"))
     if "necklace" in o.accessories:
@@ -614,6 +616,8 @@ def accessory_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         shaded_region(ctx, pt, ends.shell(0.3), fig.y_nb, fig.y_chest + 0.02 * T, shade(col, 0.1), lambda a, y: (6.0 - abs(wrap180(a) + 7.0)) * 0.3)
         shaded_region(ctx, pt, ring, ring.top, ring.bottom, col)
         out.append(Part("torso__scarf", "torso", 34.0, pt.els, "Scarf", feature="acc:scarf"))
+    if "bow_tie" in o.accessories:
+        out += _bow_tie(ctx, zmap)
     if "webbing" in o.accessories:
         out += _webbing(ctx, zmap)
     if "obi" in o.accessories:
@@ -634,6 +638,24 @@ def accessory_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     return out
 
 
+def _bow_tie(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
+    """A bow tie in the accent colour under the collar: two wings that are
+    narrow at the knot, and the knot over them. It is drawn larger than life
+    so that it shows at game scale."""
+    fig, o = ctx.fig, ctx.fig.spec.outfit
+    if not visible(ctx, 0.0, 0.1):
+        return []
+    col = o.accent_color
+    c = fig.torso.shell(0.9).point(0.0, fig.y_nb + 0.6 + 0.045 * fig.T, 0.0)
+    pt = ctx.new()
+    for sgn in (-1.0, 1.0):
+        wing = [(0.5, -0.6, 0.3), (3.2, -1.7, -0.2), (2.8, 0.0, -0.3), (3.2, 1.7, -0.2), (0.5, 0.6, 0.3)]
+        pt.region([[ctx.p(add3(c, (sgn * x, y, z))) for x, y, z in wing]], col if sgn > 0 else shade(col, 0.15), outline=FINE)
+    knot = [(-0.75, -0.8, 0.5), (0.75, -0.8, 0.5), (0.75, 0.8, 0.5), (-0.75, 0.8, 0.5)]
+    pt.region([[ctx.p(add3(c, d)) for d in knot]], shade(col, 0.2), outline=FINE)
+    return [Part("torso__bow_tie", "torso", zmap["torso"] + LAYER["acc"] + 0.05, pt.els, "Bow tie", feature="acc:bow_tie")]
+
+
 def _webbing(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     """A duty belt of canvas webbing with a brass buckle, four pouches on
     it, and a strap over each shoulder from the belt in front to the belt
@@ -645,7 +667,7 @@ def _webbing(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     web = UNIFORM["webbing"]
     t = (plan["outer_t"] if o.outer != "none" else 0.45) + 0.7
     shell = fig.torso.shell(t)
-    y = fig.y_waist + 0.015 * T
+    y = fig.y_belt + 0.015 * T
     w = 0.04 * T
     pt = ctx.new()
     # The shoulder straps first: the belt and the pouches go over their ends.

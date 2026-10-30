@@ -17,6 +17,10 @@ Families (``family.py``): the look a spec is drawn in (``standard``, the
 default, or ``crew``). A family does not change what the seed draws: it
 changes how the body numbers become a drawing. A standard spec does not
 write its family, so its record (and its SVG) stays as it was.
+
+Overlays (``overlay.py``): ``overlay`` names hand-drawn art that draws over
+or replaces parts of the generated drawing, in every view. The figure
+places it and the art draws it. A spec without one does not write the field.
 """
 
 from __future__ import annotations
@@ -42,9 +46,10 @@ NOSES = ("straight", "button", "long", "hooked", "broad", "upturned")
 MOUTHS = ("neutral", "smile", "frown", "smirk")
 JAWS = ("round", "square", "pointed", "long", "wide")
 #: ``nihongami`` is the geisha's wig-like up-do (a shimada): it is a worn
-#: thing, so it sits on any head, an animal's too.
+#: thing, so it sits on any head, an animal's too. ``center_part`` is flat
+#: hair parted in the middle and combed back; generation does not pick it.
 HAIR_STYLES = ("bald", "balding", "buzz", "short", "side_part", "curly", "afro", "bob", "pixie", "long", "ponytail", "bun", "braid",
-               "nihongami")
+               "nihongami", "center_part")
 FACIAL_HAIR = ("none", "stubble", "mustache", "goatee", "full_beard", "chops")
 
 TOPS = ("tshirt", "shirt", "tunic", "blouse", "sweater")
@@ -63,7 +68,7 @@ SHOES = ("shoes", "boots", "geta")
 HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", "bowler", "helmet", "beret", "garrison_cap", "peaked_cap",
         "campaign")
 #: ``obi``: the wide sash of a kimono, knotted at the back (``outfit.obi_knot``).
-ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders", "webbing", "dog_tags", "obi")
+ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders", "webbing", "dog_tags", "obi", "bow_tie")
 SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator")
 EAR_STYLES = ("default", "floppy", "pointed")
 #: Face paint: ``geisha`` is white face paint (oshiroi) with red lips; on an
@@ -221,6 +226,9 @@ class CharacterSpec:
     head: Head = field(default_factory=Head)
     #: The family the spec is drawn in (``family.FAMILIES``).
     family: str = "standard"
+    #: Hand-drawn art over its parts (``overlay.py``: the name of a file in
+    #: ``data/overlays``), or "" for none. The seed does not draw it.
+    overlay: str = ""
 
     @property
     def sex(self) -> str:
@@ -231,6 +239,8 @@ class CharacterSpec:
         if d["family"] == "standard":
             # The default is not written: a standard record stays as it was.
             del d["family"]
+        if not d["overlay"]:
+            del d["overlay"]
         for (section, name), default in OPTIONAL_DEFAULTS.items():
             if d[section][name] == default:
                 del d[section][name]
@@ -388,6 +398,11 @@ def validate(spec: CharacterSpec) -> List[str]:
 
     if spec.family not in FAMILIES:
         errors.append(f"family {spec.family!r} is not one of {sorted(FAMILIES)}")
+    if spec.overlay:
+        from .overlay import available
+
+        if spec.overlay not in available():
+            errors.append(f"overlay {spec.overlay!r} is not one of {available()}")
     for key, (lo, hi) in BOUNDS.items():
         v = _get(spec, key)
         if not isinstance(v, (int, float)) or isinstance(v, bool):

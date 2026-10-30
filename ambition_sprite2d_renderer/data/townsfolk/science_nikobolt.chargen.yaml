@@ -1,0 +1,57 @@
+# A resident made by the character generator; see targets/characters/townsfolk.py.
+# Nikobolt Tesseract, an inventor who lives in peace in the Science
+# dimension. The generator places him and hand-drawn art draws him
+# (data/overlays/nikobolt_tesseract.overlay.svg): the head, hair and
+# moustache, the frock coat over a waistcoat, and the hands.
+schema: ambition-chargen-v1
+name: Nikobolt Tesseract
+base: slim_male
+seed: 1
+overlay: nikobolt_tesseract
+body:
+  height_cm: 188
+  age: 0.45
+  shoulders: 0.95
+  waist: 0.9
+  legs: 1.05
+  neck: 1.1
+face:
+  eye_shape: hooded
+  brow: arched
+  brow_weight: 1.3
+  nose: long
+  jaw: long
+  chin: 1.1
+  ears: 1.0
+hair:
+  style: center_part
+  facial: mustache
+  volume: 0.35
+palette:
+  skin: '#efc6a8'
+  hair: '#1e1714'
+  eyes: '#7b8995'
+outfit:
+  top: shirt
+  sleeves: long
+  neckline: collar
+  top_color: '#f2efe6'
+  outer: coat
+  outer_length: knee
+  outer_color: '#2f3a56'
+  bottom: trousers
+  bottom_color: '#3b3d46'
+  shoes: shoes
+  shoe_color: '#1c1a1a'
+  hat: none
+  accessories: [bow_tie]
+  accent_color: '#1a1a22'
+game:
+  character_id: npc_science_nikobolt
+  description: Nikobolt Tesseract parodies Nikola Tesla (1856-1943), a Serbian-American inventor of alternating-current
+    systems. He is a sympathetic parody, a peaceful inventor in the Science dimension; in the lore his inventions were
+    taken and used by others (the lightning of the evil dimension), and he is not a villain. Visual sources are the
+    well-known portraits of Tesla - tall and thin, hair parted in the middle and combed back, a neat moustache, a high
+    collar and bow tie, a dark frock coat. His wife (a later character) is a pigeon-headed resident, after Tesla's
+    fondness for pigeons. The overlay art is drawn by hand over the generated figure.
+  rows: full

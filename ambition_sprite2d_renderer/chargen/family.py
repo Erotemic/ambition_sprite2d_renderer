@@ -36,7 +36,11 @@ class Proportions:
     the head's height, ``hh``. A multiplier of 1 keeps the standard size."""
 
     #: The hip joint's height, as a part of ``H``.
-    hip: float = 0.488
+    hip: float = 0.45
+    #: Where clothes are worn at the waist (a waistband, a belt, a tucked
+    #: hem), as a part of the trunk from the shoulder line down to the hip
+    #: joint. The body's narrowest line is at 0.62 of it.
+    belt: float = 0.78
     #: The base of the neck and the shoulder line under the chin, as parts
     #: of ``hh``.
     neck_base: float = 0.17
@@ -112,7 +116,7 @@ class Family:
 CREW_INK = "#221630"
 
 FAMILIES: Dict[str, Family] = {
-    "standard": Family("standard", "The house look: about 6.5 heads, long legs, a thin outline, a warm shade."),
+    "standard": Family("standard", "The house look: about 6.5 heads, a thin outline, a warm shade."),
     "crew": Family(
         "crew",
         "The look of the cryptography crew: a shorter leg and a longer neck, a wide round head with a large nose, a narrow "

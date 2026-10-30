@@ -1147,7 +1147,7 @@ _SCHOLAR_LAYER = "scholar"
 _LOCKSTEP_LAYERS = ("full", "body", "hands", _GIANT_BODY_LAYER)
 
 
-def _pack_layers(rendered: dict, manifest_rows: list[dict], policy, layers=_LAYERS):
+def _pack_layers(rendered: dict, manifest_rows: list[dict], policy, layers=_LAYERS, origins=None):
     """Lockstep-pack the full/body/hands layers onto ONE page each.
 
     GNU-ton's three layers must share an IDENTICAL per-frame layout: the runtime
@@ -1158,7 +1158,10 @@ def _pack_layers(rendered: dict, manifest_rows: list[dict], policy, layers=_LAYE
     published record then drives all three textures.
 
     Returns ``(layer_pages, rows_meta, num_pages)`` where ``layer_pages`` maps
-    each layer name to its list of page images (single page)."""
+    each layer name to its list of page images (single page). ``origins``
+    gives, per frame, where a frame cut to its content sits in the frame
+    (none: every frame is whole)."""
+    origins = origins or {}
     from ambition_sprite2d_renderer.authoring.packer import FrameInput, pack_frames
 
     frames = [
@@ -1166,6 +1169,7 @@ def _pack_layers(rendered: dict, manifest_rows: list[dict], policy, layers=_LAYE
             key=(r["row"], f),
             image=rendered["full"][(r["row"], f)],
             logical_size=(FRAME_W, FRAME_H),
+            offset=origins.get((r["row"], f), (0, 0)),
         )
         for r in manifest_rows
         for f in range(r["frames"])
@@ -1189,14 +1193,18 @@ def _pack_layers(rendered: dict, manifest_rows: list[dict], policy, layers=_LAYE
 
     layer_pages: dict[str, list[Image.Image]] = {}
     page_size = result.pages[0].size
+    from ambition_sprite2d_renderer.core.memory_budget import require_images
+
+    require_images([page_size] * (len(layers) - 1), f"{TARGET_NAME} layer pages")
     for layer in layers:
         if layer == "full":
             layer_pages[layer] = list(result.pages)
             continue
         page = Image.new("RGBA", page_size, (0, 0, 0, 0))
         for (row, f), pl in result.placements.items():
+            ox, oy = origins.get((row, f), (0, 0))
             crop = rendered[layer][(row, f)].crop(
-                (pl.off_x, pl.off_y, pl.off_x + pl.w, pl.off_y + pl.h)
+                (pl.off_x - ox, pl.off_y - oy, pl.off_x - ox + pl.w, pl.off_y - oy + pl.h)
             )
             page.alpha_composite(crop, (pl.x, pl.y))
         layer_pages[layer] = [page]
@@ -1306,13 +1314,20 @@ def build_spritesheet(outdir: Path) -> List[Path]:
         "layers": list(_LAYERS),
     }
     parts: dict = {}
+    # Each frame is kept cut to the full layer's content (every other layer is
+    # inside it), with its offset in the frame: the frames are mostly empty, and
+    # held whole the four layers came to about 4 GiB.
+    origins: dict = {}
     for row_idx, (anim_name, frame_count, duration_ms) in enumerate(ANIMATIONS):
         for f in range(frame_count):
+            whole = {
+                layer: draw_frame(anim_name, f, frame_count, layer=layer, parts=parts if layer == "full" else None)
+                for layer in _LOCKSTEP_LAYERS
+            }
+            box = whole["full"].getchannel("A").getbbox() or (0, 0, 1, 1)
+            origins[(row_idx, f)] = box[:2]
             for layer in _LOCKSTEP_LAYERS:
-                pass_parts = parts if layer == "full" else None
-                rendered[layer][(row_idx, f)] = draw_frame(
-                    anim_name, f, frame_count, layer=layer, parts=pass_parts
-                )
+                rendered[layer][(row_idx, f)] = whole[layer].crop(box)
         manifest["rows"].append(
             {
                 "name": anim_name,
@@ -1336,7 +1351,7 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     # pack source.
     policy = policy_for(TARGET_NAME)
     layer_pages, rows_meta, num_pages = _pack_layers(
-        rendered, manifest["rows"], policy, layers=_LOCKSTEP_LAYERS
+        rendered, manifest["rows"], policy, layers=_LOCKSTEP_LAYERS, origins=origins
     )
 
     outputs: List[Path] = []
@@ -1503,9 +1518,18 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     # Review-only hitbox overlay: composite the full-layer frames into a plain
     # GRID (human-only, never a GPU texture) so the per-frame box coordinates
     # read against an untrimmed canvas.
+    # The pages are written: let them go before the grid is made.
+    del layer_pages, giant_body_page, giant_hands_page
+    for layer in _LOCKSTEP_LAYERS:
+        if layer != "full":
+            rendered[layer].clear()
+    from ambition_sprite2d_renderer.core.memory_budget import require_image
+
+    require_image((max_frames * FRAME_W, rows * FRAME_H), f"{TARGET_NAME} hitbox review grid")
     grid_full = Image.new("RGBA", (max_frames * FRAME_W, rows * FRAME_H), (0, 0, 0, 0))
     for (row_idx, f), img in rendered["full"].items():
-        grid_full.paste(img, (f * FRAME_W, row_idx * FRAME_H))
+        ox, oy = origins[(row_idx, f)]
+        grid_full.paste(img, (f * FRAME_W + ox, row_idx * FRAME_H + oy))
     debug_path = build_hitbox_debug(outdir, grid_full, manifest, parts_doc)
     outputs.append(debug_path)
 
