@@ -4,16 +4,19 @@ gossip and organise.
 
 Drawn in room coordinates (`_district_props`) on the numbers of
 `tools/ambition_ldtk_tools/specs/castle_kitchens/make_specs.py`: the floor
-(y 512), the ceiling (to y 48), the door up to the gatehouse (x 40), the
-cook at the hearth, the porter at his desk, the steward at the long table.
+(y 512), the ceiling (to y 48), the stair up to the gatehouse through the
+ceiling at the west end (x 40..104; its ladder is the engine's), the way
+east to the Complaints Department at the floor, the cook at the hearth, the
+porter at his desk, the steward at the long table.
 
 - `castle_kitchens_room`: a vaulted stone kitchen. The great hearth with a
   cauldron over the fire; a rack of pans and ladles; shelves of jars and
   sacks of turnips; hams and onions from the vault; the night porter's nook (the visitors' book open, a
   lantern, the key board); the long table and its benches under the
   henchpersons' guild notice board; the castle's poster with a moustache
-  drawn on it; the dumbwaiter up to the great hall; the door to the
-  Complaints Department; a mouse hole, its trap sprung and empty.
+  drawn on it; the dumbwaiter up to the great hall; the Complaints
+  Department's plaque by the way east; a mouse hole, its trap sprung and
+  empty.
 
 Animations: ``idle``, 1 frame. No drop shadows.
 """
@@ -151,13 +154,12 @@ def room(c, k):
     c.put(c.mask(lambda p: (p.rect(1182, 136, 1254, 144), p.rect(1182, g - 124, 1254, g - 116))), WOOD_DARK)
     c.put(c.mask(lambda p: (p.rect(1198, 144, 1200, g - 124), p.rect(1236, 144, 1238, g - 124))), (190, 170, 120))
     c.put(c.mask(box(1194, g - 180, 1242, g - 128)), WOOD)
-    # The door to the Complaints Department (the room's door zone x 1130..1178).
-    c.put(c.mask(box(1124, FLOOR - 104, 1184, FLOOR)), WOOD_DARK)
-    c.put(c.mask(box(1130, FLOOR - 96, 1178, FLOOR)), WOOD)
-    c.put(c.mask(lambda p: [p.rect(x, FLOOR - 96, x + 1, FLOOR) for x in range(1138, 1178, 10)]), WOOD_DARK)
-    c.put(c.mask(box(1136, FLOOR - 88, 1172, FLOOR - 76)), PAPER)
-    c.put(c.mask(lambda p: [p.rect(1140, y, 1168, y + 1) for y in (FLOOR - 85, FLOOR - 81)]), (90, 80, 70))
-    c.put(c.mask(lambda p: p.ellipse(1172, FLOOR - 48, 2.5)), (200, 170, 90))
+    # The Complaints Department's plaque, by the way east to it, its hand
+    # pointing on.
+    c.put(c.mask(box(1124, FLOOR - 110, 1184, FLOOR - 70)), WOOD_DARK)
+    c.put(c.mask(box(1130, FLOOR - 104, 1178, FLOOR - 76)), PAPER)
+    c.put(c.mask(lambda p: [p.rect(1136, y, 1172, y + 1) for y in (FLOOR - 98, FLOOR - 94)]), (90, 80, 70))
+    c.put(c.mask(lambda p: p.poly([(1140, FLOOR - 86), (1162, FLOOR - 86), (1162, FLOOR - 90), (1172, FLOOR - 83), (1162, FLOOR - 76), (1162, FLOOR - 80), (1140, FLOOR - 80)])), RED)
     # A mouse hole, and its trap, sprung and empty.
     c.put(c.mask(lambda p: p.ellipse(1100, g, 10, 12)) * (c.y < g), (14, 10, 12))
     c.put(c.mask(lambda p: (p.rect(1060, g - 4, 1084, g), p.line([(1062, g - 4), (1078, g - 10)], 1.4))), WOOD_LIGHT)

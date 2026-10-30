@@ -1,14 +1,14 @@
-"""The Prototype Workshop under Castle Godwin's barracks
+"""The Prototype Workshop off the foot of Castle Godwin's lab tower
 (`castle_godwin_workshop`, the Evil dimension): where the castle's failed
 prototypes come from.
 
 Drawn in room coordinates (`_district_props`) on the numbers of
 `tools/ambition_ldtk_tools/specs/castle_kitchens/make_specs.py`
-(`workshop`): the floor (y 512), the ceiling (to y 48), the door back up to
-the barracks (x 40).
+(`workshop`): the floor (y 512), the ceiling (to y 48), the way west into
+the tower's foot at the floor.
 
-- `workshop_room`: a stone vault; its iron door (scenery draws over a door,
-  so the room draws its own); the tool wall, one outline empty (the big
+- `workshop_room`: a stone vault; the open arch west into the tower, its
+  iron door folded back; the tool wall, one outline empty (the big
   spanner); the workbench and a walking toaster half built on it; the
   boiler, copper, its gauge in the red and its pipes up into the vault;
   the blueprints pinned up (a kettle with legs, a searchlight with legs, a
@@ -58,12 +58,13 @@ def room(c, k):
     for x in range(16, W, 400):
         c.put(c.mask(lambda p: p.poly([(x - 14, g), (x - 14, 140), (x, CEILING), (x + 14, 140), (x + 14, g)])), STONE_DARK)
     c.put(c.mask(box(16, g - 22, W - 16, g)), STONE_DARK)
-    # The iron door back up to the barracks (the room's door zone, x 40..88).
-    c.put(c.mask(box(34, g - 104, 94, g)), STONE_DARK)
-    door = c.mask(box(40, g - 96, 88, g))
+    # The way west into the lab tower's foot: an open arch, the tower's dark
+    # beyond it, its iron door folded back against the wall.
+    c.put(c.mask(lambda p: (p.rect(16, g - 118, 104, g), p.ellipse(60, g - 118, 44, 20))), STONE_DARK)
+    c.put(c.mask(lambda p: (p.rect(24, g - 110, 96, g), p.ellipse(60, g - 110, 36, 16))), (26, 22, 26))
+    door = c.mask(box(100, g - 96, 112, g))
     c.put(door, IRON)
-    c.put(door * c.mask(lambda p: ([p.rect(40, y, 88, y + 2) for y in (g - 80, g - 48, g - 16)], [p.ellipse(x, y, 1.6) for x in (46, 82) for y in range(g - 90, g, 12)])), scale(IRON, 0.6))
-    c.put(c.mask(lambda p: p.ring(80, g - 50, 4, 1.6)), STEEL)
+    c.put(door * c.mask(lambda p: [p.rect(100, y, 112, y + 2) for y in (g - 80, g - 48, g - 16)]), scale(IRON, 0.6))
     # The tool wall: a board of hooks and outlines, one outline empty.
     c.put(c.mask(box(130, 250, 380, 400)), WOOD_DARK)
     c.put(c.mask(lambda p: [p.ellipse(x, y, 0.9) for x in range(138, 376, 12) for y in range(258, 396, 12)]), (40, 28, 22))
