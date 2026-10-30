@@ -18,8 +18,9 @@ and legs are two bones through a solved joint, to the grips and the pedals.
 Rows: ``idle`` (a track stand: he rocks the pedals to stay up), ``walk`` and
 ``run`` (he pedals), ``slash`` (the front wheel comes up and his bill comes
 down), ``fly`` (he carries the bicycle by its top tube), ``taunt`` (both wings
-up and a clack of the bill), ``hurt``, and ``death`` (the bicycle goes over
-backward onto its saddle and he sits down beside it).
+up and a clack of the bill), ``hurt``, ``death`` (the bicycle goes over
+backward onto its saddle and he sits down beside it), ``notice`` (he sits up,
+eyes wide) and ``windup`` (the front wheel up and held, his bill raised).
 """
 
 from __future__ import annotations
@@ -235,11 +236,15 @@ def run(i: int, n: int) -> Pose:
              gape=4.0 + 3.0 * bob, bag=24.0 + 5.0 * bob)
 
 
+#: The front wheel up and his bill raised high and open: the tell of his peck.
+REAR_UP = P(tilt=-17.0, crank=70.0, wheel=4.0, seat=(-2.0, -3.0), lean=4.0, head=(1.0, -27.0), tilt_head=-34.0, gape=16.0, bag=-12.0)
+
+
 @row
 def slash(i: int, n: int) -> Pose:
     # The front wheel comes up, and his bill comes down with the wheel.
     ride = P(crank=0.0, wheel=0.0)
-    rear_up = P(tilt=-17.0, crank=70.0, wheel=4.0, seat=(-2.0, -3.0), lean=4.0, head=(1.0, -27.0), tilt_head=-34.0, gape=16.0, bag=-12.0)
+    rear_up = REAR_UP
     strike = P(tilt=0.0, bike=(4.0, 0.0), crank=150.0, wheel=9.0, seat=(6.0, -5.0), lean=44.0, head=(26.0, -9.0), tilt_head=26.0, gape=0.0,
                eyes="wide", bag=30.0)
     return keys(_shot(i, n), [(0.0, ride), (0.3, rear_up), (0.42, rear_up), (0.58, strike), (0.76, strike), (1.0, dict(ride, crank=180.0, wheel=12.0))])
@@ -308,6 +313,24 @@ def death(i: int, n: int) -> Pose:
     return dict(thrown, bike=(float(slide), float(lift)), tilt=float(bike_tilt), pivot=middle, crank=40.0, wheel=float(-2 + i))
 
 
+@row
+def notice(i: int, n: int) -> Pose:
+    # He has seen you: he sits up straight on the saddle in a track stand,
+    # his head up and back, his eyes wide behind his glasses, his bill open.
+    # The game loops it, so every frame is the whole pose with a wobble.
+    s = (0.0, 1.0, -1.0)[i % 3]
+    return P(crank=20.0, lean=2.0, head=(6.0, -27.0), tilt_head=-16.0 + s, gape=10.0 + 2.0 * s, eyes="wide", bag=-4.0)
+
+
+@row
+def windup(i: int, n: int) -> Pose:
+    # The peck made ready: the front wheel up and held, his bill raised high
+    # and open over it. The game loops it, so every frame is the whole pose
+    # with a wobble.
+    s = (0.0, 1.0, -1.0)[i % 3]
+    return dict(REAR_UP, tilt=-17.0 - abs(s), tilt_head=-34.0 + 2.0 * s, gape=16.0 + 2.0 * s, eyes="wide")
+
+
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 140),
     ("walk", 8, 78),
@@ -317,6 +340,10 @@ ROWS: List[Tuple[str, int, int]] = [
     ("taunt", 6, 108),
     ("hurt", 4, 94),
     ("death", 10, 92),
+    # The game holds ``notice`` on first sight of his foe and ``windup`` over
+    # his peck's startup (the telegraph).
+    ("notice", 3, 110),
+    ("windup", 3, 90),
 ]
 assert [name for name, _, _ in ROWS] == list(ROW_POSES), "every row has a pose, in sheet order"
 

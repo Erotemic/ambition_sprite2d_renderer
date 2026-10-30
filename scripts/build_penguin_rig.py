@@ -61,6 +61,11 @@ ROWS = [
     ("taunt", 8, 110, True),
     ("hurt", 4, 92, False),
     ("death", 8, 108, False),
+    # The game holds ``notice`` while it first sees its foe, and ``windup``
+    # over its slap's startup (the telegraph). Both loop on the game's clock,
+    # so every frame is the whole pose with a shiver.
+    ("notice", 3, 120, False),
+    ("windup", 3, 90, False),
 ]
 
 K = track
@@ -222,6 +227,35 @@ def death(i: int, n: int, t: float) -> Pose:
     return p
 
 
+def notice(i: int, n: int, t: float) -> Pose:
+    """Startled: drawn up, its beak up and open, both flippers flung out."""
+    shiver = K([0, 1, -1], t)
+    p = standing()
+    p["root_y"] = -2.0
+    p["body"] = -8.0
+    p["head"] = -24.0 + shiver
+    p["jaw"] = 14.0 + 2.0 * shiver
+    p["tail1"] = 10.0
+    flippers(p, -62.0 + 3.0 * shiver, -52.0 - 3.0 * shiver)
+    p.update(eyes("open"))
+    return p
+
+
+def windup(i: int, n: int, t: float) -> Pose:
+    """The slap made ready: leaned back, the near flipper cocked far behind
+    it, the head drawn back, the beak shut."""
+    shiver = K([0, 1, -1], t)
+    p = standing()
+    p["root_x"] = -6.0 + shiver
+    p["body"] = -16.0
+    p["head"] = -10.0
+    p["jaw"] = 4.0
+    p["tail1"] = 8.0
+    flippers(p, 64.0 + 3.0 * shiver, -24.0)
+    p.update(eyes("angry"))
+    return p
+
+
 CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "idle": idle,
     "walk": walk,
@@ -232,6 +266,8 @@ CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "taunt": taunt,
     "hurt": hurt,
     "death": death,
+    "notice": notice,
+    "windup": windup,
 }
 
 SPEC = B.bird_spec(

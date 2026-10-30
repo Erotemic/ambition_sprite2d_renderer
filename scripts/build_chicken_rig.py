@@ -60,6 +60,11 @@ ROWS = [
     ("taunt", 8, 100, True),
     ("hurt", 4, 92, False),
     ("death", 8, 108, False),
+    # The game holds ``notice`` while it first sees its foe, and ``windup``
+    # over its peck's startup (the telegraph). Both loop on the game's clock,
+    # so every frame is the whole pose with a shiver.
+    ("notice", 3, 120, False),
+    ("windup", 3, 90, False),
 ]
 
 K = track
@@ -254,6 +259,37 @@ def death(i: int, n: int, t: float) -> Pose:
     return p
 
 
+def notice(i: int, n: int, t: float) -> Pose:
+    """It has seen you: drawn up tall, the chest out, the head high and
+    dead still, one eye on you, the tail up."""
+    p = standing()
+    p["root_y"] = -1.0
+    p["body"] = -14.0
+    p["head"] = -6.0
+    p["jaw"] = 0.0
+    p["tail1"] = 12.0 + K([0, 1.5, -1.5], t)
+    p["tail2"] = 8.0
+    return p
+
+
+def windup(i: int, n: int, t: float) -> Pose:
+    """The peck made ready: the weight back, the head drawn far back over
+    the body, the beak open, the hackle up."""
+    shiver = K([0, 1, -1], t)
+    p = standing()
+    p["root_x"] = -10.0 + shiver
+    p["root_y"] = 0.0
+    p["body"] = -16.0
+    p["head"] = -30.0 + shiver
+    p["jaw"] = 14.0
+    p["tail1"] = 14.0
+    p["tail2"] = 8.0
+    for side, x in (("near", NEAR_X), ("far", FAR_X)):
+        p[f"{side}_foot_x"] = x - 4.0
+    p.update(eyes("angry"))
+    return p
+
+
 CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "idle": idle,
     "walk": walk,
@@ -264,6 +300,8 @@ CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "taunt": taunt,
     "hurt": hurt,
     "death": death,
+    "notice": notice,
+    "windup": windup,
 }
 
 DEFAULTS: Pose = {"eye.open": 1.0, "wing.folded": 1.0, "wing.open": 0.0}

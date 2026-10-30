@@ -263,6 +263,52 @@ def wall_cling_clip() -> dict:
     return {"loop": True, "frames": 8, "duration_ms": 140, "channels": channels}
 
 
+def held(*values: float) -> dict:
+    """One value per frame of a held three-frame row (the game loops it)."""
+    return {"keys": [[i/(len(values)-1), v, "linear"] for i, v in enumerate(values)]}
+
+
+def notice_clip() -> dict:
+    """It has seen you: the lamp snaps round onto you and focuses, the iris
+    goes red, the antenna stands up and its beacon flashes. The hull rises
+    on its legs. Every frame is the whole pose (the game loops it)."""
+    return {
+        "loop": False, "frames": 3, "duration_ms": 110,
+        "channels": {
+            "root_y": expr("-3"),
+            "body": expr("-3"),
+            "light": held(4.0, 6.0, 5.0),
+            "antenna": held(12.0, 15.0, 12.0),
+            "beam_visible": expr("0"),
+            "focus_visible": expr("0.95"),
+            "alert_visible": held(0.9, 1.0, 0.8),
+            "beacon_visible": held(1.0, 0.4, 1.0),
+        },
+    }
+
+
+def windup_clip() -> dict:
+    """The strike made ready: the hull sinks back on its rear legs and tips
+    its nose up, the lamp flares full on you, the antenna laid back, the
+    vent open. A shiver runs through it (the game loops it)."""
+    return {
+        "loop": False, "frames": 3, "duration_ms": 90,
+        "channels": {
+            "root_x": held(-6.0, -5.2, -6.6),
+            "root_y": held(10.0, 10.6, 9.6),
+            "body": held(-14.0, -13.2, -14.6),
+            "light": held(12.0, 13.0, 11.0),
+            "antenna": held(-20.0, -18.0, -21.0),
+            "beam_visible": expr("0"),
+            "focus_visible": expr("1"),
+            "alert_visible": expr("1"),
+            "beacon_visible": held(1.0, 0.6, 1.0),
+            "exhaust_hatch": expr("-26"),
+            "exhaust_visible": held(0.8, 0.6, 0.9),
+        },
+    }
+
+
 def articulation_clips() -> dict:
     return {
         "aim_scan": {"loop": True, "frames": 16, "duration_ms": 85,
@@ -392,6 +438,10 @@ def clips() -> dict:
             },
         },
         "death": death_clip(),
+        # The game holds ``notice`` on first sight of its foe and ``windup``
+        # over its strike's startup (the telegraph).
+        "notice": notice_clip(),
+        "windup": windup_clip(),
         "wall_cling": wall_cling_clip(),
         **articulation_clips(),
     }

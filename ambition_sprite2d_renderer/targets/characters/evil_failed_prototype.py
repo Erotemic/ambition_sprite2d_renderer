@@ -14,7 +14,9 @@ cog, not a real symbol). He is pitiful and he is dangerous; he is not cute.
 He holds nothing. There is no drop shadow.
 
 His attacks: a swipe of his claws (``slash``) and a pounce with his teeth
-(``attack_side``). His taunt is a yip that wants to be a howl.
+(``attack_side``). His taunt is a yip that wants to be a howl. ``notice``
+jerks him up out of his hunch with the bolt in his neck sparking;
+``windup`` rears him back on his haunches, claws up, to spring.
 
 He is a person of ``_person_rig``: the bones and the frame are shared; the
 build, the head, the gown and every pose are his.
@@ -537,8 +539,35 @@ def taunt(i: int, n: int):
                                (0.6, dict(YIP, mouth="o", head=(0.0, 0.0, -30.0))), (0.8, YIP), (1.0, down)])
 
 
-X.rows = [("idle", 8, 120), ("walk", 8, 95), ("run", 8, 70), ("jump", 6, 90), ("fall", 6, 90), ("slash", 8, 75), ("attack_side", 10, 70),
-          ("hit", 5, 90), ("death", 8, 110), ("taunt", 10, 90)]
+#: Startled: jerked up out of his hunch, his head snapped up to you, his
+#: hands flung open, the bolt in his neck sparking.
+STARTLE = P(hip=(-1.0, 3.0), lean=14.0, head=(0.0, -1.0, -26.0), na=(12.0, 10.0), fa=(14.0, 6.0), nh="open", fh="open", nf=(-8.0, 0.0, 0.0),
+            ff=(8.0, 0.0, 0.0), mouth="o")
+
+
+@X.row
+def notice(i: int, n: int):
+    # The game loops it, so every frame is the whole pose with a twitch.
+    s = (0.0, 1.0, -1.0)[i % 3]
+    return dict(STARTLE, head=(0.0, -1.0, -26.0 + 3.0 * s), na=(12.0 + s, 10.0 - s))
+
+
+#: Reared back on his haunches to spring: his weight on his back foot, both
+#: claws up and open in front of him, his jaws wide.
+REARED = P(hip=(-5.0, 12.0), lean=12.0, head=(1.0, -1.0, -26.0), na=(26.0, 4.0), fa=(24.0, 10.0), nh="open", fh="open", nf=(-11.0, 0.0, 0.0),
+           ff=(9.0, 0.0, 0.0), mouth="big", hem=(2.0, 2.0))
+
+
+@X.row
+def windup(i: int, n: int):
+    # The pounce held back. The game loops it, so every frame is the whole
+    # pose with a shiver.
+    s = (0.0, 1.0, -1.0)[i % 3]
+    return dict(REARED, lean=12.0 + 1.0 * s, na=(26.0 + s, 4.0 - s), fa=(24.0 - s, 10.0 + s))
+
+
+X.rows = [("idle", 8, 120), ("walk", 8, 95), ("run", 8, 70), ("jump", 6, 90), ("fall", 6, 90), ("notice", 3, 110), ("windup", 3, 90),
+          ("slash", 8, 75), ("attack_side", 10, 70), ("hit", 5, 90), ("death", 8, 110), ("taunt", 10, 90)]
 
 # ---- What he does ------------------------------------------------------------
 
@@ -566,6 +595,10 @@ def _effects(ctx) -> List[Stamp]:
         m = _muzzle(ctx)
         for k in range(1 + ctx.i % 2):
             out.append((R.swoosh(K, 6.0 + 6.0 * k, int(ctx.turn - 34), int(ctx.turn + 34), 1.8, SPARK, SPARK_DARK), (m[0] - 2.0, m[1]), f"yip_{k}", 0.0))
+    elif anim == "notice" and ctx.i % 3 != 1:
+        # The bolt in his neck sparks.
+        bolt = turned((-3.6, 12.9), ctx.turn)
+        out.append((R.burst(K, 5.0 if ctx.i % 3 == 0 else 4.0, SPARK, SPARK_DARK, 6), (ctx.head[0] + bolt[0], ctx.head[1] + bolt[1]), "bolt_spark", 0.0))
     elif anim == "hit" and u <= 0.5:
         out.append((R.burst(K, 8.0, SPARK, SPARK_DARK, 8), (ctx.head[0] + 9.0, ctx.head[1] - 2.0), "struck", 0.0))
     return out

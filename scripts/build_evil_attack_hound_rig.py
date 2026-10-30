@@ -259,12 +259,38 @@ def taunt() -> dict:
     return pose_clip(rows, 85, loop=False)
 
 
+def notice() -> dict:
+    """It has seen you: the head comes up and round, the ears go flat back,
+    the hackles stand over a stiffened neck, the tail goes up stiff and the
+    lip curls. The game loops it, so each frame is the whole pose with a
+    shiver of the lip."""
+    rows = []
+    for shiver in (0.0, 1.0, -1.0):
+        rows.append(dict(
+            root_x=-2, body=-6, head=-10 + 0.5 * shiver, ear=-48, jaw=12 + 2.5 * shiver,
+            tail_base=-14, tail_tip=-12 + 2 * shiver, **legs_pose(-8, 4, 10, -4),
+        ))
+    return pose_clip(rows, 110, loop=False)
+
+
+def windup() -> dict:
+    """The lunge held back: down in a low crouch on bent legs, the head low
+    and level, the teeth bared wide, the ears flat. A shiver runs through it."""
+    rows = []
+    for shiver in (0.0, 1.0, -1.0):
+        rows.append(dict(
+            root_x=-8 + 0.6 * shiver, body=5, head=14 + 0.6 * shiver, ear=-62, jaw=22 + 2 * shiver,
+            tail_base=-40, tail_tip=-34 + 2 * shiver, **legs_pose(-18, 38, -26, 44),
+        ))
+    return pose_clip(rows, 90, loop=False)
+
+
 #: The frames in which a paw is on the ground, by row (None: each frame).
 #: In the air (the top of a jump, a fall, the flight of the lunge) the
 #: game moves the body and the row only poses it.
 GROUNDED = {
     "idle": None, "walk": None, "run": None, "slash": None, "hit": None, "death": None, "taunt": None,
-    "jump": (0, 1), "attack_side": (0, 1, 2, 5, 6, 7, 8, 9), "fall": (),
+    "jump": (0, 1), "attack_side": (0, 1, 2, 5, 6, 7, 8, 9), "fall": (), "notice": None, "windup": None,
 }
 
 
@@ -291,6 +317,7 @@ def put_paws_on_the_ground(doc: dict) -> None:
 CLIPS = {
     "idle": idle, "walk": walk, "run": run, "jump": jump, "fall": fall,
     "slash": slash, "attack_side": attack_side, "hit": hit, "death": death, "taunt": taunt,
+    "notice": notice, "windup": windup,
 }
 
 
