@@ -110,6 +110,9 @@ def west(c, k):
     c.light(c.mask(lambda p: p.ellipse(470, 220, 110, 90), blur=18), LAMP, 0.25)
     c.put(c.mask(lambda p: (p.ring(700, FLOOR, 26, 3), p.rect(672, FLOOR - 3, 728, FLOOR))), BRASS)
     c.put(c.mask(box(670, FLOOR - 26, 730, FLOOR - 25)) * c.mask(lambda p: p.ellipse(700, FLOOR, 26)), BRASS)
+    # The way west, left open in the art: the cracked wall over it is a
+    # breakable's look (`math_conjectures_props.py`), drawn under the scenery.
+    c.alpha *= 1.0 - c.mask(box(16, FLOOR - 112, 48, FLOOR))
 
 
 def east(c, k):
