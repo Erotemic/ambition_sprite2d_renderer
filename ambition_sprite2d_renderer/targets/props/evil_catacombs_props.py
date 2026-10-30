@@ -7,7 +7,8 @@ Drawn in room coordinates (`_district_props`) on the numbers of
 floor (y 512), the ceiling (to y 32), the shaft up to the allotments at the
 west end (x 40..104), the way east into the crypt at the floor.
 
-- `catacombs_west`: the shaft up under plot 13, the roots of Crabbe's prize
+- `catacombs_west`: the way west, dark behind its cracked wall; the shaft
+  up under plot 13, the roots of Crabbe's prize
   marrows hanging through the ceiling, one marrow come right through; walls
   of skulls in rows; an arch.
 - `catacombs_east`: a fall of rubble where the vault came down, propped
@@ -78,6 +79,10 @@ def west(c, k):
     skull_wall(c, 140, 600, 150, 420)
     arch(c, 680, 120, 220)
     skull_wall(c, 860, 1260, 150, 420)
+    # The way west, left open in the art: the breakable wall over it
+    # (`evil_ossuary_props.py`) draws under the room's scenery, and the dark
+    # of the room shows through once it is broken.
+    c.alpha *= 1.0 - c.mask(box(16, FLOOR - 112, 48, FLOOR))
 
 
 def east(c, k):
