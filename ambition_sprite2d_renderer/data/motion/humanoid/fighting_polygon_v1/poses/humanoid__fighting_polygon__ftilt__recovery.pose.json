@@ -4,7 +4,7 @@
   "rig_profile": "humanoid-articulated-v1",
   "source": {
     "clip": "attack_side",
-    "frame": 7,
+    "frame": 6,
     "kind": "authored-polygon-keys"
   },
   "state": {

@@ -9,7 +9,6 @@
   },
   "hitbox": {
     "active": [
-      2,
       3
     ],
     "extend": 1.06
@@ -25,7 +24,6 @@
     "streaks": 4,
     "spread": 0.36,
     "active": [
-      1,
       2,
       3,
       4

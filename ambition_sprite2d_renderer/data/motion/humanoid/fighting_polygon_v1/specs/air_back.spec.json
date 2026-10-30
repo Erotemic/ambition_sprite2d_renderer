@@ -5,8 +5,7 @@
   "facing": "west",
   "hitbox": {
     "active": [
-      2,
-      3
+      2
     ]
   },
   "trail": {
@@ -32,8 +31,7 @@
     "active": [
       1,
       2,
-      3,
-      4
+      3
     ]
   },
   "airborne": true,

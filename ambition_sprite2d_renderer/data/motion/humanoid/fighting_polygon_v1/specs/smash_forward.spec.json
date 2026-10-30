@@ -5,7 +5,7 @@
   "facing": "west",
   "hitbox": {
     "active": [
-      4
+      2
     ]
   },
   "trail": {
@@ -29,9 +29,9 @@
       255
     ],
     "active": [
-      3,
-      4,
-      5
+      1,
+      2,
+      3
     ]
   },
   "pixel_invariants": [

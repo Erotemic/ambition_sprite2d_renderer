@@ -1,0 +1,33 @@
+# A resident made by the character generator; see targets/characters/townsfolk.py.
+schema: ambition-chargen-v1
+name: Tsuru
+base: slim_female
+seed: 41
+body:
+  height_cm: 157
+  age: 0.45
+hair:
+  style: ponytail
+palette:
+  skin: '#e8bc98'
+  hair: '#2a2220'
+outfit:
+  top: tunic
+  sleeves: long
+  neckline: v
+  top_color: '#3f5a6e'
+  outer: jacket
+  outer_length: hip
+  outer_color: '#6a5a44'
+  bottom: trousers
+  bottom_color: '#3a3430'
+  shoes: boots
+  hat: brimmed
+  hat_color: '#c8b07a'
+  accessories: [belt]
+  accent_color: '#b0453a'
+game:
+  character_id: npc_village_tsuru
+  description: A resident of the Ninja Village (gate address SILENT), a mountain village of the ninja dimension. Generated
+    by chargen; it parodies no one, and its look is everyday travelling dress, not a costume. Tsuru is a travelling medicine
+    seller who stays at Ume's tea house each autumn on her round of the mountain villages.
