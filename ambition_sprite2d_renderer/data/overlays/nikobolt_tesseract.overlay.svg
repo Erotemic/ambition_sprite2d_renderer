@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1600mm" height="600mm" viewBox="0 0 1600 600" data-overlay-ref="height:188 head:30.5970 trunk:55.1103 leg:88.8300">
-<!-- Hand-drawn overlay art for Nikobolt Tesseract (chargen/overlay.py). Each group draws one rig part of one
+<!-- Hand-drawn overlay art for Nikobolt Tesseract (chargen/overlay.py). A silver pin with a minus sign (a negative
+     charge) is on the knot of his bow tie; Coulomba carries the plus. Each group draws one rig part of one
      view, in SVG units with its anchor joint at (0, 0); its transform only places it over the chargen SVG
      for an editor. -->
 <g data-view="front">
@@ -111,6 +112,12 @@
     <path d="M -1.6 -9.5 C -5.8 -8.6 -8 -4.6 -7.2 -0.4 C -6.7 2.2 -3.8 2.6 -3.1 0.4 C -2.5 -2 -1.2 -5.4 -1.6 -9.5 Z" fill="#1d1714" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
     <path d="M -1.6 -9.5 C -5.8 -8.6 -8 -4.6 -7.2 -0.4 C -6.7 2.2 -3.8 2.6 -3.1 0.4 C -2.5 -2 -1.2 -5.4 -1.6 -9.5 Z" fill="#efc6a8"/>
   </g>
+  <g data-overlay-part="torso__bow_tie" data-overlay-mode="over" data-overlay-anchor="waist" data-overlay-scale="height trunk" transform="translate(160.00,305.57)">
+    <path d="M2.50,-94.90 L2.38,-94.13 L2.02,-93.43 L1.47,-92.88 L0.77,-92.52 L0.00,-92.40 L-0.77,-92.52 L-1.47,-92.88 L-2.02,-93.43 L-2.38,-94.13 L-2.50,-94.90 L-2.38,-95.67 L-2.02,-96.37 L-1.47,-96.92 L-0.77,-97.28 L-0.00,-97.40 L0.77,-97.28 L1.47,-96.92 L2.02,-96.37 L2.38,-95.67 Z" fill="#1d1714" stroke="#1d1714" stroke-width="1.2"/>
+    <path d="M2.50,-94.90 L2.38,-94.13 L2.02,-93.43 L1.47,-92.88 L0.77,-92.52 L0.00,-92.40 L-0.77,-92.52 L-1.47,-92.88 L-2.02,-93.43 L-2.38,-94.13 L-2.50,-94.90 L-2.38,-95.67 L-2.02,-96.37 L-1.47,-96.92 L-0.77,-97.28 L-0.00,-97.40 L0.77,-97.28 L1.47,-96.92 L2.02,-96.37 L2.38,-95.67 Z" fill="#c9d2de"/>
+    <path d="M1.85,-94.90 L1.76,-94.33 L1.50,-93.81 L1.09,-93.40 L0.57,-93.14 L0.00,-93.05 L-0.57,-93.14 L-1.09,-93.40 L-1.50,-93.81 L-1.76,-94.33 L-1.85,-94.90 L-1.76,-95.47 L-1.50,-95.99 L-1.09,-96.40 L-0.57,-96.66 L-0.00,-96.75 L0.57,-96.66 L1.09,-96.40 L1.50,-95.99 L1.76,-95.47 Z" fill="#34558a"/>
+    <path d="M-1.30,-95.35 L1.30,-95.35 L1.30,-94.45 L-1.30,-94.45 Z" fill="#f4f7fb"/>
+  </g>
 </g>
 <g data-view="front_3q">
   <g data-overlay-part="head" data-overlay-mode="replace" data-overlay-anchor="neck" data-overlay-scale="head head" transform="translate(473.51,181.22)">
@@ -217,6 +224,12 @@
     <path d="M 5.5 7.6 C 2 9.8 -2 9.8 -5 8" fill="none" stroke="#ba9587" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
     <path d="M -1.6 -9.5 C -5.8 -8.6 -8 -4.6 -7.2 -0.4 C -6.7 2.2 -3.8 2.6 -3.1 0.4 C -2.5 -2 -1.2 -5.4 -1.6 -9.5 Z" fill="#1d1714" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
     <path d="M -1.6 -9.5 C -5.8 -8.6 -8 -4.6 -7.2 -0.4 C -6.7 2.2 -3.8 2.6 -3.1 0.4 C -2.5 -2 -1.2 -5.4 -1.6 -9.5 Z" fill="#efc6a8"/>
+  </g>
+  <g data-overlay-part="torso__bow_tie" data-overlay-mode="over" data-overlay-anchor="waist" data-overlay-scale="height trunk" transform="translate(480.00,305.57)">
+    <path d="M16.47,-95.54 L16.38,-94.76 L16.13,-94.07 L15.74,-93.51 L15.25,-93.16 L14.70,-93.04 L14.16,-93.16 L13.66,-93.51 L13.27,-94.07 L13.02,-94.76 L12.93,-95.54 L13.02,-96.31 L13.27,-97.01 L13.66,-97.56 L14.16,-97.91 L14.70,-98.04 L15.25,-97.91 L15.74,-97.56 L16.13,-97.01 L16.38,-96.31 Z" fill="#1d1714" stroke="#1d1714" stroke-width="1.2"/>
+    <path d="M16.47,-95.54 L16.38,-94.76 L16.13,-94.07 L15.74,-93.51 L15.25,-93.16 L14.70,-93.04 L14.16,-93.16 L13.66,-93.51 L13.27,-94.07 L13.02,-94.76 L12.93,-95.54 L13.02,-96.31 L13.27,-97.01 L13.66,-97.56 L14.16,-97.91 L14.70,-98.04 L15.25,-97.91 L15.74,-97.56 L16.13,-97.01 L16.38,-96.31 Z" fill="#c9d2de"/>
+    <path d="M16.01,-95.54 L15.95,-94.97 L15.76,-94.45 L15.47,-94.04 L15.11,-93.78 L14.70,-93.69 L14.30,-93.78 L13.93,-94.04 L13.64,-94.45 L13.46,-94.97 L13.39,-95.54 L13.46,-96.11 L13.64,-96.62 L13.93,-97.03 L14.30,-97.30 L14.70,-97.39 L15.11,-97.30 L15.47,-97.03 L15.76,-96.62 L15.95,-96.11 Z" fill="#34558a"/>
+    <path d="M13.78,-95.99 L15.62,-95.99 L15.62,-95.09 L13.78,-95.09 Z" fill="#f4f7fb"/>
   </g>
 </g>
 <g data-view="side">
