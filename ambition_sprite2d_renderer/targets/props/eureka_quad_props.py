@@ -18,6 +18,9 @@ its terrace (y 576, x 1600..2320); the lab's door (x 2440..2488).
   itself.
 - `quad_lab_front`: Tesseract Laboratories: red brick and a sawtooth roof, a
   tesla coil on the ridge, sparking.
+- `court_furniture` (the gate court, `court`): the founders' plinth with a
+  bronze light bulb on it, a bench, lamp posts, the steps, the raised walk
+  on its arcade.
 
 Animations: ``idle``, 1 frame each. No drop shadows.
 """
@@ -152,7 +155,45 @@ def lab_front(c, k):
         arc(c, bolt_points(rng, (x0 + 330, top - 176), (x0 + 330 + rng.uniform(-90, 90), top - 260), n=8, jag=10), width=1.6)
 
 
+#: The gate court's numbers (`make_specs.py` `court`): its floor, the
+#: plinth (x 640..768, top 640), the bench (x 860..1020, top 672), the steps
+#: (y 640 at x 1080..1176, y 576 at x 1160..1256), the raised walk (y 512
+#: from x 1232).
+COURT_FLOOR, COURT_WALK = 704, 512
+
+
+def court(c, k):
+    g = COURT_FLOOR
+    # The founders' plinth, and on it a bronze light bulb, lit.
+    c.put(c.mask(box(640, 640, 768, g)), SANDSTONE_DARK)
+    edge_line(c, 632, 776, 640, TRIM, 6)
+    c.put(c.mask(box(670, 660, 738, 680)), (170, 130, 60))
+    bx, by = 704, 572
+    c.put(c.mask(lambda p: (p.ellipse(bx, by, 30, 34), p.rect(bx - 14, by + 26, bx + 14, 634))), (176, 132, 70))
+    c.put(c.mask(lambda p: [p.rect(bx - 15, y, bx + 15, y + 3) for y in (608, 616, 624)]), (120, 90, 48))
+    c.light(c.mask(lambda p: p.ellipse(bx - 8, by - 10, 12), blur=6), LAMP, 0.6)
+    c.light(c.mask(lambda p: p.ellipse(bx, by, 70), blur=20), LAMP, 0.2)
+    # The bench: slats on iron legs.
+    c.put(c.mask(lambda p: [p.rect(860, y, 1020, y + 5) for y in (672, 650, 640)]), OAK)
+    c.put(c.mask(lambda p: [p.rect(x, 640, x + 6, g) for x in (870, 1004)]), IRON)
+    # Lamp posts.
+    for lx in (560, 1040):
+        c.put(c.mask(lambda p: (p.rect(lx - 3, g - 140, lx + 3, g), p.rect(lx - 8, g - 6, lx + 8, g))), IRON)
+        c.put(c.mask(lambda p: p.ellipse(lx, g - 148, 9, 11)), LAMP)
+        c.light(c.mask(lambda p: p.ellipse(lx, g - 148, 40), blur=12), LAMP, 0.3)
+    # The steps and the raised walk on its arcade, its balustrade.
+    for x0, x1, y in ((1080, 1176, 640), (1160, 1256, 576)):
+        c.put(c.mask(box(x0, y, x1, g)), SANDSTONE_DARK)
+        edge_line(c, x0, x1, y, TRIM, 5)
+    ashlar(c, 1232, COURT_WALK, 1600, g, SANDSTONE, tag="court_arcade")
+    c.put(c.mask(lambda p: [p.arch(x, COURT_WALK + 50, x + 80, g) for x in range(1280, 1560, 120)]), (70, 80, 90))
+    c.put(c.mask(lambda p: [p.arch(x + 4, COURT_WALK + 54, x + 76, g) for x in range(1280, 1560, 120)]), (110, 150, 120), 0.6)
+    edge_line(c, 1232, 1600, COURT_WALK, TRIM, 8)
+    balustrade(c, 1232, 1600, COURT_WALK)
+
+
 PIECES: Dict[str, Piece] = {
+    "court_furniture": Piece((520, 470, 1600, COURT_FLOOR), court),
     "quad_raised_walk": Piece((16, WALK - 40, 680, STREET), raised_walk),
     "quad_cafe": Piece((990, 480, 1300, STREET), cafe),
     "quad_lecture_hall": Piece((1430, WALK - 40, 2330, STREET), lecture_hall),
