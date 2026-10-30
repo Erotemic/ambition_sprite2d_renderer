@@ -247,6 +247,28 @@ def _pose_for_motion(
         pose.root_y -= 8.0 * arc
         pose.body_tilt *= 0.55
         pose.whole_body_rotation = -72.0 * arc
+    elif animation == "fall":
+        # A loop: both arms thrown up and out (the near one up behind the
+        # head, the far one up in front), flapping, the legs dangling and
+        # kicking in turn, eyes wide. Every channel is a wave of the loop's
+        # phase, so its last frame runs into its first (the phase is the loop's,
+        # `frame_index / frame_count`). The angles are the
+        # side robot's, read as deltas from its rest (`make_clips`).
+        phase = frame_index / float(max(1, frame_count))
+        w = math.sin(phase * math.tau)
+        v = math.sin(phase * math.tau + 1.2)
+        pose.root_y = -3.0 + 1.5 * w
+        pose.body_tilt = -5.0 + 2.0 * v
+        pose.head_tilt = -2.0 + 1.5 * w
+        pose.near_arm_upper = 150 + 12 * w
+        pose.near_arm_lower = 134 + 18 * v
+        pose.far_arm_upper = 62 - 12 * w
+        pose.far_arm_lower = 46 - 18 * v
+        pose.near_leg_upper = 80 + 6 * w
+        pose.near_leg_lower = 96 + 8 * v
+        pose.far_leg_upper = 100 - 6 * w
+        pose.far_leg_lower = 82 - 8 * v
+        pose.eye_squint = 0.0
     elif animation == "fall_special":
         pose.root_y += 4.0 * t
         pose.body_tilt += 8.0
