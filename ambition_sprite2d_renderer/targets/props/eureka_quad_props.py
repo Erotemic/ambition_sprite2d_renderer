@@ -192,8 +192,27 @@ def court(c, k):
     balustrade(c, 1232, 1600, COURT_WALK)
 
 
+def busker(c, k):
+    """The busker's kit in the arcade's middle arch: a theremin on its stand
+    (a box, its pitch antenna up and its volume loop out), an open case with
+    a few coins and a card."""
+    g = COURT_FLOOR
+    tx = 1406
+    c.put(c.mask(lambda p: (p.line([(tx, g), (tx + 12, g - 40)], 2), p.line([(tx + 24, g), (tx + 12, g - 40)], 2), p.line([(tx + 12, g), (tx + 12, g - 40)], 2))), IRON)
+    c.put(c.mask(box(tx - 8, g - 52, tx + 32, g - 40)), OAK_DARK)
+    c.put(c.mask(lambda p: p.rect(tx - 8, g - 53, tx + 32, g - 51)), OAK)
+    c.put(c.mask(lambda p: (p.rect(tx + 28, g - 96, tx + 30, g - 52), p.ring(tx - 14, g - 50, 6, 1.6), p.line([(tx - 8, g - 48), (tx - 8, g - 46)], 1.6))), IRON_LIGHT)
+    c.put(c.mask(lambda p: [p.line([(tx + 34 + i * 6, g - 80 - i * 4), (tx + 38 + i * 6, g - 86 - i * 4)], 1.2) for i in range(3)]), LAMP, 0.7)
+    cx = 1466
+    c.put(c.mask(lambda p: p.poly([(cx - 18, g), (cx + 18, g), (cx + 16, g - 8), (cx - 16, g - 8)])), (60, 40, 50))
+    c.put(c.mask(lambda p: p.rect(cx - 15, g - 7, cx + 15, g - 2)), (150, 40, 60))
+    c.put(c.mask(lambda p: [p.ellipse(cx + dx, g - 5, 2) for dx in (-8, -2, 5)]), (230, 200, 90))
+    c.put(c.mask(lambda p: p.poly([(cx - 4, g - 8), (cx + 12, g - 12), (cx + 14, g - 4), (cx - 2, g - 2)])), TRIM)
+
+
 PIECES: Dict[str, Piece] = {
     "court_furniture": Piece((520, 470, 1600, COURT_FLOOR), court),
+    "court_busker": Piece((1380, COURT_FLOOR - 104, 1500, COURT_FLOOR), busker),
     "quad_raised_walk": Piece((16, WALK - 40, 680, STREET), raised_walk),
     "quad_cafe": Piece((990, 480, 1300, STREET), cafe),
     "quad_lecture_hall": Piece((1430, WALK - 40, 2330, STREET), lecture_hall),
