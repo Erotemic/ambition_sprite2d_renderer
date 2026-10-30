@@ -11,6 +11,9 @@ innkeeper behind it, the trapper by the fire.
 - `moor_inn_front`: a crooked timber inn leaning on its chimney, shutters
   lit from inside, its lantern hung askew on a bracket, the sign of a bent
   lantern, a water butt, a bench.
+- `moor_crypt_gate`, `crypt_room`: the gate down to the founder's crypt
+  beside his plinth, and the crypt: niches of bones, his busts (pointing),
+  the sarcophagus (its lid walked on), candles.
 - `inn_room`: low beams, a fire, the bar and its barrels, mugs on hooks,
   the castle's WANTED posters (the robot's among them) and, tucked behind a
   picture of the castle, the locals' map of the searchlights' blind spots.
@@ -141,7 +144,65 @@ def inn_room(c, k):
         c.light(c.mask(lambda p: p.ellipse(tx, g - 42, 30), blur=8), LAMP, 0.35)
 
 
+#: The crypt's gate on the moor (x 2290..2338, east of the founder's
+#: plinth) and the crypt inside: its floor, ceiling, the sarcophagus (x
+#: 1100..1300, its lid walked on at y 400).
+CRYPT_GATE = (2290, 2338)
+CRYPT_W, CRYPT_FLOOR, CRYPT_CEILING = 1600, 512, 32
+SARCOPHAGUS = (1100, 1300, 440)
+STONE = (78, 72, 76)
+STONE_LIGHT = (130, 122, 124)
+CANDLE = (255, 214, 140)
+
+
+def crypt_gate(c, k):
+    g = MOOR_FLOOR
+    d0, d1 = CRYPT_GATE
+    # A low stone porch over steps down, an iron gate ajar.
+    porch = c.mask(lambda p: p.poly([(d0 - 20, g), (d0 - 20, g - 104), (d0 - 26, g - 104), ((d0 + d1) / 2, g - 136), (d1 + 26, g - 104), (d1 + 20, g - 104), (d1 + 20, g)]))
+    c.put(porch, STONE)
+    c.tone(porch * (c.noise("crypt_porch", 4, 4, 2) - 0.5), 0.3)
+    c.put(c.mask(box(d0, g - 96, d1, g)), (14, 10, 12))
+    c.put(c.mask(lambda p: [p.rect(d0 + 4, y, d1 - 4, y + 3) for y in range(int(g - 30), int(g), 8)]), STONE_LIGHT, 0.5)
+    c.put(c.mask(lambda p: [p.rect(x, g - 96, x + 2, g) for x in range(d0 + 2, d0 + 24, 6)] + [p.rect(d0 + 2, g - 96, d0 + 24, g - 92)]), (60, 60, 64))
+    c.put(c.mask(lambda p: p.line([(d0 - 26, g - 104), ((d0 + d1) / 2, g - 136), (d1 + 26, g - 104)], 3)), STONE_LIGHT)
+    rim(c, porch, 0.4)
+
+
+def crypt_room(c, k):
+    g, top = CRYPT_FLOOR, CRYPT_CEILING
+    # Vaulted stone, niches of bones, candles.
+    wall = c.mask(box(16, top, CRYPT_W - 16, g))
+    c.put(wall, STONE)
+    c.put(wall * c.mask(lambda p: [p.rect(16, y, CRYPT_W - 16, y + 1.4) for y in range(top + 20, g, 24)]), scale(STONE, 0.7))
+    c.tone(wall * (c.noise("crypt_wall", 10, 4, 2) - 0.5), 0.25)
+    c.tone(wall * np.clip((200 - c.y) / 170, 0, 1), -0.35)
+    for x in range(140, CRYPT_W - 100, 220):
+        c.put(c.mask(lambda p: p.arch(x, 180, x + 90, 300)), (24, 20, 22))
+        c.put(c.mask(lambda p: [p.ellipse(x + 20 + i * 14, 292 - (i % 2) * 6, 7, 6) for i in range(5)]), (220, 210, 186))
+        c.put(c.mask(lambda p: [p.ellipse(x + 28 + i * 20, 296 - 14, 3, 2) for i in range(3)]), (40, 34, 30))
+    # Busts of the founder along the wall, each pointing.
+    for x in (320, 760, 1460):
+        c.put(c.mask(box(x - 26, g - 70, x + 26, g)), STONE_LIGHT)
+        bust = c.mask(lambda p: (p.ellipse(x, g - 104, 16, 20), p.poly([(x - 26, g - 70), (x + 26, g - 70), (x + 16, g - 88), (x - 16, g - 88)])))
+        c.put(bust, (70, 60, 44))
+        c.put(c.mask(lambda p: p.line([(x + 16, g - 80), (x + 44, g - 96)], 5)), (70, 60, 44))
+    # The sarcophagus: its lid is walked on.
+    s0, s1, lid = SARCOPHAGUS
+    c.put(c.mask(box(s0, lid, s1, g)), (90, 84, 90))
+    c.put(c.mask(lambda p: [p.rect(x, lid + 20, x + 28, g - 10) for x in range(s0 + 14, s1 - 20, 44)]), (70, 64, 70))
+    c.put(c.mask(lambda p: p.poly([(s0 - 6, lid), (s1 + 6, lid), (s1, lid + 10), (s0, lid + 10)])), (110, 104, 108))
+    c.put(c.mask(lambda p: p.line([(s0 + 30, lid + 2), ((s0 + s1) / 2, lid - 10), (s1 - 30, lid + 2)], 3)), (110, 104, 108))
+    # Candles, their light.
+    for x in (240, 560, 980, 1400):
+        c.put(c.mask(lambda p: (p.rect(x - 3, g - 22, x + 3, g), p.ellipse(x, g - 26, 2, 4))), (236, 228, 210))
+        c.put(c.mask(lambda p: p.ellipse(x, g - 28, 2, 4)), CANDLE)
+        c.light(c.mask(lambda p: p.ellipse(x, g - 30, 60), blur=14), CANDLE, 0.35)
+
+
 PIECES: Dict[str, Piece] = {
+    "moor_crypt_gate": Piece((2250, 500, 2384, MOOR_FLOOR), crypt_gate),
+    "crypt_room": Piece((16, CRYPT_CEILING, CRYPT_W - 16, CRYPT_FLOOR), crypt_room),
     "moor_inn_front": Piece((0, 400, 340, MOOR_FLOOR), inn_front),
     "inn_room": Piece((16, CEILING, W - 16, FLOOR), inn_room),
 }
