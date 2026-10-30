@@ -30,6 +30,9 @@ BAD_ROWS = (
     ("chomp", 7, 75),
     ("hurt", 3, 110),
     ("death", 7, 100),
+    ("notice", 4, 110),
+    ("windup", 4, 90),
+    ("attack_side", 7, 75),
 )
 GRAVITY_ROWS = (
     ("idle", 8, 115),
@@ -38,7 +41,26 @@ GRAVITY_ROWS = (
     ("flip", 8, 85),
     ("hurt", 3, 100),
     ("death", 7, 95),
+    ("notice", 4, 110),
+    ("windup", 4, 90),
+    ("attack_side", 7, 95),
 )
+
+# The rows an enemy reads by (`docs/planning/game/enemy-patterns.md`), drawn
+# from the apple's own attack: `notice`, a hop and a glare as it first sees
+# you; `windup`, the attack's widest frame held, leaning back (every frame the
+# full pose, with a shiver); `attack_side`, the attack played through. Each
+# entry: the source row, its frame count, the source frame of each of ours
+# (None plays it through), and the hop/lean of the pose.
+DERIVED_ROWS = {
+    "bad_apple": {
+        "notice": ("chomp", 7, (0, 1, 1, 1), "hop"),
+        "windup": ("chomp", 7, (3, 3, 3, 3), "lean"),
+        "attack_side": ("chomp", 7, None, None),
+    },
+    # The Gravity Apple's are drawn by its own art (`_gravity_apple_art.DERIVED`).
+    "gravity_apple": {},
+}
 
 
 def _n(v: float) -> str:
@@ -462,6 +484,22 @@ def frame_svg(kind: str, animation: str, frame: int, count: int) -> str:
         raise ValueError(f"Unknown {kind} animation: {animation}")
     if count < 1 or not 0 <= frame < count:
         raise ValueError("The frame index must be within the animation.")
+    derived = DERIVED_ROWS[kind].get(animation)
+    if derived is not None:
+        source, source_count, frames, pose = derived
+        if frames is None:
+            return _frame_svg(kind, source, round(frame * (source_count - 1) / max(1, count - 1)), source_count)
+        progress = frame / max(1, count - 1)
+        if pose == "hop":
+            nudge = (0.0, -14 * math.sin(math.pi * min(1.0, progress * 1.6)), .96, 1.05)
+        else:
+            nudge = (-7.0 + (1.2 if frame % 2 else -1.2), 2.0, .93, 1.07)
+        return _frame_svg(kind, source, frames[frame], source_count, nudge)
+    return _frame_svg(kind, animation, frame, count)
+
+
+def _frame_svg(kind: str, animation: str, frame: int, count: int, nudge=(0.0, 0.0, 1.0, 1.0)) -> str:
+    """`frame_svg` of one of the authored rows, moved by `nudge` (dx, dy, sx, sy)."""
     gravity = kind == "gravity_apple"
     phase = frame / count * math.tau
     progress = frame / max(1, count - 1)
@@ -509,6 +547,10 @@ def frame_svg(kind: str, animation: str, frame: int, count: int) -> str:
     if gravity:
         pieces.append(orbit_front)
 
+    x += nudge[0]
+    y += nudge[1]
+    sx *= nudge[2]
+    sy *= nudge[3]
     root = _g(
         "character_pose", "root", 0, "".join(pieces),
         f"translate({_n(256 + x)} {_n(254 + y)}) "

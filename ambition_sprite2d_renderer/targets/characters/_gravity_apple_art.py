@@ -315,9 +315,32 @@ def _fruit_parts(body_path: str, progress: float, animation: str, charge: float,
     ]
 
 
+# The rows an enemy reads by (`docs/planning/game/enemy-patterns.md`), drawn
+# from its charge: `notice` (a hop as it first sees you), `windup` (the
+# charge's fullest frame, held with a shiver) and `attack_side` (the charge
+# played through). Each: the source row, its frame count, the source frame of
+# each of ours (None plays it through).
+DERIVED = {
+    "notice": ("charge", 7, (0, 1, 2, 2)),
+    "windup": ("charge", 7, (4, 4, 4, 4)),
+    "attack_side": ("charge", 7, None),
+}
+
+
+def _source(animation: str, frame: int, count: int) -> tuple[str, int, int]:
+    """The authored row and frame a derived row's frame is drawn from."""
+    if animation not in DERIVED:
+        return animation, frame, count
+    source, source_count, frames = DERIVED[animation]
+    if frames is None:
+        return source, round(frame * (source_count - 1) / max(1, count - 1)), source_count
+    return source, frames[frame], source_count
+
+
 def parts(animation: str, frame: int, count: int, *, body_path: str) -> list[Part]:
     if count <= 0 or not (0 <= frame < count):
         raise ValueError("frame must be within the animation")
+    animation, frame, count = _source(animation, frame, count)
     if animation not in {"idle", "float", "charge", "flip", "hurt", "death"}:
         raise ValueError(f"unsupported Gravity Apple animation: {animation}")
     progress = frame / max(1, count - 1)
@@ -330,6 +353,14 @@ def parts(animation: str, frame: int, count: int, *, body_path: str) -> list[Par
 def _pose(animation: str, frame: int, count: int) -> str:
     # The root can translate and deform but never rotates. The game should
     # apply a physically interpolated roll to the whole assembled character.
+    x = 0.0
+    if animation == "notice":
+        x, hop = 0.0, -14 * math.sin(math.pi * min(1.0, frame / max(1, count - 1) * 1.6))
+    elif animation == "windup":
+        x, hop = (-6.0 + (1.2 if frame % 2 else -1.2)), 0.0
+    else:
+        hop = 0.0
+    animation, frame, count = _source(animation, frame, count)
     t = frame / count * math.tau
     progress = frame / max(1, count - 1)
     charge = _pulse(progress) if animation == "charge" else 0
@@ -344,7 +375,7 @@ def _pose(animation: str, frame: int, count: int) -> str:
         sx += .14 * progress
         sy -= .29 * progress
         y += 9 * progress
-    return f'translate(256 {_n(254+y)}) scale({_n(sx)} {_n(sy)}) translate(-256 -254)'
+    return f'translate({_n(256+x)} {_n(254+y+hop)}) scale({_n(sx)} {_n(sy)}) translate(-256 -254)'
 
 
 def frame_svg(
