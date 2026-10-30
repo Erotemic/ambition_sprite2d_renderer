@@ -20,8 +20,9 @@ design point to a pixel of the published frame.
 
 What the drawing shows and does not build:
 
-* where an actor can stand has moss on it (the hump of the back, the level
-  part of each horn), and each shoulder has an epaulet;
+* where an actor can stand has a trim on it (`stand_trim`: a gold rail with
+  studs over a crimson band with gilt points) on the hump of the back, the
+  level part of each horn and the top of each epaulet;
 * it has no bird, and no portal: those are the game's.
 """
 from __future__ import annotations
@@ -73,8 +74,6 @@ C = dict(
     iris="#f2b63a",
     iris_dark="#b47a1c",
     pupil="#120d0f",
-    moss="#77a04e",
-    moss_dark="#4a7232",
     bronze="#c9953f",
     bronze_dark="#7f5a1f",
     gold="#e2b64a",
@@ -82,6 +81,8 @@ C = dict(
     gold_dark="#a67a20",
     cloth="#7a2e2e",
     cloth_dark="#4f1c1c",
+    trim="#a8393a",
+    trim_dark="#6a2020",
     iris_hot="#f58a1f",
     flower="#f6efe0",
     white="#f4ecd8",
@@ -238,7 +239,7 @@ HUMP_POINTS = 20
 def hump_top(st):
     """The top of the beast in stance ``st``, from the rump to the join: up
     from the rump to the crest (steep first, then level), and down a little
-    to the join. Moss is on it: an actor stands on it."""
+    to the join. A trim is on it: an actor stands on it."""
     lx, ly = st["lift"]
     rx, ry = st["rump"]
     jx, jy = JOIN[0] + lx, JOIN[1] + ly
@@ -303,20 +304,10 @@ def beast(st):
         items.append(line([(x, y - 70), (x - 4, y - 20), (x - 2, y + 20)], C["deep"], 2.6))
     part("beast", "Beast", "beast", "torso", 30, outlined(sil, C["fur"], items, "clip-beast"))
 
-    # Moss along the top of the hump: where the moss is, you can stand.
-    ridge = top[1:]
-    under = []
-    for k, (x, y) in enumerate(ridge):
-        drip = 15.0 + (10.0 if k % 3 == 1 else 0.0) + 4.0 * math.sin(k * 1.9)
-        under.append((x + 3, y + drip))
-    moss = smooth([(x, y - 2) for x, y in ridge] + under[::-1])
-    light = smooth([(x, y - 2) for x, y in ridge] + [(x + 1, y + 6) for x, y in ridge[::-1]])
-    body = outlined(moss, C["moss"], [path(light, "#9cc46a")], "clip-beast-moss", width=3.0)
-    for k in (3, 9):
-        x, y = ridge[k]
-        for dx, h in ((-7, 13), (0, 18), (7, 12)):
-            body.append(line([(x + dx, y), (x + dx * 1.6 - 4, y - h)], C["moss_dark"], 3.0))
-    part("beast-moss", "Moss on the hump", "beast_moss", "torso", 32, body)
+    # The trim along the top of the hump: where the trim is, you can stand.
+    ridge = [(x, y - 2) for x, y in top[1:]]
+    body = stand_trim(ridge, _downs(ridge), "clip-beast-trim")
+    part("beast-trim", "Trim on the hump", "beast_trim", "torso", 32, body)
 
 
 def chest():
@@ -363,27 +354,74 @@ def epaulet(name, deck, outer):
              C["cloth"]),
     ], f"clip-{name}")
     body += [ellipse(inner + s * 20, top + 15, 7, 7, C["gold_light"], INK, 1.8)]
-    body += epaulet_moss(name, x0, x1, top)
+    body += epaulet_trim(name, x0, x1, top)
     part(name, name, name.replace("-", "_"), "chest", 46, body)
 
 
-def epaulet_moss(name, x0, x1, top):
-    """Moss on the top of an epaulet: the giant's language for "you can stand
-    here" (as on the hump and the horns). Its top is the board's top, the
-    line the game's shoulder ledge is on (`shoulder_decks_world`)."""
+def epaulet_trim(name, x0, x1, top):
+    """The trim on the top of an epaulet. Its top is the board's top, the line
+    the game's shoulder ledge is on (`shoulder_decks_world`)."""
     n = 10
     ridge = [(x0 + 4 + (x1 - x0 - 8) * k / n, top) for k in range(n + 1)]
+    return stand_trim(ridge, _downs(ridge), f"clip-{name}-trim")
+
+
+#: The trim that shows where an actor can stand: how deep its rail and its
+#: band are under the top line, and how far each gilt point hangs under the
+#: band (design units).
+TRIM_RAIL = 9.0
+TRIM_BAND = 22.0
+TRIM_POINT = 10.0
+
+
+def _downs(top):
+    """The unit normal of the line ``top`` at each of its points, to the
+    side under it (+y down)."""
+    out = []
+    n = len(top) - 1
+    for i in range(n + 1):
+        (ax, ay), (bx, by) = top[max(0, i - 1)], top[min(n, i + 1)]
+        d = math.hypot(bx - ax, by - ay) or 1.0
+        nx, ny = -(by - ay) / d, (bx - ax) / d
+        out.append((nx, ny) if ny >= 0 else (-nx, -ny))
+    return out
+
+
+def stand_trim(top, down, cid):
+    """The giant's sign for "you can stand here": a gold rail with studs on the
+    line ``top`` (the top of the surface) over a crimson band, and a gilt point
+    under the band between each two points of the line. ``down`` is the unit
+    normal at each point, to the side under the line. The top of its ink is
+    `TRIM_OVER` over the surface the game stands a body on."""
+
+    def at(i, depth):
+        return (top[i][0] + down[i][0] * depth, top[i][1] + down[i][1] * depth)
+
+    def mid(i, depth):
+        (ax, ay), (bx, by) = at(i, depth), at(i + 1, depth)
+        return ((ax + bx) * 0.5, (ay + by) * 0.5)
+
+    n = len(top) - 1
     under = []
-    for k, (x, y) in enumerate(ridge):
-        drip = 16.0 + (8.0 if k % 3 == 1 else 0.0) + 3.0 * math.sin(k * 1.9)
-        under.append((x + 2, y + drip))
-    moss = smooth([(ridge[0][0] - 3, top + 6, True)] + ridge + [(ridge[-1][0] + 3, top + 6, True)] + under[::-1])
-    light = smooth(ridge + [(x, y + 6) for x, y in ridge[::-1]])
-    body = outlined(moss, C["moss"], [path(light, "#9cc46a")], f"clip-{name}-moss", width=3.0)
-    for k in (2, 7):
-        x, y = ridge[k]
-        for dx, h in ((-7, 14), (0, 19), (7, 13)):
-            body.append(line([(x + dx, y), (x + dx * 1.6 - 3, y - h)], C["moss_dark"], 3.0))
+    for i in range(n + 1):
+        under.append(at(i, TRIM_BAND))
+        if i < n:
+            under.append(mid(i, TRIM_BAND + TRIM_POINT) + (True,))
+    sil = smooth([tuple(top[0]) + (True,)] + [tuple(p) for p in top[1:-1]] + [tuple(top[-1]) + (True,)] + under[::-1])
+    rail = smooth(list(top) + [at(i, TRIM_RAIL) for i in range(n, -1, -1)], closed=True)
+    shine = smooth(list(top) + [at(i, 2.5) for i in range(n, -1, -1)], closed=True)
+    items = [path(rail, C["gold"]), path(shine, C["gold_light"]),
+             line([at(i, TRIM_RAIL) for i in range(n + 1)], C["gold_dark"], 2.2, closed=False)]
+    for i in range(n):
+        x, y = mid(i, TRIM_BAND + 1.0)
+        items.append(line([mid(i, TRIM_RAIL + 1.0), (x, y)], C["trim_dark"], 1.6, closed=False))
+    body = outlined(sil, C["trim"], items, cid, width=3.0)
+    for i in range(n):
+        x, y = mid(i, TRIM_BAND + TRIM_POINT - 1.0)
+        body.append(ellipse(x, y, 4.2, 4.2, C["gold"], INK, 1.6))
+    for i in range(1, n, 2):
+        x, y = at(i, TRIM_RAIL * 0.5)
+        body.append(ellipse(x, y, 3.0, 3.0, C["white"], C["gold_dark"], 1.2))
     return body
 
 
@@ -455,20 +493,19 @@ def horn(cid, pts, mirror):
     return outlined(sil, C["horn"], items, cid)
 
 
-def gnu_horn_moss(cid, pts, s):
-    top, under = [], []
-    steps = 12
+def horn_trim(cid, pts, s, u0, u1, steps):
+    """The trim on the top of a horn, from ``u0`` to ``u1`` along its spline
+    (`catmull`): a place an actor can stand."""
+    top, down = [], []
     for k in range(steps + 1):
-        u = 0.55 + (2.5 - 0.55) * k / steps
+        u = u0 + (u1 - u0) * k / steps
         (x, y), (dx, dy) = catmull(pts, u)
         d = math.hypot(dx, dy)
         nx, ny = s * dy / d, -s * dx / d
         r = 38.0 + (4.0 - 38.0) * u / (len(pts) - 1)
         top.append((x + nx * (r + 3), y + ny * (r + 3)))
-        drip = 10.0 + (9.0 if k % 3 == 1 else 0.0) + 4.0 * math.sin(k * 1.9)
-        under.append((x + nx * (r - drip), y + ny * (r - drip)))
-    return outlined(smooth(top + under[::-1]), C["moss"],
-                    [path(smooth(top + [(x, y + 7) for x, y in top[::-1]]), "#9cc46a")], cid, width=3.0)
+        down.append((-nx, -ny))
+    return stand_trim(top, down, cid)
 
 
 def _ear(s, cid):
@@ -487,7 +524,7 @@ def _ear(s, cid):
 
 
 def gnu_horn_body():
-    """The horns of a gnu, with their moss: out to each side, down a little,
+    """The horns of a gnu, with their trim: out to each side, down a little,
     and then up to a point. No ears, unturned."""
     cx, cy = HEAD
 
@@ -499,7 +536,7 @@ def gnu_horn_body():
         pts = [P(s * 40, -104), P(s * 124, -90), P(s * 206, -66), P(s * 268, -92), P(s * 292, -170), P(s * 270, -250),
                P(s * 244, -296)]
         back += horn(cid, pts, s < 0)
-        back += gnu_horn_moss(cid + "-moss", [tuple(p[:2]) for p in pts], s)
+        back += horn_trim(cid + "-trim", [tuple(p[:2]) for p in pts], s, 0.55, 2.5, 12)
     return back
 
 
@@ -519,24 +556,6 @@ def gnu_horns(expr):
     return grp(back, f"rotate({e['tilt']} {cx} {cy + 120})")
 
 
-def horn_moss(cid, pts, s):
-    """Moss on the top of a horn: a place an actor can stand."""
-    top, under = [], []
-    steps = 14
-    for k in range(steps + 1):
-        u = 0.95 + (2.55 - 0.95) * k / steps
-        (x, y), (dx, dy) = catmull(pts, u)
-        d = math.hypot(dx, dy)
-        nx, ny = s * dy / d, -s * dx / d
-        r = 38.0 + (4.0 - 38.0) * u / (len(pts) - 1)
-        top.append((x + nx * (r + 3), y + ny * (r + 3)))
-        drip = 10.0 + (9.0 if k % 3 == 1 else 0.0) + 4.0 * math.sin(k * 1.9)
-        under.append((x + nx * (r - drip), y + ny * (r - drip)))
-    sil = smooth(top + under[::-1])
-    light = smooth(top + [(x, y + 7) for x, y in top[::-1]])
-    return outlined(sil, C["moss"], [path(light, "#9cc46a")], cid, width=3.0)
-
-
 def curl_horn_body():
     """The horns of the first design, greater: up and out from the brow, round,
     and in again, each one over a shoulder. Not the horns of the design now.
@@ -551,7 +570,7 @@ def curl_horn_body():
         pts = [P(s * 46, -108), P(s * 132, -176), P(s * 232, -156), P(s * 284, -62), P(s * 262, 26), P(s * 204, 62),
                P(s * 158, 40)]
         back += horn(cid, pts, s < 0)
-        back += horn_moss(cid + "-moss", [tuple(p[:2]) for p in pts], s)
+        back += horn_trim(cid + "-trim", [tuple(p[:2]) for p in pts], s, 0.95, 2.55, 14)
     return back
 
 
@@ -1311,8 +1330,8 @@ WORLD_PER_PIXEL = 1.3
 #: Where the left side of the torso covers the hump at rest (final): the walk
 #: line ends there, and a body goes up from it to the shoulders.
 TORSO_EDGE_X = 824.0
-#: How far over the top line the top of the moss is drawn (its edge and ink).
-MOSS_OVER = 3.5
+#: How far over the top line the top of the trim is drawn (its edge and ink).
+TRIM_OVER = 3.5
 
 
 #: The standing surfaces of the giant, by the name the sheet publishes them
@@ -1358,7 +1377,7 @@ def hump_line_world(points: int = 11):
         x = x0 + (TORSO_EDGE_X - x0) * k / (points - 1)
         i = min(len(top) - 2, max(0, int((x - x0) / (top[1][0] - x0))))
         (ax, ay), (bx, by) = top[i], top[i + 1]
-        y = ay + (by - ay) * (x - ax) / (bx - ax) - MOSS_OVER
+        y = ay + (by - ay) * (x - ax) / (bx - ax) - TRIM_OVER
         px, py = to_frame((x, y))
         out.append((round((px - cx) * WORLD_PER_PIXEL, 1), round((py - cy) * WORLD_PER_PIXEL, 1)))
     return out
