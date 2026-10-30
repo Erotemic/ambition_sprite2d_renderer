@@ -12,8 +12,8 @@ cook at the hearth, the porter at his desk, the steward at the long table.
   sacks of turnips; hams and onions from the vault; the night porter's nook (the visitors' book open, a
   lantern, the key board); the long table and its benches under the
   henchpersons' guild notice board; the castle's poster with a moustache
-  drawn on it; the dumbwaiter up to the great hall; a mouse hole, its trap
-  sprung and empty.
+  drawn on it; the dumbwaiter up to the great hall; the door to the
+  Complaints Department; a mouse hole, its trap sprung and empty.
 
 Animations: ``idle``, 1 frame. No drop shadows.
 """
@@ -151,12 +151,59 @@ def room(c, k):
     c.put(c.mask(lambda p: (p.rect(1182, 136, 1254, 144), p.rect(1182, g - 124, 1254, g - 116))), WOOD_DARK)
     c.put(c.mask(lambda p: (p.rect(1198, 144, 1200, g - 124), p.rect(1236, 144, 1238, g - 124))), (190, 170, 120))
     c.put(c.mask(box(1194, g - 180, 1242, g - 128)), WOOD)
+    # The door to the Complaints Department (the room's door zone x 1130..1178).
+    c.put(c.mask(box(1124, FLOOR - 104, 1184, FLOOR)), WOOD_DARK)
+    c.put(c.mask(box(1130, FLOOR - 96, 1178, FLOOR)), WOOD)
+    c.put(c.mask(lambda p: [p.rect(x, FLOOR - 96, x + 1, FLOOR) for x in range(1138, 1178, 10)]), WOOD_DARK)
+    c.put(c.mask(box(1136, FLOOR - 88, 1172, FLOOR - 76)), PAPER)
+    c.put(c.mask(lambda p: [p.rect(1140, y, 1168, y + 1) for y in (FLOOR - 85, FLOOR - 81)]), (90, 80, 70))
+    c.put(c.mask(lambda p: p.ellipse(1172, FLOOR - 48, 2.5)), (200, 170, 90))
     # A mouse hole, and its trap, sprung and empty.
     c.put(c.mask(lambda p: p.ellipse(1100, g, 10, 12)) * (c.y < g), (14, 10, 12))
     c.put(c.mask(lambda p: (p.rect(1060, g - 4, 1084, g), p.line([(1062, g - 4), (1078, g - 10)], 1.4))), WOOD_LIGHT)
 
 
+#: The Complaints Department (`castle_godwin_complaints`): its floor,
+#: ceiling, the counter (x 420..900) and its two windows.
+COMPLAINTS_W, COMPLAINTS_FLOOR = 960, 384
+
+
+def complaints(c, k):
+    g = COMPLAINTS_FLOOR
+    wall = c.mask(box(16, CEILING, COMPLAINTS_W - 16, g))
+    c.put(wall, (120, 118, 100))
+    c.put(wall * c.mask(lambda p: [p.rect(16, y, COMPLAINTS_W - 16, y + 1) for y in range(CEILING + 30, g, 30)]), (100, 98, 84), 0.6)
+    c.put(c.mask(box(16, g - 60, COMPLAINTS_W - 16, g)), (80, 70, 60))
+    # The counter: two windows, both shuttered, CLOSED on each.
+    c.put(c.mask(box(420, g - 70, 900, g)), WOOD_DARK)
+    edge_line(c, 414, 906, g - 72, WOOD_LIGHT, 4)
+    for wx in (470, 690):
+        c.put(c.mask(box(wx, 120, wx + 160, g - 76)), (40, 36, 40))
+        c.put(c.mask(lambda p: [p.rect(wx + 4, y, wx + 156, y + 4) for y in range(124, int(g - 80), 8)]), (140, 136, 130))
+        c.put(c.mask(box(wx + 40, 196, wx + 120, 222)), RED)
+        c.put(c.mask(lambda p: [p.rect(wx + 48 + i * 14, 205, wx + 56 + i * 14, 213) for i in range(5)]), (236, 228, 210))
+    # The ticket machine and NOW SERVING: 3.
+    c.put(c.mask(lambda p: (p.rect(314, g - 44, 318, g), p.rect(304, g - 4, 328, g), p.rect(306, g - 62, 326, g - 44), p.ellipse(316, g - 62, 10, 4))), RED)
+    c.put(c.mask(box(312, g - 52, 320, g - 48)), (236, 228, 210))
+    c.put(c.mask(lambda p: p.poly([(318, g - 50), (326, g - 46), (324, g - 40), (316, g - 44)])), (236, 228, 210))
+    c.put(c.mask(box(560, 60, 740, 104)), (20, 20, 24))
+    c.put(c.mask(lambda p: (p.line([(700, 70), (712, 66), (716, 76), (708, 82), (716, 88), (712, 98), (700, 94)], 3))), (255, 120, 60))
+    # Chairs in a queue, a drift of forms, the suggestions box padlocked.
+    for x in range(80, 280, 46):
+        c.put(c.mask(lambda p: (p.rect(x, g - 30, x + 30, g - 26), p.rect(x + 26, g - 56, x + 30, g - 26), p.rect(x + 2, g - 26, x + 5, g), p.rect(x + 25, g - 26, x + 28, g))), (90, 96, 110))
+    rng = c.rand("forms")
+    for i in range(40):
+        x, y = rng.uniform(910, 940), g - 6 - i * 5
+        c.put(c.mask(lambda p: p.rect(x - 14, y, x + 14, y + 4)), (226, 214, 180))
+    # The suggestions box on its post, padlocked.
+    c.put(c.mask(lambda p: (p.rect(377, g - 34, 383, g), p.rect(368, g - 4, 392, g))), WOOD_DARK)
+    c.put(c.mask(box(360, g - 64, 400, g - 34)), WOOD)
+    c.put(c.mask(box(372, g - 66, 388, g - 62)), (20, 20, 20))
+    c.put(c.mask(lambda p: (p.line([(360, g - 49), (400, g - 49)], 2), p.ring(380, g - 38, 5, 2))), (160, 160, 170))
+
+
 PIECES: Dict[str, Piece] = {
+    "complaints_room": Piece((16, CEILING, COMPLAINTS_W - 16, COMPLAINTS_FLOOR), complaints),
     "castle_kitchens_room": Piece((16, CEILING, W - 16, FLOOR), room),
 }
 
