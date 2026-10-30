@@ -1,16 +1,20 @@
 """The Searchlight Ridge (`evil_searchlight_ridge`, the Evil dimension): high
 over the moor and the allotments, the line of searchlights the moor is named
 for, reached up the moor's watchtower; at its west end a gap in the ridge
-drops onto the allotments' greenhouse roof.
+drops onto the allotments' greenhouse roof, and a plank bridge over it
+goes on west to Gallows Hill.
 
 Drawn in room coordinates (`_district_props`) on the numbers of
 `tools/ambition_ldtk_tools/specs/evil_moor/make_specs.py` (`ridge`): the
 ridge's ground (y 480 down to the room's foot at 544), the gap over the
-greenhouse (x 70..450), the hole the watchtower's top comes up through
+greenhouse (x 70..450), bridged at the ridge's ground (dropped through), the
+way west to the hill at the ridge's ground (x 0..70); the hole the watchtower's top comes up through
 (x 3100..3220).
 
 - `ridge_west`: the broken end of the ridge over the gap, its edge fallen
-  away; barbed wire; a searchlight emplacement, its beam sweeping the sky.
+  away; the plank bridge over it, planks missing, on ropes to posts; the
+  stub of rock beyond, the way on west; barbed wire; a searchlight
+  emplacement, its beam sweeping the sky.
 - `ridge_east`: the sentry hut; two more searchlights, their beams; a line
   of cable on poles between them; the top of the watchtower coming up
   through the ridge.
@@ -72,8 +76,18 @@ def wire(c, x0, x1, y):
 
 def west(c, k):
     g0, g1 = GAP
-    # The broken end over the gap: the rock falls away to the west.
-    c.put(c.mask(lambda p: p.poly([(16, FOOT), (16, G + 30), (g0, G + 60), (g0 + 20, FOOT)])), ROCK)
+    # The stub of rock west of the gap (the way on to the hill), and the
+    # broken end of the ridge falling away into the gap.
+    stub = c.mask(lambda p: p.poly([(16, FOOT), (16, G), (g0, G), (g0 + 10, G + 40), (g0 - 10, FOOT)]))
+    c.put(stub, ROCK)
+    rim(c, stub, 0.35)
+    # The plank bridge over the gap: planks on two ropes, some missing (it is
+    # dropped through), a post at each end.
+    c.put(c.mask(lambda p: [p.rect(x, G - 50, x + 8, G + 6) for x in (g0 - 14, g1 + 6)]), TIMBER)
+    c.put(c.mask(lambda p: [p.line([(g0 - 10, G - 46), ((g0 + g1) / 2, G - 20), (g1 + 10, G - 46)], 1.4),
+                            p.line([(g0, G + 2), (g1, G + 2)], 1.4)]), WIRE)
+    missing = {3, 4, 9, 13, 14, 15}
+    c.put(c.mask(lambda p: [p.rect(x, G, x + 16, G + 6) for i, x in enumerate(range(g0, g1 - 8, 20)) if i not in missing]), (120, 92, 70))
     ground(c, g1, 1800)
     c.put(c.mask(lambda p: p.poly([(g1, G), (g1 - 30, G + 30), (g1 - 10, FOOT), (g1 + 10, FOOT)])), ROCK)
     wire(c, g1 + 40, g1 + 400, G)
