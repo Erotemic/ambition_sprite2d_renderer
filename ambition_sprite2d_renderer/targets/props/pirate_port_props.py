@@ -376,7 +376,8 @@ def chandlery(c, k):
 
 def net_loft(c, k):
     """The net loft at the east end, its roof terrace the walk line (y 384,
-    x 2080..2560); nets hang to dry over the street."""
+    x 2080..2560); nets hang to dry over the street; its door in to the
+    sail loft."""
     x0, x1 = 2080, 2560
     g = STREET
     k.ground = g
@@ -385,6 +386,8 @@ def net_loft(c, k):
     for cx in (2150, 2260, 2370, 2480):
         k.window(cx, ROOF_B + 50, 24, 36, "rect", shutters=SEA_GREEN, lit=0.1, tag=("lf_w", cx))
     planks(c, k, x0, g - 150, x1, g, PLANK, step=8, vertical=True, tag="loft_low")
+    # The door in to the sail loft (the room's door zone, x 2300..2348).
+    k.door(2324, 48, 96, TIMBER, arch=False, step=False, tag="loft_door")
     # Nets on poles down the front.
     for i, nx in enumerate((2120, 2300)):
         net = c.mask(lambda p: p.poly([(nx, g - 260), (nx + 120, g - 260), (nx + 110, g - 160), (nx + 10, g - 170)]))
