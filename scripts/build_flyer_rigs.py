@@ -89,10 +89,14 @@ class Flyer:
     death_shift: float = 0.0
 
 
+#: The game holds ``notice`` while a bird first sees its foe, and ``windup``
+#: over the tell before its dive (and over a swing's startup). Both loop on
+#: the game's clock, so every frame is the whole pose with a shiver.
+TELL_ROWS = (("notice", 3, 120, False), ("windup", 3, 90, False))
 SMALL_ROWS = (("idle", 8, 110, True), ("walk", 6, 80, True), ("fly", 8, 56, True), ("slash", 7, 64, False),
-              ("taunt", 8, 90, True), ("hurt", 4, 92, False), ("death", 8, 108, False))
+              ("taunt", 8, 90, True), ("hurt", 4, 92, False), ("death", 8, 108, False)) + TELL_ROWS
 LARGE_ROWS = (("idle", 8, 140, True), ("walk", 8, 120, True), ("fly", 10, 100, True), ("slash", 8, 78, False),
-              ("taunt", 8, 130, True), ("hurt", 4, 92, False), ("death", 8, 108, False))
+              ("taunt", 8, 130, True), ("hurt", 4, 92, False), ("death", 8, 108, False)) + TELL_ROWS
 
 FLYERS = [
     Flyer("european_swallow", "European Swallow", (252.0, 346.0), 404.0, 14.0, -2.0, 0.25, (128, 128), (22.0, 36.0),
@@ -301,7 +305,65 @@ def clips(f: Flyer) -> Dict[str, Callable[[int, int, float], Pose]]:
         p["fx.drift"] = K([0, 0, 0, 0.3, 0.6, 0.8, 1, 1], t)
         return p
 
+    def hold(t: float) -> Pose:
+        """Held in the air on raised wings (no beat), feet tucked."""
+        p = flight(0.0)
+        p["root_y"] = f.height
+        return p
+
+    def notice(i: int, n: int, t: float) -> Pose:
+        """It has seen its foe: pulled up short in the air, the wings flung
+        up high, the head snapped round and down onto the foe, the tail
+        fanned."""
+        shiver = K([0, 1, -1], t)
+        p = hold(t)
+        p["root_x"] = -6.0
+        p["body"] = f.pitch - 22.0
+        p["head"] = -0.85 * p["body"] + 14.0 + shiver
+        p["jaw"] = 8.0
+        p["tail1"] = 14.0
+        p["tail2"] = 6.0
+        for side, k in (("near", 1.0), ("far", 0.9)):
+            p[f"{side}_wing"] = k * (8.0 + 3.0 * shiver)
+            p[f"{side}_hand"] = -10.0 - 2.0 * shiver
+        tuck(p)
+        p.update(eyes("open"))
+        return p
+
+    def windup(i: int, n: int, t: float) -> Pose:
+        """The tell before the dive, held over its foe: the body pitched
+        nose-down at the foe below, the wings flared up and back (a swallow
+        sweeps them back; the vulture mantles them high with its bare neck
+        drawn in), the beak readied."""
+        shiver = K([0, 1, -1], t)
+        p = hold(t)
+        if f.attack == "dart":
+            p["root_x"] = -8.0
+            p["body"] = f.pitch + 28.0
+            p["head"] = -0.85 * f.pitch - 6.0 + shiver
+            p["jaw"] = 10.0
+            p["tail1"] = -10.0
+            p["tail2"] = -6.0
+            wing, hand = -48.0, -30.0
+        else:
+            p["root_x"] = -10.0
+            p["root_y"] = f.height - 6.0
+            p["body"] = f.pitch + 16.0
+            p["head"] = -0.85 * f.pitch - 8.0 + shiver
+            p["jaw"] = 16.0
+            p["tail1"] = -16.0
+            p["tail2"] = -6.0
+            wing, hand = 10.0, -26.0
+        for side, k in (("near", 1.0), ("far", 0.9)):
+            p[f"{side}_wing"] = k * (wing + 3.0 * shiver)
+            p[f"{side}_hand"] = hand - 2.0 * shiver
+        tuck(p)
+        p.update(eyes("angry"))
+        return p
+
     return {
+        "notice": notice,
+        "windup": windup,
         "idle": idle,
         "walk": hop if f.walk == "hop" else step,
         "fly": fly,

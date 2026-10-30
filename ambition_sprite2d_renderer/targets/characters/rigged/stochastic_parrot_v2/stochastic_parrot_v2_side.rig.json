@@ -7877,6 +7877,304 @@
      ]
     }
    }
+  },
+  "notice": {
+   "loop": false,
+   "frames": 3,
+   "duration_ms": 120,
+   "channels": {
+    "body": {
+     "const": 14.0
+    },
+    "eye.angry": {
+     "const": 0.0
+    },
+    "eye.dead": {
+     "const": 0.0
+    },
+    "eye.open": {
+     "const": 1.0
+    },
+    "eye.shut": {
+     "const": 0.0
+    },
+    "far_foot_lift": {
+     "const": 16.299
+    },
+    "far_foot_pitch": {
+     "const": 44.0
+    },
+    "far_foot_x": {
+     "const": 0.283
+    },
+    "far_hand": {
+     "keys": [
+      [
+       0.0,
+       -12.0
+      ],
+      [
+       0.5,
+       -14.0
+      ],
+      [
+       1.0,
+       -10.0
+      ]
+     ]
+    },
+    "far_wing": {
+     "keys": [
+      [
+       0.0,
+       12.6
+      ],
+      [
+       0.5,
+       15.3
+      ],
+      [
+       1.0,
+       9.9
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       2.8
+      ],
+      [
+       0.5,
+       3.8
+      ],
+      [
+       1.0,
+       1.8
+      ]
+     ]
+    },
+    "jaw": {
+     "const": 12.0
+    },
+    "near_foot_lift": {
+     "const": 14.967
+    },
+    "near_foot_pitch": {
+     "const": 44.0
+    },
+    "near_foot_x": {
+     "const": 3.558
+    },
+    "near_hand": {
+     "keys": [
+      [
+       0.0,
+       -12.0
+      ],
+      [
+       0.5,
+       -14.0
+      ],
+      [
+       1.0,
+       -10.0
+      ]
+     ]
+    },
+    "near_wing": {
+     "keys": [
+      [
+       0.0,
+       14.0
+      ],
+      [
+       0.5,
+       17.0
+      ],
+      [
+       1.0,
+       11.0
+      ]
+     ]
+    },
+    "root_x": {
+     "const": -1.5
+    },
+    "root_y": {
+     "const": -11.0
+    },
+    "tail1": {
+     "const": 16.0
+    },
+    "tail2": {
+     "const": 8.0
+    },
+    "wing.folded": {
+     "const": 0.0
+    },
+    "wing.open": {
+     "const": 1.0
+    }
+   }
+  },
+  "windup": {
+   "loop": false,
+   "frames": 3,
+   "duration_ms": 90,
+   "channels": {
+    "body": {
+     "const": 58.0
+    },
+    "eye.angry": {
+     "const": 1.0
+    },
+    "eye.dead": {
+     "const": 0.0
+    },
+    "eye.open": {
+     "const": 0.0
+    },
+    "eye.shut": {
+     "const": 0.0
+    },
+    "far_foot_lift": {
+     "const": 17.864
+    },
+    "far_foot_pitch": {
+     "const": 88.0
+    },
+    "far_foot_x": {
+     "const": -11.156
+    },
+    "far_hand": {
+     "keys": [
+      [
+       0.0,
+       -30.0
+      ],
+      [
+       0.5,
+       -32.0
+      ],
+      [
+       1.0,
+       -28.0
+      ]
+     ]
+    },
+    "far_wing": {
+     "keys": [
+      [
+       0.0,
+       10.8
+      ],
+      [
+       0.5,
+       13.5
+      ],
+      [
+       1.0,
+       8.1
+      ]
+     ]
+    },
+    "fx.notes": {
+     "const": 1.0
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       -42.4
+      ],
+      [
+       0.5,
+       -41.4
+      ],
+      [
+       1.0,
+       -43.4
+      ]
+     ]
+    },
+    "jaw": {
+     "keys": [
+      [
+       0.0,
+       30.0
+      ],
+      [
+       0.5,
+       32.0
+      ],
+      [
+       1.0,
+       28.0
+      ]
+     ]
+    },
+    "near_foot_lift": {
+     "const": 14.631
+    },
+    "near_foot_pitch": {
+     "const": 88.0
+    },
+    "near_foot_x": {
+     "const": -9.725
+    },
+    "near_hand": {
+     "keys": [
+      [
+       0.0,
+       -30.0
+      ],
+      [
+       0.5,
+       -32.0
+      ],
+      [
+       1.0,
+       -28.0
+      ]
+     ]
+    },
+    "near_wing": {
+     "keys": [
+      [
+       0.0,
+       12.0
+      ],
+      [
+       0.5,
+       15.0
+      ],
+      [
+       1.0,
+       9.0
+      ]
+     ]
+    },
+    "root_x": {
+     "const": -2.5
+    },
+    "root_y": {
+     "const": -11.0
+    },
+    "tail1": {
+     "const": -20.0
+    },
+    "tail2": {
+     "const": -8.0
+    },
+    "wing.folded": {
+     "const": 0.0
+    },
+    "wing.open": {
+     "const": 1.0
+    }
+   }
   }
  },
  "sprite_tuning": {

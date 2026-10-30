@@ -55,6 +55,11 @@ ROWS = [
     ("taunt", 10, 100, True),
     ("hurt", 4, 92, False),
     ("death", 8, 108, False),
+    # The game holds ``notice`` while it first sees its foe, and ``windup``
+    # over the tell before its dive (and over a swing's startup). Both loop
+    # on the game's clock, so every frame is the whole pose with a shiver.
+    ("notice", 3, 120, False),
+    ("windup", 3, 90, False),
 ]
 
 K = track
@@ -231,6 +236,55 @@ def death(i: int, n: int, t: float) -> Pose:
     return p
 
 
+def hold() -> Pose:
+    """Held in the air on raised wings (no beat), feet tucked."""
+    p = flight(0.0)
+    p["root_y"] = -44.0
+    return p
+
+
+def notice(i: int, n: int, t: float) -> Pose:
+    """It has seen its foe: pulled up short in the air, the wings flung up
+    high, the great face snapped round and down onto the foe, the tail
+    fanned."""
+    shiver = K([0, 1, -1], t)
+    p = hold()
+    p["root_x"] = -6.0
+    p["body"] = 20.0
+    p["head"] = -0.9 * p["body"] + 16.0 + shiver
+    p["tail1"] = 16.0
+    p["tail2"] = 6.0
+    for side, k in (("near", 1.0), ("far", 0.9)):
+        p[f"{side}_wing"] = k * (10.0 + 3.0 * shiver)
+        p[f"{side}_hand"] = -12.0 - 2.0 * shiver
+    tuck(p)
+    p.update(eyes("open"))
+    return p
+
+
+def windup(i: int, n: int, t: float) -> Pose:
+    """The tell before the dive, held over its foe: the body pitched
+    nose-down at the foe below, the face disc fixed downward on it, the
+    wings flared up and back, the talons out and open."""
+    shiver = K([0, 1, -1], t)
+    p = hold()
+    p["root_x"] = -10.0
+    p["body"] = 62.0
+    p["head"] = -0.9 * 62.0 + 30.0 + 0.5 * shiver
+    p["tail1"] = -18.0
+    p["tail2"] = -6.0
+    for side, k in (("near", 1.0), ("far", 0.9)):
+        p[f"{side}_wing"] = k * (6.0 + 3.0 * shiver)
+        p[f"{side}_hand"] = -28.0 - 2.0 * shiver
+    # The talons reach forward and down at the foe (a point ahead of and
+    # below the body joint, carried into the pitched body's frame).
+    a = math.radians(p["body"])
+    for side, (wx, wy) in (("near", (52.0, 54.0)), ("far", (40.0, 58.0))):
+        foot(p, side, (wx * math.cos(a) + wy * math.sin(a), -wx * math.sin(a) + wy * math.cos(a)))
+    p.update(eyes("angry"))
+    return p
+
+
 CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "idle": idle,
     "walk": walk,
@@ -239,6 +293,8 @@ CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "taunt": taunt,
     "hurt": hurt,
     "death": death,
+    "notice": notice,
+    "windup": windup,
 }
 
 DEFAULTS: Pose = {"eye.open": 1.0, "wing.folded": 1.0, "wing.open": 0.0}
