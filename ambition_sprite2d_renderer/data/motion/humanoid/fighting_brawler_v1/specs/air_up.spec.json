@@ -1,39 +1,36 @@
 {
   "clip": "air_up",
-  "note": "up air: a full backward somersault, the extended leg sweeping a circle over the top.",
+  "note": "air_up: keys in devtools/polygon_keys.py, fitted to the Smash stage's clock; the hit window is the clock's active frames.",
+  "effect": "wind",
+  "facing": "east",
   "strike": {
     "base": "near_leg_l",
     "tip": "near_leg_foot"
   },
-  "effect": "wind",
-  "facing": "east",
   "hitbox": {
     "active": [
-      1,
       2,
-      3,
-      4
+      3
     ],
     "extend": 1.06
   },
   "wind": {
     "window": 4,
-    "inner": 0.18,
+    "subdiv": 8,
+    "inner": 0.3,
+    "alpha": 170,
+    "core_alpha": 220,
     "blur": 0.8,
-    "alpha": 155,
-    "core_alpha": 190,
-    "falloff": 1.8,
-    "streaks": 5,
-    "spread": 0.66,
-    "body_rgb": [
-      188,
-      224,
-      246
-    ],
-    "core_rgb": [
-      255,
-      255,
-      255
+    "falloff": 1.5,
+    "streaks": 4,
+    "spread": 0.36,
+    "active": [
+      1,
+      2,
+      3,
+      4
     ]
-  }
+  },
+  "airborne": true,
+  "pixel_invariants": []
 }

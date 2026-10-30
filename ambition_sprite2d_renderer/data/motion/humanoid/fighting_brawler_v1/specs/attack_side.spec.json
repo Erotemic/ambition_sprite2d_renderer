@@ -1,12 +1,12 @@
 {
   "clip": "attack_side",
-  "note": "side tilt: a rising hook, low to high.",
+  "note": "attack_side: keys in devtools/polygon_keys.py, fitted to the Smash stage's clock; the hit window is the clock's active frames.",
+  "effect": "wind",
+  "facing": "east",
   "strike": {
     "base": "near_arm_l",
     "tip": "near_arm_hand"
   },
-  "effect": "wind",
-  "facing": "east",
   "hitbox": {
     "active": [
       2,
@@ -16,23 +16,24 @@
     "extend": 1.06
   },
   "wind": {
-    "window": 3,
-    "inner": 0.24,
-    "blur": 0.7,
-    "alpha": 150,
-    "core_alpha": 185,
-    "falloff": 2.0,
+    "window": 4,
+    "subdiv": 8,
+    "inner": 0.3,
+    "alpha": 170,
+    "core_alpha": 220,
+    "blur": 0.8,
+    "falloff": 1.5,
     "streaks": 4,
-    "spread": 0.46,
-    "body_rgb": [
-      188,
-      224,
-      246
-    ],
-    "core_rgb": [
-      255,
-      255,
-      255
+    "spread": 0.36,
+    "active": [
+      1,
+      2,
+      3,
+      4,
+      5
     ]
-  }
+  },
+  "pixel_invariants": [
+    "hitbox_in_front"
+  ]
 }

@@ -1,63 +1,41 @@
 {
   "clip": "air_back",
-  "note": "back air: the forward tilt's rising sweep, turned around. She faces west, so it climbs on the EAST side and every part of it must land behind her -- an aerial that hits in front is not a back air.",
-  "facing": "west",
-  "airborne": true,
-  "sword_deg": [
-    105,
-    62,
-    25,
-    350,
-    320,
-    300
-  ],
-  "elbow": [
-    -60,
-    -34,
-    -10,
-    -4,
-    -18,
-    -40
-  ],
-  "torso": [
-    4,
-    0,
-    -6,
-    -12,
-    -10,
-    -4
-  ],
+  "note": "air_back: keys in devtools/polygon_keys.py, fitted to the Smash stage's clock; the hit window is the clock's active frames.",
   "effect": "trail",
+  "facing": "west",
+  "hitbox": {
+    "active": [
+      2,
+      3
+    ]
+  },
   "trail": {
     "window": 4,
-    "inner": 0.46,
-    "blur": 0.9,
-    "alpha": 150,
-    "core_alpha": 170,
-    "falloff": 1.5,
+    "subdiv": 8,
+    "inner": 0.5,
+    "alpha": 190,
+    "core_alpha": 245,
+    "blur": 1.0,
+    "falloff": 1.3,
+    "taper": 0.55,
+    "edge_width": 3.0,
     "body_rgb": [
       150,
       96,
-      232
+      230
     ],
     "core_rgb": [
-      216,
-      190,
-      252
-    ]
-  },
-  "hitbox": {
+      236,
+      220,
+      255
+    ],
     "active": [
+      1,
       2,
       3,
       4
     ]
   },
-  "invariants": [
-    "monotonic_decreasing",
-    "starts_near:105"
-  ],
-  "pixel_invariants": [
-    "hitbox_behind"
-  ]
+  "airborne": true,
+  "pixel_invariants": []
 }

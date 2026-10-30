@@ -1,4 +1,6 @@
 import json
+
+import pytest
 from pathlib import Path
 
 from ambition_sprite2d_renderer.authoring.motion_ir import (
@@ -141,10 +143,11 @@ def test_pose_centric_clips_reference_reusable_named_whole_body_poses():
 def test_clip_sampling_is_separate_from_animation_time():
     sword, _ = _bindings()
     jab = sword.load_prepared().library.clips["jab"]
-    assert jab.frame_count == 5
-    assert jab.frame_duration_ms == 45
-    assert jab.duration_s == 0.225
-    assert [key.at_s for key in jab.pose_keys] == [0.0, 0.045, 0.09, 0.135, 0.18]
+    # Twelve frames of 19 ms (`devtools/polygon_keys.ATTACK_FRAMES`, `ROW_MS`).
+    assert jab.frame_count == 12
+    assert jab.frame_duration_ms == 19
+    assert jab.duration_s == pytest.approx(12 * 0.019)
+    assert [key.at_s for key in jab.pose_keys] == pytest.approx([i * 0.019 for i in range(12)])
 
 
 def test_renderer_projection_is_generated_from_motion_ir_and_contains_no_legacy_solver_language():

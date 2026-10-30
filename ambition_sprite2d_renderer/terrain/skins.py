@@ -76,6 +76,12 @@ SKINS: tuple[Skin, ...] = (
     # steel with a lit strip, a grate for a walkway; the same in its trusses.
     Skin("orbital", "panel", (58, 70, 90), (22, 28, 40), (120, 140, 162), (246, 176, 76), "strip", (92, 110, 132), "bolts", "grate"),
     Skin("orbital_truss", "panel", (52, 64, 86), (18, 24, 36), (112, 134, 158), (110, 220, 240), "strip", (86, 104, 128), "bolts", "grate"),
+    # Eureka, the institute town of the Science dimension: red brick under a
+    # coping of dressed sandstone, a slab of the same stone for a platform.
+    Skin("eureka", "brick", (150, 78, 60), (62, 32, 26), (196, 122, 94), (232, 212, 168), "edge", (226, 208, 166), "lip", "slab"),
+    # The space elevator's car and its stages: painted steel deck plates with
+    # a lit strip, a grate for a walkway, red beacons.
+    Skin("eureka_heights", "panel", (64, 76, 96), (22, 28, 40), (132, 150, 172), (255, 120, 92), "strip", (98, 116, 138), "bolts", "grate"),
     # The clean state of the two-state hub: pale marble with a line of gold.
     # The look of that room draws its own blocks, and this is what the room
     # has on a device that does not draw the look.

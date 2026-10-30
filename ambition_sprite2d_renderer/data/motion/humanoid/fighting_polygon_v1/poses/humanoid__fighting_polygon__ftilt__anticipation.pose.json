@@ -5,42 +5,60 @@
   "source": {
     "clip": "attack_side",
     "frame": 1,
-    "kind": "promoted-legacy-pose"
+    "kind": "authored-polygon-keys"
   },
   "state": {
+    "root": {
+      "position": [
+        -16.28,
+        16.28
+      ]
+    },
     "bones": {
+      "far_arm_hand": {
+        "rotation_deg": -3.0842
+      },
       "far_arm_l": {
-        "rotation_deg": -102.844814
+        "rotation_deg": -26.965
       },
       "far_arm_u": {
-        "rotation_deg": -22.948519
+        "rotation_deg": -25.566
       },
       "far_leg_foot": {
-        "rotation_deg": -13.300101
+        "rotation_deg": -16.3244
       },
       "far_leg_l": {
-        "rotation_deg": 22.996967
+        "rotation_deg": 35.8027
       },
       "far_leg_u": {
-        "rotation_deg": -9.696866
+        "rotation_deg": -17.3783
+      },
+      "head": {
+        "rotation_deg": 4.0
+      },
+      "near_arm_hand": {
+        "rotation_deg": 25.0137
       },
       "near_arm_l": {
-        "rotation_deg": -50.0
+        "rotation_deg": -26.296
       },
       "near_arm_u": {
-        "rotation_deg": 8.0625
+        "rotation_deg": 65.338
       },
       "near_leg_foot": {
-        "rotation_deg": 2.665633
+        "rotation_deg": -8.2818
       },
       "near_leg_l": {
-        "rotation_deg": -6.945646
+        "rotation_deg": 23.252
       },
       "near_leg_u": {
-        "rotation_deg": 4.276015
+        "rotation_deg": -12.8702
+      },
+      "pelvis": {
+        "rotation_deg": -2.1
       },
       "torso": {
-        "rotation_deg": 0.0
+        "rotation_deg": -3.9
       }
     }
   }

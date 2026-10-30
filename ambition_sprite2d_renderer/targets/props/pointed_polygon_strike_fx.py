@@ -1,6 +1,6 @@
-"""His polygon sword: a faceted crescent that breaks into triangles.
+"""His polygon sword: a bright arc that travels with the blow.
 
-`attack_vfx` of `pointed_polygon`. Drawn by `_strike_fx_common` (style ``shard``);
+`attack_vfx` of `pointed_polygon`. Drawn by `_strike_fx_common` (style ``arc``);
 this module states only whose blow it is.
 """
 
@@ -13,7 +13,7 @@ SHEET_FILES = sheet_files(TARGET_NAME)
 
 render, ACTOR_METADATA = renderer(
     TARGET_NAME,
-    style="shard",
+    style="arc",
     palette=Palette(core=(255, 255, 255), body=(178, 218, 255), edge=(46, 78, 140), accent=(220, 240, 255)),
     display_name="Pointed Polygon Strike",
     mote="dot",

@@ -1,28 +1,28 @@
 {
   "clip": "smash_up",
-  "note": "up smash: a rising uppercut through the ceiling.",
+  "note": "smash_up: keys in devtools/polygon_keys.py, fitted to the Smash stage's clock; the hit window is the clock's active frames.",
+  "effect": "reentry",
+  "facing": "east",
   "strike": {
     "base": "near_arm_l",
     "tip": "near_arm_hand"
   },
-  "effect": "reentry",
-  "facing": "east",
   "hitbox": {
     "active": [
       3,
-      4,
-      5
+      4
     ],
     "extend": 1.06
   },
   "reentry": {
     "window": 3,
-    "spread": 0.72,
-    "extend": 1.1,
-    "alpha": 124,
-    "core_alpha": 228,
+    "spread": 0.8,
+    "extend": 1.12,
+    "trail": 0.55,
+    "alpha": 140,
+    "core_alpha": 235,
     "blur": 1.6,
-    "falloff": 1.9,
-    "trail": 0.95
-  }
+    "falloff": 1.7
+  },
+  "pixel_invariants": []
 }

@@ -1,28 +1,29 @@
 {
   "clip": "smash_forward",
-  "note": "charged beam: four frames of coil, then a lance.",
+  "note": "smash_forward: keys in devtools/polygon_keys.py, fitted to the Smash stage's clock; the hit window is the clock's active frames.",
+  "effect": "beam",
+  "facing": "east",
   "strike": {
     "base": "cannon",
     "tip": "cannon"
   },
-  "effect": "beam",
-  "facing": "east",
   "hitbox": {
     "active": [
-      6,
-      7,
-      8
+      4
     ],
-    "extend": 1.0
+    "extend": 1.06
   },
   "beam": {
     "reach": 9.0,
-    "width": 0.34,
-    "alpha": 176,
-    "core_alpha": 244,
-    "blur": 2.2,
+    "width": 0.5,
+    "alpha": 200,
+    "core_alpha": 250,
+    "blur": 2.4,
     "window": 2,
     "falloff": 1.5,
-    "bloom": 1.6
-  }
+    "bloom": 2.2
+  },
+  "pixel_invariants": [
+    "hitbox_in_front"
+  ]
 }
