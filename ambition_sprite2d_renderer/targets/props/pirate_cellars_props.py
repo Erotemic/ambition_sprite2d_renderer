@@ -11,9 +11,10 @@ vault (to y 64), the shaft down from the well (x 16..80), the barrel rack
 
 - `plaza_well`: the old well in the plaza: its stone curbs, posts and
   shingle roof, the winch and its rope, a bucket left on the curb, and the
-  shaft going down dark, a ladder down it.
-- `cellars_vault`: a brick vault on pillars, lanterns; the shaft's ladder in
-  its fall of daylight at the west end; the desk where the customs stamps
+  shaft going down dark (its ladder is the room's `Climbable`, which the
+  engine draws).
+- `cellars_vault`: a brick vault on pillars, lanterns; the shaft (its ladder
+  the engine's) in its fall of daylight at the west end; the desk where the customs stamps
   are forged; an idol under a sheet, plainly cursed, glowing; a crate of
   undeclared chickens; crates with customs tags left blank; the barrels,
   racked; the still; a bricked-up arch to the sea.
@@ -52,21 +53,14 @@ COMB = (210, 50, 44)
 LAMP = (255, 206, 130)
 
 
-def ladder(c, x0, x1, y0, y1):
-    """A ladder: two rails and its rungs."""
-    c.put(c.mask(lambda p: (p.rect(x0 + 6, y0, x0 + 11, y1), p.rect(x1 - 11, y0, x1 - 6, y1))), TIMBER)
-    c.put(c.mask(lambda p: [p.rect(x0 + 8, y, x1 - 8, y + 4) for y in np.arange(y0 + 10, y1, 22)]), PLANK)
-
-
 def well(c, k):
     x0, x1 = WELL
     g = PLAZA_FLOOR
-    # The shaft going down, dark, its stones; the ladder down it.
+    # The shaft going down, dark, its stones.
     shaft = c.mask(box(x0, g, x1, PLAZA_H))
     c.put(shaft, STONE_DARK)
     c.put(shaft * c.mask(lambda p: [p.rect(x0, y, x1, y + 1.2) for y in range(g + 14, PLAZA_H, 14)]), scale(STONE_DARK, 0.7))
     c.tone(shaft * np.clip((c.y - g) / 120, 0, 1), -0.55)
-    ladder(c, x0 + 16, x1 - 16, g - 8, PLAZA_H)
     # The curbs either side of the hole, and their stones.
     # The west curb is in the wall.
     for a, b in ((x1, x1 + 24),):
@@ -197,12 +191,10 @@ def vault(c, k):
         c.put(c.mask(lambda p: [p.ring(dx0 + 40 + i * 30, sy + 7, 5, 1.2) for i in range(3)]), STAMP_RED)
         c.put(c.mask(lambda p: [p.rect(x, sy - 4, x + 3, sy) for x in (dx0 + 24, dx0 + 114)]), (70, 70, 76))
 
-    # The shaft from the well: its gap in the vault, daylight down it, the
-    # ladder.
+    # The shaft from the well: its gap in the vault, daylight down it.
     s0, s1 = WELL
     c.put(c.mask(box(s0, 16, s1, CEIL)), STONE_DARK)
     c.light(c.mask(lambda p: p.poly([(s0, 16), (s1, 16), (s1 + 30, FLOOR), (s0 - 30, FLOOR)]), blur=10), (250, 244, 220), 0.22)
-    ladder(c, s0 + 16, s1 - 16, 16, FLOOR)
 
     # The bricked-up arch to the sea, and its grate.
     ax = 1500
