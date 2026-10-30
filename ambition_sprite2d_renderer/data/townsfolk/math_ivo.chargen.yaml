@@ -2,7 +2,7 @@
 schema: ambition-chargen-v1
 name: Ivo
 base: broad_male
-seed: 131
+seed: 137
 # Drawn in the look of the cryptography crew (chargen family `crew`).
 family: crew
 body:
