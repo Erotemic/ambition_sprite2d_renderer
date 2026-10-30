@@ -126,9 +126,14 @@ def test_the_published_sheets_carry_the_seams():
 def test_each_shoulder_surface_is_on_the_drawn_epaulet(anim, frame, count):
     """The game stands a body on the surface the sheet publishes
     (`surface:<name>:a` / `:b`): in each frame it is the top of the epaulet
-    that is drawn (the band of its trim is just under it), however the torso leans or
-    lifts. An arm in front of the epaulet may hide one point."""
+    that is drawn (the heavy ink of its trim's top line on it, the gold rail just
+    under that), however the torso leans or lifts. An arm in front of the
+    epaulet may hide one point."""
     image = g.render_giant(anim, frame, count)
+
+    def ink(px):
+        r, g_, b, a = px
+        return a >= 128 and max(r, g_, b) < 70
 
     def trim(px):
         # The gold rail or the crimson band of `giant_art.stand_trim`.
@@ -139,7 +144,8 @@ def test_each_shoulder_surface_is_on_the_drawn_epaulet(anim, frame, count):
     for name, (a, b) in sg._giant_surfaces(anim, frame, count).items():
         for u in (0.3, 0.5, 0.7):
             x, y = a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u
-            hits.append((name, round(x), round(y), trim(image.getpixel((int(round(x)), int(round(y + 6)))))))
+            column = [image.getpixel((int(round(x)), int(round(y)) + d)) for d in range(16)]
+            hits.append((name, round(x), round(y), ink(column[1]) and any(trim(px) for px in column[3:])))
     assert sum(hit for *_, hit in hits) >= len(hits) - 1, f"{anim}[{frame}]: no trim under the surface at {hits}"
 
 

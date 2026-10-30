@@ -369,9 +369,14 @@ def epaulet_trim(name, x0, x1, top):
 #: The trim that shows where an actor can stand: how deep its rail and its
 #: band are under the top line, and how far each gilt point hangs under the
 #: band (design units).
-TRIM_RAIL = 9.0
-TRIM_BAND = 22.0
-TRIM_POINT = 10.0
+TRIM_RAIL = 17.0
+TRIM_BAND = 33.0
+TRIM_POINT = 12.0
+#: How far the trim's ink edge reaches out of its silhouette, and how thick
+#: the ink of its top line is (design units): bolder than any other line on
+#: him, so a surface to stand on reads at a glance.
+TRIM_EDGE = 3.0
+TRIM_INK = 10.0
 
 
 def _downs(top):
@@ -388,8 +393,9 @@ def _downs(top):
 
 
 def stand_trim(top, down, cid):
-    """The giant's sign for "you can stand here": a gold rail with studs on the
-    line ``top`` (the top of the surface) over a crimson band, and a gilt point
+    """The giant's sign for "you can stand here": the heaviest ink on him along
+    the line ``top`` (the top of the surface), a gold rail with studs under it
+    over a crimson band, and a gilt point
     under the band between each two points of the line. ``down`` is the unit
     normal at each point, to the side under the line. The top of its ink is
     `TRIM_OVER` over the surface the game stands a body on."""
@@ -409,19 +415,23 @@ def stand_trim(top, down, cid):
             under.append(mid(i, TRIM_BAND + TRIM_POINT) + (True,))
     sil = smooth([tuple(top[0]) + (True,)] + [tuple(p) for p in top[1:-1]] + [tuple(top[-1]) + (True,)] + under[::-1])
     rail = smooth(list(top) + [at(i, TRIM_RAIL) for i in range(n, -1, -1)], closed=True)
-    shine = smooth(list(top) + [at(i, 2.5) for i in range(n, -1, -1)], closed=True)
+    shine = smooth([at(i, TRIM_INK - TRIM_EDGE) for i in range(n + 1)]
+                   + [at(i, TRIM_INK - TRIM_EDGE + 2.5) for i in range(n, -1, -1)], closed=True)
     items = [path(rail, C["gold"]), path(shine, C["gold_light"]),
-             line([at(i, TRIM_RAIL) for i in range(n + 1)], C["gold_dark"], 2.2, closed=False)]
+             line([at(i, TRIM_RAIL) for i in range(n + 1)], INK, TRIM_INK * 0.5, closed=False)]
     for i in range(n):
         x, y = mid(i, TRIM_BAND + 1.0)
-        items.append(line([mid(i, TRIM_RAIL + 1.0), (x, y)], C["trim_dark"], 1.6, closed=False))
-    body = outlined(sil, C["trim"], items, cid, width=3.0)
+        items.append(line([mid(i, TRIM_RAIL + 1.0), (x, y)], C["trim_dark"], 3.4, closed=False))
+    # The top line is the heaviest ink on him: the surface itself. Its upper
+    # edge stays where the outline's is, so it thickens down into the rail.
+    items.append(line([at(i, TRIM_INK * 0.5 - TRIM_EDGE) for i in range(n + 1)], INK, TRIM_INK, closed=False))
+    body = outlined(sil, C["trim"], items, cid, width=2 * TRIM_EDGE)
     for i in range(n):
         x, y = mid(i, TRIM_BAND + TRIM_POINT - 1.0)
-        body.append(ellipse(x, y, 4.2, 4.2, C["gold"], INK, 1.6))
+        body.append(ellipse(x, y, 6.0, 6.0, C["gold"], INK, 3.0))
     for i in range(1, n, 2):
-        x, y = at(i, TRIM_RAIL * 0.5)
-        body.append(ellipse(x, y, 3.0, 3.0, C["white"], C["gold_dark"], 1.2))
+        x, y = at(i, (TRIM_RAIL - TRIM_INK * 0.25 + TRIM_INK - TRIM_EDGE) * 0.5)
+        body.append(ellipse(x, y, 3.6, 3.6, C["white"], INK, 2.2))
     return body
 
 
