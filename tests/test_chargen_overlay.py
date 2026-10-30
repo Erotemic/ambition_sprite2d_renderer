@@ -128,3 +128,50 @@ def test_a_resident_draws_its_overlay_in_every_view(path: Path):
                 assert len(parts[name].els) == len(g.els), (dv.view.key, name)
             else:
                 assert name not in parts, (dv.view.key, name)
+
+
+def test_a_gear_group_is_drawn_with_the_gear_and_skipped_without_it(art, tmp_path):
+    from ambition_sprite2d_renderer.chargen import extras
+    from ambition_sprite2d_renderer.chargen.drawkit import Part
+
+    (tmp_path / "probe.overlay.svg").write_text(
+        ART.replace('data-overlay-part="hair"', 'data-overlay-part="probe_gear" data-overlay-gear="true"'), encoding="utf8")
+    spec = _human()
+    spec.overlay = art
+    # Alone (the studio), the gear is not drawn and neither is its art.
+    assert "probe_gear" not in {p.name for p in draw_views(spec)[1][0].parts}
+
+    def gear_drawn(ctx, zmap):
+        pt = ctx.new()
+        pt.dot((0.0, -150.0), 1.0, "#000000")
+        return [Part("probe_gear", "head", 52.0, pt.els, "Probe Gear")] if ctx.view.key == "front" else []
+
+    with extras.using(gear_drawn):
+        drawn = {p.name: p for p in draw_views(spec)[1][0].parts}
+    assert [e.fill for e in drawn["probe_gear"].els] == ["#ff0000"]
+    # With other gear that lacks the part, a gear group still names a part the view does not draw.
+    with extras.using(lambda ctx, zmap: []):
+        with pytest.raises(ValueError, match="probe_gear"):
+            draw_views(spec)
+
+
+def test_alice_draws_her_overlay_over_her_gear_in_every_view():
+    from ambition_sprite2d_renderer.chargen import extras
+    from ambition_sprite2d_renderer.targets.characters._alice_v2_gear import alice_parts
+    from ambition_sprite2d_renderer.targets.characters.alice_v2 import load_spec
+
+    spec = load_spec()
+    ov = overlay.load(spec.overlay)
+    with extras.using(alice_parts):
+        _fig, views = draw_views(spec)
+    for dv in views:
+        parts = {p.name: p for p in dv.parts}
+        for g in ov.cells[dv.view.key]:
+            if g.mode == "over":
+                assert len(parts[g.part + "__overlay"].els) == len(g.els), (dv.view.key, g.part)
+            elif g.els:
+                assert len(parts[g.part].els) == len(g.els), (dv.view.key, g.part)
+            else:
+                assert g.part not in parts, (dv.view.key, g.part)
+    # Alone (as the studio opens her), her spec still draws.
+    draw_views(spec)

@@ -27,6 +27,10 @@ one rig part of that view::
   the art follows across and down. The file's ``data-overlay-ref`` holds
   each measure of the figure the art was drawn on, so the art grows and
   shrinks with the body (a taller character, a longer trunk).
+* ``data-overlay-gear="true"``: the part is one of a target's own gear
+  (``extras``), not the generator's. The group is drawn when the gear is
+  (inside ``extras.using``) and skipped when the spec is drawn alone (the
+  studio); any other group on a part the view does not draw is an error.
 
 A group's own ``transform`` only places it for an author in an editor; the
 drawing ignores it. A path's ``transform`` (``translate``, ``scale``,
@@ -44,6 +48,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Mapping, Sequence, Tuple
 from xml.etree import ElementTree as ET
 
+from . import extras
 from .body import Figure
 from .drawkit import Part
 from .geometry import Point, View
@@ -81,8 +86,8 @@ def path_of(name: str) -> Path:
 class Group:
     """One group of a cell: the art of one part in one view."""
 
-    def __init__(self, part: str, mode: str, anchor: str, scale: Tuple[str, str], els: List[Tuple[List, dict]]) -> None:
-        self.part, self.mode, self.anchor, self.scale, self.els = part, mode, anchor, scale, els
+    def __init__(self, part: str, mode: str, anchor: str, scale: Tuple[str, str], els: List[Tuple[List, dict]], gear: bool = False) -> None:
+        self.part, self.mode, self.anchor, self.scale, self.els, self.gear = part, mode, anchor, scale, els, gear
 
 
 class Overlay:
@@ -143,7 +148,10 @@ def parse(text: str, name: str = "overlay") -> Overlay:
                 segs = parse_d(el.attrib["d"], where)
                 m = parse_transform(el.attrib.get("transform", ""), where)
                 els.append((transform_segments(segs, m), _paint(el), math.sqrt(abs(m[0] * m[3] - m[1] * m[2]))))
-            groups.append(Group(part, mode, anchor, scale, els))  # type: ignore[arg-type]
+            gear = g.attrib.get("data-overlay-gear", "false")
+            if gear not in ("true", "false"):
+                raise ValueError(f"{where}: data-overlay-gear is {gear!r}, not true or false")
+            groups.append(Group(part, mode, anchor, scale, els, gear == "true"))  # type: ignore[arg-type]
         cells[view] = groups
     return Overlay(name, ref, cells)
 
@@ -292,6 +300,8 @@ def apply(fig: Figure, view: View, canvas: Canvas, parts: Sequence[Part], joints
     for g in groups:
         where = f"overlay {name}, view {view.key}, part {g.part}"
         if g.part not in by_name:
+            if g.gear and not extras.active():
+                continue
             raise ValueError(f"{where}: the view draws no part {g.part!r}")
         if g.anchor not in joints:
             raise ValueError(f"{where}: no joint {g.anchor!r} (joints: {sorted(joints)})")
