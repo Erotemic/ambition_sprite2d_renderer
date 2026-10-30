@@ -111,7 +111,7 @@ def statue(c, k):
 
 def wire(c, k):
     g = FLOOR
-    for xa, xb in ((220, 560), (1150, 1460)):
+    for xa, xb in ((360, 560), (1150, 1460)):
         stakes = list(np.arange(xa, xb + 1, 60))
         c.put(c.mask(lambda p: [p.line([(x, g), (x + 4, g - 44)], 3) for x in stakes]), TIMBER)
         for h in (14, 28, 40):
