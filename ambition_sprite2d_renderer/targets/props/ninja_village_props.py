@@ -397,8 +397,14 @@ FOREST_FLOOR = 832
 BRANCH_W, BRANCH_STEP = 320, 384
 
 
+#: The forest's branches walked on: six, stepping down east from y 448 (the
+#: street's last roof, a side exit away, is at that height in the world)
+#: to 64 over the floor.
+BRANCHES = 6
+
+
 def branch_at(i):
-    return i * BRANCH_STEP + (16 if i == 0 else 0), 384 + 64 * i
+    return i * BRANCH_STEP + (16 if i == 0 else 0), 448 + 64 * i
 
 
 def cedar(i):
@@ -561,7 +567,7 @@ PIECES: Dict[str, Piece] = {
     "village_notice_board": Piece((2186, 660, 2294, 768), notice_board),
     "village_watch_house": Piece((2440, 310, 2816, 768), watch_house),
     # ninja_village_forest
-    **{f"village_cedar_{i}": Piece((branch_at(i)[0] - 40, branch_at(i)[1] - 300, branch_at(i)[0] + BRANCH_W + 80, FOREST_FLOOR), cedar(i)) for i in range(7)},
+    **{f"village_cedar_{i}": Piece((branch_at(i)[0] - 40, branch_at(i)[1] - 300, branch_at(i)[0] + BRANCH_W + 80, FOREST_FLOOR), cedar(i)) for i in range(BRANCHES)},
     "village_clan_gatehouse": Piece((2590, 590, 2816, 832), clan_gatehouse),
     # ninja_village_dojo
     "village_dojo_entry": Piece((16, 32, 528, 512), dojo_entry),
