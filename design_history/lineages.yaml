@@ -1562,6 +1562,21 @@ lineages:
     ids: [evil_zombie]
     paths: ['evil_zombie', '_evil_faction', '_person_rig']
     eras: []
+  evil_zombie_crawler:
+    name: Crawling Conscript
+    ids: [evil_zombie_crawler]
+    paths: ['evil_zombie_crawler', 'evil_zombie\.', '_evil_faction', '_person_rig']
+    eras: []
+  fascist_swordsman:
+    name: Fascist Swordsman
+    ids: [fascist_swordsman]
+    paths: ['fascist_swordsman', '_fascist_armed', 'characters/fascist_enforcer\.', '_person_rig']
+    eras: []
+  fascist_clubman:
+    name: Fascist Clubman
+    ids: [fascist_clubman]
+    paths: ['fascist_clubman', '_fascist_armed', 'characters/fascist_enforcer\.', '_person_rig']
+    eras: []
   kernel_guide:
     name: Kernel Guide (also the Gate Janitor)
     ids: [kernel_guide]
