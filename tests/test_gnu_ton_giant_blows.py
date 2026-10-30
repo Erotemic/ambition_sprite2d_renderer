@@ -11,6 +11,8 @@ upper arm through a portal and pass.
 from __future__ import annotations
 
 import math
+import re
+from pathlib import Path
 
 import pytest
 
@@ -134,6 +136,34 @@ def test_the_upper_arm_never_goes_into_the_entrance_portal(blow):
     assert not worst, "the upper arm goes into the portal:\n" + "\n".join(worst)
 
 
+#: The outline of a fist (`giant_art.fist`) about its middle: the mitt, the
+#: knuckles, the cuff and the tuft on it.
+FIST = [(-56, -52), (0, -66), (52, -56), (64, 0), (54, 54), (0, 66), (-52, 54), (-70, 0), (-84, -46), (-94, -27),
+        (-84, 52), (-94, 27), (46, -62), (88, -56), (92, 56), (46, 62), (-20, -80), (18, -84), (38, -64)]
+
+
+@pytest.mark.parametrize("blow", ARM_BLOWS)
+def test_what_goes_through_the_line_goes_through_its_opening(blow):
+    """While the limb is carried (the strike, the hold, the recover), every
+    part of the forearm and the fist past the plane of the near line is in
+    the line's opening, by the width of the ink: the portal draws what is
+    past the plane at the far line, cut at ITS ends, so a fist past the end
+    of the near line comes out of the far one cut square (Jon, 2026-10-30,
+    the left hook)."""
+    slot = g.LIMB_SLOTS["arm-left" if g.BLOWS[blow]["arm"] == "left" else "arm-right"]
+    worst = []
+    for anim, phase in _rows(blow):
+        if anim.endswith("_windup"):
+            continue
+        posed = _posed(anim, phase)
+        past = [p for piece, local in (("fore", FORE), ("fist", FIST))
+                for p in _points(posed[f"limb:{slot}:{piece}"], local) if _depth(blow, p) > 0.0]
+        out = max((abs(_across(blow, p)) for p in past), default=0.0)
+        if out > HALF - INK:
+            worst.append(f"{anim} at {phase:.3f}: {out:.1f} from the middle of the line")
+    assert not worst, f"{blow}: the limb goes past the end of its line (half {HALF:.1f}):\n" + "\n".join(worst)
+
+
 @pytest.mark.parametrize("blow", ARM_BLOWS)
 def test_the_forearm_and_the_fist_go_through_square(blow):
     slot = g.LIMB_SLOTS["arm-left" if g.BLOWS[blow]["arm"] == "left" else "arm-right"]
@@ -214,3 +244,25 @@ def test_no_near_line_is_in_the_giants_own_body(blow):
     edges = [((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0))]
     assert not (inside(a) or inside(b) or any(_segments_cross(a, b, p, q) for p, q in edges)), (
         f"{blow}: its near line {a} to {b} is in the giant's body {box}")
+
+
+#: The game's copy of the blows (`blows::limb`), when the renderer is checked
+#: out in the game's tree.
+CHOREOGRAPHY = Path(__file__).resolve().parents[3] / "game" / "ambition_content_modules" / "src" / "gnu_ton" / "choreography.rs"
+
+
+@pytest.mark.skipif(not CHOREOGRAPHY.exists(), reason="the renderer is not checked out in the game's tree")
+def test_the_game_types_the_near_lines_the_drawing_derives():
+    """The game types each near line again (`blows::limb`): a line the drawing
+    derives anew and the game does not take is an opening the arm misses."""
+    src = CHOREOGRAPHY.read_text()
+    body = src[src.index("pub const fn limb("):]
+    body = body[:body.index("\n    }\n")]
+    pair = r"Vec2::new\((-?[\d.]+), (-?[\d.]+)\)"
+    typed = {(float(x), float(y)) for x, y in re.findall(r"line: " + pair, body)}
+    normals = {(float(x), float(y)) for x, y in re.findall(r"normal: " + pair, body)}
+    for blow, line in g.blow_lines_world()["blows"].items():
+        at = tuple(round(v, 2) for v in line["at"])
+        normal = tuple(round(v, 3) + 0.0 for v in line["normal"])
+        assert any(math.dist(at, t) < 0.02 for t in typed), f"{blow}: the game does not type its line at {at}: {sorted(typed)}"
+        assert normal in normals, f"{blow}: the game does not type its normal {normal}: {sorted(normals)}"

@@ -830,7 +830,11 @@ def _final(p):
 #: `elbow` the angle between the upper arm and `way` (and `side`, the side of
 #: `way` the elbow is on: +1 is the side of `way` turned +90 degrees) when the
 #: wrist is in the middle of its way through. The line is square to `way`, in
-#: front of the wrist there.
+#: front of the wrist there, and moved along itself to the middle of the
+#: places the wrist goes through it. The rigid upper arm swings about the
+#: shoulder, so the nearer the elbow is to straight, the farther a step
+#: through the line carries the wrist to the side: an elbow under about 60
+#: carries the fist past the end of its line.
 #:
 #: The leg keeps a line of its own (`line`: the middle of its near line and
 #: its normal).
@@ -875,7 +879,7 @@ BLOWS = {
     # Out behind and up, over the slope of the back: wound across the chest.
     # Each left line is out past the horns, so its light does not cross the
     # face.
-    "left_hook": dict(arm="left", way=(-0.342, -0.94), elbow=40.0, side=-1, back=210.0, hitch=20.0, deep=_ARM_DEEP,
+    "left_hook": dict(arm="left", way=(-0.259, -0.966), elbow=62.0, side=-1, back=210.0, hitch=20.0, deep=_ARM_DEEP,
                       out=140.0, past=56.0, strike=0.2, hold=0.24, recover=0.36, open_from=0.05, close_at=0.82),
     # Up, the elbow out to the left.
     "left_upper": dict(arm="left", way=(0.0, -1.0), elbow=90.0, side=-1, back=230.0, hitch=40.0, deep=_ARM_DEEP,
@@ -1013,8 +1017,18 @@ def _derive_lines():
         ax, ay = math.cos(t) * dx + math.sin(t) * b["side"] * n[0], math.cos(t) * dy + math.sin(t) * b["side"] * n[1]
         ex, ey = sx + ARM_UPPER * ax, sy + ARM_UPPER * ay
         wx, wy = ex + ARM_FORE * dx, ey + ARM_FORE * dy
-        b["line"] = ((round(wx - mid * dx, 2), round(wy - mid * dy, 2)), (-dx, -dy))
+        b["line"] = ((wx - mid * dx, wy - mid * dy), (-dx, -dy))
         b["bend"] = _side_of((sx, sy), (ex, ey), (wx, wy))
+        # The body's lift and lean carry the arm to the side as it goes
+        # through, so the line is moved along itself to the middle of the
+        # places the wrist goes through it: the forearm and the fist are in
+        # the opening, and come out of the far line whole.
+        lateral = [_square_arm(blow, _shoulder(blow, part, k / 48.0), depth)[2]
+                   for part in ("strike", "hold", "recover") for k in range(49)
+                   for depth in [blow_wrist_depth(blow, part, k / 48.0)] if depth is not None and depth >= 0.0]
+        shift = (min(lateral) + max(lateral)) * 0.5
+        (cx, cy), normal = b["line"]
+        b["line"] = ((round(cx - dy * shift, 2), round(cy + dx * shift, 2)), normal)
 
 
 def _axis_point(blow, depth, lateral=0.0):
@@ -1190,30 +1204,28 @@ _BODY = {
 }
 
 #: The arm that does not strike (before the lift, as `_whole_arms` has it): at
-#: rest, braced forward, guarding up, swung back and up. Drawn for the left
-#: arm; the right arm's is its mirror.
+#: rest, braced forward, swung back. Drawn for the left arm; the right arm's
+#: is its mirror.
 _LEFT = dict(
     hang=_HANG_L,
     brace=(ARM_ROOT_L, (760.0, 650.0), (850.0, 760.0)),
-    guard=(ARM_ROOT_L, (900.0, 600.0), (960.0, 470.0)),
     back=(ARM_ROOT_L, (740.0, 640.0), (680.0, 740.0)),
-    up=(ARM_ROOT_L, (740.0, 520.0), (700.0, 400.0)),
 )
 _RIGHT = {name: tuple((2 * MIDDLE_X - x, y) for x, y in pts) for name, pts in _LEFT.items()}
 #: What the other arm does in each part of each blow: (until, pose name).
+#: In a punch it is its own arm, not the striking arm's partner: it stays
+#: at rest (carried by the body's lift and lean), so a combination's next arm
+#: starts its own tell from where it hangs (Jon, 2026-10-30: "the arms move
+#: independently for the punches"). A blend of two named poses is of their
+#: joints, so it is not rigid: an arm swung between them stretched.
+_AT_REST = dict(windup=[(0.0, "hang")], strike=[(0.0, "hang")], recover=[(0.0, "hang")])
 _OTHER_KEYS = {
-    "hammer": dict(windup=[(0.0, "hang"), (SET_AT, "guard")], strike=[(0.0, "guard"), (0.8, "back")],
-                   recover=[(0.0, "back"), (1.0, "hang")]),
-    "jab": dict(windup=[(0.0, "hang"), (SET_AT, "guard")], strike=[(0.0, "guard"), (0.8, "back")],
-                recover=[(0.0, "back"), (1.0, "hang")]),
-    "upper": dict(windup=[(0.0, "hang"), (SET_AT, "brace")], strike=[(0.0, "brace"), (0.8, "up")],
-                  recover=[(0.0, "up"), (1.0, "hang")]),
-    "left_hammer": dict(windup=[(0.0, "hang"), (SET_AT, "brace")], strike=[(0.0, "brace"), (0.8, "back")],
-                        recover=[(0.0, "back"), (1.0, "hang")]),
-    "left_hook": dict(windup=[(0.0, "hang"), (SET_AT, "back")], strike=[(0.0, "back"), (0.8, "guard")],
-                      recover=[(0.0, "guard"), (1.0, "hang")]),
-    "left_upper": dict(windup=[(0.0, "hang"), (SET_AT, "brace")], strike=[(0.0, "brace"), (0.8, "up")],
-                       recover=[(0.0, "up"), (1.0, "hang")]),
+    "hammer": _AT_REST,
+    "jab": _AT_REST,
+    "upper": _AT_REST,
+    "left_hammer": _AT_REST,
+    "left_hook": _AT_REST,
+    "left_upper": _AT_REST,
     "kick": dict(windup=[(0.0, "hang"), (SET_AT, "back")], strike=[(0.0, "back"), (0.8, "brace")],
                  recover=[(0.0, "brace"), (1.0, "hang")]),
 }
