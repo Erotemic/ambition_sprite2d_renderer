@@ -158,6 +158,9 @@ def beds(c, k):
     c.put(c.mask(lambda p: p.ellipse(1290, FLOOR - 42, 30, 6)), STRATA[3])
     c.put(c.mask(lambda p: p.ring(1400, FLOOR - 30, 22, 3)), WOOD)
     c.put(c.mask(lambda p: [p.line([(1380 + i * 6, FLOOR - 44), (1380 + i * 6, FLOOR - 16)], 0.6) for i in range(7)]), (70, 70, 76))
+    # The way west, left open in the art: the cracked wall over it is a
+    # breakable's look (`primeval_amber_props.py`), drawn under the scenery.
+    c.alpha *= 1.0 - c.mask(box(16, FLOOR - 112, 48, FLOOR))
 
 
 PIECES: Dict[str, Piece] = {
