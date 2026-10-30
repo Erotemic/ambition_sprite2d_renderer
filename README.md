@@ -156,7 +156,7 @@ that makes many targets from data files names each target's file with a
 `python -m ambition_sprite2d_renderer.provenance backfill` records art that
 was published before records existed, from `.cache/sheets` digests and the
 generators' plans. `list --json` exports the registry with each target's
-generator and outputs. The art inspector (`tools/art_inspector` in the game
+generator and outputs. The art inspector (`tools/asset_inspector` in the game
 repository) reads both.
 
 ## Choosing an authoring family
