@@ -467,10 +467,14 @@ GRAB = P(hip=(8.0, 6.0), lean=30.0, head=(3.0, 1.0, -4.0), na=(24.0, 2.0), fa=(2
          ff=(12.0, 0.0, 0.0), mouth="big", hem=(4.0, 0.0))
 
 
+#: Leaned back with his arms up, his jaw wide: the tell of his lunge.
+LUNGE_BACK = P(hip=(-3.0, 3.0), lean=2.0, head=(0.6, 0.6, -8.0), na=(14.0, 0.0), fa=(10.0, 6.0), nh="open", fh="open", mouth="big")
+
+
 @X.row
 def attack_side(i: int, n: int):
     # He leans back, lunges with both arms, and bites.
-    back = P(hip=(-3.0, 3.0), lean=2.0, head=(0.6, 0.6, -8.0), na=(14.0, 0.0), fa=(10.0, 6.0), nh="open", fh="open", mouth="big")
+    back = LUNGE_BACK
     bite = dict(GRAB, head=(3.6, 1.6, 6.0), mouth="grit")
     return X.keys(shot(i, n), [(0.0, X.full(P())), (0.25, back), (0.45, GRAB, "out"), (0.6, bite), (0.72, GRAB), (0.84, bite), (1.0, X.full(P()))])
 
@@ -529,8 +533,24 @@ def taunt(i: int, n: int):
     return X.keys(shot(i, n), [(0.0, X.full(P())), (0.3, GROAN), (0.5, dict(GROAN, head=(0.6, 0.0, -26.0))), (0.7, GROAN), (1.0, X.full(P()))])
 
 
-X.rows = [("idle", 8, 170), ("walk", 10, 135), ("run", 8, 100), ("jump", 6, 100), ("fall", 6, 100), ("slash", 10, 95), ("attack_side", 10, 85),
-          ("hit", 5, 100), ("death", 8, 130), ("death_idle", 8, 220), ("emerge", 10, 120), ("taunt", 10, 120)]
+@X.row
+def notice(i: int, n: int):
+    # His head jerks up and round to you, his eyes flare, and his arms come
+    # up to reach.
+    jerk = P(hip=(-1.0, 1.0), lean=6.0, head=(0.6, -0.6, -14.0), na=(22.0, 4.0), fa=(16.0, 10.0), nh="open", fh="open", eyes="wide", mouth="big")
+    return X.keys(shot(i, n), [(0.0, X.full(P())), (0.3, jerk, "snap"), (0.7, jerk), (1.0, dict(jerk, mouth="open", lean=10.0))], drag={"head": 0.1})
+
+
+@X.row
+def windup(i: int, n: int):
+    # The lunge held back: he sways and his jaw works.
+    _, s, _c = loop(i, n)
+    return dict(LUNGE_BACK, head=(0.6, 0.6, -8.0 + 3.0 * s), na=(14.0 + 0.8 * s, 0.0 - 1.0 * s))
+
+
+X.rows = [("idle", 8, 170), ("walk", 10, 135), ("run", 8, 100), ("jump", 6, 100), ("fall", 6, 100), ("notice", 8, 95), ("windup", 6, 110),
+          ("slash", 10, 95), ("attack_side", 10, 85), ("hit", 5, 100), ("death", 8, 130), ("death_idle", 8, 220), ("emerge", 10, 120),
+          ("taunt", 10, 120)]
 
 # ---- What his blows do -------------------------------------------------------
 

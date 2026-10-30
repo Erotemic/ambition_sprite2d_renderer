@@ -207,37 +207,48 @@ def build_svg() -> str:
     layers.append(group("baton-hand", "Gripping Baton Hand",
         path("M 230,340 Q 245,345 245,359 Q 241,374 224,377 L 208,364 L 214,347 Z", GREEN),
         path("M 217,350 L 231,353 M 213,360 L 225,364", "none", "#455e4e", 3)))
-    layers.append(group("baton-weapon", "Steel Baton and Collar",
-        path("M 214,359 L 128,343", "none", "#202931", 17),
-        path("M 208,357 L 133,343", "none", "#8c9fa5", 9),
-        path("M 153,341 L 151,355 M 166,344 L 163,357", "none", INK, 4),
-        circle(128,343,9,"#a9b9ba",3),
-        path("M 190,347 L 205,349 L 205,361 L 190,360 Z", "#353d45")))
+    layers.append(group("baton-weapon", "Steel Baton, Grip and Tip",
+        # A thick shaft with a pale steel face, so it reads at game scale.
+        path("M 214,359 L 124,342", "none", "#141a20", 24),
+        path("M 208,357 L 129,342", "none", "#aebfc4", 13),
+        path("M 204,353 L 133,339", "none", "#e4eff1", 4),
+        # The ribbed black grip and its red band of the unit.
+        path("M 214,360 L 186,355", "none", "#262c33", 16),
+        path("M 207,352 L 205,364 M 199,351 L 197,363 M 191,349 L 189,361", "none", "#4a535c", 3),
+        path("M 183,348 L 180,361", "none", RED, 6),
+        # The tip: a bright steel cap with the contacts.
+        circle(126,342,11,"#d8e6e8",4),
+        circle(126,342,4,BLUE,2)))
     layers.append(group("baton-electric", "Baton Electrical Arc",
-        path("M 121,324 L 137,335 L 151,326 L 166,337 L 180,330 L 191,339 L 204,338", "none", BLUE, 5),
-        path("M 119,359 L 134,348 L 146,362 L 160,354 L 177,365 L 194,356", "none", "#addfff", 4),
-        path("M 142,322 L 150,310 L 156,324", "none", BLUE, 3)))
+        path("M 116,330 L 124,334 L 120,322 L 131,328 L 134,318", "none", BLUE, 4),
+        path("M 117,353 L 126,350 L 121,361 L 133,357", "none", LIGHT, 3)))
     layers.append(group("shield-grip", "Arm and Shield Bracket",
         path("M 438,329 Q 451,321 463,326 L 473,340 L 467,357 L 452,363 L 437,352 Z", "#6d7f73", sw=5),
         path("M 447,337 L 469,337 M 450,345 L 470,345", "none", "#a8b4ac", 5),
         path("M 456,328 L 461,350", "none", INK, 3)))
     layers.append(group("shield-main", "Perspective Shield: Return and Front Plate",
-        path("M 456,180 Q 456,174 465,175 L 527,190 Q 535,191 537,201 L 548,463 Q 549,475 536,478 L 456,462 Q 449,459 449,448 Z", "#87989b", sw=7),
-        path("M 456,187 L 478,200 L 479,457 L 456,455 Z", "#35434a", sw=3),
-        path("M 477,199 L 527,209 L 539,464 L 479,453 Z", "#27343b", sw=4),
-        path("M 487,251 L 520,255 L 530,424 L 487,419 Z", "#586767", sw=3),
-        path("M 459,194 L 525,206 M 457,445 L 535,463", "none", "#c5d1cb", 5),
-        path("M 461,196 L 466,447", "none", "#9fb2b5", 4),
-        path("M 532,211 L 544,463", "none", "#b7c4c0", 4),
-        circle(467,207,3,"#ced4d0",1), circle(519,214,3,"#ced4d0",1),
-        circle(466,439,3,"#ced4d0",1), circle(529,454,3,"#ced4d0",1)))
+        # The rim is pale and thick, so the shield's edge reads at game scale.
+        path("M 456,180 Q 456,174 465,175 L 527,190 Q 535,191 537,201 L 548,463 Q 549,475 536,478 L 456,462 Q 449,459 449,448 Z", "#c3d0d2", sw=8),
+        path("M 456,187 L 478,200 L 479,457 L 456,455 Z", "#4d5e66", sw=3),
+        path("M 477,199 L 527,209 L 539,464 L 479,453 Z", "#34464f", sw=4),
+        path("M 487,251 L 520,255 L 530,424 L 487,419 Z", "#4f6268", sw=3),
+        # Hazard stripes along the foot of the face.
+        path("M 482,430 L 536,440 L 538,458 L 482,449 Z", "#d9b23c", sw=3),
+        path("M 490,432 L 484,448 M 505,435 L 499,451 M 520,438 L 514,454 M 535,441 L 529,456", "none", "#1a1f26", 5),
+        path("M 459,194 L 525,206", "none", "#eef4f2", 5),
+        path("M 461,196 L 466,447", "none", "#d6e2e3", 4),
+        path("M 532,211 L 544,463", "none", "#e3ecea", 4),
+        circle(467,207,3,"#eef2ee",1), circle(519,214,3,"#eef2ee",1),
+        circle(466,439,3,"#eef2ee",1), circle(529,454,3,"#eef2ee",1)))
     layers.append(group("shield-viewport", "Perspective Viewing Slit",
-        path("M 488,223 L 523,231 L 525,246 L 488,240 Z", "#13212e", sw=3),
-        path("M 493,230 L 518,234 L 520,239 L 493,236 Z", "#c7eff9", "none", 0)))
+        path("M 486,221 L 525,229 L 527,248 L 486,241 Z", "#13212e", sw=3),
+        path("M 491,229 L 520,234 L 522,241 L 491,237 Z", "#e2fbff", "none", 0)))
     layers.append(group("shield-emblem", "Shield Gear Plate",
-        path("M 489,303 L 520,306 L 524,365 L 490,361 Z", "#98a6a0", sw=3),
-        path(gear(506,334,17,10), "#30383e", "#30383e", 2),
-        circle(506,334,7,"#9dacaa",2)))
+        # The faction's cog, large, white on red: the mark reads first.
+        path("M 485,293 L 525,297 L 529,377 L 487,372 Z", RED, sw=4),
+        circle(507,335,19,"#ece8db",3),
+        path(gear(507,335,15,8), "#1d2228", "#1d2228", 2),
+        circle(507,335,5,"#ece8db",2)))
     layers.append(group("shield-electric", "Shield Electrical Rim",
         path("M 455,188 L 445,178 L 458,169 L 453,160 M 528,198 L 544,204 L 539,219 L 552,229 L 540,245", "none", BLUE, 5),
         path("M 451,272 L 442,285 L 454,297 L 444,314 L 455,326 M 545,327 L 556,344 L 545,360 L 559,377 L 547,398", "none", LIGHT, 4),

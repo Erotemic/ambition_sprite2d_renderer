@@ -180,7 +180,7 @@ Oiler. `boss_chest` is surveyed and has one look, shown under `treasure_chest`.
   lineage `paths` pattern names is not counted, and a script that wrote an SVG
   counts through the commit that wrote the SVG.
 
-The art inspector (`python3 scripts/art_inspector.py build`) shows each
+The art inspector (`python3 scripts/asset_inspector.py build`) shows each
 character's lineages, with the cached stills, and the authorship of its
 current generator on the character's asset page.
 

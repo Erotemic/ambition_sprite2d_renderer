@@ -143,9 +143,16 @@ def _doc() -> RigDocument:
     return FX.rig_document(RIG_PATH)
 
 
+#: Rows the game asks for by its own names, drawn from the rig's clips. Its
+#: melee move (``striker_swipe``) plays ``attack_side``: the bite.
+ROW_ALIASES = {"attack_side": "bite"}
+
 #: The sheet's rows are the rig's clips, in the rig's order (the game reads
-#: them by name).
-ROWS: List[Tuple[str, int, int]] = _doc().rows()
+#: them by name), then each alias.
+_RIG_ROWS = _doc().rows()
+ROWS: List[Tuple[str, int, int]] = _RIG_ROWS + [
+    (alias,) + tuple(row[1:]) for alias, source in ROW_ALIASES.items() for row in _RIG_ROWS if row[0] == source
+]
 
 # --- Effect glyphs (`_creature_fx`), in SVG units like the art ----------------
 
@@ -213,7 +220,7 @@ def _front(canvas: FxCanvas, t: float, world, params) -> None:
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     return compose_rig_frame(
         _doc(),
-        animation,
+        ROW_ALIASES.get(animation, animation),
         frame_idx,
         frame_count,
         behind=_behind,

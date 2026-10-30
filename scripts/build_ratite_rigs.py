@@ -17,7 +17,8 @@ wing bones. They bite or ram, and the dilophosaurus has a ``shoot`` row.
 
 They are one anatomy and one set of rows (the names the game reads), so
 they share the clips: each clip is written once and takes the bird's measures
-(``Bird``). What is its own is each bird's attack and its ``taunt``:
+(``Bird``). What is its own is each bird's attack, the ``windup`` that
+telegraphs it, and its ``taunt``:
 
 - the three tall birds kick (``slash``): the body thrown back, the near leg
   driven forward and up. The kiwi stabs with its beak. The shoebill falls on
@@ -66,6 +67,11 @@ ROWS = [
     ("taunt", 8, 110, True),
     ("hurt", 4, 92, False),
     ("death", 8, 110, False),
+    # The game holds ``notice`` while a creature first sees its foe, and
+    # ``windup`` over a melee move's startup (its telegraph) before the
+    # attack row plays.
+    ("notice", 3, 120, False),
+    ("windup", 3, 90, False),
 ]
 
 K = track
@@ -452,6 +458,108 @@ def clips(b: Bird) -> Dict[str, Callable[[int, int, float], Pose]]:
         p["fx.dust"] = K([0, 0, 0, 0, 1, 0.6, 0.2, 0], t)
         return p
 
+    def notice(i: int, n: int, t: float) -> Pose:
+        """Startled by its foe: drawn up tall, head up and back, beak open,
+        wings or arms thrown up and the tail raised. Held, with a shiver."""
+        p = standing()
+        up = K([0.92, 1, 0.96], t)
+        p["root_y"] = -0.05 * b.leg * up
+        p["body"] = -12.0 * up
+        p["neck"] = -26.0 * up
+        p["head"] = 12.0 * up + K([0, 0, -3], t)
+        p["jaw"] = K([18, 26, 22], t)
+        p["tail"] = 22.0 * up
+        wings(p, 0.9 * up, K([0, 0.4, -0.4], t))
+        p.update(eyes("open"))
+        return p
+
+    def windup_kick(t: float, tremble: float) -> Pose:
+        """Back on the far leg, the body thrown back, the near leg drawn up
+        and cocked with its claws turned back."""
+        p = standing()
+        p["root_x"] = -12.0 + tremble
+        p["root_y"] = 0.04 * b.leg
+        p["body"] = -22.0
+        p["neck"] = 18.0
+        p["head"] = -10.0
+        p["jaw"] = 14.0
+        p["tail"] = 6.0
+        p["near_foot_x"] = b.near_x - 0.06 * b.leg + tremble
+        p["near_foot_lift"] = 0.40 * b.leg
+        p["near_foot_pitch"] = 34.0
+        p["far_foot_x"] = b.far_x - 4.0
+        wings(p, 0.9, tremble / 2.0)
+        return p
+
+    def windup_bite(t: float, tremble: float) -> Pose:
+        """Coiled: down on its hocks, weight back, the neck drawn back in an S
+        and the jaws open, the tail up."""
+        p = standing()
+        p["root_x"] = -10.0 + tremble
+        p["root_y"] = 0.18 * b.leg
+        p["body"] = 12.0
+        p["neck"] = -16.0
+        p["head"] = 14.0
+        p["jaw"] = 34.0 + 2.0 * tremble
+        p["tail"] = 14.0 + tremble
+        for side, x in (("near", b.near_x), ("far", b.far_x)):
+            p[f"{side}_foot_x"] = x - 4.0
+        wings(p, 0.6, tremble / 2.0)
+        return p
+
+    def windup_butt(t: float, tremble: float) -> Pose:
+        """Head lowered, the dome aimed, the weight drawn back and the far
+        (back) foot scraping the ground."""
+        p = standing()
+        p["root_x"] = -20.0 + tremble
+        p["root_y"] = 0.10 * b.leg
+        p["body"] = 8.0
+        p["neck"] = 22.0
+        p["head"] = 6.0
+        p["tail"] = 8.0
+        p["near_foot_x"] = b.near_x - 6.0
+        p["far_foot_x"] = b.far_x - 10.0 + K([0, -18, -6], t)
+        p["far_foot_lift"] = K([10, 0, 8], t)
+        p["far_foot_pitch"] = K([20, 0, 16], t)
+        p["fx.dust"] = K([0, 0.9, 0.2], t)
+        wings(p, 0.2)
+        return p
+
+    def windup_stab(t: float, tremble: float) -> Pose:
+        """The beak drawn back like a needle, the body low behind it."""
+        p = standing()
+        p["root_x"] = -12.0 + tremble
+        p["root_y"] = 0.06 * b.leg
+        p["body"] = -14.0
+        p["neck"] = -22.0
+        p["head"] = 2.0
+        p["jaw"] = 4.0
+        return p
+
+    def windup_lunge(t: float, tremble: float) -> Pose:
+        """It stares: drawn up over its prey, the bill aimed, everything still
+        but a shiver."""
+        p = standing()
+        p["root_x"] = -6.0 + tremble
+        p["body"] = -8.0
+        p["neck"] = -16.0
+        p["head"] = 4.0
+        p["tail"] = 4.0
+        wings(p, 0.4, tremble / 2.0)
+        return p
+
+    windups = {"kick": windup_kick, "bite": windup_bite, "butt": windup_butt,
+               "stab": windup_stab, "lunge": windup_lunge}
+
+    def windup(i: int, n: int, t: float) -> Pose:
+        """The telegraph of the attack: a held anticipation pose with a
+        shiver (the game loops it)."""
+        p = windups[b.attack](t, K([0, 1.5, -1.5], t))
+        if i == 0:
+            p["root_x"] = 0.92 * p["root_x"]
+        p.update(eyes("angry"))
+        return p
+
     taunts = {"sand": taunt_sand, "dance": taunt_dance, "stamp": taunt_stamp, "probe": taunt_probe,
               "clatter": taunt_clatter}
     attacks = {"kick": kick, "stab": stab, "lunge": lunge, "bite": bite, "butt": butt}
@@ -465,6 +573,8 @@ def clips(b: Bird) -> Dict[str, Callable[[int, int, float], Pose]]:
         "taunt": taunts[b.taunt],
         "hurt": hurt,
         "death": death_small if b.attack == "stab" else death_tall,
+        "notice": notice,
+        "windup": windup,
         **({"shoot": shoot} if b.shoots else {}),
     }
 

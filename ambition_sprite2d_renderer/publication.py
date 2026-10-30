@@ -123,20 +123,69 @@ def toolchain() -> dict:
             "fonts": fonts}
 
 
-def recipe_state(recipe: dict | None, files: dict[str, Path], chain: dict, hashes=None) -> tuple[str, list[dict]]:
+#: An input that at most this many accepted bundles read is specific to them.
+FEW_READERS = 5
+
+
+def readers(recipes) -> dict[str, int]:
+    """How many recipes read each input: a widely read file is shared renderer code."""
+    count: dict[str, int] = {}
+    for recipe in recipes:
+        for name in (recipe or {}).get("inputs", {}):
+            count[name] = count.get(name, 0) + 1
+    return count
+
+
+def direct_input(unit: str, path: str, count: dict[str, int] | None) -> bool:
+    """Whether `path` is one of `unit`'s own inputs rather than shared code.
+
+    An input is direct when few bundles read it, or when its file or folder name
+    matches the target (`_goblin_look.py` for `goblin_bruiser_club`). Recorded
+    reads are coarse: importing a package reads every module in it, so a shared
+    count alone would call `alice.py` shared for the Alice target. Without a
+    count every input is direct, which is the strict answer."""
+    if count is None or count.get(path, 0) <= FEW_READERS:
+        return True
+    name = unit.split(":", 1)[-1]
+    first = name.split("_", 1)[0]
+    parts = Path(path).parts
+    for part in (Path(path).name.split(".", 1)[0], *parts[-3:-1]):
+        stem = part.strip("_")
+        if stem and (stem == name or name.startswith(stem + "_") or stem.startswith(first)):
+            return True
+    return False
+
+
+def recipe_state(recipe: dict | None, files: dict[str, Path], chain: dict, hashes=None, *,
+                 unit: str = "", count: dict[str, int] | None = None) -> tuple[str, list[dict]]:
+    """`current` only when every recorded input is unchanged: the strict guarantee.
+
+    Each reason has a `scope`: `direct` when the unit's own inputs changed, or
+    `shared` when only shared renderer code, the toolchain or the set of source
+    files changed. A unit stale only for shared reasons is possibly stale: it
+    may well render the same pixels (`stale_scope`)."""
     if recipe is None:
-        return "unknown", [{"code": "unknown-inputs"}]
+        return "unknown", [{"code": "unknown-inputs", "scope": "direct"}]
     changed = []
     if recipe["toolchain"] != chain:
-        changed.append({"code": "changed-toolchain"})
+        changed.append({"code": "changed-toolchain", "scope": "shared"})
     if recipe["membership"] != identity(sorted(files)):
-        changed.append({"code": "changed-source-membership"})
+        changed.append({"code": "changed-source-membership", "scope": "shared"})
     for name, expected in recipe["inputs"].items():
         path = files.get(name)
         actual = hashes.file(path) if hashes is not None and path else digest(path) if path else None
         if actual != expected:
-            changed.append({"code": "changed-input", "path": name})
+            direct = direct_input(unit, name, count)
+            changed.append({"code": "changed-input", "path": name, "scope": "direct" if direct else "shared",
+                            **({} if direct or count is None else {"readers": count.get(name, 0)})})
     return ("stale", changed) if changed else ("current", [])
+
+
+def stale_scope(reasons: list[dict]) -> str | None:
+    """`direct` if any reason is the unit's own, `shared` if all are shared, None if none."""
+    if not reasons:
+        return None
+    return "direct" if any(reason.get("scope", "direct") == "direct" for reason in reasons) else "shared"
 
 
 @contextmanager
@@ -327,7 +376,10 @@ def build_packs(store: Store, bundles: dict, report, sources: dict, chain: dict,
     return result
 
 
-def build(scope=None, requested=(), *, force=False, jobs=1, publish=True) -> dict:
+def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=False) -> dict:
+    """Publish the targets of `scope`. A target is rebuilt unless an accepted
+    bundle is current. With `loose`, a bundle stale only for shared reasons
+    (`stale_scope`) is kept too: it stays possibly stale until a strict build."""
     names, report = names_in(scope, requested)
     if report.failures:
         raise ValueError(f"Target discovery failed: {report.failures}")
@@ -352,14 +404,21 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True) -> dic
             continue
     replacements = {}
     pending = []
+    count = readers(store.bundle(key)["recipe"] for unit, key in selected["bundles"].items() if unit.startswith("target:"))
+    kept_loose = 0
+    def usable(unit, manifest):
+        state, reasons = recipe_state(manifest["recipe"], sources, chain, hashes, unit=unit, count=count)
+        return state == "current" or (loose and stale_scope(reasons) == "shared")
     for name in names:
         unit = "target:" + name
         candidates = accepted.get(unit, [])
         candidates.sort(key=lambda row: row[0] != selected["bundles"].get(unit))
         reusable = next((key for key, manifest in candidates if not force
             and manifest["recipe"].get("quality") is True
-            and recipe_state(manifest["recipe"], sources, chain, hashes)[0] == "current"
+            and usable(unit, manifest)
             and not store.integrity(key, hashes=hashes)), None)
+        if reusable and loose and recipe_state(store.bundle(reusable)["recipe"], sources, chain, hashes)[0] != "current":
+            kept_loose += 1
         if reusable:
             replacements[unit] = reusable
         else:
@@ -368,7 +427,9 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True) -> dic
     sizes = {unit: sum(member["bytes"] for member in store.bundle(key)["files"].values())
              for unit, key in selected["bundles"].items()}
     pending.sort(key=lambda name: -sizes.get("target:" + name, 0))
-    print(f"art: {len(names)} targets, {len(pending)} builds, {len(replacements)} current", file=sys.stderr, flush=True)
+    print(f"art: {len(names)} targets, {len(pending)} builds, {len(replacements)} current"
+          + (f" ({kept_loose} kept possibly stale: only shared code changed; a build without --loose renders them)" if kept_loose else ""),
+          file=sys.stderr, flush=True)
     failures: list[str] = []
     if pending:
         with source_snapshot(sources) as (snapshot, original):
@@ -447,6 +508,7 @@ def inventory(*, deep=False, requested=None) -> dict:
     hashes = Digests(RENDERER / ".cache/publication-inputs.json", deep=deep)
     store = Store(store_root())
     selected = store.selected()
+    count = readers(store.bundle(key)["recipe"] for uid, key in selected["bundles"].items() if uid.startswith("target:"))
     units = {}
     for name, target in report.targets.items():
         if requested is not None and name not in requested:
@@ -454,8 +516,8 @@ def inventory(*, deep=False, requested=None) -> dict:
         unit = definition(target)
         key = selected["bundles"].get(unit["id"])
         manifest = store.bundle(key) if key else None
-        state, reasons = recipe_state(manifest["recipe"] if manifest else None, sources, chain, hashes)
-        defects = store.integrity(key, hashes=hashes) if key else [{"code": "missing-bundle"}]
+        state, reasons = recipe_state(manifest["recipe"] if manifest else None, sources, chain, hashes, unit=unit["id"], count=count)
+        defects = [dict(defect, scope="direct") for defect in store.integrity(key, hashes=hashes)] if key else [{"code": "missing-bundle", "scope": "direct"}]
         if defects:
             state = "missing" if not manifest else "partial" if any(r["code"] == "missing" for r in defects) else "stale"
         output_root = unit["root"]
@@ -475,7 +537,8 @@ def inventory(*, deep=False, requested=None) -> dict:
         unit["publication"] = {"selected": bool(key), "files": manifest["files"] if manifest else {}}
         if manifest:
             unit["required"] = [p.removeprefix(output_root + "/") for p,v in manifest["files"].items() if p.startswith(output_root + "/") and v["role"] == "runtime"]
-        unit["status"] = {"state": state, "reasons": reasons + defects, "evidence_complete": bool(manifest and manifest["recipe"]),
+        unit["status"] = {"state": state, "reasons": reasons + defects, "scope": stale_scope(reasons + defects) if state == "stale" else None,
+                          "evidence_complete": bool(manifest and manifest["recipe"]),
                           "required": unit["required"], "tiers": {}, "repair": unit["repair"]}
         for tier in (t for t in unit["tiers"] if t != "full"):
             members = [p for p in (manifest or {}).get("files", {}) if p.startswith(TIERS[tier] + "/")]
@@ -485,14 +548,15 @@ def inventory(*, deep=False, requested=None) -> dict:
         uid = "atlas:"+tier
         key = selected["bundles"].get(uid)
         manifest = store.bundle(key) if key else None
-        state, reasons = recipe_state(manifest["recipe"] if manifest else None, sources, chain, hashes)
-        defects = store.integrity(key, hashes=hashes) if key else [{"code": "missing-bundle"}]
+        state, reasons = recipe_state(manifest["recipe"] if manifest else None, sources, chain, hashes, unit=uid, count=count)
+        defects = [dict(d, scope="direct") for d in store.integrity(key, hashes=hashes)] if key else [{"code": "missing-bundle", "scope": "direct"}]
         if defects:
             state = "missing" if not key else "stale"
         units[uid] = {"id":uid,"kind":"atlas","root":"sprite_packs/"+tier,"generator":{"id":"ultrapack","family":"ultrapack"},
             "required":[Path(p).name for p in (manifest or {}).get("files",{})],"optional":[],"metadata":{},"source":None,"tiers":[],
             "repair":"./scripts/regen/sprites.sh","bundle":key,"publication":{"files":manifest["files"] if manifest else {}},
-            "status":{"state":state,"reasons":reasons+defects,"evidence_complete":bool(manifest and manifest["recipe"]),"tiers":{},"repair":"./scripts/regen/sprites.sh"}}
+            "status":{"state":state,"reasons":reasons+defects,"scope":stale_scope(reasons+defects) if state == "stale" else None,
+                      "evidence_complete":bool(manifest and manifest["recipe"]),"tiers":{},"repair":"./scripts/regen/sprites.sh"}}
     hashes.save()
     return {"schema": "ambition.art_products.v1", "complete": not report.failures, "warnings": list(report.warnings),
             "units": units, "receipts": [], "publication": selected, "store": str(store.root)}
@@ -589,6 +653,8 @@ def main(argv=None):
     parser.add_argument("--deep", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--loose", action="store_true",
+                        help="rebuild only targets whose own inputs changed; keep those that only shared renderer code made stale")
     parser.add_argument("--resolve-layout", action="store_true")
     parser.add_argument("--adopt-existing", type=Path)
     parser.add_argument("--jobs", type=int, default=min(6, max(1, (os.cpu_count() or 2)//2)))
@@ -607,8 +673,10 @@ def main(argv=None):
             result = inventory(deep=args.deep, requested=set(names))
             if not args.json:
                 for uid, unit in result["units"].items():
-                    print(f"{uid}: {unit['status']['state']}")
-                return int(not result["complete"] or any(u["status"]["state"] != "current" for u in result["units"].values()))
+                    scope = unit["status"].get("scope")
+                    print(f"{uid}: {unit['status']['state']}" + (" (possibly: only shared code changed)" if scope == "shared" else ""))
+                return int(not result["complete"] or any(u["status"]["state"] != "current" and not (args.loose and u["status"].get("scope") == "shared")
+                                                         for u in result["units"].values()))
         elif args.plan or args.list or args.list_outputs:
             result = plan(args.scope, args.target)
             if args.list:
@@ -619,7 +687,7 @@ def main(argv=None):
                 return int(not result["complete"])
         else:
             result = build(args.scope, args.target, force=args.force, jobs=args.jobs,
-                           publish=not args.resolve_layout)
+                           publish=not args.resolve_layout, loose=args.loose)
         if not args.json and not any((args.audit, args.adopt_existing, args.check, args.plan, args.resolve_layout)):
             print(f"Published {result['generation']}: {len(result['bundles'])} bundles, {len(result['files'])} runtime files.")
         else:

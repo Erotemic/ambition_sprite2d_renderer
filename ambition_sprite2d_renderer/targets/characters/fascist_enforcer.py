@@ -504,7 +504,21 @@ def air_down(i: int, n: int):
     return X.keys(shot(i, n), [(0.0, AIR), (0.3, dive), (0.8, dive), (1.0, AIR)])
 
 
-X.rows = [("idle", 8, 150), ("walk", 8, 105), ("run", 8, 78), ("dash_startup", 4, 50), ("dash", 6, 65), ("jump", 6, 95), ("fall", 6, 95),
+@X.row
+def notice(i: int, n: int):
+    # He starts, his brows go up; then he squares up, his fists up.
+    startled = P(hip=(-1.0, -1.0), lean=-6.0, head=(-0.6, -0.6, -8.0), na=(9.0, 14.0), fa=(10.0, 12.0), eyes="wide", mouth="o", brows=1.0)
+    return X.keys(shot(i, n), [(0.0, P()), (0.2, startled, "snap"), (0.5, startled), (0.8, GUARD), (1.0, GUARD)])
+
+
+@X.row
+def windup(i: int, n: int):
+    # The front kick made ready: his knee up, his weight back.
+    _, s, _c = loop(i, n)
+    return dict(GUARD, hip=(-1.0, 0.0), lean=-6.0 - 1.0 * s, leg="over", nf=(9.0, -22.0 - 0.8 * s, -20.0), ff=(-2.0, 0.0, 0.0))
+
+
+X.rows = [("idle", 8, 150), ("walk", 8, 105), ("notice", 8, 85), ("windup", 4, 90), ("run", 8, 78), ("dash_startup", 4, 50), ("dash", 6, 65), ("jump", 6, 95), ("fall", 6, 95),
           ("land_hard", 6, 80), ("crouch", 6, 110), ("block", 6, 90), ("hit", 5, 90), ("death", 8, 115), ("interact", 8, 92), ("taunt", 10, 90),
           ("slash", 9, 76), ("punch", 8, 80), ("attack_side", 8, 75), ("attack_up", 8, 75), ("attack_down", 8, 75), ("air_forward", 7, 65),
           ("air_down", 7, 70)]

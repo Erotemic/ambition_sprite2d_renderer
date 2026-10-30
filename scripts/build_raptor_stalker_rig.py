@@ -10,7 +10,8 @@ the frame, the rows and the clips. It never draws.
     uv run python scripts/build_raptor_stalker_rig.py
 
 The clips keep the sheet contract the game already reads: the same seven
-rows, frame counts and durations as before the SVG redesign.
+rows, frame counts and durations as before the SVG redesign, then the
+``notice`` and ``windup`` rows the game holds before a fight and a strike.
 """
 
 from __future__ import annotations
@@ -194,6 +195,53 @@ def death(i: int, n: int, t: float) -> Pose:
     return p
 
 
+def notice(i: int, n: int, t: float) -> Pose:
+    """Startled by its foe: drawn up tall, head high, jaws open, the arm
+    feathers flared and the tail fan up. Held, with a shiver."""
+    up = track([0.92, 1.0, 0.96], t)
+    p: Pose = {
+        "root_y": -4.0 * up,
+        "pelvis": -10.0 * up,
+        "torso": -4.0 * up,
+        "neck": -26.0 * up,
+        "head": 8.0 * up + track([0, 0, -3], t),
+        "jaw": track([18, 28, 24], t),
+        "near_arm_u": -40.0 * up,
+        "near_arm_l": -22.0 * up,
+        "far_arm_u": -34.0 * up,
+        "far_arm_l": -18.0 * up,
+    }
+    p.update(tail([[10, 14, 13], [12, 18, 16], [14, 22, 20], [16, 26, 24]], t))
+    p.update(eyes("open"))
+    return p
+
+
+def windup(i: int, n: int, t: float) -> Pose:
+    """The telegraph of its strike: crouched low with the weight back, the
+    head drawn back on a coiled neck with the jaws open, the claws drawn
+    back and the tail up. Held, with a shiver (the game loops it)."""
+    shake = track([0, 1.5, -1.5], t)
+    sink = 0.92 if i == 0 else 1.0
+    p: Pose = {
+        "root_x": -12.0 * sink + shake,
+        "root_y": 24.0 * sink,
+        "pelvis": 12.0,
+        "torso": 3.0,
+        "neck": -8.0,
+        "head": 4.0,
+        "jaw": 22.0 + shake,
+        "near_foot_x": NEAR_X + 6.0,
+        "far_foot_x": FAR_X - 8.0,
+        "near_arm_u": 34.0,
+        "near_arm_l": 24.0,
+        "far_arm_u": 30.0,
+        "far_arm_l": 20.0,
+    }
+    p.update(tail([[2, 2, 2], [6, 6, 6], [9, 10, 8], [12, 14, 10]], t))
+    p.update(eyes("angry"))
+    return p
+
+
 CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "idle": idle,
     "walk": walk,
@@ -202,6 +250,8 @@ CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "pounce": pounce,
     "hurt": hurt,
     "death": death,
+    "notice": notice,
+    "windup": windup,
 }
 
 DEFAULTS: Pose = {
@@ -229,6 +279,10 @@ SPEC = T.theropod_spec(
         ("pounce", 8, 85, False),
         ("hurt", 4, 90, False),
         ("death", 8, 110, False),
+        # The game holds ``notice`` while it first sees its foe, and
+        # ``windup`` over a melee move's startup before the attack row.
+        ("notice", 3, 120, False),
+        ("windup", 3, 90, False),
     ],
     clips=CLIPS,
     defaults=DEFAULTS,

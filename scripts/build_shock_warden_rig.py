@@ -89,6 +89,21 @@ def held_shield(pose: dict, pitch: float = 0.0) -> dict:
     return {**pose, "shield": pitch - support_angle}
 
 
+
+#: The planted guard: hips low, feet wide, the shield square in front.
+GUARD = {"root_y": 8, "torso": 6, "head": -4,
+         "near_thigh": 24, "near_shin": -28, "near_boot": 4,
+         "far_thigh": -20, "far_shin": 24, "far_boot": -4,
+         "shield_upper": 4, "shield_forearm": -34,
+         "baton_upper": 62, "baton_forearm": -30, "baton": -8,
+         "shield_charge": 0.9, "baton_charge": 0.55}
+#: The baton up and back behind the shield, at the top of the swing.
+WINDUP = {"root_x": -8, "root_y": 4, "torso": -11, "head": 6,
+          "near_thigh": 16, "near_shin": -20, "far_thigh": -14, "far_shin": 16,
+          "baton_upper": 142, "baton_forearm": -26, "baton": -16,
+          "baton_charge": 1, "shield_upper": 10, "shield_forearm": -16,
+          "shield_charge": 0.8}
+
 CLIPS = {
     "idle": {"loop": True, "frames": 8, "duration_ms": 135,
              "channels": {**{key: {"const": value} for key, value in REST.items() if value},
@@ -113,18 +128,36 @@ CLIPS = {
                           "shield_forearm": expr("2*sin(tau*t)"),
                           "shield": expr("-0.8*sin(tau*t)"),
                           "baton_upper": expr("-4*sin(tau*t)")}},
+    # A planted stance: feet wide, hips low, the shield square in front and
+    # the baton cocked over it.
     "guard": pose_clip([
         (0.0, held_shield({})),
-        (0.25, held_shield({"root_y": 2, "torso": 4, "head": -3,
-                            "shield_upper": 18, "shield_forearm": -29,
-                            "near_thigh": 4, "shield_charge": 0.9,
-                            "baton_charge": 0.4}, pitch=-2)),
-        (0.85, held_shield({"root_y": 2, "torso": 4, "head": -3,
-                            "shield_upper": 18, "shield_forearm": -29,
-                            "near_thigh": 4, "shield_charge": 0.9,
-                            "baton_charge": 0.4}, pitch=-2)),
-        (1.0, held_shield({})),
+        (0.25, held_shield(GUARD, pitch=-3)),
+        (0.85, held_shield({**GUARD, "root_y": 9, "torso": 7}, pitch=-3)),
+        (1.0, held_shield(GUARD, pitch=-3)),
     ], frames=8, duration_ms=110),
+    # He sees you: his head comes up, he straightens, and the shield and the
+    # baton crackle as he squares up behind the shield.
+    "notice": pose_clip([
+        (0.0, held_shield({})),
+        (0.2, held_shield({"root_y": -4, "torso": -7, "head": 9,
+                           "shield_upper": 6, "shield_forearm": -10,
+                           "baton_upper": 30, "baton_forearm": -10,
+                           "shield_charge": 1, "baton_charge": 1}, pitch=-1)),
+        (0.45, held_shield({"root_y": -4, "torso": -7, "head": 9,
+                            "shield_upper": 6, "shield_forearm": -10,
+                            "baton_upper": 30, "baton_forearm": -10,
+                            "shield_charge": 1, "baton_charge": 1}, pitch=-1)),
+        (0.75, held_shield({**GUARD, "shield_charge": 1, "baton_charge": 1}, pitch=-3)),
+        (1.0, held_shield(GUARD, pitch=-3)),
+    ], frames=8, duration_ms=90),
+    # The tell of the baton swing: the baton high and back behind the
+    # shield, crackling, his weight on the rear foot.
+    "windup": pose_clip([
+        (0.0, held_shield(WINDUP, pitch=-2)),
+        (0.5, held_shield({**WINDUP, "baton_upper": 150, "baton": -20, "baton_charge": 0.85}, pitch=-2)),
+        (1.0, held_shield(WINDUP, pitch=-2)),
+    ], frames=6, duration_ms=90, loop=True),
     "brace": pose_clip([
         (0.0, held_shield({})),
         (0.25, held_shield({"root_y": 7, "torso": 16, "head": -13,
@@ -267,6 +300,8 @@ ACTOR_METADATA = {
         "default": {"animation": "idle", "events": []},
         "locomotion.walk": {"animation": "walk", "events": []},
         "combat.guard": {"animation": "guard", "events": []},
+        "combat.notice": {"animation": "notice", "events": []},
+        "attack.windup": {"animation": "windup", "events": []},
         "combat.block": {"animation": "brace", "events": []},
         "attack.shield_bash": {"animation": "shield_bash", "events": []},
         "attack.baton": {"animation": "baton_attack", "events": []},

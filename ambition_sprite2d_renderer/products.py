@@ -137,8 +137,12 @@ def describe(targets: dict) -> tuple[dict, list[str]]:
 
 
 def evaluate(plan: dict, record: dict | None, root: Path, repo: Path, hashes: Digests,
-             *, tiers: bool = True, publication: dict | None = None) -> dict:
-    """Decide missing members, source changes and byte changes from one accepted receipt."""
+             *, tiers: bool = True, publication: dict | None = None, unit: str = "", count: dict | None = None) -> dict:
+    """Decide missing members, source changes and byte changes from one accepted receipt.
+
+    A changed input is `direct` or `shared` as `publication.direct_input`
+    decides with `count`; a stale status names its `scope` (`publication.stale_scope`)."""
+    from .publication import direct_input, stale_scope
     reasons = []
     members = set(plan["required"])
     if record:
@@ -158,10 +162,13 @@ def evaluate(plan: dict, record: dict | None, root: Path, repo: Path, hashes: Di
             now = sorted(os.listdir(path)) if path.is_dir() else None
             if now != item.get("members"):
                 changed.append(item["path"])
-        if changed:
-            reasons.append({"code": "stale-inputs", "members": changed})
+        own = [path for path in changed if direct_input(unit, path, count)]
+        if own:
+            reasons.append({"code": "stale-inputs", "members": own, "scope": "direct"})
+        if len(own) < len(changed):
+            reasons.append({"code": "stale-inputs", "members": [path for path in changed if path not in own], "scope": "shared"})
         if evidence and (evidence.get("toolchain") != toolchain() or evidence.get("version") != VERSION):
-            reasons.append({"code": "stale-toolchain"})
+            reasons.append({"code": "stale-toolchain", "scope": "shared"})
         from .provenance import read_record, provenance_root
         changed_parents = []
         for parent in known.get("parameters", {}).get("parents", []):
@@ -186,6 +193,7 @@ def evaluate(plan: dict, record: dict | None, root: Path, repo: Path, hashes: Di
             reasons.append({"code": "changed-plan"})
     full_state = ("missing" if missing and len(missing) == len(members) else "partial") if missing else (
         "stale" if any(r["code"] != "unknown-inputs" for r in reasons) else "unknown" if reasons else "current")
+    scope = stale_scope([r for r in reasons if r["code"] != "unknown-inputs"]) if full_state == "stale" else None
     tier_rows = {}
     if tiers:
         for tier in plan.get("tiers", []):
@@ -210,7 +218,7 @@ def evaluate(plan: dict, record: dict | None, root: Path, repo: Path, hashes: Di
             states = {check["state"] for check in checks.values()}
             state = "missing" if absent else "stale" if states & {"stale", "partial", "missing"} else "unknown" if "unknown" in states else "current"
             tier_rows[tier] = {"state": state, "missing": absent, "components": checks}
-    return {"state": full_state, "reasons": reasons, "evidence_complete": bool(evidence and evidence.get("complete")),
+    return {"state": full_state, "scope": scope, "reasons": reasons, "evidence_complete": bool(evidence and evidence.get("complete")),
             "required": sorted(members), "tiers": tier_rows, "repair": plan["repair"]}
 
 
@@ -228,17 +236,21 @@ def inventory(repo: Path, *, deep: bool = False) -> dict:
     files = {logical: store.root / member["path"] for logical, member in selected["files"].items()}
     other, warnings = describe({})
     hashes = Digests(Path(__file__).resolve().parents[1] / ".cache/art_inputs.json", deep=deep)
+    records = {uid: read_record(provenance_root() / unit["root"] / f"{unit['generator']['id']}.json", selected)
+               for uid, unit in other.items() if unit["kind"] != "atlas"}
+    count = publication.readers({"inputs": {item["path"]: None for item in ((record or {}).get("generation") or record or {}).get("inputs", [])}}
+                                for record in records.values())
     for uid, unit in other.items():
         if unit["kind"] == "atlas":
             continue
-        record = read_record(provenance_root() / unit["root"] / f"{unit['generator']['id']}.json", selected)
+        record = records[uid]
         sample = next(((rel, files[unit["root"] + "/" + rel]) for rel in unit["required"] if unit["root"] + "/" + rel in files), None)
         if sample is None:
             unit["status"] = {"state": "missing", "reasons": [{"code": "missing-publication"}], "tiers": {}, "required": unit["required"], "repair": unit["repair"]}
         else:
             rel, physical = sample
             root = physical.parents[len(Path(rel).parts) - 1]
-            unit["status"] = evaluate(unit, record, root, repo, hashes, tiers=False, publication=selected)
+            unit["status"] = evaluate(unit, record, root, repo, hashes, tiers=False, publication=selected, unit=uid, count=count)
             for tier in unit.get("tiers", []):
                 logical_root = unit["root"] + TIERS[tier]
                 checks = {}
