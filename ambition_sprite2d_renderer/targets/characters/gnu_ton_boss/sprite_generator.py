@@ -1189,6 +1189,9 @@ def _pack_layers(rendered: dict, manifest_rows: list[dict], policy, layers=_LAYE
 
     layer_pages: dict[str, list[Image.Image]] = {}
     page_size = result.pages[0].size
+    from ambition_sprite2d_renderer.core.memory_budget import require_images
+
+    require_images([page_size] * (len(layers) - 1), f"{TARGET_NAME} layer pages")
     for layer in layers:
         if layer == "full":
             layer_pages[layer] = list(result.pages)

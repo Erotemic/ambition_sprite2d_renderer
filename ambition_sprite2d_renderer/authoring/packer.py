@@ -169,6 +169,9 @@ def pack_frames(
         ew, eh = page_extent[binid]
         page_extent[binid] = (max(ew, x + w), max(eh, y + h))
 
+    from ..core.memory_budget import require_images
+
+    require_images([(max(1, w), max(1, h)) for (w, h) in page_extent], "packed sheet pages")
     pages = [Image.new("RGBA", (max(1, w), max(1, h)), background) for (w, h) in page_extent]
 
     placements: Dict[Hashable, FramePlacement] = {}
@@ -439,6 +442,10 @@ def pack_frames_grouped(
         page_extent[page] = (max(ew, bx + bw), max(eh, by + bh))
 
     num_pages = (max(page_extent) + 1) if page_extent else 0
+    from ..core.memory_budget import require_images
+
+    require_images([(max(1, page_extent.get(p, (1, 1))[0]), max(1, page_extent.get(p, (1, 1))[1])) for p in range(num_pages)],
+                   "packed sheet pages")
     pages = [
         Image.new("RGBA", (max(1, page_extent.get(p, (1, 1))[0]), max(1, page_extent.get(p, (1, 1))[1])), background)
         for p in range(num_pages)
