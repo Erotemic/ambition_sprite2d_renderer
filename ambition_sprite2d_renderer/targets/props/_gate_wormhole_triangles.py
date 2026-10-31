@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import functools
 import math
+from dataclasses import dataclass
 from typing import Tuple
 
 import numpy as np
@@ -78,32 +79,77 @@ def _smooth(e0: float, e1: float, x):
 # --- geometry -----------------------------------------------------------------
 
 
+@dataclass(frozen=True)
+class Aperture:
+    """Where on its canvas the wormhole is drawn, in design units (the
+    canvas is square, ``units`` a side, published at ``out_size``).
+
+    The gate's (``GATE_APERTURE``): the canvas centre, the door triangle
+    inscribed in the ring's inner edge, and a round opening (the ring's
+    aperture). A travel portal's: its own centre and door, and a TRIANGLE
+    opening of circumradius ``opening_r`` about the door, upright as the
+    door is; nothing is drawn outside it.
+    """
+
+    units: float = BASE_FRAME
+    centre: Tuple[float, float] | None = None
+    door_r: float | None = None
+    opening: str = "circle"
+    opening_r: float | None = None
+
+
+GATE_APERTURE = Aperture()
+
+
 class _Geo:
     """The assembly's geometry at one output size, in work pixels."""
 
-    def __init__(self, out_size: int):
+    def __init__(self, out_size: int, ap: Aperture = GATE_APERTURE):
         self.out = out_size
         self.w = out_size * SS
-        k = out_size / BASE_FRAME
+        k = out_size / ap.units
         #: One output pixel, in work pixels.
         self.px = float(SS)
         unit = k * SS
-        self.cx = self.cy = self.w / 2.0
+        if ap.centre is None:
+            self.cx = self.cy = self.w / 2.0
+        else:
+            self.cx, self.cy = ap.centre[0] * unit, ap.centre[1] * unit
         self.portal_r = gate.PORTAL_R / gate.SUPER * unit
         self.inner_r = gate.INNER_R / gate.SUPER * unit
-        #: The inscribed triangle: its corners touch the inner ring.
-        self.frame_r = self.inner_r - 0.6 * unit
+        #: The inscribed triangle (the door): its corners touch the inner ring.
+        self.frame_r = self.inner_r - 0.6 * unit if ap.door_r is None else ap.door_r * unit
         ys, xs = np.mgrid[0 : self.w, 0 : self.w].astype(np.float32)
         self.dx = xs + 0.5 - self.cx
         self.dy = ys + 0.5 - self.cy
         self.dist = np.sqrt(self.dx * self.dx + self.dy * self.dy)
         # The scale of the gate drawing: an output pixel of the 192 frame.
         self.unit = unit
+        #: The opening the membrane fills. Round (the gate's): ``lip_d`` is
+        #: the distance from the centre, 1 at the lip, and ``inside`` the
+        #: aperture's coverage. Triangular (a travel portal's): the same
+        #: measured triangularly, so the lip runs round the triangle, and
+        #: ``clip`` cuts everything drawn to it.
+        self.triangular = ap.opening == "triangle"
+        if self.triangular:
+            self.open_r = ap.opening_r * unit
+            sdf = _tri_sdf(self.dx, self.dy, self.open_r, 0.0)
+            self.lip_d = 1.0 + sdf / (self.open_r / 2.0)
+            self.inside = np.clip(-sdf / self.px + 0.5, 0.0, 1.0)
+            o = out_size
+            oy, ox = np.mgrid[0:o, 0:o].astype(np.float32)
+            out_sdf = _tri_sdf((ox + 0.5) * SS - self.cx, (oy + 0.5) * SS - self.cy, self.open_r, 0.0)
+            self.keep_out = np.clip(-out_sdf / (1.5 * SS) + 0.5, 0.0, 1.0)
+        else:
+            self.open_r = self.portal_r
+            self.lip_d = self.dist / self.portal_r
+            self.inside = np.clip((self.portal_r - self.dist) / self.px + 0.5, 0.0, 1.0)
+            self.keep_out = None
 
 
 @functools.lru_cache(maxsize=4)
-def _geo(out_size: int) -> _Geo:
-    return _Geo(out_size)
+def _geo(out_size: int, ap: Aperture = GATE_APERTURE) -> _Geo:
+    return _Geo(out_size, ap)
 
 
 def _corner(r: float, rot: float, k: int) -> Tuple[float, float]:
@@ -227,14 +273,22 @@ class _Canvas:
         ``aperture`` (work pixels) plus its own soft edge."""
         g = self.g
         n, o = g.w, g.out
+        if g.triangular:
+            # Nothing outside a triangular opening: the frame's band is there.
+            self.rgb *= g.inside[..., None]
+            self.a *= g.inside
+            self.glow *= g.inside[..., None]
         rgb = self.rgb.reshape(o, SS, o, SS, 3).mean(axis=(1, 3))
         a = self.a.reshape(o, SS, o, SS).mean(axis=(1, 3))
         glow = self.glow.reshape(o, SS, o, SS, 3).mean(axis=(1, 3))
         glow = _blur(glow, glow_radius * g.unit / SS) * glow_gain
         # The glow does not spill past the ring's inner edge: the band covers it.
-        yy, xx = np.mgrid[0:o, 0:o].astype(np.float32)
-        r = np.sqrt((xx + 0.5 - o / 2) ** 2 + (yy + 0.5 - o / 2) ** 2) * SS
-        keep = np.clip((aperture - r) / (1.5 * SS) + 0.5, 0.0, 1.0)
+        if g.keep_out is not None:
+            keep = g.keep_out
+        else:
+            yy, xx = np.mgrid[0:o, 0:o].astype(np.float32)
+            r = np.sqrt((xx + 0.5 - o / 2) ** 2 + (yy + 0.5 - o / 2) ** 2) * SS
+            keep = np.clip((aperture - r) / (1.5 * SS) + 0.5, 0.0, 1.0)
         glow = glow * keep[..., None]
         ga = np.clip(glow.max(axis=2) / 255.0, 0.0, 1.0)
         out_a = a + ga * (1.0 - a)
@@ -275,7 +329,7 @@ def _membrane(
     opens it out from the triangle's edges to the lip; ``scale`` and
     ``rot`` move the triangle (the door) as it closes."""
     g = cv.g
-    d = g.dist / g.portal_r
+    d = g.lip_d
     # Triangular distance from the centre: 1 on the inscribed triangle.
     tri = _tri_sdf(g.dx, g.dy, g.frame_r * scale, rot)
     inr = g.frame_r * scale / 2.0
@@ -304,8 +358,11 @@ def _membrane(
     rgb = base + light[..., None] * np.array([0.7, 0.9, 1.0], np.float32)
     lip = np.exp(-(((d - 0.97) / 0.03) ** 2))
     rgb = rgb * (1 - lip[..., None] * 0.55) + WHITE * lip[..., None] * 0.55
-    inside = np.clip((g.portal_r - g.dist) / g.px + 0.5, 0.0, 1.0)
-    edge = 1.0 + reveal * (g.portal_r / inr + 0.1 - 1.0)
+    inside = g.inside
+    # How far the opening reaches, in the door's measure: the round lip, or
+    # a triangular opening's corners.
+    reach = inr + (g.open_r - g.frame_r * scale) if g.triangular else g.portal_r
+    edge = 1.0 + reveal * (reach / inr + 0.1 - 1.0)
     shown = np.clip((edge - tri_d) * inr / (5.0 * g.px) + 0.5, 0.0, 1.0) if reveal < 1.0 else 1.0
     cov = inside * shown * alpha
     if 0.0 < reveal < 1.0:
@@ -451,7 +508,7 @@ def _specks(cv: _Canvas, phase: float, alpha: float) -> None:
     g = cv.g
     for i in range(18):
         u = (i * 0.618034 + phase) % 1.0
-        rr = g.portal_r * (0.06 + 0.9 * u**1.6)
+        rr = (g.open_r / 2.0 if g.triangular else g.portal_r) * (0.06 + 0.9 * u**1.6)
         ang = i * 137.5 + u * 40.0
         x = math.cos(math.radians(ang)) * rr
         y = math.sin(math.radians(ang)) * rr
@@ -469,13 +526,16 @@ def _stable(cv: _Canvas, phase: float, *, splash: float = -1.0, outward: bool = 
     _frame(cv, flex, 0.0, 1.0, 0.0, 1.0, phase)
 
 
-def render_portal_frame(animation: str, frame_index: int, nframes: int, out_size: int = BASE_FRAME) -> Image.Image:
-    """One frame of a portal row, ``out_size`` pixels square, on the gate's
-    assembly canvas (the same centre and aperture as the ring)."""
-    g = _geo(out_size)
+def render_portal_frame(
+    animation: str, frame_index: int, nframes: int, out_size: int = BASE_FRAME, aperture: Aperture = GATE_APERTURE
+) -> Image.Image:
+    """One frame of a portal row, ``out_size`` pixels square, on the
+    assembly canvas ``aperture`` describes (the gate's by default: the same
+    centre and aperture as the ring)."""
+    g = _geo(out_size, aperture)
     cv = _Canvas(g)
     t = frame_index / max(1, nframes - 1)
-    aperture = g.inner_r - 0.5 * g.px
+    lip = g.inner_r - 0.5 * g.px
     if animation == "stable":
         _stable(cv, frame_index / max(1, nframes))
     elif animation == "opening":
@@ -525,7 +585,7 @@ def render_portal_frame(animation: str, frame_index: int, nframes: int, out_size
         _stable(cv, phase, splash=t, outward=outward, surge=surge, flex=flex)
     else:
         raise ValueError(f"unknown animation: {animation}")
-    return cv.finish(glow_radius=2.4, glow_gain=1.0, aperture=aperture)
+    return cv.finish(glow_radius=2.4, glow_gain=1.0, aperture=lip)
 
 
 # --- the tunnel picture (Ultra) -------------------------------------------------
