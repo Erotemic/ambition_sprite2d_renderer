@@ -38,6 +38,19 @@ def references(path: Path) -> list[str]:
     return []
 
 
+#: What a sheet file brings beside it when it is installed, if it was rendered.
+COMPANION_SUFFIXES = ("_actor.ron", "_body_rig.ron", "_parts.ron")
+
+
+def companion_names(name: str) -> list[str]:
+    """The optional files installed beside sheet file ``name``: the install's
+    rule, and so the rule for what an installed file belongs to."""
+    if not name.endswith(("_spritesheet.ron", "_spritesheet.yaml", "_spritesheet.png")):
+        return []
+    stem = name.split("_spritesheet")[0]
+    return [stem + suffix for suffix in COMPANION_SUFFIXES]
+
+
 def required_names(target, *, portraits: bool = True) -> list[str]:
     names = list(target.sheet_files) + (list(target.portrait_files) if portraits else [])
     names += [name.removesuffix(".yaml") + ".ron" for name in names if name.endswith("_spritesheet.yaml")]
@@ -74,10 +87,8 @@ def collect(target, directory: Path, *, portraits: bool = True) -> dict[str, Pat
     for name in required_names(target, portraits=portraits):
         prefix = target.portrait_install_subdir if name in target.portrait_files else target.install_subdir
         add(name, prefix or "")
-        if name.endswith(("_spritesheet.ron", "_spritesheet.yaml", "_spritesheet.png")):
-            stem = name.split("_spritesheet")[0]
-            for suffix in ("_actor.ron", "_body_rig.ron", "_parts.ron"):
-                add(stem + suffix, prefix or "", optional=True)
+        for companion in companion_names(name):
+            add(companion, prefix or "", optional=True)
     return result
 
 

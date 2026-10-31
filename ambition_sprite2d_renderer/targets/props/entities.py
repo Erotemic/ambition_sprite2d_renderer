@@ -17,7 +17,7 @@ from ambition_sprite2d_renderer.core.draw import (
     with_alpha,
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw, downsample
-from ambition_sprite2d_renderer.core.door_swing import SWING, Leaf, Room, opening_frames
+from ambition_sprite2d_renderer.terrain.door_swing import SWING, Leaf, Room, opening_frames
 from ambition_sprite2d_renderer.core.pipeline import (
     CROP_GROUND,
     CROP_NONE,
@@ -2190,7 +2190,7 @@ def render_entity_opening(spec: EntitySpriteSpec, supersample: int = 4) -> Image
     """The opening of a door: `OPENING_FRAMES` frames in one row, each the
     size of the door picture. Frame 0 is the door picture
     (`render_entity_sprite`); in the frames after it the leaf moves into the
-    room behind the door (`core.door_swing`). All frames have the crop of the
+    room behind the door (`terrain.door_swing`). All frames have the crop of the
     door picture, so the frame and the sill stay on the same pixels."""
     motion, double, dark, glow, cover = DOOR_OPENINGS[spec.key]
     s = float(supersample)

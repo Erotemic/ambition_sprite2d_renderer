@@ -419,9 +419,13 @@ class Target:
         Page membership can depend on rendered pixels. The artifact collector
         resolves those references after a clean render.
         """
-        from ..artifacts import required_names
+        from ..artifacts import companion_names, required_names
+        # The companions the install copies beside a sheet file are CLAIMED
+        # though not REQUIRED (an actor descriptor, a body rig, a part page):
+        # an installed one is this target's, not an orphan.
+        names = [companion for name in required_names(self) for companion in [name, *companion_names(name)]]
         return list(dict.fromkeys((Path((self.portrait_install_subdir if name in self.portrait_files else self.install_subdir) or "") / name).as_posix()
-                                 for name in required_names(self)))
+                                 for name in names))
 
     # -- module-authored strategy -----------------------------------------
 

@@ -64,4 +64,12 @@ def render(out_dir, **opts):
     # An edit while a build runs does not throw the build away: the bundle is
     # published with the inputs it was built from, so it reads as stale.
     edited = publication.build(requested=["bundle_probe"],force=True)
-    assert edited["generation"] != changed["generation"]
+    # Built from "blue", which is what `changed` published: a content-addressed
+    # store answers the same generation, so the generation is not the evidence.
+    # The evidence is that the bundle it selected reads stale for the edit.
+    store = Store(tmp_path/'store')
+    assert edited["generation"] == store.selected()["generation"]
+    recipe = store.bundle(store.selected()["bundles"]["target:bundle_probe"])["recipe"]
+    state, reasons = publication.recipe_state(recipe, publication.source_files(), publication.toolchain())
+    assert state == "stale"
+    assert any(reason.get("path", "").endswith("probe_ink.txt") for reason in reasons), reasons

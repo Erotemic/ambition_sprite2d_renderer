@@ -23,7 +23,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from ..core.door_swing import OPENING_FRAMES, SLIDE, SWING, Leaf, Room, opening_frames
+from .door_swing import OPENING_FRAMES, SLIDE, SWING, Leaf, Room, opening_frames
 from .skins import K, Tile, _box, _dot, _line, _mix, _poly
 
 RGB = tuple[int, int, int]
@@ -303,7 +303,7 @@ def door(theme_key: str) -> Image.Image:
 def opening(theme_key: str) -> Image.Image:
     """The opening of the door of a theme: `OPENING_FRAMES` frames of
     `WIDTH_PX` by `HEIGHT_PX` in one row, from the door picture (frame 0) to
-    the open door (`core.door_swing`)."""
+    the open door (`terrain.door_swing`)."""
     tile, leaf, draw, c = _drawn(theme_key)
     motion, double = MOTIONS[draw]
     left, right, middle = F * K, (W - F) * K, W * 0.5 * K
