@@ -8,6 +8,8 @@ Drawn in room coordinates (`_district_props`) on the numbers of
   `coliseum_stand_east`, the stands either side of the ring, tier on tier,
   and on them the crowd: void stars, come to watch the void learn to fight. Grey
   edges, not white: they are not the ground and they do not fight.
+- `ring_seat`: the champion's seat behind the ring's top platform (its walk
+  y 926, x 840..1080), empty, in grey line: CHAMPION (vacant).
 - `magical_void_ledges` (floor y 576, roof y 64; a gap 160 wide between each
   piece of floor, a one-way ledge over it at y 466, 40 past each side):
   `ledges_gap`, drawn at the first gap (x 520..680) and placed at each:
@@ -118,9 +120,26 @@ def gap(c, k):
         c.put(c.mask(lambda p: p.line([(x0 + dx + s * 0.3, f + dy - 4), (x0 + dx + s * 0.3, f + dy - 4 - s * 0.8)], 1.0)), GREY, 0.6)
 
 
+SEAT_X, SEAT_WALK = 960, RING_FLOOR - 290
+
+
+def seat(c, k):
+    x, f = SEAT_X, SEAT_WALK
+    # A tall back with a star cut out of it, two arms, the seat: empty.
+    back = [(x - 46, f), (x - 46, f - 150), (x - 30, f - 190), (x, f - 206), (x + 30, f - 190), (x + 46, f - 150), (x + 46, f)]
+    dim_poly(c, back, 1.6)
+    hole = star_pts(x, f - 140, 22, 0.48)
+    c.put(c.mask(lambda p: p.poly(hole)), DIM)
+    c.put(c.mask(lambda p: p.poly(shrink(hole, 1.4))), (0, 0, 0))
+    for ax in (x - 64, x + 46):
+        dim_poly(c, [(ax, f), (ax + 18, f), (ax + 18, f - 56), (ax, f - 56)], 1.4)
+    dim_poly(c, [(x - 64, f - 40), (x + 64, f - 40), (x + 64, f - 30), (x - 64, f - 30)], 1.4)
+
+
 PIECES: Dict[str, Piece] = {
     "coliseum_stand_west": Piece((30, STAND_TOP - 40, 40 + STAND_W + 10, RING_FLOOR), stand_west),
     "coliseum_stand_east": Piece((1880 - STAND_W - 10, STAND_TOP - 40, 1890, RING_FLOOR), stand_east),
+    "ring_seat": Piece((SEAT_X - 70, SEAT_WALK - 212, SEAT_X + 70, SEAT_WALK), seat),
     "ledges_gap": Piece((GAP[0] - 44, ROOF_Y, GAP[1] + 44, WASTES_FLOOR + 64), gap),
     "wastes_dead_things": Piece((300, WASTES_FLOOR - 340, 2420, WASTES_FLOOR), dead_things, px=1.5),
 }
