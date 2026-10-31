@@ -18,6 +18,7 @@ leaf moves into the room behind it, for a body that goes through the door.
 
 from __future__ import annotations
 
+import math
 from typing import Callable
 
 import numpy as np
@@ -209,6 +210,25 @@ def blast(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def void_gate(tile: Tile, c: dict) -> np.ndarray:
+    """A door of the void: a black leaf in a black frame, a crisp white line
+    on the outer edge of the frame and on the edge of the leaf, and a star
+    that went out, drawn in a white line, for its light."""
+    leaf = _frame(tile, c, arch=14.0)
+    # The white line on the edge of the leaf.
+    edge = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, F - 0.9, F + 14.0, W - F + 0.9, H - STEP), p.ellipse([(F - 0.9) * K + dx, (F - 0.9) * K + dy, (W - F + 0.9) * K + dx, (F + 28.9) * K + dy], fill=255)))
+    tile.put(edge * (1.0 - leaf), c["frame_light"])
+    # A seam down the middle of the leaf, grey.
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.35) * (tile.y > 46.0), c["leaf_light"], 0.7)
+    # The star: a white line round a black body, with a crack across it.
+    cx, cy, r = W * 0.5, 31.0, 9.0
+    star = [(cx + (r if k % 2 == 0 else r * 0.44) * math.cos(math.radians(-90.0 + k * 36.0)), cy + (r if k % 2 == 0 else r * 0.44) * math.sin(math.radians(-90.0 + k * 36.0))) for k in range(10)]
+    tile.put(tile.mask(lambda p, dx, dy: (_poly(p, dx, dy, star), _line(p, dx, dy, star + star[:1], 1.4))), c["glow"])
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, star)), c["dark"])
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(cx - 6.0, cy - 2.0), (cx - 0.5, cy + 1.0), (cx + 6.5, cy - 1.0)], 0.6)), c["glow"])
+    return leaf
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -222,6 +242,7 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     cabin: (SWING, False),
     stone: (SWING, True),
     blast: (SWING, False),
+    void_gate: (SWING, True),
 }
 
 
@@ -258,6 +279,8 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "starlight": (stone, _colours((236, 178, 208), (150, 124, 214), (96, 70, 130), (255, 240, 170), (255, 250, 220))),
     "stardune": (stone, _colours((240, 196, 140), (214, 140, 104), (124, 70, 70), (255, 244, 180), (255, 250, 220))),
     "starless": (iron, _colours((40, 30, 82), (24, 18, 52), (8, 5, 20), (255, 86, 170), (255, 190, 226))),
+    # The void: black, with a white line on each edge, and a white step.
+    "void": (void_gate, {**_colours((4, 4, 5), (14, 14, 16), (2, 2, 3), (236, 236, 236), (244, 244, 244)), "frame_light": (246, 246, 246), "leaf_light": (84, 84, 86)}),
     "void_castle": (iron, _colours((92, 58, 104), (52, 28, 64), (18, 8, 24), (255, 206, 116), (255, 150, 80))),
     # The Noodly Temple: the door of a kitchen, planks with a round window.
     # The town of the Math dimension: a blue door of planks in a limestone arch.

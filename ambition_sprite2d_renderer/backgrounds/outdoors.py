@@ -7,7 +7,7 @@ import math
 import numpy as np
 
 from .artkit import Art, Pen, mix, polar, scale, smoothstep
-from .parts import HORIZON, cloud_mask, crystal_cluster, cumulus, fog, haze, lamps, moon, palm, pine, shafts, solid, stars, vignette
+from .parts import HORIZON, cloud_mask, crystal_cluster, cumulus, fog, haze, lamps, moon, motes, palm, pine, shafts, solid, stars, vignette
 
 # ---------------------------------------------------------------------------
 # The cove: a coast at night under the moon
@@ -1290,4 +1290,151 @@ def void_castle(layer_key: str, art: Art) -> np.ndarray:
     art.put(layer, fog(art, "heat", 0.74, 0.14), p["fire"], 0.26)
     art.put(layer, fog(art, "vault dark", 0.24, 0.13), p["black"], 0.34)
     vignette(art, layer, p["black"], 0.40)
+    return layer
+
+
+# ---------------------------------------------------------------------------
+# The void: the dungeon of Mary-O's land that the void ate
+# ---------------------------------------------------------------------------
+
+#: The void has no colour: black, white, and two greys. A far thing has a
+#: grey edge and a near thing a lighter one. Only the play has a pure white
+#: edge (the void enemies and the ground they stand on), so the scene does
+#: not hide them.
+VOID = {
+    "black": (2, 2, 2),
+    "space": (9, 9, 10),
+    "body": (4, 4, 5),
+    "far_edge": (92, 92, 94),
+    "near_edge": (168, 168, 170),
+    "speck": (236, 236, 236),
+    "mist": (40, 40, 42),
+}
+
+
+def _turned(pts: list, cu: float, cv: float, degrees: float, s: float = 1.0) -> list:
+    """`pts` (about the origin) made `s` times larger, turned by `degrees` and
+    moved to `(cu, cv)`."""
+    a = math.radians(degrees)
+    c, d = math.cos(a), math.sin(a)
+    return [(cu + (x * c - y * d) * s, cv + (x * d + y * c) * s) for x, y in pts]
+
+
+def _broken_foot(rng, x0: float, x1: float, y: float, depth: float, teeth: int = 4) -> list:
+    """A line of breaks from `x1` back to `x0` at `y`: the end of a part
+    that broke off the rest."""
+    return [(x1 - (x1 - x0) * k / teeth, y + (rng.uniform(0.2, 1.0) if 0 < k < teeth else 0.0) * depth) for k in range(teeth + 1)]
+
+
+def _broken_castle(art: Art, rng, u: float, v: float, s: float, pieces: int, spread: float):
+    """The castle of the land (`_castle`), broken into `pieces` wedges about
+    its middle, each one moved out from it by up to `spread`: a drawing of
+    the pieces, as a mask."""
+    whole, pen = art.drawing()
+    _castle(pen, u, v, s)
+    castle = art.mask_of(whole)
+    out = np.zeros_like(castle)
+    cu, cv = u, v - s * 0.55
+    start = rng.uniform(0.0, 360.0)
+    cuts = sorted(start + k * 360.0 / pieces + rng.uniform(-14.0, 14.0) for k in range(pieces))
+    for k, a0 in enumerate(cuts):
+        a1 = cuts[(k + 1) % pieces] + (360.0 if k == pieces - 1 else 0.0)
+        wedge_image, wedge_pen = art.drawing()
+        # A wedge with a broken edge: its sides go out from near the middle
+        # in steps, not in a straight line.
+        jag0 = [polar(cu, cv, s * t, a0 + rng.uniform(-6.0, 6.0)) for t in (0.0, 0.4, 0.9, 1.6, 3.0)]
+        jag1 = [polar(cu, cv, s * t, a1 + rng.uniform(-6.0, 6.0)) for t in (3.0, 1.6, 0.9, 0.4)]
+        wedge_pen.poly(jag0 + jag1)
+        mid = math.radians((a0 + a1) * 0.5)
+        far = rng.uniform(0.3, 1.0) * spread
+        out = np.maximum(out, art.shift(castle * art.mask_of(wedge_image), math.cos(mid) * far, math.sin(mid) * far))
+    return out
+
+
+def _dead_star(pen: Pen, crack_pen: Pen, u: float, v: float, r: float, turn: float, crack: float) -> None:
+    """A star that went out: its body, and a crack across it (`crack_pen`)
+    that the edge of the void goes along."""
+    pen.poly([polar(u, v, r if k % 2 == 0 else r * 0.44, -90.0 + turn + k * 36.0) for k in range(10)])
+    a = polar(u, v, r * 1.1, crack)
+    b = polar(u, v, r * 1.1, crack + 180.0)
+    mid = polar(u, v, r * 0.18, crack + 90.0)
+    crack_pen.line([a, mid, b], r * 0.06)
+
+
+def _outlined(art: Art, layer: np.ndarray, body: np.ndarray, edge_colour, width: float, crack: np.ndarray | None = None) -> None:
+    """Paint the mask `body` as a thing of the void: black, with an edge of
+    `edge_colour` all round it, and along `crack` (a mask cut out of it)."""
+    grown = np.clip(art.blur(body, width * 1000.0) * 3.0, 0.0, 1.0)
+    art.put(layer, grown, edge_colour)
+    art.put(layer, body if crack is None else body * (1.0 - crack), VOID["body"])
+
+
+def void(layer_key: str, art: Art) -> np.ndarray:
+    p = VOID
+    if layer_key == "sky":
+        # Black space, a little less dark at the height of the play, with
+        # far white specks that are not out yet.
+        layer = art.opaque(art.ramp([(0.0, p["black"]), (0.45, p["space"]), (0.62, p["space"]), (1.0, p["black"])]))
+        art.shade(layer, smoothstep(0.45, 0.85, art.noise("deep", cells=3.0, octaves=4, stretch=2.0)), 0.45)
+        stars(art, layer, 220, scale(p["speck"], 0.7), v_max=1.0, tag="specks")
+        # Broken rings about the heart of the void, far back: what is left
+        # of a thing goes round it before it goes in.
+        rng = art.rand("rings")
+        rings, ring_pen = art.drawing()
+        for r in (0.10, 0.17, 0.25, 0.34, 0.44, 0.56):
+            a = rng.uniform(0.0, 360.0)
+            end = a + 340.0
+            while a < end:
+                length = min(rng.uniform(20.0, 70.0), end - a)
+                ring_pen.arc(0.5, 0.47, r, a, a + length, 0.0012)
+                a += length + rng.uniform(8.0, 40.0)
+        art.light(layer, art.mask_of(rings, blur=0.6), p["far_edge"], 0.38)
+        # Stars that went out: far, so their edge is a dim grey. The large one
+        # is high, over the band of the play.
+        body, pen = art.drawing()
+        crack, crack_pen = art.drawing()
+        for u, v, r, turn, cut in ((0.66, 0.30, 0.070, 10.0, 30.0), (0.17, 0.36, 0.040, -14.0, 110.0), (0.90, 0.62, 0.028, 22.0, 70.0)):
+            _dead_star(pen, crack_pen, u, v, r, turn, cut)
+        _outlined(art, layer, art.mask_of(body), mix(p["far_edge"], p["space"], 0.25), 0.0014, art.mask_of(crack))
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        # The castle of the land in pieces, drawn in a grey line, that drift
+        # out from where it stood; small splinters of it go further.
+        rng = art.rand("far pieces")
+        castle = _broken_castle(art, rng, 0.52, 0.60, 0.12, 7, 0.032)
+        body, pen = art.drawing()
+        for _ in range(18):
+            u, v = rng.random(), rng.uniform(0.24, 0.76)
+            _shard(pen, rng, u, v, rng.uniform(0.03, 0.06), rng.uniform(0.0, 360.0))
+        layer = art.blank()
+        _outlined(art, layer, np.maximum(art.mask_of(body), castle), p["far_edge"], 0.0018)
+        return layer
+    if layer_key == "near_background":
+        # Near, lighter edges. Nothing is in the band of the play: the
+        # splinters of the void hang from above the view and pieces of the
+        # castle come up from below it, and a black thing with a white edge in
+        # the play is an enemy.
+        rng = art.rand("near pieces")
+        body, pen = art.drawing()
+        crack, crack_pen = art.drawing()
+        for u in (0.05, 0.27, 0.49, 0.74, 0.93):
+            for _ in range(4):
+                _shard(pen, rng, u + rng.uniform(-0.035, 0.035), rng.uniform(-0.01, 0.04), rng.uniform(0.10, 0.26), 90.0)
+        # Columns that broke: a head on a shaft with no top, from below.
+        for u, top, turn in ((0.14, 0.78, -4.0), (0.40, 0.84, 6.0), (0.62, 0.76, -8.0), (0.86, 0.82, 3.0)):
+            shaft = [(-0.028, 0.40), (-0.028, 0.0)] + _broken_foot(rng, -0.028, 0.028, 0.0, -0.03, 3)[::-1] + [(0.028, 0.40)]
+            pen.poly(_turned(shaft, u, top, turn))
+            pen.poly(_turned([(-0.044, 0.40), (-0.044, 0.425), (0.044, 0.425), (0.044, 0.40)], u, top, turn))
+            crack_pen.line(_turned([(-0.02, 0.10), (0.004, 0.16), (-0.008, 0.22), (0.016, 0.30)], u, top, turn), 0.0016)
+        # A dead star that fell, low in the view, cut by the bottom.
+        _dead_star(pen, crack_pen, 0.53, 0.93, 0.09, 16.0, 60.0)
+        layer = art.blank()
+        _outlined(art, layer, art.mask_of(body), p["near_edge"], 0.0016, art.mask_of(crack))
+        return layer
+    layer = art.blank()
+    # A low grey mist, the dark at each side, and a few slow specks.
+    art.put(layer, fog(art, "low mist", 0.78, 0.14), p["mist"], 0.30)
+    vignette(art, layer, p["black"], 0.50)
+    art.put(layer, motes(art, "specks", 40, 0.20, 0.80, 0.0008, 0.0018), p["speck"], 0.55)
     return layer

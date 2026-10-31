@@ -83,6 +83,14 @@ def _petal(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return leaf * 0.92, colour
 
 
+def _speck(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A small point of white with almost no light round it: a speck of a
+    star that the void ate."""
+    x, y = _cell()
+    r = (0.10, 0.13, 0.16, 0.08)[variant]
+    return np.clip(_soft(x, y, r, 1.1) * 1.3 + _soft(x, y, r * 2.4, 2.4) * 0.25, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -116,6 +124,8 @@ MOTES = {
     "starless": (_glow, (255, 120, 196)),
     # Sparks that go up from the fire under the floor.
     "void_castle": (_glow, (255, 150, 80)),
+    # Small white specks in the void, with no colour.
+    "void": (_speck, (240, 240, 240)),
     # Ash and sparks from the fires of the Evil dimension.
     "evil_forest": (_glow, (255, 104, 60)),
     # Spray off the sea in the late sun, at the port.

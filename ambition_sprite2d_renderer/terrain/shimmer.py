@@ -44,6 +44,8 @@ SHIMMERS = {
     "stardune": (_sparkle, 22, 4.0, 11.0, 2),
     "starless": (_ember, 44, 3.0, 8.0, 2),
     "void_castle": (_ember, 56, 2.5, 7.0, 2),
+    # Few small specks, and one thin ribbon of grey mist.
+    "void": (_ember, 34, 1.8, 4.5, 1),
 }
 
 

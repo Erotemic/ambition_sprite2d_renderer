@@ -61,6 +61,7 @@ SCENES: dict[str, Scene] = {
     "stardune": outdoors.stardune,
     "starless": outdoors.starless,
     "void_castle": outdoors.void_castle,
+    "void": outdoors.void,
     "skybridge": outdoors.skybridge,
     "open_sky": outdoors.open_sky,
     "boss": arenas.boss,

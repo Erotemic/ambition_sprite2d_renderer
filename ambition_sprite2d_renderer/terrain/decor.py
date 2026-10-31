@@ -570,6 +570,47 @@ def notice_board(tile: Tile, c: dict) -> None:
         tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x + w * 0.5, G - y + 0.4, 0.35)), c["bloom"])
 
 
+def _void_thing(tile: Tile, c: dict, polys: list, cracks: list = ()) -> None:
+    """Draw `polys` as things of the void: black (`dark`), with a thin edge
+    of `stone_light` round each one and along each crack. The edge is grey,
+    not the white of a void enemy: the decor is not a thing of the play."""
+    tile.put(tile.mask(lambda p, dx, dy: [(_poly(p, dx, dy, pts), _line(p, dx, dy, pts + pts[:1], 1.3)) for pts in polys]), c["stone_light"])
+    body = tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, pts) for pts in polys])
+    cut = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.55) for pts in cracks])
+    tile.put(body * (1.0 - cut), c["dark"])
+    tile.alpha *= tile.y < G
+
+
+def void_obelisk(tile: Tile, c: dict) -> None:
+    """An obelisk of the void with a crack down it, its tip broken off."""
+    body = [(M - 3.4, G + 1.0), (M - 2.5, G - 14.5), (M - 0.6, G - 17.5), (M + 0.4, G - 15.8), (M + 1.4, G - 17.0), (M + 2.5, G - 14.5), (M + 3.4, G + 1.0)]
+    _void_thing(tile, c, [body], [[(M + 0.4, G - 15.8), (M - 0.6, G - 11.0), (M + 0.8, G - 6.5), (M - 0.4, G - 1.0)]])
+
+
+def fallen_star(tile: Tile, c: dict) -> None:
+    """A star that went out and fell: one point in the ground, on its side,
+    with a crack across it. It has no eyes and it is grey at its edge: it is
+    not the Void Star."""
+    cx, cy, r = M + 0.6, G - 6.2, 7.0
+    star = [(cx + (r if k % 2 == 0 else r * 0.44) * math.cos(math.radians(-90.0 + 160.0 + k * 36.0)), cy + (r if k % 2 == 0 else r * 0.44) * math.sin(math.radians(-90.0 + 160.0 + k * 36.0))) for k in range(10)]
+    _void_thing(tile, c, [star], [[(cx - 5.0, cy - 3.0), (cx - 0.5, cy + 0.6), (cx + 4.6, cy - 1.0)]])
+
+
+def void_shards(tile: Tile, c: dict) -> None:
+    """Splinters of the void that come up out of the ground."""
+    shards = []
+    for x, h, lean, w in ((-3.6, 8.0, -18.0, 1.4), (0.2, 13.0, 4.0, 1.8), (3.8, 6.0, 24.0, 1.2)):
+        tip = (M + x + math.sin(math.radians(lean)) * h, G - math.cos(math.radians(lean)) * h)
+        shards.append([(M + x - w, G + 1.0), (tip[0] - w * 0.2, tip[1] + h * 0.35), tip, (M + x + w, G + 1.0)])
+    _void_thing(tile, c, shards)
+
+
+def broken_column(tile: Tile, c: dict) -> None:
+    """The stub of a column of the castle, broken at the top, with a crack."""
+    body = [(M - 4.6, G + 1.0), (M - 4.6, G - 2.0), (M - 3.4, G - 2.0), (M - 3.4, G - 11.5), (M - 1.4, G - 13.6), (M + 0.2, G - 11.8), (M + 1.6, G - 13.0), (M + 3.4, G - 10.2), (M + 3.4, G - 2.0), (M + 4.6, G - 2.0), (M + 4.6, G + 1.0)]
+    _void_thing(tile, c, [body], [[(M + 0.2, G - 11.8), (M + 1.4, G - 8.0), (M - 0.4, G - 4.6)]])
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -600,6 +641,8 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "starlight": ((star_post, flowers, bush, grass_tuft, mushrooms, flowers), _palette((96, 70, 130), (206, 170, 214), (255, 232, 244), (190, 130, 150), (232, 196, 226), (120, 204, 170), (255, 130, 176), (255, 240, 170))),
     "stardune": ((star_post, amphora, rock, grass_tuft, obelisk, shells), _palette((124, 70, 70), (226, 170, 124), (255, 226, 176), (176, 112, 76), (232, 196, 150), (112, 176, 132), (255, 150, 130), (255, 244, 180))),
     "starless": ((crystal, brazier, rock, mushrooms, crystal, obelisk), _palette((12, 8, 28), (58, 46, 104), (120, 100, 180), (70, 44, 80), (52, 40, 92), (120, 60, 130), (255, 100, 180), (255, 120, 196))),
+    # The void: black things with a grey edge, and no colour.
+    "void": ((void_obelisk, void_shards, broken_column, fallen_star, void_shards, void_obelisk), _palette((4, 4, 5), (8, 8, 9), (150, 150, 152), (4, 4, 5), (4, 4, 5), (4, 4, 5), (150, 150, 152), (200, 200, 200))),
     "void_castle": ((brazier, column_stub, bones, obelisk, brazier, column_stub), _palette((30, 14, 40), (104, 66, 116), (170, 124, 176), (110, 60, 60), (70, 44, 80), (150, 60, 90), (255, 120, 60), (255, 190, 96))),
     "primeval": ((bones, bush, rock, grass_tuft, mushrooms, bush), _palette((22, 28, 16), (104, 96, 78), (214, 204, 176), (104, 70, 44), (92, 86, 74), (62, 140, 58), (236, 150, 60), (255, 200, 110))),
     "forest": ((stone_lantern, bush, flowers, grass_tuft, rock, bush), _palette((20, 26, 20), (92, 98, 90), (150, 156, 140), (100, 70, 46), (70, 70, 64), (78, 136, 62), (236, 120, 150), (255, 190, 100))),

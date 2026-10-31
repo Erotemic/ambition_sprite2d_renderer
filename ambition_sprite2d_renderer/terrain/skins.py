@@ -117,6 +117,9 @@ SKINS: tuple[Skin, ...] = (
     Skin("starless", "brick", (58, 46, 112), (17, 12, 40), (112, 96, 180), (255, 86, 170), "edge", (34, 26, 72), "spikes", "grate"),
     # Mary-O's castle: cut stone the colour of a plum, with a line of gold on
     # its edge. It is not red: the fire in the pits is. The void has no part in the ground: a body stands on what is whole.
+    # The void, in Mary-O's land: a body with no light in it, and one thin
+    # white line on each edge, as the void enemies have. No colour.
+    Skin("void", "void", (8, 8, 9), (3, 3, 4), (244, 244, 244), (255, 255, 255), "rim", (246, 246, 246), "rim", "rim"),
     Skin("void_castle", "ruin", (104, 66, 116), (34, 18, 46), (170, 124, 176), (255, 206, 116), "edge", (138, 90, 146), "bolts", "slab"),
     # The Noodly Temple: noodles in a press, under marinara that runs down
     # the edge, with noodles that hang under each block.
@@ -608,6 +611,21 @@ def fill(skin: Skin) -> Image.Image:
         tile.put(crack, skin.dark, 0.85)
         tile.put(np.clip(1.0 - np.abs((d2 - d1) - 1.9) / 0.7, 0, 1) * (lit > 0), skin.light, 0.25)
         tile.tone((tile.noise(5, 5, 3) - 0.5) * 0.20)
+    elif skin.material == "void":
+        # Black, with a few faint cracks in it and a few points of light it
+        # ate. Low contrast: the white edge of the block is what shows it.
+        tile.put(np.ones_like(tile.alpha), skin.base)
+        cracks = []
+        for _ in range(3):
+            x, y = rng.uniform(0, 64), rng.uniform(0, 64)
+            pts = [(x, y)]
+            for _ in range(rng.randint(3, 5)):
+                x, y = x + rng.uniform(-4.5, 4.5), y + rng.uniform(2.0, 5.5)
+                pts.append((x, y))
+            cracks.append(pts)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.32) for pts in cracks]), (26, 26, 28), 0.9)
+        specks = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.25, 0.45)) for _ in range(3)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r) for x, y, r in specks]), skin.light, 0.55)
     else:  # earth
         tile.put(np.ones_like(tile.alpha), skin.base)
         tile.tone((tile.noise(6, 6, 4) - 0.5) * 0.5)
@@ -694,6 +712,12 @@ def cap(skin: Skin) -> Image.Image:
         tile.put(face * (1.0 - stripe), _mix((214, 196, 140), skin.dark, 0.18))
         tile.put(((y >= s + thick - 0.8) & (y < s + thick)).astype(np.float32), skin.dark, 0.7)
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 16 + 8, s + 1.05, 0.4) for k in range(4)]), skin.dark, 0.6)
+        return tile.publish()
+    if skin.cap == "rim":
+        # The edge of the void: one crisp white line on the surface, and the
+        # black of the block under it. No shade.
+        tile.put(((y >= s - 0.3) & (y < s + 1.1)).astype(np.float32), skin.dark)
+        tile.put(((y >= s - 0.3) & (y < s + 0.9)).astype(np.float32), skin.cap_colour)
         return tile.publish()
     if skin.cap in ("strip", "plate", "edge"):
         thick = {"strip": 5.5, "plate": 5.0, "edge": 4.2}[skin.cap]
@@ -879,6 +903,11 @@ def under(skin: Skin) -> Image.Image:
         hooks = [(10.0, 4.5), (41.0, 6.5)]
         tile.put(tile.mask(lambda p, dx, dy: [[_dot(p, dx, dy, x, e + 2.8 + k * 1.3, 0.45, ry=0.7) for k in range(int(h))] for x, h in hooks]), skin.cap_colour)
         tile.put(np.clip(1.0 - (y - e - 2.6) / 5.0, 0, 1) ** 2 * (y >= e + 2.6), skin.accent, 0.16)
+    elif skin.under == "rim":
+        # The white line on the bottom edge, and no shade. Nothing hangs from
+        # it: a white point under a block reads as a spike.
+        tile.alpha[:] = 0.0
+        tile.put(((y >= e - 0.9) & (y < e + 0.4)).astype(np.float32), skin.cap_colour)
     else:  # lip
         tile.put(((y >= e - 0.3) & (y < e + 1.4)).astype(np.float32), _mix(skin.base, skin.dark, 0.5))
         tile.put(((y >= e + 0.9) & (y < e + 1.4)).astype(np.float32), skin.accent, 0.55)
@@ -889,6 +918,10 @@ def under(skin: Skin) -> Image.Image:
 def side(skin: Skin) -> Image.Image:
     tile = Tile(SIDE, False, True, skin.key, "side")
     x = tile.x
+    if skin.material == "void":
+        # The same crisp white line as the top edge, and no shade.
+        tile.put((x < 1.2).astype(np.float32), skin.cap_colour)
+        return tile.publish()
     tile.put(np.clip(1.0 - x / 9.0, 0.0, 1.0) ** 1.6, (0, 0, 0), 0.46)
     tile.put(((x >= 0.25) & (x < 0.85)).astype(np.float32), skin.light, 0.42)
     tile.put((x < 0.25).astype(np.float32), skin.dark, 0.8)
@@ -956,6 +989,12 @@ def oneway(skin: Skin) -> Image.Image:
         tile.put(ends * (y >= 6.2), tile_dark, 0.6)
         tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, k * 8 - 0.25, 0.8, k * 8 + 0.25, 3.0) for k in range(9)]), tile_dark, 0.6)
         tile.put(np.clip(1.0 - (y - 7.2) / 2.5, 0, 1) * (y >= 7.2) * (tile.alpha < 0.5), (0, 0, 0), 0.20)
+    elif skin.oneway == "rim":
+        # A thin bar of the void: black, with the white line all round it,
+        # and a grey joint each 32 units.
+        tile.put((y < 4.2).astype(np.float32), skin.cap_colour)
+        tile.put(((y >= 1.0) & (y < 3.2)).astype(np.float32), skin.dark)
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, k * 32 - 0.25, 1.0, k * 32 + 0.25, 3.2) for k in range(3)]), (70, 70, 72))
     else:  # slab
         stone = _mix(skin.base, skin.light, 0.45)
         tile.put((y < 6.4).astype(np.float32), stone)

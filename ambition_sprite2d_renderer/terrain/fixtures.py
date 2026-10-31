@@ -54,6 +54,18 @@ STEEL = {"lab", "alarm", "undertown", "hub", "basement", "boss", "eclipse", "hub
 def ladder(theme_key: str) -> Image.Image:
     skin = next(skin for skin in SKINS if skin.key == theme_key)
     tile = Tile(LADDER, True, True, theme_key, "ladder")
+    if skin.material == "void":
+        # Black rails and rungs, each with the white line of the void round it.
+        def parts(p, dx, dy, grow: float) -> None:
+            for x in (2.2, 13.8):
+                _box(p, dx, dy, x - 1.0 - grow, 0.0, x + 1.0 + grow, 32.0)
+            for k in range(4):
+                y = 4.0 + k * 8.0
+                _box(p, dx, dy, 2.2, y - 0.9 - grow, 13.8, y + 0.9 + grow)
+
+        tile.put(tile.mask(lambda p, dx, dy: parts(p, dx, dy, 0.6)), skin.cap_colour)
+        tile.put(tile.mask(lambda p, dx, dy: parts(p, dx, dy, 0.0)), skin.dark)
+        return tile.publish()
     steel = theme_key in STEEL
     rail = _mix(skin.light, (150, 160, 170), 0.5) if steel else (128, 90, 56)
     rung = _mix(rail, (255, 255, 255), 0.25) if steel else (170, 126, 78)
