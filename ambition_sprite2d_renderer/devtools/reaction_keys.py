@@ -1,11 +1,11 @@
-"""The Polygon fighters' reaction rows: hits, launches, prone, balance and stops.
+"""The humanoid fighters' reaction rows: hits, launches, prone, balance and stops.
 
 The foundational silhouettes of `docs/planning/demos/smash-expressive-fighter-poses.md`
 (Phase 1): a high, mid, low and airborne hit; an upward, horizontal and
 downward launch; face-up and face-down prone; a teeter hold; a floor-tech
 brace; a run brake. Each is keyed in world terms on the shared pose core
 (`pose_core.py`) and solved per fighter from its own rig, so one set of keys
-reads on all three bodies. Nothing here knows attack timing or hitboxes.
+reads on every body. Nothing here knows attack timing or hitboxes.
 
 The forward direction is the way the fighter faces. A hit or launch comes
 from the front, so the body is driven BACK (`lunge` < 0) and its loose parts
@@ -30,8 +30,10 @@ from .pose_core import AIR_RISE, Body, Key, load_target
 
 GENERATOR = "devtools/reaction_keys.py"
 
-#: The three Polygon fighters.
-FIGHTERS = ("pointed_polygon", "pugnacious_polygon", "projectile_polygon")
+#: The three Polygon fighters, then the humanoid fighters on the same rig
+#: profile (`humanoid-articulated-v1`): the Director, the Officer, the Medic
+#: and the Performer.
+FIGHTERS = ("pointed_polygon", "pugnacious_polygon", "projectile_polygon", "director", "officer", "medic", "performer")
 
 
 class Row(NamedTuple):
@@ -309,7 +311,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
     a = sub.add_parser("apply", help="write the reaction clips")
-    a.add_argument("fighter", nargs="?", help="one fighter; default all three")
+    a.add_argument("fighter", nargs="?", help="one fighter; default every one of FIGHTERS")
     a.add_argument("--rows", help="comma-separated rows; default every reaction row")
     args = parser.parse_args(argv)
     fighters = [args.fighter] if args.fighter else list(FIGHTERS)

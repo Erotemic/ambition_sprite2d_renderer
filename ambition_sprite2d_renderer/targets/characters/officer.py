@@ -231,8 +231,14 @@ def _prepared():
 def _doc() -> RigDocument:
     # RigDocument is a temporary renderer projection.  The editable sources are
     # the SVG static rig plus the shared Ambition pose/clip library selected by
-    # this character binding.
-    return _prepared().to_rig_document()
+    # this character binding. The grounded reaction rows
+    # (`devtools/reaction_keys.py`) stand, kneel or lie on the floor: every
+    # frame's lowest visible row on it. No other row is planted.
+    from ambition_sprite2d_renderer.devtools.reaction_keys import PLANTED
+
+    doc = _prepared().to_rig_document()
+    doc.frame["plant"] = {row: "each" for row in PLANTED}
+    return doc
 
 
 @lru_cache(maxsize=1)
@@ -403,6 +409,10 @@ def _raw_frame(animation: str, frame_idx: int, frame_count: int):
         )
     at_s = frame_idx * clip.frame_duration_ms / 1000.0
     normalized = round(at_s / max(clip.duration_s, 1e-9), 9)
+    if animation in _doc().frame["plant"]:
+        times = [round(i * clip.frame_duration_ms / 1000.0 / max(clip.duration_s, 1e-9), 9) for i in range(frame_count)]
+        lift = _doc().plant_offsets(animation, times, padding=_publication_padding())[frame_idx]
+        return _doc().render_planted(animation, normalized, lift, padding=_publication_padding())
     return _doc().render_at(animation, normalized, padding=_publication_padding())
 
 

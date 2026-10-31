@@ -39,6 +39,10 @@ from ._authored_swing_fighter import AuthoredSwingFighter
 
 TARGET_NAME = "medic"
 _FIGHTER = AuthoredSwingFighter(TARGET_NAME)
+#: The rig sources, as the pose generators (`devtools/pose_core.py`) read them.
+_prepared = _FIGHTER.prepared
+_doc = _FIGHTER.doc
+_render_frame = _FIGHTER.render_frame
 
 #: A compact vocabulary to show first when reviewing this fighter. The rig
 #: publishes the full fighter vocabulary (136 clips).

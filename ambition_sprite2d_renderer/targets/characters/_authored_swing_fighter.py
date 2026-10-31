@@ -54,7 +54,11 @@ class AuthoredSwingFighter:
         # character binds. Its walk keeps a foot on the ground it stands on,
         # and its run's lowest stride touches it (`RigDocument.plant_offsets`).
         doc = self.prepared().to_rig_document()
-        doc.frame["plant"] = {"walk": "each", "run": "row"}
+        # The grounded reaction rows (`devtools/reaction_keys.py`) stand, kneel
+        # or lie on the same floor: every frame's lowest visible row on it.
+        from ambition_sprite2d_renderer.devtools.reaction_keys import PLANTED
+
+        doc.frame["plant"] = {"walk": "each", "run": "row", **{row: "each" for row in PLANTED}}
         return doc
 
     @lru_cache(maxsize=1)
