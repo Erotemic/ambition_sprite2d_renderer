@@ -497,6 +497,9 @@ def attack_hitboxes(sheet: AliceSheet) -> Dict[str, dict]:
     so the volume she hits with is the arc she is shown swinging."""
     out: Dict[str, dict] = {}
     for name, frames, _ms in sheet.rows():
+        # A composed turn swings nothing, and has no clip of its own.
+        if name in COMPOSED:
+            continue
         doc, path = sheet.doc_of(name)
         if bool(doc.clips[name].get("loop", True)):
             continue
