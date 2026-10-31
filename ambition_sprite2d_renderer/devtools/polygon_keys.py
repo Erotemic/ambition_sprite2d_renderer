@@ -30,14 +30,9 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
-from ..authoring.skeleton import two_bone_ik
-
-Foot = Tuple[float, float, float]  # (forward px from the standing ankle, lift px, pitch deg)
-SIDES = ("near", "far")
+from .pose_core import AIR_RISE, SIDES, Body, Key, _write_json, load_target, sample  # noqa: F401
 
 ATTACK_FRAMES = 12
-#: How far above the standing feet an airborne row rides, in px.
-AIR_RISE = -6.0
 
 #: The Smash stage's clocks: (first active, last active, total) ticks at 60 Hz,
 #: read from each fighter's facet (`data/fighters/*_polygon.ron`, written by
@@ -96,252 +91,6 @@ def active_frames(name: str, clocks: str) -> List[int]:
     return inside or [min(int((lo + hi) * 0.5 * ATTACK_FRAMES), ATTACK_FRAMES - 1)]
 
 
-@dataclass(frozen=True)
-class Key:
-    """One key pose at `at` (0..1) of the move.
-
-    `near`/`far` are (upper arm, forearm, hand) in forward-relative world
-    degrees; `None` holds the arm at rest, carried by the torso. `torso`,
-    `head` lean forward when positive. `lunge` is forward px, `drop` down px.
-    `feet` places boots (see `Foot`); an unlisted boot stays planted, and in
-    the `air` every boot rides with the body. `aim` turns the beast's cannon
-    (forward-relative degrees), `None` keeps it with the head. `ease` shapes
-    the approach INTO this key: "out" arrives fast (a cut), "gather" moves at
-    once and settles (a wind-up), "in" holds and then moves, "smooth" both,
-    "linear" neither.
-    """
-
-    at: float
-    near: Optional[Tuple[float, float, float]] = None
-    far: Optional[Tuple[float, float, float]] = None
-    torso: float = 0.0
-    head: float = 0.0
-    lunge: float = 0.0
-    drop: float = 0.0
-    feet: Dict[str, Foot] = field(default_factory=dict)
-    air: bool = False
-    aim: Optional[float] = None
-    ease: str = "smooth"
-
-
-_EASES: Dict[str, Callable[[float], float]] = {
-    "linear": lambda u: u,
-    "smooth": lambda u: u * u * (3.0 - 2.0 * u),
-    "out": lambda u: 1.0 - (1.0 - u) ** 3,
-    "in": lambda u: u ** 3,
-    # A wind-up: the body starts into the coil at once and settles into it,
-    # so a slow move shows its gather over the whole startup. Cubic "in" held
-    # the rest pose for most of a long startup and snapped into the coil on
-    # its last frame (a Falcon-paced up tilt read as standing, then a swing).
-    "gather": lambda u: 1.0 - (1.0 - u) ** 2,
-}
-
-
-def _lerp(a: float, b: float, u: float) -> float:
-    return a + (b - a) * u
-
-
-def _lerp_arm(a, b, u):
-    if a is None or b is None:
-        return a if u < 0.5 else b
-    return tuple(_lerp(x, y, u) for x, y in zip(a, b))
-
-
-def _blend(a: Key, b: Key, u: float) -> Key:
-    def feet(side: str) -> Foot:
-        fa = a.feet.get(side, (0.0, 0.0, 0.0))
-        fb = b.feet.get(side, (0.0, 0.0, 0.0))
-        return tuple(_lerp(x, y, u) for x, y in zip(fa, fb))  # type: ignore[return-value]
-
-    aim = None if a.aim is None and b.aim is None else _lerp(
-        a.aim if a.aim is not None else b.aim, b.aim if b.aim is not None else a.aim, u)
-    return Key(
-        at=_lerp(a.at, b.at, u),
-        near=_lerp_arm(a.near, b.near, u),
-        far=_lerp_arm(a.far, b.far, u),
-        torso=_lerp(a.torso, b.torso, u),
-        head=_lerp(a.head, b.head, u),
-        lunge=_lerp(a.lunge, b.lunge, u),
-        drop=_lerp(a.drop, b.drop, u),
-        feet={side: feet(side) for side in SIDES},
-        air=a.air,
-        aim=aim,
-    )
-
-
-def sample(keys: Sequence[Key], phase: float) -> Key:
-    """The pose at `phase`, eased into whichever key comes next."""
-    if phase <= keys[0].at:
-        return keys[0]
-    for a, b in zip(keys, keys[1:]):
-        if phase <= b.at:
-            span = max(1e-6, b.at - a.at)
-            return _blend(a, b, _EASES[b.ease]((phase - a.at) / span))
-    return keys[-1]
-
-
-class Body:
-    """One polygon's rig, read from its target: rests, standing feet, facing."""
-
-    def __init__(self, target, clocks: str) -> None:
-        self.target = target
-        self.clocks = clocks
-        prepared = target._prepared()
-        doc = target._doc()
-        self.library = Path(prepared.library.path).parent
-        self.unit = 1.0 / float(prepared.binding.render.frame_px_per_rig_unit)
-        self.mirror = bool(prepared.reflects_motion_x)
-        self.sk = doc.build_skeleton()
-        self.rest = {name: b.rest_angle for name, b in self.sk.bones.items()}
-        self.parent = {name: b.parent for name, b in self.sk.bones.items()}
-        self.facing = -1.0 if doc.authored_faces_left else 1.0
-        fr = doc.frame
-        self.root = (float(fr["center_x"]), float(fr["ground_y"]))
-        stand = self.sk.world({}, root=self.root)
-        self.ankle_rest = {s: stand[f"{s}_leg_foot"].origin for s in SIDES}
-        self.foot_rest = {s: stand[f"{s}_leg_foot"].angle for s in SIDES}
-        self.leg = {s: (self.sk.bones[f"{s}_leg_u"].length, self.sk.bones[f"{s}_leg_l"].length) for s in SIDES}
-        self.arm_rest = {
-            s: tuple(self.fwd_of(stand[f"{s}_arm_{part}"].angle) for part in ("u", "l", "hand")) for s in SIDES
-        }
-        self.has_cannon = "cannon" in self.sk.bones
-
-    # Forward-relative degrees <-> world degrees.
-    def fwd(self, f: float) -> float:
-        return f if self.facing > 0 else 180.0 - f
-
-    def fwd_of(self, world: float) -> float:
-        return world if self.facing > 0 else 180.0 - world
-
-    def channels(self, key: Key) -> Dict[str, float]:
-        """The clip's deltas (rendered-rig convention) and the root, px."""
-        rest, s = self.rest, self.facing
-        pelvis = s * 0.35 * key.torso
-        torso_w = s * key.torso
-        d: Dict[str, float] = {
-            "pelvis": pelvis,
-            "torso": torso_w - pelvis,
-            "head": s * key.head - torso_w,
-            "_root_x": s * key.lunge,
-            "_root_y": key.drop,
-        }
-        for side in SIDES:
-            arm = key.near if side == "near" else key.far
-            if arm is None:
-                r = self.arm_rest[side]
-                arm = (r[0] + key.torso, r[1] + key.torso, r[2] + key.torso)
-            wu, wl, wh = (self.fwd(a) for a in arm)
-            d[f"{side}_arm_u"] = wu - torso_w - rest[f"{side}_arm_u"]
-            d[f"{side}_arm_l"] = wl - wu - rest[f"{side}_arm_l"]
-            d[f"{side}_arm_hand"] = wh - wl - rest[f"{side}_arm_hand"]
-        if self.has_cannon:
-            head_w = s * key.head
-            d["cannon"] = 0.0 if key.aim is None else self.fwd(key.aim) - head_w - rest["cannon"]
-        root = (self.root[0] + d["_root_x"], self.root[1] + d["_root_y"])
-        angles = {k: v for k, v in d.items() if k in self.sk.bones}
-        world = self.sk.world(angles, root=root)
-        for side in SIDES:
-            dx, lift, pitch = key.feet.get(side, (0.0, 0.0, 0.0))
-            ax, ay = self.ankle_rest[side]
-            if key.air:
-                ax += d["_root_x"]
-                ay += d["_root_y"]
-            ankle = (ax + s * dx, ay - lift)
-            hip = world[f"{side}_leg_u"].origin
-            upper, lower = self.leg[side]
-            a1, a2 = two_bone_ik(hip, ankle, upper, lower, bend=s)
-            d[f"{side}_leg_u"] = a1 - pelvis - rest[f"{side}_leg_u"]
-            d[f"{side}_leg_l"] = a2 - a1 - rest[f"{side}_leg_l"]
-            d[f"{side}_leg_foot"] = self.foot_rest[side] + s * pitch - a2 - rest[f"{side}_leg_foot"]
-        return d
-
-    def state(self, key: Key) -> dict:
-        """The clip JSON state of `key`, in the library's authored facing."""
-        d = self.channels(key)
-        m = -1.0 if self.mirror else 1.0
-        bones = {
-            name: {"rotation_deg": round(m * _wrap(d[name]), 4)}
-            for name in sorted(self.sk.bones) if name in d
-        }
-        root = [round(m * d["_root_x"] * self.unit, 4), round(d["_root_y"] * self.unit, 4)]
-        return {"root": {"position": root}, "bones": bones}
-
-    def rest_key(self, at: float, *, air: bool = False, ease: str = "in", turn: int = 0) -> Key:
-        """The standing pose (or the airborne tuck), its arms explicit. `turn`
-        adds whole turns to the arm angles, so a swing that went over the top
-        comes down the other side to rest instead of back through the front."""
-        return Key(at=at, near=self.arm_at_rest("near", 0.0, turn), far=self.arm_at_rest("far", 0.0, turn),
-                   air=air, drop=AIR_RISE if air else 0.0,
-                   feet={"near": (-3.0, 10.0, 20.0), "far": (3.0, 12.0, 15.0)} if air else {}, ease=ease)
-
-    def arm_at_rest(self, side: str, lean: float, turn: int = 0) -> Tuple[float, float, float]:
-        """An arm hanging at rest, carried by a torso leaning `lean`."""
-        return tuple(a + lean + 360.0 * turn for a in self.arm_rest[side])  # type: ignore[return-value]
-
-    def resolved(self, key: Key) -> Key:
-        """`key` with any arm left `None` made explicit (at rest, carried by
-        the torso), so every blend is between numbers."""
-        near = key.near if key.near is not None else self.arm_at_rest("near", key.torso)
-        far = key.far if key.far is not None else self.arm_at_rest("far", key.torso)
-        return replace(key, near=near, far=far)
-
-    # -- writing -------------------------------------------------------------------
-
-    def clip_path(self, name: str) -> Path:
-        return self.library / "clips" / f"{name}.clip.json"
-
-    def spec_path(self, name: str) -> Path:
-        return self.library / "specs" / f"{name}.spec.json"
-
-    def write_clip(self, name: str, keys: Sequence[Key], frames: int, step_ms: int, loop: bool = False,
-                   named: Optional[Dict[int, str]] = None) -> None:
-        """Write the clip. `named` maps a frame to a reusable pose id of the
-        library: that frame's state is written to the pose file and the clip
-        refers to it, so the named whole-body poses stay the clip's."""
-        if [k.at for k in keys] != sorted(k.at for k in keys):
-            raise ValueError(f"{name}: key phases must be in order")
-        keys = [self.resolved(k) for k in keys]
-        phases = [i / frames for i in range(frames)] if loop else [F(i) for i in range(frames)]
-        path = self.clip_path(name)
-        doc = json.loads(path.read_text())
-        named = named or {}
-        for frame, pose_id in named.items():
-            pose_path = self.library / "poses" / f"{pose_id.replace('/', '__')}.pose.json"
-            pose = json.loads(pose_path.read_text())
-            pose["state"] = self.state(sample(keys, phases[frame]))
-            pose["source"] = {"clip": name, "frame": frame, "kind": "authored-polygon-keys"}
-            _write_json(pose_path, pose)
-        doc["loop"] = loop
-        doc["duration_s"] = round(frames * step_ms / 1000.0, 6)
-        doc["sampling"] = {"frame_count": frames, "frame_duration_ms": step_ms}
-        doc["source"] = {
-            "kind": "authored-polygon-keys",
-            "clip": name,
-            "note": "Keyed in world terms by devtools/polygon_keys.py and solved to FK; edit the keys, not this file.",
-        }
-        doc["pose_keys"] = [
-            {"at_s": round(i * step_ms / 1000.0, 6), "frame": i, "interpolation": "linear",
-             **({"pose": named[i]} if i in named else {"state": self.state(sample(keys, ph))})}
-            for i, ph in enumerate(phases)
-        ]
-        _write_json(path, doc)
-
-    def write_spec(self, name: str, spec: dict) -> None:
-        _write_json(self.spec_path(name), spec)
-
-
-def _wrap(deg: float) -> float:
-    while deg > 180.0:
-        deg -= 360.0
-    while deg <= -180.0:
-        deg += 360.0
-    return deg
-
-
-def _write_json(path: Path, data: dict) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2) + "\n")
-    tmp.replace(path)
 
 
 # ── the strikes ────────────────────────────────────────────────────────────────
@@ -1228,31 +977,32 @@ def named_poses(fighter: str, name: str, active: List[int]) -> Dict[int, str]:
     return {a0 - 1: f"{stem}/anticipation", _contact(a0, a1): f"{stem}/contact", a1 + 3: f"{stem}/recovery"}
 
 
-def load_target(fighter: str):
-    import importlib
-
-    return importlib.import_module(f"ambition_sprite2d_renderer.targets.characters.{fighter}")
+def write_spec(body: Body, name: str, spec: dict) -> None:
+    _write_json(body.library / "specs" / f"{name}.spec.json", spec)
 
 
 def apply(fighter: str, rows: Optional[Sequence[str]] = None) -> List[str]:
     """Write the clips and specs of `fighter` (all attack rows, or `rows`)."""
     clocks, strikes, effects, strike_of, charge = FIGHTERS[fighter]
     target = load_target(fighter)
-    body = Body(target, clocks)
+    body = Body(target)
     written = []
     for name, keys_for in strikes.items():
         if rows and name not in rows:
             continue
         active = active_frames(name, clocks)
         keys = keys_for(body, active[0], active[-1])
-        body.write_clip(name, keys, ATTACK_FRAMES, ROW_MS[name], named=named_poses(fighter, name, active))
+        body.write_clip(name, keys, ATTACK_FRAMES, ROW_MS[name], named=named_poses(fighter, name, active), phase_of=F)
         effect, style = effects[name]
-        body.write_spec(name, spec_for(fighter, name, effect, style, active,
+        write_spec(body, name, spec_for(fighter, name, effect, style, active,
                                        strike_of[name] if strike_of else None, air=name.startswith("air_")))
         written.append(name)
     if not rows or "smash_charge" in rows:
-        body.write_clip("smash_charge", charge(body), CHARGE_FRAMES, CHARGE_MS, loop=False)
-        body.write_spec("smash_charge", charge_spec(fighter, strike_of["smash_charge"] if strike_of else None))
+        # ⚠ `F` is the 12-frame attack row's phase, here as it always was: the
+        # 8 charge keys sit one per frame at `i / 8`, so the charge row samples
+        # between them. A deliberate art pass decides that, not this refactor.
+        body.write_clip("smash_charge", charge(body), CHARGE_FRAMES, CHARGE_MS, loop=False, phase_of=F)
+        write_spec(body, "smash_charge", charge_spec(fighter, strike_of["smash_charge"] if strike_of else None))
         written.append("smash_charge")
     return written
 

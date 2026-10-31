@@ -62,7 +62,7 @@ def test_sword_and_brawler_own_separate_libraries_on_one_rig_profile():
     assert sword_prepared.library.id == "humanoid/fighting_polygon_v1"
     assert brawler_prepared.library.id == "humanoid/fighting_brawler_v1"
     assert sword_prepared.rig.profile == brawler_prepared.rig.profile == "humanoid-articulated-v1"
-    assert len(sword_prepared.library.clips) == 136
+    assert len(sword_prepared.library.clips) == 146
     assert set(brawler_prepared.library.clips) == set(sword_prepared.library.clips)
     assert set(sword_prepared.library.poses) == CANONICAL_POSES
     # Pose ids name the library they belong to; a fork that kept the sword's ids
@@ -120,7 +120,7 @@ def test_motion_library_discovers_independent_pose_and_clip_files_without_a_glob
 
     base = sword.library_path.parent
     assert len(list((base / "poses").glob("*.pose.json"))) == len(CANONICAL_POSES)
-    assert len(list((base / "clips").glob("*.clip.json"))) == 136
+    assert len(list((base / "clips").glob("*.clip.json"))) == 146
 
 
 def test_pose_centric_clips_reference_reusable_named_whole_body_poses():
@@ -156,7 +156,7 @@ def test_renderer_projection_is_generated_from_motion_ir_and_contains_no_legacy_
         assert doc.data["generated_projection"]["schema"] == "ambition-rigdoc-projection-v1"
         assert doc.ik_legs == []
         assert doc.ik_chains == []
-        assert len(doc.clips) == 136
+        assert len(doc.clips) == 146
         for clip in doc.clips.values():
             for spec in clip["channels"].values():
                 assert "expr" not in spec
