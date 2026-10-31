@@ -2196,7 +2196,7 @@ def render_entity_opening(spec: EntitySpriteSpec, supersample: int = 4) -> Image
     s = float(supersample)
     work = (spec.size[0] * supersample, spec.size[1] * supersample)
     closed = Image.new("RGBA", work, (0, 0, 0, 0))
-    DRAWERS[spec.key](ImageDraw.Draw(closed), s)  # raw-draw-ok: blending changes the opening leaf (see-through to solid navy); art call pending
+    DRAWERS[spec.key](blending_draw(closed), s)
     # The door drawers draw at two times their scale (`_twice`).
     u = 2.0 * s
     mask_image = Image.new("L", work, 0)
