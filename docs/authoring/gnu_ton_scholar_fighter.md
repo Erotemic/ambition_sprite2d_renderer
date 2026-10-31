@@ -15,8 +15,9 @@ The scholar is a fencer/caster, not a generic sword fighter:
 - **Concept specials:** neutral open-book invocation, advancing quill thrust, upward casting lift, and book counter. These are **visual candidates**, not executable moves.
 - **Grabs and throws:** both arms reach without weapon props, hold, pummel, release and four directional throw poses.
 - **Reactions and traversal:** knockback, tumbling, prone/getup, jumps and landings, ledge and wall transitions, item poses, taunt, entrance, victory and loss.
+- **Smash reaction vocabulary:** a hit at the head, body or legs and in the air (`hit_high`, `hit_mid`, `hit_low`, `hit_air`, each ending on its settled recoil); launches up, back and down; prone face up and face down; a run brake (`run_stop`); a floor tech that slaps the floor with the book, and a tech roll. The grounded ones are planted on the floor when drawn (`frame.plant`, `PLANTED` in the pose library).
 
-There are **94 authored animation clips**. Ground movement and defensive holds loop; attacks have anticipation → active → follow-through/recovery beats. The common `humanoid.Body` forward kinematics and two IK legs remain the only pose solver. The drawing remains an editable labeled SVG.
+There are **105 authored animation clips**. Ground movement and defensive holds loop; attacks have anticipation → active → follow-through/recovery beats. The common `humanoid.Body` forward kinematics and two IK legs remain the only pose solver. The drawing remains an editable labeled SVG.
 
 ## Source paths (submodule-relative)
 

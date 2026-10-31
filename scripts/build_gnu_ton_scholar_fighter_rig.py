@@ -42,6 +42,14 @@ def make_spec():
                    clips=F.CLIPS, frame_size=(280, 300))
 
 
+def build() -> dict:
+    """The fighter rig document. The rows of ``F.PLANTED`` are put
+    on the floor when drawn (``frame.plant``)."""
+    fighter = CR.build(make_spec())
+    fighter["frame"]["plant"] = {row: "each" for row in F.PLANTED}
+    return fighter
+
+
 def main():
     spec = make_spec()
     if not spec.svg_path.exists():
@@ -51,7 +59,7 @@ def main():
     # Build JSON only.  CR.write() rewrites the SVG's embedded catalog to match
     # this secondary target.  That would change the canonical boss art's
     # metadata while leaving the original boss rig unchanged.
-    fighter = CR.build(spec)
+    fighter = build()
     boss = RigDocument.load(B.RIG)
     assert [p["name"] for p in fighter["parts"]] == [p["name"] for p in boss.parts]
     assert [b["name"] for b in fighter["bones"]] == [b["name"] for b in boss.bones]

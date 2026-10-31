@@ -292,6 +292,22 @@ def prone(t: float) -> Pose:
     return {**ON_BACK, "y": 20.0 - 0.6 * math.sin(w), "head": -80.0 + 3.0 * math.sin(w)}
 
 
+def prone_face_up(t: float) -> Pose:
+    """On its back, head behind, chest up: a knee raised, the far arm flung
+    out over its head along the floor, a slow breath."""
+    w = W * t
+    return {**ON_BACK, "y": 23.0 - 0.6 * math.sin(w), "head": -82.0 + 3.0 * math.sin(w), "nu": 60.0, "nl": -30.0,
+            "wa": -60.0, "fu": 178.0, "fl": 182.0, "nleg": a(-60.0 + 3.0 * math.sin(w), 30.0), "squint": 0.8}
+
+
+def prone_face_down(t: float) -> Pose:
+    """On its front, head forward, face to the floor: the blade arm reaching
+    ahead along the floor, the far arm folded under, one knee bent up."""
+    w = W * t
+    return {**ON_FRONT, "y": 5.0 - 0.6 * math.sin(w), "head": 74.0 + 3.0 * math.sin(w), "nu": 2.0, "nl": 0.0,
+            "wa": 0.0, "fu": 100.0, "fl": 20.0, "fleg": a(176.0, -120.0 + 4.0 * math.sin(w)), "squint": 0.9}
+
+
 def dizzy(t: float) -> Pose:
     w = W * t
     return S(x=2.0 * math.sin(w), by=3.0 + 1.5 * math.sin(2 * w), tilt=6.0 + 12.0 * math.sin(w), head=10.0 * math.sin(w + 1.0),
@@ -460,6 +476,18 @@ _move("walk_stop", [
     (0.0, {**walk(0.25)}),
     (0.25, {"x": 2.0, "by": 6.0, "tilt": -8.0, "head": -6.0, "nleg": g(18.0), "fleg": g(-12.0, 2.0), "fx__dust": 1.0,
             "ease": "out"}),
+    (1.0, HOME),
+])
+_move("run_stop", [
+    (0.0, {**run(0.0)}),
+    # The lead foot planted far ahead, the hips dropped low and back, the
+    # body thrown back against the momentum, the arms flung ahead.
+    (0.25, {"x": -2.0, "y": 0.0, "by": 11.0, "tilt": -22.0, "head": -16.0, "hx": -1.0, "nu": -24.0, "nl": -10.0,
+            "wa": -14.0, "fu": 0.0, "fl": 16.0, "nleg": g(28.0), "fleg": g(-16.0, 3.0), "squint": 0.6, "mouth": 0.8,
+            "fx__dust": 1.0, "fx__speed": 0.0, "ease": "out"}),
+    (0.55, {"by": 10.0, "tilt": -18.0, "head": -12.0, "nleg": g(27.0), "fleg": g(-14.0, 2.0), "fx__dust": 0.5}),
+    (0.8, {"x": 0.0, "by": 5.0, "tilt": -2.0, "head": 0.0, "nu": 20.0, "nl": -10.0, "wa": -30.0, "fu": 100.0,
+           "fl": 60.0, "nleg": g(18.0), "fleg": g(-10.0), "fx__dust": 0.0}),
     (1.0, HOME),
 ])
 _move("turnaround", [
@@ -631,12 +659,31 @@ _move("getup_roll", [
     (0.85, {**CROUCH, "x": -4.0, "spin": -360.0, "by": 12.0}),
     (1.0, {**HOME, "spin": -360.0}),
 ], extra=lambda t, p: _spin_legs(p))
+#: A floor tech catches the landing instead of lying in it: it lands low, the
+#: free (far) hand slaps the floor, the blade swings back for balance.
+#: Its arm angles run past -180 so that the blade, on the way back to the
+#: stance, swings up and over and not down through the floor.
+TOUCHDOWN = S(by=10.0, tilt=22.0, head=6.0, nu=-230.0, nl=-220.0, wa=-210.0, fz=1.0, fu=80.0, fl=70.0,
+              squint=0.6, mouth=0.5, nleg=g(16.0), fleg=g(-12.0, 1.0))
+TECH_BRACE = S(by=15.0, spin=26.0, tilt=40.0, head=-4.0, hx=2.0, nu=-200.0, nl=-188.0, wa=-184.0, fz=1.0, fu=80.0,
+               fl=88.0, squint=0.8, mouth=0.8, nleg=g(20.0), fleg=g(-16.0, 2.0))
 _move("tech", [
-    (0.0, {**AIR, "spin": -40.0, "squint": 0.9}),
-    (0.25, {**CROUCH, "by": 16.0, "tilt": 30.0, "fx__flash": 1.0, "fx__dust": 1.0, "ease": "out"}),
-    (0.6, {**CROUCH, "fx__flash": 0.2}),
-    (1.0, {**HOME, "fx__flash": 0.0}),
+    (0.0, TOUCHDOWN),
+    (0.25, {**TECH_BRACE, "fx__flash": 1.0, "fx__dust": 1.0, "ease": "out"}),
+    (0.6, {**TECH_BRACE, "by": 14.0, "tilt": 34.0, "fx__flash": 0.2, "fx__dust": 0.3}),
+    (1.0, {**HOME, "fx__flash": 0.0, "fx__dust": 0.0}),
 ])
+_move("tech_roll", [
+    # The brace, then a roll out along the floor.
+    (0.0, TOUCHDOWN),
+    (0.17, {**TECH_BRACE, "fx__flash": 1.0, "fx__dust": 1.0, "ease": "out"}),
+    (0.33, {**CROUCH, "by": 14.0, "tilt": 30.0, "head": 20.0, "fx__flash": 0.0, "fx__dust": 0.3}),
+    (0.5, {"x": 4.0, "y": -24.0, "spin": 180.0, "by": 8.0, "fz": 0.0, "nleg": a(-30.0, 60.0),
+           "fleg": a(-10.0, 80.0), "fx__dust": 0.0, "ease": "lin"}),
+    (0.75, {"x": 8.0, "y": -4.0, "spin": 320.0, "ease": "lin"}),
+    (0.9, {"x": 4.0, "spin": 360.0, "by": 8.0, "nleg": g(18.0), "fleg": g(-6.0)}),
+    (1.0, {**HOME, "spin": 360.0}),
+], extra=lambda t, p: _spin_legs(p))
 _move("wall_tech", [
     (0.0, {**AIR, "spin": -30.0}),
     (0.25, {"x": 8.0, "y": -6.0, "spin": -80.0, "nleg": a(-80.0, -70.0), "fleg": a(-60.0, -80.0), "nu": 170.0, "nl": 160.0,
@@ -651,6 +698,85 @@ _move("wall_jump", [
            "nu": -60.0, "nl": -80.0, "wa": -100.0, "mouth": 0.8, "fx__dust": 0.0}),
     (1.0, AIR),
 ], base=AIR)
+# Reactions: the Smash reaction vocabulary. A hit comes from the front, so
+# the body goes back (``x`` < 0). A recoil ENDS on its settled pose: the game
+# holds a clip's last frame for the hitstun. A launch holds its flight shape,
+# the loose limbs trailing opposite the travel.
+_move("hit_high", [
+    (0.0, {}),
+    # The head snaps back, the chest follows, the blade arm flung up ahead
+    # and the far arm flung back.
+    (0.25, {"x": -4.0, "spin": -14.0, "by": 3.0, "tilt": -18.0, "head": -50.0, "hx": -4.0, "hy": -2.0, "nu": -30.0,
+            "nl": -50.0,
+            "wa": -70.0, "fu": 175.0, "fl": 165.0, "nleg": g(16.0), "fleg": g(-12.0, 2.0), "squint": 1.0,
+            "mouth": 1.0, "fx__hit": 1.0, "ease": "out"}),
+    (1.0, {"x": -3.0, "spin": -8.0, "tilt": -12.0, "head": -36.0, "hx": -3.0, "hy": -1.0, "nu": -6.0, "nl": -20.0,
+           "wa": -40.0,
+           "fu": 160.0, "fl": 150.0, "squint": 0.8, "mouth": 0.7, "fx__hit": 0.0}),
+])
+_move("hit_mid", [
+    (0.0, {}),
+    # Doubled over the blow: hips pushed back, knees giving, arms folding in.
+    (0.25, {"x": -5.0, "spin": 10.0, "by": 10.0, "tilt": 42.0, "head": 40.0, "hx": 2.0, "hy": 3.0, "nu": 95.0,
+            "nl": 10.0, "wa": 178.0, "fu": 80.0, "fl": 0.0, "nleg": g(12.0), "fleg": g(-14.0), "squint": 1.0, "mouth": 1.0,
+            "fx__hit": 1.0, "ease": "out"}),
+    (1.0, {"x": -4.0, "spin": 6.0, "by": 8.0, "tilt": 32.0, "head": 30.0, "nu": 90.0, "nl": 20.0, "wa": 172.0,
+           "fu": 85.0,
+           "fl": 10.0, "squint": 0.9, "mouth": 0.6, "fx__hit": 0.0}),
+])
+_move("hit_low", [
+    (0.0, {}),
+    # The legs are taken: the front foot knocked back and up, the body
+    # pitching forward over it, the arms thrown out for balance.
+    (0.25, {"x": -2.0, "spin": 22.0, "by": 5.0, "tilt": 30.0, "head": -10.0, "nu": -10.0, "nl": -30.0, "wa": -50.0,
+            "fu": -150.0, "fl": -165.0, "nleg": g(-22.0, 16.0), "fleg": g(-2.0), "squint": 0.0, "mouth": 1.0,
+            "fx__hit": 1.0, "ease": "out"}),
+    (1.0, {"x": -2.0, "spin": 16.0, "by": 4.0, "tilt": 24.0, "head": -6.0, "nu": 0.0, "nl": -20.0, "wa": -40.0,
+           "fu": -165.0, "fl": 175.0, "nleg": g(-16.0, 10.0), "squint": 0.1, "mouth": 0.8, "fx__hit": 0.0}),
+])
+_move("hit_air", [
+    (0.0, AIR),
+    # Curled round the blow in the air, knees to the chest, then opening
+    # part way.
+    (0.25, {"x": -4.0, "spin": 18.0, "tilt": 30.0, "head": 30.0, "nu": 95.0, "nl": 20.0, "wa": 100.0, "fu": 80.0,
+            "fl": 10.0, "nleg": a(-40.0, 70.0), "fleg": a(-20.0, 80.0), "squint": 1.0, "mouth": 1.0,
+            "fx__hit": 1.0, "ease": "out"}),
+    (1.0, {"x": -3.0, "spin": 8.0, "tilt": 16.0, "head": 16.0, "nu": 70.0, "nl": 40.0, "wa": 60.0, "fu": 110.0,
+           "fl": 60.0, "nleg": a(0.0, 90.0), "fleg": a(20.0, 100.0), "squint": 0.9, "mouth": 0.7, "fx__hit": 0.0}),
+], base=AIR)
+#: The frame a launch starts on: folded by the hit.
+LAUNCH_HIT = {**AIR, "tilt": 20.0, "head": 16.0, "nu": 80.0, "nl": 40.0, "wa": 60.0, "fu": 100.0, "fl": 70.0,
+              "squint": 1.0, "mouth": 1.0, "fx.hit": 1.0}
+_move("launch_up", [
+    (0.0, LAUNCH_HIT),
+    # Thrown upward: arched back, head thrown back, the arms flung up and
+    # back over it, the legs hanging long below.
+    (0.3, {"y": -8.0, "spin": -24.0, "tilt": -12.0, "head": -44.0, "nu": -108.0, "nl": -116.0, "wa": -112.0,
+           "fu": -84.0, "fl": -94.0, "nleg": a(72.0, 64.0), "fleg": a(60.0, 50.0), "fx__hit": 0.3,
+           "fx__speed": 0.8, "ease": "out"}),
+    (1.0, {"spin": -28.0, "tilt": -14.0, "head": -50.0, "nu": -112.0, "nl": -120.0, "wa": -116.0, "fu": -88.0,
+           "fl": -98.0, "fx__hit": 0.0, "fx__speed": 0.5}),
+], base=AIR)
+_move("launch_horizontal", [
+    (0.0, LAUNCH_HIT),
+    # Thrown back along the ground: the hips lead, the body jackknifes round
+    # them, the arms and legs trailing forward toward the hit.
+    (0.3, {"x": -6.0, "y": -8.0, "spin": 44.0, "tilt": 24.0, "head": 50.0, "nu": 22.0, "nl": 30.0, "wa": 34.0,
+           "fu": 36.0, "fl": 44.0, "nleg": a(-28.0, -16.0), "fleg": a(-14.0, -4.0), "fx__hit": 0.3, "fx__speed": 0.9,
+           "ease": "out"}),
+    (1.0, {"x": -7.0, "spin": 48.0, "tilt": 26.0, "head": 54.0, "nu": 18.0, "nl": 26.0, "wa": 30.0, "fu": 32.0,
+           "fl": 40.0, "fx__hit": 0.0, "fx__speed": 0.6}),
+], base=AIR)
+_move("launch_down", [
+    (0.0, LAUNCH_HIT),
+    # Spiked: pitched head first at the floor, the limbs trailing above.
+    (0.3, {"x": 2.0, "y": -14.0, "spin": 140.0, "tilt": 10.0, "head": 10.0, "nu": -100.0, "nl": -112.0,
+           "wa": -120.0, "fu": -76.0, "fl": -90.0, "nleg": a(-96.0, -88.0), "fleg": a(-74.0, -64.0),
+           "fx__hit": 0.3, "fx__speed": 0.8, "ease": "out"}),
+    (1.0, {"spin": 146.0, "nu": -104.0, "nl": -116.0, "wa": -124.0, "fu": -80.0, "fl": -94.0, "fx__hit": 0.0,
+           "fx__speed": 0.5}),
+], base=AIR)
+
 _move("wake", [
     (0.0, {**sleep(0.0)}),
     (0.25, {**sleep(0.0), "blink": False, "head": -10.0, "tilt": 0.0, "squint": 0.0, "mouth": 1.0, "fx__zzz": 0.0,
@@ -1068,7 +1194,8 @@ def _spin_legs(p: Pose) -> None:
 LOOPS: Dict[str, Callable[[float], Pose]] = {
     "idle": idle, "walk": walk, "run": run, "dash": dash, "talk": talk, "interact": interact, "block": block,
     "crouch": crouch, "crouch_walk": crouch_walk, "fall": fall, "fall_special": fall_special, "tumble": tumble,
-    "teeter": teeter, "prone": prone, "dizzy": dizzy, "sleep": sleep, "buried": buried, "smash_charge": smash_charge,
+    "teeter": teeter, "prone": prone, "prone_face_up": prone_face_up, "prone_face_down": prone_face_down,
+    "dizzy": dizzy, "sleep": sleep, "buried": buried, "smash_charge": smash_charge,
     "grab_hold": grab_hold, "grabbed": grabbed, "ledge_grab": ledge_grab, "item_hold": item_hold,
     "item_heavy_carry": item_heavy_carry, "victory_hold": victory_hold, "loss": loss,
 }

@@ -46,6 +46,8 @@ LEGACY_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
 GOBLIN_ROWS: Final[tuple[tuple[str, int, int], ...]] = LEGACY_ROWS + (
     # Stance / locomotion / traversal.
     ("walk_stop", 5, 70),
+    # A brake out of a run, slaved to the stop's first 0.2 s.
+    ("run_stop", 6, 60),
     ("turnaround", 5, 60),
     ("dash_startup", 4, 45),
     ("stumble", 6, 70),
@@ -71,17 +73,31 @@ GOBLIN_ROWS: Final[tuple[tuple[str, int, int], ...]] = LEGACY_ROWS + (
     ("shield_release", 3, 50),
     ("shield_hit", 4, 55),
     ("parry", 6, 55),
+    # Where the hit landed: head, body, legs, or in the air. The game holds
+    # the last frame for the hitstun.
+    ("hit_high", 5, 48),
+    ("hit_mid", 5, 48),
+    ("hit_low", 5, 48),
+    ("hit_air", 5, 48),
     ("launch", 6, 65),
     ("meteor", 6, 65),
+    # Which way the launch threw the body.
+    ("launch_up", 7, 64),
+    ("launch_horizontal", 7, 64),
+    ("launch_down", 7, 64),
     ("splat", 6, 75),
     ("ground_bounce", 6, 70),
     ("knockdown", 6, 75),
     ("prone", 8, 110),
+    # On its back or on its front, by which way it fell.
+    ("prone_face_up", 8, 104),
+    ("prone_face_down", 8, 104),
     ("prone_damage", 4, 70),
     ("getup", 7, 70),
     ("getup_attack", 8, 60),
     ("getup_roll", 7, 58),
     ("tech", 5, 55),
+    ("tech_roll", 7, 58),
     ("wall_tech", 5, 60),
     ("dizzy", 10, 96),
     ("sleep", 8, 130),
@@ -154,8 +170,8 @@ GOBLIN_ROWS: Final[tuple[tuple[str, int, int], ...]] = LEGACY_ROWS + (
 #: Rows that loop.
 GOBLIN_LOOPS: Final[frozenset[str]] = frozenset({
     "idle", "walk", "run", "dash", "talk", "interact", "block", "crouch", "crouch_walk", "fall", "fall_special",
-    "tumble", "teeter", "prone", "dizzy", "sleep", "buried", "smash_charge", "grab_hold", "grabbed", "ledge_grab",
-    "item_hold", "item_heavy_carry", "victory_hold", "loss",
+    "tumble", "teeter", "prone", "prone_face_up", "prone_face_down", "dizzy", "sleep", "buried", "smash_charge",
+    "grab_hold", "grabbed", "ledge_grab", "item_hold", "item_heavy_carry", "victory_hold", "loss",
 })
 
 FIGHTER_MOTION_COVERAGE: Final[dict[str, str]] = {
@@ -236,7 +252,7 @@ FIGHTER_MOTION_COVERAGE: Final[dict[str, str]] = {
     "getup_roll": "getup_roll",
     "knockdown": "knockdown",
     "tech": "tech",
-    "tech_roll": "getup_roll",
+    "tech_roll": "tech_roll",
     "wall_tech": "wall_tech",
     "wall_tech_jump": "wall_jump",
     "ceiling_tech": "tech",

@@ -85,14 +85,20 @@ def from_raised_arm(home: dict, *keys: dict) -> list:
 def action(wind: dict, contact: dict, recover: dict | None = None, *,
            start: dict | None = None, end: dict | None = None,
            sway=2, flutter=3, queue=2):
-    """Readable anticipation -> impact -> followthrough -> recovery arc."""
+    """Readable anticipation -> impact -> followthrough -> recovery arc.
+
+    The move starts on ``start`` and ends on ``end`` (each the stance unless
+    given; ``end`` is ``start`` unless given): a jump ends in the air, a
+    knockdown on the floor, a getup on its feet.
+    """
     home = dict(STANCE if start is None else start)
+    last = home if end is None else dict(end)
     wind, contact, recover = from_raised_arm(home, wind, contact, recover or {})
     keys = [(0.0, home),
             (0.24, {**wind, "ease": "out"}),
             (0.48, {**contact, "ease": "in"}),
             (0.72, {**recover, "ease": "out"}),
-            (1.0, home)]
+            (1.0, last)]
     return B.clip(keys, sway=sway, flutter=flutter, queue=queue)
 
 
@@ -342,9 +348,21 @@ register("air_dodge", action({**FLIGHT, "head": -15},
                               "nf": air("near", 20, -29),
                               "ff": air("far", -14, -23), "eye": "shut"},
                              FLIGHT, start=FLIGHT, end=FLIGHT), 7, 60)
-register("tech", action({**PRONE, "y": 27},
-                        {**CROUCH, "y": 18, "x": 4, "head": -14},
-                        CROUCH, start=PRONE), 7, 60)
+# A floor tech catches the landing instead of lying in it: he lands low, the
+# book hand slaps the floor, the quill swings back for balance, and he rises.
+TOUCHDOWN = {**CROUCH, "y": 16, "lean": 22, "head": -6,
+             "nu": 120, "ne": 20, "nw": 150, "fu": 70, "fe": 10,
+             "nf": ground("near", 18), "ff": ground("far", -24, 4, 20),
+             "eye": "angry", "mouth": "grit"}
+TECH_BRACE = {**TOUCHDOWN, "y": 66, "lean": 62, "head": -10,
+              "nu": 160, "ne": 8, "nw": 170, "fu": 88, "fe": -4, "fw": 0,
+              "nf": ground("near", 34), "ff": ground("far", -40, 8, 50),
+              "near_tail": 22, "far_tail": 14, "queue": 14}
+register("tech", B.clip([(0.0, TOUCHDOWN),
+                         (0.3, {**TECH_BRACE, "ease": "out"}),
+                         (0.62, {**TECH_BRACE, "y": 44, "lean": 44,
+                                 "head": -8, "fu": 84}),
+                         (1.0, STANCE)], flutter=2, queue=2), 7, 60)
 
 # Ground attacks: quill fencing, sweeping jacket and slammed Principia ------
 register("jab", action({"lean": -5, "nu": -58, "ne": 62, "nw": -90,
@@ -479,6 +497,8 @@ register("special_side", action({"x": -10, "lean": -12,
                                  "nf": ground("near", 29),
                                  "near_tail": 26},
                                 {"x": 20, "lean": 20}), 9, 68)
+# Ends on the stance: the boss's duel plays this row and the next one
+# (``build_gnu_ton_scholar_boss_rig.DUEL_ROWS``), and their sheet is kept.
 register("special_up", action({**CROUCH, "book": 0, "book_open": 1,
                                "nu": -92, "head": -28},
                               {**FLIGHT, "y": -54, "nu": -95,
@@ -488,7 +508,7 @@ register("special_up", action({**CROUCH, "book": 0, "book_open": 1,
                                "near_tail": 26},
                               {**FLIGHT, "y": -33, "book": 0,
                                "book_open": 0},
-                              end=FLIGHT, flutter=5), 9, 70)
+                              flutter=5), 9, 70)
 register("special_down", action({"book": 0, "book_open": 1,
                                  "lean": 0, "nu": -60, "fu": -72,
                                  "head": -15},
@@ -556,6 +576,7 @@ register("hit_heavy", action({"x": 5, "lean": 10},
                               "eye": "shut", "mouth": "open",
                               "quill": 0, "book": 0},
                              {"x": -9, "lean": -16}), 8, 80)
+# Ends on the stance, as the duel's ``special_up`` above.
 register("launch", action({"x": -7, "y": 5, "lean": -11},
                           {**FLIGHT, "y": -60, "x": -28,
                            "spin": -43, "head": -43,
@@ -564,9 +585,28 @@ register("launch", action({"x": -7, "y": 5, "lean": -11},
                            "quill": 0, "book": 0,
                            "eye": "shut", "mouth": "open"},
                           {**FLIGHT, "y": -34, "spin": -18,
-                           "head": -18, "quill": 0, "book": 0},
-                          end=FLIGHT), 8, 62)
-register("tumble", B.TUMBLE, 8, 70)
+                           "head": -18, "quill": 0, "book": 0}), 8, 62)
+
+
+def _tumble_keys(frames: int = 8) -> list:
+    """Tumbling in the air: a whole turn about the middle of the torso, in
+    place, the limbs flung out and carried round with the body. (The boss's
+    tumble falls off the gnu, 170 units down: on a fighter it drew him far
+    below his body.)"""
+    keys = []
+    for i in range(frames + 1):
+        turn = -360.0 * i / frames
+        keys.append((i / frames, {
+            **FLIGHT, "quill": 0, "book": 0, "spin": turn, "spin_about": 55, "y": -20,
+            "head": turn - 10, "lean": 10,
+            "nu": turn - 60, "ne": 30, "nw": turn - 90, "fu": turn - 140, "fe": 20,
+            "nf": air("near", 30, -40, 20), "ff": air("far", -24, -10, -10),
+            "near_tail": 20, "far_tail": -18, "queue": 14,
+            "eye": "shut", "mouth": "open", "ease": "lin"}))
+    return keys
+
+
+register("tumble", B.clip(_tumble_keys(), flutter=3, queue=3), 8, 70)
 register("knockdown", action({"x": -13, "lean": -25,
                               "quill": 0, "book": 0},
                              {**PRONE, "y": 44, "spin": -69,
@@ -581,16 +621,16 @@ register("getup_attack", action({**PRONE, "y": 32},
                                 {**CROUCH, "y": 21, "nu": -8,
                                  "ne": -9, "nw": -4,
                                  "quill": 1, "book": 0},
-                                CROUCH, start=PRONE), 8, 62)
+                                CROUCH, start=PRONE, end=STANCE), 8, 62)
 register("getup_roll", action({**PRONE, "x": 34},
                               {**PRONE, "spin": -175, "head": -175,
                                "x": 45, "y": 22},
-                              {**CROUCH, "x": 55}, start=PRONE), 8, 55)
+                              {**CROUCH, "x": 55}, start=PRONE, end=STANCE), 8, 55)
 register("getup", action({**PRONE, "y": 37},
                          {**CROUCH, "y": 26, "nu": 68,
                           "fu": 118, "head": -4,
                           "quill": 0, "book": 0},
-                         CROUCH, start=PRONE), 8, 67)
+                         CROUCH, start=PRONE, end=STANCE), 8, 67)
 register("dizzy", B.DAZED, 8, 120, True)
 register("death", B.DEATH, 10, 105)
 # Item-adjacent poses carry no item logic: sockets and inventory semantics
@@ -619,12 +659,28 @@ register("item_swing", action({"nu": -104, "ne": 94,
                               {"nu": 0, "ne": -12, "nw": -5,
                                "x": 12, "quill": 0, "book": 0},
                               {"nu": 33, "ne": 0}), 8, 65)
-register("teeter", hold({**STANCE, "lean": 25,
-                         "nf": ground("near", 21),
-                         "ff": ground("far", 2),
-                         "nu": 45, "fu": 139,
-                         "eye": "surprised", "mouth": "open"},
-                        sway=2.5, flutter=3), 8, 90, True)
+
+
+def _teeter_keys(frames: int = 8) -> list:
+    """Off balance at an edge: leaning out over it from the hips, the front
+    heel up, the arms windmilling against the fall. The quill arm circles
+    ahead of the face, the book arm behind the body."""
+    keys = []
+    for i in range(frames + 1):
+        turn = math.tau * i / frames
+        keys.append((i / frames, {
+            **STANCE, "lean": 26 + 6 * math.sin(turn), "head": 8 + 4 * math.sin(turn),
+            "x": -4, "y": 4,
+            "nu": 5 + 50 * math.cos(turn), "ne": 30 + 30 * math.sin(turn),
+            "nw": -30 + 40 * math.cos(turn),
+            "fu": -115 - 55 * math.cos(turn), "fe": 20,
+            "nf": ground("near", 24, 4, -24), "ff": ground("far", -14),
+            "near_tail": 10 * math.sin(turn), "far_tail": -8,
+            "eye": "surprised", "mouth": "open", "ease": "lin"}))
+    return keys
+
+
+register("teeter", B.clip(_teeter_keys(), sway=2.5, flutter=3), 8, 90, True)
 register("taunt", action({"lean": -12, "nu": -34, "ne": 47,
                           "mouth": "smile"},
                          {"lean": 4, "nu": -42, "ne": 8,
@@ -646,5 +702,167 @@ register("loss", hold({**CROUCH, "y": 35, "lean": -28,
                        "head": 26, "nu": 97, "fu": 82,
                        "quill": 0, "book": 0,
                        "eye": "shut", "mouth": "wavy"}), 8, 110, True)
+
+# Reactions: the Smash reaction vocabulary --------------------------------------
+# A hit comes from the front, so the body goes back (x < 0). A recoil ENDS on
+# its settled pose: the game holds a clip's last frame for the hitstun. A
+# launch holds its flight shape, the loose limbs trailing opposite the travel.
+# The grounded rows are planted on the floor after the solve (`PLANTED`).
+register("hit_high", B.clip([
+    (0.0, STANCE),
+    # The head snaps back, the chest follows, the arms fly out.
+    (0.25, {"x": -12, "y": 4, "lean": -28, "head": -40,
+            "nu": -30, "ne": 10, "nw": -60, "fu": 165, "fe": -10,
+            "nf": ground("near", 16), "ff": ground("far", -26, 2, 10),
+            "eye": "shut", "mouth": "open", "near_tail": 14, "queue": -16,
+            "ease": "out"}),
+    (1.0, {"x": -8, "y": 4, "lean": -16, "head": -24,
+           "nu": 25, "ne": 30, "nw": -50, "fu": 160, "fe": 0,
+           "eye": "shut", "mouth": "grit", "near_tail": 8, "queue": -8}),
+], flutter=2, queue=2), 5, 50)
+register("hit_mid", B.clip([
+    (0.0, STANCE),
+    # Doubled over the blow: hips pushed back, knees giving, arms folding in.
+    (0.25, {"x": -16, "y": 22, "lean": 44, "head": 26,
+            "nu": 100, "ne": 75, "nw": 160, "fu": 95, "fe": 45,
+            "nf": ground("near", 12), "ff": ground("far", -28),
+            "eye": "shut", "mouth": "open", "near_tail": 26, "far_tail": 16,
+            "queue": 10, "ease": "out"}),
+    (1.0, {"x": -12, "y": 15, "lean": 32, "head": 16,
+           "nu": 90, "ne": 65, "nw": 150, "fu": 95, "fe": 40,
+           "eye": "shut", "mouth": "grit", "near_tail": 16, "far_tail": 10,
+           "queue": 6}),
+], flutter=2, queue=2), 5, 50)
+register("hit_low", B.clip([
+    (0.0, STANCE),
+    # The legs are taken: the front foot knocked back and up, the body
+    # pitching forward over it, the arms thrown out for balance.
+    (0.25, {"x": -6, "y": 10, "lean": 34, "head": -14,
+            "nu": -45, "ne": -35, "nw": -50, "fu": -150, "fe": 5,
+            "nf": ground("near", -72, 52, -70), "ff": ground("far", 2),
+            "eye": "surprised", "mouth": "open", "near_tail": -10,
+            "ease": "out"}),
+    (1.0, {"x": -4, "y": 8, "lean": 26, "head": -8,
+           "nu": -38, "ne": -30, "nw": -45, "fu": -165, "fe": 10,
+           "nf": ground("near", -52, 34, -50),
+           "eye": "surprised", "mouth": "grit", "near_tail": -6}),
+], flutter=2, queue=2), 5, 50)
+register("hit_air", B.clip([
+    (0.0, FLIGHT),
+    # Curled around the blow in the air, knees up, then opening part way.
+    (0.25, {**FLIGHT, "x": -12, "lean": 36, "head": 24,
+            "nu": 85, "ne": 80, "nw": 150, "fu": 75, "fe": 70,
+            "nf": air("near", 26, -48, 20), "ff": air("far", 16, -44, 20),
+            "eye": "shut", "mouth": "open", "near_tail": 24, "far_tail": 18,
+            "ease": "out"}),
+    (1.0, {**FLIGHT, "x": -8, "lean": 18, "head": 10,
+           "nu": 60, "ne": 40, "nw": 100, "fu": 110, "fe": 30,
+           "nf": air("near", 16, -34, 10), "ff": air("far", 2, -30, 6),
+           "eye": "shut", "mouth": "grit", "near_tail": 14, "far_tail": 8}),
+], flutter=3, queue=3), 5, 50)
+
+LAUNCH_HIT = {**STANCE, "x": -4, "y": 4, "lean": 24, "head": 16,
+              "nu": 80, "ne": 50, "nw": 140, "fu": 110, "fe": 30,
+              "eye": "shut", "mouth": "open"}
+UP = {**FLIGHT, "x": 30, "y": -30, "spin": -16, "lean": -22, "head": -60,
+      # Thrown upward: arched back, head thrown back, the arms flung up and
+      # back over it, the legs hanging long below.
+      "nu": -145, "ne": 10, "nw": -150, "fu": -150, "fe": 10,
+      "nf": air("near", 10, 6, 30), "ff": air("far", -4, 10, 20),
+      "near_tail": 28, "far_tail": -26, "queue": 22,
+      "eye": "shut", "mouth": "open"}
+register("launch_up", B.clip([
+    (0.0, LAUNCH_HIT),
+    (0.3, {**UP, "ease": "out"}),
+    (1.0, {**UP, "spin": -20, "lean": -26, "head": -66, "nu": -150, "fu": -154}),
+], flutter=4, queue=3), 7, 64)
+SIDE = {**FLIGHT, "x": -24, "y": -26, "spin": 8, "lean": 52, "head": 44,
+        # Thrown back along the ground: the hips lead, the body jackknifes
+        # round them, the arms and legs trailing forward toward the hit.
+        "nu": 12, "ne": 8, "nw": 15, "fu": 70, "fe": 10,
+        "nf": air("near", 95, -84, 40), "ff": air("far", 92, -70, 30),
+        "near_tail": 36, "far_tail": 26, "queue": 24,
+        "eye": "shut", "mouth": "open"}
+register("launch_horizontal", B.clip([
+    (0.0, LAUNCH_HIT),
+    (0.3, {**SIDE, "ease": "out"}),
+    (1.0, {**SIDE, "x": -26, "lean": 56, "nu": 8, "fu": 66}),
+], flutter=4, queue=3), 7, 64)
+DOWN = {**FLIGHT, "x": 6, "y": -20, "spin": 118, "spin_about": 80, "lean": 6,
+        "head": 132,
+        # Spiked: pitched head first at the floor, the limbs trailing above.
+        "nu": -100, "ne": 10, "nw": -110, "fu": -70, "fe": 10,
+        "nf": air("near", 4, 6, 10), "ff": air("far", -10, -8, -10),
+        "near_tail": -30, "far_tail": 26, "queue": -20,
+        "eye": "shut", "mouth": "open"}
+register("launch_down", B.clip([
+    (0.0, LAUNCH_HIT),
+    (0.3, {**DOWN, "ease": "out"}),
+    (1.0, {**DOWN, "spin": 124, "head": 138, "nu": -106, "fu": -76}),
+], flutter=4, queue=3), 7, 64)
+
+
+def _prone_keys(pose: dict, breathe: dict, frames: int = 8) -> list:
+    """A body on the floor, breathing: ``breathe`` is each field's swing."""
+    return [(i / frames, {**pose, **{k: pose[k] + v * math.sin(math.tau * i / frames)
+                                     for k, v in breathe.items()}, "ease": "lin"})
+            for i in range(frames + 1)]
+
+
+#: On his back, head behind, chest up: one knee raised, the book arm flung
+#: out over his head along the floor, the quill hand on his chest.
+FACE_UP = {**PRONE, "lean": 4, "head": -84,
+           "nu": 60, "ne": 120, "fu": 178, "fe": 6,
+           "nf": air("near", 40, -78, 40), "ff": air("far", -6, -4),
+           "eye": "shut", "mouth": "open"}
+#: On his front, head forward, face to the floor: the quill arm reaching
+#: ahead along the floor, the book arm folded under him.
+FACE_DOWN = {**STANCE, "spin": 86, "x": -58, "y": 55, "lean": 2, "head": 96,
+             "nu": 4, "ne": 2, "nw": -6, "fu": 110, "fe": 120,
+             "nf": air("near", -2, -4, -20), "ff": air("far", -16, -30, -30),
+             "quill": 1, "book": 0, "eye": "shut", "mouth": "grit",
+             "near_tail": -20, "far_tail": -14}
+register("prone_face_up", B.clip(_prone_keys(FACE_UP, {"lean": 2, "head": 1.5}),
+                                 queue=1), 8, 104, True)
+register("prone_face_down", B.clip(_prone_keys(FACE_DOWN, {"lean": 2, "head": 1.5}),
+                                   queue=1), 8, 104, True)
+
+register("run_stop", B.clip([
+    (0.0, {**STANCE, "lean": 18, "head": -4,
+           "nf": ground("near", 18), "ff": ground("far", -20, 6, 20)}),
+    # The lead foot planted far ahead on its heel, the hips dropped low and
+    # back, the trunk thrown back against the momentum, the arms flung ahead.
+    (0.25, {"x": -6, "y": 24, "lean": -24, "head": -14,
+            "nu": -15, "ne": 10, "nw": -10, "fu": 20, "fe": 20,
+            "nf": ground("near", 50, 0, -24), "ff": ground("far", -32, 6, 34),
+            "near_tail": 30, "far_tail": 20, "queue": 18,
+            "eye": "angry", "mouth": "grit", "ease": "out"}),
+    (0.55, {"x": -4, "y": 20, "lean": -20, "head": -10,
+            "nu": -5, "fu": 30,
+            "nf": ground("near", 46, 0, -20), "ff": ground("far", -28, 5, 30)}),
+    (0.8, {"x": 0, "y": 8, "lean": -4, "head": -4, "nu": 30, "ne": 60,
+           "fu": 80, "fe": 0, "near_tail": 8, "far_tail": 4, "queue": 4,
+           "nf": ground("near", 24), "ff": ground("far", -20, 1, 8)}),
+    (1.0, STANCE),
+], flutter=3, queue=3), 6, 60)
+
+register("tech_roll", B.clip([
+    (0.0, TOUCHDOWN),
+    # A tech that rolls out: the brace, then a roll along the floor.
+    (0.2, {**TECH_BRACE, "ease": "out"}),
+    (0.55, {**PRONE, "spin": 150, "head": 150, "x": 22, "y": 32,
+            "nf": air("near", 14, -16), "ff": air("far", -7, -12),
+            "quill": 1, "book": 1, "ease": "lin"}),
+    (0.8, {**CROUCH, "x": 30, "y": 24}),
+    (1.0, STANCE),
+], flutter=3, queue=2), 8, 50)
+
+#: The rows planted on the floor after the solve (``frame.plant`` = "each"):
+#: the lowest paint of each frame is on the ground line.
+#: The knockdown and the getups went through the floor (a body turned about
+#: its hips puts its head below them) and are planted too.
+PLANTED = ("hit_high", "hit_mid", "hit_low", "prone_face_up", "prone_face_down",
+           "run_stop", "tech", "tech_roll", "teeter",
+           "knockdown", "getup", "getup_roll", "getup_attack")
 
 ROWS = list(ROW_SPECS.values())
