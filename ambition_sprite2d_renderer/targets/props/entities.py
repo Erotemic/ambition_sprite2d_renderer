@@ -923,6 +923,24 @@ def fire_glow(d: ImageDraw.ImageDraw, s: float) -> None:
                 d.ellipse(bbox(x * s, (y + ry * 0.35) * s, rx * 1.6 * s, ry * 0.9 * s), fill=(255, 255, 255, light // 2))
 
 
+def soft_glow(d: ImageDraw.ImageDraw, s: float) -> None:
+    """The light about an actor (`ActorGlow` in the engine): white light that
+    is full at the middle and falls off softly to nothing at the rim. The
+    engine tints it and sets its strength. It is light only, never a shade:
+    a dark disc under a body would read as a drop shadow."""
+    radius = 62.0
+    falloff = 3.2
+    floor = math.exp(-falloff)
+    rings = 256
+    # From the rim in: each ring is drawn over the one outside it, so a pixel
+    # keeps the light of the smallest ring that covers it.
+    for i in range(rings):
+        r = radius * (1.0 - i / rings)
+        t = r / radius
+        light = (math.exp(-falloff * t * t) - floor) / (1.0 - floor)
+        d.ellipse(bbox(64 * s, 64 * s, 2 * r * s, 2 * r * s), fill=(255, 255, 255, round(255 * light)))
+
+
 def void_orb(d: ImageDraw.ImageDraw, s: float) -> None:
     """A ball of the void: no light in it, a thin rim of white light about it.
     The shot of Mary-O's Void Lizard."""
@@ -1872,6 +1890,14 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
         tight_crop=False,
     ),
     EntitySpriteSpec(
+        "soft_glow",
+        "soft_glow.png",
+        "glow art (the light about an actor, `ActorGlow`)",
+        "soft glow",
+        "white light that falls off softly to nothing at its rim",
+        tight_crop=False,
+    ),
+    EntitySpriteSpec(
         "void_orb",
         "void_orb.png",
         "projectile art (Mary-O's Void Lizard)",
@@ -2085,6 +2111,7 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float], None]] = {
     "fire_orb": fire_orb,
     "void_orb": void_orb,
     "fire_glow": fire_glow,
+    "soft_glow": soft_glow,
     "bonus_block_tile": bonus_block_tile,
     "bridge_plank_tile": bridge_plank_tile,
     "spent_block_tile": spent_block_tile,
