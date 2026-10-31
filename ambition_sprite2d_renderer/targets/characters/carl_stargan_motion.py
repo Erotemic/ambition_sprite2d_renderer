@@ -24,6 +24,7 @@ CARL_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("idle_look_up", 8, 150),
     ("walk", 8, 108),
     ("walk_stop", 6, 76),
+    ("run_stop", 6, 62),
     ("turnaround", 6, 74),
     ("dash_startup", 4, 52),
     ("dash", 6, 62),
@@ -59,13 +60,25 @@ CARL_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("parry", 6, 60),
     ("shield_hit", 5, 60),
     ("hit", 5, 88),
+    # Where the hit landed: head, body, legs, or in the air. The game holds
+    # the last frame for the hitstun.
+    ("hit_high", 5, 58),
+    ("hit_mid", 5, 58),
+    ("hit_low", 5, 58),
+    ("hit_air", 5, 58),
     ("launch", 7, 68),
     ("meteor", 7, 68),
+    # Which way the launch threw the body.
+    ("launch_up", 7, 66),
+    ("launch_horizontal", 7, 66),
+    ("launch_down", 7, 66),
     ("impact", 5, 66),
     ("splat", 8, 82),
     ("ground_bounce", 7, 72),
     ("knockdown", 7, 78),
     ("prone", 8, 112),
+    ("prone_face_up", 8, 110),
+    ("prone_face_down", 8, 110),
     ("prone_damage", 5, 72),
     ("getup", 8, 74),
     ("getup_attack", 8, 64),
@@ -296,11 +309,12 @@ FIGHTER_MOTION_COVERAGE: Final[dict[str, str]] = {
 
 
 # Missing rows borrow the closest established Carl choreography. The alias is an
-# implementation detail; semantic coverage remains the category map above.
+# implementation detail; semantic coverage remains the category map above. The
+# reaction rows, the turn and the floor rows (knockdown, prone, getup) are his
+# own (`build_scientist_fighter_rigs._reaction_clips`).
 POSE_ALIASES: Final[dict[str, str]] = {
     "idle_look_up": "think",
     "walk_stop": "land_recovery",
-    "turnaround": "idle",
     "stumble": "hit",
     "crouch_start": "crouch",
     "crouch_end": "crouch",
@@ -319,19 +333,11 @@ POSE_ALIASES: Final[dict[str, str]] = {
     "platform_drop": "fall",
     "footstool_jump": "jump",
     "teeter_start": "idle",
-    "teeter": "idle",
-    "launch": "fall",
-    "meteor": "fall",
     "impact": "hit",
     "splat": "hit",
     "ground_bounce": "land_hard",
-    "knockdown": "death",
-    "prone": "death",
     "prone_damage": "hit",
-    "getup": "land_recovery",
-    "getup_attack": "planetary_orbit",
     "getup_roll": "roll",
-    "tech": "land_recovery",
     "tech_roll": "roll",
     "wall_tech": "wall_grab",
     "wall_tech_jump": "wall_jump",

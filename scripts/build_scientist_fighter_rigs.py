@@ -36,7 +36,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-BUILDER_VERSION = 21
+BUILDER_VERSION = 22
 
 
 def _is_extension_path(path: Path) -> bool:
@@ -668,6 +668,511 @@ def _common_clips(spec: CharacterSpec, doc: Mapping[str, object], *, compact: bo
     return clips
 
 
+# ---- Reaction rows ----------------------------------------------------------
+#
+# The Smash reaction vocabulary (docs/planning/demos/smash-expressive-fighter-
+# poses.md): where a hit landed, which way a launch threw the body, which side
+# a body lies on, a teeter, a floor tech and a run brake. One set of keys,
+# solved on each scientist's own skeleton, so a key reads on every body.
+#
+# A key is in forward-relative terms: forward is the way the art faces, 0
+# degrees points forward and 90 points down, a positive tilt / torso / head
+# leans forward. A hit or a launch comes from the front, so the body goes back
+# (``lunge`` < 0). Distances are at the clerk's size and scale with the hip
+# height. An arm is a world direction and a reach (a fraction of the arm), or
+# ``_At`` a point; ``None`` carries the resting arm with the trunk. A standing
+# foot is ``(forward, lift)`` from its stance; a ``carried`` body (in the air,
+# on the floor) carries its legs from the hips like the arms. A recoil ENDS on
+# its settled pose: the game holds the last frame for the hitstun.
+
+
+class _Dir(tuple):
+    """A limb pointing ``deg`` (forward-relative world degrees) at ``reach``."""
+
+    def __new__(cls, deg: float, reach: float):
+        return super().__new__(cls, (float(deg), float(reach)))
+
+
+class _At(tuple):
+    """A hand at ``forward`` px ahead of the frame centre, ``up`` px off the floor."""
+
+    def __new__(cls, forward: float, up: float):
+        return super().__new__(cls, (float(forward), float(up)))
+
+
+@dataclass(frozen=True)
+class _ReactKey:
+    at: float
+    tilt: float = 0.0
+    torso: float = 0.0
+    head: float = 0.0
+    lunge: float = 0.0
+    drop: float = 0.0
+    near: tuple | None = None
+    far: tuple | None = None
+    near_foot: tuple = (0.0, 0.0)
+    far_foot: tuple = (0.0, 0.0)
+    #: Toe-down turn of each standing foot, degrees.
+    near_toe: float = 0.0
+    far_toe: float = 0.0
+    carried: bool = False
+    ease: str = "smooth"
+
+
+_REACT_EASES = {
+    "linear": lambda u: u,
+    "smooth": lambda u: u * u * (3.0 - 2.0 * u),
+    "out": lambda u: 1.0 - (1.0 - u) ** 3,
+}
+
+#: The clerk's hip height: reaction distances are authored at his size.
+_REACT_HIP = 45.15
+
+
+@dataclass(frozen=True)
+class _ReactBody:
+    """The skeleton facts the keys solve against, in west-facing terms."""
+
+    hip_h: float
+    torso: tuple[float, float]
+    shoulder: Mapping[str, tuple[float, float]]
+    hip: Mapping[str, tuple[float, float]]
+    arm: Mapping[str, float]
+    leg: Mapping[str, float]
+    rest_hand: Mapping[str, tuple[float, float]]
+    rest_pitch: Mapping[str, float]
+    ankle_h: float
+    #: How far the legs leave their stance (standing) or the body's line
+    #: (carried): 1 for trousers, less where a dress hides the legs.
+    leg_scale: float
+    carried_leg_scale: float
+    #: -1 when the art faces east: the clip is authored west and mirrored
+    #: after, which turns every angle but the feet's world pitch.
+    pitch_sign: float
+
+    @property
+    def s(self) -> float:
+        return self.hip_h / _REACT_HIP
+
+
+def _react_body(
+    doc: Mapping[str, object], r: Mapping[str, float], *, compact: bool, mirror: bool,
+    tune: Mapping[str, float],
+) -> _ReactBody:
+    bones = {str(b["name"]): b for b in doc.get("bones", [])}  # type: ignore[union-attr]
+    sx = -1.0 if mirror else 1.0
+
+    def off(name: str, default: tuple[float, float]) -> tuple[float, float]:
+        bone = bones.get(name)
+        if bone is None:
+            return default
+        return (sx * float(bone["offset"][0]), float(bone["offset"][1]))
+
+    def length(names: Sequence[str], default: float) -> float:
+        if not all(n in bones for n in names):
+            return default
+        return sum(float(bones[n].get("length", 0.0)) for n in names)
+
+    hip_h = -off("pelvis", (0.0, -_REACT_HIP))[1]
+    torso = off("torso", (-2.0, -8.0))
+    shoulder = {
+        "near": off("near_arm_u", (12.0, -24.0)),
+        "far": off("far_arm_u", (-9.0, -24.0)),
+    }
+    hip = {"near": off("near_leg_u", (7.0, 0.0)), "far": off("far_leg_u", (-7.0, 0.0))}
+    rest_hand = {
+        side: _hand_anchor(r, f"{side}_hand", compact=compact) for side in ("near", "far")
+    }
+    frame = doc.get("frame") or {}
+    return _ReactBody(
+        hip_h=hip_h,
+        torso=torso,
+        shoulder=shoulder,
+        hip=hip,
+        arm={side: length((f"{side}_arm_u", f"{side}_arm_l"), 33.0) for side in ("near", "far")},
+        leg={side: length((f"{side}_leg_u", f"{side}_leg_l"), 40.0) for side in ("near", "far")},
+        rest_hand=rest_hand,
+        rest_pitch={side: float(r[f"{side}_foot_pitch"]) for side in ("near", "far")},
+        ankle_h=float(frame.get("ankle_h", 11.0)),  # type: ignore[union-attr]
+        leg_scale=float(tune.get("leg_scale", 1.0)),
+        carried_leg_scale=float(tune.get("carried_leg_scale", 1.0)),
+        pitch_sign=-1.0 if mirror else 1.0,
+    )
+
+
+def _rot(v: tuple[float, float], deg: float) -> tuple[float, float]:
+    a = math.radians(deg)
+    c, s = math.cos(a), math.sin(a)
+    return (v[0] * c - v[1] * s, v[0] * s + v[1] * c)
+
+
+def _add(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float]:
+    return (a[0] + b[0], a[1] + b[1])
+
+
+def _toward(deg: float) -> tuple[float, float]:
+    """A forward-relative direction in west-facing screen terms."""
+    a = math.radians(deg)
+    return (-math.cos(a), math.sin(a))
+
+
+def _react_blend(a: _ReactKey, b: _ReactKey, u: float) -> _ReactKey:
+    def mix(x, y):
+        if x is None or y is None or type(x) is not type(y):
+            return y if u >= 0.5 else x
+        return type(x)(*(p + (q - p) * u for p, q in zip(x, y)))
+
+    def num(x: float, y: float) -> float:
+        return x + (y - x) * u
+
+    return _ReactKey(
+        at=num(a.at, b.at), tilt=num(a.tilt, b.tilt), torso=num(a.torso, b.torso),
+        head=num(a.head, b.head), lunge=num(a.lunge, b.lunge), drop=num(a.drop, b.drop),
+        near=mix(a.near, b.near), far=mix(a.far, b.far),
+        near_foot=tuple(num(p, q) for p, q in zip(a.near_foot, b.near_foot)),
+        far_foot=tuple(num(p, q) for p, q in zip(a.far_foot, b.far_foot)),
+        near_toe=num(a.near_toe, b.near_toe), far_toe=num(a.far_toe, b.far_toe),
+        # A body is carried or standing: its legs' frame does not blend.
+        carried=a.carried if u < 0.5 else b.carried,
+    )
+
+
+def _react_sample(keys: Sequence[_ReactKey], t: float) -> _ReactKey:
+    if t <= keys[0].at:
+        return keys[0]
+    for a, b in zip(keys, keys[1:]):
+        if t <= b.at:
+            u = (t - a.at) / max(1e-6, b.at - a.at)
+            return _react_blend(a, b, _REACT_EASES[b.ease](u))
+    return keys[-1]
+
+
+def _react_channels(body: _ReactBody, key: _ReactKey) -> dict[str, float]:
+    """Rig channels (west-facing screen terms) of one key."""
+    s = body.s
+    pelvis = -key.tilt
+    trunk = pelvis - key.torso
+    root = (-key.lunge * s, key.drop * s)
+    hips_at = _add(root, (0.0, -body.hip_h))
+    torso_at = _add(hips_at, _rot(body.torso, pelvis))
+    out = {
+        "root_x": root[0], "root_y": root[1],
+        "pelvis": pelvis, "torso": -key.torso, "head": -key.head,
+    }
+    for side in ("near", "far"):
+        shoulder = _add(torso_at, _rot(body.shoulder[side], trunk))
+        spec = getattr(key, side)
+        if spec is None:
+            rest_shoulder = _add(_add((0.0, -body.hip_h), body.torso), body.shoulder[side])
+            rest = (body.rest_hand[side][0] - rest_shoulder[0], body.rest_hand[side][1] - rest_shoulder[1])
+            hand = _add(shoulder, _rot(rest, trunk))
+        elif isinstance(spec, _At):
+            hand = (-spec[0] * s, -spec[1] * s)
+        else:
+            d = _toward(spec[0])
+            reach = spec[1] * body.arm[side]
+            hand = _add(shoulder, (d[0] * reach, d[1] * reach))
+        out[f"{side}_hand_x"], out[f"{side}_hand_y"] = hand
+
+        foot = getattr(key, f"{side}_foot")
+        hip = _add(hips_at, _rot(body.hip[side], pelvis))
+        if key.carried:
+            axis = 90.0 + key.tilt
+            deg = axis + (foot[0] - axis) * body.carried_leg_scale
+            d = _toward(deg)
+            reach = foot[1] * body.leg[side]
+            ankle = _add(hip, (d[0] * reach, d[1] * reach))
+            # The foot turns with its leg: 90 is a leg hanging straight down.
+            turn = 90.0 - deg
+        else:
+            stance = 10.0 if side == "near" else -10.0
+            k = body.leg_scale
+            ankle = (stance - foot[0] * s * k, -body.ankle_h - foot[1] * s * k)
+            turn = -getattr(key, f"{side}_toe") * k
+        out[f"{side}_foot_x"] = ankle[0]
+        out[f"{side}_foot_lift"] = -ankle[1] - body.ankle_h
+        out[f"{side}_foot_pitch"] = body.rest_pitch[side] + body.pitch_sign * turn
+    return out
+
+
+def _react_clip(body: _ReactBody, keys: Sequence[_ReactKey], frames: int, duration: int, *, loop: bool) -> dict:
+    """One key per published frame, so a frame shows exactly its sampled pose."""
+    denom = frames if loop else max(1, frames - 1)
+    times = [i / denom for i in range(frames)]
+    poses = [_react_channels(body, _react_sample(keys, t)) for t in times]
+    channels = {}
+    for name in poses[0]:
+        rows = [[round(t, 6), round(poses[i][name], 4), "linear"] for i, t in enumerate(times)]
+        if loop:
+            rows.append([1.0, rows[0][1], "linear"])
+        channels[name] = {"keys": rows}
+    return _clip(frames, duration, loop=loop, channels=channels)
+
+
+def _breath(i: int, n: int) -> float:
+    return math.sin(2.0 * math.pi * i / n)
+
+
+def _rest_key(at: float, **kw) -> _ReactKey:
+    return _ReactKey(at=at, **kw)
+
+
+def _react_keys(tune: Mapping[str, float]) -> dict[str, list[_ReactKey]]:
+    """Every reaction row's keys. ``tune`` carries a body's anatomy changes."""
+    K = _ReactKey
+    lie = tune.get("lie_drop", 38.0)
+    lie_lunge = tune.get("lie_lunge", 6.0)
+    air = -10.0
+    keys: dict[str, list[_ReactKey]] = {}
+
+    # ---- localized hits: the struck part is driven back, the body recoils
+    # round it, and it settles there.
+    # The arms fly over two frames: in one they would pop (the pose audit).
+    keys["hit_high"] = [
+        _rest_key(0.0),
+        K(0.25, torso=-14, head=-34, lunge=-4, drop=1, near=_Dir(25, 0.8), far=_Dir(55, 0.75),
+          far_foot=(-3, 0), far_toe=-14, ease="out"),
+        K(0.5, torso=-12, head=-28, lunge=-4, drop=1, near=_Dir(-40, 0.8), far=_Dir(-20, 0.75),
+          far_foot=(-3, 0), far_toe=-12),
+        K(1.0, torso=-9, head=-20, lunge=-3, drop=1, near=_Dir(-10, 0.72), far=_Dir(10, 0.72),
+          far_foot=(-3, 0), far_toe=-8),
+    ]
+    keys["hit_mid"] = [
+        _rest_key(0.0),
+        K(0.25, torso=38, head=22, lunge=-8, drop=7, near=_Dir(70, 0.5), far=_Dir(80, 0.55),
+          far_foot=(-4, 0), ease="out"),
+        K(1.0, torso=26, head=14, lunge=-6, drop=5, near=_Dir(75, 0.55), far=_Dir(85, 0.6),
+          far_foot=(-4, 0)),
+    ]
+    keys["hit_low"] = [
+        _rest_key(0.0),
+        K(0.25, torso=26, head=-16, lunge=-3, drop=5, near=_Dir(35, 0.8), far=_Dir(108, 0.8),
+          near_foot=(-14, 16), near_toe=40, ease="out"),
+        K(0.5, torso=22, head=-12, lunge=-3, drop=5, near=_Dir(-25, 0.8), far=_Dir(165, 0.8),
+          near_foot=(-12, 13), near_toe=34),
+        K(1.0, torso=18, head=-8, lunge=-2, drop=4, near=_Dir(-8, 0.78), far=_Dir(150, 0.78),
+          near_foot=(-10, 10), near_toe=28),
+    ]
+    keys["hit_air"] = [
+        K(0.0, drop=air, carried=True, near_foot=(95, 0.9), far_foot=(85, 0.9)),
+        K(0.25, tilt=-12, torso=26, head=16, lunge=-5, drop=air, near=_Dir(55, 0.55), far=_Dir(65, 0.6),
+          carried=True, near_foot=(50, 0.62), far_foot=(30, 0.66), ease="out"),
+        K(1.0, tilt=-6, torso=16, head=8, lunge=-4, drop=air, near=_Dir(70, 0.65), far=_Dir(80, 0.7),
+          carried=True, near_foot=(65, 0.72), far_foot=(45, 0.75)),
+    ]
+
+    # ---- launches: one impact frame, then the held flight shape. The three
+    # directions differ in trunk angle and in where the loose limbs trail.
+    def impact(near: float, far: float) -> _ReactKey:
+        return K(0.0, torso=18, head=12, lunge=-2, drop=air, near=_Dir(near, 0.6), far=_Dir(far, 0.6),
+                 carried=True, near_foot=(80, 0.85), far_foot=(95, 0.85))
+
+    keys["launch_up"] = [
+        impact(-20, 0),
+        K(0.3, tilt=-16, torso=-30, head=-44, lunge=-4, drop=air - 6,
+          near=_Dir(-112, 0.88), far=_Dir(-92, 0.88), carried=True,
+          near_foot=(100, 0.97), far_foot=(86, 0.97), ease="out"),
+        K(1.0, tilt=-18, torso=-34, head=-46, lunge=-4, drop=air - 6,
+          near=_Dir(-118, 0.88), far=_Dir(-96, 0.88), carried=True,
+          near_foot=(104, 0.97), far_foot=(90, 0.97)),
+    ]
+    lay = tune.get("launch_horizontal_tilt", 0.0)
+    keys["launch_horizontal"] = [
+        impact(60, 70),
+        K(0.3, tilt=24 + lay, torso=30 - lay, head=24, lunge=-10, drop=air,
+          near=_Dir(12, 0.85), far=_Dir(-6, 0.85), carried=True,
+          near_foot=(14, 0.94), far_foot=(30, 0.94), ease="out"),
+        K(1.0, tilt=26 + lay, torso=32 - lay, head=26, lunge=-11, drop=air,
+          near=_Dir(8, 0.85), far=_Dir(-12, 0.85), carried=True,
+          near_foot=(10, 0.94), far_foot=(26, 0.94)),
+    ]
+    keys["launch_down"] = [
+        impact(-30, -20),
+        K(0.3, tilt=122, torso=8, head=-14, lunge=2, drop=air - 4,
+          near=_Dir(-150, 0.85), far=_Dir(-128, 0.85), carried=True,
+          near_foot=(-150, 0.8), far_foot=(-170, 0.85), ease="out"),
+        K(1.0, tilt=128, torso=8, head=-16, lunge=2, drop=air - 4,
+          near=_Dir(-156, 0.85), far=_Dir(-134, 0.85), carried=True,
+          near_foot=(-154, 0.8), far_foot=(-174, 0.85)),
+    ]
+
+    # ---- on the floor: the plant step puts the lowest paint on the floor.
+    n = 8
+    keys["prone_face_up"] = [
+        K(i / n, tilt=-90, torso=-2 + 1.5 * _breath(i, n), head=-8 + 1.5 * _breath(i, n),
+          lunge=lie_lunge, drop=lie, near=_Dir(8, 0.85), far=_Dir(-5, 0.6), carried=True,
+          near_foot=(-28, 0.66), far_foot=(4, 0.95), ease="linear")
+        for i in range(n)
+    ]
+    keys["prone_face_down"] = [
+        K(i / n, tilt=90, torso=2 + 1.5 * _breath(i, n), head=-14 + 1.5 * _breath(i, n),
+          lunge=-lie_lunge, drop=lie, near=_Dir(tune.get("prone_down_near", 140.0), 0.6), far=_Dir(tune.get("prone_down_far", 165.0), 0.8), carried=True,
+          near_foot=(178, 0.92), far_foot=(-172, 0.82), ease="linear")
+        for i in range(n)
+    ]
+
+    # ---- balance and stops.
+    keys["teeter"] = [
+        K(i / n, torso=22 + 5 * _breath(i, n), head=16 + 3 * _breath(i, n), lunge=-3,
+          near=_Dir(130 + 35 * math.cos(2 * math.pi * i / n), 0.7),
+          far=_Dir(110 - 20 * math.cos(2 * math.pi * i / n), 0.7),
+          near_foot=(0, 4), near_toe=20, ease="linear")
+        for i in range(n)
+    ]
+    # The tech slaps the floor ahead of the feet with a free hand; the other
+    # arm swings back for balance.
+    slap, back = ("far", "near") if tune.get("tech_slap_far") else ("near", "far")
+    bow = tune.get("tech_torso", 0.0)
+    keys["tech"] = [
+        K(0.0, torso=26 + bow, head=6, drop=14, **{back: _Dir(150, 0.7), slap: _At(26, 14)},
+          far_foot=(5, 0), near_foot=(-4, 2), near_toe=20),
+        K(0.3, torso=40 + bow, head=4, drop=24, lunge=-2, **{back: _Dir(160, 0.75), slap: _At(32, 3)},
+          far_foot=(6, 0), near_foot=(-8, 3), near_toe=45, ease="out"),
+        K(0.65, torso=22 + bow * 0.6, head=2, drop=12, **{back: _Dir(140, 0.7), slap: _Dir(70, 0.7)},
+          far_foot=(3, 0), near_foot=(-4, 1), near_toe=15),
+        _rest_key(1.0),
+    ]
+    keys["run_stop"] = [
+        K(0.0, torso=10, head=4, drop=4, lunge=4, near=_Dir(60, 0.7), far=_Dir(120, 0.7),
+          far_foot=(12, 0), near_foot=(-10, 3), near_toe=20, far_toe=-14),
+        K(0.25, torso=-26, head=-14, drop=14, lunge=-2, near=_Dir(10, 0.8), far=_Dir(30, 0.8),
+          far_foot=(26, 0), near_foot=(-16, 4), near_toe=30, far_toe=-30, ease="out"),
+        K(0.55, torso=-22, head=-10, drop=12, lunge=-1, near=_Dir(15, 0.8), far=_Dir(35, 0.8),
+          far_foot=(24, 0), near_foot=(-14, 3), near_toe=26, far_toe=-26),
+        K(0.8, torso=-8, head=-3, drop=5, near=_Dir(50, 0.75), far=_Dir(70, 0.75),
+          far_foot=(10, 0), near_foot=(-5, 1), near_toe=8, far_toe=-8),
+        _rest_key(1.0),
+    ]
+
+    # ---- the generic fallbacks a body without its own carries: a launch is
+    # the horizontal one, a meteor the downward one, and prone lies face up.
+    keys["launch"] = keys["launch_horizontal"]
+    keys["meteor"] = keys["launch_down"]
+    keys["prone"] = keys["prone_face_up"]
+    lying = keys["prone_face_up"][0]
+    keys["knockdown"] = [
+        _rest_key(0.0),
+        K(0.2, torso=-20, head=-24, lunge=-4, near=_Dir(30, 0.8), far=_Dir(50, 0.8), ease="out"),
+        K(0.55, tilt=-50, torso=-10, head=-12, lunge=0, drop=lie * 0.5, near=_Dir(-30, 0.8),
+          far=_Dir(-10, 0.8), carried=True, near_foot=(55, 0.85), far_foot=(35, 0.9)),
+        K(0.8, tilt=-92, torso=-4, head=-16, lunge=lie_lunge, drop=lie, near=_Dir(10, 0.85),
+          far=_Dir(-10, 0.6), carried=True, near_foot=(-30, 0.7), far_foot=(-12, 0.85)),
+        replace(lying, at=1.0, ease="smooth"),
+    ]
+    sit = K(0.35, tilt=-55, torso=40, head=14, lunge=lie_lunge * 0.5, drop=lie * 0.7,
+            near=_Dir(70, 0.7), far=_Dir(60, 0.75), carried=True,
+            near_foot=(-10, 0.55), far_foot=(5, 0.7))
+    kneel = K(0.62, torso=34, head=10, drop=16, near=_Dir(85, 0.6), far=_Dir(95, 0.75),
+              near_foot=(-6, 0), far_foot=(4, 0), near_toe=30)
+    keys["getup"] = [replace(lying, at=0.0), sit, kneel, _rest_key(1.0)]
+    keys["getup_attack"] = [
+        replace(lying, at=0.0),
+        replace(sit, at=0.3, near=_Dir(150, 0.8)),
+        replace(kneel, at=0.55, torso=22, near=_Dir(15, 0.9), ease="out"),
+        replace(kneel, at=0.75, torso=12, drop=10, near=_Dir(-5, 0.88), far=_Dir(110, 0.6)),
+        _rest_key(1.0),
+    ]
+    return keys
+
+
+#: The reaction rows every scientist publishes (frames and timing are in its
+#: rows table).
+REACTION_ROWS = (
+    "hit_high", "hit_mid", "hit_low", "hit_air",
+    "launch_up", "launch_horizontal", "launch_down",
+    "prone_face_up", "prone_face_down", "run_stop",
+)
+#: Rows drawn on the floor: each frame's lowest paint is put on the floor
+#: the idle stands on (`_plant_rows`).
+PLANTED_REACTIONS = frozenset(
+    {"hit_high", "hit_mid", "hit_low", "prone_face_up", "prone_face_down", "run_stop", "teeter", "tech"}
+)
+
+
+#: Rows every scientist draws from these keys: the new rows, and a teeter and
+#: a floor tech of their own.
+REACTION_KEYED_ROWS = (*REACTION_ROWS, "teeter", "tech")
+#: The fallbacks Carl had only as aliases of unrelated rows (a launch was his
+#: fall, prone was his death) take these keys too.
+CARL_REACTION_FALLBACKS = ("launch", "meteor", "knockdown", "prone", "getup", "getup_attack")
+_REACTION_LOOPS = frozenset({"prone", "prone_face_up", "prone_face_down", "teeter"})
+#: Anatomy changes per body, recorded after review of its sheet.
+REACTION_ANATOMY: dict[str, dict[str, float]] = {
+    # His near hand holds the telescope, so the free far hand slaps a tech,
+    # and face down the glass lies along his side instead of propping him up.
+    "carl_stargan": {"tech_slap_far": 1.0, "prone_down_near": 170.0, "prone_down_far": 180.0},
+    # Her legs are under a long dress: a leg that left its stance poked out
+    # through the skirt, and a crouch only sinks the hem into the floor (the
+    # plant lifts it back). Her legs stay near their line, her skirt panels
+    # carry the motion (`_noether_reaction_skirt`), and her short arms cannot
+    # reach the floor in a tech, so she bows deeper over it instead.
+    # Thrown back, she jackknifed into a bow over legs hanging below the hem;
+    # the hips lead back instead, and the dress trails forward.
+    "noether": {
+        "leg_scale": 0.3, "carried_leg_scale": 0.45, "tech_torso": 18.0,
+        "launch_horizontal_tilt": -64.0,
+    },
+}
+
+
+def _reaction_clips(
+    spec: CharacterSpec,
+    doc: Mapping[str, object],
+    rows: Mapping[str, tuple[int, int]],
+    names: Iterable[str],
+    *,
+    compact: bool,
+    tune: Mapping[str, float] | None = None,
+) -> dict[str, dict]:
+    """The reaction rows ``names``, solved on this scientist's skeleton.
+    Noether is authored west and mirrored after, like her other rows."""
+    r = _rest(doc, hands_follow_forearms=spec.hands_follow_forearms, natural_arm_pose=spec.natural_arm_pose)
+    mirror = SPECS[spec.name].facing == "east" if spec.name in SPECS else False
+    tune = {**REACTION_ANATOMY.get(spec.name, {}), **(tune or {})}
+    body = _react_body(doc, r, compact=compact, mirror=mirror, tune=tune)
+    keyed = _react_keys(tune)
+    out = {}
+    for name in names:
+        frames, duration = rows[name]
+        out[name] = _react_clip(body, keyed[name], frames, duration, loop=name in _REACTION_LOOPS)
+    return out
+
+
+def _plant_rows(doc: dict, names: Iterable[str], source_path: Path) -> None:
+    """Lower each frame of ``names`` so its lowest paint is on the floor the
+    idle stands on: the root, and every IK target with it."""
+    from ambition_sprite2d_renderer.core.measure import visible_bbox
+
+    if "frame" not in doc or "bones" not in doc:
+        return
+    rig = RigDocument(doc, source_path=source_path)
+    scale = max(1, int(rig.frame.get("render_scale", 1)))
+
+    def bottom(clip: str, t: float) -> float:
+        box = visible_bbox(rig.render_at(clip, t, padding=48))
+        return 0.0 if box is None else box[3] / scale
+
+    idle_frames = int(doc["clips"]["idle"]["frames"])
+    floor = max(bottom("idle", rig.frame_time("idle", k, idle_frames)) for k in range(idle_frames))
+    for name in names:
+        clip = doc["clips"].get(name)
+        if clip is None:
+            continue
+        channels = clip["channels"]
+        times = [key[0] for key in channels["root_y"]["keys"]]
+        if clip["loop"]:
+            times = times[:-1]
+        lifts = [floor - bottom(name, t) for t in times]
+        if clip["loop"]:
+            lifts.append(lifts[0])
+        for channel, sign in (
+            ("root_y", 1.0), ("near_foot_lift", -1.0), ("far_foot_lift", -1.0),
+            ("near_hand_y", 1.0), ("far_hand_y", 1.0),
+        ):
+            for key, lift in zip(channels[channel]["keys"], lifts):
+                key[1] = round(key[1] + sign * lift, 4)
+
+
 def _patent_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, dict]:
     """Author Patent Clerk's current full-fighter motion surface.
 
@@ -1050,6 +1555,10 @@ def _patent_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, d
         near_hand=([9,8,7,8,9,10,9,8],[-40,-39,-38,-39,-40,-41,-40,-39],[80]*8),
         far_hand=([-7,-6,-5,-6,-7,-8,-7,-6],[-39,-38,-37,-38,-39,-40,-39,-38],[100]*8))
 
+    # The reaction rows, and a teeter and a floor tech of his own: the old
+    # teeter leaned back from the edge, and the old tech was a getup's end.
+    clips.update(_reaction_clips(spec, doc, rows, REACTION_KEYED_ROWS, compact=True))
+
     # Rows that are intentional present-day aliases rather than separate art.
     # This keeps the sheet compact while the coverage map can still distinguish
     # categories such as trip vs knockdown or heavy vs light item grip.
@@ -1179,6 +1688,50 @@ def _add_noether_skirt_motion(clips: Mapping[str, dict]) -> dict[str, dict]:
             channels["near_skirt"] = expr("2.5*sin(pi*t)")
             channels["center_skirt"] = expr("-0.8*sin(pi*t)")
             channels["far_skirt"] = expr("-2.1*sin(pi*t)")
+    return out
+
+
+#: Her skirt panels on the reaction rows: (near, center, far) degrees at the
+#: peak, in her east-facing frame (negative swings a hem forward). A hit or a
+#: brake throws the hem forward with the body's momentum, a low hit kicks it
+#: back, a launch trails it, and on the floor it lies still.
+_NOETHER_REACTION_SKIRT: dict[str, tuple[float, float, float]] = {
+    "hit_high": (-7.0, -2.0, -5.0),
+    "hit_mid": (-9.0, -3.0, -7.0),
+    "hit_low": (14.0, 3.0, 9.0),
+    "hit_air": (-10.0, -2.0, 6.0),
+    "launch_up": (8.0, 2.0, -6.0),
+    "launch_horizontal": (-14.0, -4.0, -10.0),
+    "launch_down": (12.0, 1.0, -12.0),
+    "run_stop": (-16.0, -4.0, -12.0),
+    "teeter": (-6.0, -2.0, -4.0),
+    "tech": (8.0, 2.0, 6.0),
+    "prone_face_up": (0.0, 0.0, 0.0),
+    "prone_face_down": (0.0, 0.0, 0.0),
+}
+
+
+def _noether_reaction_skirt(clips: Mapping[str, dict]) -> dict[str, dict]:
+    """Key the skirt of the reaction rows: out by the impact, held after."""
+    out = deepcopy(dict(clips))
+    for name, peaks in _NOETHER_REACTION_SKIRT.items():
+        clip = out.get(name)
+        if clip is None:
+            continue
+        frames = int(clip["frames"])
+        loop = bool(clip["loop"])
+        if name == "teeter":
+            profile = [math.sin(2.0 * math.pi * i / frames) for i in range(frames)]
+        elif name == "tech":
+            profile = [1.0 - i / max(1, frames - 1) for i in range(frames)]
+        elif loop:
+            profile = [0.0] * frames
+        else:
+            # Rest, the impact at a quarter, then most of it held.
+            profile = [min(1.0, 4.0 * i / (frames - 1)) if i < (frames - 1) / 4 else
+                       1.0 - 0.3 * (i / (frames - 1) - 0.25) / 0.75 for i in range(frames)]
+        for part, peak in zip(("near_skirt", "center_skirt", "far_skirt"), peaks):
+            clip["channels"][part] = keys([peak * p for p in profile], loop=loop, ease="linear")
     return out
 
 
@@ -1371,6 +1924,7 @@ def _noether_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
                 doc, clips, repair_row, reach_scale=0.80, sides=("far",)
             )
     clips = _add_noether_skirt_motion(clips)
+    clips = _noether_reaction_skirt(clips)
     if "shield_break_fall" in clips:
         clips["shield_break_fall"]["loop"] = False
     expected = {name for name, _frames, _duration in spec.rows}
@@ -1679,7 +2233,15 @@ CARL_SWORD_WRIST: dict[str, tuple[float, ...]] = {
     "air_back": (0, 10, 20, 25, 15, 5, 0),
     "air_down": (0, -10, -35, -40, -35, -20, 0),
     "air_up": (0, 10, 20, 0, -20, -10, 0),
-    "getup_attack": (0, 0, -30, -40, -30, -15, -5, 0),
+    # On the floor the glass lies along the forearm, not stood up off it.
+    "prone": (-40,) * 8,
+    "prone_face_up": (-40,) * 8,
+    "prone_face_down": (30,) * 8,
+    "knockdown": (0, -10, -20, -30, -40, -40, -40),
+    "getup": (-40, -40, -30, -20, -10, 0, 0, 0),
+    "getup_attack": (-40, -30, -20, -40, -30, -15, -5, 0),
+    "hit_low": (0, -30, -30, -30, -30),
+    "run_stop": (0, -30, -35, -35, -20, 0),
     "ledge_attack": (0, 0, -30, -40, -30, -15, -5, 0),
     "trip_attack": (0, 0, -30, -40, -30, -15, -5, 0),
     "item_swing": (20, 10, -30, -40, -30, -15, 0),
@@ -1796,6 +2358,17 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
             near_hand=(xs[:f], ys[:f], [70,55,35,20,35,55,75,80][:f]))
 
     clips.update(_stargan_strike_clips(r, rows))
+    clips.update(_reaction_clips(
+        spec, doc, rows, (*REACTION_KEYED_ROWS, *CARL_REACTION_FALLBACKS), compact=False
+    ))
+    # His turn was the idle. The clerk's turn: the hips lead, the shoulders
+    # follow, and it ends facing forward (the game draws it in the new facing).
+    f, d = rows["turnaround"]
+    clips["turnaround"] = _pose(r, f, d, compact=False,
+        root_y=[0,1,2,1,0,0], pelvis=[0,8,18,14,6,0], torso=[0,-9,-18,-14,-6,0],
+        head=[0,8,16,13,6,0],
+        near_hand=([17,10,2,-2,6,17],[-48,-46,-45,-46,-47,-48],[80]*6),
+        far_hand=([-13,-5,2,5,-3,-13],[-47,-46,-45,-45,-46,-47],[100]*6))
 
     # ---- Pose-quality overrides -----------------------------------------
     # The complete fighter-motion surface deliberately reuses choreography,
@@ -1810,7 +2383,7 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
         clips["fall_special"]["duration_ms"] = d
         clips["fall_special"]["loop"] = True
 
-    for name in ("prone", "sleep", "trip_idle"):
+    for name in ("sleep", "trip_idle"):
         if name in rows:
             f, d = rows[name]
             clips[name] = _freeze_clip_pose(
@@ -1949,10 +2522,10 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
         if name in clips:
             clips[name] = _retarget_clip_arms_to_torso(doc, clips, name, reach_scale=0.78)
 
-    # The prone/sleep/trip holds use the final collapse body pose but keep Carl's
+    # The sleep/trip holds use the final collapse body pose but keep Carl's
     # normal arm anatomy in that rotated torso frame.  This avoids both the old
     # death-transition loop seam and wrists pointing back through his shoulders.
-    for name in ("prone", "sleep", "trip_idle"):
+    for name in ("sleep", "trip_idle"):
         if name in clips:
             clips[name] = _retarget_clip_arms_to_torso(doc, clips, name, reach_scale=0.76)
     _key_carl_wrist(clips)
@@ -2277,6 +2850,10 @@ def build_one(spec: CharacterSpec) -> Path:
         doc["clips"] = _noether_clips(spec, doc)
     else:
         raise ValueError(f"no clip authoring policy for {spec.name!r}")
+    planted = set(PLANTED_REACTIONS)
+    if spec.name == "carl_stargan":
+        planted |= {"knockdown", "prone", "getup", "getup_attack"}
+    _plant_rows(doc, sorted(planted), spec.rig_path)
     doc["features"] = {
         "paper_doll": True,
         "canonical_svg": True,
