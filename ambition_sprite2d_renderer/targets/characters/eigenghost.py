@@ -24,7 +24,8 @@ import math
 from pathlib import Path
 from typing import List, Tuple
 
-from PIL import Image, ImageChops, ImageFilter
+import numpy as np
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -33,7 +34,7 @@ RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
 TARGET_NAME = "eigenghost"
-FRAME_SIZE = (128, 128)
+FRAME_SIZE = (144, 144)
 SUPER = 4
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 120),
@@ -53,7 +54,7 @@ AXIS_GLOW: RGBA = (90, 255, 170, 255)
 GRID: RGBA = (120, 150, 190, 120)
 
 #: The centre of the shroud at rest, and its semi-axes (frame pixels).
-CENTRE = (60.0, 58.0)
+CENTRE = (66.0, 66.0)
 MAJOR = 24.0
 MINOR = 19.0
 #: The hem: how far below the centre it hangs, and its spectrum of ripples.
@@ -107,42 +108,69 @@ def _shroud_outline(cx: float, cy: float, lam1: float, lam2: float, hem: float, 
     return pts
 
 
+_GRID_XY = {}
+
+
+def _grid_xy(size):
+    if size not in _GRID_XY:
+        ys, xs = np.mgrid[0 : size[1], 0 : size[0]].astype(np.float32)
+        _GRID_XY[size] = (xs / SUPER, ys / SUPER)
+    return _GRID_XY[size]
+
+
+def _glow(layer: Image.Image, fn, blur: float) -> None:
+    g = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+    fn(blending_draw(g))
+    layer.alpha_composite(g.filter(ImageFilter.GaussianBlur(blur * SUPER)))
+
+
 def _draw_eigen_grid(layer: Image.Image, cx: float, cy: float, lam1: float, lam2: float, alpha: float) -> None:
-    """Faint lines inside the shroud: the unit grid it has transformed,
-    stretched along its axes (a haunting of graph paper)."""
+    """The LATTICE inside the shroud: the unit grid it has transformed, its
+    lines evenly spaced along its two axes and stretched by them (a haunting
+    of graph paper), faint, with a node at each crossing near its heart."""
     d = blending_draw(layer)
-    for k in (-1, 0, 1):
-        x = cx + k * lam1 * 0.42
-        d.line([_s((x, cy - lam2 * 0.7)), _s((x, cy + lam2 * 1.3))], fill=_with_alpha(GRID, alpha), width=SUPER)
-        y = cy + k * lam2 * 0.42 + lam2 * 0.3
-        d.line([_s((cx - lam1 * 0.8, y)), _s((cx + lam1 * 0.8, y))], fill=_with_alpha(GRID, alpha), width=SUPER)
+    xs = [cx + k * lam1 * 0.3 for k in (-2, -1, 0, 1, 2)]
+    ys = [cy - lam2 * 0.35 + k * lam2 * 0.35 for k in (0, 1, 2, 3)]
+    for x in xs:
+        d.line([_s((x, ys[0] - 4)), _s((x, ys[-1] + 4))], fill=_with_alpha(GRID, alpha), width=int(0.7 * SUPER))
+    for y in ys:
+        d.line([_s((xs[0] - 4, y)), _s((xs[-1] + 4, y))], fill=_with_alpha(GRID, alpha), width=int(0.7 * SUPER))
+    for x in xs[1:4]:
+        for y in ys[1:3]:
+            d.ellipse((*_s((x - 0.9, y - 0.9)), *_s((x + 0.9, y + 0.9))), fill=_with_alpha((170, 230, 220, 255), 0.6 * alpha))
 
 
 def _draw_eigen_arm(layer: Image.Image, start: Point, end: Point, glow: float) -> None:
-    """One EIGENVECTOR ARM: a glowing arrow from the shroud along its axis,
-    its head a triangle."""
-    halo = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-    hd = blending_draw(halo)
-    hd.line([_s(start), _s(end)], fill=_with_alpha(AXIS_GLOW, 0.55 * glow), width=int(5 * SUPER))
-    halo = halo.filter(ImageFilter.GaussianBlur(2.2 * SUPER))
-    layer.alpha_composite(halo)
+    """One EIGENVECTOR ARM: a beam of green light from the shroud along its
+    axis, a soft halo round a white-hot core, its head a sharp triangle with
+    a flare."""
+    _glow(layer, lambda g: g.line([_s(start), _s(end)], fill=_with_alpha(AXIS_GLOW, 0.7 * glow), width=int(6 * SUPER)), 2.4)
     d = blending_draw(layer)
-    d.line([_s(start), _s(end)], fill=AXIS_CORE, width=int(1.8 * SUPER))
+    d.line([_s(start), _s(end)], fill=AXIS_CORE, width=int(1.6 * SUPER))
     ang = math.atan2(end[1] - start[1], end[0] - start[0])
-    size = 5.0
+    size = 6.0
     tip = (end[0] + math.cos(ang) * size, end[1] + math.sin(ang) * size)
-    left = (end[0] + math.cos(ang + 2.3) * size * 0.8, end[1] + math.sin(ang + 2.3) * size * 0.8)
-    right = (end[0] + math.cos(ang - 2.3) * size * 0.8, end[1] + math.sin(ang - 2.3) * size * 0.8)
-    d.polygon([_s(tip), _s(left), _s(right)], fill=AXIS_CORE, outline=OUTLINE)
+    left = (end[0] + math.cos(ang + 2.4) * size * 0.8, end[1] + math.sin(ang + 2.4) * size * 0.8)
+    right = (end[0] + math.cos(ang - 2.4) * size * 0.8, end[1] + math.sin(ang - 2.4) * size * 0.8)
+    _glow(layer, lambda g: g.polygon([_s(tip), _s(left), _s(right)], fill=_with_alpha(AXIS_GLOW, glow)), 1.4)
+    blending_draw(layer).polygon([_s(tip), _s(left), _s(right)], fill=AXIS_CORE)
+    _glow(layer, lambda g: g.ellipse((*_s((tip[0] - 2, tip[1] - 2)), *_s((tip[0] + 2, tip[1] + 2))), fill=_with_alpha(AXIS_CORE, glow)), 1.0)
 
 
 def _draw_eyes(layer: Image.Image, cx: float, cy: float, lam1: float, lam2: float, squint: float) -> None:
-    """Two hollow EYES, looking right, set in the upper shroud."""
+    """Two EYES in the shroud: deep hollows, inner corners dipping under a
+    scowl, a cold green point of light in each (it is watching you)."""
     d = blending_draw(layer)
-    for dx in (0.05, 0.5):
-        ex, ey = cx + lam1 * dx, cy - lam2 * 0.2
-        h = 5.2 * (1.0 - squint) + 0.8
-        d.ellipse((*_s((ex - 3.4, ey - h)), *_s((ex + 3.4, ey + h))), fill=EYE)
+    for side, dx in ((-1, 0.04), (1, 0.5)):
+        ex, ey = cx + lam1 * dx, cy - lam2 * 0.22
+        h = 4.6 * (1.0 - squint) + 1.0
+        inner = ex + 3.6 * (1 if side < 0 else -1)
+        hollow = [(ex - 4.0, ey - h * 0.4 - (1.6 if side > 0 else 0.0) * (1 - squint)), (ex + 4.0, ey - h * 0.4 - (1.6 if side < 0 else 0.0) * (1 - squint)),
+                  (ex + 3.4, ey + h * 0.8), (ex, ey + h), (ex - 3.4, ey + h * 0.8)]
+        d.polygon([_s(p) for p in hollow], fill=EYE)
+        _glow(layer, lambda g, ex=ex, ey=ey: g.ellipse((*_s((ex - 2.2, ey - 1.0)), *_s((ex + 2.2, ey + 2.6))), fill=_with_alpha(AXIS_GLOW, 0.8 * (1 - squint * 0.6))), 1.2)
+        d = blending_draw(layer)
+        d.ellipse((*_s((ex - 1.0, ey + 0.2)), *_s((ex + 1.0, ey + 2.0))), fill=_with_alpha(AXIS_CORE, 1 - squint * 0.5))
 
 
 def _draw_ghost(cx: float, cy: float, lam1: float, lam2: float, hem: float, phase: float,
@@ -150,29 +178,54 @@ def _draw_ghost(cx: float, cy: float, lam1: float, lam2: float, hem: float, phas
     img = Image.new("RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
     if alpha <= 0.0:
         return img
+    # Its AURA: a cold green-blue bloom.
+    _glow(img, lambda g: g.ellipse((*_s((cx - lam1 - 8, cy - lam2 - 8)), *_s((cx + lam1 + 8, cy + hem))), fill=_with_alpha((120, 220, 210, 255), 0.22 * alpha)), 7.0)
     body = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    outline = _shroud_outline(cx, cy, lam1, lam2, hem, phase)
+    # The SHROUD: translucent cloth shaded from a pale lit crown to a cold
+    # blue-violet at the hem, lit along its left rim.
+    xs, ys = _grid_xy(img.size)
+    m = Image.new("L", img.size, 0)
+    ImageDraw.Draw(m).polygon([_s(p) for p in outline], fill=255)  # raw-draw-ok: an L mask has no alpha to composite
+    t = np.clip((ys - (cy - lam2)) / (lam2 + hem), 0, 1)[..., None]
+    top, bottom = np.array([236, 246, 250], np.float32), np.array([96, 110, 168], np.float32)
+    rgb = top * (1 - t) + bottom * t
+    side = np.clip((xs - cx) / (lam1 * 1.2), -1, 1)[..., None]
+    rgb = rgb * (1.0 - 0.18 * np.clip(side, 0, 1))
+    a = np.asarray(m, np.float32) * (0.92 - 0.25 * t[..., 0])
+    body.alpha_composite(Image.fromarray(np.dstack([np.clip(rgb, 0, 255), a]).astype(np.uint8), "RGBA"))
+    _draw_eigen_grid(body, cx, cy, lam1, lam2, 0.9)
     d = blending_draw(body)
-    outline = [_s(p) for p in _shroud_outline(cx, cy, lam1, lam2, hem, phase)]
-    d.polygon(outline, fill=SHROUD)
-    # A cold shade down its far side (the light is from the upper left).
-    shade = [_s(p) for p in _shroud_outline(cx + lam1 * 0.35, cy + 2, lam1 * 0.7, lam2 * 0.9, hem * 0.95, phase)]
-    shade_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    blending_draw(shade_layer).polygon(shade, fill=_with_alpha(SHROUD_SHADE, 0.55))
-    # The shade stays inside the shroud.
-    shade_layer.putalpha(ImageChops.darker(shade_layer.getchannel("A"), body.getchannel("A")))
-    body.alpha_composite(shade_layer)
-    _draw_eigen_grid(body, cx, cy, lam1, lam2, 0.8)
-    d = blending_draw(body)
-    d.line(outline + [outline[0]], fill=OUTLINE, width=int(1.6 * SUPER), joint="curve")
+    d.line([_s(p) for p in outline + [outline[0]]], fill=OUTLINE, width=int(1.4 * SUPER), joint="curve")
+    d.line([_s(p) for p in outline[3:22]], fill=(250, 255, 255, 230), width=int(0.8 * SUPER), joint="curve")
     _draw_eyes(body, cx, cy, lam1, lam2, squint)
-    # The arms: lambda-1 out to the right (its facing), lambda-2 straight up.
+    # The hem dissolves into mist.
+    fade = np.clip(1.0 - (ys - (cy + hem * 0.55)) / (hem * 0.45), 0.15, 1.0)
+    body.putalpha(Image.fromarray((np.asarray(body.getchannel("A"), np.float32) * fade).astype(np.uint8)))
+    def mist(g):
+        for k in range(5):
+            x = cx - lam1 * 0.7 + k * lam1 * 0.35 + 2 * math.sin(phase + k)
+            g.line([_s((x + 2 * math.sin(j + phase + k), cy + hem * 0.6 + j * 4)) for j in range(5)], fill=_with_alpha((170, 220, 230, 255), 0.35), width=int(4 * SUPER), joint="curve")
+    _glow(body, mist, 2.0)
     if arm2 > 0.0:
         _draw_eigen_arm(body, (cx - lam1 * 0.15, cy - lam2 * 0.75), (cx - lam1 * 0.15, cy - lam2 * 0.75 - arm2), glow)
     if arm1 > 0.0:
         _draw_eigen_arm(body, (cx + lam1 * 0.9, cy + lam2 * 0.35), (cx + lam1 * 0.9 + arm1, cy + lam2 * 0.35), glow)
+    # The arms light the shroud near their roots.
+    px = np.asarray(body, np.float32)
+    for (lx, ly) in ((cx + lam1 * 0.9, cy + lam2 * 0.35), (cx - lam1 * 0.15, cy - lam2 * 0.75)):
+        f = np.exp(-((xs - lx) ** 2 + (ys - ly) ** 2) / (12.0 ** 2)) * 0.35 * glow
+        px[..., :3] = np.clip(px[..., :3] + f[..., None] * np.array(AXIS_GLOW[:3], np.float32) * (px[..., 3:] / 255.0), 0, 255)
+    body = Image.fromarray(px.astype(np.uint8), "RGBA")
+    # Motes drifting up off it.
+    rng = np.random.default_rng(2)
+    d = blending_draw(body)
+    for _ in range(8):
+        x, y, ph = cx - lam1 + rng.random() * lam1 * 2, cy - lam2 + rng.random() * (lam2 + hem), rng.random()
+        yy = y - ((phase / math.tau + ph) % 1.0) * 14
+        d.ellipse((*_s((x - 0.8, yy - 0.8)), *_s((x + 0.8, yy + 0.8))), fill=(220, 255, 240, 200))
     if alpha < 1.0:
-        a = body.getchannel("A").point(lambda v: int(v * alpha))
-        body.putalpha(a)
+        body.putalpha(body.getchannel("A").point(lambda v: int(v * alpha)))
     img.alpha_composite(body)
     return img
 
