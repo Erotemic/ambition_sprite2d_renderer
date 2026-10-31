@@ -268,11 +268,16 @@ REACTIONS: Dict[str, Row] = {
 
 #: ANATOMY-SPECIFIC CHANGES, recorded per fighter: fields set on every key of
 #: a row for that fighter's body, after review of its sheet.
-ANATOMY: Dict[str, Dict[str, Dict[str, float]]] = {
-    # The beast's tail spike is part of its pelvis art: lying fully on its
-    # back points the tail at the floor and props the body up on it. It
-    # sprawls back on its haunches instead (reviewed 2026-10-31).
-    "projectile_polygon": {"prone_face_up": {"tilt": -55.0}},
+ANATOMY: Dict[str, Dict[str, Dict[str, object]]] = {
+    "projectile_polygon": {
+        # The beast's tail spike is part of its pelvis art: lying fully on its
+        # back points the tail at the floor and props the body up on it. It
+        # sprawls back on its haunches instead (reviewed 2026-10-31).
+        "prone_face_up": {"tilt": -55.0},
+        # Its trunk is carried level, so the brake's lean back barely moves
+        # its outline: the lean and the crouch are thrown harder (2026-10-30).
+        "run_stop": {"scale": {"torso": 1.8, "head": 1.6, "drop": 1.5}},
+    },
 }
 
 #: The rows a target plants on the floor (`frame.plant` = "each").
@@ -286,7 +291,12 @@ def apply(fighter: str, rows: Optional[Sequence[str]] = None) -> List[str]:
         if rows and name not in rows:
             continue
         keys = row.keys(body)
-        changes = ANATOMY.get(fighter, {}).get(name)
+        changes = dict(ANATOMY.get(fighter, {}).get(name, {}))
+        # `scale` multiplies a field on every key, so a rest key (zero) stays
+        # at rest; anything else replaces the field on every key.
+        scale = changes.pop("scale", {})
+        if scale:
+            keys = [replace(k, **{f: getattr(k, f) * factor for f, factor in scale.items()}) for k in keys]
         if changes:
             keys = [replace(k, **changes) for k in keys]
         body.write_clip(name, keys, row.frames, row.ms, loop=row.loop,
