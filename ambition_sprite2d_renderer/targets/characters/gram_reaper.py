@@ -23,7 +23,15 @@ back, eyes and nodes flare; commit 6-9: the sweep, edges severed; recovery
 Gram-Schmidt double-slash (telegraph 0-5: a dashed projection drawn to its
 mark; commit 6-10: the sweep, then the cut square to it; recovery 11-15);
 ``vanish`` 8 (it dissolves into its constellation and reforms); ``hurt`` 3;
-``death`` 12 (the constellation breaks apart, the reaper fades into it).
+``death`` 12 (the constellation breaks apart, the reaper fades into it);
+``enrage`` 10 (the phase change: it rears, arms flung wide, wings blazing,
+blazing); ``turn`` 8 (round from facing right through facing us to facing
+left: hood, face, arms and cloak each have a front viewpoint between);
+``edge_volley`` 12 (it points and its wing's nodes fire edges ahead).
+
+FACES: its eyes scowl under a carved brow (menace), blaze wide with slit
+pupils (fury), squeeze shut (pain), or soften (calm) as
+its pattern turns from threat to commit to punishable recovery.
 
 Facing right; it floats, the hem of its robe near the canvas foot. No drop
 shadow.
@@ -46,7 +54,7 @@ RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
 TARGET_NAME = "gram_reaper"
-FRAME_SIZE = (288, 288)
+FRAME_SIZE = (352, 352)
 SUPER = 4
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 120),
@@ -54,6 +62,9 @@ ROWS: List[Tuple[str, int, int]] = [
     ("attack_side", 16, 60),
     ("ortho_slash", 16, 60),
     ("vanish", 8, 80),
+    ("enrage", 10, 90),
+    ("turn", 8, 70),
+    ("edge_volley", 12, 70),
     ("hurt", 3, 90),
     ("death", 12, 110),
 ]
@@ -70,11 +81,18 @@ EYE: RGBA = (226, 186, 255, 255)
 BONE: RGBA = (222, 216, 236, 255)
 METAL: RGBA = (120, 108, 150, 255)
 METAL_DARK: RGBA = (66, 56, 92, 255)
+WHITE_HOT: RGBA = (255, 246, 255, 255)
 
 #: The constellation: its nodes (offsets from the body, frame pixels) and
 #: its edges.
-NODES: List[Point] = [(-62, -62), (-38, -84), (-70, -18), (-44, -36), (-58, 20), (52, -78), (70, -50), (48, -36), (66, -4)]
-EDGES: List[Tuple[int, int]] = [(0, 1), (0, 3), (1, 3), (0, 2), (2, 3), (2, 4), (3, 4), (5, 6), (6, 7), (5, 7), (7, 8), (6, 8)]
+#: Two WINGS mirrored about its spine (a self-adjoint symmetry), joined by
+#: an apex node over its hood.
+_WING: List[Point] = [(26, -86), (50, -96), (74, -80), (86, -52), (80, -22), (54, -50)]
+_WING_EDGES = [(0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (1, 5), (2, 5), (3, 5), (4, 5)]
+NODES: List[Point] = [(0, -104)] + _WING + [(-x, y) for x, y in _WING]
+EDGES: List[Tuple[int, int]] = (
+    [(0, 1), (0, 7)] + [(a + 1, b + 1) for a, b in _WING_EDGES] + [(a + 7, b + 7) for a, b in _WING_EDGES]
+)
 
 
 def _a(c: RGBA, a: float) -> RGBA:
@@ -162,7 +180,7 @@ class Pose:
     """One frame's joint table (frame pixels; arm angles in degrees from
     straight down, positive forward; the scythe's from straight UP)."""
 
-    centre: Point = (132.0, 160.0)
+    centre: Point = (176.0, 200.0)
     lean: float = 8.0
     hood_tilt: float = 0.0
     near_arm: Tuple[float, float] = (40.0, 60.0)
@@ -179,6 +197,13 @@ class Pose:
     ortho_cut: float = -1.0
     projection: float = 0.0
     fade: float = 1.0
+    #: Its face: "calm", "menace", "fury" or "pain" (eyes and brow; no mouth).
+    expression: str = "menace"
+    #: The far arm raised (enrage) and the edge volley's flight (0..1).
+    volley: float = -1.0
+    #: Its VIEWPOINT: 1 three-quarter facing right (its usual), 0 facing us.
+    #: (Facing left is the mirror of facing right: a turn passes through 0.)
+    view: float = 1.0
 
 
 def _shoulder(pose: Pose) -> Point:
@@ -228,7 +253,7 @@ def draw_cloak_ribbons(layer: Image.Image, pose: Pose) -> None:
         top, bottom = [], []
         for j in range(12):
             t = j / 11.0
-            x = start[0] - length * t * (0.8 + 0.4 * pose.cloak_back)
+            x = start[0] - length * t * (0.8 + 0.4 * pose.cloak_back) * (0.45 + 0.55 * pose.view)
             y = start[1] + length * t * (0.5 - 0.3 * pose.cloak_back) + 6.0 * math.sin(t * 5 + pose.cloak_phase + k)
             w = width * (1.0 - t * 0.7)
             top.append((x, y - w / 2))
@@ -286,17 +311,60 @@ def draw_robe(layer: Image.Image, pose: Pose) -> None:
         t = k / 6.0
         q = (trim[1][0] + (trim[2][0] - trim[1][0]) * t, trim[1][1] + (trim[2][1] - trim[1][1]) * t)
         d.polygon([_s((q[0] - 1.6, q[1] + 1.2)), _s((q[0] + 1.6, q[1] + 1.2)), _s((q[0], q[1] - 1.6))], fill=_a(TRIM, 0.8))
-    # The emblem: a bracketed Gram matrix of glowing dots on a dark plate.
-    e = _add(sh, _rot((0, 24), pose.lean))
-    d.rectangle((*_s((e[0] - 8, e[1] - 8)), *_s((e[0] + 8, e[1] + 8))), fill=(26, 12, 52, 255), outline=_a(TRIM, 0.8), width=int(0.8 * SUPER))
+    # The BODY inside the parted cloak: a dark tunic down its front,
+    # bordered by the cloak's lit inner edges, a spectral RIBCAGE glowing
+    # faintly through it, a SASH at the waist with a node BUCKLE, and the
+    # Gram-matrix BREASTPLATE over its heart.
+    neck = _add(sh, _rot((0, 2), pose.lean))
+    waist = (c[0] + 4, c[1] + 12)
+    tunic = [_add(neck, _rot((-9, 0), pose.lean)), _add(neck, _rot((9, 0), pose.lean)), (waist[0] + 9, waist[1]),
+             (c[0] + 12, hem_y - 6), (c[0] - 6, hem_y - 6), (waist[0] - 9, waist[1])]
+    _fill_gradient(robe, tunic, (36, 18, 70, 255), (10, 4, 24, 255), neck, (c[0], hem_y))
+    d = blending_draw(robe)
+    for side in (0, 1):
+        edge = [tunic[side], tunic[2 if side else 5], tunic[3 if side else 4]]
+        d.line([_s(p) for p in edge], fill=(188, 156, 250, 220), width=int(1.3 * SUPER), joint="curve")
+    ribs = []
+    for k in range(4):
+        y = 20 + k * 6
+        left, mid, right = _add(neck, _rot((-7 + k * 0.6, y + 3), pose.lean)), _add(neck, _rot((0, y), pose.lean)), _add(neck, _rot((7 - k * 0.6, y + 3), pose.lean))
+        ribs.append((left, mid, right))
+    _glow(robe, lambda g: [g.line([_s(a), _s(m), _s(b)], fill=_a(GLOW, 0.55), width=int(1.6 * SUPER), joint="curve") for a, m, b in ribs], 0.8)
+    d = blending_draw(robe)
+    for a, m, b in ribs:
+        d.line([_s(a), _s(m), _s(b)], fill=(214, 196, 250, 200), width=int(0.7 * SUPER), joint="curve")
+    d.line([_s(_add(neck, _rot((0, 16), pose.lean))), _s(_add(neck, _rot((0, 42), pose.lean)))], fill=(214, 196, 250, 160), width=int(0.8 * SUPER))
+    # The sash and its buckle.
+    sash = [(waist[0] - 11, waist[1] - 3), (waist[0] + 11, waist[1] - 4), (waist[0] + 11, waist[1] + 3), (waist[0] - 11, waist[1] + 4)]
+    _fill_gradient(robe, sash, (150, 112, 220, 255), (70, 40, 130, 255), (waist[0], waist[1] - 4), (waist[0], waist[1] + 4))
+    d = blending_draw(robe)
+    d.polygon([_s(p) for p in sash], outline=OUTLINE)
+    tail = [(waist[0] - 6, waist[1] + 3), (waist[0] - 10, waist[1] + 22 + 3 * math.sin(pose.cloak_phase)), (waist[0] - 4, waist[1] + 20), (waist[0] - 2, waist[1] + 4)]
+    d.polygon([_s(p) for p in tail], fill=(110, 76, 180, 255), outline=OUTLINE)
+    _glow(robe, lambda g: g.ellipse((*_s((waist[0] - 4, waist[1] - 4)), *_s((waist[0] + 4, waist[1] + 4))), fill=_a(GLOW, 0.9)), 1.2)
+    d = blending_draw(robe)
+    d.ellipse((*_s((waist[0] - 2.6, waist[1] - 2.6)), *_s((waist[0] + 2.6, waist[1] + 2.6))), fill=NODE, outline=OUTLINE)
+    # The breastplate: a pointed shield bearing the bracketed Gram matrix.
+    e = _add(neck, _rot((0, 10), pose.lean))
+    plate = [(e[0] - 8, e[1] - 6), (e[0] + 8, e[1] - 6), (e[0] + 8, e[1] + 4), (e[0], e[1] + 11), (e[0] - 8, e[1] + 4)]
+    _fill_gradient(robe, plate, (96, 80, 140, 255), (34, 24, 60, 255), (e[0], e[1] - 6), (e[0], e[1] + 11))
+    d = blending_draw(robe)
+    d.polygon([_s(p) for p in plate], outline=OUTLINE)
+    d.line([_s(p) for p in plate + [plate[0]]], fill=(196, 176, 246, 200), width=int(0.6 * SUPER), joint="curve")
     for side in (-1, 1):
-        x = e[0] + side * 6
-        d.line([_s((x - side * 2, e[1] - 6)), _s((x, e[1] - 6)), _s((x, e[1] + 6)), _s((x - side * 2, e[1] + 6))], fill=_a(NODE, 0.9), width=int(0.8 * SUPER))
-    dots = [(e[0] - 3.6 + i * 3.6, e[1] - 3.6 + j * 3.6) for i in range(3) for j in range(3)]
-    _glow(robe, lambda g: [g.ellipse((*_s((p[0] - 1.4, p[1] - 1.4)), *_s((p[0] + 1.4, p[1] + 1.4))), fill=_a(GLOW, 0.9)) for p in dots], 0.8)
+        x = e[0] + side * 5.4
+        d.line([_s((x - side * 1.6, e[1] - 4)), _s((x, e[1] - 4)), _s((x, e[1] + 4)), _s((x - side * 1.6, e[1] + 4))], fill=_a(NODE, 0.9), width=int(0.7 * SUPER))
+    dots = [(e[0] - 3.2 + i * 3.2, e[1] - 3.0 + j * 3.2) for i in range(3) for j in range(3)]
+    _glow(robe, lambda g: [g.ellipse((*_s((p[0] - 1.2, p[1] - 1.2)), *_s((p[0] + 1.2, p[1] + 1.2))), fill=_a(GLOW, 0.9)) for p in dots], 0.7)
     d = blending_draw(robe)
     for p in dots:
-        d.ellipse((*_s((p[0] - 0.8, p[1] - 0.8)), *_s((p[0] + 0.8, p[1] + 0.8))), fill=NODE)
+        d.ellipse((*_s((p[0] - 0.7, p[1] - 0.7)), *_s((p[0] + 0.7, p[1] + 0.7))), fill=NODE)
+    # The high collar: two pointed wings of cloth framing the hood.
+    for side in (-1, 1):
+        base = _add(neck, _rot((side * 10, 2), pose.lean))
+        collar = [base, _add(neck, _rot((side * 4, -2), pose.lean)), _add(neck, _rot((side * 16, -14), pose.lean))]
+        _fill_gradient(robe, collar, (150, 116, 222, 255), (60, 34, 112, 255), collar[2], base)
+        blending_draw(robe).polygon([_s(p) for p in collar], outline=OUTLINE)
     # The hem dissolves: its alpha fades, and mist curls off it.
     _fade_below(robe, hem_y - 26, hem_y + 34, 0.0)
     if pose.fade < 1.0:
@@ -332,35 +400,88 @@ def draw_hood(layer: Image.Image, pose: Pose) -> None:
     deepens to black, with two EYE-SHARDS blazing in it, a flare off each."""
     sh = _shoulder(pose)
     tilt = pose.lean + pose.hood_tilt
-    h = _add(sh, _rot((6, -15), tilt))
-    cowl = [_add(h, _rot(p, tilt)) for p in ((-20, 12), (-19, -6), (-10, -22), (-17, -34), (2, -24), (16, -12), (20, 2), (17, 14))]
+    v = pose.view
+    h = _add(sh, _rot((6 * v, -15), tilt))
+    side_cowl = ((-20, 12), (-19, -6), (-10, -22), (-17, -34), (2, -24), (16, -12), (20, 2), (17, 14))
+    front_cowl = ((-19, 12), (-19, -6), (-12, -20), (0, -36), (12, -20), (19, -6), (20, 4), (19, 12))
+    cowl = [_add(h, _rot(_mix(f, sd, v), tilt)) for sd, f in zip(side_cowl, front_cowl)]
     hood = Image.new("RGBA", layer.size, (0, 0, 0, 0))
     _fill_gradient(hood, cowl, (140, 104, 214, 255), (40, 20, 80, 255), _add(h, (-6, -30)), _add(h, (4, 16)))
     d = blending_draw(hood)
     d.line([_s(p) for p in cowl + [cowl[0]]], fill=OUTLINE, width=int(1.4 * SUPER), joint="curve")
     d.line([_s(p) for p in cowl[:4]], fill=(206, 182, 255, 200), width=int(1.0 * SUPER), joint="curve")
     # The stitched glyph on its side.
-    g0 = _add(h, _rot((-12, -6), tilt))
+    g0 = _add(h, _rot((-12 - 2 * (1 - v), -6), tilt))
     tri = [(g0[0] - 3, g0[1] + 3), (g0[0] + 3, g0[1] + 3), (g0[0], g0[1] - 3)]
     d.line([_s(p) for p in tri + [tri[0]]], fill=_a(TRIM, 0.85), width=int(0.8 * SUPER))
     for p in tri:
         d.ellipse((*_s((p[0] - 0.9, p[1] - 0.9)), *_s((p[0] + 0.9, p[1] + 0.9))), fill=_a(NODE, 0.9))
     # The face: a void, darkest at its middle.
-    face = [_add(h, _rot(p, tilt)) for p in ((-6, 12), (-9, -4), (1, -14), (15, -6), (15, 12))]
+    side_face = ((-6, 12), (-9, -4), (1, -14), (15, -6), (15, 12))
+    front_face = ((-11, 12), (-12, -4), (0, -15), (12, -4), (11, 12))
+    face = [_add(h, _rot(_mix(f, sd, v), tilt)) for sd, f in zip(side_face, front_face)]
     _fill_gradient(hood, face, (40, 18, 74, 255), (2, 0, 6, 255), _add(h, (2, -14)), _add(h, (4, 4)))
     layer.alpha_composite(hood)
-    for ex in (1.0, 9.0):
+    draw_face(layer, pose, h, tilt)
+
+
+#: The eyes' size against the hood (they carry its whole expression).
+EYE_SCALE = 1.4
+
+#: Each expression: how open its eyes are, how hard the brow bears down
+#: (anger), and whether the pupils show.
+EXPRESSIONS = {
+    "calm": (0.55, 0.3, False),
+    "menace": (0.38, 1.0, False),
+    "fury": (1.0, 1.25, True),
+    "pain": (0.16, -0.4, False),
+}
+
+
+def draw_face(layer: Image.Image, pose: Pose, h: Point, tilt: float) -> None:
+    """The FACE in the void of the hood: two EYE-SHARDS whose inner corners
+    dip toward each other under a carved BROW (a scowl), narrowed to slits
+    in menace, blazing wide with slit PUPILS in fury, squeezed in pain (one
+    flickering). It has no mouth (Jon): the eyes and the brow carry it all."""
+    openness, anger, pupils = EXPRESSIONS.get(pose.expression, EXPRESSIONS["menace"])
+    glow = pose.eye_glow * pose.fade
+    shift = -5.0 * (1.0 - pose.view)  # the face centres as it turns to us
+    for side, ex in ((-1.0, 1.0 + shift + 1.5 * (1 - pose.view)), (1.0, 9.0 + shift - 1.5 * (1 - pose.view))):
         e = _add(h, _rot((ex, -2), tilt))
-        eye = [(e[0] - 3.0, e[1] - 0.6), (e[0] + 2.8, e[1] - 2.2), (e[0] + 1.8, e[1] + 1.4), (e[0] - 2.0, e[1] + 1.0)]
-        _glow(layer, lambda g, eye=eye: g.polygon([_s(p) for p in eye], fill=_a(GLOW, pose.eye_glow * pose.fade)), 1.4 + 2.0 * pose.eye_glow)
-        _glow(layer, lambda g, e=e: g.line([_s((e[0] - 7 * pose.eye_glow, e[1])), _s((e[0] + 7 * pose.eye_glow, e[1] - 1))],
-                                           fill=_a(EYE, 0.7 * pose.eye_glow * pose.fade), width=int(0.8 * SUPER)), 0.4)
-        blending_draw(layer).polygon([_s(p) for p in eye], fill=_a(EYE, pose.fade))
+        flicker = 0.35 if (pose.expression == "pain" and side < 0) else 1.0
+        inner, outer = -side, side
+        eye = [
+            _add(e, _rot((inner * 3.2, 1.0 * anger), tilt)),
+            _add(e, _rot((0.4 * outer, -1.2 - 1.4 * openness), tilt)),
+            _add(e, _rot((outer * 3.4, -1.6 * anger - 0.4), tilt)),
+            _add(e, _rot((0.6 * outer, 0.6 + 1.2 * openness), tilt)),
+        ]
+        # Big enough to read as a glare at gameplay scale.
+        eye = [(e[0] + (p[0] - e[0]) * EYE_SCALE, e[1] + (p[1] - e[1]) * EYE_SCALE) for p in eye]
+        _glow(layer, lambda g, eye=eye: g.polygon([_s(p) for p in eye], fill=_a(GLOW, glow * flicker)), 1.6 + 2.6 * pose.eye_glow)
+        d = blending_draw(layer)
+        d.polygon([_s(p) for p in eye], fill=_a(EYE, pose.fade * flicker))
+        d.polygon([_s(p) for p in eye[1:4]] + [_s(_add(e, _rot((0, 0.2), tilt)))], fill=_a(WHITE_HOT, 0.8 * pose.fade * flicker))
+        if pupils:
+            d.line([_s(_add(e, _rot((0.2 * outer, -1.6), tilt))), _s(_add(e, _rot((0.2 * outer, 1.4), tilt)))], fill=_a(VOID, pose.fade), width=int(0.8 * SUPER))
+        # A flare streaking off the outer corner.
+        _glow(layer, lambda g, o=eye[2]: g.line([_s(o), _s(_add(o, _rot((outer * 6 * pose.eye_glow, -1.5 * pose.eye_glow), tilt)))],
+                                               fill=_a(EYE, 0.8 * glow * flicker), width=int(0.9 * SUPER)), 0.5)
+    # The brow: the hood's dark carved down in a V over both eyes.
+    if anger > 0:
+        brow = [_add(h, _rot((x + shift, y), tilt)) for x, y in ((-4, -6.5), (14, -6.5), (14, -4.4 - 0.6 * anger), (5, -1.6 + 0.4 * anger), (-4, -4.4 - 0.6 * anger))]
+        blending_draw(layer).polygon([_s(p) for p in brow], fill=_a(VOID, pose.fade))
+
+
+
+def _mix(a: Point, b: Point, t: float) -> Point:
+    """``a`` at ``t`` 0, ``b`` at ``t`` 1 (a part between two viewpoints)."""
+    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
 
 
 def _hand(pose: Pose, near: bool) -> Point:
     sh = _shoulder(pose)
-    root = _add(sh, _rot((12 if near else -10, 6), pose.lean))
+    root = _add(sh, _rot(((12 if near else -10) + (2 if near else -4) * (1 - pose.view), 6), pose.lean))
     angles = pose.near_arm if near else pose.far_arm
     elbow = _along(root, angles[0], 24.0)
     return _along(elbow, angles[0] + angles[1], 22.0)
@@ -370,7 +491,7 @@ def draw_arm(layer: Image.Image, pose: Pose, near: bool) -> None:
     """An ARM: a wide tattered sleeve over the upper arm, a bony forearm and a
     long-fingered skeletal HAND."""
     sh = _shoulder(pose)
-    root = _add(sh, _rot((12 if near else -10, 6), pose.lean))
+    root = _add(sh, _rot(((12 if near else -10) + (2 if near else -4) * (1 - pose.view), 6), pose.lean))
     angles = pose.near_arm if near else pose.far_arm
     elbow = _along(root, angles[0], 24.0)
     wrist = _hand(pose, near)
@@ -514,6 +635,25 @@ def draw_orthogonal_slash(layer: Image.Image, pose: Pose) -> None:
                                   fill=_a(NODE, 0.9), width=int(1.2 * SUPER))
 
 
+def draw_edge_volley(layer: Image.Image, pose: Pose) -> None:
+    """The EDGE VOLLEY: each node of its forward wing fires an edge of light
+    straight ahead, a bright head on a fading tail."""
+    if pose.volley < 0:
+        return
+    c = pose.centre
+    for k, (x, y) in enumerate(_WING):
+        start = _add(c, _rot((x * pose.graph_spread, y * pose.graph_spread), pose.graph_rot))
+        reach = 84.0 * min(1.0, pose.volley * 1.4 - k * 0.06)
+        if reach <= 0:
+            continue
+        head = (start[0] + reach, start[1] + 4 * math.sin(k))
+        tail = (head[0] - 26, head[1])
+        _glow(layer, lambda g, tail=tail, head=head: g.line([_s(tail), _s(head)], fill=_a(GLOW, 0.9), width=int(3.2 * SUPER)), 1.4)
+        d = blending_draw(layer)
+        d.line([_s(tail), _s(head)], fill=_a(NODE, 0.9), width=int(1.0 * SUPER))
+        d.ellipse((*_s((head[0] - 2.2, head[1] - 2.2)), *_s((head[0] + 2.2, head[1] + 2.2))), fill=WHITE_HOT)
+
+
 def draw_projection(layer: Image.Image, pose: Pose) -> None:
     """The TELEGRAPH's PROJECTION: a dashed line from the reaper to its mark
     and the dashed drop square to it (it picks the axis it will cut along)."""
@@ -560,6 +700,7 @@ def draw_reaper(pose: Pose) -> Image.Image:
         d.ellipse((*_s((x - 0.9, yy - 0.9)), *_s((x + 0.9, yy + 0.9))), fill=_a(NODE, 0.6 * (0.4 + 0.6 * pose.fade)))
     draw_constellation(img, replace(pose, fade=max(pose.fade, 0.6) if pose.graph_spread > 1.05 else pose.fade), edges_only=False)
     draw_projection(img, pose)
+    draw_edge_volley(img, pose)
     draw_graph_cut_slash(img, pose)
     draw_orthogonal_slash(img, pose)
     return img
@@ -569,51 +710,89 @@ def _pose_for(animation: str, i: int, n: int) -> Pose:
     t = i / max(1, n)
     u = i / max(1, n - 1)
     w = math.sin(t * math.tau)
-    base = Pose(centre=(132.0, 160.0 + 3.0 * w), cloak_phase=t * math.tau, graph_rot=6.0 * w, eye_glow=0.6 + 0.2 * w)
+    base = Pose(centre=(176.0, 200.0 + 3.0 * w), cloak_phase=t * math.tau, graph_rot=6.0 * w, eye_glow=0.6 + 0.2 * w)
     if animation == "idle":
         return replace(base, near_arm=(40.0 + 3 * w, 60.0))
     if animation == "walk":
-        return replace(base, lean=18.0, cloak_back=0.6, centre=(132.0 + 3 * w, 158.0), scythe=30.0, near_arm=(55.0, 50.0), graph_rot=10 * w)
+        return replace(base, lean=18.0, cloak_back=0.6, centre=(176.0 + 3 * w, 198.0), scythe=30.0, near_arm=(55.0, 50.0), graph_rot=10 * w)
     if animation == "attack_side":
         if i <= 5:  # telegraph: the scythe raised back, eyes and nodes flare
             k = i / 5.0
-            return replace(base, lean=8.0 - 14.0 * k, scythe=10.0 - 70.0 * k, near_arm=(40.0 + 100.0 * k, 60.0 - 40.0 * k),
-                           eye_glow=0.7 + 0.3 * k, graph_spread=1.0 + 0.1 * k)
+            # It draws itself up and back, the hood lifting, eyes widening.
+            return replace(base, lean=8.0 - 18.0 * k, hood_tilt=-10.0 * k, scythe=10.0 - 80.0 * k, near_arm=(40.0 + 105.0 * k, 60.0 - 40.0 * k),
+                           far_arm=(-10.0 - 50.0 * k, 30.0 + 30.0 * k), eye_glow=0.7 + 0.3 * k, graph_spread=1.0 + 0.12 * k,
+                           expression="fury" if k > 0.5 else "menace", cloak_back=-0.3 * k)
         if i <= 9:  # commit: the sweep through, edges severed
             k = (i - 6) / 3.0
-            return replace(base, lean=-6.0 + 30.0 * k, scythe=-60.0 + 190.0 * k, near_arm=(140.0 - 90.0 * k, 20.0 + 20.0 * k),
-                           cloak_back=1.0, eye_glow=1.0, cut_slash=0.2 + 0.8 * k, graph_cut=k)
+            # It throws its whole body into the sweep, hood down.
+            return replace(base, lean=-10.0 + 40.0 * k, hood_tilt=-10.0 + 22.0 * k, scythe=-70.0 + 200.0 * k, near_arm=(145.0 - 95.0 * k, 20.0 + 20.0 * k),
+                           far_arm=(-60.0 + 40.0 * k, 60.0), centre=(176.0 + 10.0 * k, 200.0), cloak_back=1.0, eye_glow=1.0,
+                           cut_slash=0.2 + 0.8 * k, graph_cut=k, expression="fury")
         k = (i - 10) / 5.0  # recovery: the blade low, open
-        return replace(base, lean=24.0 - 16.0 * k, scythe=130.0 - 120.0 * k, near_arm=(50.0 - 10.0 * k, 40.0 + 20.0 * k),
-                       eye_glow=0.4 + 0.3 * k, graph_cut=1.0 - k, cut_slash=1.0 if i == 10 else -1.0)
+        # Overextended, sagging, the light low: the window to punish it.
+        return replace(base, lean=30.0 - 22.0 * k, hood_tilt=14.0 - 14.0 * k, scythe=130.0 - 120.0 * k, near_arm=(50.0 - 10.0 * k, 40.0 + 20.0 * k),
+                       centre=(186.0 - 10.0 * k, 206.0 - 6.0 * k), eye_glow=0.35 + 0.35 * k, graph_cut=1.0 - k,
+                       cut_slash=1.0 if i == 10 else -1.0, expression="calm", graph_spread=0.92 + 0.08 * k)
     if animation == "ortho_slash":
         if i <= 5:  # telegraph: it picks its axis, projects to its mark
             k = i / 5.0
-            return replace(base, scythe=10.0 + 70.0 * k, near_arm=(40.0 + 50.0 * k, 50.0), projection=k, eye_glow=0.7 + 0.3 * k)
+            # It levels its gaze down the projection, choosing its axis.
+            return replace(base, scythe=10.0 + 70.0 * k, near_arm=(40.0 + 50.0 * k, 50.0), far_arm=(-10.0 + 90.0 * k, 10.0),
+                           projection=k, eye_glow=0.7 + 0.3 * k, hood_tilt=6.0 * k, expression="menace")
         if i <= 10:  # commit: the level sweep, then the cut square to it
             k = (i - 6) / 4.0
             sweep = min(1.0, k * 2.0)
             cut = max(0.0, k * 2.0 - 1.0)
-            return replace(base, lean=12.0, scythe=80.0 + 100.0 * cut, near_arm=(90.0 + 30.0 * cut, 30.0), eye_glow=1.0,
-                           ortho_sweep=sweep, ortho_cut=cut if k > 0.5 else -1.0, cloak_back=0.8)
+            return replace(base, lean=12.0 + 10 * cut, scythe=80.0 + 100.0 * cut, near_arm=(90.0 + 30.0 * cut, 30.0), eye_glow=1.0,
+                           ortho_sweep=sweep, ortho_cut=cut if k > 0.5 else -1.0, cloak_back=0.8, expression="fury")
         k = (i - 11) / 4.0
-        return replace(base, lean=16.0 - 8 * k, scythe=170.0 - 160.0 * k, near_arm=(60.0 - 20 * k, 50.0), eye_glow=0.4 + 0.3 * k,
-                       ortho_sweep=1.0 if i == 11 else -1.0, ortho_cut=1.0 if i == 11 else -1.0)
+        return replace(base, lean=22.0 - 14 * k, hood_tilt=10.0 * (1 - k), scythe=170.0 - 160.0 * k, near_arm=(60.0 - 20 * k, 50.0), eye_glow=0.4 + 0.3 * k,
+                       ortho_sweep=1.0 if i == 11 else -1.0, ortho_cut=1.0 if i == 11 else -1.0, expression="calm")
     if animation == "vanish":
         k = math.sin(u * math.pi)  # out to its constellation and back
         return replace(base, fade=1.0 - k, graph_spread=1.0 + 0.6 * k, eye_glow=1.0)
     if animation == "hurt":
         k = 1.0 - u
-        return replace(base, lean=-12.0 * k + 8, hood_tilt=-14.0 * k, centre=(128.0 - 4 * k, 160.0), eye_glow=1.0, graph_cut=0.5 * k)
+        return replace(base, lean=-16.0 * k + 8, hood_tilt=-18.0 * k, centre=(170.0 - 6 * k, 200.0), eye_glow=1.0, graph_cut=0.5 * k,
+                       expression="pain", far_arm=(-40.0 * k, 50.0))
     if animation == "death":
         k = u
         return replace(base, fade=1.0 - min(1.0, k * 1.4), graph_spread=1.0 + 0.6 * k, graph_cut=min(1.0, k * 2.0),
-                       eye_glow=1.0 - k, lean=8.0 + 20 * k, centre=(132.0, 160.0 + 10 * k))
+                       eye_glow=1.0 - k, lean=8.0 + 20 * k, hood_tilt=-20.0 * min(1.0, k * 3), centre=(176.0, 200.0 + 10 * k),
+                       expression="pain" if k < 0.3 else "calm", far_arm=(-60.0, 40.0))
+    if animation == "turn":
+        # From facing right, round through facing us, to facing left (the
+        # last half drawn facing right and mirrored by _render_frame).
+        v = math.cos(u * math.pi)
+        return replace(base, view=abs(v), lean=8.0 * abs(v), scythe=10.0 * abs(v), near_arm=(40.0 * abs(v) + 10.0 * (1 - abs(v)), 60.0),
+                       cloak_back=0.3 * (1 - abs(v)))
+    if animation == "enrage":
+        # The phase change: it rears, both arms flung wide, its wings blazing
+        # open, its eyes blazing.
+        k = math.sin(min(1.0, u * 1.6) * math.pi * 0.5)
+        shake = 2.0 * math.sin(i * 2.7) * k
+        return replace(base, lean=8.0 - 22.0 * k, hood_tilt=-16.0 * k, centre=(176.0 + shake, 200.0 - 8.0 * k),
+                       near_arm=(40.0 + 110.0 * k, 60.0 - 50.0 * k), far_arm=(-10.0 - 130.0 * k, 30.0 - 20.0 * k), scythe=10.0 - 20.0 * k,
+                       graph_spread=1.0 + 0.3 * k, eye_glow=1.0, expression="fury", cloak_back=-0.4 * k)
+    if animation == "edge_volley":
+        # It points at you and its wing fires: telegraph (0-4), the volley
+        # (5-8), recovery (9-11).
+        if i <= 4:
+            k = i / 4.0
+            return replace(base, far_arm=(-10.0 + 110.0 * k, 10.0 - 10.0 * k), lean=8.0 - 6.0 * k, eye_glow=0.7 + 0.3 * k,
+                           graph_spread=1.0 + 0.08 * k, expression="menace")
+        if i <= 8:
+            k = (i - 5) / 3.0
+            return replace(base, far_arm=(100.0, 0.0), lean=4.0, eye_glow=1.0, volley=0.25 + 0.75 * k, expression="fury")
+        k = (i - 9) / 2.0
+        return replace(base, far_arm=(100.0 - 110.0 * k, 30.0 * k), lean=4.0 + 4.0 * k, eye_glow=0.5 + 0.2 * k, expression="calm")
     raise ValueError(f"{TARGET_NAME}: no row {animation!r}")
 
 
 def _render_frame(animation: str, frame_index: int, nframes: int) -> Image.Image:
     img = draw_reaper(_pose_for(animation, frame_index, nframes))
+    if animation == "turn" and frame_index / max(1, nframes - 1) > 0.5:
+        img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
     if animation == "death":
         fade = 1.0 - max(0.0, (frame_index / max(1, nframes - 1) - 0.7) / 0.3)
         img.putalpha(img.getchannel("A").point(lambda v: int(v * fade)))
