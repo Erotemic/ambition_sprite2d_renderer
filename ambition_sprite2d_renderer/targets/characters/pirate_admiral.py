@@ -94,6 +94,12 @@ ACTOR_METADATA = {
     "animation_bindings": {
         "default": {"animation": "idle", "events": []},
         "locomotion.walk": {"animation": "walk", "events": []},
+        "locomotion.run": {"animation": "run", "events": []},
+        "traversal.jump": {"animation": "jump", "events": []},
+        "traversal.fall": {"animation": "fall", "events": []},
+        "action.defense.block": {"animation": "block", "events": []},
+        "action.defense.roll": {"animation": "roll", "events": []},
+        "reaction.hit": {"animation": "hit", "events": []},
         "interaction.talk": {"animation": "talk", "events": []},
         "interaction.use": {"animation": "interact", "events": []},
         "action.melee.primary": {

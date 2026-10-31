@@ -24,10 +24,12 @@ from typing import Dict, List, Mapping, Tuple
 
 from ...authoring.body_rig import BodyRigProduct, JointPose
 from ...authoring.sheet_build import BASE_FRAME, SCALE
+from . import _pirate_admiral_fighter as _admiral_fighter
 from . import _pirate_rig as pirate_rig
 
-#: Rows that repeat while their state holds; the rest play once.
-_LOOPING_ROWS = frozenset({"idle", "walk"})
+#: Rows that repeat while their state holds; the rest play once. The
+#: admiral's fighter rows name their own loops.
+_LOOPING_ROWS = frozenset({"idle", "walk"}) | _admiral_fighter.LOOPS
 
 _ATTACHMENTS = (
     ("hand_near", "front_hand"),

@@ -359,10 +359,23 @@ def pose(anim: str, frame_idx: int, nframes: int) -> dict:
     return out
 
 
+def fighter_pose(anim: str, frame_idx: int, nframes: int) -> dict:
+    """A row of his moves, or of his fighter body language
+    (``_pirate_admiral_fighter``), or of the family."""
+    from . import _pirate_admiral_fighter as fighter
+
+    if anim in fighter.ROWS_SPEC:
+        return fighter.pose(anim, frame_idx, nframes)
+    return pose(anim, frame_idx, nframes)
+
+
 def register(rows_table: dict, poses_table: dict, base: list) -> None:
-    rows_table["pirate_admiral"] = rows(base)
-    poses_table["pirate_admiral"] = pose
+    """His sheet: the family's rows, his moves, then his fighter rows."""
+    from . import _pirate_admiral_fighter as fighter
+
+    rows_table["pirate_admiral"] = rows(base) + list(fighter.ROWS)
+    poses_table["pirate_admiral"] = fighter_pose
 
 
-__all__ = ["MOVES", "pose", "register", "rows"]
+__all__ = ["MOVES", "fighter_pose", "pose", "register", "rows"]
 del math
