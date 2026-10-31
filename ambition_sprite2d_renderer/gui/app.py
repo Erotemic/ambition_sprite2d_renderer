@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QTabWidget,
     QToolBar,
+    QWidget,
 )
 
 from ..authoring.rigdoc import RigDocument, render_gifs_for_doc, render_sheet_for_doc
@@ -83,9 +84,21 @@ class MainWindow(QMainWindow):
 
         right = QDockWidget("Parts / Palette", self)
         tabs = QTabWidget()
-        tabs.addTab(PartsPanel(state), "Parts")
-        tabs.addTab(PalettePanel(state), "Palette")
-        tabs.addTab(GeometryPanel(state), "Geometry")
+
+        # Each page scrolls, as the Timeline does: a page's natural height is
+        # not the dock's minimum. Unscrolled, the Parts page held the right
+        # column at ~890 px, and the bottom dock, which owns both corners,
+        # could not grow past its own 80.
+        def scrolled(page: QWidget) -> QScrollArea:
+            area = QScrollArea()
+            area.setWidgetResizable(True)
+            area.setMinimumSize(1, 1)
+            area.setWidget(page)
+            return area
+
+        tabs.addTab(scrolled(PartsPanel(state)), "Parts")
+        tabs.addTab(scrolled(PalettePanel(state)), "Palette")
+        tabs.addTab(scrolled(GeometryPanel(state)), "Geometry")
         right.setWidget(tabs)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, right)
 

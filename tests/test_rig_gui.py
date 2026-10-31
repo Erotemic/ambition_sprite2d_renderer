@@ -147,9 +147,14 @@ class TestEditorState:
         state.set_frame(2)
         state.write_key("pelvis", 15.0)
         assert "pose_keys" not in state.clip()
-        state.set_pose_key(3, True)
-        assert state.is_pose_key(3)
-        assert 3 not in state.channel_key_frames("pelvis")["pelvis"]
+        # A first key also seeds guard keys on its neighbours (1 and 3,
+        # `_seed_unkeyed_channel`), so the bookmark goes on a frame that is no
+        # key's, and the claim is that it adds none.
+        keyed = state.channel_key_frames("pelvis")["pelvis"]
+        state.set_pose_key(5, True)
+        assert state.is_pose_key(5)
+        assert state.channel_key_frames("pelvis")["pelvis"] == keyed
+        assert 5 not in keyed
 
     def test_noop_speculative_undo_boundary_is_removed(self):
         from ambition_sprite2d_renderer.gui.state import EditorState

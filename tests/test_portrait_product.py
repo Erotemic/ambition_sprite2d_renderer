@@ -372,7 +372,10 @@ def test_oiler_portrait_hook_requests_native_svg_scale(monkeypatch, tmp_path):
     assert Image.open(outputs[0]).size == (256 * columns, 320 * rows)
     render_calls = [call for call in calls if call[3] == 4]
     assert len(render_calls) == declared_frames
-    assert {call[0] for call in render_calls} == {"idle", "talk", "interact"}
+    # The close-ups, and his expressions for `<<portrait_clip "name">>`.
+    assert {call[0] for call in render_calls} == {"idle", "talk", "interact"} | {
+        f"face_{face}" for face in oiler.FACES
+    }
     assert '"talking": (' in manifest
     assert '"inspecting": (' in manifest
 

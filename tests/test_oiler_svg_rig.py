@@ -33,8 +33,10 @@ FACES = ("knowing", "pleased", "delighted", "surprised", "thinking", "stern", "w
 
 
 def _views():
+    """The drawing's view layers. A view names its key; the rig editor's
+    marker layer (`svg_rig_tool`, `data-rig-editor-layer`) is not a view."""
     root = ET.parse(SVG).getroot()
-    return {elem.get(LABEL): elem for elem in root if elem.get(LABEL)}
+    return {elem.get(LABEL): elem for elem in root if elem.get(LABEL) and elem.get("data-view-key")}
 
 
 def test_oiler_svg_extracts_to_a_complete_humanoid_rig(tmp_path):
