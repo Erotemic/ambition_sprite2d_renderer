@@ -36,7 +36,7 @@ RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
 TARGET_NAME = "eigenghost"
-FRAME_SIZE = (144, 200)
+FRAME_SIZE = (184, 288)
 SUPER = 4
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 120),
@@ -57,9 +57,12 @@ AXIS_GLOW: RGBA = (90, 255, 170, 255)
 GRID: RGBA = (120, 150, 190, 120)
 
 #: The centre of the shroud at rest, and its semi-axes (frame pixels).
-CENTRE = (66.0, 122.0)
+CENTRE = (76.0, 218.0)
 MAJOR = 24.0
 MINOR = 19.0
+#: The length of an eigenvector arm at eigenvalue 1 (the unit axes it was
+#: drawn on: at rest both eigenvalues are 1, both arms this long).
+UNIT_ARM = 13.0
 #: The hem: how far below the centre it hangs, and its spectrum of ripples.
 HEM_DROP = 44.0
 HEM_MODES = ((1.0, 3.2), (2.0, 1.7), (3.0, 0.9), (5.0, 0.45))
@@ -180,12 +183,22 @@ def _draw_eyes(layer: Image.Image, cx: float, cy: float, lam1: float, lam2: floa
 
 
 def _draw_ghost(cx: float, cy: float, lam1: float, lam2: float, hem: float, phase: float,
-                arm1: float, arm2: float, glow: float, squint: float, alpha: float) -> Image.Image:
+                arm1: float, arm2: float, glow: float, squint: float, alpha: float,
+                eig_x: float = 1.0, eig_y: float = 1.0) -> Image.Image:
+    """The whole ghost. Its body is drawn at rest, then WARPED by its
+    eigenvalues (``eig_x`` across, ``eig_y`` up) about the foot of its hem,
+    and each eigenvector arm drawn at its root in the warped body, its
+    length its eigenvalue times the unit: the arms and the shape always
+    agree (the axes of the unit square under the same stretch)."""
     img = Image.new("RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
     if alpha <= 0.0:
         return img
     # Its AURA: a cold green-blue bloom.
-    _glow(img, lambda g: g.ellipse((*_s((cx - lam1 - 8, cy - lam2 - 8)), *_s((cx + lam1 + 8, cy + hem))), fill=_with_alpha((120, 220, 210, 255), 0.22 * alpha)), 7.0)
+    # (warped as its body is, about its foot)
+    fy = cy + hem * 0.95
+    ax0, ax1 = cx - (lam1 + 8) * eig_x, cx + (lam1 + 8) * eig_x
+    ay0, ay1 = fy - (fy - (cy - lam2 - 8)) * eig_y, fy + 4
+    _glow(img, lambda g: g.ellipse((*_s((ax0, ay0)), *_s((ax1, ay1))), fill=_with_alpha((120, 220, 210, 255), 0.22 * alpha * min(1.0, eig_x * eig_y * 3))), 7.0)
     body = Image.new("RGBA", img.size, (0, 0, 0, 0))
     outline = _shroud_outline(cx, cy, lam1, lam2, hem, phase)
     # The SHROUD: translucent cloth shaded from a pale lit crown to a cold
@@ -213,13 +226,28 @@ def _draw_ghost(cx: float, cy: float, lam1: float, lam2: float, hem: float, phas
             x = cx - lam1 * 0.7 + k * lam1 * 0.35 + 2 * math.sin(phase + k)
             g.line([_s((x + 2 * math.sin(j + phase + k), cy + hem * 0.6 + j * 4)) for j in range(5)], fill=_with_alpha((170, 220, 230, 255), 0.35), width=int(4 * SUPER), joint="curve")
     _glow(body, mist, 2.0)
+    # The WARP: stretch the body by its eigenvalues about its foot.
+    foot = (cx, cy + hem * 0.95)
+
+    def warp(p: Point) -> Point:
+        return (foot[0] + (p[0] - foot[0]) * eig_x, foot[1] + (p[1] - foot[1]) * eig_y)
+
+    if eig_x != 1.0 or eig_y != 1.0:
+        W, H = body.size
+        scaled = body.resize((max(1, int(W * eig_x)), max(1, int(H * eig_y))), Image.Resampling.LANCZOS)
+        fx, fy = foot[0] * SUPER, foot[1] * SUPER
+        warped = Image.new("RGBA", body.size, (0, 0, 0, 0))
+        warped.paste(scaled, (int(round(fx - fx * eig_x)), int(round(fy - fy * eig_y))), scaled)
+        body = warped
+    up_root = warp((cx - lam1 * 0.15, cy - lam2 * 0.75))
+    side_root = warp((cx + lam1 * 0.9, cy + lam2 * 0.35))
     if arm2 > 0.0:
-        _draw_eigen_arm(body, (cx - lam1 * 0.15, cy - lam2 * 0.75), (cx - lam1 * 0.15, cy - lam2 * 0.75 - arm2), glow)
+        _draw_eigen_arm(body, up_root, (up_root[0], up_root[1] - arm2 * eig_y), glow)
     if arm1 > 0.0:
-        _draw_eigen_arm(body, (cx + lam1 * 0.9, cy + lam2 * 0.35), (cx + lam1 * 0.9 + arm1, cy + lam2 * 0.35), glow)
+        _draw_eigen_arm(body, side_root, (side_root[0] + arm1 * eig_x, side_root[1]), glow)
     # The arms light the shroud near their roots.
     px = np.asarray(body, np.float32)
-    for (lx, ly) in ((cx + lam1 * 0.9, cy + lam2 * 0.35), (cx - lam1 * 0.15, cy - lam2 * 0.75)):
+    for (lx, ly) in (side_root, up_root):
         f = np.exp(-((xs - lx) ** 2 + (ys - ly) ** 2) / (12.0 ** 2)) * 0.35 * glow
         px[..., :3] = np.clip(px[..., :3] + f[..., None] * np.array(AXIS_GLOW[:3], np.float32) * (px[..., 3:] / 255.0), 0, 255)
     body = Image.fromarray(px.astype(np.uint8), "RGBA")
@@ -242,42 +270,43 @@ def _render_frame(animation: str, frame_index: int, nframes: int) -> Image.Image
     cx, cy = CENTRE
     bob = math.sin(t * math.tau) * 2.0
     breathe = math.sin(t * math.tau)
-    args = dict(cx=cx, cy=cy + bob, lam1=MAJOR + 1.2 * breathe, lam2=MINOR - 1.0 * breathe, hem=HEM_DROP,
-                phase=t * math.tau, arm1=12.0, arm2=9.0, glow=0.7 + 0.3 * breathe, squint=0.0, alpha=1.0)
+    # Every row is the same body under a different WARP: its two
+    # eigenvalues (across, up), 1 and 1 at rest; the arms are the unit axes
+    # under the same warp, so they always agree with the shape.
+    args = dict(cx=cx, cy=cy + bob, lam1=MAJOR, lam2=MINOR, hem=HEM_DROP, phase=t * math.tau, arm1=UNIT_ARM, arm2=UNIT_ARM,
+                glow=0.7 + 0.3 * breathe, squint=0.0, alpha=1.0, eig_x=1.0 + 0.04 * breathe, eig_y=1.0 - 0.04 * breathe)
     if animation == "walk":
-        args.update(cx=cx + 1.5 * math.sin(t * math.tau), lam1=MAJOR + 2.0 + 1.5 * breathe, lam2=MINOR - 1.5,
-                    phase=t * math.tau * 2.0, arm1=14.0)
+        args.update(cx=cx + 1.5 * math.sin(t * math.tau), phase=t * math.tau * 2.0, eig_x=1.08 + 0.04 * breathe, eig_y=0.95)
     elif animation == "attack_side":
-        # Wind up (it squeezes along lambda-1), then lance: lambda-1 grows.
+        # Wind up (it squeezes across, swells up), then lance: across grows.
         if u < 0.4:
             k = u / 0.4
-            args.update(lam1=MAJOR - 5.0 * k, lam2=MINOR + 3.0 * k, arm1=12.0 - 6.0 * k, glow=0.7 + 0.3 * k, squint=0.5 * k)
+            args.update(eig_x=1.0 - 0.25 * k, eig_y=1.0 + 0.2 * k, glow=0.7 + 0.3 * k, squint=0.5 * k)
         else:
             k = math.sin(min(1.0, (u - 0.4) / 0.35) * math.pi * 0.5) * (1.0 - max(0.0, (u - 0.75) / 0.25) * 0.7)
-            args.update(lam1=MAJOR + 6.0 * k, lam2=MINOR - 4.0 * k, arm1=12.0 + 26.0 * k, glow=1.0, squint=0.5)
+            args.update(eig_x=1.0 + 1.2 * k, eig_y=1.0 - 0.3 * k, glow=1.0, squint=0.5)
     elif animation == "hurt":
         jolt = (1.0 - u)
-        args.update(lam1=MAJOR + 5.0 * jolt, lam2=MINOR - 5.0 * jolt, cx=cx - 3.0 * jolt, squint=0.9, glow=0.4, arm1=8.0, arm2=6.0)
+        args.update(eig_x=1.0 + 0.3 * jolt, eig_y=1.0 - 0.3 * jolt, cx=cx - 3.0 * jolt, squint=0.9, glow=0.4)
     elif animation == "block":
-        # It rears along its larger eigenvalue to wall off a jump: lambda-2
-        # (up) grows to well over twice, lambda-1 (across) a little, its
-        # vertical arm a tall beam; it holds, quivering, then settles.
+        # It rears along its vertical eigenvector to wall off a jump: up to
+        # three times as tall (the larger eigenvalue), a little wider; it
+        # holds, quivering, then settles.
         if u <= 0.35:
             k = math.sin(u / 0.35 * math.pi * 0.5)
         elif u <= 0.7:
             k = 1.0
         else:
             k = 1.0 - (u - 0.7) / 0.3
-        quiver = 0.8 * math.sin(frame_index * 2.9) * (1.0 if 0.35 < u <= 0.7 else 0.0)
-        args.update(lam2=MINOR * (1.0 + 1.4 * k) + quiver, lam1=MAJOR * (1.0 + 0.15 * k), arm2=9.0 + 26.0 * k, arm1=12.0 - 4.0 * k,
-                    glow=0.7 + 0.3 * k, squint=0.15, cy=cy)
+        quiver = 0.04 * math.sin(frame_index * 2.9) * (1.0 if 0.35 < u <= 0.7 else 0.0)
+        args.update(eig_y=1.0 + 2.0 * k + quiver, eig_x=1.0 + 0.2 * k, glow=0.7 + 0.3 * k, squint=0.15, cy=cy)
     elif animation == "death":
-        # Rank collapse: lambda-2 goes to zero (a line), then lambda-1 (a point).
+        # Rank collapse: the vertical eigenvalue goes to zero (a line), then
+        # the horizontal one (a point).
         k2 = min(1.0, u / 0.5)
         k1 = max(0.0, (u - 0.5) / 0.5)
-        args.update(lam2=max(0.6, MINOR * (1.0 - k2)), hem=HEM_DROP * (1.0 - k2) + 1.0, lam1=max(0.6, MAJOR * (1.0 - k1)),
-                    arm2=9.0 * (1.0 - k2), arm1=12.0 * (1.0 - k1), squint=1.0, glow=1.0 - k1,
-                    cy=cy + 30.0 * k2, alpha=1.0 - max(0.0, (u - 0.85) / 0.15))
+        args.update(eig_y=max(0.03, 1.0 - k2), eig_x=max(0.03, 1.0 - k1), squint=1.0, glow=1.0 - k1, cy=cy,
+                    alpha=1.0 - max(0.0, (u - 0.85) / 0.15))
     return _draw_ghost(**args).resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
