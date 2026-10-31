@@ -53,7 +53,22 @@ MOVESET_ROWS: Tuple[str, ...] = (
     "jab", "dash_attack", "smash_forward", "smash_up", "smash_down", "taunt", "one_time_pad", "key_exchange", "elliptic_curve",
     "hash_collision", "collision_dive", "grab", "pummel", "throw_forward", "throw_back", "throw_up", "throw_down",
 )
-ROWS: Tuple[str, ...] = CONTRACT_ROWS + MOVESET_ROWS
+#: The library's rows a fighter is drawn in when she is hit, thrown, on the
+#: floor, getting up, stopping or turning (the game's reaction vocabulary,
+#: `body_state_clip`). Posed by the library with her pole in her fist.
+FIGHTER_ROWS: Tuple[str, ...] = (
+    "hit_high", "hit_mid", "hit_low", "hit_air", "launch", "launch_up", "launch_horizontal", "launch_down", "meteor", "tumble",
+    "knockdown", "prone", "prone_face_up", "prone_face_down", "prone_damage", "getup", "getup_roll", "getup_attack", "tech",
+    "tech_roll", "wall_tech", "ceiling_tech", "ground_bounce", "splat", "grabbed", "grabbed_pummel", "grab_escape", "dizzy",
+    "stumble", "run_stop", "walk_stop", "skid", "teeter", "teeter_start", "jump_squat", "double_jump", "land_light", "air_dodge",
+    "spot_dodge", "roll_back", "shield_break_launch", "shield_break_fall", "shield_break_collapse", "shield_break_recover",
+)
+#: The turns, composed from her views (`chargen.sheets.COMPOSED`): through
+#: the front, and through the back.
+TURN_ROWS: Tuple[str, ...] = ("turnaround", "turn_away")
+#: The rows her rigs solve.
+SOLVED_ROWS: Tuple[str, ...] = CONTRACT_ROWS + MOVESET_ROWS + FIGHTER_ROWS
+ROWS: Tuple[str, ...] = SOLVED_ROWS + TURN_ROWS
 
 #: Rows in which the pole is put away (both hands are busy).
 POLE_AWAY = ("climb", "ledge_grab", "ledge_climb", "ledge_getup", "ledge_roll", "wall_grab", "wall_slide", "swim", "sleep")
@@ -363,6 +378,14 @@ def alice_library(fig) -> Dict[str, Clip]:
     add(_seq("taunt", 10, 90, False, [(0.0, at_ease())] + twirl + [(0.82, k.pose(rh=carry(-0.08, 0.74, 88.0, 0.27), face="smug", vis="e")),
                                                                      (1.0, at_ease(face="smug"))], view="front_3q", cat="social"))
 
+    # ---- on the floor the pole lies along her, not through the floor -------------------------------
+    def pole_flat(p: Pose) -> Pose:
+        return replace(p, hands={**p.hands, R: replace(p.hands[R], item=pole(0.0, 0.0, 90.0).item)})
+
+    for name in ("prone_face_up", "prone_face_down"):
+        c = out[name]
+        out[name] = replace(c, keys=[(t, pole_flat(p)) for t, p in c.keys])
+
     # ---- the pole is put away where both hands are busy ---------------------------------------------
     for name in POLE_AWAY:
         c = out[name]
@@ -370,4 +393,4 @@ def alice_library(fig) -> Dict[str, Clip]:
     return out
 
 
-__all__ = ["CONTRACT_ROWS", "MOVESET_ROWS", "POLE_AWAY", "ROWS", "alice_library"]
+__all__ = ["CONTRACT_ROWS", "FIGHTER_ROWS", "MOVESET_ROWS", "POLE_AWAY", "ROWS", "SOLVED_ROWS", "TURN_ROWS", "alice_library"]

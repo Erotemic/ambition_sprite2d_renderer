@@ -256,12 +256,14 @@ PUBLISH_ROWS: Tuple[str, ...] = (
 )
 
 #: Rows composed across views: (view, mirrored) per frame, each the view's
-#: idle. ``turnaround`` turns from facing right to facing left through the
-#: front; ``turn_away`` through the back (a left view is its right twin
+#: idle. The game flips a body's facing at once and draws the turn in the NEW
+#: facing (`TURN_SECS` in `ambition_sim_view`), so a turn ENDS on the side
+#: view: ``turnaround`` turns from facing left to facing right through the
+#: front, ``turn_away`` through the back (a left view is its right twin
 #: mirrored).
 COMPOSED: Dict[str, Tuple[Tuple[str, bool], ...]] = {
-    "turnaround": (("side", False), ("front_3q", False), ("front", False), ("front_3q", True), ("side", True)),
-    "turn_away": (("side", False), ("back_3q", False), ("back", False), ("back_3q", True), ("side", True)),
+    "turnaround": (("side", True), ("front_3q", True), ("front", False), ("front_3q", False), ("side", False)),
+    "turn_away": (("side", True), ("back_3q", True), ("back", False), ("back_3q", False), ("side", False)),
 }
 
 

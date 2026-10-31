@@ -319,6 +319,11 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
     skid = k.pose(root=(-0.02, -0.06, 0), lean=-14.0, head=(8, 0), rf=k.foot(R, 0.3, 0.0, 0.0, toe=-25), lf=k.foot(Lf, -0.12, 0.0),
                   rh=k.hand(R, 0.4, 0.4, 0.4), lh=k.hand(Lf, 0.0, 0.5, 0.45), face="surprised")
     add(_seq("skid", 4, 60, False, _even([run_pose(0.0), skid, skid]), cat="locomotion"))
+    # A run's brake: the front heel plants far ahead, the hips drop and stay
+    # back, and the chest carries on over the front knee; arms thrown forward.
+    brake = k.pose(root=(-0.03, -0.1, 0), lean=18.0, head=(-6, 0), rf=k.foot(R, 0.42, 0.0, 0.02, toe=-30), lf=k.foot(Lf, -0.22, 0.0, 0.02, toe=10),
+                   rh=k.hand(R, 0.7, 0.3, 0.3, pole=(0.4, 0.5, -0.5)), lh=k.hand(Lf, 0.55, 0.15, 0.4, pole=(0.4, 0.5, -0.5)), face="determined")
+    add(_seq("run_stop", 5, 60, False, _even([run_pose(0.0), brake, replace(brake, lean=8.0, root=(-0.02, -0.06, 0)), stand]), cat="locomotion"))
     add(_seq("turnaround", 5, 60, False, _even([stand, stand]), cat="locomotion"))
     add(_seq("turn_away", 3, 80, False, _even([stand, stand]), view="back_3q", cat="locomotion"))
     add(_seq("stumble", 6, 70, False, _even([walk_pose(0.4), k.pose(root=(0.03, -0.05, 0), lean=28, head=(-20, 0), rf=k.foot(R, 0.25),
@@ -629,6 +634,47 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
     add(_seq("getup_roll", 8, 55, False, _even([down_back, replace(ball, spin=-200), replace(ball, spin=-360), k.crouch(0.12)]), cat="reaction"))
     add(_seq("tech", 6, 55, False, _even([launch, k.crouch(0.2, spin=20), k.crouch(0.1)]), cat="reaction"))
     add(_seq("tech_roll", 8, 55, False, roll(1.0), cat="reaction"))
+    # Where the blow lands. Each recoil ENDS on its settled pose: the game
+    # holds a clip's last frame for the rest of the hitstun.
+    # High: the head snaps back, the hips go forward, the hands come up.
+    hit_high = k.pose(root=(0.02, -0.02, 0), lean=-24, head=(-26, -6), rh=k.hand(R, 0.35, -0.25, 0.35, pole=(0.6, 0.2, -0.5)),
+                      lh=k.hand(Lf, 0.25, -0.15, 0.45, pole=(0.6, 0.2, -0.5)), rf=k.foot(R, 0.08), lf=k.foot(Lf, -0.18, 0.02), face="pained")
+    add(_seq("hit_high", 5, 70, False, _even([stand, hit_high, replace(hit_high, lean=-17, head=(-16, -4))]), cat="reaction"))
+    # Mid: doubled over the gut, the hips pushed back, the hands at the belly.
+    hit_mid = k.pose(root=(-0.04, -0.05, 0), lean=30, head=(14, 0), rh=k.hand(R, 0.3, 0.75, 0.05, pole=(0.6, 0.4, -0.4)),
+                     lh=k.hand(Lf, 0.25, 0.78, 0.1, pole=(0.6, 0.4, -0.4)), rf=k.foot(R, 0.1), lf=k.foot(Lf, -0.14), face="pained")
+    add(_seq("hit_mid", 5, 70, False, _even([stand, hit_mid, replace(hit_mid, lean=24, root=(-0.03, -0.045, 0))]), cat="reaction"))
+    # Low: the legs are struck out; one foot kicked up, the body tips back
+    # and to the side, the arms flung out to catch the balance.
+    def hit_low(lean: float, kick: float) -> Pose:
+        return k.pose(root=(0.0, -0.06, 0), lean=lean, side=9, head=(10, 0), rh=k.hand(R, 0.2, -0.05, 0.7, pole=(0.6, 0.0, -0.4)),
+                      lh=k.hand(Lf, -0.05, 0.05, 0.75, pole=(0.6, 0.0, -0.4)), rf=k.foot(R, 1.4 * kick, kick, toe=90 * kick),
+                      lf=k.foot(Lf, -0.05), face="afraid")
+
+    add(_seq("hit_low", 5, 70, False, _even([stand, hit_low(-8, 0.22), hit_low(-4, 0.14)]), cat="reaction"))
+    # Air: struck off the ground; the trunk folds back, limbs splay.
+    hit_air = k.air(lean=-22, spin=-12, head=(-14, 0), rh=k.hand(R, 0.4, -0.45, 0.55, pole=(0.6, 0.2, -0.5)),
+                    lh=k.hand(Lf, 0.05, -0.55, 0.6, pole=(0.6, 0.2, -0.5)), rf=k.bfoot(R, 0.4, 0.62), lf=k.bfoot(Lf, -0.25, 0.85), face="pained")
+    add(_seq("hit_air", 5, 70, False, _even([k.air(), hit_air, replace(hit_air, lean=-16, spin=-8)]), cat="reaction"))
+    # Which way the launch threw the body: up, the body arched and
+    # stretched with the limbs trailing down; sideways, laid back flat with
+    # the limbs trailing toward the blow; down, pitched head first with the
+    # limbs trailing up.
+    launch_up = k.air(lean=-32, head=(-30, 0), rh=k.hand(R, -0.25, 0.95, 0.35, pole=(0.4, 0.2, -0.6)),
+                      lh=k.hand(Lf, -0.35, 0.9, 0.45, pole=(0.4, 0.2, -0.6)), rf=k.bfoot(R, -0.05, 1.0), lf=k.bfoot(Lf, -0.2, 0.96), face="pained")
+    add(_seq("launch_up", 6, 70, False, _even([hit, launch_up, replace(launch_up, lean=-28)]), cat="reaction"))
+    launch_side = k.air(spin=-58, lean=-12, head=(22, 0), rh=k.hand(R, 0.75, 0.15, 0.3, pole=(0.6, 0.3, -0.4)),
+                        lh=k.hand(Lf, 0.6, 0.3, 0.45, pole=(0.6, 0.3, -0.4)), rf=k.bfoot(R, 0.55, 0.6), lf=k.bfoot(Lf, 0.3, 0.8), face="pained")
+    add(_seq("launch_horizontal", 6, 70, False, _even([hit, launch_side, replace(launch_side, spin=-64)]), cat="reaction"))
+    launch_down = k.air(spin=62, lean=10, head=(-20, 0), rh=k.hand(R, 0.1, -0.85, 0.4, pole=(0.5, 0.2, -0.6)),
+                        lh=k.hand(Lf, -0.15, -0.8, 0.5, pole=(0.5, 0.2, -0.6)), rf=k.bfoot(R, -0.35, 0.55), lf=k.bfoot(Lf, -0.5, 0.7), face="afraid")
+    add(_seq("launch_down", 6, 70, False, _even([hit, launch_down, replace(launch_down, spin=70)]), cat="reaction"))
+    # Which way up it lies: on the back, arms flung wide; on the belly, the
+    # head turned to the side and the hands by the shoulders.
+    face_up = k.lying(face_up=True, face="pained", rh=k.hand(R, -0.12, 0.55, 0.7), lh=k.hand(Lf, -0.12, 0.75, 0.6))
+    add(_seq("prone_face_up", 6, 120, True, _cycle([face_up, replace(face_up, head=(-4, 0))]), cat="reaction"))
+    face_down = k.lying(face_up=False, face="pained", head=(0, 30), rh=k.hand(R, 0.45, 0.8, 0.4), lh=k.hand(Lf, 0.4, 0.8, 0.45))
+    add(_seq("prone_face_down", 6, 120, True, _cycle([face_down, replace(face_down, head=(-3, 30))]), cat="reaction"))
     for name in ("impact", "splat", "ground_bounce", "wall_tech", "wall_tech_jump", "ceiling_tech"):
         add(_seq(name, 6, 60, False, _even([hit, launch, hit]), cat="reaction"))
 

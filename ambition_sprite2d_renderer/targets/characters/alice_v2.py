@@ -42,7 +42,7 @@ from PIL import Image
 
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
-from ...authoring.rigdoc import RigDocument
+from ...authoring.rigdoc import RigDocument, mirrored_canvas
 from ...authoring.sheet_build import build_sheet
 from ...chargen import extras
 from ...chargen.body import build as build_figure
@@ -50,10 +50,11 @@ from ...chargen.geometry import VIEWS
 from ...chargen.motion import solve_clip
 from ...chargen.pose3d import ViewSolver
 from ...chargen.rig import CELL_H, CELL_W, PX_PER_CM, build_rigs, character_svg, slug
+from ...chargen.sheets import COMPOSED
 from ...chargen.spec import CharacterSpec, complete
 from . import _creature_fx as FX
 from ._alice_v2_gear import POLE_BUTT, POLE_LENGTH, alice_parts
-from ._alice_v2_motion import CONTRACT_ROWS, MOVESET_ROWS, ROWS, alice_library
+from ._alice_v2_motion import CONTRACT_ROWS, MOVESET_ROWS, ROWS, SOLVED_ROWS, alice_library
 from ._svg_fighter_effects import FxCanvas, compose_rig_frame
 
 Point = Tuple[float, float]
@@ -78,7 +79,7 @@ def _clips(fig, view, doc) -> Dict[str, dict]:
     """Her rows, solved for one view's rig."""
     lib = alice_library(fig)
     solver = ViewSolver(fig, view, doc, PX_PER_CM)
-    return {name: solve_clip(lib[name], solver) for name in ROWS}
+    return {name: solve_clip(lib[name], solver) for name in SOLVED_ROWS}
 
 
 def _with_room_for_the_pole(svg: str) -> str:
@@ -107,7 +108,7 @@ def build(out_dir: Path) -> Dict[str, Path]:
     with extras.using(alice_parts):
         svg_path.write_text(_with_room_for_the_pole(character_svg(spec)), encoding="utf8")
         rigs = build_rigs(spec, svg_path, out_dir, clips=_clips, grip="staff")
-    views = {name: clip.view for name, clip in alice_library(build_figure(spec)).items() if name in ROWS}
+    views = {name: clip.view for name, clip in alice_library(build_figure(spec)).items() if name in SOLVED_ROWS}
     for key, path in rigs.items():
         doc = json.loads(path.read_text(encoding="utf8"))
         fr = doc["frame"]
@@ -415,6 +416,10 @@ def _effects(doc: RigDocument, rig_path: str, animation: str, frame_count: int):
 
 # ---- the sheet ---------------------------------------------------------------------------------------
 
+#: How long each frame of a composed turn is shown: the game slaves the row
+#: to its 0.22 s turn (`TURN_SECS`), five frames.
+COMPOSED_FRAME_MS = 44
+
 
 class AliceSheet:
     """Her rigs, rendered as sheet rows: each row from the view its clip
@@ -434,6 +439,9 @@ class AliceSheet:
     def rows(self) -> List[Tuple[str, int, int]]:
         out = []
         for name in self.names:
+            if name in COMPOSED:
+                out.append((name, len(COMPOSED[name]), COMPOSED_FRAME_MS))
+                continue
             c = self.doc_of(name)[0].clips[name]
             out.append((name, int(c["frames"]), int(c["duration_ms"])))
         return out
@@ -444,6 +452,12 @@ class AliceSheet:
         return int(fr["width"]) * k, int(fr["height"]) * k
 
     def render_frame(self, animation: str, frame_idx: int, frame_count: int, view: Optional[str] = None) -> Image.Image:
+        if animation in COMPOSED:
+            # A turn: each frame is her idle drawn from the next view round,
+            # the second half mirrored (a left view is its right twin).
+            turn_view, mirrored = COMPOSED[animation][frame_idx % len(COMPOSED[animation])]
+            im = self.render_frame("idle", 0, int(self.docs[turn_view].clips["idle"]["frames"]), view=turn_view)
+            return mirrored_canvas(im) if mirrored else im
         doc, path = self.doc_of(animation, view)
         behind, front = _effects(doc, path, animation, frame_count)
         return compose_rig_frame(doc, animation, frame_idx, frame_count, behind=behind, front=front, fx_pieces=True)
