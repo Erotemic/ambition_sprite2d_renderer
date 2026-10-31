@@ -32,7 +32,12 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crouch import
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_double_jump import author_double_jump
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_turn import author_turnaround
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_gait import author_gaits
-from ambition_sprite2d_renderer.targets.characters.player_robot_v3_ground import keep_over_ground
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_ground import keep_over_ground, plant_on_ground
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_reactions import (
+    PLANTED as REACTIONS_PLANTED,
+    REACTIONS,
+    author_reactions,
+)
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_cling import author_wall_cling
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_swim import author_swim
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_wall_climb import author_wall_climb
@@ -301,11 +306,6 @@ def _pose_for_motion(
     elif animation == "teeter_start":
         pose.body_tilt += 11.0 * _smooth01(t)
         pose.head_tilt -= 8.0 * _smooth01(t)
-    elif animation == "teeter":
-        pose.body_tilt += 11.0 + 4.0 * wave
-        pose.head_tilt -= 8.0 + 3.0 * wave
-        pose.near_arm_upper -= 12.0 * wave
-        pose.far_arm_upper += 12.0 * wave
     elif animation == "parry":
         pose.body_tilt -= 7.0 * arc
         pose.head_tilt -= 4.0 * arc
@@ -654,6 +654,7 @@ def build_doc() -> dict:
     author_gaits(solved)
     author_strikes(solved)
     author_wall_cling(solved)
+    author_reactions(solved)
     doc["features"] = {
         "paper_doll": True,
         "split_leg_artwork": True,
@@ -670,7 +671,7 @@ def build_doc() -> dict:
         "idle_eye_blink": True,
         "solved_rows": [
             "crouch_start", "crouch", "crouch_walk", "crouch_jump", "crouch_end",
-            "item_hold_crouch", "double_jump", "turnaround", "turn_away", "walk", "run", "wall_climb", "wall_land", "wall_grab", "wall_slide", "wall_jump", *STRIKES,
+            "item_hold_crouch", "double_jump", "turnaround", "turn_away", "walk", "run", "wall_climb", "wall_land", "wall_grab", "wall_slide", "wall_jump", *STRIKES, *REACTIONS,
         ],
     }
     return doc
@@ -803,6 +804,7 @@ def cmd_build() -> None:
     # This pass DRAWS each frame, so it needs the path of the rig: the parts
     # find their SVG beside it.
     keep_over_ground(RigDocument(doc, source_path=RIG_JSON))
+    plant_on_ground(RigDocument(doc, source_path=RIG_JSON), REACTIONS_PLANTED)
     RIG_JSON.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf8")
     print(RIG_JSON)
     PURE_SIDE_RIG_JSON.write_text(json.dumps(pure, indent=2) + "\n", encoding="utf8")

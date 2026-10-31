@@ -28,6 +28,9 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("idle_look_up", 6, 40),
     ("walk", 8, 95),
     ("walk_stop", 6, 72),
+    # A brake out of a run, slaved to the stop's first 0.2 s
+    # (`player_robot_v3_reactions`, as are the other reaction rows).
+    ("run_stop", 6, 40),
     # Drawn over the first 0.22 s after a flip of the facing, slaved to it.
     # Frames 2-4 are of the front view (`player_robot_v3_front`).
     ("turnaround", 8, 28),
@@ -72,13 +75,25 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("parry", 6, 58),
     ("shield_hit", 5, 58),
     ("hit", 5, 90),
+    # Where the hit landed: head, body, legs, or in the air. The game holds
+    # the last frame for the hitstun.
+    ("hit_high", 5, 56),
+    ("hit_mid", 5, 56),
+    ("hit_low", 5, 56),
+    ("hit_air", 5, 56),
     ("launch", 7, 66),
     ("meteor", 7, 66),
+    # Which way the launch threw the body.
+    ("launch_up", 7, 66),
+    ("launch_horizontal", 7, 66),
+    ("launch_down", 7, 66),
     ("impact", 5, 64),
     ("splat", 8, 80),
     ("ground_bounce", 7, 70),
     ("knockdown", 7, 76),
     ("prone", 8, 108),
+    ("prone_face_up", 8, 108),
+    ("prone_face_down", 8, 108),
     ("prone_damage", 5, 70),
     ("getup", 8, 72),
     ("getup_attack", 8, 62),
@@ -354,7 +369,18 @@ POSE_ALIASES: Final[dict[str, str]] = {
     "platform_drop": "fall",
     "footstool_jump": "jump",
     "teeter_start": "idle",
+    # The reaction rows (`player_robot_v3_reactions`) replace these clips.
     "teeter": "idle",
+    "run_stop": "land_recovery",
+    "hit_high": "hit",
+    "hit_mid": "hit",
+    "hit_low": "hit",
+    "hit_air": "hit",
+    "launch_up": "fall",
+    "launch_horizontal": "fall",
+    "launch_down": "fall",
+    "prone_face_up": "death",
+    "prone_face_down": "death",
     "launch": "fall",
     "meteor": "fall",
     "impact": "hit",
@@ -461,6 +487,8 @@ LOOPING_ROWS: Final[frozenset[str]] = frozenset(
         "teeter",
         "block",
         "prone",
+        "prone_face_up",
+        "prone_face_down",
         "dizzy",
         "sleep",
         "buried",

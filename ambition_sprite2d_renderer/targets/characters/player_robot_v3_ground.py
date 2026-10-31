@@ -68,4 +68,40 @@ def keep_over_ground(doc: RigDocument, rows: Tuple[str, ...] = GROUNDED) -> Dict
     return lifted
 
 
-__all__ = ["GROUNDED", "keep_over_ground"]
+def plant_on_ground(doc: RigDocument, rows: Tuple[str, ...]) -> Dict[str, float]:
+    """Put the lowest paint of each frame of `rows` on the ground line: lift
+    a frame that goes under it and lower a frame that hovers over it. For a
+    row whose body rests on the floor (a hit on planted boots, a body lying
+    down), so its keys need not know how low its art reaches.
+
+    The frame is drawn in both facings: seen from its other side the head
+    shows the antenna in place of the ear cup (`player_robot_v3._other_side`),
+    and on a body lying down that can be the lowest paint.
+    Returns the largest move of each row, in px."""
+    ground = float(doc.frame["ground_y"])
+    moved: Dict[str, float] = {}
+    for row in rows:
+        clip = doc.data["clips"][row]
+        n = int(clip["frames"])
+        times = [doc.frame_time(row, i, n) for i in range(n)]
+        heights = [doc.sample(row, t).get("root_y", 0.0) for t in times]
+        # A second pass takes up the rounding of the first.
+        for _ in range(2):
+            for i, t in enumerate(times):
+                world, params = doc.solve(row, t)
+                other = {**params, "near_ear_vis": params.get("far_ear_vis", 0.0),
+                         "far_ear_vis": params.get("near_ear_vis", 1.0)}
+                boxes = [doc.render_at(row, t, solved=(world, p)).getchannel("A").getbbox() for p in (params, other)]
+                if None in boxes:
+                    raise ValueError(f"{row} draws nothing at {t}: the document has no path to its art")
+                off = max(float(box[3]) for box in boxes) - ground
+                heights[i] -= off
+                moved[row] = max(moved.get(row, 0.0), abs(off))
+            keys = [[round(t, 6), round(v, 5)] for t, v in zip(times, heights)]
+            if bool(clip.get("loop", True)):
+                keys.append([1.0, keys[0][1]])
+            clip["channels"]["root_y"] = {"keys": keys}
+    return moved
+
+
+__all__ = ["GROUNDED", "keep_over_ground", "plant_on_ground"]

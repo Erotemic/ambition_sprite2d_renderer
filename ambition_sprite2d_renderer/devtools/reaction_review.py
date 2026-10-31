@@ -1,5 +1,9 @@
-"""A review sheet of a Polygon fighter's rows: every frame of each row, side
-by side, on a flat ground line, at the published render's own scale.
+"""A review sheet of a fighter's rows: every frame of each row, side by side,
+on a flat ground line, at the published render's own scale.
+
+A fighter is a Polygon (a Motion IR target) or a target that publishes its
+own `ROWS` and `render_frame`, as `player_robot_v3` does. The robot's
+left-facing rows are its `~mirrored` rows: name them to see both facings.
 
 For the reaction-pose pass (`docs/planning/demos/smash-expressive-fighter-poses.md`):
 render the fallback rows before the new keys are written, then the new rows,
@@ -23,20 +27,23 @@ from .pose_core import load_target
 from ..core.measure import visible_bbox
 
 
+def _row_frames(target, row: str) -> tuple[list[Image.Image], int]:
+    """Every frame of `row`, and its frame duration in ms."""
+    if hasattr(target, "_prepared"):
+        clip = target._prepared().library.clips[row]
+        count, ms = clip.frame_count, clip.frame_duration_ms
+        draw = target._render_frame
+    else:
+        count, ms = next((n, d) for name, n, d in target.ROWS if name == row)
+        draw = target.render_frame
+    return [draw(row, i, count) for i in range(count)], ms
+
+
 def sheet(fighter: str, rows: list[str], silhouette: bool = False) -> Image.Image:
     target = load_target(fighter)
-    clips = target._prepared().library.clips
-    images = []
-    for row in rows:
-        clip = clips[row]
-        frames = [target._render_frame(row, i, clip.frame_count) for i in range(clip.frame_count)]
-        images.append((row, frames))
+    images = [(row, _row_frames(target, row)[0]) for row in rows]
     # The floor every grounded row stands on: idle's lowest visible row.
-    idle = clips["idle"]
-    floor = max(
-        (visible_bbox(target._render_frame("idle", i, idle.frame_count)) or (0, 0, 0, 0))[3]
-        for i in range(idle.frame_count)
-    )
+    floor = max((visible_bbox(f) or (0, 0, 0, 0))[3] for f in _row_frames(target, "idle")[0])
     fw = max(f.width for _, fs in images for f in fs)
     fh = max(f.height for _, fs in images for f in fs)
     cols = max(len(fs) for _, fs in images)
@@ -57,24 +64,26 @@ def sheet(fighter: str, rows: list[str], silhouette: bool = False) -> Image.Imag
 
 
 def previews(fighter: str, rows: list[str], out_dir: Path, scale: float) -> list[Path]:
-    """One looping GIF per row: the row facing right, then mirrored."""
+    """One looping GIF per row: the row facing right, then facing left (the
+    target's own left-facing row when it publishes one, else the mirror)."""
     target = load_target(fighter)
-    clips = target._prepared().library.clips
     written = []
     for row in rows:
-        clip = clips[row]
+        rendered, ms = _row_frames(target, row)
+        left_row = f"{row}~mirrored"
+        if left_row in getattr(target, "MIRROR_OF", {}):
+            lefts = _row_frames(target, left_row)[0]
+        else:
+            lefts = [f.transpose(Image.FLIP_LEFT_RIGHT) for f in rendered]
         frames = []
-        for i in range(clip.frame_count):
-            frame = target._render_frame(row, i, clip.frame_count)
+        for frame, left in zip(rendered, lefts):
             w, h = max(1, round(frame.width * scale)), max(1, round(frame.height * scale))
-            frame = frame.resize((w, h), Image.LANCZOS)
             pair = Image.new("RGBA", (2 * w, h), (236, 236, 240, 255))
-            pair.alpha_composite(frame, (0, 0))
-            pair.alpha_composite(frame.transpose(Image.FLIP_LEFT_RIGHT), (w, 0))
+            pair.alpha_composite(frame.resize((w, h), Image.LANCZOS), (0, 0))
+            pair.alpha_composite(left.resize((w, h), Image.LANCZOS), (w, 0))
             frames.append(pair.convert("RGB"))
         path = out_dir / f"{fighter}_{row}.gif"
-        frames[0].save(path, save_all=True, append_images=frames[1:],
-                       duration=clip.frame_duration_ms, loop=0)
+        frames[0].save(path, save_all=True, append_images=frames[1:], duration=ms, loop=0)
         written.append(path)
     return written
 
