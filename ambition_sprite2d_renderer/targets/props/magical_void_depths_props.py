@@ -18,6 +18,11 @@ Drawn in room coordinates (`_district_props`) on the numbers of
   pool at the bottom.
 - `magical_void_heart` (floor y 576): `heart_black_star`, the first star
   that went out, as big as the room, asleep.
+- The rift's pool and the heart's wall: `rift_pool`, the void standing in a
+  cut in the rift's floor (x 1880..2160), black, its rings white;
+  `rift_shard`, the look of the shards across it (each 60 by 16: they crumble
+  under a body and come back); `void_crack_wall`, the look of the heart's
+  west wall (32 by 96), black, cracked with white.
 - `magical_void_nursery` (640 by 640, floor y 576; behind the heart's west
   wall, which breaks): `nursery_cradles`, where a star goes the first time it
   goes out: crescent cradles in white line, a little black star asleep in
@@ -235,6 +240,32 @@ def cradles(c, k):
         c.put(c.mask(lambda p: p.line(pts + [pts[0]], 1.6)), EDGE)
 
 
+POOL = (1880, 2160)
+
+
+def pool(c, k):
+    x0, x1 = POOL
+    c.put(c.mask(box(x0, FLOOR, x1, FLOOR + 64)), VOID)
+    c.put(c.mask(lambda p: (p.line([(x0, FLOOR), (x0, FLOOR + 64)], 2), p.line([(x1, FLOOR), (x1, FLOOR + 64)], 2))), EDGE)
+    for i, y in enumerate((FLOOR + 26, FLOOR + 40, FLOOR + 54)):
+        pts = [(x0 + 10 + t * (x1 - x0 - 20) / 24, y + 3 * math.sin(t * 0.9 + i)) for t in range(25)]
+        dashed(c, pts, 1.4, 18 + i * 6, 10, EDGE, 0.8 - i * 0.2)
+
+
+def shard(c, k):
+    void_poly(c, [(0, 0), (60, 0), (56, 16), (6, 14)], 1.6)
+    c.put(c.mask(lambda p: p.line([(18, 2), (24, 8), (20, 13)], 1.0)), EDGE, 0.8)
+    c.put(c.mask(lambda p: p.line([(42, 1), (38, 9)], 1.0)), EDGE, 0.6)
+
+
+def crack_wall(c, k):
+    void_poly(c, [(0, 0), (32, 0), (32, 96), (0, 96)], 1.6)
+    crack = [(14, 0), (20, 22), (10, 44), (22, 66), (14, 96)]
+    c.put(c.mask(lambda p: p.line(crack, 1.6)), EDGE)
+    c.put(c.mask(lambda p: p.line([(20, 22), (28, 30)], 1.0)), EDGE, 0.7)
+    c.put(c.mask(lambda p: p.line([(10, 44), (3, 52)], 1.0)), EDGE, 0.7)
+
+
 PIECES: Dict[str, Piece] = {
     "rift_tear": Piece((0, ROOF, 360, FLOOR), tear),
     "rift_outlines": Piece((760, 220, 1700, FLOOR), outlines),
@@ -242,6 +273,9 @@ PIECES: Dict[str, Piece] = {
     "falls_cascade": Piece((540, ROOF, 760, FALLS_FLOOR), cascade),
     "heart_black_star": Piece((420, ROOF, 980, FLOOR), black_star),
     "nursery_cradles": Piece((60, ROOF, 580, FLOOR), cradles),
+    "rift_pool": Piece((POOL[0] - 4, FLOOR, POOL[1] + 4, FLOOR + 64), pool),
+    "rift_shard": Piece((0, 0, 60, 16), shard),
+    "void_crack_wall": Piece((0, 0, 32, 96), crack_wall),
 }
 
 TARGETS = targets(PIECES, PAL)
