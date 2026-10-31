@@ -34,7 +34,9 @@ sword behind him), ``jump``, ``fall``, ``slash`` (one cut with two hands, from
 over his far shoulder to the ground), ``hit``, ``death``, and the two poses of
 a blink: ``blink_out`` (his open hand out: the order) and ``blink_in`` (he
 comes back low). The warp of a blink is the engine's. ``front`` is the row he
-turns through: he faces you, the sword planted in front of him.
+turns through: he faces you, the sword planted in front of him. After his
+Smash moves come his reactions (hits, launches, on the floor and up again,
+the teeter, the run's stop and ``turnaround``), the sword always in his hand.
 
 He is a person of ``_person_rig``: the bones, the poses and the frame are
 shared; the head, the armour, the sword and how he stands are his.
@@ -44,6 +46,8 @@ from __future__ import annotations
 
 import math
 from typing import List
+
+from PIL import Image
 
 from ._ai_era_kit import OUTLINE, WHITE, RGBA, pin
 from . import _person_rig as R
@@ -919,8 +923,297 @@ def windup(i: int, n: int):
 
 X.rows = list(X.rows) + [("notice", 3, 110), ("windup", 3, 90)]
 
+
+# ---- His reactions (docs/planning/demos/smash-expressive-fighter-poses.md) -----
+#
+# Where a blow lands, which way it throws him, which way up he lands, and how
+# he gets up. A blow comes from in front of him, so he goes back and what is
+# loose on him lags the other way. He never lets go of the sword: in his near
+# hand it trails as an arm would (``blade`` is in the world, not turned with
+# him). A recoil ENDS on its settled pose: the game holds a row's last frame
+# for the hitstun.
+
+
+@X.row
+def hit_high(i: int, n: int):
+    # In the mask: his head snaps back, his chest after it, the sword flung up
+    # behind him in his near hand, his far hand up; his weight on his back foot.
+    snap = P(hip=(-5.0, 2.0), lean=-18.0, head=(-3.0, -1.0, -28.0), na=(-6.0, -22.0), nab=-1.0, blade=-128.0, fa=(10.0, -18.0), fab=-1.0, fh="open",
+             nf=(-10.0, 0.0, 0.0), ff=(9.0, -4.0, -24.0), arm="under", eyes="wince", off=(-3.0, 0.0), hem=(0.0, 5.0))
+    settled = dict(snap, hip=(-4.0, 1.5), lean=-12.0, head=(-2.0, -0.5, -18.0), na=(-4.0, -15.0), blade=-116.0, fa=(10.0, -8.0),
+                   ff=(9.0, -2.0, -14.0), hem=(0.0, 3.0))
+    return X.keys(shot(i, n), [(0.0, F_GUARD), (0.25, snap, "snap"), (1.0, settled)])
+
+
+@X.row
+def hit_mid(i: int, n: int):
+    # In the cuirass: he doubles over it, his hips pushed back and his knees
+    # giving, his far fist at his belly, the sword drawn in and back.
+    fold = P(hip=(-7.0, 8.0), lean=34.0, head=(1.0, 2.0, 20.0), na=(8.0, 12.0), blade=152.0, fa=(10.0, 9.0), fh="fist", nf=(-10.0, 0.0, 0.0),
+             ff=(9.0, 0.0, 0.0), eyes="wince", off=(-3.0, 0.0), hem=(6.0, 1.0))
+    settled = dict(fold, hip=(-6.0, 6.0), lean=25.0, head=(1.0, 1.0, 13.0), na=(9.0, 14.0), blade=146.0, fa=(11.0, 11.0), hem=(4.0, 1.0))
+    return X.keys(shot(i, n), [(0.0, F_GUARD), (0.25, fold, "snap"), (1.0, settled)])
+
+
+@X.row
+def hit_low(i: int, n: int):
+    # At his shins: his near foot is swept back off the floor and he pitches
+    # forward over the other, the sword thrown back for balance.
+    swept = P(hip=(1.0, 5.0), lean=30.0, head=(1.0, 0.0, -8.0), na=(-16.0, -12.0), nab=-1.0, blade=-150.0, fa=(21.0, -8.0), fab=-1.0, fh="open",
+              nf=(-21.0, -12.0, -64.0), ff=(4.0, 0.0, 0.0), leg="over", eyes="wide", hem=(6.0, 0.0))
+    settled = dict(swept, hip=(1.0, 4.0), lean=24.0, head=(1.0, 0.0, -4.0), na=(-14.0, -7.0), blade=-160.0, fa=(19.0, -3.0), nf=(-18.0, -9.0, -52.0))
+    return X.keys(shot(i, n), [(0.0, F_GUARD), (0.25, swept, "snap"), (1.0, settled)])
+
+
+#: In the air, the knees up (the hips are in the air: nothing is planted).
+_AIR = dict(hip=(0.0, -3.0), nf=(-4.0, -8.0, 20.0), ff=(6.0, -12.0, 8.0))
+
+
+@X.row
+def hit_air(i: int, n: int):
+    # In the air: his knees come up and he folds round the blow, the sword
+    # hugged in; then he opens back, the sword trailing down behind him and
+    # his far hand flung up.
+    ball = P(rot=-18.0, lean=30.0, head=(1.0, 1.0, 16.0), na=(10.0, 8.0), blade=160.0, fa=(12.0, 6.0), fh="fist", hip=(0.0, -3.0),
+             nf=(5.0, -19.0, 12.0), ff=(10.0, -21.0, 8.0), eyes="wince", hem=(3.0, 6.0))
+    opened = dict(ball, rot=-26.0, lean=14.0, head=(-1.0, 0.0, -6.0), na=(-12.0, 18.0), blade=128.0, fa=(-6.0, -22.0), fab=-1.0, fh="open",
+                  nf=(1.0, -12.0, 18.0), ff=(7.0, -15.0, 12.0))
+    return X.keys(shot(i, n), [(0.0, _air(F_GUARD)), (0.25, ball, "snap"), (1.0, opened)])
+
+
+#: The blow lands and folds him, before it throws him.
+N_FOLD = P(hip=(-3.0, 1.0), lean=18.0, head=(0.0, 1.0, 12.0), na=(10.0, 10.0), blade=150.0, fa=(12.0, 8.0), fh="open", nf=(-7.0, -3.0, 16.0),
+           ff=(7.0, -4.0, 8.0), eyes="wince", hem=(3.0, 3.0))
+
+
+@X.row
+def launch_up(i: int, n: int):
+    # Thrown up: arched back hard, his mask thrown back, his arms and legs
+    # hanging long below him and the sword trailing down behind.
+    fly = P(hip=(0.0, -12.0), rot=-22.0, lean=-24.0, head=(-2.0, -1.0, -30.0), na=(-14.0, 22.0), blade=146.0, fa=(-7.0, 24.0), fh="open",
+            nf=(-8.0, 1.0, 50.0), ff=(3.0, -4.0, 40.0), eyes="wince", hem=(1.0, 1.0))
+    return X.keys(shot(i, n), [(0.0, N_FOLD), (0.3, fly, "snap"), (1.0, dict(fly, rot=-26.0, lean=-26.0, head=(-2.0, -1.0, -34.0)))])
+
+
+@X.row
+def launch_horizontal(i: int, n: int):
+    # Thrown back: his hips lead and he folds round them, his arms, his legs
+    # and the sword flung forward toward the blow.
+    fly = P(hip=(-2.0, -4.0), rot=-74.0, lean=50.0, head=(2.0, 1.0, 16.0), na=(23.0, -3.0), blade=-12.0, fa=(25.0, 4.0), fh="open",
+            nf=(13.0, -6.0, -30.0), ff=(19.0, -10.0, -40.0), eyes="wince", hem=(7.0, 0.0), off=(-6.0, -4.0))
+    return X.keys(shot(i, n), [(0.0, N_FOLD), (0.3, fly, "snap"), (1.0, dict(fly, rot=-78.0, lean=54.0, blade=-16.0))])
+
+
+@X.row
+def launch_down(i: int, n: int):
+    # Spiked: he dives head first at the floor, his arms, his legs and the
+    # sword trailing up behind him.
+    dive = P(rot=132.0, lean=8.0, head=(1.0, 0.0, -14.0), na=(-24.0, 9.0), blade=242.0, fa=(-20.0, 3.0), fh="open", nf=(-6.0, -6.0, 20.0),
+             ff=(4.0, -12.0, 10.0), eyes="wince", hem=(2.0, 3.0), pivot=(0.0, -14.0), off=(-8.0, -18.0))
+    return X.keys(shot(i, n), [(0.0, N_FOLD), (0.3, dive, "snap"), (1.0, dict(dive, rot=136.0, blade=246.0))])
+
+
+@X.row
+def launch(i: int, n: int):
+    # Thrown up and back: spread wide like a star, the sword out behind.
+    star = P(hip=(0.0, -6.0), rot=-30.0, lean=-8.0, head=(-1.0, 0.0, -22.0), na=(-15.0, -21.0), nab=-1.0, blade=220.0, fa=(22.0, -15.0), fab=-1.0,
+             fh="open", nf=(-14.0, -3.0, 34.0), ff=(13.0, -9.0, -8.0), eyes="wince", hem=(5.0, 5.0), pivot=(0.0, -14.0))
+    return X.keys(shot(i, n), [(0.0, N_FOLD), (0.3, star, "snap"), (1.0, dict(star, rot=-38.0, blade=214.0))])
+
+
+@X.row
+def meteor(i: int, n: int):
+    # Struck down from above: crushed into a fold, head first, his mask on
+    # his chest and his hands and the sword flung up over him.
+    crushed = P(hip=(0.0, -4.0), rot=64.0, lean=48.0, head=(1.0, 2.0, 22.0), na=(-20.0, -16.0), nab=-1.0, blade=264.0, fa=(-14.0, -22.0), fab=-1.0,
+                fh="open", nf=(6.0, -14.0, 20.0), ff=(12.0, -18.0, 12.0), eyes="wince", hem=(4.0, 6.0), pivot=(0.0, -14.0), off=(0.0, -10.0))
+    return X.keys(shot(i, n), [(0.0, N_FOLD), (0.3, crushed, "snap"), (1.0, dict(crushed, rot=72.0, blade=268.0))])
+
+
+@X.row
+def tumble(i: int, n: int):
+    # Sent flying: over backwards about his middle, the sword going round
+    # with him.
+    rot = -360.0 * i / n
+    return P(hip=(0.0, -4.0), lean=-12.0, head=(-1.0, 0.0, -12.0), na=(-18.0, -14.0), nab=-1.0, blade=205.0 + 0.3 * rot, fa=(20.0, -12.0), fab=-1.0,
+             fh="open", nf=(-8.0, -6.0, 30.0), ff=(8.0, -12.0, 0.0), eyes="wince", hem=(4.0, 4.0), pivot=(0.0, -14.0), off=(0.0, -16.0), rot=rot)
+
+
+#: On his back, his legs out, his near arm down his side and the sword on the
+#: floor along him.
+FLAT = P(rot=-90.0, hip=(-2.0, 25.5), off=(13.0, -5.6), head=(0.0, 0.0, 0.0), na=(-3.0, 25.0), blade=2.0, fa=(2.0, 11.0), fh="flat",
+         nf=(-4.5, 25.0, 0.0), ff=(4.5, 25.0, -10.0), eyes="closed")
+#: On his back, a knee up, his far arm flung out over his head.
+FACE_UP = dict(FLAT, head=(0.0, 0.0, 8.0), fa=(-1.0, -27.0), fab=-1.0, fh="open", ff=(9.0, 14.0, -40.0), eyes="wince")
+#: On his front, his near arm out past his head and the sword out ahead of
+#: it on the floor; his heels up.
+FACE_DOWN = P(rot=90.0, hip=(2.0, 25.5), off=(-13.0, -3.5), head=(0.0, 0.0, -10.0), na=(2.0, -27.0), blade=-2.0, fa=(0.0, 23.0), fh="flat",
+              nf=(-2.0, 24.0, 40.0), ff=(6.0, 22.0, 30.0), eyes="closed")
+
+
+@X.row
+def knockdown(i: int, n: int):
+    # He lands on his back, bounces once, and lies flat.
+    _, s, _c = loop(i, n)
+    landing = dict(X.full(R.STRUCK), rot=-40.0, off=(0.0, -4.0), na=(12.0, 12.0), blade=60.0, fa=(17.0, -2.0), fh="open", eyes="wince")
+    down = dict(FLAT, off=(13.0, -5.6 - 0.3 * s))
+    return X.keys(shot(i, n), [(0.0, landing), (0.25, dict(FLAT, off=(13.0, -9.0), blade=-8.0)), (0.45, down), (1.0, down)])
+
+
+@X.row
+def prone_face_up(i: int, n: int):
+    _, s, _c = loop(i, n)
+    return dict(FACE_UP, lean=1.0 * s, head=(0.0, 0.0, 8.0 + 2.0 * s), eyes="wince" if i in (3, 4) else "closed")
+
+
+@X.row
+def prone_face_down(i: int, n: int):
+    _, s, _c = loop(i, n)
+    return dict(FACE_DOWN, lean=-1.0 * s, head=(0.0, 0.0, -10.0 - 2.0 * s))
+
+
+#: Half up off his back, on his far elbow, the sword still in his near hand
+#: on the floor beside him; his mask lolling.
+PROPPED = P(hip=(-9.0, 19.5), lean=-56.0, head=(0.0, 0.0, 26.0), na=(4.0, 22.0), blade=4.0, fa=(-6.0, 16.0), fh="flat", nf=(20.0, 0.0, -62.0),
+            ff=(24.0, -6.0, -40.0), eyes="wince", hem=(0.0, 2.0))
+
+
+@X.row
+def prone(i: int, n: int):
+    _, s, _c = loop(i, n)
+    return dict(PROPPED, head=(0.0, 0.0, 26.0 + 5.0 * s), eyes="closed" if i % 4 == 3 else "wince")
+
+
+#: Down on one knee, leaning on the sword planted in front of him.
+KNEEL = hold((15.0, 6.0), PLANTED, hip=(1.0, 16.0), lean=18.0, head=(1.0, 0.0, -10.0), nf=(-9.0, 0.0, 30.0), ff=(10.0, 0.0, 0.0), hem=(3.0, 3.0))
+
+
+@X.row
+def getup(i: int, n: int):
+    # He sits up, plants the sword and rises on it to his waiting stance.
+    sat = dict(X.full(R.SAT), na=(10.0, 13.0), blade=4.0, eyes="wince")
+    return X.keys(shot(i, n), [(0.0, FLAT), (0.3, sat), (0.6, KNEEL), (0.8, hold((15.0, 4.0), PLANTED, hip=(0.5, 7.0), lean=8.0, nf=(-8.0, 0.0, 10.0), ff=(9.0, 0.0, 0.0))),
+                               (1.0, X.full(P()))])
+
+
+def _ball(rot: float, blade=None):
+    """Tucked into a ball turned ``rot`` about its middle, the sword along
+    his back (or at ``blade``)."""
+    return dict(X.full(R.TUCK), rot=rot, blade=205.0 + rot if blade is None else blade, fh="fist")
+
+
+@X.row
+def getup_roll(i: int, n: int):
+    # Off his back and over backward into a crouch, and up in his guard.
+    crouch = dict(X.full(R.CROUCH), na=(10.0, 14.0), blade=-30.0, fa=two((10.0, 14.0), -30.0), fh="fist", brows=-1.0)
+    return X.keys(shot(i, n), [(0.0, FACE_UP), (0.2, _ball(-90.0, 178.0)), (0.45, _ball(-200.0)), (0.65, _ball(-330.0)), (0.82, crouch), (1.0, F_GUARD)])
+
+
+@X.row
+def getup_attack(i: int, n: int):
+    # Up off his back on one knee with a cut that sweeps the floor round
+    # him, and on his feet in his guard.
+    sat = dict(X.full(R.SAT), na=(-8.0, 14.0), blade=-172.0, fa=(-8.0, 22.0), fh="flat", eyes="wince")
+    sweep = dict(F_LOW, hip=(2.0, 15.0), nf=(-12.0, 0.0, 30.0), ff=(14.0, 0.0, 0.0), blade=6.0)
+    return X.keys(shot(i, n), [(0.0, FACE_UP), (0.25, sat), (0.45, dict(sweep, blade=60.0, na=(18.0, 26.0), fa=two((18.0, 26.0), 60.0))),
+                               (0.62, sweep, "snap"), (0.82, dict(sweep, blade=-10.0)), (1.0, F_GUARD)])
+
+
+#: The tech: low and wide, his far hand slapped flat on the floor, the sword
+#: back in his near hand, his mask up.
+BRACE = P(hip=(1.0, 19.0), lean=44.0, head=(2.0, 1.0, -26.0), na=(-14.0, 6.0), blade=176.0, fa=(20.0, 32.0), fh="flat", nf=(-13.0, 0.0, 10.0),
+          ff=(13.0, 0.0, 0.0), eyes="wide", brows=-1.0, hem=(5.0, 6.0))
+
+
+@X.row
+def tech(i: int, n: int):
+    landing = _air(dict(F_GUARD, lean=8.0))
+    return X.keys(shot(i, n), [(0.0, landing), (0.25, BRACE, "snap"), (0.55, dict(BRACE, hip=(1.0, 17.0), lean=38.0)),
+                               (0.8, dict(F_GUARD, hip=(0.0, 8.0), lean=10.0)), (1.0, F_GUARD)])
+
+
+@X.row
+def tech_roll(i: int, n: int):
+    # Caught on the floor and away at once: the slap, a roll forward over
+    # his shoulder, and up in his guard.
+    crouch = dict(X.full(R.CROUCH), na=(10.0, 14.0), blade=-30.0, fa=two((10.0, 14.0), -30.0), fh="fist", brows=-1.0)
+    return X.keys(shot(i, n), [(0.0, BRACE), (0.2, _ball(40.0)), (0.45, _ball(170.0)), (0.68, _ball(320.0)), (0.84, dict(crouch, blade=330.0)),
+                               (1.0, dict(F_GUARD, blade=318.0))])
+
+
+@X.row
+def teeter(i: int, n: int):
+    # At an edge: bent out over it from his hips, the toe of his front foot up
+    # over the drop, his far arm wheeling and the sword held out behind him
+    # against the fall.
+    ph, s, c = loop(i, n)
+    return P(hip=(-3.0, 2.0), lean=22.0 + 5.0 * s, head=(1.0, 0.0, 16.0 + 4.0 * s), na=(-18.0 + 3.0 * c, 2.0 + 4.0 * s), nab=-1.0,
+             blade=-172.0 + 10.0 * s, fa=(20.0 * math.cos(ph + 1.0) + 4.0, -20.0 * math.sin(ph + 1.0) - 2.0), fab=-1.0, fh="open",
+             nf=(-9.0, 0.0, 0.0), ff=(9.0, -1.5, -26.0), eyes="wide", hem=(4.0, 2.0))
+
+
+@X.row
+def run_stop(i: int, n: int):
+    # A hard stop out of his run: his front heel planted far ahead, his hips
+    # low and back, his trunk thrown back and the sword swung on ahead of him.
+    brake = P(hip=(-5.0, 11.0), lean=-22.0, head=(-1.0, 0.0, -12.0), na=(15.0, 6.0), blade=24.0, fa=(20.0, -2.0), fh="open",
+              nf=(-12.0, -2.0, 30.0), ff=(15.0, 0.0, -34.0), eyes="wide", hem=(0.0, 8.0))
+    return X.keys(shot(i, n), [(0.0, X.full(run(2, 8))), (0.25, brake, "snap"), (0.6, dict(brake, hip=(-4.0, 10.0), lean=-18.0, blade=40.0)),
+                               (0.85, hold((15.0, 13.0), 70.0, hip=(0.0, 4.0), lean=2.0)), (1.0, X.full(P()))])
+
+
+#: The frames of ``turnaround`` drawn facing the way he was facing (the row is
+#: drawn in the new facing, so these are mirrored), and those drawn from the
+#: front, between them and the rest: he turns on the sword planted in front
+#: of him.
+TURN_BACK = (0,)
+TURN_FRONT = (1, 2)
+
+
+@X.row
+def turnaround(i: int, n: int):
+    # The side frames: the weight comes onto his near foot as he turns away;
+    # and after the front frames, he settles into his waiting stance.
+    away = hold(HANDS, PLANTED, hip=(1.0, 2.0), lean=-3.0, head=(0.0, 0.0, 5.0), nf=(-4.0, 0.0, 0.0), ff=(5.0, -2.0, -14.0))
+    poses = [away, away, away, hold(HANDS, PLANTED, hip=(0.5, 2.0), lean=3.0, nf=(-7.0, 0.0, 0.0), ff=(6.0, 0.0, 0.0), hem=(0.0, 2.0)),
+             hold(HANDS, PLANTED, hip=(0.0, 0.8), nf=(-8.0, 0.0, 0.0), ff=(7.5, 0.0, 0.0)), X.full(P())]
+    return poses[min(len(poses) - 1, round(i * (len(poses) - 1) / max(1, n - 1)))]
+
+
+def _turn_front(i: int, n: int):
+    # From the front, his weight going over to the way he turns to.
+    reach = -(X.front_span[0] - 5.4)
+    return R.FP(hip=(-1.5 + 3.0 * i / max(1, n - 1), 1.0), lean=-3.0 + 6.0 * i / max(1, n - 1), head=(0.0, 0.0, -2.0 + 4.0 * i / max(1, n - 1)),
+                la=(reach, 16.0), ra=(reach, 16.0), lz=0.35, rz=0.35, lh="fist", rh="fist")
+
+
+X.front_poses["turnaround_front"] = _turn_front
+
+X.rows = list(X.rows) + [
+    ("hit_high", 5, 48), ("hit_mid", 5, 48), ("hit_low", 5, 48), ("hit_air", 5, 48),
+    ("launch_up", 7, 64), ("launch_horizontal", 7, 64), ("launch_down", 7, 64), ("launch", 7, 64), ("meteor", 7, 64), ("tumble", 8, 70),
+    ("knockdown", 7, 74), ("prone_face_up", 8, 104), ("prone_face_down", 8, 104), ("prone", 8, 104),
+    ("getup", 8, 70), ("getup_roll", 7, 52), ("getup_attack", 7, 52), ("tech", 6, 52), ("tech_roll", 7, 52),
+    ("teeter", 8, 92), ("run_stop", 6, 60), ("turnaround", 6, 37),
+]
+
+
+def _render_frame(anim: str, i: int, n: int):
+    """A frame of his sheet: ``turnaround`` draws its first frames mirrored
+    (the way he was facing) and its middle ones from the front."""
+    if anim == "turnaround" and i in TURN_FRONT:
+        return X.render_front("turnaround_front", TURN_FRONT.index(i), len(TURN_FRONT))
+    img = R.Person.render_frame(X, anim, i, n)
+    if anim == "turnaround" and i in TURN_BACK:
+        back = Image.new(img.mode, img.size)
+        back.paste(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (int(round(2.0 * X.cx * img.size[0] / X.frame[0])) - img.size[0], 0))
+        return back
+    return img
+
+
+X.render_frame = _render_frame
+
 ROWS = X.rows
-_render_frame = X.render_frame
 render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
 
 

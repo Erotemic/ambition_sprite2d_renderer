@@ -29,7 +29,9 @@ thing is painted once and turned to where it sits (``_ai_era_kit``).
 He is a platform fighter (the Smash roster's ``npc_ramen_nujan``): after the
 rows of the main game come the rows that game asks a sheet for by name (the
 grab kit, the dodges, ``tumble``, ``knockdown``, ``dizzy``) and the rows his
-move table names. He takes hold of somebody with his scarf.
+move table names. He takes hold of somebody with his scarf. Last come his
+reactions: where a blow lands, which way it throws him, which way up he lands,
+how he gets up, the teeter, the run's stop and the turn.
 """
 
 from __future__ import annotations
@@ -822,6 +824,231 @@ def parry(i: int, n: int) -> Pose:
     return keys(_shot(i, n), [(0.0, held), (0.4, met), (1.0, held)])
 
 
+# ---- His reactions (docs/planning/demos/smash-expressive-fighter-poses.md) -------
+#
+# Where a blow lands, which way it throws him, which way up he lands, and how
+# he gets up. A blow comes from in front of him, so he goes back and what is
+# loose on him (hands, scarf, coat) lags the other way. A recoil ENDS on its
+# settled pose: the game holds a row's last frame for the hitstun.
+
+#: Standing, his hands at his sides: where a blow finds him.
+STOOD = P(lean=-3.0, na=(-3.0, 25.0), fa=(2.0, 24.5), eyes="wide", mouth="o")
+
+
+@row
+def hit_high(i: int, n: int) -> Pose:
+    # In the face: his head snaps back, his chest after it, his hands fly up
+    # and his weight rocks onto his back foot.
+    snap = P(hip=(-5.0, 1.5), lean=-17.0, head=(-3.0, -1.0, -32.0), na=(-6.0, -26.0), nab=-1.0, fa=(4.0, -27.0), fab=-1.0, nh="open", fh="open",
+             arm="under",
+             nf=(-9.0, 0.0, 0.0), ff=(9.0, -4.0, -26.0), eyes="wince", mouth="big", brows=1.0, tail=30.0, wave=12.0, off=(-3.0, 0.0), hem=(0.0, 5.0))
+    settled = dict(snap, hip=(-4.0, 1.5), lean=-11.0, head=(-2.0, -0.5, -20.0), na=(-4.0, -18.0), fa=(8.0, -20.0), ff=(9.0, -2.0, -16.0), mouth="grit",
+                   tail=70.0, wave=8.0, hem=(0.0, 3.0))
+    return keys(_shot(i, n), [(0.0, STOOD), (0.25, snap, "snap"), (1.0, settled)])
+
+
+@row
+def hit_mid(i: int, n: int) -> Pose:
+    # In the stomach: he doubles over it, his hips pushed back, his knees
+    # giving, his arms folded in round the blow.
+    fold = P(hip=(-7.0, 8.0), lean=34.0, head=(1.0, 2.0, 22.0), na=(10.0, 9.0), fa=(13.0, 7.0), nh="fist", fh="open", nf=(-9.0, 0.0, 0.0),
+             ff=(8.0, 0.0, 0.0), eyes="wince", mouth="o", brows=1.0, tail=10.0, wave=10.0, off=(-3.0, 0.0), hem=(5.0, 1.0))
+    settled = dict(fold, hip=(-6.0, 6.0), lean=25.0, head=(1.0, 1.0, 14.0), na=(9.0, 12.0), fa=(12.0, 10.0), mouth="grit", tail=60.0, wave=7.0,
+                   hem=(3.0, 1.0))
+    return keys(_shot(i, n), [(0.0, STOOD), (0.25, fold, "snap"), (1.0, settled)])
+
+
+@row
+def hit_low(i: int, n: int) -> Pose:
+    # At his shins: his near foot is swept back off the floor and he pitches
+    # forward over the other, his arms thrown out to catch his balance.
+    swept = P(hip=(1.0, 5.0), lean=30.0, head=(1.0, 0.0, -6.0), na=(-14.0, -16.0), nab=-1.0, fa=(21.0, -9.0), fab=-1.0, nh="open", fh="open",
+              nf=(-21.0, -12.0, -64.0), ff=(4.0, 0.0, 0.0), leg="over", eyes="wide", mouth="big", brows=1.0, tail=150.0, wave=12.0, hem=(5.0, 0.0))
+    settled = dict(swept, hip=(1.0, 4.0), lean=24.0, head=(1.0, 0.0, -3.0), na=(-12.0, -10.0), fa=(19.0, -4.0), nf=(-18.0, -9.0, -52.0),
+                   mouth="grit", tail=130.0, wave=8.0)
+    return keys(_shot(i, n), [(0.0, STOOD), (0.25, swept, "snap"), (1.0, settled)])
+
+
+@row
+def hit_air(i: int, n: int) -> Pose:
+    # In the air: his knees come up to his chest and his chin tucks round the
+    # blow; then he opens, his arms flung back.
+    ball = dict(AIR, rot=-18.0, lean=30.0, head=(1.0, 1.0, 18.0), na=(12.0, 7.0), fa=(14.0, 5.0), nh="fist", fh="fist", nf=(5.0, -19.0, 12.0),
+                ff=(10.0, -21.0, 8.0), eyes="wince", mouth="o", brows=1.0, tail=40.0, wave=10.0, hem=(2.0, 5.0))
+    opened = dict(ball, rot=-14.0, lean=16.0, head=(0.0, 0.0, 6.0), na=(-17.0, -14.0), nab=-1.0, fa=(-9.0, -19.0), fab=-1.0, nh="open", fh="open",
+                  nf=(1.0, -12.0, 18.0), ff=(7.0, -15.0, 12.0), mouth="grit", tail=230.0, wave=12.0)
+    return keys(_shot(i, n), [(0.0, dict(AIR, eyes="wide")), (0.25, ball, "snap"), (1.0, opened)])
+
+
+#: The blow lands and folds him, before it throws him.
+STRUCK_FOLD = P(hip=(-3.0, 1.0), lean=18.0, head=(0.0, 1.0, 14.0), na=(10.0, 10.0), fa=(12.0, 8.0), nh="open", fh="open", nf=(-7.0, -3.0, 16.0),
+                ff=(7.0, -4.0, 8.0), eyes="wince", mouth="big", brows=1.0, tail=60.0, wave=12.0, hem=(2.0, 3.0))
+
+
+@row
+def launch_up(i: int, n: int) -> Pose:
+    # Thrown up: arched back hard, his head thrown back, his arms and legs
+    # hanging long below him, his scarf trailing down.
+    fly = P(hip=(0.0, -4.0), rot=-22.0, lean=-24.0, head=(-2.0, -1.0, -34.0), na=(-15.0, 22.0), fa=(-8.0, 24.0), nh="open", fh="open",
+            nf=(-8.0, 1.0, 50.0), ff=(3.0, -4.0, 40.0), eyes="wince", mouth="big", brows=1.0, tail=94.0, long=1.15, wave=14.0, curl=0.0,
+            hem=(1.0, 1.0))
+    return keys(_shot(i, n), [(0.0, STRUCK_FOLD), (0.3, fly, "snap"), (1.0, dict(fly, rot=-20.0, lean=-22.0, head=(-2.0, -1.0, -36.0)))])
+
+
+@row
+def launch_horizontal(i: int, n: int) -> Pose:
+    # Thrown back: his hips lead and he folds round them, his arms, his legs
+    # and his scarf flung forward toward the blow.
+    fly = P(hip=(-2.0, -2.0), rot=-74.0, lean=50.0, head=(2.0, 1.0, 16.0), na=(23.0, -3.0), fa=(25.0, 4.0), nh="open", fh="open",
+            nf=(13.0, -6.0, -30.0), ff=(19.0, -10.0, -40.0), eyes="wince", mouth="big", brows=1.0, tail=8.0, long=1.1, wave=8.0, curl=-2.0,
+            hem=(6.0, 0.0), off=(-2.0, -4.0))
+    return keys(_shot(i, n), [(0.0, STRUCK_FOLD), (0.3, fly, "snap"), (1.0, dict(fly, rot=-78.0, lean=54.0))])
+
+
+@row
+def launch_down(i: int, n: int) -> Pose:
+    # Spiked: he dives head first at the floor, his arms, his legs and his
+    # scarf trailing up behind him.
+    dive = P(hip=(0.0, 0.0), rot=132.0, lean=8.0, head=(1.0, 0.0, -14.0), na=(-24.0, 9.0), fa=(-20.0, 3.0), nh="open", fh="open",
+             nf=(-6.0, -6.0, 20.0), ff=(4.0, -12.0, 10.0), eyes="wince", mouth="big", brows=1.0, tail=272.0, long=1.1, wave=10.0, curl=0.0,
+             hem=(2.0, 2.0), pivot=(0.0, -14.0), off=(-6.0, -16.0))
+    return keys(_shot(i, n), [(0.0, STRUCK_FOLD), (0.3, dive, "snap"), (1.0, dict(dive, rot=136.0))])
+
+
+@row
+def launch(i: int, n: int) -> Pose:
+    # Thrown up and back: spread wide like a star, his head back.
+    star = P(hip=(0.0, -3.0), rot=-30.0, lean=-8.0, head=(-1.0, 0.0, -22.0), na=(-15.0, -21.0), nab=-1.0, fa=(22.0, -15.0), fab=-1.0, nh="open",
+             fh="open", nf=(-14.0, -3.0, 34.0), ff=(13.0, -9.0, -8.0), eyes="wince", mouth="big", brows=1.0, tail=40.0, wave=14.0, hem=(4.0, 4.0),
+             pivot=(0.0, -14.0))
+    return keys(_shot(i, n), [(0.0, STRUCK_FOLD), (0.3, star, "snap"), (1.0, dict(star, rot=-38.0))])
+
+
+@row
+def meteor(i: int, n: int) -> Pose:
+    # Struck down from above: crushed into a fold, head first, his chin on
+    # his chest and his hands flung up over him.
+    crushed = P(hip=(0.0, -2.0), rot=64.0, lean=48.0, head=(1.0, 2.0, 24.0), na=(-20.0, -16.0), nab=-1.0, fa=(-14.0, -22.0), fab=-1.0, nh="open",
+                fh="open", nf=(6.0, -14.0, 20.0), ff=(12.0, -18.0, 12.0), eyes="wince", mouth="o", brows=1.0, tail=262.0, wave=12.0, hem=(3.0, 5.0),
+                pivot=(0.0, -14.0), off=(0.0, -8.0))
+    return keys(_shot(i, n), [(0.0, STRUCK_FOLD), (0.3, crushed, "snap"), (1.0, dict(crushed, rot=72.0))])
+
+
+#: On his back, a knee up and his arms out on the floor, his scarf spread.
+FACE_UP = P(rot=-90.0, hip=(-2.0, 25.5), off=(13.0, -0.6), head=(0.0, 0.0, 8.0), na=(0.5, -27.0), nab=-1.0, fa=(4.0, 25.0), fab=-1.0, nh="open",
+            fh="open", nf=(-4.5, 25.0, 0.0), ff=(9.0, 14.0, -40.0), eyes="closed", mouth="o", tail=200.0, long=0.8, wave=2.0, curl=6.0)
+#: On his front, his near arm out past his head, his heels up.
+FACE_DOWN = P(rot=90.0, hip=(2.0, 25.5), off=(-13.0, -2.0), head=(0.0, 0.0, -10.0), na=(2.0, -27.0), fa=(0.0, 23.0), nh="flat", fh="flat",
+              nf=(-2.0, 24.0, 40.0), ff=(6.0, 22.0, 30.0), eyes="closed", mouth="flat", tail=176.0, long=0.8, wave=2.0, curl=5.0)
+
+
+@row
+def prone_face_up(i: int, n: int) -> Pose:
+    _, s, _c = _loop(i, n)
+    return dict(FACE_UP, lean=1.0 * s, head=(0.0, 0.0, 8.0 + 2.0 * s), eyes="wince" if i in (3, 4) else "closed")
+
+
+@row
+def prone_face_down(i: int, n: int) -> Pose:
+    _, s, _c = _loop(i, n)
+    return dict(FACE_DOWN, lean=-1.5 * s, head=(0.0, 0.0, -10.0 - 2.0 * s))
+
+
+#: Propped on his elbows, half up off his back, his head lolling.
+PROPPED = P(hip=(-9.0, 25.5), lean=-56.0, head=(0.0, 0.0, 30.0), na=(-6.0, 16.0), fa=(-2.0, 17.0), nh="flat", fh="flat", nf=(20.0, 0.0, -62.0),
+            ff=(24.0, -6.0, -40.0), eyes="wince", mouth="o", brows=1.0, tail=128.0, wave=3.0, curl=5.0, hem=(0.0, 2.0))
+
+
+@row
+def prone(i: int, n: int) -> Pose:
+    _, s, _c = _loop(i, n)
+    return dict(PROPPED, head=(0.0, 0.0, 30.0 + 6.0 * s), eyes="closed" if i % 4 == 3 else "wince")
+
+
+@row
+def getup_roll(i: int, n: int) -> Pose:
+    # Off his back and over backward into a crouch, and up.
+    ball = dict(TUCK, eyes="closed")
+    return keys(_shot(i, n), [(0.0, FACE_UP), (0.2, dict(ball, rot=-90.0)), (0.45, dict(ball, rot=-200.0)), (0.65, dict(ball, rot=-330.0)),
+                              (0.82, dict(CROUCH, brows=-1.0, eyes="open")), (1.0, dict(GUARD, mouth="flat"))])
+
+
+@row
+def getup_attack(i: int, n: int) -> Pose:
+    # Up off his back with a kick that sweeps the floor round him, then on
+    # his feet.
+    kick = dict(SAT, hip=(-7.0, 25.0), lean=-30.0, head=(0.0, 0.0, -4.0), na=(-16.0, 22.0), fa=(-10.0, 23.0), nh="flat", fh="flat",
+                nf=(26.0, -6.0, -50.0), ff=(8.0, 0.0, -30.0), leg="over", eyes="open", mouth="big", brows=-1.0, tail=170.0)
+    kneel = dict(PERCH, eyes="open", brows=-1.0, mouth="flat")
+    return keys(_shot(i, n), [(0.0, FACE_UP), (0.25, SAT), (0.45, kick, "snap"), (0.62, kick), (0.82, kneel), (1.0, GUARD)])
+
+
+#: The tech: low and wide, his near hand slapped flat on the floor, his far
+#: arm thrown back, his eyes up.
+BRACE = P(hip=(1.0, 19.0), lean=46.0, head=(2.0, 1.0, -26.0), na=(22.0, 33.0), nh="flat", fa=(-21.0, -2.0), fab=-1.0, fh="open",
+          nf=(-12.0, 0.0, 10.0), ff=(12.0, 0.0, 0.0), eyes="open", mouth="grit", brows=-1.0, tail=110.0, wave=4.0, hem=(4.0, 5.0))
+
+
+@row
+def tech(i: int, n: int) -> Pose:
+    landing = dict(FALL, hip=(0.0, 6.0), lean=10.0, nf=(-8.0, -3.0, 20.0), ff=(8.0, -4.0, 10.0), tail=250.0)
+    return keys(_shot(i, n), [(0.0, landing), (0.25, BRACE, "snap"), (0.55, dict(BRACE, hip=(1.0, 17.0), lean=40.0)),
+                              (0.8, dict(HALF_UP, brows=-1.0, mouth="flat")), (1.0, GUARD)])
+
+
+@row
+def tech_roll(i: int, n: int) -> Pose:
+    # Caught on the floor and away at once: the slap, a roll forward over
+    # his shoulder, and up in his guard.
+    ball = dict(TUCK, eyes="closed")
+    return keys(_shot(i, n), [(0.0, BRACE), (0.2, dict(ball, rot=40.0)), (0.45, dict(ball, rot=170.0)), (0.68, dict(ball, rot=320.0)),
+                              (0.84, dict(CROUCH, brows=-1.0, eyes="open")), (1.0, GUARD)])
+
+
+@row
+def teeter(i: int, n: int) -> Pose:
+    # At an edge: bent out over it from his hips, the toe of his front foot
+    # up over the drop, his arms wheeling backward against the fall.
+    ph, s, _c = _loop(i, n)
+
+    def wheel(p: float) -> Tuple[float, float]:
+        return (22.0 * math.cos(p) - 4.0, -22.0 * math.sin(p) + 2.0)
+
+    return P(hip=(-3.0, 2.0), lean=24.0 + 5.0 * s, head=(1.0, 0.0, 16.0 + 4.0 * s), na=wheel(ph), nab=-1.0, fa=wheel(ph + math.pi), fab=-1.0,
+             nh="open", fh="open", nf=(-8.0, 0.0, 0.0), ff=(9.0, -1.5, -26.0), eyes="wide", mouth="o", brows=1.0, tail=112.0 + 10.0 * s, wave=12.0,
+             hem=(3.0, 2.0))
+
+
+@row
+def run_stop(i: int, n: int) -> Pose:
+    # A hard stop out of his run: his front heel planted far ahead, his hips
+    # low and back, his trunk thrown back and his arms and scarf flung on.
+    running = run(2, 8)
+    brake = P(hip=(-5.0, 11.0), lean=-24.0, head=(-1.0, 0.0, -14.0), na=(17.0, -7.0), nab=-1.0, fa=(21.0, -2.0), nh="open", fh="open",
+              nf=(-12.0, -2.0, 30.0), ff=(15.0, 0.0, -34.0), eyes="wide", mouth="grit", brows=1.0, tail=20.0, wave=10.0, hem=(0.0, 7.0))
+    return keys(_shot(i, n), [(0.0, running), (0.25, brake, "snap"), (0.6, dict(brake, hip=(-4.0, 10.0), lean=-20.0, tail=50.0)),
+                              (0.85, dict(HALF_UP, tail=90.0)), (1.0, P())])
+
+
+#: The frames of ``turnaround`` drawn facing the way he was facing (the row is
+#: drawn in the new facing, so these are mirrored): he turns at the narrowest
+#: frame between them and the rest.
+TURN_BACK = (0, 1)
+
+
+@row
+def turnaround(i: int, n: int) -> Pose:
+    # The weight comes onto the near foot and he turns on it, his arms drawn
+    # in; then he opens to the new way, his scarf swinging on after him.
+    away = P(hip=(1.0, 2.0), lean=-4.0, head=(0.0, 0.0, 6.0), na=(9.0, 20.0), fa=(-7.0, 22.0), nf=(-3.0, 0.0, 0.0), ff=(5.0, -2.0, -14.0),
+             tail=130.0, wave=6.0, hem=(2.0, 0.0))
+    narrow = P(hip=(0.0, 3.5), lean=2.0, head=(0.0, 0.0, 4.0), na=(2.0, 22.0), fa=(1.0, 22.0), nf=(-1.5, 0.0, 0.0), ff=(2.0, 0.0, 0.0),
+               tail=110.0, wave=4.0)
+    poses = [away, narrow, dict(narrow, tail=50.0), P(hip=(0.5, 2.0), lean=4.0, na=(-4.0, 23.0), fa=(-3.0, 23.0), tail=60.0, hem=(0.0, 2.0)),
+             P(hip=(0.0, 0.8), na=(-7.0, 22.0), fa=(-6.0, 22.5), tail=84.0), P(na=(-8.5, 21.5), fa=(-7.0, 22.0), tail=98.0)]
+    return poses[min(len(poses) - 1, round(i * (len(poses) - 1) / max(1, n - 1)))]
+
+
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 145),
     ("walk", 8, 104),
@@ -892,6 +1119,26 @@ ROWS: List[Tuple[str, int, int]] = [
     ("jump_squat", 3, 30),
     ("shield_hit", 4, 60),
     ("parry", 4, 60),
+    # His reactions.
+    ("hit_high", 5, 48),
+    ("hit_mid", 5, 48),
+    ("hit_low", 5, 48),
+    ("hit_air", 5, 48),
+    ("launch_up", 7, 64),
+    ("launch_horizontal", 7, 64),
+    ("launch_down", 7, 64),
+    ("launch", 7, 64),
+    ("meteor", 7, 64),
+    ("prone_face_up", 8, 104),
+    ("prone_face_down", 8, 104),
+    ("prone", 8, 104),
+    ("getup_roll", 7, 52),
+    ("getup_attack", 7, 52),
+    ("tech", 6, 52),
+    ("tech_roll", 7, 52),
+    ("teeter", 8, 92),
+    ("run_stop", 6, 60),
+    ("turnaround", 6, 37),
 ]
 assert [name for name, _, _ in ROWS] == list(ROW_POSES), "every row has a pose, in sheet order"
 
@@ -1447,6 +1694,14 @@ def _effects(anim: str, i: int, n: int, at: Dict[str, Point]) -> List[Stamp]:
             stamp(_puff(3.0), (head[0] - 17.0, head[1] - 29.0), "puff_1")
         if k >= 2:
             stamp(_bubble(0.8), (head[0] - 22.0, head[1] - 41.0), "bubble")
+    elif anim == "getup_attack" and 2 <= i <= 3:
+        # The kick sweeps the floor in front of him.
+        stamp(_swoosh(13.0, -70, 70, 5.0), (foot[0] + 4.0, foot[1] - 2.0), "swoosh")
+        stamp(_sparkle(3.0), (foot[0] + 20.0, foot[1] - 8.0), "sparkle_0")
+    elif anim in ("tech", "tech_roll") and i == (1 if anim == "tech" else 0):
+        # The slap of his hand on the floor.
+        stamp(_tick(4.0), (hand[0] + 10.0, hand[1] - 9.0), "tick")
+        sparkles([(-8.0, -8.0, 3.0), (14.0, -4.0, 2.5)], hand)
     return out
 
 
@@ -1454,6 +1709,16 @@ def _effects(anim: str, i: int, n: int, at: Dict[str, Point]) -> List[Stamp]:
 
 
 def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
+    img = _draw_frame(anim, frame_idx, nframes)
+    if anim == "turnaround" and frame_idx in TURN_BACK:
+        # Facing the way he was: his frame mirrored about his middle.
+        back = Image.new(img.mode, img.size)
+        back.paste(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (int(round(2.0 * CX)) - img.size[0], 0))
+        return back
+    return img
+
+
+def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     pose = ROW_POSES[anim](frame_idx, nframes)
     img = K.new_frame()
     rot = float(pose["rot"])  # type: ignore[arg-type]
