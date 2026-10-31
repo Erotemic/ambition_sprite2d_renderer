@@ -11,7 +11,9 @@ along its eigenvectors, never turns: transformation, not rotation.
 
 Rows: ``idle`` (it bobs and breathes along its axes), ``walk`` (it drifts,
 its hem rippling), ``attack_side`` (it winds up, then its major axis lances
-out: lambda-1 grows), ``hurt`` (its eigenvalues jolt apart) and ``death``
+out: lambda-1 grows), ``hurt`` (its eigenvalues jolt apart), ``block`` (it rears along its
+vertical eigenvector, the larger eigenvalue, to wall off a jump over it,
+widening a little along the horizontal one, then settles) and ``death``
 (rank collapse: it flattens to a line, then to a point, then nothing).
 
 Drawn on a fixed canvas facing right, its hem's lowest point near the
@@ -34,13 +36,14 @@ RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
 TARGET_NAME = "eigenghost"
-FRAME_SIZE = (144, 144)
+FRAME_SIZE = (144, 200)
 SUPER = 4
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 120),
     ("walk", 8, 100),
     ("attack_side", 8, 70),
     ("hurt", 3, 90),
+    ("block", 10, 90),
     ("death", 7, 110),
 ]
 
@@ -54,7 +57,7 @@ AXIS_GLOW: RGBA = (90, 255, 170, 255)
 GRID: RGBA = (120, 150, 190, 120)
 
 #: The centre of the shroud at rest, and its semi-axes (frame pixels).
-CENTRE = (66.0, 66.0)
+CENTRE = (66.0, 122.0)
 MAJOR = 24.0
 MINOR = 19.0
 #: The hem: how far below the centre it hangs, and its spectrum of ripples.
@@ -163,14 +166,17 @@ def _draw_eyes(layer: Image.Image, cx: float, cy: float, lam1: float, lam2: floa
     d = blending_draw(layer)
     for side, dx in ((-1, 0.04), (1, 0.5)):
         ex, ey = cx + lam1 * dx, cy - lam2 * 0.22
-        h = 4.6 * (1.0 - squint) + 1.0
-        inner = ex + 3.6 * (1 if side < 0 else -1)
-        hollow = [(ex - 4.0, ey - h * 0.4 - (1.6 if side > 0 else 0.0) * (1 - squint)), (ex + 4.0, ey - h * 0.4 - (1.6 if side < 0 else 0.0) * (1 - squint)),
-                  (ex + 3.4, ey + h * 0.8), (ex, ey + h), (ex - 3.4, ey + h * 0.8)]
-        d.polygon([_s(p) for p in hollow], fill=EYE)
-        _glow(layer, lambda g, ex=ex, ey=ey: g.ellipse((*_s((ex - 2.2, ey - 1.0)), *_s((ex + 2.2, ey + 2.6))), fill=_with_alpha(AXIS_GLOW, 0.8 * (1 - squint * 0.6))), 1.2)
+        inward = 1.0 if side < 0 else -1.0  # toward the other eye
+        open_ = 1.0 - squint
+        # A slanted shard: its inner corner dips, its outer corner rises (a
+        # scowl), its lower edge a curve.
+        shard = [(ex + inward * 3.6, ey + 0.6), (ex - inward * 3.8, ey - 2.4 * open_ - 0.4), (ex - inward * 2.6, ey + 1.6 * open_),
+                 (ex, ey + 2.8 * open_ + 0.3), (ex + inward * 2.2, ey + 2.0 * open_)]
+        d.polygon([_s(p) for p in shard], fill=EYE)
+        g = (ex - inward * 0.4, ey + 0.6 * open_)
+        _glow(layer, lambda gg, g=g: gg.ellipse((*_s((g[0] - 2.2, g[1] - 1.4)), *_s((g[0] + 2.2, g[1] + 1.4))), fill=_with_alpha(AXIS_GLOW, 0.9 * (1 - squint * 0.6))), 1.2)
         d = blending_draw(layer)
-        d.ellipse((*_s((ex - 1.0, ey + 0.2)), *_s((ex + 1.0, ey + 2.0))), fill=_with_alpha(AXIS_CORE, 1 - squint * 0.5))
+        d.ellipse((*_s((g[0] - 0.9, g[1] - 0.7)), *_s((g[0] + 0.9, g[1] + 0.7))), fill=_with_alpha(AXIS_CORE, 1 - squint * 0.5))
 
 
 def _draw_ghost(cx: float, cy: float, lam1: float, lam2: float, hem: float, phase: float,
@@ -252,6 +258,19 @@ def _render_frame(animation: str, frame_index: int, nframes: int) -> Image.Image
     elif animation == "hurt":
         jolt = (1.0 - u)
         args.update(lam1=MAJOR + 5.0 * jolt, lam2=MINOR - 5.0 * jolt, cx=cx - 3.0 * jolt, squint=0.9, glow=0.4, arm1=8.0, arm2=6.0)
+    elif animation == "block":
+        # It rears along its larger eigenvalue to wall off a jump: lambda-2
+        # (up) grows to well over twice, lambda-1 (across) a little, its
+        # vertical arm a tall beam; it holds, quivering, then settles.
+        if u <= 0.35:
+            k = math.sin(u / 0.35 * math.pi * 0.5)
+        elif u <= 0.7:
+            k = 1.0
+        else:
+            k = 1.0 - (u - 0.7) / 0.3
+        quiver = 0.8 * math.sin(frame_index * 2.9) * (1.0 if 0.35 < u <= 0.7 else 0.0)
+        args.update(lam2=MINOR * (1.0 + 1.4 * k) + quiver, lam1=MAJOR * (1.0 + 0.15 * k), arm2=9.0 + 26.0 * k, arm1=12.0 - 4.0 * k,
+                    glow=0.7 + 0.3 * k, squint=0.15, cy=cy)
     elif animation == "death":
         # Rank collapse: lambda-2 goes to zero (a line), then lambda-1 (a point).
         k2 = min(1.0, u / 0.5)
