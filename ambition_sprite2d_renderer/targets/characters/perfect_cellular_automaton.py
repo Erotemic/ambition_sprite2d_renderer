@@ -26,7 +26,7 @@ from ...authoring.portrait import (
     write_portrait_sheet,
 )
 from ._svg_fighter_effects import compose_rig_frame
-from .pca_combat_authoring import author_pca_combat_clips
+from .pca_combat_authoring import REACTION_PLANTED, author_pca_combat_clips
 from .pca_effects import EFFECTFUL_ANIMATIONS, draw_pca_behind, draw_pca_front
 from .pca_gameplay import (
     ATTACK_HITBOXES,
@@ -83,7 +83,8 @@ def _load_doc_cached(path_text: str, mtime_ns: int, size: int) -> RigDocument:
         )
     # Her walk keeps a foot on the ground she stands on, and her run's lowest
     # stride touches it (`RigDocument.plant_offsets`): the run rode 4 px over.
-    doc.frame["plant"] = {"walk": "each", "run": "row"}
+    # The grounded reaction rows (`REACTION_PLANTED`) are put on that ground too.
+    doc.frame["plant"] = {"walk": "each", "run": "row", **{row: "each" for row in REACTION_PLANTED}}
     return doc
 
 

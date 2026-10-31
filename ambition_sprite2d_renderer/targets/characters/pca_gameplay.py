@@ -193,7 +193,7 @@ _AIR = {
     "fly", "hover", "float_glide", "wall_jump", "ledge_jump",
 }
 _PRONE = {
-    "knockdown", "prone", "prone_damage", "getup_attack", "getup_roll",
+    "knockdown", "prone", "prone_face_up", "prone_face_down", "prone_damage", "getup_attack", "getup_roll",
     "trip_fall", "trip_idle", "trip_attack", "trip_roll", "sleep", "death",
     "shield_break_fall", "shield_break_collapse",
 }

@@ -366,6 +366,11 @@ def _mast(canvas: FxCanvas, world, extend: float) -> None:
 # --- the frame ---------------------------------------------------------------------------
 
 
+#: The speed streaks' turn for a directional launch, so they trail the
+#: flight: below a body thrown up, above one spiked down.
+_LAUNCH_STREAKS = {"launch_up": -100.0, "launch_down": 80.0}
+
+
 def _behind(animation: str, frame_count: int):
     def draw(canvas: FxCanvas, t: float, world, params) -> None:
         doc = _doc()
@@ -386,7 +391,7 @@ def _behind(animation: str, frame_count: int):
         for key, deg in (("fx.launch", 160.0), ("fx.meteor", -100.0)):
             v = params.get(key, 0.0)
             if v > 0.02:
-                _place(canvas, "speed", _body_centre(world), v, deg)
+                _place(canvas, "speed", _body_centre(world), v, _LAUNCH_STREAKS.get(animation, deg))
         mast = params.get("fx.mast", 0.0)
         if mast > 0.02:
             _mast(canvas, world, mast)

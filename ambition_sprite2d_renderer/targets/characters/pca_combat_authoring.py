@@ -8,6 +8,7 @@ all unrelated GUI-authored clips.
 
 from __future__ import annotations
 
+import math
 from copy import deepcopy
 from typing import Mapping, MutableMapping, Sequence
 
@@ -296,6 +297,320 @@ def _smash_charge() -> dict:
     return channels
 
 
+# --- Reactions ---------------------------------------------------------------
+#
+# The Smash reaction vocabulary (docs/planning/demos/smash-expressive-fighter-poses.md)
+# on PCA's own rig and manner: struck, PCA's eyes go wide (an affront to
+# perfection) and its claws splay; bracing or recovering, it is fierce again.
+# The art is drawn three-quarter front, so a fall forward lays the head
+# toward +x and a fall back toward -x.
+#
+# A reaction pose adds `tilt`, the whole body turned about the pelvis
+# (forward positive), to the fight pose's fields; the arms stay in world
+# angles. A foot is ("g", x, lift, pitch) planted in the world, as the leg IK
+# takes it, or ("b", dx, dy, pitch) carried with the body: an offset from its
+# rest ankle in the pelvis frame (a body in the air or on the floor). A
+# recoil ENDS on its settled pose: the game holds the last frame for the
+# hitstun. Rows in `REACTION_PLANTED` are put on the floor by the target.
+
+_GROUND_Y, _ANKLE_H, _PELVIS_UP = 176.0, 15.295, 67.998
+_HIP_X = {"near": -7.417, "far": 7.417}
+# Hip-to-ankle at rest in the pelvis frame, and the feet's rest pitch.
+_ANKLE_REST = {"near": (-5.62, 52.338), "far": (0.184, 53.076)}
+_PITCH_REST = {"near": 50.96, "far": 27.34}
+
+
+def _rot(x: float, y: float, degrees: float) -> tuple:
+    a = math.radians(degrees)
+    return x * math.cos(a) - y * math.sin(a), x * math.sin(a) + y * math.cos(a)
+
+
+def _foot(side: str, foot: Sequence, tilt: float, root_x: float, root_y: float) -> dict:
+    kind, a, b, pitch = foot
+    if kind == "g":
+        x, lift, world_pitch = a, b, pitch
+    else:
+        hx, hy = _rot(_HIP_X[side], 0.0, tilt)
+        rx, ry = _ANKLE_REST[side]
+        ox, oy = _rot(rx + a, ry + b, tilt)
+        x = root_x + hx + ox
+        lift = -(root_y - _PELVIS_UP + hy + oy) - _ANKLE_H
+        world_pitch = _PITCH_REST[side] + tilt + pitch
+    return {f"{side}_foot_x": x, f"{side}_foot_lift": lift, f"{side}_foot_pitch": world_pitch}
+
+
+def _react(
+    tilt: float = 0.0,
+    torso: float = 0.0,
+    head: float = 0.0,
+    far: Sequence[float] | None = None,
+    near: Sequence[float] | None = None,
+    root_x: float = 0.0,
+    root_y: float = 0.0,
+    feet: Mapping[str, Sequence] | None = None,
+    eyes: str = "wide",
+    near_hand: str = "open",
+    far_hand: str = "open",
+) -> dict:
+    """One whole-body reaction pose (see the section comment)."""
+    lean = tilt + torso
+    rest = {side: tuple(lean + sum(_ARM_REST[side][:k + 1]) for k in range(3)) for side in _ARM_REST}
+    pose = _pose(torso=torso, far=far or rest["far"], near=near or rest["near"], root_x=root_x, root_y=root_y,
+                 head=head, near_hand=near_hand, far_hand=far_hand, eyes=eyes)
+    pose.update(_arm("far", lean, *(far or rest["far"])))
+    pose.update(_arm("near", lean, *(near or rest["near"])))
+    pose["pelvis"] = tilt
+    carried = tilt != 0.0
+    stance = {"near": ("g", _LEGS["near_foot_x"], 0.0, _LEGS["near_foot_pitch"]),
+              "far": ("g", _LEGS["far_foot_x"], 0.0, _LEGS["far_foot_pitch"])}
+    for side in ("near", "far"):
+        foot = (feet or {}).get(side) or (("b", 0.0, 0.0, 0.0) if carried else stance[side])
+        pose.update(_foot(side, foot, tilt, root_x, root_y))
+    return pose
+
+
+_EASE = {
+    "smooth": lambda u: u * u * (3.0 - 2.0 * u),
+    "out": lambda u: 1.0 - (1.0 - u) ** 3,
+    "linear": lambda u: u,
+}
+
+
+def _sample(keys: Sequence[tuple], t: float) -> dict:
+    """The pose at `t` between timed keys `(at, pose[, ease into it])`."""
+    if t <= keys[0][0]:
+        return dict(keys[0][1])
+    for a, b in zip(keys, keys[1:]):
+        if t <= b[0]:
+            u = _EASE[b[2] if len(b) > 2 else "smooth"]((t - a[0]) / max(1e-9, b[0] - a[0]))
+            # A part swap cuts at the half way; every other channel blends.
+            return {k: (a[1][k] if u < 0.5 else b[1][k]) if "." in k else a[1][k] + (b[1][k] - a[1][k]) * u
+                    for k in a[1]}
+    return dict(keys[-1][1])
+
+
+def _reaction_clip(keys: Sequence[tuple], frames: int, duration_ms: int, loop: bool = False) -> dict:
+    """A clip with one pose per published frame (loops sample i/n and close
+    back on frame 0)."""
+    times = [i / frames for i in range(frames)] if loop else [i / max(1, frames - 1) for i in range(frames)]
+    poses = [_sample(keys, t) for t in times]
+    if loop:
+        poses.append(poses[0])
+    channels = _pose_channels(poses, ["smooth"] * len(poses))
+    if loop:
+        # `_pose_channels` keys pose i at i/(len-1); a loop's frame i is at i/n.
+        for spec in channels.values():
+            for i, key in enumerate(spec.get("keys", [])):
+                key[0] = round(i / frames, 4)
+    return {"loop": loop, "frames": frames, "duration_ms": duration_ms, "channels": channels}
+
+
+def _breath(t: float) -> float:
+    return math.sin(math.tau * t)
+
+
+_STAND = _react(eyes="fierce")
+
+
+def _recoil(peak: dict, settle: dict, *, start: dict = _STAND) -> list:
+    """The blow lands on the first frame after rest; the body settles and holds."""
+    return [(0.0, start), (0.25, peak, "out"), (0.75, settle), (1.0, settle)]
+
+
+def _reaction_moves() -> dict:
+    """`{row: (keys, frames, duration_ms, loop)}` for every reaction row."""
+    air = _react(root_y=-16.0, torso=4.0, eyes="fierce",
+                 feet={"near": ("b", 4.0, -14.0, 20.0), "far": ("b", 6.0, -10.0, 20.0)})
+    hit_high = _react(torso=-20.0, head=-24.0, root_x=-8.0, root_y=12.0, far=(-120.0, -150.0, -165.0),
+                      near=(150.0, 165.0, 175.0), far_hand="claw",
+                      feet={"near": ("g", -28.0, 0.0, 50.0), "far": ("g", 16.0, 6.0, 0.0)})
+    hit_mid = _react(torso=40.0, head=16.0, root_x=-10.0, root_y=24.0, far=(100.0, 80.0, 70.0),
+                     near=(70.0, 170.0, 190.0), feet={"near": ("g", -30.0, 0.0, 60.0), "far": ("g", 16.0, 0.0, 27.0)})
+    hit_low = _react(tilt=0.0, torso=26.0, head=-12.0, root_x=-2.0, root_y=14.0, far=(-40.0, -60.0, -70.0),
+                     near=(170.0, 185.0, 195.0), far_hand="claw",
+                     feet={"near": ("g", -16.0, 0.0, 50.0), "far": ("g", -2.0, 30.0, -40.0)})
+    hit_air = _react(tilt=-24.0, torso=34.0, head=12.0, root_y=-12.0, far=(60.0, 150.0, 170.0),
+                     near=(70.0, 160.0, 180.0), feet={"near": ("b", 16.0, -28.0, 20.0), "far": ("b", 20.0, -24.0, 20.0)})
+    launch_up = _react(tilt=-12.0, torso=-16.0, head=-34.0, root_y=-20.0, far=(70.0, 80.0, 85.0),
+                       near=(130.0, 120.0, 115.0), far_hand="claw", near_hand="claw",
+                       feet={"near": ("b", -16.0, 2.0, 40.0), "far": ("b", 12.0, -8.0, 40.0)})
+    launch_horizontal = _react(tilt=-72.0, torso=36.0, head=6.0, root_y=-8.0, far=(-20.0, -10.0, -5.0),
+                               near=(-30.0, -20.0, -10.0), far_hand="claw", near_hand="claw",
+                               feet={"near": ("b", 22.0, -12.0, -20.0), "far": ("b", 26.0, -8.0, -20.0)})
+    launch_down = _react(tilt=118.0, torso=4.0, head=12.0, root_y=-24.0, far=(-100.0, -95.0, -90.0),
+                         near=(-115.0, -110.0, -105.0), far_hand="claw", near_hand="claw",
+                         feet={"near": ("b", -6.0, -4.0, 10.0), "far": ("b", 6.0, -10.0, 10.0)})
+
+    def flight(pose: dict) -> list:
+        return [(0.0, air), (0.17, pose, "out"), (1.0, pose)]
+
+    def prone_up(t: float) -> dict:
+        return _react(tilt=-90.0, torso=2.0 * _breath(t), head=-6.0 + 2.0 * _breath(t), root_y=40.0,
+                      far=(-20.0, 60.0, 90.0), near=(180.0, 182.0, 184.0), eyes="open",
+                      feet={"near": ("b", 0.0, 0.0, 0.0), "far": ("b", 10.0, -26.0, -20.0)})
+
+    def prone_down(t: float) -> dict:
+        # On its belly, too proud to stay down: propped on the near forearm,
+        # the chest up and glaring ahead, the far claw reaching on along the floor.
+        return _react(tilt=90.0, torso=-24.0 + 1.5 * _breath(t), head=-36.0 + 2.0 * _breath(t), root_y=40.0,
+                      far=(8.0, 4.0, 0.0), near=(96.0, 4.0, 0.0), near_hand="palm", far_hand="claw",
+                      eyes="fierce", feet={"near": ("b", 0.0, 0.0, 0.0), "far": ("b", -4.0, -2.0, 0.0)})
+
+    def teeter(t: float) -> dict:
+        c = math.cos(math.tau * t)
+        return _react(torso=22.0 + 5.0 * _breath(t), head=8.0 + 3.0 * _breath(t), root_x=-3.0, root_y=6.0,
+                      far=(-100.0 + 70.0 * c, -120.0 + 70.0 * c, -130.0 + 70.0 * c),
+                      near=(-100.0 - 70.0 * c, -120.0 - 70.0 * c, -130.0 - 70.0 * c),
+                      feet={"near": ("g", -18.0, 0.0, 50.0), "far": ("g", 16.0, 4.0, -10.0)})
+
+    def looped(fn, frames: int) -> list:
+        return [(i / frames, fn(i / frames), "linear") for i in range(frames + 1)]
+
+    return {
+        "hit_high": (_recoil(hit_high, _react(**{**_HIT_HIGH_SETTLE})), 5, 48, False),
+        "hit_mid": (_recoil(hit_mid, _react(**{**_HIT_MID_SETTLE})), 5, 48, False),
+        "hit_low": (_recoil(hit_low, _react(**{**_HIT_LOW_SETTLE})), 5, 48, False),
+        "hit_air": (_recoil(hit_air, _react(**{**_HIT_AIR_SETTLE}), start=air), 5, 48, False),
+        "launch_up": (flight(launch_up), 7, 64, False),
+        "launch_horizontal": (flight(launch_horizontal), 7, 64, False),
+        "launch_down": (flight(launch_down), 7, 64, False),
+        "prone_face_up": (looped(prone_up, 8), 8, 104, True),
+        "prone_face_down": (looped(prone_down, 8), 8, 104, True),
+        "teeter": (looped(teeter, 8), 8, 92, True),
+        # Out of the run: the lead foot planted far ahead on its heel, the hips
+        # dropped behind it, the trunk thrown back against the momentum and
+        # the arms flung on forward.
+        "run_stop": ([
+            (0.0, _react(torso=14.0, head=-4.0, root_x=4.0, root_y=6.0, far=(120.0, 100.0, 90.0),
+                         near=(-20.0, -60.0, -70.0), eyes="fierce",
+                         feet={"near": ("g", -24.0, 8.0, 80.0), "far": ("g", 22.0, 0.0, 27.0)})),
+            (0.2, _brake, "out"),
+            (0.6, _react(**{**_BRAKE, "torso": -14.0, "root_y": 18.0})),
+            (0.85, _react(torso=0.0, head=-6.0, root_y=12.0, eyes="fierce",
+                          feet={"near": ("g", -26.0, 0.0, 50.0), "far": ("g", 26.0, 0.0, 27.0)})),
+            (1.0, _STAND),
+        ], 6, 56, False),
+        **_fallback_reactions(air, looped),
+    }
+
+
+def _spun(tilt: float, *angles: float) -> tuple:
+    """Arm angles held in the body's frame: world angles turned by `tilt`."""
+    return tuple(tilt + a for a in angles)
+
+
+def _fallback_reactions(air: dict, looped) -> dict:
+    """The generic rows the game falls back to, which PCA had seeded from
+    unrelated rows: `launch` and `meteor` were one pose (its fall), `prone`
+    played the death fall over and over, `tumble` and `getup_roll` were its
+    standing roll, `getup` and `tech` the landing crouch, `teeter` and
+    `turnaround` its idle."""
+    launch = _react(**_LAUNCH)
+    meteor = _react(tilt=56.0, torso=30.0, head=16.0, root_y=-20.0, far=(-120.0, -115.0, -110.0),
+                    near=(-140.0, -135.0, -130.0), far_hand="claw", near_hand="claw",
+                    feet={"near": ("b", -22.0, -8.0, 30.0), "far": ("b", -16.0, -16.0, 30.0)})
+
+    def lying(t: float = 0.0, **over) -> dict:
+        """Flat on the back, head toward -x, arms down along the body."""
+        fields = dict(tilt=-90.0, torso=1.5 * _breath(t), head=-4.0 + 1.5 * _breath(t), root_y=40.0,
+                      far=_spun(-90.0, 80.0, 85.0, 90.0), near=_spun(-90.0, 100.0, 95.0, 90.0), eyes="open")
+        fields.update(over)
+        return _react(**fields)
+
+    def tumble(t: float) -> dict:
+        turn = -360.0 * t
+        return _react(tilt=turn, torso=-10.0, head=-16.0, root_y=-30.0, far=_spun(turn, -60.0, -80.0, -90.0),
+                      near=_spun(turn, 150.0, 170.0, 180.0), far_hand="claw", near_hand="claw",
+                      feet={"near": ("b", -14.0, -6.0, 30.0), "far": ("b", 18.0, -22.0, 10.0)})
+
+    sit = _react(tilt=-40.0, torso=30.0, head=-6.0, root_y=46.0, far=(60.0, 80.0, 90.0), near=(140.0, 100.0, 90.0),
+                 near_hand="palm", eyes="fierce",
+                 feet={"near": ("g", 30.0, 0.0, 0.0), "far": ("g", 26.0, 0.0, 10.0)})
+    kneel = _react(torso=30.0, head=-14.0, root_x=-4.0, root_y=40.0, far=(80.0, 60.0, 40.0),
+                   near=(100.0, 80.0, 70.0), eyes="fierce",
+                   feet={"near": ("g", -22.0, 0.0, 80.0), "far": ("g", 18.0, 0.0, 27.0)})
+    brace = _react(torso=40.0, head=-20.0, root_y=46.0, far=(-150.0, -160.0, -170.0), near=(96.0, 92.0, 90.0),
+                   near_hand="palm", far_hand="claw", eyes="fierce",
+                   feet={"near": ("g", -30.0, 0.0, 70.0), "far": ("g", 26.0, 0.0, 27.0)})
+    return {
+        "launch": ([(0.0, air), (0.17, launch, "out"), (1.0, _react(**{**_LAUNCH, "tilt": -46.0}))], 7, 64, False),
+        "meteor": ([(0.0, air), (0.17, meteor, "out"), (1.0, meteor)], 7, 64, False),
+        "prone": (looped(lying, 8), 8, 104, True),
+        "tumble": (looped(tumble, 8), 8, 70, True),
+        # Up off the back: sit up on a palm, gather onto a knee, stand.
+        "getup": ([(0.0, lying()), (0.3, sit), (0.6, kneel), (0.85, _react(**{**_KNEEL_RISE})), (1.0, _STAND)],
+                  8, 70, False),
+        # Back over the shoulders, onto the feet, a claw sweep at the floor
+        # before rising.
+        "getup_roll": ([
+            (0.0, lying()),
+            (0.33, lying(tilt=-170.0, torso=30.0, root_y=24.0, feet={"near": ("b", 0.0, -30.0, 0.0),
+                                                                     "far": ("b", 4.0, -26.0, 0.0)})),
+            (0.67, kneel), (1.0, _STAND)], 7, 52, False),
+        "getup_attack": ([
+            (0.0, lying()), (0.17, sit),
+            (0.5, _react(tilt=-30.0, torso=24.0, head=-10.0, root_y=40.0, far=(10.0, 4.0, 0.0),
+                         near=(150.0, 110.0, 90.0), near_hand="palm", far_hand="claw", eyes="fierce",
+                         feet={"near": ("g", 30.0, 0.0, 0.0), "far": ("g", 64.0, 10.0, -20.0)}), "out"),
+            (0.75, kneel), (1.0, _STAND)], 7, 52, False),
+        # A floor tech: caught low and wide on a palm slapped to the floor,
+        # the far claw thrown back, then braced up into the stance.
+        "tech": ([(0.0, _react(**{**_TECH_LAND})), (0.3, brace, "out"), (0.65, kneel), (1.0, _STAND)], 6, 52, False),
+        # A pivot onto the new side (the row is drawn in the new facing): it
+        # starts wound the old way, arms trailing back, and steps round into
+        # the stance.
+        "turnaround": ([
+            (0.0, _react(torso=-12.0, head=-8.0, root_x=-6.0, root_y=10.0, far=(150.0, 160.0, 165.0),
+                         near=(170.0, 175.0, 180.0), eyes="fierce",
+                         feet={"near": ("g", -10.0, 0.0, 50.0), "far": ("g", -2.0, 8.0, 60.0)})),
+            (0.4, _react(torso=10.0, head=-6.0, root_x=2.0, root_y=16.0, far=(60.0, 40.0, 30.0),
+                         near=(110.0, 90.0, 80.0), eyes="fierce",
+                         feet={"near": ("g", -20.0, 0.0, 50.0), "far": ("g", 24.0, 6.0, 20.0)})),
+            (1.0, _STAND)], 6, 72, False),
+    }
+
+
+_LAUNCH = dict(tilt=-40.0, torso=-12.0, head=-20.0, root_y=-14.0, far=(40.0, 30.0, 20.0), near=(70.0, 60.0, 50.0),
+               far_hand="claw", near_hand="claw",
+               feet={"near": ("b", 10.0, -6.0, 20.0), "far": ("b", 16.0, -14.0, 20.0)})
+_KNEEL_RISE = dict(torso=14.0, head=-8.0, root_y=20.0, far=_GUARD_FAR, near=_GUARD_NEAR, eyes="fierce",
+                   feet={"near": ("g", -24.0, 0.0, 60.0), "far": ("g", 18.0, 0.0, 27.0)})
+_TECH_LAND = dict(torso=10.0, head=-10.0, root_y=24.0, far=(-60.0, -70.0, -80.0), near=(40.0, 30.0, 20.0),
+                  eyes="wide", feet={"near": ("g", -26.0, 4.0, 60.0), "far": ("g", 22.0, 2.0, 27.0)})
+
+
+_HIT_HIGH_SETTLE = dict(torso=-14.0, head=-16.0, root_x=-6.0, root_y=11.0, far=(-100.0, -130.0, -150.0),
+                        near=(140.0, 155.0, 165.0), far_hand="claw",
+                        feet={"near": ("g", -28.0, 0.0, 50.0), "far": ("g", 16.0, 4.0, 10.0)})
+_HIT_MID_SETTLE = dict(torso=32.0, head=10.0, root_x=-8.0, root_y=20.0, far=(95.0, 70.0, 60.0),
+                       near=(75.0, 165.0, 185.0), feet={"near": ("g", -30.0, 0.0, 60.0), "far": ("g", 16.0, 0.0, 27.0)})
+_HIT_LOW_SETTLE = dict(torso=20.0, head=-8.0, root_x=-2.0, root_y=12.0, far=(-20.0, -40.0, -50.0),
+                       near=(160.0, 175.0, 185.0), far_hand="claw",
+                       feet={"near": ("g", -16.0, 0.0, 50.0), "far": ("g", 0.0, 20.0, -30.0)})
+_HIT_AIR_SETTLE = dict(tilt=-16.0, torso=22.0, head=4.0, root_y=-12.0, far=(-40.0, -70.0, -80.0),
+                       near=(160.0, 175.0, 185.0), far_hand="claw",
+                       feet={"near": ("b", 10.0, -20.0, 20.0), "far": ("b", 14.0, -16.0, 20.0)})
+
+_BRAKE = dict(torso=-22.0, head=-12.0, root_x=-8.0, root_y=22.0, far=(-20.0, -10.0, 0.0), near=(-40.0, -30.0, -20.0),
+              far_hand="claw", near_hand="claw", eyes="fierce",
+              feet={"near": ("g", -34.0, 4.0, 70.0), "far": ("g", 40.0, 0.0, -14.0)})
+_brake = _react(**_BRAKE)
+
+#: The grounded reaction rows, which the target puts on the floor: every
+#: frame's lowest paint on the ground line. A body lying down has no foot to
+#: plant, and a heel or toe turned up lifts the IK-planted foot off it.
+REACTION_PLANTED = (
+    "hit_high", "hit_mid", "hit_low", "prone_face_up", "prone_face_down", "teeter", "run_stop",
+    "prone", "getup", "getup_roll", "getup_attack", "tech", "turnaround",
+)
+
+
+def author_pca_reactions(clips: MutableMapping[str, object]) -> None:
+    """Write every reaction row's clip, replacing what was there."""
+    for name, (keys, frames, duration_ms, loop) in _reaction_moves().items():
+        clips[name] = _reaction_clip(keys, frames, duration_ms, loop)
+
+
 @profile
 def author_pca_combat_clips(data: MutableMapping[str, object]) -> MutableMapping[str, object]:
     """Make the alias-heavy Smash rows genuinely PCA-specific.
@@ -412,7 +727,8 @@ def author_pca_combat_clips(data: MutableMapping[str, object]) -> MutableMapping
             },
         )
 
+    author_pca_reactions(clips)
     return data
 
 
-__all__ = ["author_pca_combat_clips"]
+__all__ = ["REACTION_PLANTED", "author_pca_combat_clips", "author_pca_reactions"]

@@ -271,6 +271,24 @@ def prone(t: float) -> Semantic:
     return {**ON_BACK, "y": 112.0 - 1.5 * math.sin(w), "head": -84.0 + 2.0 * math.sin(w)}
 
 
+def prone_face_up(t: float) -> Semantic:
+    """Flat on his back, dazed: one knee up, the wrench arm thrown out along
+    the floor past his head, the far hand on his chest, breathing hard."""
+    w = W * t
+    return {**ON_BACK, "y": 102.0 + 2.0 * min(0.0, math.sin(w)), "lean": 2.0 * math.sin(w), "head": -80.0 + 2.0 * math.sin(w),
+            "nu": 176.0, "ne": 14.0, "nw": 186.0, "fu": -40.0, "fe": 120.0, "fw": 20.0, "fz": REACH,
+            "nf": b(0.0, -64.0, 0.0), "ff": b(4.0, -4.0, 0.0), "eye": "dizzy", "mouth": "open"}
+
+
+def prone_face_down(t: float) -> Semantic:
+    """Face down on the floor: the wrench arm reaching on along it ahead of
+    him, the far arm folded under his chest, a heel up behind."""
+    w = W * t
+    return {**ON_FRONT, "y": 96.0 - 3.0 * math.sin(w), "lean": 1.5 * math.sin(w), "head": 82.0,
+            "nu": 4.0, "ne": 6.0, "nw": 2.0, "fu": 100.0, "fe": 110.0, "fw": 20.0,
+            "nf": b(0.0, 0.0, 0.0), "ff": b(-34.0, -40.0, 0.0), "eye": "shut", "mouth": "open"}
+
+
 def dizzy(t: float) -> Semantic:
     w = W * t
     return S(y=14.0 + 3.0 * math.sin(2 * w), x=6.0 * math.sin(w), lean=4.0 + 10.0 * math.sin(w),
@@ -818,6 +836,89 @@ DAMAGE = {
     ]),
 }
 
+# --- reactions -------------------------------------------------------------------------
+#
+# The Smash reaction vocabulary (docs/planning/demos/smash-expressive-fighter-poses.md):
+# where a hit lands, which way he is launched, which way he lies, and the run
+# brake. A blow comes from the front, so he goes back. A recoil ENDS on its
+# settled pose: the game holds a clip's last frame for the hitstun.
+
+#: Struck in the face: the head snapped back, the chest arched after it, the
+#: far hand up at his face and the wrench flung up behind, the weight rocked
+#: onto the back foot with the front toe up.
+HIT_HIGH = S(x=-12.0, y=18.0, lean=-30.0, head=-48.0, nu=-136.0, ne=34.0, nw=-176.0, fu=-38.0, fe=150.0, fw=-150.0,
+             fhand="open", fz=REACH, nf=g(40.0, 10.0, -26.0), ff=g(-46.0), eye="shut", mouth="open")
+#: Struck in the gut: doubled over the blow, the hips shoved back, the knees
+#: giving, the far forearm clutched across the belly and the wrench hanging.
+HIT_MID = S(x=-18.0, y=40.0, lean=54.0, head=46.0, nu=84.0, ne=60.0, nw=20.0, fu=60.0, fe=130.0, fw=-130.0,
+            fz=REACH, nf=g(28.0), ff=g(-50.0), eye="shut", mouth="grit")
+#: Struck at the legs: the front boot knocked back off the floor, the body
+#: pitched forward over the planted one, both arms thrown up and out.
+HIT_LOW = S(x=-6.0, y=24.0, lean=40.0, head=-16.0, nu=-40.0, ne=20.0, nw=-60.0, fu=-110.0, fe=20.0, fw=-120.0,
+            fhand="open", nf=g(-74.0, 44.0, -80.0), ff=g(-4.0), eye="shut", mouth="open")
+#: Struck in the air: curled round the blow, knees to the chest, the chin
+#: tucked; then it opens part way, the arms flung back.
+HIT_AIR = S(y=-6.0, spin=-28.0, lean=40.0, head=24.0, nu=150.0, ne=40.0, nw=200.0, fu=170.0, fe=50.0, fw=200.0,
+            fhand="open", nf=b(40.0, -96.0, -20.0), ff=b(30.0, -80.0, 0.0), eye="shut", mouth="open")
+#: Launched upward: the back bowed, the head thrown back, the arms and legs
+#: hanging long below, trailing the rise.
+LAUNCH_UP = S(y=-10.0, spin=6.0, lean=-28.0, head=-66.0, nu=116.0, ne=10.0, nw=140.0, fu=100.0, fe=20.0, fw=110.0,
+              fhand="open", nf=b(-20.0, 0.0, 60.0), ff=b(-40.0, -6.0, 70.0), eye="shut", mouth="open")
+#: Launched back: the seat leads, the body folded into a V round it, the
+#: arms and legs flung forward toward the blow.
+LAUNCH_HORIZONTAL = S(y=-10.0, spin=-96.0, lean=46.0, head=-30.0, nu=-30.0, ne=10.0, nw=-40.0, fu=-14.0, fe=20.0,
+                      fw=-20.0, fhand="open", nf=b(30.0, -24.0, -30.0), ff=b(20.0, -14.0, -20.0), eye="shut",
+                      mouth="open", spin_about=40.0)
+#: Spiked: pitched head first at the floor, the arms and legs trailing up
+#: behind him.
+LAUNCH_DOWN = S(y=-10.0, spin=112.0, lean=-10.0, head=110.0, nu=-110.0, ne=20.0, nw=-90.0, fu=-80.0, fe=30.0,
+                fw=-60.0, fhand="open", nf=b(-14.0, -10.0, 20.0), ff=b(8.0, -26.0, 10.0), eye="shut", mouth="open",
+                spin_about=80.0)
+
+
+def recoil(peak: Semantic, settle: Semantic, base: Semantic = STANCE):
+    """The blow lands on frame 1 (fast, ``out``) and settles to a held pose."""
+    return clip([
+        (0.0, {**base, "fx.hit": 1.0}),
+        (0.25, {**peak, "fx.hit": 1.0, "ease": "out"}),
+        (0.75, {**settle, "fx.hit": 0.0}),
+        (1.0, settle),
+    ], base=base)
+
+
+def flight(pose: Semantic, fx: str):
+    """A launch: the blow folds him on frame 1, then the flight shape holds."""
+    return clip([
+        (0.0, {**AIR, "fx.hit": 1.0}),
+        (0.17, {**pose, "fx.hit": 0.5, fx: 1.0, "ease": "out"}),
+        (1.0, {**pose, "fx.hit": 0.0, fx: 0.6}),
+    ], base=AIR)
+
+
+REACTIONS = {
+    "hit_high": recoil(HIT_HIGH, {**HIT_HIGH, "x": -10.0, "lean": -22.0, "head": -36.0, "nu": -120.0, "nw": -160.0}),
+    "hit_mid": recoil(HIT_MID, {**HIT_MID, "x": -14.0, "y": 36.0, "lean": 42.0, "head": 30.0}),
+    "hit_low": recoil(HIT_LOW, {**HIT_LOW, "lean": 34.0, "nf": g(-62.0, 32.0, -70.0), "nu": -50.0, "fu": -120.0}),
+    "hit_air": recoil(HIT_AIR, {**HIT_AIR, "spin": -20.0, "lean": 24.0, "head": 10.0, "nu": 170.0, "fu": -160.0,
+                                "nf": b(30.0, -70.0, -10.0), "ff": b(20.0, -50.0, 10.0)}, base=AIR),
+    "launch_up": flight(LAUNCH_UP, "fx.launch"),
+    "launch_horizontal": flight(LAUNCH_HORIZONTAL, "fx.launch"),
+    "launch_down": flight(LAUNCH_DOWN, "fx.meteor"),
+    # A hard stop out of the run: the front boot planted far ahead on its heel,
+    # the hips dropped low behind it, the trunk thrown back against the
+    # momentum and the wrench swung on forward with it; dust off the heel.
+    "run_stop": clip([
+        (0.0, {**run(0.25)}),
+        (0.2, {"x": -8, "y": 46, "lean": -26, "head": -14, "nu": 20, "ne": 40, "nw": -30, "fu": -20, "fe": 40,
+               "fw": -40, "fhand": "open", "nf": g(74, 0, -34), "ff": g(-46, 10, 30), "mouth": "grit",
+               "fx.dust": 1.0, "fx.dust_trail": 0.6, "ease": "out"}),
+        (0.6, {"x": -4, "y": 40, "lean": -18, "head": -8, "nu": 30, "nw": -20, "nf": g(70, 0, -28),
+               "ff": g(-44, 6, 20), "fx.dust": 0.5, "fx.dust_trail": 0.0}),
+        (0.8, {"x": 0, "y": 24, "lean": 0, "head": -4, "nf": g(48), "ff": g(-42), "fhand": "fist", "fx.dust": 0.0}),
+        (1.0, HOME),
+    ]),
+}
+
 
 # --- attacks ---------------------------------------------------------------------------
 
@@ -1358,7 +1459,7 @@ LOOPS = {
     "idle": idle, "idle_side": idle_side, "idle_look_up": idle_look_up,
     "walk": walk, "dash": dash, "run": run, "crouch": crouch, "crouch_walk": crouch_walk,
     "fall": fall, "fall_special": fall_special, "tumble": tumble, "teeter": teeter, "block": block,
-    "prone": prone, "dizzy": dizzy, "sleep": sleep, "buried": buried, "grab_hold": grab_hold, "grabbed": grabbed,
+    "prone": prone, "prone_face_up": prone_face_up, "prone_face_down": prone_face_down, "dizzy": dizzy, "sleep": sleep, "buried": buried, "grab_hold": grab_hold, "grabbed": grabbed,
     "wall_grab": wall_grab, "wall_slide": wall_slide, "ledge_grab": ledge_hang, "climb": climb, "swim": swim,
     "hover": hover, "float_glide": float_glide, "item_hold": item_hold, "item_hold_crouch": item_hold_crouch,
     "item_heavy_carry": item_heavy_carry, "aim": aim, "charge": charge, "victory_hold": victory_hold, "loss": loss,
@@ -1366,7 +1467,7 @@ LOOPS = {
 }
 
 CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {name: loop(fn) for name, fn in LOOPS.items()}
-for group in (LOCOMOTION, DEFENSE, DAMAGE, ATTACKS, SPECIALS, GRABS, LEDGE, ITEMS, GADGETS, SHOW):
+for group in (LOCOMOTION, DEFENSE, DAMAGE, REACTIONS, ATTACKS, SPECIALS, GRABS, LEDGE, ITEMS, GADGETS, SHOW):
     for name, fn in group.items():
         assert name not in CLIPS, name
         CLIPS[name] = fn
