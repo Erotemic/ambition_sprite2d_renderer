@@ -32,6 +32,7 @@ from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
+from ._george_booul_fighter import FIGHTER_MOTION_COVERAGE, ROWS_SPEC, SMASH_CHARGE_MS, SMASH_CHARGES, fighter_rows
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -77,6 +78,16 @@ ROWS: List[Tuple[str, int, int]] = [
     ("special_up", 12, 96),
     ("special_down", 12, 72),
     ("special_air_down", 12, 50),
+    # His grab, pummel and throws, keyed to their moves like the attacks.
+    ("grab", 10, 52),
+    ("pummel", 6, 40),
+    ("throw_forward", 8, 43),
+    ("throw_back", 6, 25),
+    ("throw_up", 8, 35),
+    ("throw_down", 8, 53),
+    # The fighter body language (`_george_booul_fighter`): movement,
+    # reactions, defence, ledge, held and stage rows.
+    *fighter_rows(),
 ]
 
 SHEET_FILES = [
@@ -185,6 +196,18 @@ ACTOR_METADATA = {
         "action.special": {"animation": "not_fade", "events": []},
         "damage.hit": {"animation": "hit", "events": []},
         "lifecycle.death": {"animation": "death", "events": []},
+        "locomotion.run": {"animation": "run", "events": []},
+        "locomotion.jump": {"animation": "jump", "events": []},
+        "locomotion.fall": {"animation": "fall", "events": []},
+        "locomotion.crouch": {"animation": "crouch", "events": []},
+        "action.defense.block": {"animation": "block", "events": []},
+        "action.defense.roll": {"animation": "roll", "events": []},
+        "action.capture.grab": {"animation": "grab", "events": []},
+        "action.capture.pummel": {"animation": "pummel", "events": []},
+        "action.capture.throw_forward": {"animation": "throw_forward", "events": []},
+        "action.capture.throw_back": {"animation": "throw_back", "events": []},
+        "action.capture.throw_up": {"animation": "throw_up", "events": []},
+        "action.capture.throw_down": {"animation": "throw_down", "events": []},
     },
     "sockets": {
         "head": {"source": "george_booul.geometry", "point": {"x": 80.0, "y": 48.0}},
@@ -417,8 +440,19 @@ def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
             p.mouth_open = 0.7 * (1.0 - u)
             p.opacity = 1.0 - 0.15 * u
             p.collapse = u
+    elif animation in _HELD_MOVES:
+        return _out_of_floor(_attack_pose(animation, frame_idx, nframes))
     elif animation in ATTACK_POSES:
         return _attack_pose(animation, frame_idx, nframes)
+    elif animation in ROWS_SPEC:
+        return _fighter_pose(animation, frame_idx, nframes)
+    elif animation in SMASH_CHARGES:
+        # A smash held charging: its wind-up, shivering, the eyes lit.
+        p = Pose(**{k: v for k, v in ATTACK_POSES[SMASH_CHARGES[animation]]["wind"].items()})
+        p.x += 0.8 if frame_idx % 2 else -0.8
+        p.eye_scale = 1.08 if frame_idx % 2 else 1.0
+        p.phase = phase
+        return _out_of_floor(p)
     elif animation == "taunt":
         # BOO: both corners thrown up, the mouth at its widest.
         raise_ = _smoothstep(min(1.0, t * 3.0)) * (1.0 - _smoothstep((t - 0.8) / 0.2))
@@ -432,6 +466,10 @@ def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
         p.mouth_open = 0.2 + 0.8 * raise_
     return p
 
+
+#: The grab and its follow-ups: keyed like the attacks, and never sunk into
+#: the floor (rows added after the attacks were posed).
+_HELD_MOVES = ("grab", "pummel", "throw_forward", "throw_back", "throw_up", "throw_down")
 
 #: Where each fight row's move is live, as parts of the move (start, end),
 #: read off his table (`data/characters/george_booul/smash_moveset.ron`:
@@ -457,6 +495,14 @@ ATTACK_WINDOWS = {
     "special_up": [(0.157, 0.278)],
     "special_down": [(0.395, 0.674)],
     "special_air_down": [(0.267, 0.667)],
+    # Grab: the capture window (`george_grab`). Pummel and throws have no
+    # live window; theirs is the beat about the release event (`at_s`).
+    "grab": [(0.308, 0.423)],
+    "pummel": [(0.42, 0.56)],
+    "throw_forward": [(0.56, 0.7)],
+    "throw_back": [(0.3, 0.45)],
+    "throw_up": [(0.58, 0.72)],
+    "throw_down": [(0.64, 0.78)],
 }
 
 #: The poses of a fight row, as changes to the rest pose: `wind` is the
@@ -595,6 +641,46 @@ ATTACK_POSES = {
                         far_y=-46.0, hem_spread=0.85, flutter=2.0, eyes="narrow", mouth_open=0.7, fx="stomp",
                         fx_strength=1.0)],
     },
+    # Capture box (18, 0): both corners reach out and close as one.
+    "grab": {
+        "wind": dict(lean=-3.0, hem_dx=2.0, near_x=-6.0, near_y=-4.0, far_x=-2.0, far_y=-6.0, eyes="narrow"),
+        "strike": [dict(x=4.0, lean=8.0, hem_dx=-6.0, near_x=30.0, near_y=-2.0, far_x=44.0, far_y=-2.0,
+                        eyes="narrow", mouth_open=0.4, flutter=1.4)],
+    },
+    # A BOO in the held one's face: the dome thrust in, the mouth at its widest.
+    "pummel": {
+        "wind": dict(lean=-4.0, stretch=-2.0, near_x=22.0, near_y=-2.0, far_x=34.0, far_y=-4.0, eyes="narrow"),
+        "strike": [dict(x=3.0, lean=12.0, tilt=-4.0, hem_dx=-6.0, near_x=24.0, near_y=-2.0, far_x=36.0,
+                        far_y=-4.0, eyes="wide", mouth_open=1.0, flutter=1.6)],
+    },
+    # Drawn back with the catch, then flung forward on AND.
+    "throw_forward": {
+        "wind": dict(x=-4.0, lean=-8.0, hem_dx=5.0, near_x=-12.0, near_y=-8.0, far_x=-6.0, far_y=-10.0,
+                     eyes="narrow"),
+        "strike": [dict(x=8.0, lean=14.0, tilt=-4.0, hem_dx=-12.0, near_x=40.0, near_y=-12.0, far_x=54.0,
+                        far_y=-10.0, eyes="wide", mouth_open=0.8, fx="and", fx_strength=1.0, flutter=2.0)],
+    },
+    # Swung round behind him and let go.
+    "throw_back": {
+        "wind": dict(lean=6.0, hem_dx=-4.0, near_x=22.0, near_y=-4.0, far_x=30.0, far_y=-4.0, eyes="narrow"),
+        "strike": [dict(x=-5.0, lean=-14.0, tilt=8.0, hem_dx=10.0, near_x=-14.0, near_y=-10.0, far_x=-46.0,
+                        far_y=-12.0, eyes="narrow", mouth_open=0.7, flutter=-1.6)],
+    },
+    # Sunk under the catch, then both corners heave it overhead.
+    "throw_up": {
+        "wind": dict(y=5.0, squash_x=1.12, squash_y=0.86, near_x=14.0, near_y=4.0, far_x=22.0, far_y=4.0,
+                     eyes="narrow"),
+        "strike": [dict(y=-3.0, stretch=-3.0, squash_x=0.9, squash_y=1.1, near_x=12.0, near_y=-52.0,
+                        far_x=-8.0, far_y=-50.0, eyes="wide", mouth_open=0.8, fx="uplift", fx_strength=1.0,
+                        flutter=-1.5)],
+    },
+    # Lifted overhead, then slammed into the floor in front.
+    "throw_down": {
+        "wind": dict(y=-6.0, stretch=-3.0, near_x=14.0, near_y=-48.0, far_x=-2.0, far_y=-46.0, eyes="narrow"),
+        "strike": [dict(y=1.0, lean=8.0, squash_x=1.2, squash_y=0.78, near_x=16.0, near_y=34.0, far_x=4.0,
+                        far_y=34.0, hem_spread=1.18, eyes="narrow", mouth_open=0.8, fx="slam", fx_strength=1.0,
+                        flutter=1.8)],
+    },
 }
 
 _LERPED = ("state", "x", "y", "tilt", "lean", "stretch", "hem_dx", "hem_spread", "flutter", "near_x", "near_y",
@@ -654,6 +740,39 @@ def _attack_pose(animation: str, frame_idx: int, nframes: int) -> Pose:
     p.tilt += spin
     p.phase = mid
     return p
+
+
+def _fighter_pose(animation: str, frame_idx: int, nframes: int) -> Pose:
+    """A fighter body-language frame: its key, its hem phase, placed on the
+    floor where the key asks (``_george_booul_fighter``)."""
+    key = dict(ROWS_SPEC[animation][1][frame_idx])
+    floor, lift, sink = key.pop("floor", False), key.pop("lift", 0.0), key.pop("sink", False)
+    key.setdefault("phase", frame_idx / max(1, nframes))
+    p = Pose(**key)
+    if floor:
+        p.y += _REST_LOW - _lowest_paint(p) - lift
+    return p if sink else _out_of_floor(p)
+
+
+def _out_of_floor(p: Pose) -> Pose:
+    """``p`` lifted until no paint reaches below the floor line."""
+    p.y -= max(0.0, _lowest_paint(p) - _REST_LOW)
+    return p
+
+
+def _lowest_paint(p: Pose) -> float:
+    """The lowest y any part of the sheet paints in pose ``p``: the bell, the
+    dome, both corners and fists, and the outline round them."""
+    cloth = _Cloth.of(p)
+    T = _transform(p)
+    scale = math.sqrt(p.squash_x * p.squash_y)
+    hx, hy = cloth.head
+    low = max(T(q)[1] for q in cloth.outline())
+    low = max(low, T((hx, hy))[1] + HEAD_R * scale)
+    for side in (1, -1):
+        shape, _hanging, fist = cloth.arm(side)
+        low = max(low, max(T(q)[1] for q in shape), T(fist)[1] + FIST_R * scale)
+    return low + LINE_W
 
 
 def _sheet_palette(state: float):
@@ -1098,6 +1217,10 @@ def _draw_sheet(img: Image.Image, p: Pose) -> None:
         img.putalpha(img.getchannel("A").point(lambda v: round(v * p.opacity)))
 
 
+#: The floor line: the lowest paint of his rest pose, the hem tips at rest.
+_REST_LOW = _lowest_paint(Pose())
+
+
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     _draw_sheet(img, _pose(animation, frame_idx, nframes))
@@ -1161,6 +1284,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
 
 __all__ = [
     "ACTOR_METADATA",
+    "FIGHTER_MOTION_COVERAGE",
     "AUTHORING_DESCRIPTION",
     "FALLBACK_DIALOGUE",
     "FRAME_SIZE",
