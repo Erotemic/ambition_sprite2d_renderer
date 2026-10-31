@@ -147,6 +147,11 @@ def draw_plaque_trail(layer: Image.Image, pose: Pose, phase: float) -> None:
         pd = blending_draw(plate)
         pw, ph = plate.size
         pd.rectangle((pw * 0.25, ph * 0.25, pw * 0.75, ph * 0.75), fill=_a(BRASS, alpha), outline=_a(BRASS_DARK, alpha), width=SUPER)
+        # Lit along its top, shadowed along its foot; a nail head each side.
+        pd.line([(pw * 0.27, ph * 0.28), (pw * 0.73, ph * 0.28)], fill=_a((255, 232, 170, 255), alpha), width=max(1, SUPER // 2))
+        pd.rectangle((pw * 0.27, ph * 0.66, pw * 0.73, ph * 0.73), fill=_a(BRASS_DARK, 0.6 * alpha))
+        for nx in (0.31, 0.69):
+            pd.ellipse((pw * nx - 2, ph * 0.5 - 2, pw * nx + 2, ph * 0.5 + 2), fill=_a(BRASS_DARK, alpha))
         label = Image.new("L", (24, 12), 0)
         ImageDraw.Draw(label).text((3, 0), str(k + 1), fill=255, font=font)  # raw-draw-ok: an L mask has no alpha to composite
         label = label.resize((int(pw * 0.36), int(ph * 0.42)), Image.Resampling.LANCZOS)
@@ -184,6 +189,13 @@ def draw_dress(layer: Image.Image, pose: Pose, phase: float) -> None:
     for k in range(3):
         x0 = c[0] - 8 + k * 9
         d.line([_s((x0 + 2, c[1] + 8)), _s((x0 - 2 + k * 2, c[1] + 46))], fill=(60, 80, 130, int(110 * pose.fade)), width=int(1.0 * SUPER))
+    # A scalloped LACE HEM along the bell's foot.
+    hem = bell[3:-1]
+    for p0, p1 in zip(hem, hem[1:]):
+        mid = ((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2 + 1.5)
+        r = max(1.5, abs(p1[0] - p0[0]) / 2)
+        d.arc((*_s((mid[0] - r, mid[1] - r * 0.8)), *_s((mid[0] + r, mid[1] + r * 0.8))), 0, 180, fill=(246, 252, 255, int(220 * pose.fade)), width=int(0.9 * SUPER))
+        d.ellipse((*_s((mid[0] - 0.6, mid[1] + 0.2)), *_s((mid[0] + 0.6, mid[1] + 1.4))), fill=(246, 252, 255, int(200 * pose.fade)))
     # The apron, and its +1.
     apron = [(c[0] - 6, c[1] - 6), (c[0] + 12, c[1] - 6), (c[0] + 16, c[1] + 38), (c[0] - 8, c[1] + 40)]
     _fill_gradient(layer, apron, (250, 252, 255, int(235 * pose.fade)), (170, 200, 220, int(200 * pose.fade)), (c[0], c[1] - 6), (c[0], c[1] + 40))
@@ -195,6 +207,25 @@ def draw_dress(layer: Image.Image, pose: Pose, phase: float) -> None:
                       g.line([_s((m[0] + 2, m[1] - 3)), _s((m[0] + 4, m[1] - 4)), _s((m[0] + 4, m[1] + 4))], fill=_a(TEAL, pose.fade), width=int(1.2 * SUPER))]
     _glow(layer, plus, 1.0)
     plus(blending_draw(layer))
+    d = blending_draw(layer)
+    # The BELT at her waist, and its CHATELAINE: a ring of little keys
+    # dangling, jangling with her drift (n, n+1, n+2).
+    belt_y = c[1] - 6
+    d.rectangle((*_s((c[0] - 14, belt_y - 2.2)), *_s((c[0] + 16, belt_y + 1.6))), fill=(70, 90, 140, int(230 * pose.fade)), outline=_a(OUTLINE, pose.fade))
+    ring = (c[0] - 11, belt_y + 3)
+    d.ellipse((*_s((ring[0] - 2.4, ring[1] - 2.4)), *_s((ring[0] + 2.4, ring[1] + 2.4))), outline=_a(BRASS, pose.fade), width=int(0.9 * SUPER))
+    for k in range(3):
+        a = math.radians(-20 + k * 22 + 8 * math.sin(phase * 2 + k))
+        top = (ring[0] + math.sin(a) * 2.4, ring[1] + math.cos(a) * 2.4)
+        end = (top[0] + math.sin(a) * (6 + k), top[1] + math.cos(a) * (6 + k))
+        d.line([_s(top), _s(end)], fill=_a(BRASS, pose.fade), width=int(0.9 * SUPER))
+        d.ellipse((*_s((top[0] - 1, top[1] - 1)), *_s((top[0] + 1, top[1] + 1))), outline=_a(BRASS_DARK, pose.fade), width=int(0.5 * SUPER))
+        d.line([_s(end), _s((end[0] + 1.4, end[1]))], fill=_a(BRASS, pose.fade), width=int(0.9 * SUPER))
+    # A ruffled COLLAR at the neck.
+    neck = (top_x := c[0] + 18 * math.sin(lean), c[1] - 22)
+    for k in range(5):
+        x = neck[0] - 7 + k * 3.5
+        d.ellipse((*_s((x - 2, neck[1] - 1.6)), *_s((x + 2, neck[1] + 2.0))), fill=(250, 252, 255, int(235 * pose.fade)), outline=(150, 170, 200, int(180 * pose.fade)))
 
 
 def _shoulder(pose: Pose, near: bool) -> Point:
@@ -213,7 +244,15 @@ def draw_arm(layer: Image.Image, pose: Pose, near: bool) -> Point:
     d = blending_draw(layer)
     for colour, w in ((_a(OUTLINE, pose.fade), 6.4), ((214, 232, 244, int(220 * pose.fade)), 4.6)):
         d.line([_s(sh), _s(elbow), _s(hand)], fill=colour, width=int(w * SUPER), joint="curve")
+    # A ruffled CUFF at the wrist.
+    cuff = _along(elbow, angles[0] + angles[1], 10.5)
+    for k in range(3):
+        q = _along(cuff, angles[0] + angles[1] + 90, (k - 1) * 2.2)
+        d.ellipse((*_s((q[0] - 1.6, q[1] - 1.6)), *_s((q[0] + 1.6, q[1] + 1.6))), fill=(250, 252, 255, int(235 * pose.fade)), outline=(150, 170, 200, int(160 * pose.fade)))
     d.ellipse((*_s((hand[0] - 2.6, hand[1] - 2.6)), *_s((hand[0] + 2.6, hand[1] + 2.6))), fill=(236, 246, 252, int(240 * pose.fade)), outline=_a(OUTLINE, pose.fade))
+    # WISPS trailing off the sleeve.
+    _glow(layer, lambda g: g.line([_s(elbow), _s(_along(elbow, angles[0] - 70, 8)), _s(_along(elbow, angles[0] - 95, 15))],
+                                  fill=(200, 236, 240, int(120 * pose.fade)), width=int(2.4 * SUPER), joint="curve"), 1.2)
     return hand
 
 
@@ -230,6 +269,10 @@ def draw_head(layer: Image.Image, pose: Pose) -> None:
     d.ellipse((*_s((h[0] - 10, h[1] - 10)), *_s((h[0] + 10, h[1] + 10))), fill=(236, 246, 252, int(245 * pose.fade)), outline=_a(OUTLINE, pose.fade), width=int(1.2 * SUPER))
     cap = [(h[0] - 12, h[1] - 6)] + [(h[0] - 12 + 24 * k / 8, h[1] - 9 - 5 * math.sin(math.pi * k / 8) - (1.2 if k % 2 else 0)) for k in range(9)] + [(h[0] + 12, h[1] - 6)]
     d.polygon([_s(p) for p in cap], fill=(250, 252, 255, int(250 * pose.fade)), outline=_a(OUTLINE, pose.fade))
+    # A cold HALO round her head, and hollow shadow round the eyes.
+    _glow(layer, lambda g: g.ellipse((*_s((h[0] - 14, h[1] - 14)), *_s((h[0] + 14, h[1] + 14))), outline=_a(TEAL, 0.35 * pose.fade), width=int(2 * SUPER)), 2.5)
+    d = blending_draw(layer)
+    d.ellipse((*_s((h[0] - 5, h[1] - 2.5)), *_s((h[0] + 10.5, h[1] + 5.5))), fill=(140, 170, 210, int(110 * pose.fade)))
     for side, ex in ((-1, h[0] - 0.5), (1, h[0] + 6.0)):
         ey = h[1] + 1.0
         inward = 1.0 if side < 0 else -1.0
@@ -268,6 +311,14 @@ def draw_key(layer: Image.Image, pose: Pose, hand: Point) -> Point:
     d.polygon([_s(p) for p in steps], fill=_a(BRASS, pose.fade), outline=_a(OUTLINE, pose.fade))
     d.line([_s((bow[0] + fwd[0] * 4 - perp[0] * 0.6, bow[1] + fwd[1] * 4 - perp[1] * 0.6)), _s((tip[0] - perp[0] * 0.6, tip[1] - perp[1] * 0.6))],
            fill=_a((250, 220, 150, 255), 0.8 * pose.fade), width=int(0.6 * SUPER))
+    # As she winds up, light gathers in the key, and sparks off its bit.
+    charge = max(0.0, (pose.glow - 0.75) / 0.25)
+    if charge > 0:
+        _glow(layer, lambda g: g.line([_s(bow), _s(tip)], fill=_a(TEAL, 0.8 * charge * pose.fade), width=int(5 * SUPER)), 2.0)
+        for k in range(4):
+            a = k * 1.7 + pose.key_turn * 0.05
+            sp = (tip[0] + math.cos(a) * 5, tip[1] + math.sin(a) * 5)
+            blending_draw(layer).ellipse((*_s((sp[0] - 0.8, sp[1] - 0.8)), *_s((sp[0] + 0.8, sp[1] + 0.8))), fill=_a(TEAL_CORE, charge * pose.fade))
     return tip
 
 
