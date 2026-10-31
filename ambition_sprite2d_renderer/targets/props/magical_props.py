@@ -9,7 +9,8 @@ Drawn in room coordinates (`_district_props`) on the numbers of
   `garden_hill_low`, `garden_hill_high`, a round hill under each step, its
   flat top the step; `garden_hatch`, the hatch's boards over the hole and its
   lid propped open; `garden_star_tree`, a round tree whose fruit are stars;
-  `garden_beds`, star flowers by the arrival.
+  `garden_beds`, star flowers by the arrival; `garden_pipe`, Mary-O's
+  front door: a pink pipe in the grass, her name on a plate, a mat.
 - `magical_starless_hollow` (floor y 576, roof y 64; the shafts x 352..416
   and 2624..2688): where the stars go when nobody is looking, and sleep.
   `hollow_star_heap`, `hollow_star_heap_east`, stars asleep in a heap;
@@ -291,11 +292,32 @@ def lamp(c, k):
     c.put(c.mask(lambda p: [p.ellipse(x + 22, f - 140, 3, 5), p.ellipse(x + 22, f - 118, 2, 3)]), VOID)
 
 
+PIPE_X = 1960
+
+
+def pipe(c, k):
+    x, f = PIPE_X, FLOOR
+    # The pipe: a body, a lip, highlights, as the old games had them, in pink.
+    c.put(c.mask(box(x - 30, f - 70, x + 30, f)), PINK)
+    c.put(c.mask(box(x - 38, f - 96, x + 38, f - 70)), PINK)
+    c.put(c.mask(box(x + 16, f - 70, x + 30, f)), PINK_DARK)
+    c.put(c.mask(box(x + 22, f - 96, x + 38, f - 70)), PINK_DARK)
+    c.put(c.mask(box(x - 24, f - 66, x - 16, f - 4)), PINK_LIGHT)
+    c.put(c.mask(box(x - 32, f - 92, x - 24, f - 74)), PINK_LIGHT)
+    c.put(c.mask(box(x - 38, f - 72, x + 38, f - 69)), PINK_DARK)
+    # Her name on a plate, and a mat.
+    c.put(c.mask(box(x - 22, f - 50, x + 22, f - 36)), CREAM)
+    c.put(c.mask(lambda p: [p.rect(x - 16 + i * 8, f - 45, x - 12 + i * 8, f - 41) for i in range(5)]), INK, 0.7)
+    c.put(c.mask(lambda p: p.ellipse(x + 50, f - 2, 18, 3)), LILAC)
+    star(c, x, f - 82, 6, GOLD)
+
+
 PIECES: Dict[str, Piece] = {
     "garden_hill_low": Piece((STEP_LOW[0] - 80, STEP_LOW[2] - 4, STEP_LOW[1] + 80, FLOOR), hill_low),
     "garden_hill_high": Piece((STEP_HIGH[0] - 80, STEP_HIGH[2] - 4, STEP_HIGH[1] + 80, FLOOR), hill_high),
     "garden_hatch": Piece((HATCH[0] - 64, FLOOR - 92, HATCH[1] + 28, FLOOR + 12), hatch),
     "garden_star_tree": Piece((TREE_X - 190, FLOOR - 400, TREE_X + 190, FLOOR), star_tree),
+    "garden_pipe": Piece((PIPE_X - 44, FLOOR - 100, PIPE_X + 72, FLOOR), pipe),
     "garden_beds": Piece((56, FLOOR - 60, 310, FLOOR), beds),
     "hollow_star_heap": Piece((HEAP_X - 150, HOLLOW_FLOOR - 140, HEAP_X + 150, HOLLOW_FLOOR), star_heap),
     "hollow_star_heap_east": Piece((HEAP_EAST_X - 150, HOLLOW_FLOOR - 140, HEAP_EAST_X + 150, HOLLOW_FLOOR), star_heap_east),
