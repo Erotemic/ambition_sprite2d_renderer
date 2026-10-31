@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
 from ...core.measure import body_metrics_for_box, union_visible_bbox
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -63,7 +64,7 @@ def _spark_frame(animation: str, frame_idx: int, nframes: int, glow: bool = True
     """One frame; ``glow=False`` draws the blossom alone, the body of the shot."""
     del animation
     image = Image.new("RGBA", (FRAME[0] * SUPER, FRAME[1] * SUPER), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
+    draw = blending_draw(image)
     center = (FRAME[0] / 2.0, FRAME[1] / 2.0)
     turn = (frame_idx / float(max(nframes, 1))) * (math.tau / PETALS)
     beat = math.sin(frame_idx / float(max(nframes, 1)) * math.tau)

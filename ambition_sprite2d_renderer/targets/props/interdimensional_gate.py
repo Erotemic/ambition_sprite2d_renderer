@@ -502,7 +502,7 @@ def render_glyph_frame(animation: str, frame_index: int, nframes: int) -> Image.
         x, y = _grid_cell(index, *divmod(cell, GRID_COLS))
         dot = Image.new("L", size, 0)
         r = GRID_DOT * (1.0 if animation == "bit" else 0.7)
-        ImageDraw.Draw(dot).rectangle((x - r, y - r, x + r, y + r), fill=255)
+        ImageDraw.Draw(dot).rectangle((x - r, y - r, x + r, y + r), fill=255)  # raw-draw-ok: an L mask has no alpha to composite
         core = np.asarray(dot, np.float32) / 255.0
         if animation == "bit":
             return _downsample(_light_layer(core, core * 0.6, 0.5 * SUPER, core_rgb=(255, 255, 255)))
@@ -511,7 +511,7 @@ def render_glyph_frame(animation: str, frame_index: int, nframes: int) -> Image.
     wash = Image.new("L", size, 0)
     ang = _plaque_angle(frame_index)
     _draw_rotated_polygon(
-        ImageDraw.Draw(wash),
+        ImageDraw.Draw(wash),  # raw-draw-ok: an L mask has no alpha to composite
         _polar(CENTER, RING_MID_R, ang),
         PLAQUE_FACE,
         ang + 90.0,

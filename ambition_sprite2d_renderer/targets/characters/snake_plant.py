@@ -21,6 +21,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw, ImageOps
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from .solid_snake import (
     BELLY,
     EYE,
@@ -211,7 +212,7 @@ def _head(draw: ImageDraw.ImageDraw, neck: Point, gape: float, tilt: float, tong
 
 def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     image = Image.new("RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), TRANSPARENT)
-    draw = ImageDraw.Draw(image)
+    draw = blending_draw(image)
     phase = frame_idx / float(max(nframes, 1))
     if anim == "death":
         droop = min(1.0, (frame_idx + 1) / float(nframes))

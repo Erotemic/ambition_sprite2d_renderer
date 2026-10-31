@@ -102,7 +102,7 @@ class Canvas:
 
     def mask(self, draw, blur: float = 0.0) -> np.ndarray:
         img = Image.new("L", (self.W, self.H), 0)
-        draw(Pen(ImageDraw.Draw(img), self.k, o=self.o))
+        draw(Pen(ImageDraw.Draw(img), self.k, o=self.o))  # raw-draw-ok: an L mask has no alpha to composite
         if blur > 0:
             img = img.filter(ImageFilter.GaussianBlur(blur * self.k))
         return np.asarray(img, np.float32) / 255.0

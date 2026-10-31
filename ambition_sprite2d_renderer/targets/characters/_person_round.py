@@ -41,6 +41,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
 from ._ai_era_kit import Kit, RGBA
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Vec = Tuple[float, float, float]
 #: ``paint(u, v, lit, far)``: the colours (an ``(n, 4)`` array) of ``n``
@@ -789,7 +790,7 @@ def _draw_part(K: Kit, part: Part, view: View, to_canvas: Callable, far: bool) -
     body_img = Image.fromarray(np.where(is_fill[..., None], np.asarray(lit_img), body), "RGBA")
     if part.lines:
         layer = Image.new("RGBA", size, (0, 0, 0, 0))
-        _draw_lines(K, ImageDraw.Draw(layer), part.lines, view, to_canvas, buf.depth)
+        _draw_lines(K, blending_draw(layer), part.lines, view, to_canvas, buf.depth)
         body_img.alpha_composite(layer)
     body_img.putalpha(mask_img)
     reach = 2 * K.s(part.outline) + 1 if part.outline > 0.0 else 1
@@ -921,7 +922,7 @@ def turnaround(K: Kit, figure: Figure, path: Path, *, title: str = "", own: Opti
     cw, ch = (box[2] - box[0]) * zoom, (box[3] - box[1]) * zoom
     label_h, title_h = 18, 26 if title else 0
     sheet = Image.new("RGBA", (cw * len(views), title_h + (ch + label_h) * len(rows)), (214, 218, 226, 255))
-    d = ImageDraw.Draw(sheet)
+    d = blending_draw(sheet)
     try:
         font = ImageFont.truetype("DejaVuSans.ttf", 13)
         bold = ImageFont.truetype("DejaVuSans-Bold.ttf", 15)

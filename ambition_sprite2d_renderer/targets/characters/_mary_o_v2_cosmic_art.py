@@ -27,6 +27,7 @@ from ...authoring import rigdoc
 from ..super_mary_o_common import MaryPalette, rasterize_logical
 from . import _mary_o_v2_model as M
 from ._mary_o_v2_art import _draw_dead_front, _draw_side_pose, _side_pose_head_origin
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Pose = M.Pose
 #: Pixels to the logical unit. Her other forms are drawn at 3 and published at
@@ -130,7 +131,7 @@ class Layer:
 
     def poly(self, pts, fill, outline=OUTLINE, gradient=None):
         mask = Image.new("L", self.image.size, 0)
-        ImageDraw.Draw(mask).polygon(self._pts(pts), fill=255)
+        ImageDraw.Draw(mask).polygon(self._pts(pts), fill=255)  # raw-draw-ok: an L mask has no alpha to composite
         box = mask.getbbox()
         if box is None:
             return
@@ -149,10 +150,10 @@ class Layer:
                     px[x, y] = ramp(stops, round(t * 6) / 6)
         self.image.paste(paint, (0, 0), mask)
         if outline is not None:
-            ImageDraw.Draw(self.image).line(self._pts(pts) + self._pts(pts[:1]), fill=outline, width=1)
+            blending_draw(self.image).line(self._pts(pts) + self._pts(pts[:1]), fill=outline, width=1)
 
     def dot(self, x, y, colour):
-        ImageDraw.Draw(self.image).point((int(x * S), int(y * S)), fill=colour)
+        blending_draw(self.image).point((int(x * S), int(y * S)), fill=colour)
 
     def star(self, cx, cy, outer, inner, fill, outline=OUTLINE, turn=-90.0, points=5):
         n = points * 2

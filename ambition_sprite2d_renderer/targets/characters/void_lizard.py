@@ -22,6 +22,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -142,7 +143,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     # The outline of the lizard is the one thing that is drawn in light: the
     # shape of all its parts, grown by the width of the edge.
     mask = Image.new("L", size, 0)
-    pen = ImageDraw.Draw(mask)
+    pen = ImageDraw.Draw(mask)  # raw-draw-ok: an L mask has no alpha to composite
     for part in parts:
         pen.polygon(_pts(part), fill=255)
     edge = mask.filter(ImageFilter.MaxFilter(2 * int(1.5 * SUPER) + 1))
@@ -151,7 +152,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     image.paste((255, 255, 255, 255), mask=halo.point(lambda value: int(value * 0.22)))
     image.paste(WHITE, mask=edge)
     image.paste(VOID, mask=mask)
-    draw = ImageDraw.Draw(image)
+    draw = blending_draw(image)
 
     # The inside of the mouth, the grey seams, the points of light.
     if gape > 0.2:

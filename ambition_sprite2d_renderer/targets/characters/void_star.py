@@ -21,6 +21,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -104,14 +105,14 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     placed = [(cx + x, cy + y) for x, y in shape]
 
     mask = Image.new("L", size, 0)
-    ImageDraw.Draw(mask).polygon(_pts(placed), fill=255)
+    ImageDraw.Draw(mask).polygon(_pts(placed), fill=255)  # raw-draw-ok: an L mask has no alpha to composite
     edge = mask.filter(ImageFilter.MaxFilter(2 * int(1.3 * SUPER) + 1))
     halo = mask.filter(ImageFilter.MaxFilter(2 * int(3.0 * SUPER) + 1)).filter(ImageFilter.GaussianBlur(2.2 * SUPER))
     image = Image.new("RGBA", size, TRANSPARENT)
     image.paste(WHITE, mask=halo.point(lambda value: int(value * 0.22)))
     image.paste(WHITE, mask=edge)
     image.paste(VOID, mask=mask)
-    draw = ImageDraw.Draw(image)
+    draw = blending_draw(image)
     # The dark is deeper at its middle.
     draw.polygon(_pts([(cx + x * 0.45, cy + y * 0.45) for x, y in shape]), fill=VOID_DEEP)
 

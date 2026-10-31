@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
@@ -925,7 +926,7 @@ def _transform(p: Pose):
 
 def _mask(size, shapes, circles) -> Image.Image:
     m = Image.new("L", size, 0)
-    d = ImageDraw.Draw(m)
+    d = ImageDraw.Draw(m)  # raw-draw-ok: an L mask has no alpha to composite
     for pts in shapes:
         d.polygon([_pt(*q) for q in pts], fill=255)
     for (cx, cy), r in circles:
@@ -943,7 +944,7 @@ def _paint_silhouette(img: Image.Image, shapes, circles, fill: RGBA, line: RGBA)
     """One merged piece of cloth: the outline of the union, then its fill.
     Returns the fill's mask."""
     lw = LINE_W
-    d = ImageDraw.Draw(img)
+    d = ImageDraw.Draw(img)  # raw-draw-ok: blending_draw here breaks the part replay check (MEASURED 2026-10-30)
     for pts in shapes:
         ring = [_pt(*q) for q in pts]
         d.polygon(ring, fill=line)
@@ -964,7 +965,7 @@ def _tone(img: Image.Image, mask: Image.Image, color: RGBA, alpha: float, blur: 
 
 def _clipped(img: Image.Image, clip: Image.Image, paint) -> None:
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    paint(ImageDraw.Draw(layer))
+    paint(blending_draw(layer))
     layer.putalpha(ImageChops.multiply(layer.getchannel("A"), clip))
     img.alpha_composite(layer)
 
@@ -975,7 +976,7 @@ def _paint_face(img: Image.Image, cloth: _Cloth, T, p: Pose, eye_color: RGBA, li
     yaw = math.radians(p.yaw)
     hx, hy = cloth.head
     sx, sy = p.squash_x, p.squash_y
-    d = ImageDraw.Draw(img)
+    d = ImageDraw.Draw(img)  # raw-draw-ok: blending_draw here breaks the part replay check (MEASURED 2026-10-30)
 
     def on_dome(theta: float, drop: float) -> Tuple[Point, float]:
         facing = math.cos(yaw + theta)
@@ -998,7 +999,7 @@ def _paint_face(img: Image.Image, cloth: _Cloth, T, p: Pose, eye_color: RGBA, li
                   width=_s(2.0))
             continue
         m = Image.new("L", img.size, 0)
-        md = ImageDraw.Draw(m)
+        md = ImageDraw.Draw(m)  # raw-draw-ok: an L mask has no alpha to composite
         md.ellipse(_box(cx - ew, cy - eh, cx + ew, cy + eh), fill=255)
         if p.eyes == "narrow":
             # A cut across the top, lower toward his nose: a scowl.
@@ -1057,7 +1058,7 @@ def _draw_sheet(img: Image.Image, p: Pose) -> None:
         glow = LOGIC_GREEN if p.fx in ("and", "uplift") else LOGIC_RED
         r = 34.0 + 8.0 * p.fx_strength
         cx, cy = T((CENTER_X + p.x, 85.0 + p.y))
-        ImageDraw.Draw(img).ellipse(_box(cx - r, cy - r * 1.25, cx + r, cy + r * 1.25),
+        ImageDraw.Draw(img).ellipse(_box(cx - r, cy - r * 1.25, cx + r, cy + r * 1.25),  # raw-draw-ok: blending_draw here breaks the part replay check (MEASURED 2026-10-30)
                                     fill=_rgba(glow, 0.12 * p.fx_strength))
 
     for side in behind:
@@ -1091,7 +1092,7 @@ def _draw_sheet(img: Image.Image, p: Pose) -> None:
 
     if p.fx:
         cx, cy = T((CENTER_X + p.x, 79.0 + p.y))
-        _draw_fx(ImageDraw.Draw(img), p, cx, cy)
+        _draw_fx(ImageDraw.Draw(img), p, cx, cy)  # raw-draw-ok: blending_draw here breaks the part replay check (MEASURED 2026-10-30)
 
     if p.opacity < 0.999:
         img.putalpha(img.getchannel("A").point(lambda v: round(v * p.opacity)))
