@@ -32,6 +32,7 @@ import math
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
 
+import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
@@ -96,6 +97,97 @@ class _Canvas:
         return self.img.resize(self.size, Image.Resampling.LANCZOS)
 
 
+# --- the haunt: what makes any prop spooky ----------------------------------------
+
+
+def _shade_and_grime(c: _Canvas, top: float = 0.55, bottom: float = 0.75, seed: int = 0) -> None:
+    """SHADING and GRIME over everything drawn so far: darker toward the top
+    and the foot (lit from a ghost light at the middle), a mottle of grime,
+    and a cold teal cast in the shadows. Alpha is kept."""
+    px = np.asarray(c.img, np.float32)
+    h, w = px.shape[:2]
+    y = np.linspace(0.0, 1.0, h)[:, None]
+    light = 1.0 - (1.0 - top) * np.clip(1.0 - y / 0.5, 0, 1) ** 1.5 - (1.0 - bottom) * np.clip((y - 0.5) / 0.5, 0, 1) ** 1.5
+    rng = np.random.default_rng(seed)
+    grime = Image.fromarray((rng.random((max(1, h // 24), max(1, w // 24))) * 255).astype(np.uint8)).resize((w, h), Image.Resampling.BICUBIC)
+    grime = 0.82 + 0.18 * np.asarray(grime, np.float32)[..., None] / 255.0
+    rgb = px[..., :3] * light[..., None] * grime
+    # The shadows go cold: a teal cast where it is dark.
+    dark = np.clip(1.0 - rgb.mean(axis=2, keepdims=True) / 110.0, 0, 1)
+    rgb = rgb + dark * np.array([0.0, 14.0, 16.0], np.float32)
+    px[..., :3] = np.clip(rgb, 0, 255)
+    c.img = Image.fromarray(px.astype(np.uint8), "RGBA")
+    c.d = blending_draw(c.img)
+
+
+def _fog(c: _Canvas, y: float, t: float, strength: float = 0.5) -> None:
+    """Teal FOG pooling along a floor at ``y``: drifting, soft lobes."""
+    W = c.size[0]
+
+    def lobes(d):
+        for k in range(int(W / 24) + 2):
+            x = k * 24.0 + 10.0 * math.sin(t * math.tau + k * 1.3)
+            r = 14.0 + 5.0 * math.sin(k * 2.1 + t * math.tau)
+            d.ellipse(c.p(x - r * 1.6, y - r * 0.55, x + r * 1.6, y + r * 0.35), fill=_a(TEAL, 0.22 * strength))
+
+    c.glow(lobes, 4.0)
+
+
+def _motes(c: _Canvas, t: float, n: int = 10, seed: int = 1) -> None:
+    """Spectral MOTES drifting up, each twinkling on its own clock."""
+    rng = np.random.default_rng(seed)
+    W, H = c.size
+    pts = [(rng.random() * W, rng.random() * H, rng.random()) for _ in range(n)]
+
+    def dots(d):
+        for x, y, ph in pts:
+            yy = (y - t * 30.0) % H
+            a = 0.3 + 0.7 * abs(math.sin((t + ph) * math.tau))
+            d.ellipse(c.p(x - 1.4, yy - 1.4, x + 1.4, yy + 1.4), fill=_a(TEAL_CORE, a))
+
+    c.glow(dots, 0.8)
+    dots(c.d)
+
+
+def _drips(c: _Canvas, xs, y: float, t: float, length: float = 14.0) -> None:
+    """ECTOPLASM DRIPS hanging from an edge at ``y``, glowing, each a run and
+    a bead."""
+    for k, x in enumerate(xs):
+        L = length * (0.6 + 0.4 * math.sin(k * 1.9 + t * math.tau))
+        c.glow(lambda d, x=x, L=L: d.line(c.p(x, y, x, y + L), fill=_a(TEAL, 0.8), width=int(2.4 * SUPER)), 1.0)
+        c.line([(x, y), (x, y + L)], _a(TEAL_CORE, 0.9), w=1.0)
+        c.ellipse(x - 1.8, y + L - 1.0, x + 1.8, y + L + 2.6, fill=TEAL_CORE, outline=None)
+
+
+def _glow_crack(c: _Canvas, pts, strength: float = 1.0) -> None:
+    """A CRACK with teal light welling out of it."""
+    c.glow(lambda d: d.line([(x * SUPER, y * SUPER) for x, y in pts], fill=_a(TEAL, 0.9 * strength), width=int(3 * SUPER), joint="curve"), 1.6)
+    c.line(pts, _a(TEAL_CORE, strength), w=0.8)
+
+
+def _ghost_hand(c: _Canvas, x: float, y: float, h: float, lean: float, alpha: float) -> None:
+    """A translucent GHOST HAND reaching up out of the dark, fingers spread."""
+    def hand(d):
+        arm = [(x - h * 0.12, y), (x + lean - h * 0.1, y - h * 0.6), (x + lean + h * 0.1, y - h * 0.6), (x + h * 0.12, y)]
+        d.polygon([(px * SUPER, py * SUPER) for px, py in arm], fill=_a(TEAL, 0.55 * alpha))
+        palm = (x + lean, y - h * 0.68)
+        d.ellipse(c.p(palm[0] - h * 0.13, palm[1] - h * 0.1, palm[0] + h * 0.13, palm[1] + h * 0.12), fill=_a(TEAL, 0.6 * alpha))
+        for k, ang in enumerate((-50, -20, 0, 20, 45)):
+            a = math.radians(ang - 90 + lean)
+            L = h * (0.28 if k in (1, 2, 3) else 0.2)
+            d.line(c.p(palm[0], palm[1], palm[0] + math.cos(a) * L, palm[1] + math.sin(a) * L), fill=_a(TEAL_CORE, 0.6 * alpha), width=int(1.6 * SUPER))
+
+    c.glow(hand, 1.2)
+    hand(c.d)
+
+
+def _eyes_in_dark(c: _Canvas, x: float, y: float, t: float, size: float = 2.0) -> None:
+    """A pair of EYES watching from the dark, blinking now and then."""
+    open_ = 0.15 if (t * 8.0) % 8.0 < 0.6 else 1.0
+    for dx in (-size * 1.8, size * 1.8):
+        c.glow(lambda d, dx=dx: d.ellipse(c.p(x + dx - size, y - size * open_, x + dx + size, y + size * open_), fill=TEAL_CORE), 1.0)
+
+
 def _ghost_flame(c: _Canvas, x: float, y: float, h: float, t: float) -> None:
     """A teal GHOST FLAME standing on (x, y), flickering with ``t``."""
     sway = math.sin(t * math.tau) * h * 0.12
@@ -120,9 +212,23 @@ def spectral_gap(t: float) -> Image.Image:
     for x0 in (0, W - 40):
         for k in range(0, 40, 10):
             c.rect(x0 + k, floor, x0 + k + 10, floor + 6, MARBLE_A if (k // 10) % 2 == 0 else MARBLE_B, w=0.8)
-    # The hole: a void with a ragged rim.
+    _shade_and_grime(c, seed=3)
+    # The hole: a void with a ragged rim, stars of the far side deep in it.
     rim = [(40, floor)] + [(40 + k * 11.0, floor + 3.0 * math.sin(k * 1.7)) for k in range(1, 16)] + [(W - 40, floor), (W - 40, H), (40, H)]
     c.poly(rim, VOID)
+    rng = np.random.default_rng(7)
+    for _ in range(30):
+        x, y = 46 + rng.random() * (W - 92), floor + 30 + rng.random() * (H - floor - 30)
+        c.ellipse(x - 0.6, y - 0.6, x + 0.6, y + 0.6, fill=_a(TEAL_CORE, 0.3 + 0.5 * rng.random()), outline=None)
+    # Light wells up the rim and out through cracks in the floor.
+    c.glow(lambda d: d.line([(px * SUPER, py * SUPER) for px, py in rim[:17]], fill=_a(TEAL, 0.9), width=int(4 * SUPER)), 2.5)
+    for pts in (((40, floor + 2), (30, floor + 10), (22, floor + 8), (12, floor + 22)),
+                ((W - 40, floor + 2), (W - 28, floor + 12), (W - 20, floor + 9), (W - 6, floor + 26)),
+                ((40, floor + 30), (28, floor + 44), (34, floor + 60))):
+        _glow_crack(c, pts, 0.7 + 0.3 * math.sin(t * math.tau))
+    # Ghost hands reaching up out of the gap, swaying.
+    for k, (hx, hh) in enumerate(((80, 46), (124, 38), (176, 52))):
+        _ghost_hand(c, hx, H - 4, hh, 8.0 * math.sin(t * math.tau + k * 2.0), 0.55 + 0.25 * math.sin(t * math.tau + k))
     # The eigenvalue bands: lambda-1 near the lip, lambda-2 deep, both
     # breathing; between them, the dark gap (the stabilizing distance).
     breathe = 0.5 + 0.5 * math.sin(t * math.tau)
@@ -146,6 +252,14 @@ def spectral_gap(t: float) -> Image.Image:
     c.glow(lambda d: d.ellipse(c.p(spark[0] - 3, spark[1] - 3, spark[0] + 3, spark[1] + 3), fill=TEAL_CORE), 1.5)
     # A plumb line of light from the gimbal to the deep band.
     c.line([(cx, cy + 16), (cx, floor + 20)], _a(TEAL, 0.5), w=0.6)
+    # Mist streaming up out of the gap, and motes.
+    def mist(d):
+        for k in range(6):
+            x = 60 + k * 28 + 6 * math.sin(t * math.tau + k)
+            pts = [(x + 5 * math.sin(j * 0.9 + t * math.tau + k), floor + 20 - j * 7) for j in range(8)]
+            d.line([(px * SUPER, py * SUPER) for px, py in pts], fill=_a(TEAL, 0.35), width=int(6 * SUPER), joint="curve")
+    c.glow(mist, 3.0)
+    _motes(c, t, 16, seed=11)
     return c.done()
 
 
@@ -173,6 +287,16 @@ def wallpaper_panel(t: float) -> Image.Image:
     # The peeling strip: a curl of paper off the seam, its back pale.
     c.poly([(120, 40), (136, 44), (140, 92), (128, 86)], (196, 176, 190, 255))
     c.poly([(120, 40), (128, 86), (122, 96)], PLUM_DARK)
+    _shade_and_grime(c, top=0.45, bottom=0.6, seed=5)
+    # Claw scratches torn down the paper, teal in them.
+    for k in range(4):
+        _glow_crack(c, [(40 + k * 7, 70 + k * 3), (46 + k * 7, 110 + k * 2), (44 + k * 7, 150)], 0.6)
+    # A water stain shaped like a face, watching.
+    c.ellipse(140, 120, 176, 166, fill=(52, 30, 58, 150), outline=None)
+    _eyes_in_dark(c, 158, 136, t, 2.2)
+    # Ectoplasm running down from the cornice; fog at the skirting.
+    _drips(c, (14, 70, 104, 168), 0, t, 18.0)
+    _fog(c, H - 4, t, 0.8)
     return c.done()
 
 
@@ -191,7 +315,16 @@ def room_door(t: float) -> Image.Image:
     for sx in (-1, 1):
         c.ellipse(W / 2 + sx * 6 - 5, 33, W / 2 + sx * 6 + 5, 41, outline=BRASS_DARK, w=1.0)
     flicker = 0.65 + 0.35 * abs(math.sin(t * math.tau * 2.3))
+    _shade_and_grime(c, top=0.6, bottom=0.7, seed=9)
+    # Light from the other side: under the door, round its edge, through
+    # the keyhole; eyes looking out from the crack.
     c.glow(lambda d: d.rectangle(c.p(14, H - 6, W - 14, H), fill=_a(TEAL, flicker)), 3.0)
+    c.glow(lambda d: d.line(c.p(W - 12, 18, W - 12, H), fill=_a(TEAL, 0.7 * flicker), width=int(2 * SUPER)), 2.0)
+    c.glow(lambda d: d.ellipse(c.p(W - 26, 104, W - 21, 110), fill=_a(TEAL_CORE, flicker)), 1.2)
+    _eyes_in_dark(c, W / 2, H - 10, t, 1.6)
+    # A ghostly handprint smeared on its upper panel.
+    _ghost_hand(c, W / 2 - 4, 76, 30, -4.0, 0.5)
+    _fog(c, H - 2, t, 0.9)
     return c.done()
 
 
@@ -202,7 +335,10 @@ def wall_sconce(t: float) -> Image.Image:
     c.ellipse(18, 30, 30, 60, fill=BRASS)
     c.line([(24, 50), (24, 44), (34, 40)], BRASS_DARK, w=2.2)
     c.rect(28, 36, 40, 40, BRASS)
+    _shade_and_grime(c, seed=2)
+    c.glow(lambda d: d.ellipse(c.p(16, 14, 44, 42), fill=_a(TEAL, 0.25)), 3.0)
     _ghost_flame(c, 34, 36, 22, t)
+    _motes(c, t, 4, seed=4)
     return c.done()
 
 
@@ -223,6 +359,15 @@ def chandelier(t: float) -> Image.Image:
     for k in range(4):
         x0, x1 = W / 2 - 48 + k * 24, W / 2 - 24 + k * 24
         c.line([(x0, 76), ((x0 + x1) / 2, 88), (x1, 76)], WEB, w=0.5)
+        c.line([(x0, 76), ((x0 + x1) / 2, 82), (x1, 76)], WEB, w=0.3)
+    _shade_and_grime(c, seed=6)
+    c.glow(lambda d: d.ellipse(c.p(W / 2 - 70, 40, W / 2 + 70, 100), fill=_a(TEAL, 0.18)), 8.0)
+    # Long cobweb streamers hanging off it, swaying.
+    for k, x in enumerate((W / 2 - 50, W / 2 + 48)):
+        sway = 3 * math.sin(t * math.tau + k)
+        c.line([(x, 76), (x + sway, 100), (x - sway, 120)], WEB, w=0.6)
+    _drips(c, (W / 2 - 24, W / 2 + 24), 82, t, 10.0)
+    _motes(c, t, 8, seed=8)
     return c.done()
 
 
@@ -241,6 +386,12 @@ def luggage_cart(t: float) -> Image.Image:
     c.glow(lambda d: d.rectangle(c.p(30, 66, 64, 70), fill=_a(TEAL, 0.8)), 2.0)
     for x0, x1, y in ((22, 74, 82), (78, 108, 76)):
         c.line([(x0, y), (x1, y)], BRASS_DARK, w=1.0)
+    _shade_and_grime(c, seed=12)
+    # Something in the open case watches; a ghost hand hangs out of it.
+    _eyes_in_dark(c, 47, 64, t, 1.6)
+    _ghost_hand(c, 70, 70, 26, 14.0, 0.5)
+    c.line([(16, 20), (8, 34), (16, 48)], WEB, w=0.5)
+    _fog(c, H - 6, t, 0.8)
     return c.done()
 
 
@@ -251,19 +402,20 @@ def floor_strip(t: float) -> Image.Image:
     for k in range(8):
         for r in range(2):
             c.rect(k * 16, r * 16, k * 16 + 16, r * 16 + 16, MARBLE_A if (k + r) % 2 == 0 else MARBLE_B, w=0.6)
-    c.line([(30, 2), (38, 12), (34, 22), (44, 30)], OUTLINE, w=0.6)
-    c.line([(90, 0), (86, 10), (96, 18)], OUTLINE, w=0.6)
+    _shade_and_grime(c, top=0.85, bottom=0.6, seed=14)
+    _glow_crack(c, [(30, 2), (38, 12), (34, 22), (44, 30)], 0.8)
+    _glow_crack(c, [(90, 0), (86, 10), (96, 18)], 0.6)
     return c.done()
 
 
 #: Each prop: (its drawing, its canvas, its idle frames and frame time).
 PROPS: Dict[str, Tuple[Callable[[float], Image.Image], Tuple[int, int], int, int]] = {
     "hylbert_spectral_gap": (spectral_gap, (256, 144), 8, 120),
-    "hylbert_wallpaper_panel": (wallpaper_panel, (192, 256), 1, 1000),
+    "hylbert_wallpaper_panel": (wallpaper_panel, (192, 256), 6, 160),
     "hylbert_room_door": (room_door, (96, 168), 4, 140),
     "hylbert_wall_sconce": (wall_sconce, (48, 72), 6, 110),
     "hylbert_chandelier": (chandelier, (160, 128), 6, 120),
-    "hylbert_luggage_cart": (luggage_cart, (128, 120), 1, 1000),
+    "hylbert_luggage_cart": (luggage_cart, (128, 120), 6, 150),
     "hylbert_floor_strip": (floor_strip, (128, 32), 1, 1000),
 }
 
