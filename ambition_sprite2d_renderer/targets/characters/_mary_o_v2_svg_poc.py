@@ -2460,7 +2460,62 @@ _SKID_HEAD_X_FRACTION = -0.10
 
 
 def _pose_values(form: FormSpec, pose: Pose, authored: Mapping[str, float] | None = None,
-                 lengths: Mapping[str, float] | None = None) -> Dict[str, float]:
+                 lengths: Mapping[str, float] | None = None,
+                 pivots: Mapping[str, Sequence[float]] | None = None) -> Dict[str, float]:
+    """The rig channels for one pose. ``pivots`` (bone -> rest pivot, relative
+    to the frame root, as the document's ``bones[*].offset``) is required only
+    by a pose that pitches (``head_angle``/``trunk_angle``/``body_angle``)."""
+    out = _pose_values_upright(form, pose, authored, lengths)
+    _pitch_pose(out, pose, pivots)
+    return out
+
+
+#: The bones above the hips: what `trunk_angle` pitches.
+_TRUNK_BONES = ("torso_back", "torso", "head", "far_arm", "near_arm")
+
+
+def _pitch_pose(out: Dict[str, float], pose: Pose, pivots: Mapping[str, Sequence[float]] | None) -> None:
+    """Fold the pose's pitches and leg squashes into ``out``, in place.
+
+    Every bone is root-parented, so a rigid turn of several parts is each
+    part's pivot carried round the centre AND its own angle turned by the same
+    amount. A pose that sets none of these adds no channel at all.
+    """
+    for bone, scale in (("near_leg", pose.leg_front_scale), ("far_leg", pose.leg_back_scale)):
+        if scale != 1.0:
+            out[f"bone.{bone}.scale_y"] = out.get(f"bone.{bone}.scale_y", 1.0) * scale
+    if not (pose.head_angle or pose.trunk_angle or pose.body_angle):
+        return
+    if not pivots:
+        raise ValueError("a pitched Mary-O pose needs the rig's bone pivots")
+
+    def at(bone: str) -> tuple[float, float]:
+        px, py = pivots[bone]
+        return (float(px) + out.get(f"bone.{bone}.x", 0.0), float(py) + out.get(f"bone.{bone}.y", 0.0))
+
+    def turn(bones: Iterable[str], centre: tuple[float, float], degrees: float) -> None:
+        # Screen clockwise in y-down frame space, the rig's own sign.
+        c, s = math.cos(math.radians(degrees)), math.sin(math.radians(degrees))
+        for bone in bones:
+            if bone not in pivots:
+                continue
+            x, y = at(bone)
+            dx, dy = x - centre[0], y - centre[1]
+            out[f"bone.{bone}.x"] = out.get(f"bone.{bone}.x", 0.0) + centre[0] + dx * c - dy * s - x
+            out[f"bone.{bone}.y"] = out.get(f"bone.{bone}.y", 0.0) + centre[1] + dx * s + dy * c - y
+            out[bone] = out.get(bone, 0.0) + degrees
+
+    if pose.head_angle:
+        turn(("head",), at("head"), pose.head_angle)
+    if pose.trunk_angle:
+        (ax, ay), (bx, by) = at("far_leg"), at("near_leg")
+        turn(_TRUNK_BONES, ((ax + bx) / 2.0, (ay + by) / 2.0), pose.trunk_angle)
+    if pose.body_angle:
+        turn(tuple(pivots), at("torso"), pose.body_angle)
+
+
+def _pose_values_upright(form: FormSpec, pose: Pose, authored: Mapping[str, float] | None = None,
+                         lengths: Mapping[str, float] | None = None) -> Dict[str, float]:
     base = _layout(form, Pose())
     cur = _layout(form, pose)
     authored = authored or {}
@@ -2634,7 +2689,8 @@ def _keys(values: Sequence[float], *, loop: bool) -> dict:
 
 def _clips_for_form(form: FormSpec, projection: str = "side",
                     authored: Mapping[str, float] | None = None,
-                    lengths: Mapping[str, float] | None = None) -> Dict[str, dict]:
+                    lengths: Mapping[str, float] | None = None,
+                    pivots: Mapping[str, Sequence[float]] | None = None) -> Dict[str, dict]:
     poses = poses_for_form(form)
     row_durations = {row: duration for row, _frames, duration in form.rows}
     if projection == "front":
@@ -2665,7 +2721,7 @@ def _clips_for_form(form: FormSpec, projection: str = "side",
         if animation not in row_durations or animation == "death":
             continue
         loop = animation in looping
-        sampled = [_pose_values(form, pose, authored, lengths) for pose in pose_list]
+        sampled = [_pose_values(form, pose, authored, lengths, pivots) for pose in pose_list]
         channel_names = sorted({name for frame in sampled for name in frame})
         channels = {
             name: _keys([frame.get(name, 0.0) for frame in sampled], loop=loop)
@@ -2760,11 +2816,17 @@ def build_rig_document(svg_path: str | Path, form: FormSpec, projection: str = "
             projection,
             {r["bone"]: r["authored_angle"] for r in records if r.get("authored_angle") is not None},
             {r["bone"]: r["authored_length"] for r in records if r.get("authored_length") is not None},
+            bone_pivots({"bones": bones}),
         ),
         "features": {},
         "sprite_tuning": {"part_order": "document"},
     }
     return RigDocument(data, source_path=svg_path)
+
+
+def bone_pivots(data: Mapping) -> Dict[str, tuple[float, float]]:
+    """Each bone's rest pivot relative to the frame root, from document data."""
+    return {str(b["name"]): (float(b["offset"][0]), float(b["offset"][1])) for b in data["bones"]}
 
 
 def render_pose_with_doc(doc: RigDocument, form: FormSpec, pose: Pose) -> Image.Image:
@@ -2774,7 +2836,7 @@ def render_pose_with_doc(doc: RigDocument, form: FormSpec, pose: Pose) -> Image.
     values = (
         _front_pose_values(form, pose, authored)
         if projection == "front"
-        else _pose_values(form, pose, authored, doc.data.get("maryo_authored_lengths") or {})
+        else _pose_values(form, pose, authored, doc.data.get("maryo_authored_lengths") or {}, bone_pivots(doc.data))
     )
     clip_name = "__maryo_poc_pose__"
     doc.data["clips"][clip_name] = {

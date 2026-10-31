@@ -273,6 +273,12 @@ def _actor_metadata(form: FormSpec) -> dict:
     bindings = metadata["animation_bindings"]
     if form.tall:
         bindings["locomotion.crouch"] = {"animation": "crouch", "events": []}
+    # A sheet with its own run and fall binds them; the base aliases them to
+    # walk and jump for the sheets that draw neither.
+    published = {name for name, _frames, _ms in form.rows}
+    for binding, row in (("locomotion.run", "run"), ("locomotion.fall", "fall")):
+        if row in published:
+            bindings[binding] = {"animation": row, "events": []}
     # Each sheet publishes the transitions that ARRIVE at it (see the row
     # tables): the short form knows how it was shrunk into, the tall form knows
     # how it was grown or dropped into, and the fire form knows how it was

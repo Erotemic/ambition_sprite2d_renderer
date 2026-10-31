@@ -173,6 +173,21 @@ class Pose:
     #: torso behind it, which is what "her whole head became her body" looked
     #: like.
     head_scale: float = 1.0
+    #: Pitches, in degrees; + tips the top of the part toward her front
+    #: (screen clockwise as authored, facing east). 0 adds no channel, so a
+    #: pose that leaves them alone renders exactly as before.
+    #:
+    #: `head_angle` tilts the head about the neck. `trunk_angle` pitches the
+    #: torso, head and arms together about the hips, the legs staying where
+    #: they stand. `body_angle` turns the whole figure about the torso pivot:
+    #: the launches, the tumble, the prone body on the floor.
+    head_angle: float = 0.0
+    trunk_angle: float = 0.0
+    body_angle: float = 0.0
+    #: Vertical squash of one leg about the hip; < 1.0 reads as a knee bent
+    #: toward or away from the viewer. Her legs are one rigid piece each.
+    leg_front_scale: float = 1.0
+    leg_back_scale: float = 1.0
     mode: str = "side"
 
 
@@ -520,6 +535,14 @@ SHORT_FORM = FormSpec(
 # (`_mary_o_v2_attacks`). Imported here, after `Pose`, because that module
 # poses on it.
 from ._mary_o_v2_attacks import attack_poses as _attack_poses, attack_rows as _attack_rows  # noqa: E402
+# Her fighter body language (`_mary_o_v2_fighter`): movement, reactions,
+# guard, ledge and the rest of `fighter_core`. The TALL sheet alone hosts it:
+# she fights as `mary_o_tall`.
+from ._mary_o_v2_fighter import (  # noqa: E402
+    crouch_transitions as _crouch_transitions,
+    fighter_poses as _fighter_poses,
+    fighter_rows as _fighter_rows,
+)
 
 TALL_FORM = FormSpec(
     target_name=f"{TARGET_BASE}_tall",
@@ -531,7 +554,7 @@ TALL_FORM = FormSpec(
     power="tall",
     tall=True,
     magic_stage=1,
-    rows=TALL_ROWS + _attack_rows(),
+    rows=TALL_ROWS + _attack_rows() + _fighter_rows(),
     # Cap tip starts at y=8.
     collision_top_px=24,
     collision_bottom_px=192,
@@ -629,6 +652,9 @@ def poses_for_form(form: FormSpec) -> Dict[str, List[Pose]]:
                 if row in poses
             },
         }
+    if form.tall and "crouch" in poses:
+        # From the crouch AS HELD, the form's head drop included.
+        poses = {**poses, **_crouch_transitions(poses["crouch"][0])}
     return poses
 
 
@@ -881,6 +907,7 @@ TALL_LIKE_POSES: Dict[str, List[Pose]] = {
 }
 
 TALL_LIKE_POSES.update(_attack_poses())
+TALL_LIKE_POSES.update(_fighter_poses())
 
 #: The last frame of `transform`: she holds the orb of her new power in her
 #: front hand. The frame draws the orb; this pose puts the hand under it.

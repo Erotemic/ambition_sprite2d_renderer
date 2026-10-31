@@ -23,7 +23,7 @@ from typing import Dict, List, Mapping, Optional
 
 from ...authoring.body_rig import BodyRigProduct, JointPose, RigShape, alpha_extent
 from ._mary_o_v2_model import OUTPUT_RESOLUTION_SCALE, FormSpec, form_collision_box, poses_for_form
-from ._mary_o_v2_svg_poc import _find_part_records, _pose_values, build_rig_document
+from ._mary_o_v2_svg_poc import _find_part_records, _pose_values, bone_pivots, build_rig_document
 
 #: Rows this rig does not publish, and why: see the module docstring.
 _VISUAL_ONLY_ROWS = frozenset({"death", "grow", "shrink", "big_shrink", "transform"})
@@ -138,7 +138,7 @@ def body_rig_for_form(svg_path: Path, form: FormSpec) -> BodyRigProduct:
         frames: List[List[JointPose]] = []
         for index in range(int(frame_count)):
             pose = pose_list[index % len(pose_list)]
-            values = _pose_values(form, pose, authored, lengths)
+            values = _pose_values(form, pose, authored, lengths, bone_pivots(doc.data))
             clip_name = "__body_rig_pose__"
             doc.data["clips"][clip_name] = {
                 "loop": False,
