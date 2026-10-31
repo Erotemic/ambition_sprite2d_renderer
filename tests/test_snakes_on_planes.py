@@ -36,3 +36,13 @@ def test_paper_and_cartesian_planes_have_different_visual_signatures():
     assert _has_near(paper, common.PAPER[:3])
     assert _has_near(cartesian, common.AXIS_X[:3])
     assert _has_near(cartesian, common.AXIS_Y[:3])
+
+
+def test_the_snakes_show_their_faces_and_the_planes_their_construction():
+    for spec in (common.PAPER_SPEC, common.CARTESIAN_SPEC):
+        idle = common.render_frame(spec, "idle", 0, 6)
+        hiss = common.render_frame(spec, "hiss", 3, 6)
+        assert _has_near(idle, common.EYE_WHITE[:3], 12), spec.target_name
+        assert _has_near(hiss, common.MOUTH[:3], 20), spec.target_name
+    assert _has_near(common.render_frame(common.CARTESIAN_SPEC, "idle", 0, 6), common.PLOT[:3], 20)
+    assert _has_near(common.render_frame(common.PAPER_SPEC, "idle", 0, 6), common.PAPER_FOLD[:3], 12)
