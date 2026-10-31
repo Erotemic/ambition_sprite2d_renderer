@@ -139,15 +139,16 @@ def hit_mid(b: Body) -> List[Key]:
 
 
 def hit_low(b: Body) -> List[Key]:
-    """Struck at the legs: the front foot is knocked back off the ground, the
-    body pitches forward over it, the arms thrown up for balance."""
+    """Struck at the legs: the front foot is knocked back and up off the
+    ground, the body pitches forward over it, the arms thrown up and out for
+    balance."""
     return [
         b.rest_key(0.0),
-        _key(0.22, torso=14.0, head=-8.0, lunge=-3.0, drop=3.0,
-             near=(-24.0, -44.0, -52.0), far=(160.0, 170.0, 175.0),
-             feet={"near": (-14.0, 7.0, -22.0), "far": (1.0, 0.0, 0.0)}, ease="out"),
-        _key(1.0, ease="smooth", torso=8.0, head=-2.0, lunge=-2.0, drop=2.0,
-             near=(20.0, 10.0, 5.0), far=(130.0, 140.0, 150.0), feet={"near": (-6.0, 2.0, -8.0)}),
+        _key(0.22, torso=26.0, head=-14.0, lunge=-4.0, drop=6.0,
+             near=(-60.0, -80.0, -90.0), far=(150.0, 165.0, 175.0),
+             feet={"near": (-26.0, 16.0, -46.0), "far": (2.0, 0.0, 0.0)}, ease="out"),
+        _key(1.0, ease="smooth", torso=16.0, head=-6.0, lunge=-3.0, drop=4.0,
+             near=(-20.0, -40.0, -50.0), far=(130.0, 140.0, 150.0), feet={"near": (-14.0, 8.0, -22.0)}),
     ]
 
 
@@ -232,16 +233,19 @@ def tech(b: Body) -> List[Key]:
 
 
 def run_stop(b: Body) -> List[Key]:
-    """A hard stop out of a run: the lead foot planted ahead on its heel, the
-    hips dropped back, the upper body still carried forward by the run and
-    the arms flung forward against it."""
+    """A hard stop out of a run: the lead foot planted far ahead on its heel,
+    the hips dropped low and back, the trunk thrown back against the momentum
+    and the arms flung forward with it. The brake holds through the middle
+    of the row (it is slaved to the stop's first 0.2 s)."""
     return [
         _key(0.0, torso=10.0, head=4.0, drop=4.0, lunge=4.0, near=(40.0, 30.0, 20.0), far=(120.0, 110.0, 100.0),
              feet={"near": (14.0, 0.0, -18.0), "far": (-10.0, 3.0, 20.0)}),
-        _key(0.3, torso=-16.0, head=-8.0, drop=8.0, lunge=2.0, near=(-24.0, -12.0, 0.0), far=(28.0, 36.0, 40.0),
-             feet={"near": (18.0, 0.0, -24.0), "far": (-12.0, 2.0, 16.0)}, ease="out"),
-        _key(0.65, torso=-6.0, head=-2.0, drop=4.0, lunge=1.0, near=(30.0, 40.0, 40.0), far=(70.0, 70.0, 65.0),
-             feet={"near": (10.0, 0.0, -10.0), "far": (-6.0, 1.0, 8.0)}),
+        _key(0.25, torso=-26.0, head=-14.0, drop=14.0, lunge=-2.0, near=(-40.0, -30.0, -20.0), far=(10.0, 20.0, 30.0),
+             feet={"near": (30.0, 0.0, -34.0), "far": (-18.0, 4.0, 30.0)}, ease="out"),
+        _key(0.55, torso=-22.0, head=-10.0, drop=12.0, lunge=-1.0, near=(-30.0, -20.0, -10.0), far=(20.0, 30.0, 40.0),
+             feet={"near": (28.0, 0.0, -30.0), "far": (-16.0, 3.0, 26.0)}),
+        _key(0.8, torso=-8.0, head=-3.0, drop=5.0, lunge=0.0, near=(30.0, 40.0, 40.0), far=(70.0, 70.0, 65.0),
+             feet={"near": (12.0, 0.0, -10.0), "far": (-6.0, 1.0, 8.0)}, ease="smooth"),
         b.rest_key(1.0, ease="smooth"),
     ]
 
