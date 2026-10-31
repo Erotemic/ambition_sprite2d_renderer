@@ -29,6 +29,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import List, Tuple
 
+import numpy as np
 from PIL import Image, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
@@ -38,9 +39,9 @@ RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
 TARGET_NAME = "decomposing_specter"
-FRAME_SIZE = (160, 160)
+FRAME_SIZE = (208, 176)
 SUPER = 4
-GROUND = 152.0
+GROUND = 166.0
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 6, 140),
     ("walk", 8, 110),
@@ -77,7 +78,7 @@ class Pose:
     """One frame's joint table. Angles in degrees from straight down,
     positive toward its facing (right); the torso's ``lean`` from upright."""
 
-    hip: Point = (74.0, GROUND - THIGH - SHIN + 2.0)
+    hip: Point = (94.0, GROUND - THIGH - SHIN + 2.0)
     lean: float = 32.0
     head_tilt: float = 10.0
     jaw: float = 0.0
@@ -224,12 +225,16 @@ def draw_head(layer: Image.Image, d, neck: Point, tilt: float, jaw: float, glow:
     # The eyes: dark sockets, teal light in them.
     halo = Image.new("RGBA", layer.size, (0, 0, 0, 0))
     hd = blending_draw(halo)
-    for ex in (c[0] + 0.5, c[0] + 5.8):
+    for side, ex in ((-1, c[0] + 0.3), (1, c[0] + 6.0)):
         ey = c[1] - 0.5
-        d.ellipse((*_s((ex - 2.4, ey - 2.4)), *_s((ex + 2.4, ey + 2.4))), fill=SOCKET)
-        d.ellipse((*_s((ex - 1.2, ey - 1.2)), *_s((ex + 1.2, ey + 1.2))), fill=TEAL_CORE)
-        hd.ellipse((*_s((ex - 2.2, ey - 2.2)), *_s((ex + 2.2, ey + 2.2))), fill=_alpha(TEAL, 0.6 * glow))
-    layer.alpha_composite(halo.filter(ImageFilter.GaussianBlur(0.8 * SUPER)))
+        # A deep socket, its brow ridge cut down toward the nose (a glare),
+        # a burning teal point in it.
+        d.ellipse((*_s((ex - 2.9, ey - 2.7)), *_s((ex + 2.9, ey + 2.7))), fill=SOCKET)
+        inner = ex - side * 2.6
+        d.polygon([_s((ex - 3.2, ey - 3.2)), _s((ex + 3.2, ey - 3.2)), _s((ex + side * 3.2, ey - 1.6)), _s((inner, ey - 0.2))], fill=BONE)
+        d.ellipse((*_s((ex - 1.4, ey - 0.6)), *_s((ex + 1.4, ey + 1.6))), fill=TEAL_CORE)
+        hd.ellipse((*_s((ex - 3.0, ey - 2.0)), *_s((ex + 3.0, ey + 3.0))), fill=_alpha(TEAL, 0.75 * glow))
+    layer.alpha_composite(halo.filter(ImageFilter.GaussianBlur(1.0 * SUPER)))
     # The cap, tipped with the head.
     cap = [(c[0] - 7.0, c[1] - 6.0), (c[0] + 6.0, c[1] - 7.5), (c[0] + 6.5, c[1] - 15.0), (c[0] - 6.0, c[1] - 14.0)]
     cap = [(x + tilt * 0.08 * (c[1] - y), y) for x, y in cap]
@@ -300,13 +305,81 @@ def draw_specter(pose: Pose, phase: float) -> Image.Image:
     draw_arm(d, shoulder, pose.far_arm, near=False)
     draw_torso(d, hip, shoulder, pose.lean)
     draw_leg(d, hip, pose.near_leg, near=True)
+    # A claw raised high goes behind the head, so the skull still reads.
+    raised = pose.near_arm[0] > 100.0
+    if raised:
+        draw_arm(d, shoulder, pose.near_arm, near=True)
     draw_head(img, d, neck, pose.head_tilt, pose.jaw, pose.glow)
-    draw_arm(d, shoulder, pose.near_arm, near=True)
+    if not raised:
+        draw_arm(d, shoulder, pose.near_arm, near=True)
     draw_telegraph_marks(d, (neck[0] + 4.0, neck[1] - 14.0), pose.telegraph)
     draw_spectral_slash(img, shoulder, pose.slash)
+    img = polish(img, phase)
     if pose.fade < 1.0:
         img.putalpha(img.getchannel("A").point(lambda v: int(v * max(0.0, pose.fade))))
     return img
+
+
+#: The figure is drawn this much bigger than its joint table (it read thin
+#: and small), about its feet.
+ZOOM = 1.35
+ZOOM_ANCHOR = (96.0, GROUND)
+
+
+def polish(img: Image.Image, phase: float) -> Image.Image:
+    """The POLISH over the drawn figure: SHADING (lit at the head, darker to
+    the feet, the shadows going cold teal), a teal RIM LIGHT along its back
+    from the spectral glow behind it, its lower legs DISSOLVING into
+    flickering spectral energy (as its spectrum unravels), a teal AURA under
+    it all and MOTES drifting up; then the whole ZOOMED about its feet."""
+    px = np.asarray(img, np.float32)
+    h, w = px.shape[:2]
+    ys, xs = np.mgrid[0:h, 0:w].astype(np.float32)
+    yf, xf = ys / SUPER, xs / SUPER
+    a = px[..., 3] / 255.0
+    # Shading.
+    light = np.clip(1.08 - 0.42 * np.clip((yf - 70.0) / 82.0, 0, 1), 0.55, 1.1)
+    rgb = px[..., :3] * light[..., None]
+    dark = np.clip(1.0 - rgb.mean(axis=2, keepdims=True) / 90.0, 0, 1)
+    rgb = rgb + dark * np.array([0.0, 16.0, 18.0], np.float32)
+    # Rim light on its back edge (left): where alpha falls off to the left.
+    e = int(1.2 * SUPER)
+    left = np.roll(a, e, axis=1)
+    rim = np.clip(a - left, 0, 1) * (a > 0.5)
+    rim_img = Image.fromarray((rim * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6 * SUPER))
+    rim = np.asarray(rim_img, np.float32) / 255.0
+    rgb = rgb + rim[..., None] * np.array(TEAL[:3], np.float32) * 0.9
+    # The lower legs dissolve: alpha eaten by a flickering noise from the
+    # shins down, the eaten edge glowing teal.
+    rng = np.random.default_rng(int(phase * 1000) % 2**31)
+    grain = Image.fromarray((rng.random((h // 8, w // 8)) * 255).astype(np.uint8)).resize((w, h), Image.Resampling.BICUBIC)
+    n = np.asarray(grain, np.float32) / 255.0
+    depth = np.clip((yf - (GROUND - 16.0)) / 16.0, 0, 1)
+    burn = depth * 1.2 - n * 0.7
+    eaten = np.clip((burn - 0.1) / 0.25, 0, 1)
+    ember = np.clip(burn / 0.1, 0, 1) * (1 - eaten) * a
+    rgb = rgb + ember[..., None] * np.array(TEAL[:3], np.float32) * 0.8
+    alpha = a * (1 - eaten)
+    out = Image.fromarray(np.dstack([np.clip(rgb, 0, 255), alpha * 255]).astype(np.uint8), "RGBA")
+    # The aura: its silhouette, blurred and teal, under it.
+    aura = Image.new("RGBA", out.size, TEAL[:3] + (0,))
+    aura.putalpha(out.getchannel("A").point(lambda v: int(v * 0.35)).filter(ImageFilter.GaussianBlur(4.0 * SUPER)))
+    base = Image.new("RGBA", out.size, (0, 0, 0, 0))
+    base.alpha_composite(aura)
+    base.alpha_composite(out)
+    d = blending_draw(base)
+    rng = np.random.default_rng(7)
+    for _ in range(10):
+        x, y, ph = 66 + rng.random() * 60, 84 + rng.random() * 80, rng.random()
+        yy = y - ((phase / math.tau + ph) % 1.0) * 18
+        d.ellipse((*_s((x - 0.8, yy - 0.8)), *_s((x + 0.8, yy + 0.8))), fill=_alpha(TEAL_CORE, 0.7))
+    # The zoom about its feet.
+    zw, zh = int(w * ZOOM), int(h * ZOOM)
+    big = base.resize((zw, zh), Image.Resampling.LANCZOS)
+    ax, ay = ZOOM_ANCHOR[0] * SUPER, ZOOM_ANCHOR[1] * SUPER
+    canvas = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    canvas.paste(big, (int(round(ax - ax * ZOOM)), int(round(ay - ay * ZOOM))), big)
+    return canvas
 
 
 def _pose_for(animation: str, i: int, n: int) -> Tuple[Pose, float]:
@@ -315,35 +388,35 @@ def _pose_for(animation: str, i: int, n: int) -> Tuple[Pose, float]:
     sway = math.sin(t * math.tau)
     base = Pose()
     if animation == "idle":
-        return replace(base, hip=(74.0, base.hip[1] + 1.0 * sway), lean=32.0 + 2.0 * sway,
+        return replace(base, hip=(94.0, base.hip[1] + 1.0 * sway), lean=32.0 + 2.0 * sway,
                        near_arm=(30.0 + 4.0 * sway, 70.0), far_arm=(12.0 - 3.0 * sway, 50.0), jaw=0.3 + 0.3 * sway), t * math.tau
     if animation == "walk":
         # A shamble: legs drag, the body lurches, the arms hang and swing late.
         s = math.sin(t * math.tau)
         c = math.cos(t * math.tau)
-        return replace(base, hip=(74.0 + 2.0 * s, base.hip[1] + 1.6 * abs(c) - 1.0), lean=36.0 + 4.0 * abs(s),
+        return replace(base, hip=(94.0 + 2.0 * s, base.hip[1] + 1.6 * abs(c) - 1.0), lean=36.0 + 4.0 * abs(s),
                        near_leg=(10.0 + 24.0 * s, -10.0 - 22.0 * max(0.0, c)), far_leg=(10.0 - 24.0 * s, -10.0 - 22.0 * max(0.0, -c)),
                        near_arm=(28.0 - 16.0 * s, 60.0), far_arm=(18.0 + 16.0 * s, 45.0), head_tilt=6.0 * s, jaw=0.4), t * math.tau * 1.5
     if animation == "dash":
         k = math.sin(u * math.pi)
-        return replace(base, hip=(70.0 + 10.0 * u, base.hip[1] - 2.0 * k), lean=55.0 + 10.0 * k,
+        return replace(base, hip=(90.0 + 10.0 * u, base.hip[1] - 2.0 * k), lean=55.0 + 10.0 * k,
                        near_leg=(-35.0, -20.0), far_leg=(40.0, -50.0), near_arm=(80.0 + 10.0 * k, 20.0),
                        far_arm=(60.0, 30.0), wisp=1.0, glow=1.0, jaw=0.6), t * math.tau * 2.0
     if animation == "attack_side":
         if i <= 3:  # anticipation: it coils back, claw raised
             k = i / 3.0
-            return replace(base, lean=32.0 - 14.0 * k, hip=(74.0 - 4.0 * k, base.hip[1]), near_arm=(30.0 + 120.0 * k, 70.0 - 30.0 * k),
+            return replace(base, lean=32.0 - 14.0 * k, hip=(94.0 - 4.0 * k, base.hip[1]), near_arm=(30.0 + 120.0 * k, 70.0 - 30.0 * k),
                            near_leg=(10.0, -20.0), far_leg=(-25.0, -25.0), jaw=0.2), t * math.tau
         if i <= 6:  # telegraph: it holds, gathering light, the tell flares
             k = (i - 3) / 3.0
-            return replace(base, lean=18.0, hip=(70.0, base.hip[1]), near_arm=(150.0, 40.0), near_leg=(10.0, -20.0),
+            return replace(base, lean=18.0, hip=(90.0, base.hip[1]), near_arm=(150.0, 40.0), near_leg=(10.0, -20.0),
                            far_leg=(-25.0, -25.0), glow=0.8 + 0.2 * k, telegraph=k, jaw=1.0), t * math.tau
         if i <= 10:  # active: the slash sweeps down and through
             k = (i - 7) / 3.0
-            return replace(base, lean=40.0 + 20.0 * k, hip=(72.0 + 6.0 * k, base.hip[1] + 2.0 * k), near_arm=(150.0 - 150.0 * k, 20.0 + 30.0 * k),
+            return replace(base, lean=40.0 + 20.0 * k, hip=(92.0 + 6.0 * k, base.hip[1] + 2.0 * k), near_arm=(150.0 - 150.0 * k, 20.0 + 30.0 * k),
                            near_leg=(35.0, -40.0), far_leg=(-30.0, -10.0), glow=1.0, slash=0.15 + 0.85 * k, jaw=1.0), t * math.tau
         k = (i - 11) / 4.0  # recovery: open, slumped, slowly righting
-        return replace(base, lean=60.0 - 28.0 * k, hip=(78.0 - 4.0 * k, base.hip[1] + 2.0 - 2.0 * k), near_arm=(5.0 + 25.0 * k, 40.0 + 30.0 * k),
+        return replace(base, lean=60.0 - 28.0 * k, hip=(98.0 - 4.0 * k, base.hip[1] + 2.0 - 2.0 * k), near_arm=(5.0 + 25.0 * k, 40.0 + 30.0 * k),
                        near_leg=(30.0 - 15.0 * k, -40.0 + 25.0 * k), far_leg=(-30.0 + 15.0 * k, -10.0 - 20.0 * k), glow=0.5, jaw=0.6 * (1 - k)), t * math.tau
     if animation == "hurt":
         k = 1.0 - u
@@ -351,7 +424,7 @@ def _pose_for(animation: str, i: int, n: int) -> Tuple[Pose, float]:
                        near_arm=(-20.0 * k + 30.0 * (1 - k), 90.0), far_arm=(-30.0 * k, 60.0), jaw=1.0, glow=1.0), t * math.tau
     if animation == "death":
         k = min(1.0, u / 0.45)  # it crumples to its knees, then falls apart
-        return replace(base, lean=32.0 + 45.0 * k, hip=(74.0 + 4.0 * k, base.hip[1] + 14.0 * k), near_leg=(60.0 * k + 15.0 * (1 - k), -120.0 * k - 15.0 * (1 - k)),
+        return replace(base, lean=32.0 + 45.0 * k, hip=(94.0 + 4.0 * k, base.hip[1] + 14.0 * k), near_leg=(60.0 * k + 15.0 * (1 - k), -120.0 * k - 15.0 * (1 - k)),
                        far_leg=(50.0 * k - 15.0 * (1 - k), -110.0 * k - 30.0 * (1 - k)), near_arm=(20.0, 20.0), far_arm=(10.0, 20.0),
                        jaw=1.0, glow=1.0, fade=1.0 - max(0.0, (u - 0.35) / 0.3)), t * math.tau
     raise ValueError(f"{TARGET_NAME}: no row {animation!r}")
@@ -368,11 +441,11 @@ def _render_frame(animation: str, frame_index: int, nframes: int) -> Image.Image
         k = max(0.0, (u - 0.3) / 0.7)
         if k > 0.0:
             fade = 1.0 - max(0.0, (u - 0.9) / 0.1)
-            draw_eigenmode_ghost(img, (72.0 - 6.0 * k, 120.0 - 40.0 * k), 9.0, 1.0, min(1.0, k * 3) * (1.0 - max(0.0, (k - 0.75) / 0.25)))
-            draw_eigenmode_ghost(img, (80.0 + 26.0 * k, 112.0 - 60.0 * k), 4.5, 2.2, min(1.0, k * 3) * (1.0 - max(0.0, (k - 0.6) / 0.3)))
+            draw_eigenmode_ghost(img, (92.0 - 6.0 * k, 134.0 - 40.0 * k), 9.0, 1.0, min(1.0, k * 3) * (1.0 - max(0.0, (k - 0.75) / 0.25)))
+            draw_eigenmode_ghost(img, (100.0 + 26.0 * k, 126.0 - 60.0 * k), 4.5, 2.2, min(1.0, k * 3) * (1.0 - max(0.0, (k - 0.6) / 0.3)))
             d = blending_draw(img)
-            for ex in (68.0, 76.0):
-                ey = 104.0 - 10.0 * k
+            for ex in (88.0, 96.0):
+                ey = 118.0 - 10.0 * k
                 d.ellipse((*_s((ex - 2.2, ey - 2.2)), *_s((ex + 2.2, ey + 2.2))), fill=_alpha(TEAL_CORE, min(1.0, k * 2) * fade))
     return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
