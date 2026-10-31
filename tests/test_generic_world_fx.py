@@ -94,5 +94,5 @@ def test_authoring_sidecar_is_part_of_declared_install_surface(tmp_path: Path):
     assert fx.AUTHORING_FILE in target.claimed_install_names()
 
 
-def test_full_sprite_regen_roster_publishes_generic_world_fx(regen_roster: str):
-    assert "\n    generic_world_fx\n" in regen_roster
+def test_full_sprite_regen_roster_publishes_generic_world_fx(regen_roster: frozenset[str]):
+    assert "generic_world_fx" in regen_roster

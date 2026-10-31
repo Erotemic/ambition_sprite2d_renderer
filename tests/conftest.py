@@ -13,6 +13,7 @@ at which point every test is fast.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -29,12 +30,16 @@ import pytest
 # ⭐ ONE PLACE KNOWS THE PATH NOW, and it also knows the honest answer for a
 # STANDALONE clone: there is no superproject, so there is no roster to check and
 # the test skips rather than inventing a verdict about a file it cannot see.
-_ROSTER_RELATIVE = Path("scripts/regen/sprites.sh")
+#
+# ⛔ AND IT MOVED AGAIN (superproject 58ba17f4a): `sprites.sh` now runs the
+# publication tool and lists no targets. The roster is the collections in
+# `authored/sprites.yaml`, and a publish drops a target that is not listed.
+_ROSTER_RELATIVE = Path("game/ambition_content_library/authored/sprites.yaml")
 
 
 @pytest.fixture(scope="session")
-def regen_roster() -> str:
-    """The superproject's sprite-regeneration roster, or skip if standalone."""
+def regen_roster() -> frozenset[str]:
+    """The targets the superproject's sprite roster lists, or skip if standalone."""
     superproject = Path(__file__).resolve().parents[3]
     roster = superproject / _ROSTER_RELATIVE
     if not roster.is_file():
@@ -42,7 +47,8 @@ def regen_roster() -> str:
             f"no superproject roster at {roster} — this renderer is checked out "
             "standalone, so there is no regen roster to check against"
         )
-    return roster.read_text(encoding="utf8")
+    listed = re.findall(r"^\s*-\s*([A-Za-z0-9_]+)\s*$", roster.read_text(encoding="utf8"), re.MULTILINE)
+    return frozenset(listed)
 
 
 #: Workers for a run of a directory of tests. Six, not one per CPU: the box is
