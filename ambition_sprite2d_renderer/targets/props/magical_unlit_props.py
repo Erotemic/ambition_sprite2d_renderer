@@ -8,6 +8,11 @@ Drawn in room coordinates (`_district_props`) on the numbers of
   `coliseum_stand_east`, the stands either side of the ring, tier on tier,
   and on them the crowd: void stars, come to watch the void learn to fight. Grey
   edges, not white: they are not the ground and they do not fight.
+- `magical_void_ledges` (floor y 576, roof y 64; a gap 160 wide between each
+  piece of floor, a one-way ledge over it at y 466, 40 past each side):
+  `ledges_gap`, drawn at the first gap (x 520..680) and placed at each:
+  the chains that hang the ledge from the roof, and under the floor's line,
+  pieces of the castle falling away into the void.
 - `magical_void_wastes` (2560 wide, floor y 576): `wastes_dead_things`, what
   the void left out here, in grey line: the star trees with nothing on them,
   a lamp on its side, a wheel.
@@ -90,9 +95,33 @@ def dead_things(c, k):
     c.put(c.mask(lambda p: [p.ellipse(2380, f - 60, 2.4), p.ellipse(2396, f - 60, 2.4)]), EDGE)
 
 
+GAP = (520, 680)
+LEDGE_Y, ROOF_Y = WASTES_FLOOR - 110, 64
+
+
+def chain(c, x, y0, y1):
+    for y in range(int(y0), int(y1) - 10, 14):
+        c.put(c.mask(lambda p: p.ellipse(x, y + 7, 3.2, 6.5)), GREY)
+        c.put(c.mask(lambda p: p.ellipse(x, y + 7, 1.6, 4.5)), VOID)
+
+
+def gap(c, k):
+    x0, x1 = GAP
+    chain(c, x0 - 30, ROOF_Y, LEDGE_Y)
+    chain(c, x1 + 30, ROOF_Y, LEDGE_Y)
+    # Below the floor's line: castle stone falling, smaller as it goes.
+    f = WASTES_FLOOR
+    for i, (dx, dy, s) in enumerate(((30, 18, 18), (96, 30, 14), (60, 46, 10), (120, 54, 7), (20, 58, 5))):
+        pts = [(x0 + dx, f + dy), (x0 + dx + s, f + dy + s * 0.2), (x0 + dx + s * 0.8, f + dy + s * 0.9), (x0 + dx - s * 0.2, f + dy + s * 0.7)]
+        c.put(c.mask(lambda p: p.poly(pts)), GREY)
+        c.put(c.mask(lambda p: p.poly(shrink(pts, 1.2))), VOID)
+        c.put(c.mask(lambda p: p.line([(x0 + dx + s * 0.3, f + dy - 4), (x0 + dx + s * 0.3, f + dy - 4 - s * 0.8)], 1.0)), GREY, 0.6)
+
+
 PIECES: Dict[str, Piece] = {
     "coliseum_stand_west": Piece((30, STAND_TOP - 40, 40 + STAND_W + 10, RING_FLOOR), stand_west),
     "coliseum_stand_east": Piece((1880 - STAND_W - 10, STAND_TOP - 40, 1890, RING_FLOOR), stand_east),
+    "ledges_gap": Piece((GAP[0] - 44, ROOF_Y, GAP[1] + 44, WASTES_FLOOR + 64), gap),
     "wastes_dead_things": Piece((300, WASTES_FLOOR - 340, 2420, WASTES_FLOOR), dead_things, px=1.5),
 }
 
