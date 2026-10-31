@@ -21,6 +21,12 @@ flares double-lobed, then two lobes diverge up and down); ``hurt`` 3;
 ``death`` 10 (eigenmode decoherence: the ring cracks, the shards decouple
 and drift, it dissolves into fading contours and motes).
 
+It TREMBLES (its perturbation made visible, with no shader): each shard's
+tip jitters fast and out of phase with the others, cyan and magenta
+vibration echoes split off its shards and its halo, and a shimmer sweeps
+along each shard. The vibration is low at rest and peaks in the telegraph,
+the recovery wobble, hurt and death.
+
 Facing right; it floats, its lowest ribbon tip near the canvas foot. No drop
 shadow.
 """
@@ -98,6 +104,10 @@ class Pose:
     split: float = 0.0
     decohere: float = 0.0
     alpha: float = 1.0
+    #: How hard it trembles (0..1): its perturbation made visible.
+    vibration: float = 0.35
+    #: The frame's place in its row's cycle (drives tremble and shimmer).
+    phase: float = 0.0
 
 
 def _xf(pose: Pose, p: Point) -> Point:
@@ -166,6 +176,12 @@ def draw_halo(layer: Image.Image, pose: Pose, near: bool) -> None:
     dashes, a bright spark running round it with its spin."""
     alpha = 1.0 if near else 0.6
     runs = [[_xf(pose, p) for p in run] for run in _halo_points(pose, near)]
+    # The ring trembles too: echoes split above and below it.
+    shake = 2.0 * _tremble(pose, 9)
+    for run in runs:
+        if len(run) > 2 and abs(shake) > 0.2:
+            for colour, sign in ((CYAN, 1.0), (MAGENTA, -1.0)):
+                blending_draw(layer).line([_s((x, y + shake * sign)) for x, y in run], fill=_a(colour, 0.35 * alpha), width=int(0.9 * SUPER), joint="curve")
     for run in runs:
         if len(run) < 2:
             continue
@@ -195,11 +211,47 @@ def _blade(base: Point, deg: float, length: float, width: float) -> List[Point]:
     return pts
 
 
-def draw_eigen_shard(layer: Image.Image, pose: Pose, deg: float, length: float, drift: Point = (0.0, 0.0)) -> None:
+def _tremble(pose: Pose, idx: int) -> float:
+    """A part's TREMBLE this frame: a fast, part-own oscillation (several
+    cycles per row loop, out of phase between parts), scaled by the pose's
+    vibration."""
+    return pose.vibration * math.sin(pose.phase * math.tau * 5.0 + idx * 2.4)
+
+
+def draw_vibration_echoes(layer: Image.Image, pts: List[Point], amount: float, along: float) -> None:
+    """VIBRATION ECHOES: two faint copies of an outline, cyan one way and
+    magenta the other, split across ``along`` (degrees) by ``amount`` pixels:
+    a part caught mid-tremble, readable in a still frame."""
+    if abs(amount) < 0.2:
+        return
+    for colour, sign in ((CYAN, 1.0), (MAGENTA, -1.0)):
+        off = _polar((0.0, 0.0), along, amount * sign)
+        moved = [(x + off[0], y + off[1]) for x, y in pts]
+        blending_draw(layer).line([_s(p) for p in moved + [moved[0]]], fill=_a(colour, 0.45), width=int(1.0 * SUPER), joint="curve")
+
+
+def draw_shimmer(layer: Image.Image, pose: Pose, base: Point, deg: float, length: float, idx: int) -> None:
+    """SHIMMER: a bright band sweeping along a shard from its base to its
+    tip, each shard on its own clock."""
+    t = (pose.phase * 2.0 + idx * 0.27) % 1.0
+    if t > 0.9:
+        return
+    mid = _polar(base, deg, length * (0.1 + 0.8 * t))
+    half = length * 0.3 * math.sin((0.1 + 0.8 * t) * math.pi)
+    a, b = _xf(pose, _polar(mid, deg - 90, half)), _xf(pose, _polar(mid, deg + 90, half * 0.45))
+    _glow(layer, lambda g: g.line([_s(a), _s(b)], fill=_a(WHITE, 0.55 * pose.alpha), width=int(2.4 * SUPER)), 0.8)
+    blending_draw(layer).line([_s(a), _s(b)], fill=_a(WHITE, 0.8 * pose.alpha), width=int(0.7 * SUPER))
+
+
+def draw_eigen_shard(layer: Image.Image, pose: Pose, deg: float, length: float, drift: Point = (0.0, 0.0), idx: int = 0) -> None:
     """An EIGEN-SHARD: a translucent pale blade with a cyan edge, a violet
-    vein and a small spiral of rings (its mode) on it."""
+    vein and a small spiral of rings (its mode) on it; it trembles (its tip
+    jitters, echoes split off it) and a shimmer sweeps along it."""
     base = (pose.centre[0] + drift[0], pose.centre[1] + drift[1])
+    shake = _tremble(pose, idx)
+    deg = deg + 4.0 * shake
     pts = [_xf(pose, p) for p in _blade(_polar(base, deg, 6.0), deg, length, length * 0.32)]
+    draw_vibration_echoes(layer, pts, 2.2 * shake, deg + 90.0)
     d = blending_draw(layer)
     alpha = pose.alpha
     d.polygon([_s(p) for p in pts], fill=_a(PALE, alpha))
@@ -212,6 +264,7 @@ def draw_eigen_shard(layer: Image.Image, pose: Pose, deg: float, length: float, 
     mid = _xf(pose, _polar(_polar(base, deg, length * 0.5), deg - 90, length * 0.08))
     for r in (2.0, 3.6, 5.2):
         d.ellipse((*_s((mid[0] - r, mid[1] - r)), *_s((mid[0] + r, mid[1] + r))), outline=_a(VIOLET, 0.6 * alpha), width=int(0.6 * SUPER))
+    draw_shimmer(layer, pose, _polar(base, deg, 6.0), deg, length, idx)
 
 
 def draw_shell_plate(layer: Image.Image, pose: Pose, front: bool) -> None:
@@ -245,8 +298,8 @@ def draw_dorsal_crest(layer: Image.Image, pose: Pose) -> None:
     """The DORSAL CREST: a tall pale blade rising from the core (the
     silhouette's mark), a thin sliver beside it."""
     base = (pose.centre[0], pose.centre[1] - 12)
-    draw_eigen_shard(layer, replace(pose, centre=base), pose.crest, 34.0)
-    draw_eigen_shard(layer, replace(pose, centre=base), pose.crest + 22.0, 16.0)
+    draw_eigen_shard(layer, replace(pose, centre=base), pose.crest, 34.0, idx=4)
+    draw_eigen_shard(layer, replace(pose, centre=base), pose.crest + 22.0, 16.0, idx=5)
 
 
 def draw_lunge_streaks(layer: Image.Image, pose: Pose) -> None:
@@ -293,10 +346,10 @@ def draw_perturbation(pose: Pose) -> Image.Image:
         draw_ribbon_tails(img, pose)
         draw_halo(img, pose, near=False)
         draw_shell_plate(img, pose, front=False)
-        draw_eigen_shard(img, pose, pose.lower[0], pose.shard_len[2], (drift, drift))
-        draw_eigen_shard(img, pose, pose.lower[1], pose.shard_len[3], (-drift, drift))
-        draw_eigen_shard(img, pose, pose.upper[0], pose.shard_len[0], (drift, -drift))
-        draw_eigen_shard(img, pose, pose.upper[1], pose.shard_len[1], (-drift, -drift))
+        draw_eigen_shard(img, pose, pose.lower[0], pose.shard_len[2], (drift, drift), idx=2)
+        draw_eigen_shard(img, pose, pose.lower[1], pose.shard_len[3], (-drift, drift), idx=3)
+        draw_eigen_shard(img, pose, pose.upper[0], pose.shard_len[0], (drift, -drift), idx=0)
+        draw_eigen_shard(img, pose, pose.upper[1], pose.shard_len[1], (-drift, -drift), idx=1)
         draw_dorsal_crest(img, pose)
         draw_shell_plate(img, pose, front=True)
         draw_core(img, pose)
@@ -316,7 +369,7 @@ def _pose_for(animation: str, i: int, n: int) -> Pose:
     t = i / max(1, n)
     u = i / max(1, n - 1)
     w = math.sin(t * math.tau)
-    base = Pose(centre=(84.0, 74.0 + 2.0 * w), halo_spin=t, ribbon_phase=t * math.tau,
+    base = Pose(phase=t, centre=(84.0, 74.0 + 2.0 * w), halo_spin=t, ribbon_phase=t * math.tau,
                 upper=(-22.0 + 5 * w, -158.0 - 5 * w), lower=(34.0 - 4 * w, 146.0 + 4 * w), core_glow=0.65 + 0.2 * w)
     if animation == "idle":
         return base
@@ -327,28 +380,28 @@ def _pose_for(animation: str, i: int, n: int) -> Pose:
         if i <= 4:  # telegraph: the ring tilts, the shards draw in, the core flares
             k = i / 4.0
             return replace(base, halo_tilt=-14.0 - 24.0 * k, upper=(-38.0 + 18 * k, -142.0 - 18 * k), lower=(40.0 - 18 * k, 140.0 + 18 * k),
-                           shard_len=(40 - 6 * k, 40 - 6 * k, 30 - 4 * k, 30 - 4 * k), core_glow=0.7 + 0.3 * k)
+                           shard_len=(40 - 6 * k, 40 - 6 * k, 30 - 4 * k, 30 - 4 * k), core_glow=0.7 + 0.3 * k, vibration=0.4 + 0.6 * k)
         if i <= 8:  # active: a committed dart, shards swept back, streaking
             k = (i - 5) / 3.0
             return replace(base, centre=(80.0 + 14 * k, 74.0), stretch=1.55, upper=(-160.0, -170.0), lower=(160.0, 170.0),
-                           shard_len=(44, 40, 36, 32), crest=-150.0, halo_tilt=-6.0, ribbon_back=1.0, streak=1.0, core_glow=1.0)
+                           shard_len=(44, 40, 36, 32), crest=-150.0, halo_tilt=-6.0, ribbon_back=1.0, streak=1.0, core_glow=1.0, vibration=0.2)
         k = (i - 9) / 4.0  # recovery: overextended, splayed, the ring askew
         return replace(base, centre=(94.0 - 10 * k, 76.0), upper=(-10.0 - 28 * k, -170.0 + 28 * k), lower=(70.0 - 30 * k, 110.0 + 30 * k),
-                       halo_tilt=26.0 - 40 * k, crest=-60.0 - 30 * k, core_glow=0.4 + 0.3 * k, ribbon_back=0.6 * (1 - k))
+                       halo_tilt=26.0 - 40 * k, crest=-60.0 - 30 * k, core_glow=0.4 + 0.3 * k, ribbon_back=0.6 * (1 - k), vibration=1.0 - 0.5 * k)
     if animation == "split":
         if i <= 3:  # the telegraph: a double-lobed flare
             k = i / 3.0
-            return replace(base, core_lobes=k, core_glow=0.8 + 0.2 * k, upper=(-60.0, -120.0), lower=(60.0, 120.0), halo_tilt=-14 - 10 * k)
+            return replace(base, core_lobes=k, core_glow=0.8 + 0.2 * k, upper=(-60.0, -120.0), lower=(60.0, 120.0), halo_tilt=-14 - 10 * k, vibration=0.5 + 0.5 * k)
         k = (i - 4) / 5.0  # two lobes diverge along committed paths
         return replace(base, core_lobes=1.0, split=k, core_glow=1.0, upper=(-70.0, -110.0), lower=(70.0, 110.0), halo_tilt=-24 + 20 * k)
     if animation == "hurt":
         k = 1.0 - u
         return replace(base, centre=(80.0 - 4 * k, 74.0), halo_tilt=30.0 * k - 14, upper=(-20.0 - 30 * k, -160.0 + 30 * k),
-                       lower=(60.0, 120.0), core_glow=1.0 * k + 0.4, halo_crack=0.3 * k)
+                       lower=(60.0, 120.0), core_glow=1.0 * k + 0.4, halo_crack=0.3 * k, vibration=1.0)
     if animation == "death":
         crack = min(1.0, u / 0.3)
         dec = max(0.0, (u - 0.25) / 0.75)
-        return replace(base, halo_crack=crack, decohere=dec, alpha=1.0 - dec, core_glow=1.0 - dec * 0.8,
+        return replace(base, halo_crack=crack, decohere=dec, alpha=1.0 - dec, vibration=1.0, core_glow=1.0 - dec * 0.8,
                        upper=(-38.0 - 30 * dec, -142.0 + 30 * dec), lower=(40.0 + 30 * dec, 140.0 - 30 * dec))
     raise ValueError(f"{TARGET_NAME}: no row {animation!r}")
 
