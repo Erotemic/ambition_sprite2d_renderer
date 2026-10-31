@@ -110,3 +110,48 @@ def test_hit_and_death_wear_the_hurt_face():
     for clip in ("hit", "death"):
         assert doc.clips[clip]["channels"]["face_hurt_vis"] == {"const": 1.0}
         assert doc.clips[clip]["channels"]["face_knowing_vis"] == {"const": 0.0}
+
+
+def test_every_fighter_row_is_a_clip_of_both_side_views_with_its_frames():
+    from ambition_sprite2d_renderer.targets.characters import oiler
+
+    for filename in ("oiler_side.rig.json", "oiler_side_left.rig.json"):
+        clips = RigDocument.load(RIG_DIR / filename).clips
+        for name, frames, ms in oiler.FIGHTER_ROWS:
+            if name == "turnaround":
+                continue
+            assert (clips[name]["frames"], clips[name]["duration_ms"]) == (frames, ms), (filename, name)
+
+
+def test_the_turnaround_ends_in_the_facing_it_is_drawn_for():
+    """The game draws a turn in the NEW facing: the row ends on his right
+    profile, its mirrored twin on his left one; every view lends a still."""
+    from ambition_sprite2d_renderer.targets.characters import oiler
+
+    assert oiler.TURN_VIEWS[-1] == ("oiler_side.rig.json", False)
+    assert oiler.TURN_VIEWS_MIRRORED[-1] == ("oiler_side_left.rig.json", True)
+    assert oiler.TURN_VIEWS_MIRRORED[0] == ("oiler_side.rig.json", False)
+    for filename, _mirrored in oiler.TURN_VIEWS:
+        assert "turnaround" in RigDocument.load(RIG_DIR / filename).clips
+
+
+def test_reactions_wear_the_hurt_face():
+    doc = RigDocument.load(RIG_DIR / "oiler_side.rig.json")
+    for clip in ("hit_high", "hit_mid", "hit_low", "hit_air", "launch_up", "launch_horizontal",
+                 "launch_down", "prone_face_up", "prone_face_down", "knockdown", "tumble"):
+        assert doc.clips[clip]["channels"]["face_hurt_vis"] == {"const": 1.0}, clip
+
+
+@pytest.mark.parametrize("clip", ["prone_face_up", "prone_face_down", "tech", "crouch"])
+def test_grounded_rows_put_their_lowest_paint_on_his_floor_in_both_facings(clip):
+    """Nothing hovers and nothing sinks: each frame's lowest paint is on the
+    floor his rest pose stands on, his right side and his left."""
+    from ambition_sprite2d_renderer.core.measure import visible_bbox
+
+    for filename in ("oiler_side.rig.json", "oiler_side_left.rig.json"):
+        doc = RigDocument.load(RIG_DIR / filename)
+        floor = visible_bbox(doc.render_at("no_such_clip", 0.0))[3]
+        frames = int(doc.clips[clip]["frames"])
+        for i in range(frames):
+            box = visible_bbox(doc.render_frame(clip, i, frames))
+            assert abs(box[3] - floor) <= 2, (filename, clip, i, box, floor)

@@ -41,7 +41,7 @@ FRAME_SIZE = (256, 256)
 # do it, which is why it stayed broken.  See
 # ``game/ambition_content/src/oiler_moveset.rs``; a Rust test asserts every move
 # in that table names a row published here.
-BASE_ROWS: List[Tuple[str, int, int]] = [
+MOVE_ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 120),
     ("walk", 8, 100),
     ("talk", 6, 100),
@@ -70,6 +70,78 @@ BASE_ROWS: List[Tuple[str, int, int]] = [
     ("death", 6, 90),
     ("taunt", 8, 100),
 ]
+#: The rest of a fighter's body language, in the vocabulary's names
+#: (``data/fighter_motion_vocabulary.yaml``): movement, reactions, defence,
+#: ledge and grab. Side view; authored in ``scripts/oiler_fighter_vocabulary.py``,
+#: which these frame counts and timings must match.
+FIGHTER_ROWS: List[Tuple[str, int, int]] = [
+    ("run", 8, 75),
+    ("dash", 6, 62),
+    ("dash_startup", 4, 50),
+    ("skid", 4, 60),
+    ("walk_stop", 4, 70),
+    ("run_stop", 5, 70),
+    ("jump_squat", 3, 40),
+    ("jump", 6, 70),
+    ("double_jump", 6, 58),
+    ("fall", 4, 110),
+    ("land_light", 3, 50),
+    ("land_hard", 4, 70),
+    ("crouch_start", 3, 50),
+    ("crouch", 4, 140),
+    ("crouch_end", 3, 50),
+    ("teeter", 6, 100),
+    ("hit_high", 4, 70),
+    ("hit_mid", 4, 70),
+    ("hit_low", 4, 70),
+    ("hit_air", 4, 70),
+    ("launch_up", 4, 60),
+    ("launch_horizontal", 4, 60),
+    ("launch_down", 4, 60),
+    ("launch", 4, 60),
+    ("meteor", 4, 60),
+    ("tumble", 8, 60),
+    ("prone_face_up", 4, 160),
+    ("prone_face_down", 4, 160),
+    ("prone", 4, 160),
+    ("knockdown", 6, 70),
+    ("getup", 6, 80),
+    ("getup_roll", 6, 70),
+    ("getup_attack", 6, 60),
+    ("tech", 5, 60),
+    ("tech_roll", 6, 60),
+    ("shield_raise", 3, 40),
+    ("block", 4, 120),
+    ("shield_hit", 3, 50),
+    ("shield_release", 3, 50),
+    ("roll", 6, 60),
+    ("roll_back", 6, 60),
+    ("spot_dodge", 5, 60),
+    ("air_dodge", 4, 60),
+    ("ledge_catch", 4, 60),
+    ("ledge_grab", 4, 140),
+    ("ledge_climb", 6, 70),
+    ("ledge_getup", 6, 60),
+    ("ledge_roll", 6, 60),
+    ("ledge_jump", 5, 60),
+    ("grab", 5, 50),
+    ("grab_hold", 4, 140),
+    ("pummel", 4, 50),
+    ("throw_forward", 6, 60),
+    ("throw_back", 6, 60),
+    ("throw_up", 6, 60),
+    ("throw_down", 6, 60),
+    ("grabbed", 4, 120),
+    ("grabbed_pummel", 3, 60),
+    ("grab_escape", 4, 60),
+    ("smash_charge", 4, 50),
+    ("parry", 3, 50),
+    ("dizzy", 6, 130),
+    # He turns through his views: profile, three-quarter, front, and round.
+    ("turnaround", 5, 44),
+]
+#: Every row as he faces right; each has a `~mirrored` twin.
+BASE_ROWS: List[Tuple[str, int, int]] = MOVE_ROWS + FIGHTER_ROWS
 MIRRORED = "{}~mirrored"
 ROWS: List[Tuple[str, int, int]] = BASE_ROWS + [(MIRRORED.format(name), frames, ms) for name, frames, ms in BASE_ROWS]
 MIRROR_OF: Dict[str, str] = {MIRRORED.format(name): name for name, _frames, _ms in BASE_ROWS}
@@ -112,7 +184,26 @@ CLIP_SOURCE: Dict[str, Tuple[str, str]] = {
     "hit": ("oiler_side.rig.json", "hit"),
     "death": ("oiler_side.rig.json", "death"),
     "taunt": ("oiler_side.rig.json", "taunt"),
+    **{name: ("oiler_side.rig.json", name) for name, _frames, _ms in FIGHTER_ROWS if name != "turnaround"},
 }
+#: The ``turnaround`` row, frame by frame: (view document, mirrored), ending in
+#: the facing it is drawn for -- the game draws a turn in the NEW facing. Each
+#: view lends its ``turnaround`` still. The ``~mirrored`` twin turns the other
+#: way round, from his right profile to his left.
+TURN_VIEWS: List[Tuple[str, bool]] = [
+    ("oiler_side_left.rig.json", True),
+    ("oiler_three_quarter_left.rig.json", True),
+    ("oiler_front.rig.json", False),
+    ("oiler_three_quarter.rig.json", False),
+    ("oiler_side.rig.json", False),
+]
+TURN_VIEWS_MIRRORED: List[Tuple[str, bool]] = [
+    ("oiler_side.rig.json", False),
+    ("oiler_three_quarter.rig.json", False),
+    ("oiler_front.rig.json", False),
+    ("oiler_three_quarter_left.rig.json", True),
+    ("oiler_side_left.rig.json", True),
+]
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_oiler", "display_name": "Oiler"},
@@ -149,6 +240,16 @@ ACTOR_METADATA = {
     "animation_bindings": {
         "default": {"animation": "idle", "events": []},
         "locomotion.walk": {"animation": "walk", "events": []},
+        "locomotion.run": {"animation": "run", "events": []},
+        "locomotion.dash": {"animation": "dash", "events": []},
+        "locomotion.skid": {"animation": "skid", "events": []},
+        "locomotion.jump": {"animation": "jump", "events": []},
+        "locomotion.fall": {"animation": "fall", "events": []},
+        "locomotion.land": {"animation": "land_light", "events": []},
+        "locomotion.crouch": {"animation": "crouch", "events": []},
+        "locomotion.ledge_grab": {"animation": "ledge_grab", "events": []},
+        "locomotion.ledge_climb": {"animation": "ledge_climb", "events": []},
+        "defense.block": {"animation": "block", "events": []},
         "interaction.talk": {"animation": "talk", "events": []},
         "interaction.use": {"animation": "interact", "events": []},
         "action.attack.side": {"animation": "attack_side", "events": []},
@@ -228,6 +329,11 @@ def _load_doc(filename: str) -> RigDocument:
 
 def _render_frame(animation: str, frame_idx: int, frame_count: int):
     base = animation.removesuffix("~mirrored")
+    if base == "turnaround":
+        views = TURN_VIEWS if base == animation else TURN_VIEWS_MIRRORED
+        filename, mirrored = views[frame_idx * len(views) // frame_count]
+        frame = _load_doc(filename).render_frame("turnaround", 0, 1)
+        return rigdoc.mirrored_canvas(frame) if mirrored else frame
     filename, clip = CLIP_SOURCE[base]
     if base != animation and filename in LEFT_SIDE_OF:
         frame = _load_doc(LEFT_SIDE_OF[filename]).render_frame(clip, frame_idx, frame_count)

@@ -19,6 +19,10 @@ like their right-facing twins and bound to the same skeleton, so they take the
 same clips; the sprite target mirrors their frames into the ``~mirrored`` rows
 the game draws instead of flipping.
 
+The side views also carry his fighter vocabulary (run, reactions, guard,
+ledge, grab: ``oiler_fighter_vocabulary.py``), and every view lends one still
+to the ``turnaround`` row that turns him through them.
+
 Each view's face is one of ``FACES``, an opacity channel apiece
 (``face_<name>_vis``; ``knowing`` by default), under the ``blink_vis`` and
 ``talk_vis`` overlays.
@@ -29,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -49,6 +54,12 @@ from ambition_sprite2d_renderer.authoring.rig_clip_keys import (
 )
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 
+# The sibling module, found also when this one is imported as `scripts.build_oiler_rig`.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from oiler_fighter_vocabulary import FACE_OF as VOCABULARY_FACE_OF  # noqa: E402
+from oiler_fighter_vocabulary import PLANT as VOCABULARY_PLANT  # noqa: E402
+from oiler_fighter_vocabulary import STAND, PoseSolver, vocabulary_clips  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 SVG = ROOT / "ambition_sprite2d_renderer/data/characters/oiler/oiler-multiview.svg"
 RIG_DIR = ROOT / "ambition_sprite2d_renderer/targets/characters/rigged/oiler"
@@ -65,6 +76,8 @@ FACE_OF = {
     **{name: "stern" for name in (
         "attack_side", "attack_up", "attack_down", "smash_forward", "special", "jab", "dash_attack", "smash_up", "smash_down",
         "air_neutral", "air_forward", "air_back", "air_up", "air_down", "convergence", "special_side", "special_up", "special_down")},
+    # The fighter vocabulary: movement, reactions, defence, ledge and grab.
+    **VOCABULARY_FACE_OF,
 }
 #: view key -> (layer label, whether it is a left view stored facing right)
 VIEW_LAYERS = {
@@ -1019,6 +1032,20 @@ def _side_smash_clips(doc: dict) -> dict:
     }
 
 
+def _turnaround_clip(base: str, doc: dict, clips: dict) -> dict:
+    """The one still this view lends the ``turnaround`` row, which turns him
+    through his views (side, three-quarter, front; ``oiler.TURN_VIEWS``): his
+    idle in the three-quarter, his rest in front and in profile."""
+    if base == "three_quarter":
+        channels = json.loads(json.dumps(clips["idle"]["channels"]))
+        channels["blink_vis"] = _const(0.0)
+    elif base == "side":
+        channels = _with_visibility({k: _const(v) for k, v in PoseSolver(doc).channels(STAND).items()})
+    else:
+        channels = _with_visibility({})
+    return {"loop": False, "frames": 1, "duration_ms": 44, "channels": channels}
+
+
 def seed_clips(view_name: str, doc: dict) -> dict:
     """A view's clips, each wearing its face (``FACE_OF``). A left view takes
     its right twin's clips: the same skeleton, his other side."""
@@ -1028,9 +1055,10 @@ def seed_clips(view_name: str, doc: dict) -> dict:
     elif base == "front":
         clips = {**_front_clips(doc), **_face_stills()}
     elif base == "side":
-        clips = _side_clips(doc)
+        clips = {**_side_clips(doc), **vocabulary_clips(doc)}
     else:
         raise KeyError(view_name)
+    clips["turnaround"] = _turnaround_clip(base, doc, clips)
     for name, clip in clips.items():
         _set_face(clip["channels"], FACE_OF.get(name, "knowing"))
     return clips
@@ -1049,6 +1077,9 @@ def build_one(view_name: str, *, fresh: bool) -> Path:
     spec = VIEWS[view_name]
     path = RIG_DIR / f"{spec.name}.rig.json"
     generated = build_humanoid_view_document(SVG, RIG_DIR, spec)
+    if view_name.removesuffix("_left") == "side":
+        # The grounded vocabulary rows put their lowest paint on his floor.
+        generated["frame"]["plant"] = dict(VOCABULARY_PLANT)
     generated["clips"] = seed_clips(view_name, generated)
     existing = {}
     if path.exists() and not fresh:

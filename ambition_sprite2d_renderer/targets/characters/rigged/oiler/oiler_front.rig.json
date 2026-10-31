@@ -2224,6 +2224,43 @@
      "const": 1.0
     }
    }
+  },
+  "turnaround": {
+   "loop": false,
+   "frames": 1,
+   "duration_ms": 44,
+   "channels": {
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    },
+    "face_knowing_vis": {
+     "const": 1.0
+    },
+    "face_pleased_vis": {
+     "const": 0.0
+    },
+    "face_delighted_vis": {
+     "const": 0.0
+    },
+    "face_surprised_vis": {
+     "const": 0.0
+    },
+    "face_thinking_vis": {
+     "const": 0.0
+    },
+    "face_stern_vis": {
+     "const": 0.0
+    },
+    "face_worried_vis": {
+     "const": 0.0
+    },
+    "face_hurt_vis": {
+     "const": 0.0
+    }
+   }
   }
  },
  "sprite_tuning": {
