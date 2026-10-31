@@ -23,6 +23,9 @@ Rows:
   (Jon, 2026-10-25: "for running when the character gets up to speed, I do
   want circular fast moving feet animation"). The engine draws ``run`` for a
   sheet without it.
+* the rest of a full fighter's vocabulary (``FIGHTER_ROWS``, mapped by
+  ``FIGHTER_MOTION_COVERAGE``): stops, the turn, hits by height, launches by
+  direction, the floor game, guard, ledge, grab, the show.
 
 Super Sanic is the same rig in another :class:`Skin`: gold, quills raised,
 red pupils and a glow. Both forms register from this module (``TARGETS``).
@@ -37,6 +40,7 @@ from __future__ import annotations
 import io
 import math
 import random
+from functools import lru_cache
 from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
@@ -176,7 +180,10 @@ class Pose:
     turn: float = 0.0              # the ball's turn, in turns
     eight: bool = False            # the sprint's figure-8 trail behind the feet
     eight_u: float = 0.0           # where the back foot is on it (turns)
-    fx: Tuple[str, ...] = ()       # speed | dust
+    fx: Tuple[str, ...] = ()       # speed | dust | dirt
+    mirror: bool = False           # drawn facing the other way (a turn's first frames)
+    on_floor: bool = False         # lowered or raised until its lowest paint is on the floor (:func:`_on_floor`)
+    legs: bool = True              # False: no legs (buried to the waist)
 
 
 # --- Geometry -----------------------------------------------------------------
@@ -342,11 +349,22 @@ def _piece(key: tuple, svg: Callable[[], str], anchor: Point, reach: float = 260
     return _PIECES[key]
 
 
+#: Set while a ``Pose.mirror`` pose is drawn: every piece is placed mirrored
+#: about the body's middle (``CX``), so a mirrored frame is still made of
+#: placed pieces and the part flipbook replays it.
+_MIRRORED = [False]
+
+
 def _put(img: Image.Image, key: tuple, svg, anchor: Point, at: Point, degrees: float, name: str, reach=260.0) -> None:
     """Place the piece ``key`` with its anchor at the reference point ``at``."""
     part = _piece(key, svg, anchor, reach)
     if part is not None:
         fx, fy = _frame(at)
+        if _MIRRORED[0]:
+            if ("mirror",) + key not in _PIECES:
+                raster, (px, py) = part
+                _PIECES[("mirror",) + key] = (raster.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (raster.width - px, py))
+            part, fx, degrees = _PIECES[("mirror",) + key], 2 * CX - fx, -degrees
         shape_rig.place(img, part, (fx * SUPER, fy * SUPER), degrees, name)
 
 
@@ -397,6 +415,13 @@ def _eyes_svg(skin: Skin, kind: str) -> str:
     out = []
     pupils = {"derp": [(236, 108), (268, 113)], "wide": [(228, 106), (280, 110)], "squint": [(232, 110), (276, 112)]}
     for k, (c, rx, ry, tilt) in enumerate(EYES):
+        if kind == "dizzy":  # dazed: a spiral in each eye
+            out.append(_fill(_wobble_blob(c[0], c[1], rx, ry, 500 + rx, amp=0.04, tilt=tilt), skin.eye, INK_W * 0.8))
+            turn = 1 if k == 0 else -1
+            spiral = [(c[0] + 1.6 * a * math.cos(turn * a), c[1] + 1.1 * a * math.sin(turn * a))
+                      for a in np.linspace(0.5, 3.4 * math.pi, 16)]
+            out.append(_line(spiral, skin.pupil, 2.2))
+            continue
         if kind in ("closed", "dead"):
             if kind == "closed":  # squeezed shut: a > and a <
                 s = 1 if k == 0 else -1
@@ -506,6 +531,14 @@ def _speed_svg(skin: Skin) -> str:
     return "".join(out)
 
 
+def _dirt_svg() -> str:
+    """The mound a buried body stands in: Paint brown, its flat bottom on the
+    ground line (reference pixels, about the body's middle)."""
+    pts = [(150, 395), (170, 368), (204, 352), (246, 348), (290, 352), (324, 368), (344, 395)]
+    return (f'<path d="{_smooth(pts, closed=False)} Z" fill="#b97a57" stroke="{INK}" stroke-width="{INK_W}" '
+            'stroke-linejoin="round"/>' + _line([(196, 370), (214, 366)], INK, 1.8) + _line([(280, 364), (300, 372)], INK, 1.8))
+
+
 def _dust_svg() -> str:
     return "".join(_fill(_wobble_blob(140 - k * 34, 390 - 4 * k, 16 - 2 * k, 10 - k, 900 + k), "#d8d2c4", 2.2)
                    for k in range(4))
@@ -518,6 +551,14 @@ def _draw_pose(skin: Skin, pose: Pose, body_only: bool = False) -> Image.Image:
     """One pose. ``body_only`` draws the body without what it gives off (the
     glow, the speed lines, the dust, the blur of the feet): the drawing the
     gameplay body is measured from (:func:`_pose_bodies`)."""
+    _MIRRORED[0] = pose.mirror
+    try:
+        return _draw_placed(skin, pose, body_only)
+    finally:
+        _MIRRORED[0] = False
+
+
+def _draw_placed(skin: Skin, pose: Pose, body_only: bool) -> Image.Image:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     s = _solve(pose)
     sk = skin.name
@@ -558,15 +599,17 @@ def _draw_pose(skin: Skin, pose: Pose, body_only: bool = False) -> Image.Image:
             _put(img, ("ghost_shoe", skin.shoe, alpha),
                  lambda a=alpha: f'<g opacity="{a}">' + _fill(_wobble_blob(14, 6, 32, 12, 301, amp=0.08), skin.shoe) + "</g>",
                  (0.0, 0.0), at, 0.0, f"ghost_{foot}_{back}")
-    _limb(img, skin, [s.hip_back, s.knee_back, s.foot_back], 15, "leg_back")
-    _shoe(img, skin, s.foot_back, SHOES["back"][0], pose.shoe_back_tilt, SHOES["back"][1], 300, "shoe_back")
+    if pose.legs:
+        _limb(img, skin, [s.hip_back, s.knee_back, s.foot_back], 15, "leg_back")
+        _shoe(img, skin, s.foot_back, SHOES["back"][0], pose.shoe_back_tilt, SHOES["back"][1], 300, "shoe_back")
     _limb(img, skin, [s.shoulder_back, s.elbow_back, s.hand_back], 15, "arm_back")
     _glove(img, skin, s.hand_back, pose.glove_back, 401, 27, 23, "glove_back")
 
     _put(img, ("torso", sk), lambda: _torso_svg(skin), LEAN_PIVOT, s.pivot, pose.lean, "torso")
 
-    _limb(img, skin, [s.hip_front, s.knee_front, s.foot_front], 15, "leg_front")
-    _shoe(img, skin, s.foot_front, SHOES["front"][0], pose.shoe_front_tilt, SHOES["front"][1], 301, "shoe_front")
+    if pose.legs:
+        _limb(img, skin, [s.hip_front, s.knee_front, s.foot_front], 15, "leg_front")
+        _shoe(img, skin, s.foot_front, SHOES["front"][0], pose.shoe_front_tilt, SHOES["front"][1], 301, "shoe_front")
 
     _put(img, ("head", sk), lambda: _head_svg(skin), NECK, s.neck, head_turn, "head")
     _put(img, ("mouth", pose.mouth), lambda: _mouth_svg(pose.mouth), NECK, s.neck, head_turn, "mouth")
@@ -575,6 +618,8 @@ def _draw_pose(skin: Skin, pose: Pose, body_only: bool = False) -> Image.Image:
     # the front arm last: it crosses the body when it swings
     _limb(img, skin, [s.shoulder_front, s.elbow_front, s.hand_front], 14, "arm_front")
     _glove(img, skin, s.hand_front, pose.glove_front, 402, 17, 11, "glove_front")
+    if fx and "dirt" in pose.fx:
+        _put(img, ("dirt",), _dirt_svg, (246.0, 395.0), (246.0 + pose.root[0], 395.0), 0.0, "dirt")
     return _downsample(img)
 
 
@@ -644,14 +689,45 @@ CROUCH = P(root=(0, 36), lean=10, head=6, foot_back=(-60, 62), foot_front=(40, 6
            hand_front=(30, 50), hand_back=(-60, 60))
 
 
-def _row_poses(anim: str, n: int) -> List[Pose]:
-    """The ``n`` poses of a row."""
+def _row_poses(anim: str, n: int, skin: Skin = NORMAL) -> List[Pose]:
+    """The ``n`` poses of a row, each ``on_floor`` pose stood on ``skin``'s floor."""
+    return list(_row_poses_of(anim, n, skin))
+
+
+@lru_cache(maxsize=None)
+def _row_poses_of(anim: str, n: int, skin: Skin) -> Tuple[Pose, ...]:
     loop = anim in LOOPS
     ts = [i / n if loop else (i / (n - 1) if n > 1 else 0.0) for i in range(n)]
     key = ROW_KEYS.get(anim)
-    if key is not None:
-        return [_keyed(key, t) for t in ts]
-    return [ROW_FUNCS[anim](t) for t in ts]
+    poses = [_keyed(key, t) for t in ts] if key is not None else [ROW_FUNCS[anim](t) for t in ts]
+    return tuple(_on_floor(skin, p) if p.on_floor else p for p in poses)
+
+
+#: Alpha of paint that is part of the figure (not the resampling fringe).
+SOLID_ALPHA = 192
+
+
+def _lowest_paint(img: Image.Image) -> int:
+    """One past the lowest frame row with solid paint."""
+    rows = np.nonzero((np.asarray(img.getchannel("A")) >= SOLID_ALPHA).any(axis=1))[0]
+    return int(rows.max()) + 1 if len(rows) else 0
+
+
+@lru_cache(maxsize=None)
+def _floor_line(skin: Skin) -> int:
+    """The floor every pose stands on: the soles of the idle body."""
+    return _lowest_paint(_draw_pose(skin, ROW_FUNCS["idle"](0.0), body_only=True))
+
+
+def _on_floor(skin: Skin, pose: Pose) -> Pose:
+    """``pose`` moved up or down until its lowest body paint is on the floor:
+    a body lying, sitting or rolling on the ground neither hovers nor sinks."""
+    for _ in range(3):
+        dy = _floor_line(skin) - _lowest_paint(_draw_pose(skin, pose, body_only=True))
+        if dy == 0:
+            break
+        pose = replace(pose, root=(pose.root[0], pose.root[1] + dy / K))
+    return pose
 
 
 LOOPS = {"idle", "walk", "run", "sprint", "dash", "ball", "jump", "fall", "special", "crouch",
@@ -772,6 +848,828 @@ ROW_KEYS: Dict[str, List[Tuple[float, Pose]]] = {
     "interact": [(0.0, P()), (0.5, P(lean=8, hand_front=(100, 4), glove_front=1.1, eyes="wide")), (1.0, P())],
 }
 
+# --- The fighter vocabulary -------------------------------------------------------
+#
+# The rest of a full fighter's body language (``data/fighter_motion_vocabulary.yaml``,
+# scope ``fighter_core``): the stops and the turn, the squat and the landings,
+# the hits by height, the launches by direction, the floor game, the guard,
+# the ledge, the grab, and the rest. Each row is its own pose on this rig;
+# a curl, a roll or a spin is the BALL, as his jump is. A launch trails its
+# limbs opposite the way it flies; a recoil ends on its settled pose (the
+# game holds a recoil's last frame for the hitstun); a body on the ground is
+# stood on the floor (``on_floor``).
+
+
+def _steps(*poses: Pose) -> Callable[[float], Pose]:
+    """A row of exactly these frames (its ``ROWS`` count is ``len(poses)``)."""
+    def row(t: float) -> Pose:
+        return poses[min(len(poses) - 1, int(round(t * (len(poses) - 1))))]
+    row.frames = len(poses)
+    return row
+
+
+def _cycle(*poses: Pose) -> Callable[[float], Pose]:
+    """A looping row of exactly these frames."""
+    def row(t: float) -> Pose:
+        return poses[int(t * len(poses) + 1e-6) % len(poses)]
+    row.frames = len(poses)
+    return row
+
+
+def _rolled(turn: float, at: Point = (0.0, 0.0), fx=()) -> Pose:
+    """The ball ``turn`` turns round, on the floor."""
+    return P(ball=True, turn=turn, ball_at=at, on_floor=True, fx=fx)
+
+
+def _flung(turn: float, at: Point, fx=()) -> Pose:
+    """The ball ``turn`` turns round, in the air at ``at``."""
+    return P(ball=True, turn=turn, ball_at=at, fx=fx)
+
+
+def _wave(t: float, k: float = 1.0, phase: float = 0.0) -> float:
+    return math.sin(2 * math.pi * k * t + phase)
+
+
+STAND = P()
+SQUAT = P(root=(0, 38), lean=18, head=4, knee_forward=1, hand_front=(0, 60), hand_back=(-140, -30),
+          eyes="squint", mouth="grin", quill_sway=-8)
+#: Half way down into the crouch, or up out of it.
+HALF_CROUCH = P(root=(0, 18), lean=5, head=3, foot_back=(-80, 62), foot_front=(52, 66), knee_forward=0.6,
+                hand_front=(50, 30), hand_back=(-86, 46))
+GUARD = ROW_FUNCS["block"](0.0)
+GRAB_HOLD = P(root=(0, 4), lean=-2, hand_front=(84, 0), glove_front=1.3, hand_back=(-100, 10), knee_forward=0.3,
+              eyes="squint", mouth="grin")
+#: On his back: head to the back, belly up, the back quills splayed along the
+#: floor, knees up.
+FACE_UP = P(root=(80, 0), planted=False, on_floor=True, lean=-86, head=-8, quill_sway=24, hand_back=(-60, 40), hand_front=(-50, -60),
+            foot_front=(96, -24), foot_back=(104, 6), knee_forward=1, eyes="closed", mouth="ouch")
+#: On his belly: head forward, chin up off the floor, quills up off his back.
+FACE_DOWN = P(root=(-30, 0), planted=False, on_floor=True, lean=86, head=-24, quill_sway=-10, hand_front=(60, 30),
+              hand_back=(70, -20), foot_front=(-96, 46), foot_back=(-104, 26), shoe_front_tilt=80, shoe_back_tilt=-80,
+              eyes="closed", mouth="ouch")
+#: Sat on the floor, legs out ahead, knees up.
+SIT = P(root=(20, 0), planted=False, on_floor=True, lean=-14, head=16, foot_front=(104, 20), foot_back=(90, 36),
+        knee_forward=1, hand_front=(80, 40), hand_back=(-70, 60), eyes="dizzy", mouth="flat", quill_sway=-10)
+SLEEP = replace(SIT, lean=6, head=34, hand_front=(70, 60), hand_back=(-50, 70), eyes="closed", mouth="flat",
+                quill_sway=-16)
+TECH_BRACE = P(root=(0, 40), lean=26, head=-12, knee_forward=1, foot_front=(50, 66), foot_back=(-90, 62),
+               hand_front=(36, 96), hand_back=(-130, -40), eyes="squint", mouth="flat",
+               quill_sway=14, fx=("dust",))
+#: Waist deep in the ground: the mound covers where the body goes under.
+BURIED = P(planted=False, legs=False, on_floor=True, hand_front=(80, -40), hand_back=(-90, -30), eyes="wide",
+           mouth="open", fx=("dirt",))
+VICTORY = P(lean=-8, head=-10, hand_back=(30, -140), glove_back=1.2, hand_front=(90, -50), foot_front=(80, 66),
+            eyes="squint", mouth="grin", quill_sway=10)
+SMASH_WIND = P(root=(-4, 10), lean=-16, head=-6, hand_back=(-150, -20), hand_front=(-40, -20), glove_front=1.4,
+               knee_forward=0.6,
+               foot_front=(84, 66), foot_back=(-110, 62), eyes="squint", mouth="grin", quill_sway=10)
+
+
+def _teeter(t: float) -> Pose:
+    """Toes on the edge, pitched out over it, the back foot up behind to
+    balance and both arms wheeling."""
+    a = 2 * math.pi * t
+    return P(root=(0, 4), lean=20 + 6 * math.sin(a), head=8, foot_front=(40, 66), shoe_front_tilt=-12,
+             foot_back=(-96, 18 + 10 * math.sin(a)), knee_forward=0.4,
+             hand_front=(60 + 50 * math.cos(a), -50 + 50 * math.sin(a)),
+             hand_back=(-60 + 50 * math.cos(a + math.pi), -70 + 50 * math.sin(a + math.pi)),
+             quill_sway=-6 + 6 * math.sin(a), eyes="wide", mouth="ouch" if t < 0.5 else "open")
+
+
+def _tumble(t: float) -> Pose:
+    """Helpless after a launch: limbs flailing, dazed."""
+    a = 2 * math.pi * t
+    return P(root=(0, -50), planted=False, lean=-22 + 10 * math.sin(a), head=-10 + 8 * math.sin(a + 1),
+             hand_front=(50 + 40 * math.cos(a), -70 + 30 * math.sin(a)),
+             hand_back=(-80 + 40 * math.cos(a + math.pi), -60 + 30 * math.sin(a + math.pi)),
+             foot_front=(70 + 20 * math.sin(a), 30), foot_back=(-10, 50 + 20 * math.cos(a)), knee_forward=1,
+             eyes="dizzy", mouth="ouch", quill_sway=8 * math.sin(a))
+
+
+def _grabbed(t: float) -> Pose:
+    a = 2 * math.pi * t
+    return P(root=(0, -18), planted=False, lean=-10 + 4 * math.sin(a), head=-10,
+             hand_front=(60 + 20 * math.cos(a), -50 + 20 * math.sin(a)), hand_back=(-60, -70 + 20 * math.cos(a)),
+             foot_front=(40 + 20 * math.sin(a), 70), foot_back=(-30, 74 - 10 * math.sin(a)),
+             eyes="wide", mouth="open", quill_sway=4 * math.sin(a))
+
+
+ROW_FUNCS.update({
+    # --- the movement seen every second
+    # The turn is drawn in the NEW facing: its first two frames are mirrored
+    # (still facing the old way, braking), and it ends on the side view.
+    "turnaround": _steps(
+        P(mirror=True, lean=-10, head=-6, foot_front=(96, 66), foot_back=(-70, 62), hand_front=(40, -50),
+          hand_back=(-60, -40), shoe_front_tilt=-14, eyes="wide", mouth="open", quill_sway=8, fx=("dust",)),
+        P(mirror=True, root=(0, 14), lean=-4, knee_forward=0.6, foot_front=(40, 66), foot_back=(-50, 62),
+          hand_front=(10, 40), hand_back=(-40, 40), eyes="wide", mouth="flat", quill_sway=-6),
+        P(root=(0, 12), lean=10, knee_forward=0.6, foot_front=(30, 66), foot_back=(-70, 62), hand_front=(70, 10),
+          hand_back=(-130, -10), quill_sway=12, eyes="squint", mouth="grin"),
+        P(root=(0, 4), lean=6, hand_front=(80, 0), hand_back=(-120, 20), quill_sway=-4),
+        STAND),
+    "run_stop": _steps(
+        P(root=(-6, 10), lean=-26, head=-10, foot_front=(120, 66), foot_back=(-30, 62), shoe_front_tilt=-24,
+          knee_forward=0.4, hand_front=(90, -50), hand_back=(30, -90), eyes="wide", mouth="open", quill_sway=10,
+          fx=("dust",)),
+        P(root=(-2, 16), lean=-30, head=-12, foot_front=(124, 66), foot_back=(-24, 62), shoe_front_tilt=-26,
+          knee_forward=0.5, hand_front=(100, -30), hand_back=(50, -80), eyes="wide", mouth="open", quill_sway=12,
+          fx=("dust",)),
+        P(root=(0, 6), lean=24, head=8, foot_front=(80, 66), foot_back=(-50, 62), hand_front=(120, -20),
+          hand_back=(-140, -40), knee_forward=0.6, eyes="wide", mouth="ouch", quill_sway=-10),
+        P(root=(0, 4), lean=12, foot_front=(76, 66), foot_back=(-60, 62), hand_front=(100, 0), hand_back=(-130, 0),
+          eyes="derp", mouth="flat", quill_sway=-4),
+        P(lean=-3, quill_sway=4),
+        STAND),
+    "jump_squat": _steps(
+        P(root=(0, 16), lean=8, knee_forward=0.7, hand_front=(40, 30), hand_back=(-100, 0)),
+        P(root=(0, 32), lean=16, head=6, knee_forward=1, hand_front=(10, 50), hand_back=(-130, -20), eyes="squint",
+          quill_sway=-6),
+        SQUAT),
+    # Uncurls with a kick of the legs, then curls into the ball again.
+    "double_jump": _steps(
+        P(root=(0, -50), planted=False, lean=-6, hand_front=(70, -90), hand_back=(-60, -110), foot_front=(50, 50),
+          foot_back=(-70, 60), eyes="wide", mouth="open", quill_sway=14),
+        P(root=(0, -60), planted=False, lean=-10, head=-8, hand_front=(50, -110), hand_back=(-30, -120),
+          foot_front=(30, 80), foot_back=(-40, 84), eyes="wide", mouth="grin", quill_sway=18),
+        _flung(0.25, (0, -60)), _flung(0.5, (0, -60)), _flung(0.75, (0, -60)), _flung(1.0, (0, -60))),
+    "land_light": _steps(
+        P(root=(0, 14), lean=6, knee_forward=0.7, hand_front=(70, 20), hand_back=(-104, 10), quill_sway=-4),
+        P(root=(0, 6), lean=3, knee_forward=0.4, quill_sway=2),
+        STAND),
+    "crouch_start": _steps(HALF_CROUCH, CROUCH),
+    "crouch_end": _steps(HALF_CROUCH, STAND),
+    "crouch_walk": lambda t: replace(
+        CROUCH, root=(0, 36 + 3 * abs(_wave(t))),
+        foot_back=(-60 + 28 * _wave(t), 60 - 12 * max(0.0, _wave(t, phase=math.pi / 2))),
+        foot_front=(40 - 28 * _wave(t), 64 - 12 * max(0.0, -_wave(t, phase=math.pi / 2))),
+        shoe_back_tilt=-4 * _wave(t), shoe_front_tilt=4 * _wave(t), quill_sway=2 * _wave(t)),
+    "teeter": _teeter,
+    "idle_look_up": lambda t: P(root=(0, 3 * math.sin(math.pi * t) ** 2), head=-26, hand_front=(70, 2 + 3 * _wave(t)),
+                                eyes="wide", mouth="flat", quill_sway=-4 + 2 * _wave(t)),
+    # Helpless after an up-special: slumped, head hung, limbs limp and spread.
+    "fall_special": lambda t: P(root=(0, -40), planted=False, lean=12, head=22 + 4 * _wave(t),
+                                hand_front=(84, -54 + 10 * _wave(t)), hand_back=(-96, -44 - 10 * _wave(t)),
+                                foot_front=(30, 90), foot_back=(-40, 86), shoe_front_tilt=40, shoe_back_tilt=-40,
+                                eyes="dizzy", mouth="flat", quill_sway=16 + 4 * _wave(t)),
+
+    # --- struck
+    "hit_high": _steps(
+        P(root=(-4, -2), lean=-6, head=-44, hand_front=(90, -60), hand_back=(-130, -30), foot_front=(70, 56),
+          shoe_front_tilt=-24, quill_sway=26, eyes="closed", mouth="ouch"),
+        P(root=(-8, -4), lean=-8, head=-56, hand_front=(100, -80), hand_back=(-136, -50), foot_front=(74, 50),
+          shoe_front_tilt=-30, quill_sway=32, eyes="closed", mouth="open"),
+        P(root=(-8, -2), lean=-7, head=-46, hand_front=(96, -66), hand_back=(-134, -36), foot_front=(72, 56),
+          shoe_front_tilt=-22, quill_sway=26, eyes="closed", mouth="ouch"),
+        P(root=(-6, 0), lean=-6, head=-40, hand_front=(90, -54), hand_back=(-130, -26), foot_front=(70, 62),
+          shoe_front_tilt=-14, quill_sway=22, eyes="closed", mouth="ouch")),
+    # Doubled over the belly: the hips pushed back over planted feet.
+    "hit_mid": _steps(
+        P(root=(-12, 10), lean=22, head=14, hand_front=(30, 60), hand_back=(30, 50), foot_front=(78, 66),
+          foot_back=(-88, 62), knee_forward=0.6, eyes="wide", mouth="open", quill_sway=-6),
+        P(root=(-18, 18), lean=32, head=20, hand_front=(16, 72), hand_back=(20, 64), foot_front=(84, 66),
+          foot_back=(-82, 62), knee_forward=0.8, eyes="wide", mouth="open", quill_sway=-12),
+        P(root=(-16, 16), lean=28, head=18, hand_front=(24, 66), hand_back=(20, 60), foot_front=(82, 66),
+          foot_back=(-84, 62), knee_forward=0.8, eyes="closed", mouth="ouch", quill_sway=-10),
+        P(root=(-14, 14), lean=25, head=16, hand_front=(30, 62), hand_back=(20, 58), foot_front=(80, 66),
+          foot_back=(-86, 62), knee_forward=0.7, eyes="closed", mouth="ouch", quill_sway=-8)),
+    # The front foot knocked out behind him: he pitches forward onto the back foot.
+    "hit_low": _steps(
+        P(root=(-8, 6), lean=20, head=-8, foot_front=(-30, 26), shoe_front_tilt=30, foot_back=(-92, 62),
+          hand_front=(90, -60), hand_back=(-40, -100), eyes="wide", mouth="ouch", quill_sway=10),
+        P(root=(-14, 12), lean=28, head=-12, foot_front=(-60, 14), shoe_front_tilt=44, foot_back=(-86, 62),
+          hand_front=(116, -70), hand_back=(-10, -116), eyes="wide", mouth="ouch", quill_sway=14),
+        P(root=(-12, 12), lean=25, head=-8, foot_front=(-40, 26), shoe_front_tilt=30, foot_back=(-88, 62),
+          hand_front=(110, -50), hand_back=(-30, -104), knee_forward=0.3, eyes="wide", mouth="ouch", quill_sway=10),
+        P(root=(-10, 10), lean=22, head=-6, foot_front=(-24, 36), shoe_front_tilt=20, foot_back=(-90, 62),
+          hand_front=(104, -40), hand_back=(-50, -92), knee_forward=0.4, eyes="wide", mouth="ouch", quill_sway=8)),
+    "hit_air": _steps(
+        P(root=(0, -40), planted=False, lean=-28, head=-14, hand_front=(-20, -90), hand_back=(-90, -60),
+          foot_front=(70, 40), foot_back=(30, 60), knee_forward=1, eyes="closed", mouth="ouch", quill_sway=14),
+        P(root=(8, -42), planted=False, lean=-36, head=-18, hand_front=(-40, -96), hand_back=(-100, -50),
+          foot_front=(84, 30), foot_back=(40, 54), knee_forward=1, eyes="closed", mouth="ouch", quill_sway=18),
+        P(root=(-4, -42), planted=False, lean=-30, head=-14, hand_front=(-20, -90), hand_back=(-96, -54),
+          foot_front=(74, 38), foot_back=(30, 58), knee_forward=1, eyes="closed", mouth="ouch", quill_sway=14),
+        P(root=(-2, -40), planted=False, lean=-24, head=-10, hand_front=(0, -80), hand_back=(-90, -50),
+          foot_front=(60, 48), foot_back=(20, 62), knee_forward=1, eyes="closed", mouth="ouch", quill_sway=10)),
+
+    # --- launched: limbs trail opposite the flight
+    "launch_up": _steps(
+        P(root=(0, -40), planted=False, lean=-16, head=-24, hand_front=(30, -80), hand_back=(-70, -70),
+          foot_front=(40, 70), foot_back=(-20, 74), eyes="closed", mouth="ouch", quill_sway=10),
+        P(root=(0, -70), planted=False, lean=-8, head=-26, hand_front=(30, 100), hand_back=(-24, 104),
+          foot_front=(-6, 104), foot_back=(-20, 102), shoe_front_tilt=70, shoe_back_tilt=-70, eyes="closed",
+          mouth="open", quill_sway=-22),
+        P(root=(0, -72), planted=False, lean=-6, head=-28, hand_front=(36, 98), hand_back=(-30, 102),
+          foot_front=(-2, 104), foot_back=(-16, 103), shoe_front_tilt=74, shoe_back_tilt=-74, eyes="closed",
+          mouth="open", quill_sway=-26),
+        P(root=(0, -70), planted=False, lean=-8, head=-24, hand_front=(28, 100), hand_back=(-20, 104),
+          foot_front=(-8, 104), foot_back=(-22, 102), shoe_front_tilt=70, shoe_back_tilt=-70, eyes="closed",
+          mouth="open", quill_sway=-22)),
+    "launch_horizontal": _steps(
+        P(root=(10, -40), planted=False, lean=-30, head=-10, hand_front=(60, -40), hand_back=(-40, -60),
+          foot_front=(80, 40), foot_back=(40, 60), eyes="closed", mouth="ouch", quill_sway=10),
+        P(root=(40, -50), planted=False, lean=-60, head=22, hand_front=(104, 20), hand_back=(90, -10),
+          foot_front=(106, 4), foot_back=(98, 30), knee_forward=0.3, eyes="closed", mouth="ouch", quill_sway=-8),
+        P(root=(40, -50), planted=False, lean=-62, head=24, hand_front=(106, 26), hand_back=(94, -16),
+          foot_front=(106, 0), foot_back=(100, 26), knee_forward=0.3, eyes="closed", mouth="ouch", quill_sway=-10),
+        P(root=(40, -50), planted=False, lean=-58, head=20, hand_front=(102, 16), hand_back=(88, -6),
+          foot_front=(104, 8), foot_back=(96, 32), knee_forward=0.3, eyes="closed", mouth="ouch", quill_sway=-6)),
+    # Spiked: folded forward, head down, arms and legs flung up behind.
+    "launch_down": _steps(
+        P(root=(0, -40), planted=False, lean=20, head=10, hand_front=(40, -80), hand_back=(-40, -90),
+          foot_front=(10, 60), foot_back=(-40, 50), knee_forward=1, eyes="closed", mouth="ouch", quill_sway=10),
+        P(root=(0, -60), planted=False, lean=44, head=22, hand_front=(10, -104), hand_back=(-40, -100),
+          foot_back=(-70, -50), foot_front=(-40, -64), knee_forward=1, eyes="wide", mouth="open", quill_sway=22),
+        P(root=(0, -60), planted=False, lean=48, head=24, hand_front=(4, -106), hand_back=(-46, -98),
+          foot_back=(-74, -46), foot_front=(-44, -60), knee_forward=1, eyes="wide", mouth="open", quill_sway=26),
+        P(root=(0, -60), planted=False, lean=44, head=20, hand_front=(14, -102), hand_back=(-36, -100),
+          foot_back=(-68, -52), foot_front=(-38, -66), knee_forward=1, eyes="wide", mouth="open", quill_sway=22)),
+    # The plain launch (what a sheet without a direction draws): thrown up
+    # and back, limbs trailing down and ahead.
+    "launch": _steps(
+        P(root=(0, -40), planted=False, lean=-22, head=-14, hand_front=(40, -70), hand_back=(-60, -70),
+          foot_front=(60, 50), foot_back=(10, 66), eyes="closed", mouth="ouch", quill_sway=10),
+        P(root=(-6, -56), planted=False, lean=-36, head=8, hand_front=(90, 60), hand_back=(60, 74),
+          foot_front=(90, 64), foot_back=(56, 84), eyes="closed", mouth="ouch", quill_sway=-4),
+        P(root=(-6, -58), planted=False, lean=-38, head=10, hand_front=(94, 56), hand_back=(64, 70),
+          foot_front=(92, 60), foot_back=(60, 80), eyes="closed", mouth="ouch", quill_sway=-6),
+        P(root=(-6, -56), planted=False, lean=-34, head=6, hand_front=(88, 62), hand_back=(58, 76),
+          foot_front=(88, 66), foot_back=(54, 86), eyes="closed", mouth="ouch", quill_sway=-2)),
+    # Driven straight down head first, legs straight up: a spear, not a fold.
+    "meteor": _steps(
+        P(root=(0, -120), planted=False, lean=120, head=10, hand_front=(-60, -80), hand_back=(-80, -60),
+          foot_front=(-60, -80), foot_back=(-80, -70), eyes="wide", mouth="open", quill_sway=20),
+        P(root=(0, -186), planted=False, lean=168, head=0, hand_front=(-10, -100), hand_back=(14, -100),
+          foot_front=(-8, -104), foot_back=(10, -104), eyes="closed", mouth="ouch", quill_sway=30),
+        P(root=(0, -184), planted=False, lean=172, head=2, hand_front=(-14, -100), hand_back=(18, -98),
+          foot_front=(-4, -104), foot_back=(14, -104), eyes="closed", mouth="ouch", quill_sway=32)),
+    "tumble": _tumble,
+
+    # --- the floor game
+    "knockdown": _steps(
+        P(root=(40, 0), planted=False, on_floor=True, lean=-50, head=-10, hand_front=(30, -90), hand_back=(-60, -80),
+          foot_front=(100, 0), foot_back=(80, 20), knee_forward=1, eyes="closed", mouth="ouch", quill_sway=14),
+        replace(FACE_UP, lean=-84, hand_front=(-20, -100), hand_back=(-70, -20), foot_front=(80, -70),
+                foot_back=(100, -40), quill_sway=20),
+        replace(FACE_UP, lean=-88, hand_front=(-40, -80), hand_back=(-66, 30), foot_front=(92, -40),
+                foot_back=(104, -10)),
+        FACE_UP),
+    # The plain prone: flat on his back, limbs out, out cold.
+    "prone": _cycle(
+        P(root=(80, 0), planted=False, on_floor=True, lean=-88, head=-4, quill_sway=24, hand_back=(-90, 20),
+          hand_front=(-90, -40), foot_front=(106, 6), foot_back=(104, 24), eyes="closed", mouth="flat"),
+        P(root=(80, 0), planted=False, on_floor=True, lean=-88, head=-6, quill_sway=24, hand_back=(-90, 20),
+          hand_front=(-88, -46),
+          foot_front=(106, 6), foot_back=(104, 24), eyes="closed", mouth="flat")),
+    # On his back, knees up, his head lolling, dazed.
+    "prone_face_up": _cycle(
+        replace(FACE_UP, eyes="dizzy", mouth="flat"),
+        replace(FACE_UP, eyes="dizzy", mouth="flat", head=-12, hand_front=(-46, -66)),
+        replace(FACE_UP, eyes="dizzy", mouth="flat", head=-10, hand_front=(-48, -62)),
+        replace(FACE_UP, eyes="dizzy", mouth="flat", head=-4, hand_front=(-52, -58))),
+    "prone_face_down": _cycle(
+        FACE_DOWN,
+        replace(FACE_DOWN, head=-28, quill_sway=-12),
+        replace(FACE_DOWN, head=-26, quill_sway=-8),
+        replace(FACE_DOWN, head=-20, quill_sway=-8)),
+    "prone_damage": _steps(
+        replace(FACE_UP, lean=-72, head=-22, hand_front=(-20, -104), hand_back=(-40, -60), foot_front=(80, -70),
+                foot_back=(100, -46), quill_sway=30),
+        replace(FACE_UP, lean=-80, head=-16, hand_front=(-30, -90), hand_back=(-56, -10), foot_front=(90, -50),
+                foot_back=(104, -24)),
+        FACE_UP),
+    # Sits up, plants his feet, springs up.
+    "getup": _steps(
+        replace(FACE_UP, eyes="derp", mouth="flat"),
+        P(planted=False, on_floor=True, lean=-40, head=10, hand_back=(-70, 60), hand_front=(40, 30),
+          foot_front=(100, 30), foot_back=(80, 40), knee_forward=1, eyes="derp", mouth="flat"),
+        replace(CROUCH, eyes="squint", mouth="flat"),
+        P(root=(0, -4), lean=-6, hand_front=(80, -50), hand_back=(-120, -40), eyes="squint", mouth="grin",
+          quill_sway=8),
+        STAND),
+    "getup_roll": _steps(
+        replace(FACE_UP, eyes="squint", mouth="flat"),
+        _rolled(-0.2), _rolled(-0.45), _rolled(-0.7), _rolled(-0.95),
+        replace(CROUCH, eyes="squint", mouth="grin")),
+    # Sat up, a low kick ahead, then round on a hand for a kick behind.
+    "getup_attack": _steps(
+        replace(FACE_UP, eyes="squint", mouth="flat"),
+        P(root=(30, 0), planted=False, on_floor=True, lean=-50, head=12, hand_back=(-60, 70), hand_front=(-10, -60),
+          foot_front=(128, 24), foot_back=(60, 50), knee_forward=0.2, eyes="squint", mouth="open", quill_sway=10,
+          fx=("dust",)),
+        P(planted=False, on_floor=True, lean=20, head=-10, hand_front=(30, 110), hand_back=(10, 112),
+          foot_back=(-132, 0), foot_front=(-20, 40), knee_forward=0.5, eyes="squint", mouth="open", quill_sway=-6,
+          fx=("dust",)),
+        P(planted=False, on_floor=True, lean=14, head=-4, hand_front=(40, 104), hand_back=(20, 108),
+          foot_back=(-120, 20), foot_front=(-10, 50), knee_forward=0.5, eyes="squint", mouth="grin"),
+        replace(CROUCH, eyes="squint", mouth="grin"),
+        STAND),
+    # Caught the landing: low, a hand down on the floor, the other out.
+    "tech": _steps(
+        replace(TECH_BRACE, root=(0, 46), lean=30, hand_front=(36, 84)),
+        TECH_BRACE,
+        replace(TECH_BRACE, root=(0, 30), lean=18, hand_front=(44, 80), fx=()),
+        P(root=(0, 10), lean=6, knee_forward=0.5, hand_front=(90, -20), hand_back=(-110, 10), eyes="squint",
+          mouth="grin")),
+    "tech_roll": _steps(
+        TECH_BRACE,
+        _rolled(0.25, fx=("dust",)), _rolled(0.5), _rolled(0.75),
+        replace(CROUCH, eyes="squint", mouth="grin")),
+    "trip_fall": _steps(
+        P(root=(0, 4), lean=24, head=-6, foot_front=(-40, 30), shoe_front_tilt=30, hand_front=(120, -20),
+          hand_back=(60, -60), eyes="wide", mouth="open", quill_sway=-8),
+        P(planted=False, on_floor=True, lean=56, head=-24, hand_front=(100, 40), hand_back=(80, 20),
+          foot_front=(-80, -10), foot_back=(-60, 10), eyes="wide", mouth="ouch"),
+        replace(FACE_DOWN, hand_front=(80, 10), head=-30),
+        FACE_DOWN),
+
+    # --- the guard and the dodges
+    "shield_hit": _steps(
+        P(root=(-14, 14), lean=-12, head=-8, hand_front=(20, -14), hand_back=(84, -24), glove_front=1.2,
+          foot_front=(80, 66), foot_back=(-86, 62), knee_forward=0.7, eyes="closed", mouth="ouch", quill_sway=10),
+        P(root=(-12, 13), lean=-8, head=-6, hand_front=(26, -8), hand_back=(96, -16), glove_front=1.2,
+          foot_front=(78, 66), foot_back=(-88, 62), knee_forward=0.65, eyes="squint", mouth="ouch", quill_sway=6),
+        replace(GUARD, root=(-8, 12), foot_front=(74, 66), foot_back=(-92, 62))),
+    "parry": _steps(
+        GUARD,
+        P(root=(0, 6), lean=10, hand_front=(130, -40), glove_front=1.8, hand_back=(-120, -60), foot_front=(84, 66),
+          eyes="wide", mouth="grin", quill_sway=14),
+        P(root=(0, 6), lean=12, hand_front=(132, -44), glove_front=1.9, hand_back=(-124, -64), foot_front=(84, 66),
+          eyes="wide", mouth="grin", quill_sway=16),
+        P(root=(0, 8), lean=4, hand_front=(90, -10), glove_front=1.3, hand_back=(-110, -10), knee_forward=0.4,
+          eyes="squint", mouth="grin")),
+    "roll": _steps(
+        replace(CROUCH, root=(0, 40), lean=24, head=14, hand_front=(30, 40), eyes="squint"),
+        _rolled(0.15), _rolled(0.4), _rolled(0.65), _rolled(0.9),
+        replace(CROUCH, lean=-2, hand_back=(-80, 30), eyes="squint", mouth="grin")),
+    "roll_back": _steps(
+        replace(CROUCH, root=(0, 36), lean=-10, head=-10, hand_front=(60, 10), hand_back=(-60, 20), eyes="squint"),
+        _rolled(-0.15), _rolled(-0.4), _rolled(-0.65), _rolled(-0.9),
+        replace(CROUCH, lean=14, eyes="squint", mouth="grin")),
+    # Sucked in, quills flat, eyes shut: it goes past him.
+    "spot_dodge": _steps(
+        P(root=(0, 18), lean=-6, head=-4, hand_front=(10, 20), hand_back=(-30, 10), knee_forward=0.6,
+          foot_front=(40, 66), foot_back=(-70, 62), eyes="closed", mouth="flat", quill_sway=-14),
+        P(root=(0, 26), lean=-10, head=-6, hand_front=(0, 24), hand_back=(-20, 16), knee_forward=0.7,
+          foot_front=(36, 66), foot_back=(-66, 62), eyes="closed", mouth="flat", quill_sway=-18),
+        P(root=(0, 10), lean=2, hand_front=(60, 0), hand_back=(-90, 20), knee_forward=0.4, eyes="squint",
+          mouth="grin", quill_sway=6),
+        STAND),
+    "air_dodge": _steps(
+        P(root=(0, -40), planted=False, lean=4, head=6, hand_front=(50, 20), hand_back=(-50, 30), foot_front=(40, 40),
+          foot_back=(-10, 50), knee_forward=1, eyes="closed", mouth="flat", quill_sway=-6),
+        P(root=(0, -44), planted=False, lean=10, head=12, hand_front=(30, 24), hand_back=(60, 10),
+          foot_front=(40, -10), foot_back=(14, 0), knee_forward=1, eyes="closed", mouth="flat", quill_sway=-12),
+        P(root=(0, -44), planted=False, lean=12, head=12, hand_front=(28, 26), hand_back=(58, 12),
+          foot_front=(38, -12), foot_back=(12, -2), knee_forward=1, eyes="closed", mouth="flat", quill_sway=-12),
+        P(root=(0, -40), planted=False, lean=-4, hand_front=(70, -40), hand_back=(-80, -30), foot_front=(30, 60),
+          foot_back=(-30, 66), eyes="squint", mouth="grin", quill_sway=6)),
+
+    # --- the ledge
+    "ledge_catch": _steps(
+        P(root=(0, -16), planted=False, lean=14, hand_front=(30, -110), hand_back=(70, -104), foot_front=(60, 50),
+          foot_back=(20, 70), eyes="wide", mouth="open", quill_sway=14),
+        P(root=(0, -16), planted=False, lean=6, hand_front=(26, -108), hand_back=(70, -100), foot_front=(30, 64),
+          foot_back=(-20, 72), eyes="wide", mouth="flat", quill_sway=10),
+        HANG),
+    "ledge_jump": _steps(
+        HANG,
+        P(root=(10, -40), planted=False, lean=10, hand_front=(10, -60), hand_back=(40, -60), foot_front=(40, 20),
+          foot_back=(0, 40), knee_forward=1, eyes="squint", mouth="grin"),
+        _flung(0.25, (20, -80)), _flung(0.55, (20, -80)), _flung(0.85, (20, -80))),
+    "ledge_drop": _steps(
+        HANG,
+        P(root=(0, 10), planted=False, hand_front=(30, -110), hand_back=(60, -100), foot_front=(10, 80),
+          foot_back=(-30, 80), eyes="wide", mouth="open", quill_sway=10),
+        ROW_FUNCS["fall"](0.0)),
+
+    # --- the grab
+    "grab": _steps(
+        P(lean=4, hand_front=(60, -10), eyes="squint"),
+        P(root=(6, 4), lean=14, head=-4, hand_front=(130, -6), glove_front=1.5, hand_back=(-60, -20),
+          foot_front=(90, 66), eyes="wide", mouth="open"),
+        P(root=(6, 4), lean=14, head=-4, hand_front=(132, -4), glove_front=1.5, hand_back=(-60, -20),
+          foot_front=(90, 66), eyes="wide", mouth="open"),
+        P(lean=6, hand_front=(90, 4), glove_front=1.3, eyes="squint", mouth="grin"),
+        GRAB_HOLD),
+    "grab_hold": lambda t: replace(GRAB_HOLD, hand_front=(84, 2 * _wave(t)), quill_sway=2 * _wave(t)),
+    # Squeezed in, then a swollen glove to the face.
+    "pummel": _steps(
+        replace(GRAB_HOLD, hand_front=(40, 10), hand_back=(-140, 0), lean=-6),
+        replace(GRAB_HOLD, hand_front=(124, -4), glove_front=1.7, lean=10, eyes="wide", mouth="open"),
+        GRAB_HOLD),
+    "grab_release": _steps(
+        replace(GRAB_HOLD, hand_front=(110, -10), glove_front=1.2, lean=6, mouth="flat"),
+        P(root=(-8, 4), lean=-6, hand_front=(80, -30), hand_back=(-110, 10), eyes="derp", mouth="flat"),
+        STAND),
+    "throw_forward": _steps(
+        GRAB_HOLD,
+        P(root=(-6, 6), lean=-14, hand_front=(30, 10), hand_back=(-60, 0), glove_front=1.3, eyes="squint"),
+        P(root=(10, 4), lean=24, head=-6, hand_front=(140, -10), hand_back=(110, -10), glove_front=1.4,
+          glove_back=1.2, foot_front=(100, 66), eyes="wide", mouth="open"),
+        P(root=(10, 4), lean=22, head=-6, hand_front=(136, -6), hand_back=(108, -6), glove_front=1.4,
+          glove_back=1.2, foot_front=(100, 66), eyes="squint", mouth="grin"),
+        P(lean=6, hand_front=(90, 0))),
+    "throw_back": _steps(
+        GRAB_HOLD,
+        P(lean=-10, head=-14, hand_front=(10, -90), hand_back=(-40, -90), glove_front=1.3, eyes="squint",
+          mouth="open"),
+        P(lean=-26, head=-20, hand_front=(-130, -30), hand_back=(-150, -10), glove_front=1.3, foot_back=(-130, 62),
+          eyes="wide", mouth="open", quill_sway=12),
+        P(lean=-24, head=-18, hand_front=(-126, -20), hand_back=(-146, 0), glove_front=1.3, foot_back=(-130, 62),
+          eyes="squint", mouth="grin", quill_sway=10),
+        P(lean=-8, hand_front=(40, 0), hand_back=(-120, 20)),
+        STAND),
+    "throw_up": _steps(
+        GRAB_HOLD,
+        P(root=(0, 18), lean=10, hand_front=(70, 40), hand_back=(40, 40), glove_front=1.3, knee_forward=0.8,
+          eyes="squint"),
+        P(root=(0, -8), lean=-12, head=-20, hand_front=(30, -140), hand_back=(10, -130), glove_front=1.4,
+          eyes="wide", mouth="open", quill_sway=14),
+        P(root=(0, -6), lean=-10, head=-22, hand_front=(26, -136), hand_back=(8, -128), glove_front=1.3,
+          eyes="squint", mouth="grin", quill_sway=12),
+        STAND),
+    "throw_down": _steps(
+        GRAB_HOLD,
+        P(root=(0, -6), lean=-8, head=-10, hand_front=(30, -120), hand_back=(0, -120), glove_front=1.3,
+          eyes="squint"),
+        P(root=(0, 30), lean=30, head=10, hand_front=(80, 80), hand_back=(50, 90), glove_front=1.4, knee_forward=1,
+          eyes="squint", mouth="open", fx=("dust",)),
+        P(root=(0, 28), lean=28, head=10, hand_front=(78, 76), hand_back=(48, 86), knee_forward=1, eyes="squint",
+          mouth="grin"),
+        STAND),
+    "grabbed": _grabbed,
+    "grabbed_pummel": _steps(
+        P(root=(-6, -18), planted=False, lean=-20, head=-24, hand_front=(30, -80), hand_back=(-80, -60),
+          foot_front=(60, 50), foot_back=(-30, 74), eyes="closed", mouth="ouch", quill_sway=12),
+        P(root=(-4, -18), planted=False, lean=-16, head=-18, hand_front=(40, -70), hand_back=(-76, -64),
+          foot_front=(56, 56), foot_back=(-30, 74), eyes="closed", mouth="ouch", quill_sway=8),
+        replace(_grabbed(0.0), eyes="closed", mouth="ouch")),
+    "grab_escape": _steps(
+        _grabbed(0.25),
+        P(root=(-14, -30), planted=False, lean=-20, foot_front=(80, 30), foot_back=(40, 50), knee_forward=1,
+          hand_front=(20, -90), hand_back=(-80, -70), eyes="squint", mouth="open"),
+        P(root=(-6, 14), lean=-8, knee_forward=0.6, eyes="derp", mouth="flat"),
+        STAND),
+
+    # --- attacks
+    "dash_attack": _steps(
+        P(root=(0, 10), lean=14, knee_forward=0.6, foot_front=(40, 66), hand_front=(40, 20), hand_back=(-120, -10),
+          eyes="squint"),
+        P(planted=False, on_floor=True, lean=-34, head=10, foot_front=(124, 20), foot_back=(20, 60),
+          hand_back=(-70, 70), hand_front=(-20, -60), eyes="squint", mouth="grin", fx=("dust",)),
+        P(planted=False, on_floor=True, lean=-36, head=12, foot_front=(126, 18), foot_back=(18, 60),
+          hand_back=(-72, 70), hand_front=(-24, -62), eyes="squint", mouth="grin", fx=("dust",)),
+        P(planted=False, on_floor=True, lean=-32, head=10, foot_front=(120, 24), foot_back=(20, 62),
+          hand_back=(-70, 72), hand_front=(-16, -56), eyes="squint", mouth="grin", fx=("dust",)),
+        replace(CROUCH, eyes="squint", mouth="grin"),
+        STAND),
+    "smash_charge": lambda t: replace(SMASH_WIND, root=(-4 + 3 * _wave(t, 2), 10), glove_front=1.4 + 0.15 * _wave(t),
+                                      quill_sway=10 + 4 * _wave(t)),
+})
+
+ROW_KEYS.update({
+    "walk_stop": [(0.0, P(foot_front=(36, 66), foot_back=(-70, 62), lean=7, hand_front=(60, 24), hand_back=(-96, 14),
+                          quill_sway=-3)),
+                  (0.5, P(root=(0, 6), foot_front=(50, 66), foot_back=(-90, 62), lean=-3, hand_front=(84, 0),
+                          hand_back=(-118, 36), quill_sway=6, knee_forward=0.3)),
+                  (1.0, STAND)],
+    "teeter_start": [(0.0, STAND),
+                     (0.4, P(lean=28, head=10, foot_back=(-70, 40), foot_front=(40, 66), hand_front=(110, -20),
+                             hand_back=(40, -40), eyes="wide", mouth="open")),
+                     (1.0, _teeter(0.0))],
+    "shield_raise": [(0.0, P(root=(0, 4), hand_front=(60, 0), hand_back=(-20, 0), eyes="squint")), (1.0, GUARD)],
+    "shield_release": [(0.0, GUARD), (1.0, STAND)],
+    "smash_forward": [(0.0, SMASH_WIND),
+                      (0.3, P(root=(12, 10), lean=24, head=-4, hand_front=(150, -14), glove_front=2.3,
+                              hand_back=(-140, 10), foot_front=(96, 66), foot_back=(-80, 62), eyes="wide", mouth="open",
+                              quill_sway=-12, on_floor=True)),
+                      (0.6, P(root=(12, 10), lean=24, head=-4, hand_front=(152, -12), glove_front=2.3,
+                              hand_back=(-140, 12), foot_front=(96, 66), foot_back=(-80, 62), eyes="wide", mouth="open",
+                              quill_sway=-12, on_floor=True)),
+                      (1.0, P(lean=8, hand_front=(80, 10), glove_front=1.2))],
+    "smash_up": [(0.0, P(root=(0, 30), lean=12, knee_forward=1, hand_front=(40, 40), hand_back=(-60, 50), eyes="squint")),
+                 (0.35, P(root=(0, -10), lean=-12, head=-24, hand_front=(30, -140), hand_back=(60, -130), glove_back=1.3,
+                          glove_front=1.4, foot_back=(-80, 40), eyes="wide", mouth="open", quill_sway=16)),
+                 (0.6, P(root=(0, -10), lean=-12, head=-24, hand_front=(32, -140), hand_back=(62, -128), glove_back=1.3,
+                         glove_front=1.4, foot_back=(-80, 40), eyes="wide", mouth="open", quill_sway=16)),
+                 (1.0, STAND)],
+    # The splits: a kick out to each side at once, flat on the floor.
+    "smash_down": [(0.0, replace(CROUCH, on_floor=True)),
+                   (0.35, P(root=(0, 64), foot_front=(130, 62), foot_back=(-140, 58), shoe_front_tilt=-10,
+                            shoe_back_tilt=10, hand_front=(60, -70), hand_back=(-60, -80), eyes="squint", mouth="open",
+                            quill_sway=10, fx=("dust",), on_floor=True)),
+                   (0.6, P(root=(0, 64), foot_front=(132, 62), foot_back=(-142, 58), shoe_front_tilt=-10,
+                           shoe_back_tilt=10, hand_front=(60, -74), hand_back=(-60, -84), eyes="squint", mouth="grin",
+                           quill_sway=10, on_floor=True)),
+                   (1.0, replace(CROUCH, on_floor=True))],
+})
+
+ROW_FUNCS.update({
+    "air_land": _steps(
+        P(root=(0, 26), lean=-6, head=-4, knee_forward=1, hand_front=(90, -40), hand_back=(-120, -50), eyes="squint",
+          mouth="open", quill_sway=10),
+        P(root=(0, 14), knee_forward=0.6, hand_front=(80, -10), hand_back=(-120, 0), quill_sway=4),
+        STAND),
+    # Slammed flat against a wall behind him.
+    "impact": _steps(
+        P(root=(-24, -24), planted=False, lean=-6, head=-12, hand_front=(-40, -80), hand_back=(-20, -90),
+          foot_front=(10, 74), foot_back=(-20, 76), eyes="closed", mouth="ouch", quill_sway=-20),
+        P(root=(-30, -24), planted=False, lean=-2, head=-8, hand_front=(-50, -90), hand_back=(-30, -96),
+          foot_front=(0, 76), foot_back=(-24, 76), eyes="closed", mouth="ouch", quill_sway=-24),
+        P(root=(-26, -20), planted=False, lean=-8, head=-2, hand_front=(-30, -60), hand_back=(-40, -70),
+          foot_front=(20, 70), foot_back=(-16, 76), eyes="dizzy", mouth="ouch", quill_sway=-16),
+        P(root=(-22, -16), planted=False, lean=-10, head=4, hand_front=(-10, -40), hand_back=(-50, -50),
+          foot_front=(30, 70), foot_back=(-10, 76), eyes="dizzy", mouth="ouch", quill_sway=-12)),
+    # Spread-eagled, pancaked on a wall.
+    "splat": _steps(
+        P(root=(0, -40), planted=False, hand_front=(100, -70), hand_back=(-110, -80), foot_front=(90, 60),
+          foot_back=(-100, 50), eyes="closed", mouth="ouch", quill_sway=-16),
+        P(root=(0, -36), planted=False, hand_front=(100, -66), hand_back=(-110, -76), foot_front=(90, 62),
+          foot_back=(-100, 52), eyes="dizzy", mouth="ouch", quill_sway=-18),
+        P(root=(0, -30), planted=False, hand_front=(96, -60), hand_back=(-106, -70), foot_front=(86, 66),
+          foot_back=(-96, 56), eyes="dizzy", mouth="ouch", quill_sway=-20)),
+    "ground_bounce": _steps(
+        replace(FACE_UP, lean=-80, hand_front=(-20, -110), hand_back=(20, -100), foot_front=(90, -60),
+                foot_back=(70, -80), quill_sway=30),
+        P(root=(30, -60), planted=False, lean=-60, head=10, hand_front=(-20, -100), hand_back=(30, -100),
+          foot_front=(90, -40), foot_back=(80, -60), knee_forward=1, eyes="closed", mouth="ouch", quill_sway=20),
+        P(root=(20, -80), planted=False, lean=-40, head=6, hand_front=(10, -90), hand_back=(-40, -90),
+          foot_front=(90, 0), foot_back=(70, -20), knee_forward=1, eyes="dizzy", mouth="ouch", quill_sway=10),
+        P(root=(0, -70), planted=False, lean=-30, head=0, hand_front=(30, -80), hand_back=(-60, -80),
+          foot_front=(80, 30), foot_back=(50, 20), knee_forward=1, eyes="dizzy", mouth="ouch", quill_sway=6)),
+    "wall_tech": _steps(
+        P(root=(-10, -30), planted=False, lean=-10, head=6, foot_front=(90, 0), foot_back=(70, 20), knee_forward=1,
+          hand_front=(80, -50), hand_back=(100, -40), eyes="squint", mouth="flat", quill_sway=12),
+        P(root=(-4, -30), planted=False, lean=-4, head=8, foot_front=(84, 4), foot_back=(66, 24), knee_forward=1,
+          hand_front=(76, -46), hand_back=(96, -36), eyes="squint", mouth="flat", quill_sway=16),
+        P(root=(-8, -30), planted=False, lean=-8, head=6, foot_front=(88, 2), foot_back=(68, 22), knee_forward=1,
+          hand_front=(78, -48), hand_back=(98, -38), eyes="squint", mouth="grin", quill_sway=12)),
+    "wall_tech_jump": _steps(
+        P(root=(-4, -30), planted=False, lean=-4, head=8, foot_front=(84, 4), foot_back=(66, 24), knee_forward=1,
+          hand_front=(76, -46), hand_back=(96, -36), eyes="squint", mouth="flat", quill_sway=16),
+        P(root=(-30, -50), planted=False, lean=-24, foot_front=(110, 30), foot_back=(100, 50), hand_front=(-60, -90),
+          hand_back=(-100, -60), eyes="wide", mouth="grin", quill_sway=-8),
+        _flung(-0.3, (-40, -70)), _flung(-0.6, (-40, -70))),
+    "ceiling_tech": _steps(
+        P(root=(0, -42), planted=False, lean=-6, head=12, hand_front=(30, -120), hand_back=(50, -118),
+          foot_front=(40, -30), foot_back=(0, -20), knee_forward=1, eyes="squint", mouth="flat", quill_sway=-8),
+        P(root=(0, -38), planted=False, lean=-2, head=14, hand_front=(28, -116), hand_back=(48, -114),
+          foot_front=(44, -34), foot_back=(4, -24), knee_forward=1, eyes="squint", mouth="flat", quill_sway=-10),
+        P(root=(0, -34), planted=False, lean=-4, head=6, hand_front=(40, -90), hand_back=(-40, -90),
+          foot_front=(40, 40), foot_back=(-20, 50), knee_forward=1, eyes="squint", mouth="grin", quill_sway=4)),
+
+    # --- the guard broken, sleep, buried
+    "shield_break_launch": _steps(
+        P(root=(0, -50), planted=False, lean=-20, head=-30, hand_front=(80, -60), hand_back=(-80, -70),
+          foot_front=(40, 70), foot_back=(-30, 74), eyes="wide", mouth="open", quill_sway=12),
+        P(root=(0, -70), planted=False, lean=-14, head=-30, hand_front=(70, 84), hand_back=(-70, 84),
+          foot_front=(34, 96), foot_back=(-44, 90), eyes="dizzy", mouth="open", quill_sway=-16),
+        P(root=(0, -72), planted=False, lean=-10, head=-34, hand_front=(74, 80), hand_back=(-66, 88),
+          foot_front=(30, 98), foot_back=(-40, 92), eyes="dizzy", mouth="open", quill_sway=-18),
+        P(root=(0, -70), planted=False, lean=-12, head=-28, hand_front=(66, 86), hand_back=(-72, 82),
+          foot_front=(36, 94), foot_back=(-46, 88), eyes="dizzy", mouth="open", quill_sway=-14)),
+    "shield_break_fall": lambda t: P(root=(0, -40), planted=False, lean=-10 + 3 * _wave(t), head=20,
+                                     hand_front=(30, -100), hand_back=(-30, -104 + 6 * _wave(t)), foot_front=(10, 60),
+                                     foot_back=(-40, 50), knee_forward=0.5, eyes="dizzy", mouth="open",
+                                     quill_sway=18 + 3 * _wave(t)),
+    "shield_break_collapse": _steps(
+        P(root=(0, 14), lean=10, head=20, knee_forward=0.6, hand_front=(40, 70), hand_back=(-40, 80), eyes="dizzy",
+          mouth="flat", quill_sway=-6),
+        P(root=(0, 34), lean=14, head=24, knee_forward=1, hand_front=(40, 84), hand_back=(-30, 90), eyes="dizzy",
+          mouth="flat", quill_sway=-10),
+        replace(SIT, lean=4, head=22),
+        SIT),
+    "shield_break_recover": _steps(
+        SIT,
+        replace(CROUCH, eyes="dizzy", mouth="flat"),
+        P(root=(0, 6), head=-14, hand_front=(10, -90), hand_back=(-110, 20), eyes="squint", mouth="flat",
+          quill_sway=10),
+        STAND),
+    "dizzy": lambda t: P(root=(0, 6), lean=8 * _wave(t), head=10 + 14 * _wave(t, phase=1.0),
+                         hand_front=(40, 60 + 10 * _wave(t)), hand_back=(-60, 70 - 10 * _wave(t)), knee_forward=0.4,
+                         eyes="dizzy", mouth="open", quill_sway=6 * _wave(t)),
+    "sleep_start": _steps(
+        P(head=-16, hand_front=(30, -80), eyes="closed", mouth="open", quill_sway=4),
+        P(root=(0, 20), lean=10, head=16, hand_front=(40, 50), hand_back=(-60, 70), knee_forward=0.8, eyes="closed",
+          mouth="flat", quill_sway=-8),
+        replace(SLEEP, lean=4, head=20, mouth="open"),
+        SLEEP),
+    "sleep": lambda t: replace(SLEEP, lean=12 + 2 * _wave(t), head=30 + 3 * _wave(t),
+                               mouth="open" if t >= 0.5 else "flat"),
+    "wake": _steps(
+        SLEEP,
+        replace(SIT, head=-20, eyes="wide", mouth="open", quill_sway=20, hand_front=(60, -40)),
+        replace(CROUCH, eyes="wide", mouth="flat"),
+        STAND),
+    "bury_start": _steps(
+        P(root=(0, 30), knee_forward=1, hand_front=(60, -80), hand_back=(-60, -90), eyes="closed", mouth="ouch",
+          quill_sway=-10),
+        replace(BURIED, eyes="closed", mouth="ouch", hand_front=(60, -80), hand_back=(-60, -90)),
+        BURIED),
+    "buried": _cycle(
+        BURIED,
+        replace(BURIED, hand_front=(90, -70), hand_back=(-100, -10), quill_sway=4),
+        replace(BURIED, hand_front=(70, -10), hand_back=(-80, -60), quill_sway=-4)),
+    "bury_escape": _steps(
+        replace(BURIED, hand_front=(40, -110), hand_back=(-20, -110), eyes="squint"),
+        P(root=(0, -30), planted=False, hand_front=(40, -110), hand_back=(-20, -114), foot_front=(20, 90),
+          foot_back=(-30, 90), eyes="wide", mouth="open", quill_sway=10, fx=("dirt",)),
+        _flung(0.3, (0, -60)), _flung(0.6, (0, -60))),
+    "footstool_jump": _steps(
+        P(root=(0, -30), planted=False, lean=-6, foot_front=(20, 100), foot_back=(-10, 96), hand_front=(60, -90),
+          hand_back=(-60, -100), eyes="squint", mouth="grin", quill_sway=10),
+        _flung(0.3, (0, -60)), _flung(0.6, (0, -60)), _flung(0.9, (0, -60))),
+    "platform_drop": _steps(
+        replace(CROUCH, eyes="derp"),
+        P(root=(0, -10), planted=False, lean=-4, hand_front=(50, -80), hand_back=(-60, -90), foot_front=(20, 92),
+          foot_back=(-20, 92), eyes="wide", mouth="open", quill_sway=10),
+        ROW_FUNCS["fall"](0.0)),
+
+    # --- the show
+    # Drops in as the ball, and pops out of it.
+    "entrance": _steps(
+        _flung(0.0, (0, -150)), _flung(0.35, (0, -90)), _rolled(0.7),
+        P(root=(0, -10), hand_front=(60, -100), hand_back=(-120, -60), eyes="wide", mouth="grin", quill_sway=12),
+        P(hand_front=(50, -60), eyes="squint", mouth="grin"),
+        P(hand_front=(70, -64), foot_front=(66, 56), eyes="squint", mouth="grin", on_floor=True)),
+    "victory": _steps(
+        _rolled(0.0), _rolled(0.5),
+        P(root=(0, -10), lean=-4, hand_front=(80, -90), hand_back=(-80, -100), eyes="wide", mouth="grin",
+          quill_sway=14),
+        replace(VICTORY, hand_back=(10, -130)),
+        VICTORY),
+    "victory_hold": lambda t: replace(VICTORY, root=(0, 2 * abs(_wave(t))),
+                                      foot_front=(80, 66 - 10 * max(0.0, _wave(t))),
+                                      hand_back=(30, -140 + 4 * _wave(t))),
+    "loss": lambda t: P(root=(0, 10), lean=18, head=26, hand_front=(30, 90), hand_back=(-40, 96), knee_forward=0.4,
+                        eyes="closed", mouth="flat", quill_sway=-14 + 2 * _wave(t)),
+})
+
+LOOPS |= {"crouch_walk", "teeter", "idle_look_up", "fall_special", "tumble", "prone", "prone_face_up",
+          "prone_face_down", "grab_hold", "grabbed", "smash_charge", "shield_break_fall", "dizzy", "sleep",
+          "buried", "victory_hold", "loss"}
+
+#: The fighter vocabulary's rows, after his own (``ROWS``).
+FIGHTER_ROWS: List[Tuple[str, int, int]] = [
+    ("idle_look_up", 4, 150),
+    ("walk_stop", 4, 70),
+    ("run_stop", 6, 60),
+    ("turnaround", 5, 44),
+    ("stumble", 5, 60),
+    ("crouch_start", 2, 50),
+    ("crouch_walk", 6, 90),
+    ("crouch_end", 2, 50),
+    ("jump_squat", 3, 40),
+    ("double_jump", 6, 60),
+    ("fall_special", 4, 100),
+    ("land_light", 3, 60),
+    ("air_land", 3, 60),
+    ("teeter_start", 4, 60),
+    ("teeter", 6, 90),
+    ("hit_high", 4, 70),
+    ("hit_mid", 4, 70),
+    ("hit_low", 4, 70),
+    ("hit_air", 4, 70),
+    ("launch", 4, 70),
+    ("launch_up", 4, 70),
+    ("launch_horizontal", 4, 70),
+    ("launch_down", 4, 70),
+    ("meteor", 3, 70),
+    ("tumble", 6, 90),
+    ("impact", 4, 60),
+    ("splat", 3, 80),
+    ("ground_bounce", 4, 60),
+    ("knockdown", 4, 80),
+    ("prone", 2, 200),
+    ("prone_face_up", 4, 160),
+    ("prone_face_down", 4, 160),
+    ("prone_damage", 3, 60),
+    ("getup", 5, 80),
+    ("getup_roll", 6, 60),
+    ("getup_attack", 6, 60),
+    ("tech", 4, 60),
+    ("tech_roll", 5, 60),
+    ("wall_tech", 3, 60),
+    ("wall_tech_jump", 4, 60),
+    ("ceiling_tech", 3, 60),
+    ("trip_fall", 4, 70),
+    ("shield_raise", 3, 50),
+    ("shield_hit", 3, 60),
+    ("shield_release", 3, 60),
+    ("parry", 4, 60),
+    ("roll", 6, 50),
+    ("roll_back", 6, 50),
+    ("spot_dodge", 4, 60),
+    ("air_dodge", 4, 60),
+    ("ledge_catch", 3, 60),
+    ("ledge_jump", 5, 60),
+    ("ledge_drop", 3, 60),
+    ("grab", 5, 50),
+    ("grab_hold", 3, 120),
+    ("pummel", 3, 50),
+    ("grab_release", 3, 70),
+    ("throw_forward", 5, 60),
+    ("throw_back", 6, 60),
+    ("throw_up", 5, 60),
+    ("throw_down", 5, 60),
+    ("grabbed", 4, 100),
+    ("grabbed_pummel", 3, 60),
+    ("grab_escape", 4, 60),
+    ("dash_attack", 6, 60),
+    ("smash_charge", 4, 60),
+    ("smash_forward", 6, 60),
+    ("smash_up", 6, 60),
+    ("smash_down", 6, 60),
+    ("shield_break_launch", 4, 70),
+    ("shield_break_fall", 3, 100),
+    ("shield_break_collapse", 4, 80),
+    ("shield_break_recover", 4, 80),
+    ("dizzy", 6, 110),
+    ("sleep_start", 4, 120),
+    ("sleep", 4, 220),
+    ("wake", 4, 80),
+    ("bury_start", 3, 80),
+    ("buried", 3, 140),
+    ("bury_escape", 4, 60),
+    ("footstool_jump", 4, 60),
+    ("platform_drop", 3, 60),
+    ("entrance", 6, 80),
+    ("victory", 5, 90),
+    ("victory_hold", 4, 140),
+    ("loss", 4, 200),
+]
+
+ROW_FUNCS["stumble"] = _steps(
+    P(root=(0, 6), lean=20, head=10, foot_front=(90, 66), foot_back=(-110, 40), hand_front=(110, -50),
+      hand_back=(40, -90), eyes="wide", mouth="open", quill_sway=-8),
+    P(root=(10, 14), lean=30, head=14, foot_front=(96, 66), foot_back=(-90, 20), hand_front=(130, -10),
+      hand_back=(80, -70), eyes="wide", mouth="ouch", quill_sway=-10),
+    P(root=(6, 6), lean=14, foot_front=(90, 66), foot_back=(-60, 62), hand_front=(100, -30), hand_back=(-120, -40),
+      eyes="derp", mouth="flat", quill_sway=-4),
+    P(lean=4),
+    STAND)
+
+
+
+def _stood(row: Callable[[float], Pose]) -> Callable[[float], Pose]:
+    """``row`` with every pose stood on the floor: a lean or a lifted foot
+    can raise the hips past what the planted leg reaches."""
+    def stood(t: float) -> Pose:
+        return replace(row(t), on_floor=True)
+    if hasattr(row, "frames"):
+        stood.frames = row.frames
+    return stood
+
+
+for _name in ("hit_high", "hit_low", "stumble", "trip_fall", "crouch_walk", "throw_forward", "crouch_start", "roll", "roll_back",
+              "getup", "getup_roll", "getup_attack", "tech_roll", "dash_attack", "victory",
+              "victory_hold"):
+    ROW_FUNCS[_name] = _stood(ROW_FUNCS[_name])
+
+#: Each fighter-vocabulary category (``fighter_core``) and the row that draws
+#: it. Several categories may share a row; his signature moves are his
+#: specials (the spin, the spin dash, its charge).
+APPLICABLE_MOTION_SCOPES = ("fighter_core",)
+FIGHTER_MOTION_COVERAGE: Dict[str, str] = {
+    "idle": "idle", "idle_look_up": "idle_look_up", "walk": "walk", "locomotion_stop": "run_stop",
+    "turnaround": "turnaround", "dash_startup": "dash_startup", "run": "run", "stumble": "stumble",
+    "crouch_start": "crouch_start", "crouch": "crouch", "crouch_walk": "crouch_walk", "crouch_jump": "jump",
+    "crouch_end": "crouch_end", "land_light": "land_light", "land_hard": "land_hard", "jump_squat": "jump_squat",
+    "jump": "jump", "double_jump": "double_jump", "fall": "fall", "fall_special": "fall_special",
+    "land_special": "land_hard", "tumble": "tumble",
+    "shield_raise": "shield_raise", "shield_hold": "block", "shield_release": "shield_release", "parry": "parry",
+    "shield_hit": "shield_hit", "spot_dodge": "spot_dodge", "roll_forward": "roll", "roll_backward": "roll_back",
+    "air_dodge": "air_dodge",
+    "jab": "punch", "dash_attack": "dash_attack", "attack_side": "attack_side", "attack_up": "attack_up",
+    "attack_down": "attack_down", "smash_charge_forward": "smash_charge", "smash_forward": "smash_forward",
+    "smash_charge_up": "smash_charge", "smash_up": "smash_up", "smash_charge_down": "smash_charge",
+    "smash_down": "smash_down", "air_neutral": "air_neutral", "air_forward": "air_forward", "air_back": "air_back",
+    "air_up": "air_up", "air_down": "air_down", "air_land": "air_land",
+    "special_neutral": "special", "special_side": "dash", "special_up": "jump", "special_down": "dash_startup",
+    "final_smash": "special",
+    "grab": "grab", "grab_hold": "grab_hold", "pummel": "pummel", "grab_release": "grab_release",
+    "throw_forward": "throw_forward", "throw_back": "throw_back", "throw_up": "throw_up", "throw_down": "throw_down",
+    "grabbed": "grabbed", "grabbed_pummel": "grabbed_pummel", "grab_escape": "grab_escape",
+    "hit": "hit_mid", "launch": "launch", "meteor": "meteor", "impact": "impact", "splat": "splat",
+    "ground_bounce": "ground_bounce", "prone": "prone", "prone_damage": "prone_damage", "getup": "getup",
+    "getup_attack": "getup_attack", "getup_roll": "getup_roll", "knockdown": "knockdown", "tech": "tech",
+    "tech_roll": "tech_roll", "wall_tech": "wall_tech", "wall_tech_jump": "wall_tech_jump",
+    "ceiling_tech": "ceiling_tech",
+    "shield_break_launch": "shield_break_launch", "shield_break_fall": "shield_break_fall",
+    "shield_break_collapse": "shield_break_collapse", "shield_break_recover": "shield_break_recover",
+    "dizzy": "dizzy", "sleep_start": "sleep_start", "sleep": "sleep", "wake": "wake",
+    "bury_start": "bury_start", "buried": "buried", "bury_escape": "bury_escape",
+    "footstool_jump": "footstool_jump", "footstooled": "stumble", "platform_drop": "platform_drop",
+    "teeter_start": "teeter_start", "teeter": "teeter", "lose_footing": "stumble",
+    "ledge_catch": "ledge_catch", "ledge_hang": "ledge_grab", "ledge_getup": "ledge_getup",
+    "ledge_attack": "ledge_getup_attack", "ledge_roll": "ledge_roll", "ledge_jump": "ledge_jump",
+    "ledge_drop": "ledge_drop",
+    "trip_fall": "trip_fall", "trip_land": "ground_bounce", "trip_idle": "prone_face_down", "trip_getup": "getup",
+    "trip_attack": "getup_attack", "trip_roll": "getup_roll",
+    "taunt": "taunt", "entrance": "entrance", "victory": "victory", "victory_hold": "victory_hold", "loss": "loss",
+}
+
 
 # The row names the runtime knows (crates/.../sprite_sheet/src/character/anim.rs
 # `from_name`); an unlisted pose falls back through `base_pose`. `sprint` is the
@@ -813,7 +1711,9 @@ ROWS: List[Tuple[str, int, int]] = [
     ("death", 8, 110),
     ("taunt", 6, 120),
     ("interact", 5, 110),
-]
+] + FIGHTER_ROWS
+# A row of given frames publishes each of them once.
+assert all(getattr(ROW_FUNCS.get(name), "frames", n) == n for name, n, _ms in ROWS), "a row's count is not its frames"
 
 # Generic gameplay keys for per-pose combat metadata (hurtboxes auto-derived per
 # key; hitboxes measured below). Keyed row -> generic key (== row name).
@@ -825,13 +1725,13 @@ ANIMATION_KEY_MAP: Dict[str, str] = {
         "slash", "punch", "attack_side", "attack_up", "attack_down",
         "air_neutral", "air_forward", "air_back", "air_up", "air_down",
         "special", "block", "wall_grab", "ledge_grab", "ledge_getup_attack",
-        "hit",
+        "hit", "dash_attack", "smash_forward", "smash_up", "smash_down", "getup_attack",
     }
 }
 
 
 def _draw_sanic(skin: Skin, anim: str, frame_idx: int, nframes: int, body_only: bool = False) -> Image.Image:
-    return _draw_pose(skin, _row_poses(anim, nframes)[frame_idx], body_only)
+    return _draw_pose(skin, _row_poses(anim, nframes, skin)[frame_idx], body_only)
 
 
 # --- Hit areas, measured from the drawn strikes --------------------------------
@@ -850,6 +1750,11 @@ STRIKES: Dict[str, Tuple[float, float, Tuple[str, ...]]] = {
     "air_down": (0.20, 0.80, ("ball",)),
     "special": (0.10, 0.92, ("ball",)),
     "ledge_getup_attack": (0.36, 0.64, ("foot_front",)),
+    "dash_attack": (0.18, 0.62, ("foot_front",)),
+    "smash_forward": (0.28, 0.62, ("hand_front",)),
+    "smash_up": (0.30, 0.62, ("hand_front", "hand_back")),
+    "smash_down": (0.30, 0.62, ("foot_front", "foot_back")),
+    "getup_attack": (0.18, 0.62, ("foot_front", "foot_back")),
 }
 #: The reach of each striking part about its point (reference pixels).
 _STRIKE_R = {"hand_front": 24.0, "hand_back": 30.0, "foot_front": 30.0, "foot_back": 34.0, "ball": BALL_R + 20.0}
@@ -939,6 +1844,11 @@ def _animation_bindings(source: str) -> dict:
         "action.melee.side": _strike("attack_side", source),
         "action.melee.up": _strike("attack_up", source),
         "action.melee.down": _strike("attack_down", source),
+        "action.melee.dash": _strike("dash_attack", source),
+        # smashes
+        "action.smash.forward": _strike("smash_forward", source),
+        "action.smash.up": _strike("smash_up", source),
+        "action.smash.down": _strike("smash_down", source),
         # aerials
         "action.air.neutral": _strike("air_neutral", source),
         "action.air.forward": _strike("air_forward", source),
@@ -951,14 +1861,23 @@ def _animation_bindings(source: str) -> dict:
         "action.special.dash_charge": {"animation": "dash_startup", "events": []},
         # defense / ledge options
         "action.defense.block": {"animation": "block", "events": []},
-        "action.defense.roll": {"animation": "ball", "events": [{"t": 0.15, "event": "iframes_start", "source": source}, {"t": 0.75, "event": "iframes_end", "source": source}]},
+        "action.defense.parry": {"animation": "parry", "events": []},
+        "action.defense.roll": {"animation": "roll", "events": [{"t": 0.15, "event": "iframes_start", "source": source}, {"t": 0.75, "event": "iframes_end", "source": source}]},
         "action.ledge.getup": {"animation": "ledge_getup", "events": []},
         "action.ledge.getup_attack": _strike("ledge_getup_attack", source),
         "action.ledge.roll": {"animation": "ledge_roll", "events": []},
+        # the grab
+        "action.capture.grab": {"animation": "grab", "events": []},
+        "action.capture.pummel": {"animation": "pummel", "events": []},
+        "action.capture.throw_forward": {"animation": "throw_forward", "events": []},
+        "action.capture.throw_back": {"animation": "throw_back", "events": []},
+        "action.capture.throw_up": {"animation": "throw_up", "events": []},
+        "action.capture.throw_down": {"animation": "throw_down", "events": []},
         # reactions / emotes
         "reaction.hit": {"animation": "hit", "events": []},
         "reaction.death": {"animation": "death", "events": []},
         "emote.taunt": {"animation": "taunt", "events": []},
+        "emote.victory": {"animation": "victory", "events": []},
         "interaction.use": {"animation": "interact", "events": []},
     }
 

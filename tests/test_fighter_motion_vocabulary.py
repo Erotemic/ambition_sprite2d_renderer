@@ -352,3 +352,18 @@ def test_pca_keeps_existing_signature_specials():
     assert coverage["special_up"] == "fly"
     assert coverage["special_down"] == "charge"
     assert coverage["final_smash"] == "final_smash"
+
+
+def test_sanic_covers_every_current_applicable_motion_category():
+    from ambition_sprite2d_renderer.targets.characters import sanic
+
+    required = applicable_categories(sanic.APPLICABLE_MOTION_SCOPES)
+    row_names = {name for name, _frames, _duration in sanic.ROWS}
+
+    assert set(sanic.FIGHTER_MOTION_COVERAGE) == required
+    validate_motion_coverage(
+        row_names=row_names,
+        coverage=sanic.FIGHTER_MOTION_COVERAGE,
+        scopes=sanic.APPLICABLE_MOTION_SCOPES,
+        character="sanic",
+    )
