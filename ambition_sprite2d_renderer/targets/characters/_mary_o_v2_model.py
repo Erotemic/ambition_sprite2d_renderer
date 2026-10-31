@@ -566,6 +566,14 @@ TALL_FORM = FormSpec(
     crouch_head_dy=4.6,
 )
 
+# The home game uses the platformer rows. Other games keep the fighter rows.
+CLASSIC_TALL_FORM = replace(
+    TALL_FORM,
+    target_name=f"{TARGET_BASE}_tall_classic",
+    display_name="Mary-O v2 Tall Classic",
+    rows=TALL_ROWS + _attack_rows(),
+)
+
 FIRE_FORM = FormSpec(
     target_name=f"{TARGET_BASE}_fire",
     display_name="Mary-O v2 Fire",

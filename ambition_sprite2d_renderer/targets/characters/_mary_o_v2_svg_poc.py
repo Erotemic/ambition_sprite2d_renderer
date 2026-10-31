@@ -116,11 +116,6 @@ _SOURCE_WIDTH = 600
 _SOURCE_HEIGHT = _AUTHORING_LIBRARY_HEIGHT + _FRAME_H * 2 + _VIEW_GAP
 _REF_DPI = 25.4  # one SVG user unit -> one reference pixel
 
-_FORM_KEYS = {
-    SHORT_FORM.target_name: "short",
-    TALL_FORM.target_name: "tall",
-    FIRE_FORM.target_name: "fire",
-}
 _FORM_TITLES = {"short": "Short", "tall": "Tall", "fire": "Fire"}
 _VIEW_LABELS = {
     (key, projection): f"Mary-O - {_FORM_TITLES[key]} {projection.title()}"
@@ -1722,7 +1717,7 @@ def _draw_grouped_side_head(px: _SvgPixelCanvas, form: FormSpec, x: float, y: fl
 
 
 def _paint_side_view(form: FormSpec) -> str:
-    key = _FORM_KEYS[form.target_name]
+    key = form.power
     px = _SvgPixelCanvas(key, "side")
     pose = Pose()
     g = _layout(form, pose)
@@ -1757,7 +1752,7 @@ def _paint_side_view(form: FormSpec) -> str:
 
 def _paint_front_view(form: FormSpec) -> str:
     """Capture a complete front/death component library without rotated limbs."""
-    key = _FORM_KEYS[form.target_name]
+    key = form.power
     px = _SvgPixelCanvas(key, "front")
     g = _front_layout(form, Pose(mode="dead"))
     leg_length = form.leg_height - form.body_dy - 0.35
@@ -2104,7 +2099,7 @@ def svg_source_text() -> str:
     forms = (SHORT_FORM, TALL_FORM, FIRE_FORM)
     layers: List[str] = []
     for form in forms:
-        key = _FORM_KEYS[form.target_name]
+        key = form.power
         for projection, painter in (("side", _paint_side_view), ("front", _paint_front_view)):
             view_x, view_y = _VIEW_ORIGINS[(key, projection)]
             layers.append(
@@ -2203,11 +2198,11 @@ def _absolute_point(elem: ET.Element, parent: Dict[ET.Element, ET.Element], x: f
 
 
 def _view_for_form(form: FormSpec, projection: str = "side") -> str:
-    return _VIEW_LABELS[(_FORM_KEYS[form.target_name], projection)]
+    return _VIEW_LABELS[(form.power, projection)]
 
 
 def _source_view_origin(form: FormSpec, projection: str = "side") -> tuple[float, float]:
-    return tuple(float(v) for v in _VIEW_ORIGINS[(_FORM_KEYS[form.target_name], projection)])
+    return tuple(float(v) for v in _VIEW_ORIGINS[(form.power, projection)])
 
 
 _XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
@@ -2259,7 +2254,7 @@ _TIP_OF_BONE = {
 
 
 def _form_is_fire(form: FormSpec) -> bool:
-    return "fire" in form.target_name
+    return form.power == "fire"
 
 
 def _find_part_records(svg_path: Path, form: FormSpec, projection: str = "side") -> List[dict]:

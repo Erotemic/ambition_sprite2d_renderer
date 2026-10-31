@@ -27,6 +27,7 @@ from ._mary_o_v2_art import (
 from ._mary_o_v2_model import (
     ACTOR_METADATA_BASE,
     AUTHORING_FRAME_SIZE,
+    CLASSIC_TALL_FORM,
     FIRE_FORM,
     FRAME_SIZE,
     LABEL_WIDTH,
@@ -333,7 +334,8 @@ def _render_form_with_products(form: FormSpec, out_dir: str | Path):
             f"her sprites; run scripts/export_mary_o_v2_svg.py to seed a fresh one."
         )
     docs = {}
-    for source in (SHORT_FORM, TALL_FORM, FIRE_FORM):
+    sources = {source.target_name: source for source in (SHORT_FORM, TALL_FORM, FIRE_FORM, form)}
+    for source in sources.values():
         docs[source.target_name] = build_rig_document(ASSET_PATH, source, "side")
         docs[f"{source.target_name}:front"] = build_rig_document(ASSET_PATH, source, "front")
 
@@ -436,6 +438,10 @@ def render_mary_o_v2_tall(out_dir: str | Path, **opts) -> List[Path]:
     return _render_form(TALL_FORM, out_dir)
 
 
+def render_mary_o_v2_tall_classic(out_dir: str | Path, **opts) -> List[Path]:
+    return _render_form(CLASSIC_TALL_FORM, out_dir)
+
+
 def render_mary_o_v2_fire(out_dir: str | Path, **opts) -> List[Path]:
     return _render_form(FIRE_FORM, out_dir)
 
@@ -443,6 +449,7 @@ def render_mary_o_v2_fire(out_dir: str | Path, **opts) -> List[Path]:
 TARGETS = {
     SHORT_FORM.target_name: {"render": render_mary_o_v2, "actor_metadata": _actor_metadata(SHORT_FORM)},
     TALL_FORM.target_name: {"render": render_mary_o_v2_tall, "actor_metadata": _actor_metadata(TALL_FORM)},
+    CLASSIC_TALL_FORM.target_name: {"render": render_mary_o_v2_tall_classic, "actor_metadata": _actor_metadata(CLASSIC_TALL_FORM)},
     FIRE_FORM.target_name: {"render": render_mary_o_v2_fire, "actor_metadata": _actor_metadata(FIRE_FORM)},
 }
 
