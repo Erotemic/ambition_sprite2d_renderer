@@ -18,6 +18,10 @@ Drawn in room coordinates (`_district_props`) on the numbers of
   pool at the bottom.
 - `magical_void_heart` (floor y 576): `heart_black_star`, the first star
   that went out, as big as the room, asleep.
+- `magical_void_nursery` (640 by 640, floor y 576; behind the heart's west
+  wall, which breaks): `nursery_cradles`, where a star goes the first time it
+  goes out: crescent cradles in white line, a little black star asleep in
+  each, and a mobile of outlined stars over them.
 
 Animations: ``idle``, 1 frame each. No drop shadows.
 """
@@ -211,12 +215,33 @@ def black_star(c, k):
         c.put(c.mask(lambda p: p.ellipse(sx, sy, 1.8 + (i % 3) * 0.8)), EDGE, 0.75)
 
 
+def cradles(c, k):
+    for i, x in enumerate((140, 320, 500)):
+        # A crescent rocking on the floor, in white line: the cradle.
+        arc = [(x + 60 * math.cos(math.pi * t / 16), FLOOR - 40 + 34 * math.sin(math.pi * t / 16)) for t in range(17)]
+        c.put(c.mask(lambda p: p.line(arc, 2.6)), EDGE)
+        c.put(c.mask(lambda p: p.line([(x - 60, FLOOR - 40), (x + 60, FLOOR - 40)], 1.4)), EDGE, 0.6)
+        # Its star, asleep, little.
+        pts = star_pts(x, FLOOR - 40, 22, 0.47, 0.2 * (i - 1))
+        void_poly(c, pts, 1.6)
+        for ex in (-7, 7):
+            c.put(c.mask(lambda p: p.line([(x + ex - 4, FLOOR - 42), (x + ex, FLOOR - 39), (x + ex + 4, FLOOR - 42)], 1.2)), EDGE)
+    # The mobile over them, from the roof.
+    c.put(c.mask(lambda p: p.line([(320, ROOF), (320, ROOF + 90)], 1.4)), EDGE)
+    c.put(c.mask(lambda p: p.line([(180, ROOF + 90), (460, ROOF + 90)], 1.8)), EDGE)
+    for x, ln in ((180, 60), (270, 90), (370, 70), (460, 100)):
+        c.put(c.mask(lambda p: p.line([(x, ROOF + 90), (x, ROOF + 90 + ln)], 1.0)), EDGE, 0.8)
+        pts = star_pts(x, ROOF + 104 + ln, 12, 0.5)
+        c.put(c.mask(lambda p: p.line(pts + [pts[0]], 1.6)), EDGE)
+
+
 PIECES: Dict[str, Piece] = {
     "rift_tear": Piece((0, ROOF, 360, FLOOR), tear),
     "rift_outlines": Piece((760, 220, 1700, FLOOR), outlines),
     "gallery_exhibits": Piece((500, 200, 1740, FLOOR), exhibits),
     "falls_cascade": Piece((540, ROOF, 760, FALLS_FLOOR), cascade),
     "heart_black_star": Piece((420, ROOF, 980, FLOOR), black_star),
+    "nursery_cradles": Piece((60, ROOF, 580, FLOOR), cradles),
 }
 
 TARGETS = targets(PIECES, PAL)
