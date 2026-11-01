@@ -11,9 +11,10 @@ is gone (the die is its own character, `quantum_die`, spawned at the
 release: the hand shows only a glimpse of one in its grip, and the sparkle
 where it leaves).
 
-A PAPER DOLL, posed from one joint table (``Pose``) per frame: the PALM,
-four FINGERS of three bones each and a THUMB of two, each joint turned by
-its finger's curl; the CUFF and its mist; the DIE GLIMPSE; the RELEASE
+A PAPER DOLL placed by a 3D HAND MODEL (``_hand3d``: one skeleton, posed
+by joint angles, projected per view; its ``reference_sheet`` is the
+turnaround): the PALM, four FINGERS of three phalanges each and a THUMB of
+three, each joint folded by its finger's curl; the CUFF and its mist; the DIE GLIMPSE; the RELEASE
 sparkle; an aura and motes.
 
 Two VIEWS (``Pose.view``): the PALM (front: its pads, its creases, the
@@ -43,6 +44,8 @@ from PIL import Image, ImageFilter
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
+from . import _hand3d as H3
+
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
@@ -70,22 +73,12 @@ BRASS: RGBA = (214, 168, 84, 255)
 SLEEVE: RGBA = (36, 22, 58, 255)
 GARTER: RGBA = (150, 60, 140, 255)
 
-#: THE ONE HAND every pose and both views are drawn from. Each finger: its
-#: knuckle's place across the palm (frame px, from the palm's middle line),
-#: its width and its three phalanges' lengths. Index, middle, ring, little.
-FINGERS = [(-9.0, 5.6, (16.0, 11.0, 8.0)), (-3.0, 5.8, (17.5, 12.0, 8.5)), (3.0, 5.4, (16.0, 11.0, 8.0)), (8.5, 4.8, (12.5, 9.0, 7.0))]
-#: The thumb: its metacarpal (inside the thumb's mound) and two phalanges.
-THUMB = (9.0, 10.0, 8.0)
-THUMB_WIDTH = 6.2
-PALM_LENGTH = 26.0
-#: How far each joint (knuckle, middle, end) bends at a full curl, degrees.
-#: A curl folds the finger INTO DEPTH (toward us from the palm side, away
-#: from the back), so its phalanges foreshorten and its tip comes back over
-#: the palm; it never turns the finger in the picture plane.
-JOINT_BEND = (70.0, 95.0, 70.0)
-#: How much of a phalanx's depth shows as a drop down the frame (the hand is
-#: seen a little from above).
-DEPTH_TILT = 0.5
+#: THE ONE HAND every pose and view is drawn from is the 3D model in
+#: ``_hand3d`` (its skeleton, joint angles and camera); this module draws
+#: the 2D parts at the joints it projects.
+FINGERS = H3.FINGERS
+THUMB_WIDTH = H3.THUMB_WIDTH
+PALM_LENGTH = H3.PALM_LENGTH
 
 
 def _a(c: RGBA, a: float) -> RGBA:
@@ -129,52 +122,37 @@ class Pose:
     view: str = "palm"
 
 
-def _side(pose: "Pose") -> float:
-    return 1.0 if pose.view == "palm" else -1.0
+def _camera(pose: Pose) -> H3.Camera:
+    return H3.Camera(pose.wrist, pose.palm, 0.0 if pose.view == "palm" else 180.0)
 
 
-def _chain(pose: Pose, start: Point, axis: float, bones, curl: float, bends) -> Tuple[List[Point], List[float]]:
-    """A digit's joints, from its base along ``axis`` (degrees), each joint
-    folding by ``bends`` x ``curl`` into depth. Returns the joints and each
-    phalanx's fold (degrees from lying flat along the axis)."""
-    d = _dir(axis)
-    pts, folds = [start], []
-    theta = 0.0
-    for bone, bend in zip(bones, bends):
-        theta += bend * curl
-        t = math.radians(theta)
-        p = pts[-1]
-        along = bone * math.cos(t)
-        drop = bone * math.sin(t) * DEPTH_TILT
-        pts.append((p[0] + d[0] * along, p[1] + d[1] * along + drop))
-        folds.append(theta)
-    return pts, folds
+def _model(pose: Pose) -> H3.HandPose:
+    return H3.HandPose(pose.curls, pose.thumb)
 
 
-def _finger_chain(pose: Pose, k: int) -> Tuple[List[Point], List[float]]:
-    across, _width, bones = FINGERS[k]
-    across *= _side(pose)
-    d = _dir(pose.palm)
-    perp = (-d[1], d[0])
-    knuckle = (pose.wrist[0] + d[0] * PALM_LENGTH + perp[0] * across, pose.wrist[1] + d[1] * PALM_LENGTH + perp[1] * across)
-    return _chain(pose, knuckle, pose.palm + across * 1.2, bones, pose.curls[k], JOINT_BEND)
+def _hp(pose: Pose, u: float, v: float, n: float = 0.0) -> Point:
+    """A point of the hand (hand space: u along, v across, n out of the
+    palm), projected."""
+    return _camera(pose).project((u, v, n))
+
+
+def _project_digit(pose: Pose, digit: H3.Digit) -> Tuple[List[Point], List[bool]]:
+    """A digit's projected joints, and whether each phalanx's pad faces us."""
+    cam = _camera(pose)
+    return [cam.project(j) for j in digit.joints], [cam.faces_us(p) for p in digit.pads]
+
+
+def _finger_chain(pose: Pose, k: int) -> Tuple[List[Point], List[bool]]:
+    return _project_digit(pose, H3.finger(_model(pose), k))
 
 
 def _finger_points(pose: Pose, k: int) -> List[Point]:
     return _finger_chain(pose, k)[0]
 
 
-def _thumb_chain(pose: Pose) -> Tuple[List[Point], List[float]]:
-    """The THUMB, OPPOSED: from its root at the heel of the hand it angles
-    well away from the fingers; curling swings it across the palm (in the
-    picture plane, as a thumb opposes) and folds its end joint."""
-    d = _dir(pose.palm)
-    perp = (-d[1], d[0])
-    side = _side(pose)
-    base = (pose.wrist[0] + d[0] * 5 - perp[0] * 7 * side, pose.wrist[1] + d[1] * 5 - perp[1] * 7 * side)
-    # Open, it spreads 58 degrees off the fingers; closed, it lies across them.
-    axis = pose.palm - side * (58.0 - 52.0 * pose.thumb)
-    return _chain(pose, base, axis, THUMB, pose.thumb, (10.0, 35.0, 55.0))
+def _thumb_chain(pose: Pose) -> Tuple[List[Point], List[bool]]:
+    """The THUMB, OPPOSED (see ``_hand3d.thumb``)."""
+    return _project_digit(pose, H3.thumb(_model(pose)))
 
 
 def _thumb_points(pose: Pose) -> List[Point]:
@@ -184,12 +162,12 @@ def _thumb_points(pose: Pose) -> List[Point]:
 # --- parts ------------------------------------------------------------------------
 
 
-def draw_digit(layer: Image.Image, pts: List[Point], folds: List[float], width: float, pose: Pose, thumb: bool = False, only_first: bool = False) -> None:
+def draw_digit(layer: Image.Image, pts: List[Point], pads: List[bool], width: float, pose: Pose, thumb: bool = False, only_first: bool = False) -> None:
     """A DIGIT, the same rigid parts in every pose and view: each PHALANX a
     separate translucent capsule outlined on its own, a HINGE disk at each
     joint, the bone glowing inside, a rounded FINGERTIP CAP lit teal.
 
-    Which face of a phalanx shows follows from its fold: its PAD (creases,
+    Which face of a phalanx shows follows from the 3D model: its PAD (creases,
     pads) when its palm side faces us, its BACK (knuckle highlight, the nail
     on the last one) when its back does. ``tip_fade`` eats it from the tip.
     From the palm a curl folds toward us (drawn base to tip, the tip on
@@ -210,9 +188,7 @@ def draw_digit(layer: Image.Image, pts: List[Point], folds: List[float], width: 
         frac = min(1.0, keep - i)
         b = (a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac)
         w = widths[i]
-        # Its palm side faces us when it lies flat from the palm, or folds
-        # past upright from the back.
-        pad_side = (folds[i] < 90.0) == palm_view
+        pad_side = pads[i]
         d = blending_draw(layer)
         fill = FLESH
         for colour, ww in ((_a(OUTLINE, pose.fade), w + 1.4), (_a(fill, pose.fade), w)):
@@ -259,60 +235,50 @@ def draw_digit(layer: Image.Image, pts: List[Point], folds: List[float], width: 
 
 
 def draw_palm(layer: Image.Image, pose: Pose) -> None:
-    """The PALM: a broad translucent plate from the wrist to the knuckles,
-    shaded toward its heel, its metacarpal bones glowing inside."""
-    d = _dir(pose.palm)
-    perp = (-d[1], d[0])
-    w = pose.wrist
+    """The PALM: the model's palm plate and thumb web, shaded toward the
+    heel, its metacarpal bones glowing inside; its pads and lines from the
+    front, its tendons from the back."""
+    cam = _camera(pose)
+    model = _model(pose)
     knuckles = [_finger_points(pose, k)[0] for k in range(4)]
-    heel_a = (w[0] - perp[0] * 9, w[1] - perp[1] * 9)
-    heel_b = (w[0] + perp[0] * 9, w[1] + perp[1] * 9)
-    # The knuckle on the heel_a side first, whichever view, so the outline
-    # never crosses itself.
-    by_side = sorted(knuckles, key=lambda k: (k[0] - w[0]) * perp[0] + (k[1] - w[1]) * perp[1])
-    lo, hi = by_side[0], by_side[-1]
-    poly = [heel_a, (lo[0] - perp[0] * 3.5, lo[1] - perp[1] * 3.5), (hi[0] + perp[0] * 3.5, hi[1] + perp[1] * 3.5), heel_b]
     dr = blending_draw(layer)
-    # The WEB from the thumb's root to the index knuckle (its mound, from
-    # the palm), so the thumb grows out of the hand in both views.
-    tpts = _thumb_points(pose)
-    index = _finger_points(pose, 0)[0]
-    web = [tpts[0], tpts[1], ((tpts[1][0] + index[0]) / 2, (tpts[1][1] + index[1]) / 2), index, w]
-    dr.polygon([_s(p) for p in web], fill=_a(FLESH, pose.fade), outline=_a(OUTLINE, pose.fade))
-    dr.polygon([_s(p) for p in poly], fill=_a(FLESH, pose.fade), outline=_a(OUTLINE, pose.fade))
-    shade = [heel_a, (w[0] + d[0] * 10 - perp[0] * 9, w[1] + d[1] * 10 - perp[1] * 9), (w[0] + d[0] * 10 + perp[0] * 9, w[1] + d[1] * 10 + perp[1] * 9), heel_b]
+    for part in (H3.thumb_web(model), H3.palm_outline()):
+        dr.polygon([_s(cam.project(p)) for p in part], fill=_a(FLESH, pose.fade), outline=_a(OUTLINE, pose.fade))
+    half = H3.PALM_HALF_WIDTH
+    shade = [_hp(pose, 0, -half), _hp(pose, 10, -half), _hp(pose, 10, half), _hp(pose, 0, half)]
     dr.polygon([_s(p) for p in shade], fill=_a(FLESH_SHADE, 0.6 * pose.fade))
-    side = _side(pose)
-    if pose.view == "palm":
+    palm_front = cam.faces_us((0.0, 0.0, 1.0))
+    if palm_front:
         # The PADS of the palm: the thumb's mound, the mound opposite, a pad
         # under each knuckle.
         dr = blending_draw(layer)
-        for (along, off, rx, ry, a) in ((9.0, -6.5 * side, 7.5, 5.5, 140), (13.0, 6.0 * side, 6.0, 4.5, 110)):
-            q = (w[0] + d[0] * along + perp[0] * off, w[1] + d[1] * along + perp[1] * off)
+        for (along, off, rx, ry, a) in ((9.0, -6.5, 7.5, 5.5, 140), (13.0, 6.0, 6.0, 4.5, 110)):
+            q = _hp(pose, along, off)
             dr.ellipse((*_s((q[0] - rx, q[1] - ry)), *_s((q[0] + rx, q[1] + ry))), fill=(250, 252, 255, int(a * pose.fade)), outline=(150, 166, 206, int(120 * pose.fade)))
-        for k in knuckles:
-            q = (k[0] - d[0] * 3.2, k[1] - d[1] * 3.2)
+        for k in range(4):
+            q = _hp(pose, PALM_LENGTH - 3.2, FINGERS[k][0])
             dr.ellipse((*_s((q[0] - 2.6, q[1] - 2.0)), *_s((q[0] + 2.6, q[1] + 2.0))), fill=(250, 252, 255, int(120 * pose.fade)))
+        # Faint lines of the palm (its life line, its heart line).
+        for t0, t1, off in ((0.25, 0.75, -4.0), (0.45, 0.9, 3.5)):
+            pa = _hp(pose, PALM_LENGTH * t0, off)
+            pm = _hp(pose, PALM_LENGTH * (t0 + t1) / 2, off + 2)
+            pb = _hp(pose, PALM_LENGTH * t1, off * 0.5)
+            blending_draw(layer).line([_s(pa), _s(pm), _s(pb)], fill=(120, 140, 190, int(120 * pose.fade)), width=int(0.5 * SUPER), joint="curve")
     else:
         # The TENDONS of the back of the hand: one along each metacarpal,
         # each from its own place at the wrist to its own knuckle.
         dr = blending_draw(layer)
-        for k in knuckles:
-            across = (k[0] - w[0]) * perp[0] + (k[1] - w[1]) * perp[1]
-            start = (w[0] + d[0] * 3 + perp[0] * across * 0.45, w[1] + d[1] * 3 + perp[1] * across * 0.45)
-            dr.line([_s(start), _s(k)], fill=(250, 252, 255, int(170 * pose.fade)), width=int(1.4 * SUPER))
-            dr.line([_s((start[0] + perp[0] * 0.8, start[1] + perp[1] * 0.8)), _s((k[0] + perp[0] * 0.8, k[1] + perp[1] * 0.8))], fill=(120, 140, 190, int(150 * pose.fade)), width=int(0.6 * SUPER))
-    # Faint lines of the palm (its life line, its heart line), from the front.
-    for t0, t1, off in (((0.25, 0.75, -4.0 * side), (0.45, 0.9, 3.5 * side)) if pose.view == "palm" else ()):
-        pa = (w[0] + d[0] * PALM_LENGTH * t0 + perp[0] * off, w[1] + d[1] * PALM_LENGTH * t0 + perp[1] * off)
-        pm = (w[0] + d[0] * PALM_LENGTH * (t0 + t1) / 2 + perp[0] * (off + 2), w[1] + d[1] * PALM_LENGTH * (t0 + t1) / 2 + perp[1] * (off + 2))
-        pb = (w[0] + d[0] * PALM_LENGTH * t1 + perp[0] * off * 0.5, w[1] + d[1] * PALM_LENGTH * t1 + perp[1] * off * 0.5)
-        blending_draw(layer).line([_s(pa), _s(pm), _s(pb)], fill=(120, 140, 190, int(120 * pose.fade)), width=int(0.5 * SUPER), joint="curve")
-    for k in knuckles:
-        start = (w[0] + (k[0] - w[0]) * 0.18, w[1] + (k[1] - w[1]) * 0.18)
-        strength = 0.3 if pose.view == "palm" else 0.9
-        _glow(layer, lambda g, start=start, k=k: g.line([_s(start), _s(k)], fill=_a(BONE, 0.5 * pose.glow * pose.fade * strength), width=int(1.6 * SUPER)), 0.8)
-        blending_draw(layer).line([_s(start), _s(k)], fill=_a(BONE, 0.75 * pose.fade * strength), width=int(0.6 * SUPER))
+        for k in range(4):
+            across = FINGERS[k][0]
+            start, end = _hp(pose, 3, across * 0.45), knuckles[k]
+            start2, end2 = _hp(pose, 3, across * 0.45 + 0.8), _hp(pose, PALM_LENGTH, across + 0.8)
+            dr.line([_s(start), _s(end)], fill=(250, 252, 255, int(170 * pose.fade)), width=int(1.4 * SUPER))
+            dr.line([_s(start2), _s(end2)], fill=(120, 140, 190, int(150 * pose.fade)), width=int(0.6 * SUPER))
+    strength = 0.3 if palm_front else 0.9
+    for k in range(4):
+        start, end = _hp(pose, PALM_LENGTH * 0.18, FINGERS[k][0] * 0.4), knuckles[k]
+        _glow(layer, lambda g, start=start, end=end: g.line([_s(start), _s(end)], fill=_a(BONE, 0.5 * pose.glow * pose.fade * strength), width=int(1.6 * SUPER)), 0.8)
+        blending_draw(layer).line([_s(start), _s(end)], fill=_a(BONE, 0.75 * pose.fade * strength), width=int(0.6 * SUPER))
 
 
 def draw_knuckles(layer: Image.Image, pose: Pose) -> None:
@@ -491,18 +457,18 @@ def draw_hand(pose: Pose, phase: float) -> Image.Image:
         draw_palm(img, pose)
         draw_knuckles(img, pose)
         draw_die_glimpse(img, pose, phase)
-        for (pts, folds), width in reversed(fingers):
-            draw_digit(img, pts, folds, width, pose)
+        for (pts, pads), width in reversed(fingers):
+            draw_digit(img, pts, pads, width, pose)
         draw_digit(img, *thumb, THUMB_WIDTH, pose, thumb=True)
     else:
         # From the back: the thumb on the far edge, the fingers folding away
         # behind the knuckle row, then the back of the hand over them.
         draw_digit(img, *thumb, THUMB_WIDTH, pose, thumb=True)
-        for (pts, folds), width in fingers:
-            draw_digit(img, pts, folds, width, pose)
+        for (pts, pads), width in fingers:
+            draw_digit(img, pts, pads, width, pose)
         draw_palm(img, pose)
-        for (pts, folds), width in fingers:
-            draw_digit(img, pts, folds, width, pose, only_first=True)
+        for (pts, pads), width in fingers:
+            draw_digit(img, pts, pads, width, pose, only_first=True)
         draw_knuckles(img, pose)
         draw_die_glimpse(img, pose, phase)
     draw_ring(img, pose)
