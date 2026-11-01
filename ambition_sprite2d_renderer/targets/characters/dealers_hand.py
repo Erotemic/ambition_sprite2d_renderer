@@ -16,6 +16,11 @@ four FINGERS of three bones each and a THUMB of two, each joint turned by
 its finger's curl; the CUFF and its mist; the DIE GLIMPSE; the RELEASE
 sparkle; an aura and motes.
 
+Two VIEWS (``Pose.view``): the PALM (front: its pads, its creases, the
+thumb up, the nails hidden) for reaching and for the grasp that cups the
+die, and the BACK (dorsal: its knuckles, tendons and nails, the thumb
+down) for gliding and the toss's flung-open follow-through.
+
 Rows: ``idle`` 8 (it floats, drumming its fingers), ``walk`` 8 (it glides,
 fingers trailing), ``attack_side`` 12 (it cups and shakes (0-5), the toss:
 fingers flung open, the release (6-8), held open after (9-11)), ``hurt`` 3
@@ -106,10 +111,20 @@ class Pose:
     glow: float = 0.7
     fade: float = 1.0
     tip_fade: float = 0.0
+    #: Which side of the hand faces us: "palm" (front: its pads and creases,
+    #: the thumb up) or "back" (dorsal: its knuckles, tendons and nails, the
+    #: thumb down). The thumb and the order of the fingers mirror between
+    #: them.
+    view: str = "palm"
+
+
+def _side(pose: "Pose") -> float:
+    return 1.0 if pose.view == "palm" else -1.0
 
 
 def _finger_points(pose: Pose, k: int) -> List[Point]:
     across, bones = FINGERS[k]
+    across *= _side(pose)
     d = _dir(pose.palm)
     perp = (-d[1], d[0])
     knuckle = (pose.wrist[0] + d[0] * PALM_LENGTH + perp[0] * across, pose.wrist[1] + d[1] * PALM_LENGTH + perp[1] * across)
@@ -126,11 +141,13 @@ def _finger_points(pose: Pose, k: int) -> List[Point]:
 def _thumb_points(pose: Pose) -> List[Point]:
     d = _dir(pose.palm)
     perp = (-d[1], d[0])
-    base = (pose.wrist[0] + d[0] * 9 - perp[0] * 10, pose.wrist[1] + d[1] * 9 - perp[1] * 10)
+    side = _side(pose)
+    base = (pose.wrist[0] + d[0] * 9 - perp[0] * 10 * side, pose.wrist[1] + d[1] * 9 - perp[1] * 10 * side)
     pts = [base]
-    angle = pose.palm - 48.0
+    # From the back the thumb lies along the hand's edge, angled out.
+    angle = pose.palm - 48.0 * side if side > 0 else pose.palm + 26.0
     for bone in THUMB:
-        angle += 55.0 * pose.thumb
+        angle += 55.0 * pose.thumb * side if side > 0 else -30.0 * pose.thumb
         p = pts[-1]
         dd = _dir(angle)
         pts.append((p[0] + dd[0] * bone, p[1] + dd[1] * bone))
@@ -160,12 +177,32 @@ def draw_digit(layer: Image.Image, pts: List[Point], width: float, pose: Pose, n
                 r = ww * SUPER / 2
                 d.ellipse((_s(p)[0] - r, _s(p)[1] - r, _s(p)[0] + r, _s(p)[1] + r), fill=colour)
     bones = [pts[i] for i in range(int(math.ceil(keep)) + 1) if i <= n]
+    palm_view = pose.view == "palm"
+    bone_strength = 0.3 if palm_view else 1.0  # behind the pads, from the front
     if len(bones) >= 2:
-        _glow(layer, lambda g: g.line([_s(p) for p in bones], fill=_a(BONE, 0.55 * pose.glow * pose.fade), width=int(1.8 * SUPER), joint="curve"), 0.8)
-        blending_draw(layer).line([_s(p) for p in bones], fill=_a(BONE, 0.8 * pose.fade), width=int(0.6 * SUPER), joint="curve")
-        for p in bones[1:-1]:  # the knuckle joints
-            blending_draw(layer).ellipse((*_s((p[0] - 0.9, p[1] - 0.9)), *_s((p[0] + 0.9, p[1] + 0.9))), fill=_a(BONE, 0.9 * pose.fade))
-    if keep >= n:
+        _glow(layer, lambda g: g.line([_s(p) for p in bones], fill=_a(BONE, 0.55 * pose.glow * pose.fade * bone_strength), width=int(1.8 * SUPER), joint="curve"), 0.8)
+        blending_draw(layer).line([_s(p) for p in bones], fill=_a(BONE, 0.8 * pose.fade * bone_strength), width=int(0.6 * SUPER), joint="curve")
+    d = blending_draw(layer)
+    for i, p in enumerate(bones[1:-1], start=1):
+        a0, b0 = pts[i - 1], pts[i + 1] if i + 1 < len(pts) else pts[i]
+        dx, dy = b0[0] - a0[0], b0[1] - a0[1]
+        ln = math.hypot(dx, dy) or 1.0
+        ux, uy = dx / ln, dy / ln
+        half = width * (0.42 - 0.04 * i)
+        if palm_view:
+            # The CREASE across the joint, on the pad side.
+            d.line([_s((p[0] - uy * half, p[1] + ux * half)), _s((p[0] + uy * half, p[1] - ux * half))], fill=(120, 136, 186, int(190 * pose.fade)), width=int(0.6 * SUPER))
+            # Each segment's PAD, a soft fuller highlight.
+            q = ((p[0] + pts[i - 1][0]) / 2, (p[1] + pts[i - 1][1]) / 2)
+            d.ellipse((*_s((q[0] - half * 0.55, q[1] - half * 0.55)), *_s((q[0] + half * 0.55, q[1] + half * 0.55))), fill=(250, 252, 255, int(110 * pose.fade)))
+        else:
+            # The KNUCKLE: a bump catching the light, wrinkles round it.
+            d.ellipse((*_s((p[0] - half * 0.7, p[1] - half * 0.7)), *_s((p[0] + half * 0.7, p[1] + half * 0.7))), fill=(246, 250, 255, int(160 * pose.fade)))
+            for off in (-1.1, 1.1):
+                c = (p[0] + ux * off, p[1] + uy * off)
+                d.line([_s((c[0] - uy * half * 0.5, c[1] + ux * half * 0.5)), _s((c[0] + uy * half * 0.5, c[1] - ux * half * 0.5))], fill=(130, 150, 196, int(150 * pose.fade)), width=int(0.4 * SUPER))
+            d.ellipse((*_s((p[0] - 0.8, p[1] - 0.8)), *_s((p[0] + 0.8, p[1] + 0.8))), fill=_a(BONE, 0.9 * pose.fade))
+    if keep >= n and not palm_view:
         tip = pts[-1]
         # A long pointed NAIL, dark violet, its point burning teal.
         dx, dy = tip[0] - pts[-2][0], tip[1] - pts[-2][1]
@@ -177,6 +214,10 @@ def draw_digit(layer: Image.Image, pts: List[Point], width: float, pose: Pose, n
         nail = [(tip[0] + side[0] - ux, tip[1] + side[1] - uy), point, (tip[0] - side[0] - ux, tip[1] - side[1] - uy)]
         blending_draw(layer).polygon([_s(p) for p in nail], fill=_a(NAIL, pose.fade), outline=_a(OUTLINE, pose.fade))
         _glow(layer, lambda g: g.ellipse((*_s((point[0] - 1.8, point[1] - 1.8)), *_s((point[0] + 1.8, point[1] + 1.8))), fill=_a(TEAL, 0.85 * pose.glow * pose.fade)), 0.9)
+    elif keep >= n:
+        # From the front the nail is hidden: the fingertip's PAD glows.
+        tip = pts[-1]
+        _glow(layer, lambda g: g.ellipse((*_s((tip[0] - 2.4, tip[1] - 2.4)), *_s((tip[0] + 2.4, tip[1] + 2.4))), fill=_a(TEAL, 0.8 * pose.glow * pose.fade)), 1.0)
 
 
 def draw_palm(layer: Image.Image, pose: Pose) -> None:
@@ -188,21 +229,45 @@ def draw_palm(layer: Image.Image, pose: Pose) -> None:
     knuckles = [_finger_points(pose, k)[0] for k in range(4)]
     heel_a = (w[0] - perp[0] * 9, w[1] - perp[1] * 9)
     heel_b = (w[0] + perp[0] * 9, w[1] + perp[1] * 9)
-    poly = [heel_a, (knuckles[0][0] - perp[0] * 3.5, knuckles[0][1] - perp[1] * 3.5), (knuckles[3][0] + perp[0] * 3.5, knuckles[3][1] + perp[1] * 3.5), heel_b]
+    # The knuckle on the heel_a side first, whichever view, so the outline
+    # never crosses itself.
+    by_side = sorted(knuckles, key=lambda k: (k[0] - w[0]) * perp[0] + (k[1] - w[1]) * perp[1])
+    lo, hi = by_side[0], by_side[-1]
+    poly = [heel_a, (lo[0] - perp[0] * 3.5, lo[1] - perp[1] * 3.5), (hi[0] + perp[0] * 3.5, hi[1] + perp[1] * 3.5), heel_b]
     dr = blending_draw(layer)
     dr.polygon([_s(p) for p in poly], fill=_a(FLESH, pose.fade), outline=_a(OUTLINE, pose.fade))
     shade = [heel_a, (w[0] + d[0] * 10 - perp[0] * 9, w[1] + d[1] * 10 - perp[1] * 9), (w[0] + d[0] * 10 + perp[0] * 9, w[1] + d[1] * 10 + perp[1] * 9), heel_b]
     dr.polygon([_s(p) for p in shade], fill=_a(FLESH_SHADE, 0.6 * pose.fade))
-    # Faint lines of the palm (its life line, its heart line).
-    for t0, t1, off in ((0.25, 0.75, -4.0), (0.45, 0.9, 3.5)):
+    side = _side(pose)
+    if pose.view == "palm":
+        # The PADS of the palm: the thumb's mound, the mound opposite, a pad
+        # under each knuckle.
+        dr = blending_draw(layer)
+        for (along, off, rx, ry, a) in ((9.0, -6.5 * side, 7.5, 5.5, 140), (13.0, 6.0 * side, 6.0, 4.5, 110)):
+            q = (w[0] + d[0] * along + perp[0] * off, w[1] + d[1] * along + perp[1] * off)
+            dr.ellipse((*_s((q[0] - rx, q[1] - ry)), *_s((q[0] + rx, q[1] + ry))), fill=(250, 252, 255, int(a * pose.fade)), outline=(150, 166, 206, int(120 * pose.fade)))
+        for k in knuckles:
+            q = (k[0] - d[0] * 3.2, k[1] - d[1] * 3.2)
+            dr.ellipse((*_s((q[0] - 2.6, q[1] - 2.0)), *_s((q[0] + 2.6, q[1] + 2.0))), fill=(250, 252, 255, int(120 * pose.fade)))
+    else:
+        # The TENDONS of the back of the hand, raised from the wrist to each
+        # knuckle and catching the light.
+        dr = blending_draw(layer)
+        for k in knuckles:
+            start = (w[0] + d[0] * 4, w[1] + d[1] * 4)
+            dr.line([_s(start), _s(k)], fill=(250, 252, 255, int(170 * pose.fade)), width=int(1.4 * SUPER))
+            dr.line([_s((start[0] + perp[0] * 0.8, start[1] + perp[1] * 0.8)), _s((k[0] + perp[0] * 0.8, k[1] + perp[1] * 0.8))], fill=(120, 140, 190, int(150 * pose.fade)), width=int(0.6 * SUPER))
+    # Faint lines of the palm (its life line, its heart line), from the front.
+    for t0, t1, off in (((0.25, 0.75, -4.0 * side), (0.45, 0.9, 3.5 * side)) if pose.view == "palm" else ()):
         pa = (w[0] + d[0] * PALM_LENGTH * t0 + perp[0] * off, w[1] + d[1] * PALM_LENGTH * t0 + perp[1] * off)
         pm = (w[0] + d[0] * PALM_LENGTH * (t0 + t1) / 2 + perp[0] * (off + 2), w[1] + d[1] * PALM_LENGTH * (t0 + t1) / 2 + perp[1] * (off + 2))
         pb = (w[0] + d[0] * PALM_LENGTH * t1 + perp[0] * off * 0.5, w[1] + d[1] * PALM_LENGTH * t1 + perp[1] * off * 0.5)
         blending_draw(layer).line([_s(pa), _s(pm), _s(pb)], fill=(120, 140, 190, int(120 * pose.fade)), width=int(0.5 * SUPER), joint="curve")
     for k in knuckles:
         start = (w[0] + (k[0] - w[0]) * 0.18, w[1] + (k[1] - w[1]) * 0.18)
-        _glow(layer, lambda g, start=start, k=k: g.line([_s(start), _s(k)], fill=_a(BONE, 0.5 * pose.glow * pose.fade), width=int(1.6 * SUPER)), 0.8)
-        blending_draw(layer).line([_s(start), _s(k)], fill=_a(BONE, 0.75 * pose.fade), width=int(0.6 * SUPER))
+        strength = 0.3 if pose.view == "palm" else 0.9
+        _glow(layer, lambda g, start=start, k=k: g.line([_s(start), _s(k)], fill=_a(BONE, 0.5 * pose.glow * pose.fade * strength), width=int(1.6 * SUPER)), 0.8)
+        blending_draw(layer).line([_s(start), _s(k)], fill=_a(BONE, 0.75 * pose.fade * strength), width=int(0.6 * SUPER))
 
 
 def draw_cuff(layer: Image.Image, pose: Pose, phase: float) -> None:
@@ -381,7 +446,7 @@ def _pose_for(animation: str, i: int, n: int) -> Tuple[Pose, float]:
     if animation == "idle":
         return base, t * math.tau
     if animation == "walk":
-        return replace(base, palm=-4.0 + 3 * w, curls=(0.15, 0.18, 0.22, 0.26), wrist=(62.0 + 2 * w, 98.0)), t * math.tau * 1.5
+        return replace(base, palm=-4.0 + 3 * w, curls=(0.15, 0.18, 0.22, 0.26), wrist=(62.0 + 2 * w, 98.0), view="back"), t * math.tau * 1.5
     if animation == "attack_side":
         if i <= 5:  # it cups the die and shakes it
             shake = 4.0 * math.sin(i * 2.6)
@@ -389,9 +454,9 @@ def _pose_for(animation: str, i: int, n: int) -> Tuple[Pose, float]:
         if i <= 8:  # the toss: fingers flung open, up and forward
             k = (i - 6) / 2.0
             return replace(base, curls=(0.95 - 1.05 * min(1.0, k * 1.8),) * 4, thumb=0.95 - 1.0 * min(1.0, k * 1.8), palm=-28.0 - 22.0 * k,
-                           wrist=(60.0 + 10 * k, 100.0 - 6 * k), release=k, glow=1.0), t * math.tau
+                           wrist=(60.0 + 10 * k, 100.0 - 6 * k), release=k, glow=1.0, view="back"), t * math.tau
         k = (i - 9) / 2.0  # held open after, slowly settling
-        return replace(base, curls=(-0.1 + 0.3 * k,) * 4, thumb=-0.05 + 0.3 * k, palm=-50.0 + 36.0 * k, wrist=(70.0 - 8 * k, 94.0 + 4 * k), glow=0.5 + 0.2 * k), t * math.tau
+        return replace(base, curls=(-0.1 + 0.3 * k,) * 4, thumb=-0.05 + 0.3 * k, palm=-50.0 + 36.0 * k, wrist=(70.0 - 8 * k, 94.0 + 4 * k), glow=0.5 + 0.2 * k, view="back"), t * math.tau
     if animation == "hurt":
         k = 1.0 - u
         return replace(base, curls=(-0.25 * k,) * 4, thumb=-0.2 * k, palm=-12.0 + 18 * k, wrist=(58.0 - 4 * k, 98.0), glow=1.0), t * math.tau
