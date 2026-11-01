@@ -72,6 +72,9 @@ NAIL: RGBA = (58, 24, 96, 255)
 BRASS: RGBA = (214, 168, 84, 255)
 SLEEVE: RGBA = (36, 22, 58, 255)
 GARTER: RGBA = (150, 60, 140, 255)
+#: Where one part of the hand passes over another: a soft pale seam, not
+#: ink (the ink is only the whole hand's silhouette, ``_ink_silhouette``).
+SEAM: RGBA = (138, 156, 206, 220)
 
 #: THE ONE HAND every pose and view is drawn from is the 3D model in
 #: ``_hand3d`` (its skeleton, joint angles and camera); this module draws
@@ -181,21 +184,28 @@ def draw_digit(layer: Image.Image, pts: List[Point], pads: List[bool], width: fl
     if only_first:
         order = range(1)
     widths = [width * (1.0 - 0.1 * i) for i in range(n)]
-    for i in order:
-        if i >= keep:
-            continue
+
+    def segment(i):
         a, b = pts[i], pts[i + 1]
         frac = min(1.0, keep - i)
-        b = (a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac)
-        w = widths[i]
-        pad_side = pads[i]
-        d = blending_draw(layer)
-        fill = FLESH
-        for colour, ww in ((_a(OUTLINE, pose.fade), w + 1.4), (_a(fill, pose.fade), w)):
+        return a, (a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac), frac
+
+    shown = [i for i in order if i < keep]
+    # The digit is ONE piece of flesh: its seam round it, then its fill over
+    # every phalanx (no line between its own phalanges).
+    d = blending_draw(layer)
+    for colour, grow in ((_a(SEAM, pose.fade), 0.9), (_a(FLESH, pose.fade), 0.0)):
+        for i in shown:
+            a, b, _frac = segment(i)
+            ww = widths[i] + grow
             d.line([_s(a), _s(b)], fill=colour, width=int(ww * SUPER))
             for p in (a, b):
                 r = ww * SUPER / 2
                 d.ellipse((_s(p)[0] - r, _s(p)[1] - r, _s(p)[0] + r, _s(p)[1] + r), fill=colour)
+    for i in shown:
+        a, b, frac = segment(i)
+        w = widths[i]
+        pad_side = pads[i]
         dx, dy = b[0] - a[0], b[1] - a[1]
         ln = math.hypot(dx, dy)
         ux, uy = (dx / ln, dy / ln) if ln > 0.3 else _dir(pose.palm)
@@ -208,24 +218,28 @@ def draw_digit(layer: Image.Image, pts: List[Point], pads: List[bool], width: fl
         if pad_side and ln > 2.0:
             # The segment's PAD, a soft fuller highlight.
             r = half * 0.55
-            d.ellipse((*_s((m[0] - r, m[1] - r)), *_s((m[0] + r, m[1] + r))), fill=(250, 252, 255, int(110 * pose.fade)))
+            d.ellipse((*_s((m[0] - r, m[1] - r)), *_s((m[0] + r, m[1] + r))), fill=(250, 252, 255, int(45 * pose.fade)))
         if i == n - 1 and frac >= 1.0 and not pad_side:
             # The NAIL, set INSIDE the rounded tip (never past it).
             q = (a[0] + dx * 0.62, a[1] + dy * 0.62)
             rl, rw = max(1.3, ln * 0.26), w * 0.26
             nail = [(q[0] + ux * rl * math.cos(t) - uy * rw * math.sin(t), q[1] + uy * rl * math.cos(t) + ux * rw * math.sin(t)) for t in np.linspace(0, math.tau, 14)]
-            d.polygon([_s(p) for p in nail], fill=_a(NAIL, 0.9 * pose.fade), outline=_a(OUTLINE, pose.fade))
+            d.polygon([_s(p) for p in nail], fill=_a(NAIL, 0.85 * pose.fade))
             d.line([_s((q[0] - ux * rl * 0.4 - uy * rw * 0.4, q[1] - uy * rl * 0.4 + ux * rw * 0.4)), _s((q[0] + ux * rl * 0.3 - uy * rw * 0.4, q[1] + uy * rl * 0.3 + ux * rw * 0.4))], fill=_a(VIOLET, 0.9 * pose.fade), width=int(0.5 * SUPER))
-        # The HINGE at the segment's base joint (the knuckle's own is drawn
-        # with the palm): a pivot disk, ringed.
+        # The JOINT at the segment's base (the knuckle's own is drawn with
+        # the palm): only a faint crease or wrinkle; the bone runs through.
         if i > 0:
             hinge_r = w * 0.3
-            d.ellipse((*_s((a[0] - hinge_r, a[1] - hinge_r)), *_s((a[0] + hinge_r, a[1] + hinge_r))), fill=_a((196, 214, 240, 255), 0.9 * pose.fade), outline=_a((90, 110, 170, 255), pose.fade), width=max(1, int(0.4 * SUPER)))
-            d.ellipse((*_s((a[0] - 0.8, a[1] - 0.8)), *_s((a[0] + 0.8, a[1] + 0.8))), fill=_a(BONE, 0.95 * pose.fade))
+            d = blending_draw(layer)
+            if not pad_side:
+                # Soft WRINKLES over the joint, on the back.
+                for off in (-0.9, 0.9):
+                    c = (a[0] + ux * off, a[1] + uy * off)
+                    d.line([_s((c[0] - uy * half * 0.5, c[1] + ux * half * 0.5)), _s((c[0] + uy * half * 0.5, c[1] - ux * half * 0.5))], fill=_a(SEAM, 0.35 * pose.fade), width=int(0.4 * SUPER))
             if pad_side:
                 # The CREASE across the joint, on the pad side.
-                d.line([_s((a[0] - uy * half, a[1] + ux * half)), _s((a[0] - uy * hinge_r, a[1] + ux * hinge_r))], fill=(120, 136, 186, int(190 * pose.fade)), width=int(0.5 * SUPER))
-                d.line([_s((a[0] + uy * hinge_r, a[1] - ux * hinge_r)), _s((a[0] + uy * half, a[1] - ux * half))], fill=(120, 136, 186, int(190 * pose.fade)), width=int(0.5 * SUPER))
+                d.line([_s((a[0] - uy * half, a[1] + ux * half)), _s((a[0] - uy * hinge_r, a[1] + ux * hinge_r))], fill=_a(SEAM, 0.45 * pose.fade), width=int(0.4 * SUPER))
+                d.line([_s((a[0] + uy * hinge_r, a[1] - ux * hinge_r)), _s((a[0] + uy * half, a[1] - ux * half))], fill=_a(SEAM, 0.45 * pose.fade), width=int(0.4 * SUPER))
     if keep >= n and not only_first:
         # The FINGERTIP CAP, the same in every view: a rounded glowing end.
         tip = pts[-1]
@@ -242,8 +256,15 @@ def draw_palm(layer: Image.Image, pose: Pose) -> None:
     model = _model(pose)
     knuckles = [_finger_points(pose, k)[0] for k in range(4)]
     dr = blending_draw(layer)
+    # The palm and the thumb's web, one piece of flesh: no line between them
+    # (the silhouette's ink comes after, round the whole hand).
     for part in (H3.thumb_web(model), H3.palm_outline()):
-        dr.polygon([_s(cam.project(p)) for p in part], fill=_a(FLESH, pose.fade), outline=_a(OUTLINE, pose.fade))
+        dr.polygon([_s(cam.project(p)) for p in part], fill=_a(FLESH, pose.fade))
+    outline = [cam.project(p) for p in H3.palm_outline()]
+    if not cam.faces_us((0.0, 0.0, 1.0)):
+        # From the back the hand's knuckle edge passes over its tucked
+        # fingers: a soft seam there.
+        dr.line([_s(outline[1]), _s(outline[2])], fill=_a(SEAM, pose.fade), width=int(0.9 * SUPER))
     half = H3.PALM_HALF_WIDTH
     shade = [_hp(pose, 0, -half), _hp(pose, 10, -half), _hp(pose, 10, half), _hp(pose, 0, half)]
     dr.polygon([_s(p) for p in shade], fill=_a(FLESH_SHADE, 0.6 * pose.fade))
@@ -254,7 +275,7 @@ def draw_palm(layer: Image.Image, pose: Pose) -> None:
         dr = blending_draw(layer)
         for (along, off, rx, ry, a) in ((9.0, -6.5, 7.5, 5.5, 140), (13.0, 6.0, 6.0, 4.5, 110)):
             q = _hp(pose, along, off)
-            dr.ellipse((*_s((q[0] - rx, q[1] - ry)), *_s((q[0] + rx, q[1] + ry))), fill=(250, 252, 255, int(a * pose.fade)), outline=(150, 166, 206, int(120 * pose.fade)))
+            dr.ellipse((*_s((q[0] - rx, q[1] - ry)), *_s((q[0] + rx, q[1] + ry))), fill=(250, 252, 255, int(a * pose.fade)), outline=(150, 166, 206, int(60 * pose.fade)))
         for k in range(4):
             q = _hp(pose, PALM_LENGTH - 3.2, FINGERS[k][0])
             dr.ellipse((*_s((q[0] - 2.6, q[1] - 2.0)), *_s((q[0] + 2.6, q[1] + 2.0))), fill=(250, 252, 255, int(120 * pose.fade)))
@@ -292,12 +313,9 @@ def draw_knuckles(layer: Image.Image, pose: Pose) -> None:
         width = FINGERS[k][1]
         if pose.view == "back":
             r = width * (0.5 + 0.22 * pose.curls[k])
-            d.ellipse((*_s((q[0] - r, q[1] - r * 0.85)), *_s((q[0] + r, q[1] + r * 0.85))), fill=_a(FLESH, pose.fade), outline=_a(OUTLINE, pose.fade), width=max(1, int(0.5 * SUPER)))
+            d.ellipse((*_s((q[0] - r, q[1] - r * 0.85)), *_s((q[0] + r, q[1] + r * 0.85))), fill=_a(FLESH, pose.fade), outline=_a(SEAM, 0.35 * pose.fade), width=max(1, int(0.5 * SUPER)))
             hr = r * 0.55
-            d.ellipse((*_s((q[0] - hr - 0.6, q[1] - hr - 0.9)), *_s((q[0] + hr - 0.6, q[1] + hr * 0.4 - 0.9))), fill=(250, 252, 255, int(170 * pose.fade)))
-        r = width * 0.3
-        d.ellipse((*_s((q[0] - r, q[1] - r)), *_s((q[0] + r, q[1] + r))), outline=_a((90, 110, 170, 255), pose.fade), width=max(1, int(0.4 * SUPER)))
-        d.ellipse((*_s((q[0] - 0.9, q[1] - 0.9)), *_s((q[0] + 0.9, q[1] + 0.9))), fill=_a(BONE, 0.95 * pose.fade))
+            d.ellipse((*_s((q[0] - hr - 0.6, q[1] - hr - 0.9)), *_s((q[0] + hr - 0.6, q[1] + hr * 0.4 - 0.9))), fill=(250, 252, 255, int(60 * pose.fade)))
 
 
 def draw_cuff(layer: Image.Image, pose: Pose, phase: float) -> None:
@@ -444,11 +462,30 @@ def draw_shake_arcs(layer: Image.Image, pose: Pose) -> None:
 # --- assembly ---------------------------------------------------------------------
 
 
+def _ink_silhouette(under: Image.Image, hand: Image.Image, pose: Pose) -> Image.Image:
+    """The INK: one outline round the whole hand's silhouette (its flesh,
+    not its glows), under the hand, over ``under``; the hand's parts carry
+    no ink of their own, so it reads as one hand, not stitched pieces."""
+    a = np.asarray(hand, np.float32)[..., 3] / 255.0
+    body = np.clip((a - 0.45) / 0.25, 0.0, 1.0)
+    grown = np.asarray(Image.fromarray((body * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(2 * int(0.7 * SUPER) + 1)).filter(ImageFilter.GaussianBlur(0.3 * SUPER)), np.float32) / 255.0
+    ring = np.clip(grown - body, 0.0, 1.0) * pose.fade
+    ink = np.zeros(a.shape + (4,), np.uint8)
+    ink[..., :3] = OUTLINE[:3]
+    ink[..., 3] = (ring * 255).astype(np.uint8)
+    out = under.copy()
+    out.alpha_composite(Image.fromarray(ink, "RGBA"))
+    out.alpha_composite(hand)
+    return out
+
+
 def draw_hand(pose: Pose, phase: float) -> Image.Image:
     img = Image.new("RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
     w = pose.wrist
     _glow(img, lambda g: g.ellipse((*_s((w[0] - 20, w[1] - 46)), *_s((w[0] + 66, w[1] + 22))), fill=_a(TEAL, 0.16 * pose.fade)), 10.0)
     draw_cuff(img, pose, phase)
+    cuffed = img
+    img = Image.new("RGBA", cuffed.size, (0, 0, 0, 0))
     fingers = [(_finger_chain(pose, k), FINGERS[k][1]) for k in range(4)]
     thumb = _thumb_chain(pose)
     if pose.view == "palm":
@@ -472,6 +509,7 @@ def draw_hand(pose: Pose, phase: float) -> Image.Image:
         draw_knuckles(img, pose)
         draw_die_glimpse(img, pose, phase)
     draw_ring(img, pose)
+    img = _ink_silhouette(cuffed, img, pose)
     img = shade_hand(img, pose)
     draw_shake_arcs(img, pose)
     draw_release(img, pose)
