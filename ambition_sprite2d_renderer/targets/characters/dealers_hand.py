@@ -60,6 +60,10 @@ TEAL: RGBA = (110, 240, 220, 255)
 VIOLET: RGBA = (176, 120, 255, 255)
 LACE: RGBA = (246, 250, 255, 235)
 WHITE: RGBA = (250, 252, 255, 255)
+NAIL: RGBA = (58, 24, 96, 255)
+BRASS: RGBA = (214, 168, 84, 255)
+SLEEVE: RGBA = (36, 22, 58, 255)
+GARTER: RGBA = (150, 60, 140, 255)
 
 #: Each finger: its knuckle's place across the palm (frame px, from the
 #: palm's middle line) and its bones' lengths. Index, middle, ring, little.
@@ -163,7 +167,16 @@ def draw_digit(layer: Image.Image, pts: List[Point], width: float, pose: Pose, n
             blending_draw(layer).ellipse((*_s((p[0] - 0.9, p[1] - 0.9)), *_s((p[0] + 0.9, p[1] + 0.9))), fill=_a(BONE, 0.9 * pose.fade))
     if keep >= n:
         tip = pts[-1]
-        _glow(layer, lambda g: g.ellipse((*_s((tip[0] - 2.2, tip[1] - 2.2)), *_s((tip[0] + 2.2, tip[1] + 2.2))), fill=_a(TEAL, 0.7 * pose.glow * pose.fade)), 1.0)
+        # A long pointed NAIL, dark violet, its point burning teal.
+        dx, dy = tip[0] - pts[-2][0], tip[1] - pts[-2][1]
+        ln = math.hypot(dx, dy) or 1.0
+        ux, uy = dx / ln, dy / ln
+        nail_len = 5.5 if near else 4.5
+        side = (-uy * width * 0.32, ux * width * 0.32)
+        point = (tip[0] + ux * nail_len, tip[1] + uy * nail_len)
+        nail = [(tip[0] + side[0] - ux, tip[1] + side[1] - uy), point, (tip[0] - side[0] - ux, tip[1] - side[1] - uy)]
+        blending_draw(layer).polygon([_s(p) for p in nail], fill=_a(NAIL, pose.fade), outline=_a(OUTLINE, pose.fade))
+        _glow(layer, lambda g: g.ellipse((*_s((point[0] - 1.8, point[1] - 1.8)), *_s((point[0] + 1.8, point[1] + 1.8))), fill=_a(TEAL, 0.85 * pose.glow * pose.fade)), 0.9)
 
 
 def draw_palm(layer: Image.Image, pose: Pose) -> None:
@@ -180,6 +193,12 @@ def draw_palm(layer: Image.Image, pose: Pose) -> None:
     dr.polygon([_s(p) for p in poly], fill=_a(FLESH, pose.fade), outline=_a(OUTLINE, pose.fade))
     shade = [heel_a, (w[0] + d[0] * 10 - perp[0] * 9, w[1] + d[1] * 10 - perp[1] * 9), (w[0] + d[0] * 10 + perp[0] * 9, w[1] + d[1] * 10 + perp[1] * 9), heel_b]
     dr.polygon([_s(p) for p in shade], fill=_a(FLESH_SHADE, 0.6 * pose.fade))
+    # Faint lines of the palm (its life line, its heart line).
+    for t0, t1, off in ((0.25, 0.75, -4.0), (0.45, 0.9, 3.5)):
+        pa = (w[0] + d[0] * PALM_LENGTH * t0 + perp[0] * off, w[1] + d[1] * PALM_LENGTH * t0 + perp[1] * off)
+        pm = (w[0] + d[0] * PALM_LENGTH * (t0 + t1) / 2 + perp[0] * (off + 2), w[1] + d[1] * PALM_LENGTH * (t0 + t1) / 2 + perp[1] * (off + 2))
+        pb = (w[0] + d[0] * PALM_LENGTH * t1 + perp[0] * off * 0.5, w[1] + d[1] * PALM_LENGTH * t1 + perp[1] * off * 0.5)
+        blending_draw(layer).line([_s(pa), _s(pm), _s(pb)], fill=(120, 140, 190, int(120 * pose.fade)), width=int(0.5 * SUPER), joint="curve")
     for k in knuckles:
         start = (w[0] + (k[0] - w[0]) * 0.18, w[1] + (k[1] - w[1]) * 0.18)
         _glow(layer, lambda g, start=start, k=k: g.line([_s(start), _s(k)], fill=_a(BONE, 0.5 * pose.glow * pose.fade), width=int(1.6 * SUPER)), 0.8)
@@ -204,6 +223,17 @@ def draw_cuff(layer: Image.Image, pose: Pose, phase: float) -> None:
             g.line(pts, fill=_a((190, 230, 240, 255), 0.35 * pose.fade), width=int(5 * SUPER), joint="curve")
 
     _glow(layer, mist, 2.6)
+    # The SLEEVE: a short stub of a dealer's dark sleeve behind the cuff,
+    # its striped GARTER band, fading back into the mist.
+    sl_a = (w[0] - d[0] * 8 - perp[0] * 10, w[1] - d[1] * 8 - perp[1] * 10)
+    sl_b = (w[0] - d[0] * 8 + perp[0] * 10, w[1] - d[1] * 8 + perp[1] * 10)
+    sleeve = [sl_a, sl_b, (sl_b[0] - d[0] * 16, sl_b[1] - d[1] * 16 + 3), (sl_a[0] - d[0] * 16, sl_a[1] - d[1] * 16 + 3)]
+    dr0 = blending_draw(layer)
+    dr0.polygon([_s(p) for p in sleeve], fill=_a(SLEEVE, 0.9 * pose.fade), outline=_a(OUTLINE, pose.fade))
+    g_a = (sl_a[0] - d[0] * 9, sl_a[1] - d[1] * 9 + 1.5)
+    g_b = (sl_b[0] - d[0] * 9, sl_b[1] - d[1] * 9 + 1.5)
+    dr0.line([_s(g_a), _s(g_b)], fill=_a(GARTER, pose.fade), width=int(3.0 * SUPER))
+    dr0.line([_s(g_a), _s(g_b)], fill=_a((230, 150, 220, 255), 0.8 * pose.fade), width=int(0.6 * SUPER))
     cuff_c = (w[0] - d[0] * 3, w[1] - d[1] * 3)
     a = (cuff_c[0] - perp[0] * 11, cuff_c[1] - perp[1] * 11)
     b = (cuff_c[0] + perp[0] * 11, cuff_c[1] + perp[1] * 11)
@@ -227,13 +257,11 @@ def draw_die_glimpse(layer: Image.Image, pose: Pose, phase: float) -> None:
         return
     tips = [_finger_points(pose, k)[2] for k in range(4)]
     c = (sum(p[0] for p in tips) / 4 - 4, sum(p[1] for p in tips) / 4 + 6)
-    r = 6.0
-    ang = phase * 3
-    pts = [(c[0] + math.cos(ang + k * math.pi / 2) * r, c[1] + math.sin(ang + k * math.pi / 2) * r) for k in range(4)]
-    _glow(layer, lambda g: g.polygon([_s(p) for p in pts], fill=_a(VIOLET, 0.8 * pose.die)), 2.0)
-    dr = blending_draw(layer)
-    dr.polygon([_s(p) for p in pts], fill=_a((150, 110, 230, 255), pose.die), outline=_a(TEAL, pose.die))
-    dr.ellipse((*_s((c[0] - 1.2, c[1] - 1.2)), *_s((c[0] + 1.2, c[1] + 1.2))), fill=_a(WHITE, pose.die))
+    # A tumbling miniature of the Quantum Die itself (its own drawing).
+    from .quantum_die import _rotation, draw_cube
+
+    _glow(layer, lambda g: g.ellipse((*_s((c[0] - 9, c[1] - 9)), *_s((c[0] + 9, c[1] + 9))), fill=_a(VIOLET, 0.6 * pose.die)), 2.0)
+    draw_cube(layer, c, _rotation(phase * 1.7, -0.5 + 0.3 * math.sin(phase * 2), phase * 0.9), 5.6, pose.die, 1.0)
 
 
 def draw_release(layer: Image.Image, pose: Pose) -> None:
@@ -257,6 +285,63 @@ def draw_release(layer: Image.Image, pose: Pose) -> None:
     spark(blending_draw(layer))
 
 
+def draw_ring(layer: Image.Image, pose: Pose) -> None:
+    """A brass SIGNET RING on the ring finger's first bone, a die pip of a
+    violet gem set in it."""
+    if pose.tip_fade > 0.6:
+        return
+    pts = _finger_points(pose, 2)
+    a, b = pts[0], pts[1]
+    m = (a[0] + (b[0] - a[0]) * 0.55, a[1] + (b[1] - a[1]) * 0.55)
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    ln = math.hypot(dx, dy) or 1.0
+    px, py = -dy / ln * 3.2, dx / ln * 3.2
+    d = blending_draw(layer)
+    d.line([_s((m[0] - px, m[1] - py)), _s((m[0] + px, m[1] + py))], fill=_a(OUTLINE, pose.fade), width=int(2.6 * SUPER))
+    d.line([_s((m[0] - px, m[1] - py)), _s((m[0] + px, m[1] + py))], fill=_a(BRASS, pose.fade), width=int(1.6 * SUPER))
+    gem = (m[0] - px * 0.9, m[1] - py * 0.9)
+    _glow(layer, lambda g: g.ellipse((*_s((gem[0] - 2, gem[1] - 2)), *_s((gem[0] + 2, gem[1] + 2))), fill=_a(VIOLET, 0.9 * pose.fade)), 0.8)
+    d = blending_draw(layer)
+    d.ellipse((*_s((gem[0] - 1.1, gem[1] - 1.1)), *_s((gem[0] + 1.1, gem[1] + 1.1))), fill=_a(VIOLET, pose.fade), outline=_a(OUTLINE, pose.fade))
+
+
+def shade_hand(img: Image.Image, pose: Pose) -> Image.Image:
+    """SHADING over the drawn hand: lit from the upper left, shadowed toward
+    the palm's underside, a teal RIM LIGHT along its upper edges. Alpha is
+    kept."""
+    px = np.asarray(img, np.float32)
+    h, w = px.shape[:2]
+    ys, xs = np.mgrid[0:h, 0:w].astype(np.float32)
+    rel = (ys / SUPER - (pose.wrist[1] - 30.0)) / 50.0
+    light = np.clip(1.12 - 0.42 * rel - 0.06 * (xs / SUPER - pose.wrist[0]) / 60.0, 0.6, 1.15)
+    rgb = px[..., :3] * light[..., None]
+    a = px[..., 3] / 255.0
+    e = int(1.4 * SUPER)
+    above = np.roll(a, e, axis=0)
+    rim = np.clip(a - above, 0, 1) * (a > 0.5)
+    rim = np.asarray(Image.fromarray((rim * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6 * SUPER)), np.float32) / 255.0
+    rgb = rgb + rim[..., None] * np.array(TEAL[:3], np.float32) * 0.7
+    px[..., :3] = np.clip(rgb, 0, 255)
+    return Image.fromarray(px.astype(np.uint8), "RGBA")
+
+
+def draw_shake_arcs(layer: Image.Image, pose: Pose) -> None:
+    """SHAKE ARCS: quick curved lines either side of the cupped hand while it
+    rattles the die."""
+    if pose.die <= 0:
+        return
+    tips = [_finger_points(pose, k)[2] for k in range(4)]
+    c = (sum(p[0] for p in tips) / 4, sum(p[1] for p in tips) / 4)
+
+    def arcs(g):
+        for sx, a0, a1 in ((-1, 120, 240), (1, -60, 60)):
+            for r in (16.0, 21.0):
+                g.arc((*_s((c[0] - r, c[1] - r)), *_s((c[0] + r, c[1] + r))), a0 + 30, a1 - 30, fill=_a(WHITE, 0.55 * pose.die), width=int(0.9 * SUPER))
+
+    _glow(layer, arcs, 0.6)
+    arcs(blending_draw(layer))
+
+
 # --- assembly ---------------------------------------------------------------------
 
 
@@ -273,6 +358,9 @@ def draw_hand(pose: Pose, phase: float) -> Image.Image:
     for k in (1, 0):
         draw_digit(img, _finger_points(pose, k), 5.8, pose, near=True)
     draw_digit(img, _thumb_points(pose), 6.2, pose, near=True)
+    draw_ring(img, pose)
+    img = shade_hand(img, pose)
+    draw_shake_arcs(img, pose)
     draw_release(img, pose)
     rng = np.random.default_rng(6)
     d = blending_draw(img)
