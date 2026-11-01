@@ -12,12 +12,12 @@ it. ``solve`` poses by contact: a ``grip`` closes on a rod of any size, a
 ``python -m ambition_sprite2d_renderer.handgen --help``.
 """
 
-from .draw import STYLES, HandDrawing, HandStyle, draw_hand
+from .draw import STYLES, HandDrawing, HandStyle, draw_hand, paint_order
 from .model import DIGIT_NAMES, FINGER_NAMES, SPECS, Camera, FingerSpec, HandPose, HandSpec, digits, landmarks
 from .poses import POSES, blend
 from .solve import Capsule, Rod, close_until_contact, grip, pinch, rest_tip_on, touch
 
 __all__ = [
     "DIGIT_NAMES", "FINGER_NAMES", "POSES", "SPECS", "STYLES", "Camera", "FingerSpec", "HandDrawing", "HandPose", "HandSpec", "HandStyle",
-    "Capsule", "Rod", "blend", "close_until_contact", "digits", "draw_hand", "grip", "landmarks", "pinch", "rest_tip_on", "touch",
+    "Capsule", "Rod", "blend", "close_until_contact", "digits", "draw_hand", "grip", "paint_order", "landmarks", "pinch", "rest_tip_on", "touch",
 ]

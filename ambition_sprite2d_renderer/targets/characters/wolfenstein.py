@@ -48,6 +48,7 @@ from ._ai_era_kit import OUTLINE, WHITE, RGBA, Kit, Point, ease, lerp, mix, turn
 from . import _evil_faction as F
 from . import _person_rig as R
 from ._person_rig import Build, Person, Stamp, loop, shot
+from ... import handgen as HG
 
 TARGET_NAME = "wolfenstein"
 TARGET_BASENAME = TARGET_NAME
@@ -317,168 +318,156 @@ X.layers["front"].append(_arm_rips)
 # ---- The hands -----------------------------------------------------------------
 #
 # Jon: "give him big green hands", and "we can have different hand poses for
-# different attacks". Each finger is two bones through a knuckle, with a claw
-# on its end; the thumb is its own. A hand is drawn in hand units from its
-# wrist along +x, the fingers curling toward +y.
+# different attacks"; 2026-10-31: drawn by the hand generator (``handgen``),
+# so they are one 3D hand in every pose: a heavy palm, fingers of three
+# phalanges with volume, an opposed thumb, claws out of the fingertips, and
+# the seam sewn across the back of the hand. A hand is drawn from its wrist
+# along +x, the fingers curling toward +y.
 
 #: His hands are this many times the size of a man's.
 HAND = 1.55
-
-
-def _h(x: float, y: float) -> Point:
-    """A point of a hand, in hand units from its wrist, scaled to his size."""
-    return K.at(x * HAND, y * HAND)
-
-
-#: Where each finger starts on the palm (index first), how long its two bones
-#: are, and how wide it is.
-FINGERS = [((9.0, -4.6), 5.4, 4.4), ((9.8, -1.6), 6.0, 4.8), ((9.8, 1.6), 5.8, 4.6), ((9.0, 4.6), 4.8, 3.8)]
-FINGER_W = 3.3
-#: Each hand pose: the fingers' spread (degrees off +x), each finger's two
-#: bends (toward the palm, degrees), the thumb's turn and bend, and whether
-#: the claws are out.
+#: The hand generator's hand, made his: shorter and a little broader.
+HAND_SPEC = HG.HandSpec().scaled(0.86, 1.05)
+#: Frame units per hand-generator unit.
+HAND_UNIT = 0.8
+#: Each hand pose: the generator's pose, whether the claws are out, how far
+#: they reach (hand units, as his old ones), and the hand's ROLL for the
+#: near hand (seen from its back; the far one, from its palm, is its
+#: mirror): a curled hand turns toward its side so its hook and claws show.
 HAND_POSES = {
     # Hanging, at rest: the fingers a little curled.
-    "soft": ((-10.0, -3.0, 4.0, 11.0), ((22.0, 26.0),) * 4, (-50.0, 15.0), True),
+    "soft": (HG.HandPose((0.22, 0.28, 0.32, 0.38), 0.0, spread=0.35), True, 4.0, 212.0),
     # Limp: his charge gone.
-    "limp": ((-6.0, -2.0, 3.0, 8.0), ((34.0, 44.0),) * 4, (-38.0, 24.0), True),
+    "limp": (HG.HandPose((0.36, 0.42, 0.46, 0.52), 0.15, spread=0.2), True, 4.0, 214.0),
     # The rake: every finger hooked, the claws out in front.
-    "claw": ((-18.0, -6.0, 6.0, 17.0), ((26.0, 60.0), (28.0, 62.0), (28.0, 60.0), (26.0, 56.0)), (-66.0, 34.0), True),
+    "claw": (HG.HandPose((0.42,) * 4, 0.1, spread=0.9, hook=1.0), True, 5.4, 212.0),
     # The current in him: every finger stiff and spread, bent back.
-    "splay": ((-40.0, -14.0, 12.0, 38.0), ((-12.0, -8.0),) * 4, (-84.0, -12.0), True),
+    "splay": (HG.HandPose((-0.12,) * 4, 0.0, spread=1.0), True, 4.0, 203.0),
     # Reaching: open, a little spread.
-    "open": ((-20.0, -7.0, 7.0, 20.0), ((8.0, 12.0),) * 4, (-70.0, 0.0), True),
+    "open": (HG.HandPose((0.08,) * 4, 0.0, spread=0.4), True, 4.0, 203.0),
     # Flat on his knees.
-    "flat": ((-5.0, -1.5, 1.5, 5.0), ((2.0, 4.0),) * 4, (-30.0, 0.0), False),
+    "flat": (HG.HandPose((0.02,) * 4, 0.1, spread=-0.4), False, 4.0, 203.0),
     # The hammer: a fist, the knuckles in front.
-    "fist": ((-6.0, -2.0, 2.0, 6.0), ((94.0, 98.0),) * 4, (-24.0, 70.0), False),
+    "fist": (HG.HandPose((1.0,) * 4, 0.9), False, 4.0, 203.0),
     # The lash: the index finger out at you, the rest closed.
-    "point": ((-3.0, -2.0, 4.0, 10.0), ((0.0, 0.0), (92.0, 96.0), (94.0, 96.0), (94.0, 96.0)), (-40.0, 40.0), True),
+    "point": (HG.HandPose((0.0, 1.0, 1.0, 1.0), 0.7), True, 4.0, 203.0),
     # On his bolts: curled round them.
-    "grip": ((-10.0, -3.0, 4.0, 11.0), ((58.0, 70.0),) * 4, (-36.0, 58.0), True),
+    "grip": (HG.HandPose((0.62, 0.64, 0.66, 0.7), 0.55), True, 4.0, 222.0),
     # The knife hand (Jon, 2026-10-19): every finger straight and pressed to
     # the next, the thumb tucked along the side, the claws in a point. His
     # stab drives it.
-    "knife": ((2.6, 0.9, -0.9, -2.6), ((1.0, 2.0),) * 4, (-14.0, 8.0), True),
+    "knife": (HG.HandPose((0.0,) * 4, 0.1, spread=-0.9), True, 6.2, 203.0),
 }
 
 
-def _finger(base: Point, l1: float, l2: float, a1: float, a2: float) -> Tuple[Point, Point, Point, float]:
-    """A finger from ``base``: its knuckle, its tip, and the way its tip
-    points."""
-    k = (base[0] + l1 * math.cos(math.radians(a1)), base[1] + l1 * math.sin(math.radians(a1)))
-    t = (k[0] + l2 * math.cos(math.radians(a2)), k[1] + l2 * math.sin(math.radians(a2)))
-    return k, t, t, a2
+def _hand_view(mode: str, near: bool, wrist: Point, scale: float):
+    """The generator's spec, pose and camera for a hand in ``mode`` with its
+    wrist at ``wrist`` (``scale`` px per frame unit). Facing canvas-right,
+    his NEAR hand is his right hand, seen from its BACK, its thumb behind
+    it; the far one, his left, from its palm, its thumb across it (Jon,
+    2026-10-19: both hands have ONE outline, a hand at his side curling the
+    same way whichever side of him it is on)."""
+    pose, _claws, _reach, roll = HAND_POSES.get(mode, HAND_POSES["soft"])
+    spec = HAND_SPEC.mirrored() if near else HAND_SPEC
+    cam = HG.Camera(wrist, 0.0, roll if near else 540.0 - roll, HAND_UNIT * scale, 0.0)
+    return spec, pose, cam
 
 
-def _hand_bones(mode: str, near: bool):
-    """The fingers of a hand in ``mode`` (each: its base, knuckle, tip and
-    the way its tip points, index first) and its thumb (base, knuckle, tip,
-    way), in hand units from the wrist.
-
-    Facing canvas-right, his NEAR hand is his right hand and the far one his
-    left (Jon: "character-right is not canvas-right, in fact in this case it
-    is canvas-left"). Both hands have ONE outline: a hand hanging at his
-    side, palm to his thigh, has its thumb forward and its fingers curling
-    the same way, whichever side of him it is on. What differs is which side
-    of the hand faces the camera: the far hand shows its palm, the near one
-    its BACK (``_hand``). Jon, 2026-10-19: the near hand drawn mirrored, its
-    thumb down and back, read as a palm on a wrist turned the wrong way; and
-    on 10-18, mirrored with its curl, it was upside down."""
-    spread, bends, (thumb_a, thumb_b), _claws_out = HAND_POSES.get(mode, HAND_POSES["soft"])
-    fingers = []
-    for (base, l1, l2), sp, (b1, b2) in zip(FINGERS, spread, bends):
-        knuckle, tip, _, a2 = _finger(base, l1, l2, sp + b1, sp + b1 + b2)
-        fingers.append((base, knuckle, tip, a2))
-    thumb_base = (3.6, -5.4)
-    # The thumb turns out to its side and bends back across the palm.
-    tk, tt, _, ta = _finger(thumb_base, 4.6, 4.0, thumb_a, thumb_a + thumb_b)
-    return fingers, (thumb_base, tk, tt, ta)
+def _hand_claws(mode: str) -> Tuple[bool, float]:
+    """Whether a hand's claws are out, and how far past its fingertips
+    they reach (hand-generator units)."""
+    _pose, claws, reach, _roll = HAND_POSES.get(mode, HAND_POSES["soft"])
+    return claws, reach * HAND / HAND_UNIT
 
 
 def _hand(mode: str, near: bool):
-    """A big hand along +x from its wrist at ``home``: a heavy palm, four
-    fingers with knuckles and claws, a thumb, and a seam sewn across its
-    back. ``near`` is his right hand, seen from its BACK: its thumb is behind
-    the hand, in its shade, and the knuckles and the seam are on top. The far
-    one is his left, seen from its palm: its thumb lies in front, across it."""
+    """A big hand from its wrist at ``home``, along +x. The hand generator
+    POSES it (one 3D hand: where every joint is, which way each finger
+    folds, what is in front of what); his own cartoon parts DRAW it (Jon,
+    2026-10-31: "draw more custom 2d art over the reference pose, it is
+    posed better, but lost some cartoon-y charm"): a flat palm with a dark
+    rim, each finger a stroke with its own dark line round it and a dot at
+    each knuckle, claws of horn, the seam sewn across the back of the hand,
+    and the kit's ink, rim light and shade over it all."""
     mode = mode if mode in HAND_POSES else "soft"
-    hp = _h
-    claws_out = HAND_POSES[mode][3]
     skin = SKIN if near else SKIN_SHADE
-    fingers, (thumb_base, tk, tt, ta) = _hand_bones(mode, near)
+    spec, pose, cam = _hand_view(mode, near, (0.0, 0.0), 1.0)
+    at = lambda p3: K.at(*cam.project(p3))  # noqa: E731
+    dgs = HG.digits(spec, pose)
+    order = HG.paint_order(spec, pose, cam)
+    back = not cam.palm_faces_us()
+    face = HG.model.palm_face(spec, not back)
+    web = HG.model.thumb_web(spec, pose)
+    claws_out, reach = _hand_claws(mode)
+    rim = 0.45 * HAND
 
-    def claw(tip: Point, a: float, reach: float) -> List[Point]:
-        ux, uy = math.cos(math.radians(a)), math.sin(math.radians(a))
-        return [hp(tip[0] - uy * 1.3, tip[1] + ux * 1.3), hp(tip[0] + ux * reach, tip[1] + uy * reach), hp(tip[0] + uy * 1.3, tip[1] - ux * 1.3)]
+    def width(name: str, i: int) -> float:
+        return dgs[name].widths[i] * HAND_UNIT
 
-    reach = {"claw": 5.4, "knife": 6.2}.get(mode, 4.0)
-    # Each finger's claw, or none: a claw is a part of its finger and is
-    # drawn with it, so it lies over the fingers its finger lies over and
-    # under the ones over its finger.
-    claws = [claw(tip, a, reach) if claws_out and (mode != "point" or k == 0) else None for k, (_b, _k, tip, a) in enumerate(fingers)]
-    thumb_claw = claw(tt, ta, 3.0) if claws_out else None
-    # The fingers' order, back to front. Seen from the palm (the far hand)
-    # the index finger is nearest the camera, so it is drawn last; seen from
-    # the back (the near hand) the order is the other way, and the little
-    # finger is nearest (Jon, 2026-10-19).
-    order = list(range(len(fingers))) if near else list(reversed(range(len(fingers))))
+    def claw(name: str) -> Optional[List[Point]]:
+        if not claws_out or (mode == "point" and name not in ("index", "thumb")):
+            return None
+        j = dgs[name].joints
+        way = (j[-1] - j[-2]) / (np.linalg.norm(j[-1] - j[-2]) or 1.0)
+        length = reach * (0.6 if name == "thumb" else 1.0)
+        tip, point = at(j[-1]), at(j[-1] + way * (length + dgs[name].widths[-1] / 2))
+        dx, dy = point[0] - tip[0], point[1] - tip[1]
+        ln = math.hypot(dx, dy)
+        if ln < 1.2 * HAND:
+            return None  # pointing at us or away: hidden in the tip
+        ux, uy = dx / ln, dy / ln
+        return [(tip[0] - uy * 1.3 * HAND, tip[1] + ux * 1.3 * HAND), point, (tip[0] + uy * 1.3 * HAND, tip[1] - ux * 1.3 * HAND)]
+
+    claws = {name: claw(name) for name in dgs}
 
     def shape(d) -> None:
-        K.rrect(d, K.home[0] - 2.4 * HAND, K.home[1] - 6.0 * HAND, K.home[0] + 10.0 * HAND, K.home[1] + 6.0 * HAND, 3.4 * HAND, WHITE)
-        for base, knuckle, tip, _a in fingers:
-            K.stroke(d, [hp(*base), hp(*knuckle), hp(*tip)], WHITE, FINGER_W * HAND)
-        K.stroke(d, [hp(*thumb_base), hp(*tk), hp(*tt)], WHITE, (FINGER_W + 0.5) * HAND)
-        for c in claws + [thumb_claw]:
-            if c is not None:
-                K.poly(d, c, WHITE)
-
-    def draw_claw(d, c) -> None:
-        if c is None:
-            return
-        K.poly(d, c, CLAW)
-        K.line(d, [c[1], ((c[0][0] + c[2][0]) / 2.0 * 0.4 + c[1][0] * 0.6, (c[0][1] + c[2][1]) / 2.0 * 0.4 + c[1][1] * 0.6)], CLAW_TIP, 0.6)
-
-    def thumb(d, colour: RGBA) -> None:
-        K.stroke(d, [hp(*thumb_base), hp(*tk), hp(*tt)], SKIN_DEEP, (FINGER_W + 0.5) * HAND)
-        K.stroke(d, [hp(*thumb_base), hp(*tk), hp(*tt)], colour, (FINGER_W - 0.4) * HAND)
-        draw_claw(d, thumb_claw)
-
-    def finger(d, k: int) -> None:
-        # A line round each finger: each one reads over the one behind it.
-        base, knuckle, tip, _a = fingers[k]
-        K.stroke(d, [hp(*base), hp(*knuckle), hp(*tip)], SKIN_DEEP, FINGER_W * HAND)
-        K.stroke(d, [hp(*base), hp(*knuckle), hp(*tip)], skin, (FINGER_W - 0.9) * HAND)
-        K.oval(d, hp(*knuckle), 0.6 * HAND, 0.6 * HAND, SKIN_DEEP)
-        draw_claw(d, claws[k])
-
-    def palm(d) -> None:
-        K.rrect(d, K.home[0] - 2.4 * HAND, K.home[1] - 6.0 * HAND, K.home[0] + 10.0 * HAND, K.home[1] + 6.0 * HAND, 3.4 * HAND, SKIN_DEEP)
-        K.rrect(d, K.home[0] - 2.0 * HAND, K.home[1] - 5.5 * HAND, K.home[0] + 9.6 * HAND, K.home[1] + 5.5 * HAND, 3.0 * HAND, skin)
+        K.poly(d, [at(p) for p in face], WHITE)
+        K.poly(d, [at(p) for p in web], WHITE)
+        for name, dg in dgs.items():
+            for i in range(len(dg.joints) - 1):
+                K.stroke(d, [at(dg.joints[i]), at(dg.joints[i + 1])], WHITE, width(name, i) + 2 * rim)
+            if claws[name]:
+                K.poly(d, claws[name], WHITE)
 
     def detail(d) -> None:
-        if near:
-            # From the back: the thumb and the fingers curl away, behind the
-            # back of the hand, which is laid over their roots.
-            thumb(d, SKIN_SHADE)
-            for k in order:
-                finger(d, k)
-            palm(d)
-        else:
-            # From the palm: the fingers curl toward the camera, in front of
-            # it, and the thumb lies across it.
-            for k in order:
-                finger(d, k)
-            thumb(d, skin)
-        # The knuckles of the hand, and its back sewn on at the wrist: on the
-        # back of the near hand, ridges that catch the light.
-        for base, *_ in fingers:
-            K.oval(d, hp(base[0] - 0.6, base[1]), 0.9 * HAND, 0.8 * HAND, SKIN_DEEP if mode == "fist" or near else skin)
-            if near and mode != "fist":
-                K.oval(d, hp(base[0] - 0.8, base[1] - 0.2), 0.55 * HAND, 0.45 * HAND, SKIN_LIGHT)
-        stitches(d, [hp(2.0, -6.0), hp(3.0, 0.0), hp(2.2, 6.0)], tick=1.1, every=2.4, width=0.5)
+        drawn = set()
+        for name, i in order:
+            if name == "palm":
+                for part in (web, face):
+                    K.poly(d, [at(p) for p in part], skin, SKIN_DEEP, 0.9 * HAND / 1.55)
+                if back:
+                    # The knuckles: ridges on the back of the hand.
+                    for f in HG.FINGER_NAMES:
+                        q = at(HG.model.local(spec, spec.palm_length, spec.finger(f).across, -spec.palm_depth / 2))
+                        K.oval(d, q, 0.9 * HAND, 0.8 * HAND, SKIN_DEEP)
+                        K.oval(d, (q[0] - 0.3 * HAND, q[1] - 0.2 * HAND), 0.55 * HAND, 0.45 * HAND, SKIN_LIGHT)
+                    # The back of the hand sewn on at the wrist.
+                    h = spec.palm_half_width * 0.85
+                    seam = [at(HG.model.local(spec, 4.0 + abs(v) / h, v, -spec.palm_depth / 2)) for v in (-h, -h / 2, 0.0, h / 2, h)]
+                    stitches(d, seam, tick=1.1, every=2.4, width=0.5)
+                continue
+            dg = dgs[name]
+            a, b = at(dg.joints[i]), at(dg.joints[i + 1])
+            w = width(name, i)
+            # The finger's own dark line round it, then its skin; where it
+            # meets its neighbour already drawn, the skin runs on through.
+            K.stroke(d, [a, b], SKIN_DEEP, w + 2 * rim)
+            K.stroke(d, [a, b], skin if name != "thumb" or not back else SKIN_SHADE, w)
+            for j, joint in ((i - 1, a), (i + 1, b)):
+                if (name, j) in drawn:
+                    r = w / 2 + rim * 0.85
+                    K.oval(d, joint, r, r, skin if name != "thumb" or not back else SKIN_SHADE)
+            drawn.add((name, i))
+            # A dot at the finger's middle knuckle, as his hands always had.
+            for j, joint in ((i, a), (i + 1, b)):
+                if j == 1 and {(name, 0), (name, 1)} <= drawn:
+                    K.oval(d, joint, 0.6 * HAND, 0.6 * HAND, SKIN_DEEP)
+            if i == len(dg.joints) - 2 and claws[name]:
+                c = claws[name]
+                K.poly(d, c, CLAW)
+                K.line(d, [c[1], ((c[0][0] + c[2][0]) / 2.0 * 0.4 + c[1][0] * 0.6, (c[0][1] + c[2][1]) / 2.0 * 0.4 + c[1][1] * 0.6)], CLAW_TIP, 0.6)
 
-    return K.solid(("hand", mode, near, HAND, 2), shape, skin, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=SKIN_DEEP)
+    return K.solid(("hand", mode, near, HAND, 3), shape, skin, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=SKIN_DEEP)
 
 
 X.hand = _hand
@@ -1720,7 +1709,7 @@ def _syringe_axis(pose) -> Tuple[Point, Point]:
     _sh, el, wr = X.arm_joints(pose, True)
     length = math.dist(el, wr) or 1.0
     fx, fy = (wr[0] - el[0]) / length, (wr[1] - el[1]) / length
-    # The near hand's thumb is on this side (``_hand_bones``).
+    # The near hand's thumb is on this side (``_hand_view``).
     way = turned((-fy, fx), float(pose["syr_turn"]))
     return (wr[0] + fx * SYR_PALM, wr[1] + fy * SYR_PALM), way
 
@@ -2280,18 +2269,23 @@ def _muzzle(ctx) -> Point:
 def claw_tips(pose, near: bool) -> List[Point]:
     """Where the claws of a hand are in ``pose``, in frame pixels: the tip
     of each finger's claw (index first), from the hand pose it is drawn in
-    (``HAND_POSES``) at the wrist the rig solves, turned along the forearm.
+    (``HAND_POSES``, the generator's 3D hand) at the wrist the rig solves,
+    turned along the forearm.
     The claw trail is drawn from these, so a cut is where a claw went."""
     pose = X.full(pose)
     _shoulder, elbow, wrist = X.arm_joints(pose, near)
     turn = math.degrees(math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]))
     mode = str(pose["nh" if near else "fh"])
-    claws_out = HAND_POSES.get(mode, HAND_POSES["soft"])[3]
-    reach = (5.4 if mode == "claw" else 4.0) if claws_out else 0.0
+    spec, hand_pose, cam = _hand_view(mode, near, (0.0, 0.0), 1.0)
+    claws_out, reach = _hand_claws(mode)
+    reach = reach if claws_out else 0.0
+    digits = HG.digits(spec, hand_pose)
     out = []
-    for _base, _k, tip, a2 in _hand_bones(mode, near)[0]:
-        end = (tip[0] + reach * math.cos(math.radians(a2)), tip[1] + reach * math.sin(math.radians(a2)))
-        r = turned((end[0] * HAND, end[1] * HAND), turn)
+    for name in HG.FINGER_NAMES:
+        j = digits[name].joints
+        way = (j[-1] - j[-2]) / (np.linalg.norm(j[-1] - j[-2]) or 1.0)
+        end = cam.project(j[-1] + way * reach)
+        r = turned(end, turn)
         out.append((wrist[0] + r[0], wrist[1] + r[1]))
     return out
 

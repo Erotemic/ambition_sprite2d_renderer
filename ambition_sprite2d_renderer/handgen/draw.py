@@ -37,8 +37,11 @@ class HandStyle:
     flesh: RGBA = (236, 196, 168, 255)
     #: The heel's shade and the light pass's dark side.
     shade: RGBA = (196, 146, 124, 255)
-    #: The soft line where one part passes over another.
+    #: The soft line where one part passes over another, and its width
+    #: (frame px at scale 1; wider and darker for a style that inks every
+    #: part, narrow and pale for one inked only round its silhouette).
     seam: RGBA = (176, 124, 104, 220)
+    seam_width: float = 0.9
     ink: RGBA = (40, 24, 28, 255)
     #: Highlights: the pads, the knuckle bumps.
     highlight: RGBA = (255, 236, 222, 255)
@@ -52,6 +55,11 @@ class HandStyle:
     rim: Optional[RGBA] = None
     tendons: bool = False
     palm_lines: bool = True
+    #: CLAWS out of the fingertips (a monster's), or None; their length in
+    #: hand units (the thumb's is shorter), and the light along each.
+    claw: Optional[RGBA] = None
+    claw_length: float = 6.0
+    claw_tip: RGBA = (214, 206, 186, 255)
     #: The ink's width (frame px).
     ink_width: float = 1.0
 
@@ -186,7 +194,7 @@ def _draw_phalanx(pt: _Painter, cam: Camera, dv: _DigitView, i: int, style: Hand
     a, b, frac = dv.segment(i)
     w = dv.widths[i]
     ra, rb = dv.radius(i), dv.radius(i + 1) if frac >= 1.0 else dv.radius(i) + (dv.radius(i + 1) - dv.radius(i)) * frac
-    seam = 0.45 * cam.scale
+    seam = style.seam_width / 2 * cam.scale
     swell = _pad_swell(cam, dv, i, a, b, ra, rb)
     d = pt.draw()
     for colour, grow in ((_a(style.seam, fade), seam), (_a(style.flesh, fade), 0.0)):
@@ -218,6 +226,8 @@ def _draw_phalanx(pt: _Painter, cam: Camera, dv: _DigitView, i: int, style: Hand
         d.polygon([pt.s(p) for p in nail], fill=_a(style.nail, 0.85 * fade))
         d.line([pt.s((q[0] - ux * rl * 0.4 - uy * rw * 0.4, q[1] - uy * rl * 0.4 + ux * rw * 0.4)), pt.s((q[0] + ux * rl * 0.3 - uy * rw * 0.4, q[1] + uy * rl * 0.3 + ux * rw * 0.4))],
                fill=_a(style.nail_shine, 0.9 * fade), width=max(1, int(0.5 * cam.scale * pt.ss)))
+    if i == n - 1 and frac >= 1.0 and style.claw is not None:
+        _draw_claw(pt, cam, dv, style, fade)
     # A joint's marks go on once both its phalanges are down.
     for j in (i, i + 1):
         if 0 < j < n and {j - 1, j} <= dv.drawn:
@@ -227,6 +237,37 @@ def _draw_phalanx(pt: _Painter, cam: Camera, dv: _DigitView, i: int, style: Hand
         r = 2.4 * cam.scale
         pt.glow(lambda g: g.ellipse((*pt.s((tip[0] - r, tip[1] - r)), *pt.s((tip[0] + r, tip[1] + r))), fill=_a(style.tip_glow, 0.8 * glow * fade)), 1.0 * cam.scale)
         pt.disk(pt.draw(), tip, dv.widths[-1] * 0.28, _a((200, 255, 245, 255), 0.85 * fade))
+
+
+def _draw_claw(pt: _Painter, cam: Camera, dv: _DigitView, style: HandStyle, fade: float) -> None:
+    """A CLAW out of the fingertip, along the last phalanx in 3D (so it
+    foreshortens with it): a curved hook from the tip's flesh to a point,
+    a light line along it."""
+    j = dv.digit.joints
+    d3 = j[-1] - j[-2]
+    d3 = d3 / (np.linalg.norm(d3) or 1.0)
+    length = style.claw_length * (0.6 if dv.digit.name == "thumb" else 1.0)
+    r = dv.radius(len(dv.pts) - 1)
+    tip = dv.pts[-1]
+    point = cam.project(j[-1] + d3 * (length + r / cam.scale))
+    dx, dy = point[0] - tip[0], point[1] - tip[1]
+    ln = math.hypot(dx, dy)
+    if ln < r * 0.6:
+        return  # pointing at us or away: hidden in the tip
+    ux, uy = dx / ln, dy / ln
+    w = r * 0.62
+    # Its curve bows toward the palm side, as a claw hooks.
+    pad3 = dv.digit.pads[-1]
+    bow = np.array(cam.project(j[-1] + pad3)) - np.array(cam.project(j[-1]))
+    bow = bow / (np.linalg.norm(bow) or 1.0) * ln * 0.18
+    base_a = (tip[0] - uy * w - ux * r * 0.2, tip[1] + ux * w - uy * r * 0.2)
+    base_b = (tip[0] + uy * w - ux * r * 0.2, tip[1] - ux * w - uy * r * 0.2)
+    mid = (tip[0] + dx * 0.55 + bow[0], tip[1] + dy * 0.55 + bow[1])
+    poly = [base_a, (mid[0] - uy * w * 0.55, mid[1] + ux * w * 0.55), point, (mid[0] + uy * w * 0.55, mid[1] - ux * w * 0.55), base_b]
+    d = pt.draw()
+    d.polygon([pt.s(p) for p in poly], fill=_a(style.claw, fade))
+    d.line([pt.s(((base_a[0] + base_b[0]) / 2 + dx * 0.25, (base_a[1] + base_b[1]) / 2 + dy * 0.25)), pt.s((mid[0] * 0.5 + point[0] * 0.5, mid[1] * 0.5 + point[1] * 0.5))],
+           fill=_a(style.claw_tip, fade), width=max(1, int(0.35 * cam.scale * pt.ss)))
 
 
 def _draw_joint(pt: _Painter, cam: Camera, dv: _DigitView, j: int, style: HandStyle, fade: float) -> None:
@@ -295,7 +336,7 @@ def _draw_palm(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style:
                 d.line([pt.s(p) for p in line], fill=_a(style.seam, 0.5 * fade), width=lw, joint="curve")
     else:
         # From the back its knuckle edge passes over the tucked fingers.
-        d.line([pt.s(cam.project(p)) for p in knuckle_edge(spec, False)], fill=_a(style.seam, fade), width=max(1, int(0.9 * cam.scale * pt.ss)), joint="curve")
+        d.line([pt.s(cam.project(p)) for p in knuckle_edge(spec, False)], fill=_a(style.seam, fade), width=max(1, int(style.seam_width * cam.scale * pt.ss)), joint="curve")
         if style.tendons:
             # One TENDON along each metacarpal, wrist to its own knuckle.
             for f, k in zip(spec.fingers, knuckles):
@@ -434,6 +475,31 @@ def _light(img: Image.Image, cam: Camera, style: HandStyle, ss: int) -> Image.Im
     return Image.fromarray(px.astype(np.uint8), "RGBA")
 
 
+def paint_order(spec: HandSpec, pose: HandPose, cam: Camera, tip_fade: float = 0.0, held_at: Optional[Sequence[float]] = None) -> List[Tuple[str, int]]:
+    """The DRAW ORDER the model gives, far to near, for any 2D look painted
+    over it: ``(digit, phalanx)`` entries, ``("palm", -1)`` for the palm
+    (with its web), and ``("held", -1)`` for a held thing at ``held_at``.
+
+    Each phalanx is in FRONT of the palm or BEHIND it by which side of the
+    palm's plane it lies on (seen from our side); each group is painted far
+    to near by depth. So from the palm a curl folds over it, from the back
+    it tucks behind it, and in between the two orders cross over smoothly."""
+    side = 1.0 if cam.palm_faces_us() else -1.0
+    front, behind = [], []
+    for name, dg in digits(spec, pose).items():
+        n = len(dg.joints) - 1
+        keep = n * (1.0 - tip_fade)
+        for i in range(n):
+            if i >= keep:
+                continue
+            mid = (dg.joints[i] + dg.joints[i + 1]) / 2
+            (front if mid[2] * side >= -0.25 * spec.palm_depth else behind).append((cam.depth(mid), name, i))
+    if held_at is not None:
+        h = np.asarray(held_at, float)
+        (front if h[2] * side >= -0.25 * spec.palm_depth else behind).append((cam.depth(h), "held", -1))
+    return [(name, i) for _d, name, i in sorted(behind)] + [("palm", -1)] + [(name, i) for _d, name, i in sorted(front)]
+
+
 def draw_hand(spec: HandSpec, pose: HandPose, cam: Camera, canvas: Tuple[int, int], style: HandStyle = STYLES["skin"], ss: int = 4,
               glow: float = 0.7, fade: float = 1.0, tip_fade: float = 0.0, between: Optional[Callable[[Image.Image, Dict[str, Point], int], None]] = None,
               held_at: Optional[Sequence[float]] = None, wrist: str = "fade") -> HandDrawing:
@@ -451,48 +517,30 @@ def draw_hand(spec: HandSpec, pose: HandPose, cam: Camera, canvas: Tuple[int, in
     pt = _Painter(layer, ss)
     marks = landmarks(spec, pose, cam)
     views = {name: _DigitView.of(cam, dg, tip_fade) for name, dg in digits(spec, pose).items()}
-    # DRAW ORDER, from the model, at any roll: each phalanx is in FRONT of
-    # the palm or BEHIND it by which side of the palm's plane it lies on
-    # (seen from our side); each group is painted far to near by depth.
-    # So from the palm a curl folds over it, from the back it tucks behind
-    # it, and in between the two orders cross over smoothly.
-    side = 1.0 if cam.palm_faces_us() else -1.0
-    front, behind = [], []
-    for name, dv in views.items():
-        for i in range(len(dv.pts) - 1):
-            if i >= dv.keep:
-                continue
-            mid = (dv.digit.joints[i] + dv.digit.joints[i + 1]) / 2
-            group = front if mid[2] * side >= -0.25 * spec.palm_depth else behind
-            group.append((cam.depth(mid), name, i))
-    if between and held_at is not None:
-        h = np.asarray(held_at, float)
-        (front if h[2] * side >= -0.25 * spec.palm_depth else behind).append((cam.depth(h), "held", -1))
+    # The DRAW ORDER is the model's (``paint_order``).
     back_of_hand = not cam.palm_faces_us()
-    first_in_front = {name for _d, name, i in front if i == 0}
-    def paint(name, i):
+    order = paint_order(spec, pose, cam, tip_fade, held_at if between else None)
+    palm_at = order.index(("palm", -1))
+    first_in_front = {name for name, i in order[palm_at:] if i == 0}
+    stub = _draw_forearm(pt, spec, pose, cam, style, fade) if wrist != "none" else None
+    for name, i in order:
         if name == "held":
             between(layer, marks, ss)
+        elif name == "palm":
+            _draw_palm(pt, spec, pose, cam, style, glow, fade)
+            for f in FINGER_NAMES:
+                views[f].palm_drawn = True
+            if back_of_hand:
+                # The knuckles of fingers folded behind ride the back of the hand.
+                for f in FINGER_NAMES:
+                    if f not in first_in_front:
+                        _draw_knuckle(pt, spec, pose, cam, f, style, fade)
+            if between and held_at is None:
+                between(layer, marks, ss)
         else:
             _draw_phalanx(pt, cam, views[name], i, style, glow, fade)
-
-    stub = _draw_forearm(pt, spec, pose, cam, style, fade) if wrist != "none" else None
-    for _depth, name, i in sorted(behind):
-        paint(name, i)
-    _draw_palm(pt, spec, pose, cam, style, glow, fade)
-    for name in FINGER_NAMES:
-        views[name].palm_drawn = True
-    if back_of_hand:
-        # The knuckles of fingers folded behind ride the back of the hand.
-        for name in FINGER_NAMES:
-            if name not in first_in_front:
+            if back_of_hand and i == 0 and name in FINGER_NAMES:
                 _draw_knuckle(pt, spec, pose, cam, name, style, fade)
-    if between and held_at is None:
-        between(layer, marks, ss)
-    for _depth, name, i in sorted(front):
-        paint(name, i)
-        if back_of_hand and i == 0 and name in FINGER_NAMES:
-            _draw_knuckle(pt, spec, pose, cam, name, style, fade)
     out = _light(_ink(layer, style, ss, cam.scale, fade), cam, style, ss)
     if stub is not None and wrist == "fade":
         out = _fade_wrist(out, spec, pose, cam, ss, stub)

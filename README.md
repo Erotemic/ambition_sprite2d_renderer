@@ -738,6 +738,11 @@ item over the palm and under the closing fingers (with `held_at=`, in its
 turn by depth). `solve` poses by contact: `grip(spec, radius)` closes every
 digit on a rod and returns it, `pinch(spec, finger)` meets the thumb's tip
 and a finger's, `close_until_contact`/`rest_tip_on`/`touch` are the parts.
+A style may grow CLAWS (`HandStyle.claw`) and ink its parts boldly
+(`seam_width`). For a character with its own cartoon look, let the model
+only PLACE: `digits`, `landmarks` and `paint_order` (the model's far-to-near
+order of phalanges, palm and held item) are what its own 2D parts are drawn
+from (Wolfenstein's hands: `targets/characters/wolfenstein.py`).
 
 ```bash
 uv run python -m ambition_sprite2d_renderer.handgen model --out OUT/model.png    # the bare model's turnaround
