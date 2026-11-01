@@ -734,11 +734,15 @@ spectral, glove). The model places, the 2D parts draw: one ink outline round
 the silhouette, soft seams where parts overlap, faint joints, and the
 pad or nail side of each phalanx chosen by the model. `HandDrawing.landmarks`
 (joints, tips, `grip`) are for hanging things on; `between=` draws a held
-item over the palm and under the closing fingers.
+item over the palm and under the closing fingers (with `held_at=`, in its
+turn by depth). `solve` poses by contact: `grip(spec, radius)` closes every
+digit on a rod and returns it, `pinch(spec, finger)` meets the thumb's tip
+and a finger's, `close_until_contact`/`rest_tip_on`/`touch` are the parts.
 
 ```bash
 uv run python -m ambition_sprite2d_renderer.handgen model --out OUT/model.png    # the bare model's turnaround
 uv run python -m ambition_sprite2d_renderer.handgen poses --style spectral --out OUT/poses.png
+uv run python -m ambition_sprite2d_renderer.handgen solved --out OUT/solved.png   # grips and pinches
 ```
 
 ## Character specs and review casts

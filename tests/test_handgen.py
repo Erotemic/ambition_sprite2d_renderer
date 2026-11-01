@@ -59,3 +59,23 @@ def test_the_cli_writes_both_sheets(tmp_path):
     for cmd in ("model", "poses"):
         out = tmp_path / f"{cmd}.png"
         assert main([cmd, "--out", str(out)]) == 0 and out.exists()
+
+
+@pytest.mark.parametrize("radius", [2.5, 4.0, 7.0])
+def test_a_grip_closes_each_finger_onto_the_rod_without_entering_it(radius):
+    from ambition_sprite2d_renderer.handgen.solve import _clearance, grip
+
+    pose, rod = grip(HandSpec(), radius)
+    ds = digits(HandSpec(), pose)
+    for name in ("index", "middle", "ring", "little"):
+        gap = _clearance(ds[name], rod)
+        assert -0.05 <= gap <= 0.3, (name, gap)
+    # A thicker rod opens the hand.
+    assert pose.curls[1] < grip(HandSpec(), radius * 0.6)[0].curls[1]
+
+
+def test_a_pinch_meets_the_thumb_and_index_tips():
+    from ambition_sprite2d_renderer.handgen.solve import pinch
+
+    _pose, miss = pinch(HandSpec(), "index")
+    assert miss < 0.05

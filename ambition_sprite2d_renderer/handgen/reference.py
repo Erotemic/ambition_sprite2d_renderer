@@ -97,3 +97,40 @@ def drawn_sheet(spec: HandSpec = HandSpec(), style: HandStyle = STYLES["skin"], 
     poses = poses or POSES
     names = list(poses)
     return _grid(lambda r, c: draw_hand(spec, poses[names[r]], _camera(cell, rolls[c], spec), cell, style).frame(), names, [_roll_label(r) for r in rolls], cell)
+
+
+def _rod_drawer(cam: Camera, rod, colour=(150, 96, 60, 255)):
+    """A ``between`` hook drawing a held rod: a shaded bar between its ends."""
+    from PIL import ImageDraw
+
+    def draw(layer, _marks, ss):
+        a = cam.project(rod.centre - rod.axis * rod.half_length)
+        b = cam.project(rod.centre + rod.axis * rod.half_length)
+        w = 2 * rod.radius * cam.scale * ss
+        d = ImageDraw.Draw(layer)
+        for col, ww in (((40, 24, 20, 255), w + 2 * ss * cam.scale), (colour, w), (tuple(min(255, c + 40) for c in colour[:3]) + (255,), w * 0.3)):
+            d.line([(a[0] * ss, a[1] * ss), (b[0] * ss, b[1] * ss)], fill=col, width=max(1, int(ww)))
+
+    return draw
+
+
+def solved_sheet(spec: HandSpec = HandSpec(), style: HandStyle = STYLES["skin"], radii: Sequence[float] = (2.5, 4.0, 7.0), rolls: Sequence[float] = (0, 90, 180), cell: Tuple[int, int] = (240, 220)) -> Image.Image:
+    """Solved poses: a grip round rods of each radius (the rod drawn), and
+    the thumb pinching the index and the middle finger."""
+    from .solve import grip, pinch
+
+    rows = []
+    for r in radii:
+        pose, rod = grip(spec, r)
+        rows.append((f"grip r{r:g}", pose, rod))
+    for f in ("index", "middle"):
+        pose, _miss = pinch(spec, f)
+        rows.append((f"pinch {f}", pose, None))
+
+    def cell_image(r, c):
+        _name, pose, rod = rows[r]
+        cam = _camera(cell, rolls[c], spec)
+        return draw_hand(spec, pose, cam, cell, style, between=_rod_drawer(cam, rod) if rod is not None else None,
+                         held_at=rod.centre if rod is not None else None).frame()
+
+    return _grid(cell_image, [row[0] for row in rows], [_roll_label(r) for r in rolls], cell)

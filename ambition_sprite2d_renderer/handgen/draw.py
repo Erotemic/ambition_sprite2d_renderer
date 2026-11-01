@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
@@ -390,12 +390,16 @@ def _light(img: Image.Image, cam: Camera, style: HandStyle, ss: int) -> Image.Im
 
 
 def draw_hand(spec: HandSpec, pose: HandPose, cam: Camera, canvas: Tuple[int, int], style: HandStyle = STYLES["skin"], ss: int = 4,
-              glow: float = 0.7, fade: float = 1.0, tip_fade: float = 0.0, between: Optional[Callable[[Image.Image, Dict[str, Point], int], None]] = None) -> HandDrawing:
+              glow: float = 0.7, fade: float = 1.0, tip_fade: float = 0.0, between: Optional[Callable[[Image.Image, Dict[str, Point], int], None]] = None,
+              held_at: Optional[Sequence[float]] = None) -> HandDrawing:
     """The hand posed and seen, on a transparent ``canvas`` (frame px) at
     ``ss`` x. ``fade`` fades it all; ``tip_fade`` eats the digits from their
     tips (0..1); ``glow`` drives the spectral style's bones. ``between`` is
     called (layer, landmarks, ss) where something HELD would draw: over the
-    palm, under the fingers that close on it (a die in a cupped hand)."""
+    palm, under the fingers that close on it (a die in a cupped hand). Give
+    ``held_at`` (the held thing's centre, hand space) and it is painted in
+    its turn by depth among the phalanges instead (a rod in a grip: from the
+    back it goes behind the hand)."""
     layer = Image.new("RGBA", (canvas[0] * ss, canvas[1] * ss), (0, 0, 0, 0))
     pt = _Painter(layer, ss)
     marks = landmarks(spec, pose, cam)
@@ -414,10 +418,19 @@ def draw_hand(spec: HandSpec, pose: HandPose, cam: Camera, canvas: Tuple[int, in
             mid = (dv.digit.joints[i] + dv.digit.joints[i + 1]) / 2
             group = front if mid[2] * side >= -0.25 * spec.palm_depth else behind
             group.append((cam.depth(mid), name, i))
+    if between and held_at is not None:
+        h = np.asarray(held_at, float)
+        (front if h[2] * side >= -0.25 * spec.palm_depth else behind).append((cam.depth(h), "held", -1))
     back_of_hand = not cam.palm_faces_us()
     first_in_front = {name for _d, name, i in front if i == 0}
+    def paint(name, i):
+        if name == "held":
+            between(layer, marks, ss)
+        else:
+            _draw_phalanx(pt, cam, views[name], i, style, glow, fade)
+
     for _depth, name, i in sorted(behind):
-        _draw_phalanx(pt, cam, views[name], i, style, glow, fade)
+        paint(name, i)
     _draw_palm(pt, spec, pose, cam, style, glow, fade)
     for name in FINGER_NAMES:
         views[name].palm_drawn = True
@@ -426,10 +439,10 @@ def draw_hand(spec: HandSpec, pose: HandPose, cam: Camera, canvas: Tuple[int, in
         for name in FINGER_NAMES:
             if name not in first_in_front:
                 _draw_knuckle(pt, spec, pose, cam, name, style, fade)
-    if between:
+    if between and held_at is None:
         between(layer, marks, ss)
     for _depth, name, i in sorted(front):
-        _draw_phalanx(pt, cam, views[name], i, style, glow, fade)
+        paint(name, i)
         if back_of_hand and i == 0 and name in FINGER_NAMES:
             _draw_knuckle(pt, spec, pose, cam, name, style, fade)
     out = _light(_ink(layer, style, ss, cam.scale, fade), cam, style, ss)

@@ -16,7 +16,8 @@ POSES: Dict[str, HandPose] = {
     "fist": HandPose((1.0,) * 4, 0.9),
     "claw": HandPose((0.55,) * 4, 0.35, spread=0.6, hook=1.0),
     "cup": HandPose((0.45, 0.5, 0.5, 0.55), 0.5, spread=-0.3),
-    "pinch": HandPose((0.55, 0.9, 0.95, 1.0), 0.8),
+    # Solved by ``solve.pinch`` on the default hand (thumb tip on index tip).
+    "pinch": HandPose((0.65, 0.75, 0.85, 0.9), 0.444),
 }
 
 
