@@ -1,6 +1,6 @@
 # A resident made by the character generator; see targets/characters/townsfolk.py.
 schema: ambition-chargen-v1
-name: Wren
+name: Lark
 base: broad_female
 seed: 303
 body:

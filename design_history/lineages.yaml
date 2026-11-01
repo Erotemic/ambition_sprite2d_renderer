@@ -1977,7 +1977,7 @@ lineages:
     paths: ['townsfolk/port_tomas\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   port_wren:
-    name: Wren
+    name: Lark
     ids: [port_wren]
     paths: ['townsfolk/port_wren\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
