@@ -727,13 +727,13 @@ character is posed.
 Hands at the Dealer's Hand's level of detail, from one 3D model. A
 `HandSpec` (skeleton and proportions; `SPECS` default/slender/broad/stubby,
 `.scaled()`, `.mirrored()` for a left hand) is posed by a `HandPose`
-(per-finger curls, thumb opposition, spread, hook; `POSES` and `blend`), seen
+(per-finger curls, thumb opposition, spread, hook, wrist bend; `POSES` and `blend`), seen
 by a `Camera` (wrist on screen, finger direction, `roll` 0 palm to 180
 back, pitch) and drawn by `draw_hand` in a `HandStyle` (`STYLES` skin,
 spectral, glove). The model places, the 2D parts draw: one ink outline round
 the silhouette, soft seams where parts overlap, faint joints, and the
 pad or nail side of each phalanx chosen by the model. `HandDrawing.landmarks`
-(joints, tips, `grip`) are for hanging things on; `between=` draws a held
+(joints, tips, `grip`, `forearm`) are for hanging things on; a stub of forearm dissolves behind the heel (`wrist=` "fade", "cut", or "none" for a caller with its own cuff); `between=` draws a held
 item over the palm and under the closing fingers (with `held_at=`, in its
 turn by depth). `solve` poses by contact: `grip(spec, radius)` closes every
 digit on a rod and returns it, `pinch(spec, finger)` meets the thumb's tip

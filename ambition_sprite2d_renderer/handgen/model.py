@@ -67,6 +67,12 @@ class HandSpec:
     #: knuckles (the metacarpal arch).
     palm_depth: float = 6.0
     palm_arch: float = 1.5
+    #: The WRIST STUB: how far the forearm runs back from the heel, and its
+    #: half width (v) and half depth (n) where it meets the hand; it
+    #: thickens a little toward its far end.
+    wrist_length: float = 14.0
+    wrist_half_width: float = 6.6
+    wrist_half_depth: float = 3.6
     #: How far each finger joint (knuckle, middle, end) bends at a full
     #: curl, and the thumb's (root, knuckle, end).
     #: A full curl lands the fingertips on the palm's face (a fist).
@@ -83,7 +89,8 @@ class HandSpec:
         r = self.thumb_root
         return replace(self, fingers=fingers, thumb_root=(r[0] * length, r[1] * width, r[2] * width), thumb_bones=tuple(b * length for b in self.thumb_bones),
                        thumb_width=self.thumb_width * width, palm_length=self.palm_length * length, palm_half_width=self.palm_half_width * width,
-                       palm_depth=self.palm_depth * width, palm_arch=self.palm_arch * width)
+                       palm_depth=self.palm_depth * width, palm_arch=self.palm_arch * width,
+                       wrist_length=self.wrist_length * length, wrist_half_width=self.wrist_half_width * width, wrist_half_depth=self.wrist_half_depth * width)
 
     def mirrored(self) -> "HandSpec":
         return replace(self, handedness="left" if self.handedness == "right" else "right")
@@ -112,6 +119,9 @@ class HandPose:
     thumb: float = 0.0
     spread: float = 0.0
     hook: float = 0.0
+    #: The wrist's bend, degrees: positive flexes the hand toward its palm
+    #: (the forearm comes in from the palm's side), negative bends it back.
+    wrist_bend: float = 0.0
 
     def curl(self, name: str) -> float:
         return self.curls[FINGER_NAMES.index(name)]
@@ -293,10 +303,32 @@ def local(spec: HandSpec, u: float, v: float, n: float = 0.0) -> Vec:
     return _mirror(spec, np.array([u, v, n], float))
 
 
+def forearm(spec: HandSpec, pose: HandPose, ring: int = 16) -> Tuple[List[Vec], List[Vec], Vec, Vec]:
+    """The WRIST STUB in hand space: its ring where it meets the heel, its
+    ring at its far end (each ``ring`` points round), and the two rings'
+    centres. It leaves the heel along the wrist's bend."""
+    b = math.radians(pose.wrist_bend)
+    axis = np.array([-math.cos(b), 0.0, math.sin(b)])
+    across = np.array([0.0, 1.0, 0.0])
+    up = np.array([math.sin(b), 0.0, math.cos(b)])
+    near_c = np.array([2.0, 0.0, 0.0])
+    far_c = near_c + axis * (spec.wrist_length + 2.0)
+
+    def circle(c: Vec, grow: float) -> List[Vec]:
+        out = []
+        for k in range(ring):
+            t = 2 * math.pi * k / ring
+            out.append(c + across * math.cos(t) * spec.wrist_half_width * grow + up * math.sin(t) * spec.wrist_half_depth * grow)
+        return out
+
+    return circle(near_c, 1.0), circle(far_c, 1.12), near_c, far_c
+
+
 def landmarks(spec: HandSpec, pose: HandPose, cam: Camera) -> Dict[str, Point]:
     """Named screen points for attaching things: ``wrist``, ``palm``
     (centre), ``grip`` (where a held item sits), and per digit
-    ``<name>_<i>`` for each joint (0 its base) and ``<name>_tip``."""
+    ``<name>_<i>`` for each joint (0 its base) and ``<name>_tip``,
+    ``forearm`` (the wrist stub's far end)."""
     out = {"wrist": cam.project((0.0, 0.0, 0.0)), "palm": cam.project(local(spec, spec.palm_length * 0.55, 0.0))}
     ds = digits(spec, pose)
     for name, d in ds.items():
@@ -307,4 +339,6 @@ def landmarks(spec: HandSpec, pose: HandPose, cam: Camera) -> Dict[str, Point]:
     mids = [ds[n].joints[1] for n in FINGER_NAMES]
     grip = np.mean(mids, axis=0) + np.array([0.0, 0.0, 5.0])
     out["grip"] = cam.project(grip)
+    # The forearm's far end (where a cuff or sleeve goes on).
+    out["forearm"] = cam.project(forearm(spec, pose, 4)[3])
     return out

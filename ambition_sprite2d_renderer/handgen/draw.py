@@ -27,7 +27,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 from ..core.draw import blending_draw
-from .model import FINGER_NAMES, Camera, Digit, HandPose, HandSpec, Point, digits, face_depth, knuckle_edge, landmarks, local, palm_face, thumb_web
+from .model import FINGER_NAMES, Camera, Digit, HandPose, HandSpec, Point, digits, face_depth, forearm, knuckle_edge, landmarks, local, palm_face, thumb_web
 
 RGBA = Tuple[int, int, int, int]
 
@@ -317,6 +317,51 @@ def _draw_palm(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style:
     base.layer.alpha_composite(Image.fromarray(detail.astype(np.uint8), "RGBA"))
 
 
+#: How much of the wrist stub, from its far end, fades away.
+WRIST_FADE = 0.7
+
+
+def _draw_forearm(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style: HandStyle, fade: float) -> List[Point]:
+    """The WRIST STUB: the hull of its two rings in flesh, shaded along its
+    under side. Returns its outline (for the fade)."""
+    near, far, near_c, far_c = forearm(spec, pose)
+    hull = _hull([cam.project(p) for p in near + far])
+    d = pt.draw()
+    d.polygon([pt.s(p) for p in hull], fill=_a(style.flesh, fade))
+    # Shade along its far side from the light, in soft bands.
+    under = [p for p in near + far if cam.depth(p - (near_c if any(p is q for q in near) else far_c)) < 0]
+    if len(under) >= 3:
+        d.polygon([pt.s(p) for p in _hull([cam.project(p) for p in under])], fill=_a(style.shade, 0.25 * fade))
+    return hull
+
+
+def _fade_wrist(img: Image.Image, spec: HandSpec, pose: HandPose, cam: Camera, ss: int, outline: List[Point]) -> Image.Image:
+    """The stub dissolves toward its far end (no hard cut): inside its
+    outline, alpha falls off along its axis past the heel."""
+    _, _, near_c, far_c = forearm(spec, pose, 4)
+    a, b = np.array(cam.project(near_c)) * ss, np.array(cam.project(far_c)) * ss
+    ab = b - a
+    # Work only in the stub's box (with room for its ink).
+    pad = 2 * int(1.5 * cam.scale * ss) + 2
+    xs_, ys_ = [p[0] * ss for p in outline], [p[1] * ss for p in outline]
+    x0, y0 = max(0, int(min(xs_)) - pad), max(0, int(min(ys_)) - pad)
+    x1, y1 = min(img.size[0], int(max(xs_)) + pad), min(img.size[1], int(max(ys_)) + pad)
+    if x1 <= x0 or y1 <= y0:
+        return img
+    ys, xs = np.mgrid[y0:y1, x0:x1].astype(np.float32)
+    t = ((xs - a[0]) * ab[0] + (ys - a[1]) * ab[1]) / max(1e-6, float(ab @ ab))
+    keep = np.clip((1.0 - t) / WRIST_FADE, 0.0, 1.0)
+    keep = keep * keep * (3 - 2 * keep)
+    mask = Image.new("L", (x1 - x0, y1 - y0), 0)
+    ImageDraw.Draw(mask).polygon([(p[0] * ss - x0, p[1] * ss - y0) for p in outline], fill=255)
+    inside = np.asarray(mask.filter(ImageFilter.MaxFilter(2 * int(1.5 * cam.scale * ss) + 1)), np.float32) / 255.0
+    # Only where the stub is past the heel (t > 0).
+    factor = 1.0 - inside * (t > 0) * (1.0 - keep)
+    px = np.asarray(img, np.float32).copy()
+    px[y0:y1, x0:x1, 3] *= factor
+    return Image.fromarray(px.astype(np.uint8), "RGBA")
+
+
 def _draw_knuckle(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, name: str, style: HandStyle, fade: float) -> None:
     """A KNUCKLE from the back: a raised bump, the more prominent the more
     its finger curls (the fist's ridge)."""
@@ -391,7 +436,7 @@ def _light(img: Image.Image, cam: Camera, style: HandStyle, ss: int) -> Image.Im
 
 def draw_hand(spec: HandSpec, pose: HandPose, cam: Camera, canvas: Tuple[int, int], style: HandStyle = STYLES["skin"], ss: int = 4,
               glow: float = 0.7, fade: float = 1.0, tip_fade: float = 0.0, between: Optional[Callable[[Image.Image, Dict[str, Point], int], None]] = None,
-              held_at: Optional[Sequence[float]] = None) -> HandDrawing:
+              held_at: Optional[Sequence[float]] = None, wrist: str = "fade") -> HandDrawing:
     """The hand posed and seen, on a transparent ``canvas`` (frame px) at
     ``ss`` x. ``fade`` fades it all; ``tip_fade`` eats the digits from their
     tips (0..1); ``glow`` drives the spectral style's bones. ``between`` is
@@ -399,7 +444,9 @@ def draw_hand(spec: HandSpec, pose: HandPose, cam: Camera, canvas: Tuple[int, in
     palm, under the fingers that close on it (a die in a cupped hand). Give
     ``held_at`` (the held thing's centre, hand space) and it is painted in
     its turn by depth among the phalanges instead (a rod in a grip: from the
-    back it goes behind the hand)."""
+    back it goes behind the hand). ``wrist``: "fade" (a stub of forearm that
+    dissolves), "cut" (the stub, ending square), "none" (the hand ends at
+    its heel: for a caller that draws its own cuff or arm)."""
     layer = Image.new("RGBA", (canvas[0] * ss, canvas[1] * ss), (0, 0, 0, 0))
     pt = _Painter(layer, ss)
     marks = landmarks(spec, pose, cam)
@@ -429,6 +476,7 @@ def draw_hand(spec: HandSpec, pose: HandPose, cam: Camera, canvas: Tuple[int, in
         else:
             _draw_phalanx(pt, cam, views[name], i, style, glow, fade)
 
+    stub = _draw_forearm(pt, spec, pose, cam, style, fade) if wrist != "none" else None
     for _depth, name, i in sorted(behind):
         paint(name, i)
     _draw_palm(pt, spec, pose, cam, style, glow, fade)
@@ -446,4 +494,6 @@ def draw_hand(spec: HandSpec, pose: HandPose, cam: Camera, canvas: Tuple[int, in
         if back_of_hand and i == 0 and name in FINGER_NAMES:
             _draw_knuckle(pt, spec, pose, cam, name, style, fade)
     out = _light(_ink(layer, style, ss, cam.scale, fade), cam, style, ss)
+    if stub is not None and wrist == "fade":
+        out = _fade_wrist(out, spec, pose, cam, ss, stub)
     return HandDrawing(out, marks, ss)

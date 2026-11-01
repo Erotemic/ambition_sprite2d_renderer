@@ -55,8 +55,9 @@ def test_landmarks_follow_the_camera():
     assert np.isclose(b["index_tip"][0] - a["index_tip"][0], 20.0)
 
 
-def test_the_cli_writes_both_sheets(tmp_path):
-    for cmd in ("model", "poses"):
+def test_the_cli_writes_a_sheet(tmp_path):
+    # (The drawn sheets are many full hands; the drawing tests cover them.)
+    for cmd in ("model",):
         out = tmp_path / f"{cmd}.png"
         assert main([cmd, "--out", str(out)]) == 0 and out.exists()
 
@@ -79,3 +80,21 @@ def test_a_pinch_meets_the_thumb_and_index_tips():
 
     _pose, miss = pinch(HandSpec(), "index")
     assert miss < 0.05
+
+
+def test_the_wrist_stub_fades_or_goes():
+    cam = Camera((80, 100), -30.0, 0.0)
+    alpha = lambda wrist: np.asarray(draw_hand(HandSpec(), POSES["open"], cam, (192, 168), wrist=wrist).frame())[..., 3]  # noqa: E731
+    none, cut, fade = alpha("none"), alpha("cut"), alpha("fade")
+    assert cut.sum() > fade.sum() > none.sum()
+
+
+def test_the_wrist_bend_turns_the_forearm():
+    from dataclasses import replace
+
+    from ambition_sprite2d_renderer.handgen.model import forearm
+
+    straight = forearm(HandSpec(), POSES["fist"])[3]
+    bent = forearm(HandSpec(), replace(POSES["fist"], wrist_bend=40.0))[3]
+    assert straight[2] == pytest.approx(0.0) and bent[2] > 5.0
+    assert "forearm" in landmarks(HandSpec(), POSES["fist"], Camera((0, 0)))

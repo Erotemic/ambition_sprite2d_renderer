@@ -25,4 +25,4 @@ def blend(a: HandPose, b: HandPose, t: float) -> HandPose:
     """The pose ``t`` of the way from ``a`` to ``b`` (joint angles mix
     linearly; the skeleton keeps its lengths)."""
     mix = lambda x, y: x + (y - x) * t  # noqa: E731
-    return HandPose(tuple(mix(x, y) for x, y in zip(a.curls, b.curls)), mix(a.thumb, b.thumb), mix(a.spread, b.spread), mix(a.hook, b.hook))
+    return HandPose(tuple(mix(x, y) for x, y in zip(a.curls, b.curls)), mix(a.thumb, b.thumb), mix(a.spread, b.spread), mix(a.hook, b.hook), mix(a.wrist_bend, b.wrist_bend))
