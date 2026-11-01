@@ -122,6 +122,10 @@ class HandPose:
     #: The wrist's bend, degrees: positive flexes the hand toward its palm
     #: (the forearm comes in from the palm's side), negative bends it back.
     wrist_bend: float = 0.0
+    #: Independent thumb crossing: 0 follows the pinch/cupping arc; 1 places
+    #: the thumb across the curled fingers for a closed fist. The same bones
+    #: and root remain in both poses; only the opposition plane changes.
+    thumb_cross: float = 0.0
 
     def curl(self, name: str) -> float:
         return self.curls[FINGER_NAMES.index(name)]
@@ -224,10 +228,23 @@ def thumb(spec: HandSpec, pose: HandPose) -> Digit:
     open_axis = _unit(np.array([math.cos(spread), -math.sin(spread), 0.3]))
     opposed = _unit(np.array([0.55, 0.45, 0.7]))
     t = max(0.0, min(1.0, pose.thumb))
-    axis = _unit((1 - t) * open_axis + t * opposed)
-    want = np.array([0.0, 1.0, 0.6])  # its pad faces across, toward the fingers
+    cross = max(0.0, min(1.0, pose.thumb_cross))
+    # The ordinary opposition plane can pinch the index finger, but at a
+    # full fist it bends the thumb backward toward the wrist/little finger.
+    # Rotating that plane independently keeps a fist's thumb ACROSS the
+    # proximal fingers without changing finger curls or the pinch solver.
+    normal_axis = _unit((1 - t) * open_axis + t * opposed)
+    across_axis = _unit(np.array([0.95, 0.05, 0.48]))
+    axis = _unit((1 - cross) * normal_axis + cross * across_axis)
+    normal_want = np.array([0.0, 1.0, 0.6])
+    across_want = np.array([0.2, 0.96, 0.25])
+    want = _unit((1 - cross) * normal_want + cross * across_want)
     toward = _unit(want - np.dot(want, axis) * axis)
-    d = _flex("thumb", np.array(spec.thumb_root), axis, toward, spec.thumb_bones, [b * pose.thumb for b in spec.thumb_bend], spec.thumb_width)
+    # A crossing thumb mostly flexes at its MCP and IP rather than
+    # rotating the whole ray back from its basal joint.
+    factors = (1 - cross, 1 - 0.08 * cross, 1 - 0.38 * cross)
+    bends = [bend * pose.thumb * factor for bend, factor in zip(spec.thumb_bend, factors)]
+    d = _flex("thumb", np.array(spec.thumb_root), axis, toward, spec.thumb_bones, bends, spec.thumb_width)
     return Digit("thumb", [_mirror(spec, j) for j in d.joints], [_mirror(spec, p) for p in d.pads], d.widths)
 
 

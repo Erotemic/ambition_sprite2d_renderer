@@ -54,6 +54,9 @@ class HandStyle:
     #: A rim light along the upper edges, or None.
     rim: Optional[RGBA] = None
     tendons: bool = False
+    #: Draw articulated plating, bearings and knuckle actuators instead of
+    #: organic joint wrinkles. This is a surface treatment, not a new rig.
+    mechanical: bool = False
     palm_lines: bool = True
     #: CLAWS out of the fingertips (a monster's), or None; their length in
     #: hand units (the thumb's is shorter), and the light along each.
@@ -69,7 +72,7 @@ STYLES: Dict[str, HandStyle] = {
     "spectral": HandStyle(
         flesh=(226, 238, 248, 215), shade=(150, 168, 210, 215), seam=(138, 156, 206, 220), ink=(24, 16, 44, 255), highlight=(250, 252, 255, 255),
         nail=(58, 24, 96, 255), nail_shine=(176, 120, 255, 255), bone=(150, 255, 230, 255), tip_glow=(110, 240, 220, 255), rim=(110, 240, 220, 255),
-        tendons=True,
+        tendons=True, mechanical=True,
     ),
     "glove": HandStyle(flesh=(248, 248, 252, 255), shade=(200, 204, 222, 255), seam=(170, 176, 200, 220), ink=(30, 30, 40, 255), highlight=(255, 255, 255, 255), nail=None, palm_lines=False),
 }
@@ -128,9 +131,22 @@ class _Painter:
     def glow(self, fn: Callable, blur: float) -> None:
         g = Image.new("RGBA", self.layer.size, (0, 0, 0, 0))
         fn(blending_draw(g))
-        # Blurred premultiplied, so its edge fades in its own colour (not
-        # toward the black of the transparent pixels around it).
-        self.layer.alpha_composite(g.convert("RGBa").filter(ImageFilter.GaussianBlur(blur * self.ss)).convert("RGBA"))
+        bbox = g.getbbox()
+        if bbox is None:
+            return
+        # Individual bones occupy a tiny fraction of a sprite frame. Blur
+        # only the painted region, with enough margin for the Gaussian tail;
+        # the old full-frame blur was repeated for every phalanx.
+        radius = blur * self.ss
+        pad = max(2, math.ceil(4 * radius))
+        x0 = max(0, bbox[0] - pad)
+        y0 = max(0, bbox[1] - pad)
+        x1 = min(self.layer.width, bbox[2] + pad)
+        y1 = min(self.layer.height, bbox[3] + pad)
+        # Premultiplied blur fades in the glow's colour, not black.
+        piece = g.crop((x0, y0, x1, y1)).convert("RGBa")
+        piece = piece.filter(ImageFilter.GaussianBlur(radius)).convert("RGBA")
+        self.layer.alpha_composite(piece, (x0, y0))
 
 
 @dataclass
@@ -283,6 +299,20 @@ def _draw_joint(pt: _Painter, cam: Camera, dv: _DigitView, j: int, style: HandSt
     half = w * 0.42
     lw = max(1, int(0.4 * cam.scale * pt.ss))
     d = pt.draw()
+    if style.mechanical:
+        # A hinge housing at the actual anatomical PIP / DIP joint. Its
+        # transverse axle stays attached when the digit folds in depth.
+        px, py = -uy, ux
+        length = half * 0.88
+        p0 = (a[0] - px * length, a[1] - py * length)
+        p1 = (a[0] + px * length, a[1] + py * length)
+        d.line([pt.s(p0), pt.s(p1)], fill=_a(style.seam, 0.83 * fade),
+               width=max(1, int(1.1 * cam.scale * pt.ss)))
+        d.line([pt.s(p0), pt.s(p1)], fill=_a(style.bone or style.highlight, 0.7 * fade),
+               width=max(1, int(0.43 * cam.scale * pt.ss)))
+        pt.disk(d, a, 0.68 * cam.scale, _a(style.nail or style.seam, 0.85 * fade))
+        pt.disk(d, a, 0.29 * cam.scale, _a(style.highlight, 0.94 * fade))
+        return
     if dv.pads[j]:
         r = w * 0.3
         for s0, s1 in ((-half, -r), (r, half)):
@@ -337,6 +367,23 @@ def _draw_palm(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style:
     else:
         # From the back its knuckle edge passes over the tucked fingers.
         d.line([pt.s(cam.project(p)) for p in knuckle_edge(spec, False)], fill=_a(style.seam, fade), width=max(1, int(style.seam_width * cam.scale * pt.ss)), joint="curve")
+        if not style.tendons:
+            # The backs of the metacarpals have physical volume even in a
+            # natural skin treatment. Broad, faint ridges become more
+            # apparent as the knuckles lift into a fist. They follow each
+            # finger rather than forming straight, disconnected scratches.
+            for f in spec.fingers:
+                curl = max(0.0, min(1.0, pose.curl(f.name)))
+                trace = [P(length * u, f.across * across)
+                         for u, across in ((0.16, 0.27), (0.45, 0.52), (0.7, 0.76), (0.93, 1.0))]
+                d.line([pt.s(p) for p in trace],
+                       fill=_a(style.highlight, (0.10 + 0.12 * curl) * fade),
+                       width=max(1, int((2.0 + 0.8 * curl) * cam.scale * pt.ss)), joint="curve")
+                shade = [P(length * u, f.across * across + 0.83)
+                         for u, across in ((0.27, 0.4), (0.55, 0.6), (0.88, 0.92))]
+                d.line([pt.s(p) for p in shade],
+                       fill=_a(style.shade, (0.07 + 0.15 * curl) * fade),
+                       width=max(1, int(0.85 * cam.scale * pt.ss)), joint="curve")
         if style.tendons:
             # One TENDON along each metacarpal, wrist to its own knuckle.
             for f, k in zip(spec.fingers, knuckles):
@@ -403,19 +450,97 @@ def _fade_wrist(img: Image.Image, spec: HandSpec, pose: HandPose, cam: Camera, s
     return Image.fromarray(px.astype(np.uint8), "RGBA")
 
 
-def _draw_knuckle(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, name: str, style: HandStyle, fade: float) -> None:
-    """A KNUCKLE from the back: a raised bump, the more prominent the more
-    its finger curls (the fist's ridge)."""
+def _knuckle_centre(spec: HandSpec, cam: Camera, name: str, curl: float) -> Point:
+    """A raised MCP cap at the distal edge, still attached to its finger."""
     f = spec.finger(name)
-    q = cam.project(local(spec, spec.palm_length, f.across, -spec.palm_depth / 2 - spec.palm_arch * 0.6))
-    curl = max(0.0, pose.curl(name))
-    r = f.width * cam.scale * (0.36 + 0.16 * curl)
+    n = -spec.palm_depth / 2 - spec.palm_arch * 0.65
+    return cam.project(local(spec, spec.palm_length + 0.15 + curl * 0.22, f.across, n))
+
+
+def _draw_knuckle(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, name: str, style: HandStyle, fade: float) -> None:
+    """The rounded dorsal MCP HEAD, not a featureless circle. In a fist it
+    projects beyond the palm edge; its crescent and highlight establish a
+    distinct knuckle even when the curled phalanges are behind the palm.
+    """
+    f = spec.finger(name)
+    curl = max(0.0, min(1.0, pose.curl(name)))
+    q = _knuckle_centre(spec, cam, name, curl)
+    # Local u/v axes projected into the image. They follow camera rotation,
+    # so the caps and creases work in both palm directions and at any roll.
+    origin = local(spec, spec.palm_length, f.across)
+    uq = np.array(cam.project(origin + local(spec, 1, 0, 0)), float) - np.array(cam.project(origin), float)
+    vq = np.array(cam.project(origin + local(spec, 0, 1, 0)), float) - np.array(cam.project(origin), float)
+    uq /= np.linalg.norm(uq) or 1.0
+    vq /= np.linalg.norm(vq) or 1.0
+    q = np.array(q)
+    ru = cam.scale * (1.75 + 1.25 * curl)
+    rv = cam.scale * f.width * (0.38 + 0.08 * curl)
+
+    def oval(center, along, across):
+        return [tuple(center + uq * along * math.cos(t) + vq * across * math.sin(t))
+                for t in np.linspace(0, math.tau, 25)]
+
     d = pt.draw()
-    # No ring: the bump is a lit swell in the flesh, stronger in a fist.
-    pt.disk(d, q, r, _a(style.flesh, fade))
-    hr = r * 0.6
-    o = 0.5 * cam.scale
-    pt.glow(lambda g: g.ellipse((*pt.s((q[0] - hr - o, q[1] - hr - o)), *pt.s((q[0] + hr - o, q[1] + hr - o))), fill=_a(style.highlight, (0.25 + 0.25 * curl) * fade)), 0.5 * cam.scale)
+    # A little shaded rim separates the projecting knuckle from the back
+    # of the palm. The outer silhouette is still inked only once by _ink.
+    if curl > 0.45:
+        d.polygon([pt.s(p) for p in oval(q + uq * 0.3 * cam.scale, ru + 0.2 * cam.scale, rv + 0.05 * cam.scale)],
+                  fill=_a(style.shade, (0.12 + 0.18 * curl) * fade))
+    d.polygon([pt.s(p) for p in oval(q, ru, rv)], fill=_a(style.flesh, fade))
+    light = q - uq * (0.75 * cam.scale) - vq * (0.35 * cam.scale)
+    d.polygon([pt.s(p) for p in oval(light, ru * 0.42, rv * 0.49)],
+              fill=_a(style.highlight, (0.06 + 0.15 * curl) * fade))
+    if curl > 0.58:
+        # A faint transverse skin fold BEHIND the MCP head, rather than a
+        # dark arc across its distal half (which reads like a fingernail).
+        crease = [tuple(q - uq * (ru * 0.62 + 0.12 * ru * (1 - t * t)) + vq * (t * rv * 0.53))
+                  for t in np.linspace(-1, 1, 7)]
+        d.line([pt.s(p) for p in crease], fill=_a(style.seam, 0.22 * curl * fade),
+               width=max(1, int(0.45 * cam.scale * pt.ss)), joint="curve")
+    if style.mechanical:
+        # One exposed MCP actuator per finger. The plates are local to the
+        # actual knuckle, not a single fan of painted stripes on the palm.
+        # A fist hides the curled phalanges, but not their four hinges.
+        span = cam.scale * (1.3 + 0.9 * curl)
+        half = rv * 0.66
+        centre = q - uq * (0.1 * cam.scale)
+        plate = [tuple(centre + uq * iu * span + vq * iv * half)
+                 for iu, iv in ((-1,-1), (0.6,-1), (1, -0.6), (1,0.6), (0.6,1), (-1,1))]
+        d.polygon([pt.s(p) for p in plate], fill=_a(style.flesh, 0.94 * fade),
+                  outline=_a(style.seam, (0.48 + 0.22 * curl) * fade),
+                  width=max(1, int(0.48 * cam.scale * pt.ss)))
+        # A longitudinal luminous trace connects to its extensor tendon.
+        front = q + uq * (span * 0.55)
+        rear = q - uq * (span * 0.7)
+        d.line([pt.s(rear), pt.s(front)], fill=_a(style.bone or style.highlight, 0.74 * fade),
+               width=max(1, int(0.8 * cam.scale * pt.ss)))
+        bearing = centre + uq * (span * 0.55)
+        pt.disk(d, tuple(bearing), 0.69 * cam.scale, _a(style.nail or style.seam, 0.8 * fade))
+        pt.disk(d, tuple(bearing), 0.28 * cam.scale, _a(style.highlight, 0.9 * fade))
+
+
+def _draw_knuckle_gaps(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style: HandStyle, fade: float) -> None:
+    """Small valleys *between* the four dorsal heads on a closing hand.
+    They follow the actual finger spacing rather than drawing a generic
+    fist scribble over the palm.
+    """
+    d = pt.draw()
+    fs = spec.fingers
+    for left, right in zip(fs, fs[1:]):
+        curl = min(max(0.0, pose.curl(left.name)), max(0.0, pose.curl(right.name)))
+        if curl < 0.3:
+            continue
+        across = (left.across + right.across) / 2
+        n = -spec.palm_depth / 2 - spec.palm_arch * 0.5
+        pts = [cam.project(local(spec, spec.palm_length + 0.75 - 4.8 * t, across + 0.35 * math.sin(t * math.pi), n))
+               for t in np.linspace(0.0, 1.0, 9)]
+        d.line([pt.s(p) for p in pts], fill=_a(style.seam, (0.18 + 0.48 * curl) * fade),
+               width=max(1, int(0.85 * cam.scale * pt.ss)), joint="curve")
+        # An adjacent glint emphasizes the ridge's volume.
+        glint = [cam.project(local(spec, spec.palm_length - 0.3 - 2.1 * t, across - 0.85, n))
+                 for t in (0.0, 0.5, 1.0)]
+        d.line([pt.s(p) for p in glint], fill=_a(style.highlight, 0.16 * curl * fade),
+               width=max(1, int(0.45 * cam.scale * pt.ss)))
 
 
 def _hull(points: List[Point]) -> List[Point]:
@@ -535,6 +660,8 @@ def draw_hand(spec: HandSpec, pose: HandPose, cam: Camera, canvas: Tuple[int, in
                 for f in FINGER_NAMES:
                     if f not in first_in_front:
                         _draw_knuckle(pt, spec, pose, cam, f, style, fade)
+            if back_of_hand:
+                _draw_knuckle_gaps(pt, spec, pose, cam, style, fade)
             if between and held_at is None:
                 between(layer, marks, ss)
         else:

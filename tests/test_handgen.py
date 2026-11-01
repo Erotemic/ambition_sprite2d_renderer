@@ -98,3 +98,44 @@ def test_the_wrist_bend_turns_the_forearm():
     bent = forearm(HandSpec(), replace(POSES["fist"], wrist_bend=40.0))[3]
     assert straight[2] == pytest.approx(0.0) and bent[2] > 5.0
     assert "forearm" in landmarks(HandSpec(), POSES["fist"], Camera((0, 0)))
+
+
+def test_thumb_cross_moves_fist_thumb_over_fingers_without_changing_lengths():
+    """A clenched thumb must not fold backward toward the heel of the palm."""
+    from dataclasses import replace
+
+    spec = HandSpec()
+    fist = POSES["fist"]
+    ordinary = digits(spec, replace(fist, thumb_cross=0.0))["thumb"]
+    across = digits(spec, fist)["thumb"]
+    assert np.allclose(_lengths(ordinary), _lengths(across))
+    # u is distal: crossing brings the tip toward the curled proximal fingers.
+    assert across.joints[-1][0] > ordinary.joints[-1][0] + 10.0
+    # The pose stays mirrored for a left hand, as do ordinary finger bends.
+    left = digits(spec.mirrored(), fist)["thumb"]
+    assert all(np.allclose(a * (1, -1, 1), b) for a, b in zip(across.joints, left.joints))
+
+
+def test_blending_thumb_cross_interpolates_opposition_independently():
+    from ambition_sprite2d_renderer.handgen import blend
+
+    middle = blend(POSES["open"], POSES["fist"], 0.5)
+    assert middle.thumb_cross == pytest.approx(0.5)
+    assert middle.thumb == pytest.approx((POSES["open"].thumb + POSES["fist"].thumb) / 2)
+
+
+def test_localized_glow_agrees_with_full_frame_blur():
+    """Clipping a Gaussian to its painted bounds must not truncate its halo."""
+    from PIL import Image, ImageFilter
+    from ambition_sprite2d_renderer.core.draw import blending_draw
+    from ambition_sprite2d_renderer.handgen.draw import _Painter
+
+    size, ss, radius = (140, 140), 3, 1.0
+    img = Image.new("RGBA", size)
+    fn = lambda d: d.line([(45, 70), (80, 83)], fill=(135, 255, 210, 180), width=7)
+    _Painter(img, ss).glow(fn, radius)
+    src = Image.new("RGBA", size)
+    fn(blending_draw(src))
+    whole = src.convert("RGBa").filter(ImageFilter.GaussianBlur(radius * ss)).convert("RGBA")
+    # Pillow may quantize the outermost halo differently, but not clip it.
+    assert np.max(np.abs(np.asarray(img, np.int16) - np.asarray(whole, np.int16))) <= 1

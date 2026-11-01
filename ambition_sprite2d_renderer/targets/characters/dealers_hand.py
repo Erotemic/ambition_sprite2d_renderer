@@ -114,14 +114,21 @@ class Pose:
     #: thumb down). The thumb and the order of the fingers mirror between
     #: them.
     view: str = "palm"
+    #: Optional intermediate view for a turn-over (degrees about the hand's
+    #: long axis). 0 is the palm, 180 its back. `view` remains the simple
+    #: authored choice for poses that do not animate a turn.
+    roll: float | None = None
+    #: How far the thumb crosses the proximal fingers, distinct from curl.
+    thumb_cross: float = 0.0
 
 
 def _camera(pose: Pose) -> HG.Camera:
-    return HG.Camera(pose.wrist, pose.palm, 0.0 if pose.view == "palm" else 180.0)
+    roll = pose.roll if pose.roll is not None else (0.0 if pose.view == "palm" else 180.0)
+    return HG.Camera(pose.wrist, pose.palm, roll)
 
 
 def _hand_pose(pose: Pose) -> HG.HandPose:
-    return HG.HandPose(pose.curls, pose.thumb)
+    return HG.HandPose(pose.curls, pose.thumb, thumb_cross=pose.thumb_cross)
 
 
 def _marks(pose: Pose):
@@ -227,7 +234,7 @@ def draw_ring(layer: Image.Image, pose: Pose) -> None:
     # fist tucks it away).
     ring = HG.digits(SPEC, _hand_pose(pose))["ring"]
     mid = (ring.joints[0] + ring.joints[1]) / 2
-    side = 1.0 if pose.view == "palm" else -1.0
+    side = 1.0 if _camera(pose).palm_faces_us() else -1.0
     if mid[2] * side < -0.25 * SPEC.palm_depth:
         return
     marks = _marks(pose)
@@ -241,7 +248,7 @@ def draw_ring(layer: Image.Image, pose: Pose) -> None:
     d = blending_draw(layer)
     d.line([_s((m[0] - px, m[1] - py)), _s((m[0] + px, m[1] + py))], fill=_a(OUTLINE, pose.fade), width=int(2.6 * SUPER))
     d.line([_s((m[0] - px, m[1] - py)), _s((m[0] + px, m[1] + py))], fill=_a(BRASS, pose.fade), width=int(1.6 * SUPER))
-    if pose.view == "palm":
+    if _camera(pose).palm_faces_us():
         return  # the signet's face is on the back of the finger
     gem = (m[0] - px * 0.9, m[1] - py * 0.9)
     _glow(layer, lambda g: g.ellipse((*_s((gem[0] - 2, gem[1] - 2)), *_s((gem[0] + 2, gem[1] + 2))), fill=_a(VIOLET, 0.9 * pose.fade)), 0.8)
@@ -304,11 +311,17 @@ def _pose_for(animation: str, i: int, n: int) -> Tuple[Pose, float]:
     if animation == "attack_side":
         if i <= 5:  # it cups the die and shakes it
             shake = 4.0 * math.sin(i * 2.6)
-            return replace(base, curls=(0.95, 0.95, 0.95, 0.95), thumb=0.95, palm=-28.0, wrist=(60.0, 100.0 + shake), die=1.0, glow=0.8 + 0.2 * (i % 2)), t * math.tau * 3
+            return replace(base, curls=(0.95, 0.95, 0.95, 0.95), thumb=0.95,
+                           thumb_cross=0.76, palm=-28.0, wrist=(60.0, 100.0 + shake),
+                           die=1.0, glow=0.8 + 0.2 * (i % 2),
+                           roll=25.0 if i == 5 else 0.0), t * math.tau * 3
         if i <= 8:  # the toss: fingers flung open, up and forward
             k = (i - 6) / 2.0
-            return replace(base, curls=(0.95 - 1.05 * min(1.0, k * 1.8),) * 4, thumb=0.95 - 1.0 * min(1.0, k * 1.8), palm=-28.0 - 22.0 * k,
-                           wrist=(60.0 + 10 * k, 100.0 - 6 * k), release=k, glow=1.0, view="back"), t * math.tau
+            open_t = min(1.0, k * 1.8)
+            return replace(base, curls=(0.95 - 1.05 * open_t,) * 4,
+                           thumb=0.95 - 1.0 * open_t, thumb_cross=0.76 * (1.0 - open_t),
+                           palm=-28.0 - 22.0 * k, wrist=(60.0 + 10 * k, 100.0 - 6 * k),
+                           release=k, glow=1.0, roll=55.0 + 125.0 * k), t * math.tau
         k = (i - 9) / 2.0  # held open after, slowly settling
         return replace(base, curls=(-0.1 + 0.3 * k,) * 4, thumb=-0.05 + 0.3 * k, palm=-50.0 + 36.0 * k, wrist=(70.0 - 8 * k, 94.0 + 4 * k), glow=0.5 + 0.2 * k, view="back"), t * math.tau
     if animation == "hurt":
