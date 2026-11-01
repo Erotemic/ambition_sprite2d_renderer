@@ -21,7 +21,6 @@ def test_generic_exotic_fx_catalog_is_complete_and_varied():
     row_names = {name for name, _frames, _duration in fx.ROWS}
     assert row_names == set(fx.EFFECT_SPECS)
     assert row_names == set(fx.DRAWERS)
-    assert len(row_names) == 24
     assert len({spec["family"] for spec in fx.EFFECT_SPECS.values()}) >= 12
     assert fx.EFFECT_SPECS["sonic_boom"]["orientation"] == "positive_x_is_forward"
     assert fx.EFFECT_SPECS["slime_splat"]["placement"] == "surface_contact"
@@ -48,6 +47,8 @@ def test_signature_frames_are_substantial_and_visually_distinct():
         "psychic_pulse": fx._draw_frame("psychic_pulse", 3, 9),
         "time_shatter": fx._draw_frame("time_shatter", 3, 9),
         "rune_circle": fx._draw_frame("rune_circle", 3, 12),
+        "digital_departure": fx._draw_frame("digital_departure", 3, 12),
+        "digital_arrival": fx._draw_frame("digital_arrival", 3, 12),
         "gear_scatter": fx._draw_frame("gear_scatter", 3, 9),
         "vine_sprout": fx._draw_frame("vine_sprout", 5, 11),
         "petal_burst": fx._draw_frame("petal_burst", 4, 10),

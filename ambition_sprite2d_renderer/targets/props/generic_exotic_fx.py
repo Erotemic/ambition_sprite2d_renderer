@@ -68,6 +68,8 @@ ROWS: List[Tuple[str, int, int]] = [
     ("confusion_swirl", 12, 72),
     ("rewind_echo", 10, 52),
     ("time_shatter", 9, 46),
+    ("digital_departure", 12, 38),
+    ("digital_arrival", 12, 38),
     ("rune_circle", 12, 70),
     ("rune_burst", 9, 48),
     ("magic_seal_break", 10, 50),
@@ -311,6 +313,24 @@ EFFECT_SPECS: Dict[str, dict] = {
         blend="alpha_or_additive",
         tint="preserve_palette_preferred",
         size=112,
+    ),
+    "digital_departure": _spec(
+        "phase_magic",
+        "A narrow broken sigil and vertical code strands dissolve at a teleport origin.",
+        placement="effect_origin",
+        orientation="screen_or_world_aligned",
+        blend="alpha_or_additive",
+        tint="safe_to_tint",
+        size=80,
+    ),
+    "digital_arrival": _spec(
+        "phase_magic",
+        "A narrow broken sigil and vertical code strands assemble at a teleport destination.",
+        placement="effect_origin",
+        orientation="screen_or_world_aligned",
+        blend="alpha_or_additive",
+        tint="safe_to_tint",
+        size=80,
     ),
     "rune_circle": _spec(
         "ritual_magic",
@@ -737,6 +757,41 @@ def _draw_time_shatter(img: Image.Image, p: float) -> None:
     _ellipse(img, (59, 59, 69, 69), fill=_mul_alpha(WHITE, 0.75 * fade), outline=_mul_alpha(OUTLINE_SOFT, 0.4 * fade), width=0.8)
 
 
+def _draw_digital_phase(img: Image.Image, p: float, arrival: bool) -> None:
+    fade = math.sin(math.pi * p) ** 0.65
+    if fade <= 0.0:
+        return
+    phase = 1.0 - p if arrival else p
+    beat = int(p * 11)
+    cx, cy = 64.0, 64.0
+    radius = 23.0 + 5.0 * phase
+    # The seal stays compact. Its code strands move along the vertical axis.
+    for i in range(6):
+        a = math.tau * i / 6 - math.pi / 2
+        b = a + math.tau / 6 * 0.72
+        _line(img, [(cx + math.cos(a) * radius, cy + math.sin(a) * radius),
+                    (cx + math.cos(b) * radius, cy + math.sin(b) * radius)],
+              fill=_mul_alpha(VIOLET if i % 2 else CYAN_HI, 0.7 * fade), width=1.1)
+    for i in range(11):
+        code = (i * 37 + beat * 19) % 29
+        x = cx + (i - 5) * 4.0 + (code % 3 - 1)
+        y = cy + (code - 14) * 1.6 - phase * (8 + i % 4 * 5)
+        length = 5 + code % 9
+        color = CYAN_HI if i % 3 else MAGENTA
+        _line(img, [(x, y), (x, y + length)], fill=_mul_alpha(color, fade * 0.8), width=1.0)
+        if i % 2 == beat % 2:
+            _line(img, [(x, y + length), (x + 3, y + length), (x + 3, y + length - 3)],
+                  fill=_mul_alpha(WHITE, fade * 0.65), width=0.8)
+
+
+def _draw_digital_departure(img: Image.Image, p: float) -> None:
+    _draw_digital_phase(img, p, False)
+
+
+def _draw_digital_arrival(img: Image.Image, p: float) -> None:
+    _draw_digital_phase(img, p, True)
+
+
 def _draw_rune_circle(img: Image.Image, p: float) -> None:
     phase = math.tau * p
     cx, cy = 64.0, 64.0
@@ -1000,6 +1055,8 @@ DRAWERS = {
     "confusion_swirl": _draw_confusion_swirl,
     "rewind_echo": _draw_rewind_echo,
     "time_shatter": _draw_time_shatter,
+    "digital_departure": _draw_digital_departure,
+    "digital_arrival": _draw_digital_arrival,
     "rune_circle": _draw_rune_circle,
     "rune_burst": _draw_rune_burst,
     "magic_seal_break": _draw_magic_seal_break,
