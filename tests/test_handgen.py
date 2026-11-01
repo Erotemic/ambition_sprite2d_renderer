@@ -39,7 +39,7 @@ def test_a_curl_toward_us_shows_the_nail_side_from_the_palm():
 
 
 @pytest.mark.parametrize("style", sorted(STYLES))
-@pytest.mark.parametrize("roll", [0.0, 180.0])
+@pytest.mark.parametrize("roll", [0.0, 45.0, 90.0, 135.0, 180.0])
 def test_a_hand_draws_inside_its_canvas(style, roll):
     cam = Camera((60, 110), -40.0, roll)
     drawing = draw_hand(HandSpec(), POSES["open"], cam, (192, 168), STYLES[style])

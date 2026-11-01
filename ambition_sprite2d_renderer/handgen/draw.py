@@ -106,74 +106,127 @@ class _Painter:
         for p in (a, b):
             self.disk(d, p, w / 2, fill)
 
+    def taper(self, d, a: Point, b: Point, ra: float, rb: float, fill: RGBA) -> None:
+        """A capsule whose radius runs from ``ra`` at ``a`` to ``rb`` at ``b``."""
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        ln = math.hypot(dx, dy)
+        if ln > 1e-3:
+            px, py = -dy / ln, dx / ln
+            quad = [(a[0] + px * ra, a[1] + py * ra), (b[0] + px * rb, b[1] + py * rb), (b[0] - px * rb, b[1] - py * rb), (a[0] - px * ra, a[1] - py * ra)]
+            d.polygon([self.s(p) for p in quad], fill=fill)
+        self.disk(d, a, ra, fill)
+        self.disk(d, b, rb, fill)
+
     def glow(self, fn: Callable, blur: float) -> None:
         g = Image.new("RGBA", self.layer.size, (0, 0, 0, 0))
         fn(blending_draw(g))
-        self.layer.alpha_composite(g.filter(ImageFilter.GaussianBlur(blur * self.ss)))
+        # Blurred premultiplied, so its edge fades in its own colour (not
+        # toward the black of the transparent pixels around it).
+        self.layer.alpha_composite(g.convert("RGBa").filter(ImageFilter.GaussianBlur(blur * self.ss)).convert("RGBA"))
 
 
-def _draw_digit(pt: _Painter, cam: Camera, digit: Digit, style: HandStyle, glow: float, fade: float, tip_fade: float, only_first: bool = False) -> None:
-    """A DIGIT: one piece of flesh over its phalanges, then per phalanx its
-    face's details; from the palm drawn base to tip (a curl folds toward us),
-    from the back tip first (it folds away, tucked behind)."""
-    pts = [cam.project(j) for j in digit.joints]
-    pads = [cam.faces_us(p) for p in digit.pads]
-    widths = [w * cam.scale for w in digit.widths]
-    n = len(pts) - 1
-    keep = max(0.0, n * (1.0 - tip_fade))
-    order = list(range(n)) if cam.palm_faces_us() else list(range(n - 1, -1, -1))
-    if only_first:
-        order = [0]
-    shown = [i for i in order if i < keep]
+@dataclass
+class _DigitView:
+    """A digit as the camera sees it: its projected joints, whether each
+    phalanx's pad faces us, its widths, how much of it is left (tip_fade),
+    and which phalanges are drawn so far."""
 
-    def segment(i):
-        a, b = pts[i], pts[i + 1]
-        frac = min(1.0, keep - i)
+    digit: Digit
+    pts: List[Point]
+    pads: List[bool]
+    widths: List[float]
+    keep: float
+    drawn: set = field(default_factory=set)
+    palm_drawn: bool = False
+
+    @classmethod
+    def of(cls, cam: Camera, digit: Digit, tip_fade: float) -> "_DigitView":
+        n = len(digit.joints) - 1
+        return cls(digit, [cam.project(j) for j in digit.joints], [cam.faces_us(p) for p in digit.pads], [w * cam.scale for w in digit.widths], max(0.0, n * (1.0 - tip_fade)))
+
+    def radius(self, j: int) -> float:
+        """The digit's radius at joint ``j`` (shared by the phalanges either
+        side, so one tapers into the next); the tip a little finer."""
+        n = len(self.widths)
+        return (self.widths[j] if j < n else self.widths[-1] * 0.88) / 2
+
+    def segment(self, i: int) -> Tuple[Point, Point, float]:
+        a, b = self.pts[i], self.pts[i + 1]
+        frac = min(1.0, self.keep - i)
         return a, (a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac), frac
 
+
+def _draw_phalanx(pt: _Painter, cam: Camera, dv: _DigitView, i: int, style: HandStyle, glow: float, fade: float) -> None:
+    """One PHALANX, in its turn by depth: its seam and flesh, then where it
+    meets a neighbour already drawn the flesh is patched over the seam (a
+    digit is one piece, no line between its own phalanges) and the joint's
+    crease or wrinkles go on; then its face's details (pad or nail), its
+    bone if the style glows, the fingertip's glow."""
+    a, b, frac = dv.segment(i)
+    w = dv.widths[i]
+    ra, rb = dv.radius(i), dv.radius(i + 1) if frac >= 1.0 else dv.radius(i) + (dv.radius(i + 1) - dv.radius(i)) * frac
+    seam = 0.45 * cam.scale
     d = pt.draw()
-    for colour, grow in ((_a(style.seam, fade), 0.9 * cam.scale), (_a(style.flesh, fade), 0.0)):
-        for i in shown:
-            a, b, _ = segment(i)
-            pt.capsule(d, a, b, widths[i] + grow, colour)
-    for i in shown:
-        a, b, frac = segment(i)
-        w = widths[i]
-        dx, dy = b[0] - a[0], b[1] - a[1]
-        ln = math.hypot(dx, dy)
-        ux, uy = (dx / ln, dy / ln) if ln > 0.3 else (math.cos(math.radians(cam.palm_deg)), math.sin(math.radians(cam.palm_deg)))
-        half = w * 0.42
-        if style.bone is not None:
-            strength = 0.35 if pads[i] else 1.0
-            pt.glow(lambda g, a=a, b=b, k=strength: g.line([pt.s(a), pt.s(b)], fill=_a(style.bone, 0.55 * glow * fade * k), width=int(1.8 * cam.scale * pt.ss)), 0.8 * cam.scale)
-            pt.draw().line([pt.s(a), pt.s(b)], fill=_a(style.bone, 0.8 * fade * strength), width=max(1, int(0.6 * cam.scale * pt.ss)))
-        d = pt.draw()
-        m = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
-        if pads[i] and ln > 2.0 * cam.scale:
-            pt.disk(d, m, half * 0.55, _a(style.highlight, 0.18 * fade))
-        if i == n - 1 and frac >= 1.0 and not pads[i] and style.nail is not None:
-            # The NAIL, set INSIDE the rounded tip (never past it).
-            q = (a[0] + dx * 0.62, a[1] + dy * 0.62)
-            rl, rw = max(1.3 * cam.scale, ln * 0.26), w * 0.26
-            nail = [(q[0] + ux * rl * math.cos(t) - uy * rw * math.sin(t), q[1] + uy * rl * math.cos(t) + ux * rw * math.sin(t)) for t in np.linspace(0, math.tau, 14)]
-            d.polygon([pt.s(p) for p in nail], fill=_a(style.nail, 0.85 * fade))
-            d.line([pt.s((q[0] - ux * rl * 0.4 - uy * rw * 0.4, q[1] - uy * rl * 0.4 + ux * rw * 0.4)), pt.s((q[0] + ux * rl * 0.3 - uy * rw * 0.4, q[1] + uy * rl * 0.3 + ux * rw * 0.4))],
-                   fill=_a(style.nail_shine, 0.9 * fade), width=max(1, int(0.5 * cam.scale * pt.ss)))
-        if i > 0:
-            # The JOINT: only a faint crease (palm side) or wrinkles (back).
-            lw = max(1, int(0.4 * cam.scale * pt.ss))
-            if pads[i]:
-                r = w * 0.3
-                for s0, s1 in ((-half, -r), (r, half)):
-                    d.line([pt.s((a[0] - uy * s0, a[1] + ux * s0)), pt.s((a[0] - uy * s1, a[1] + ux * s1))], fill=_a(style.seam, 0.45 * fade), width=lw)
-            else:
-                for off in (-0.9 * cam.scale, 0.9 * cam.scale):
-                    c = (a[0] + ux * off, a[1] + uy * off)
-                    d.line([pt.s((c[0] - uy * half * 0.5, c[1] + ux * half * 0.5)), pt.s((c[0] + uy * half * 0.5, c[1] - ux * half * 0.5))], fill=_a(style.seam, 0.35 * fade), width=lw)
-    if keep >= n and not only_first and style.tip_glow is not None:
-        tip = pts[-1]
-        pt.glow(lambda g: g.ellipse((*pt.s((tip[0] - 2.4 * cam.scale, tip[1] - 2.4 * cam.scale)), *pt.s((tip[0] + 2.4 * cam.scale, tip[1] + 2.4 * cam.scale))), fill=_a(style.tip_glow, 0.8 * glow * fade)), 1.0 * cam.scale)
-        pt.disk(pt.draw(), tip, widths[-1] * 0.28, _a((200, 255, 245, 255), 0.85 * fade))
+    pt.taper(d, a, b, ra + seam, rb + seam, _a(style.seam, fade))
+    pt.taper(d, a, b, ra, rb, _a(style.flesh, fade))
+    # The palm is the first phalanx's neighbour at the knuckle.
+    for j, joint, r in ((i - 1, a, ra), (i + 1, dv.pts[i + 1], rb)):
+        if j in dv.drawn or (j == -1 and dv.palm_drawn):
+            pt.disk(d, joint, r + seam, _a(style.flesh, fade))
+    dv.drawn.add(i)
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    ln = math.hypot(dx, dy)
+    ux, uy = (dx / ln, dy / ln) if ln > 0.3 else (math.cos(math.radians(cam.palm_deg)), math.sin(math.radians(cam.palm_deg)))
+    half = w * 0.42
+    pad = dv.pads[i]
+    if style.bone is not None:
+        k = 0.35 if pad else 1.0
+        pt.glow(lambda g: g.line([pt.s(a), pt.s(b)], fill=_a(style.bone, 0.55 * glow * fade * k), width=int(1.8 * cam.scale * pt.ss)), 0.8 * cam.scale)
+        pt.draw().line([pt.s(a), pt.s(b)], fill=_a(style.bone, 0.8 * fade * k), width=max(1, int(0.6 * cam.scale * pt.ss)))
+    d = pt.draw()
+    if pad and ln > 2.0 * cam.scale:
+        pt.disk(d, ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), half * 0.55, _a(style.highlight, 0.18 * fade))
+    n = len(dv.pts) - 1
+    if i == n - 1 and frac >= 1.0 and not pad and style.nail is not None:
+        # The NAIL, set INSIDE the rounded tip (never past it).
+        q = (a[0] + dx * 0.62, a[1] + dy * 0.62)
+        rl, rw = max(1.3 * cam.scale, ln * 0.26), w * 0.26
+        nail = [(q[0] + ux * rl * math.cos(t) - uy * rw * math.sin(t), q[1] + uy * rl * math.cos(t) + ux * rw * math.sin(t)) for t in np.linspace(0, math.tau, 14)]
+        d.polygon([pt.s(p) for p in nail], fill=_a(style.nail, 0.85 * fade))
+        d.line([pt.s((q[0] - ux * rl * 0.4 - uy * rw * 0.4, q[1] - uy * rl * 0.4 + ux * rw * 0.4)), pt.s((q[0] + ux * rl * 0.3 - uy * rw * 0.4, q[1] + uy * rl * 0.3 + ux * rw * 0.4))],
+               fill=_a(style.nail_shine, 0.9 * fade), width=max(1, int(0.5 * cam.scale * pt.ss)))
+    # A joint's marks go on once both its phalanges are down.
+    for j in (i, i + 1):
+        if 0 < j < n and {j - 1, j} <= dv.drawn:
+            _draw_joint(pt, cam, dv, j, style, fade)
+    if i == n - 1 and dv.keep >= n and style.tip_glow is not None:
+        tip = dv.pts[-1]
+        r = 2.4 * cam.scale
+        pt.glow(lambda g: g.ellipse((*pt.s((tip[0] - r, tip[1] - r)), *pt.s((tip[0] + r, tip[1] + r))), fill=_a(style.tip_glow, 0.8 * glow * fade)), 1.0 * cam.scale)
+        pt.disk(pt.draw(), tip, dv.widths[-1] * 0.28, _a((200, 255, 245, 255), 0.85 * fade))
+
+
+def _draw_joint(pt: _Painter, cam: Camera, dv: _DigitView, j: int, style: HandStyle, fade: float) -> None:
+    """A JOINT's marks: a faint crease across it (palm side) or wrinkles
+    over it (back), on the face of the phalanx beyond it."""
+    a, b = dv.pts[j], dv.pts[j + 1]
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    ln = math.hypot(dx, dy)
+    if ln < 0.3:
+        return
+    ux, uy = dx / ln, dy / ln
+    w = dv.widths[j]
+    half = w * 0.42
+    lw = max(1, int(0.4 * cam.scale * pt.ss))
+    d = pt.draw()
+    if dv.pads[j]:
+        r = w * 0.3
+        for s0, s1 in ((-half, -r), (r, half)):
+            d.line([pt.s((a[0] - uy * s0, a[1] + ux * s0)), pt.s((a[0] - uy * s1, a[1] + ux * s1))], fill=_a(style.seam, 0.45 * fade), width=lw)
+    else:
+        for off in (-0.9 * cam.scale, 0.9 * cam.scale):
+            c = (a[0] + ux * off, a[1] + uy * off)
+            d.line([pt.s((c[0] - uy * half * 0.5, c[1] + ux * half * 0.5)), pt.s((c[0] + uy * half * 0.5, c[1] - ux * half * 0.5))], fill=_a(style.seam, 0.35 * fade), width=lw)
 
 
 def _draw_palm(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style: HandStyle, glow: float, fade: float) -> None:
@@ -197,9 +250,9 @@ def _draw_palm(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style:
     d = pt.draw()
     h, length = spec.palm_half_width, spec.palm_length
     # The heel's shade, fading up the palm in bands.
-    for k in range(5):
-        top = length * 0.4 * (1.0 - k / 5.0)
-        d.polygon([pt.s(p) for p in (P(0, -h), P(top, -h), P(top, h), P(0, h))], fill=_a(style.shade, 0.12 * fade))
+    for k in range(14):
+        top = length * 0.42 * (1.0 - k / 14.0)
+        d.polygon([pt.s(p) for p in (P(-3, -h - 3), P(top, -h - 3), P(top, h + 3), P(-3, h + 3))], fill=_a(style.shade, 0.045 * fade))
     knuckles = [P(length, f.across) for f in spec.fingers]
     lw = max(1, int(0.5 * cam.scale * pt.ss))
     if cam.palm_faces_us():
@@ -241,19 +294,19 @@ def _draw_palm(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style:
     base.layer.alpha_composite(Image.fromarray(detail.astype(np.uint8), "RGBA"))
 
 
-def _draw_knuckles(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style: HandStyle, fade: float) -> None:
-    """The KNUCKLE ROW from the back: a raised bump per finger, the more
-    prominent the more it curls (the fist's ridge)."""
-    if cam.palm_faces_us():
-        return
+def _draw_knuckle(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, name: str, style: HandStyle, fade: float) -> None:
+    """A KNUCKLE from the back: a raised bump, the more prominent the more
+    its finger curls (the fist's ridge)."""
+    f = spec.finger(name)
+    q = cam.project(local(spec, spec.palm_length, f.across, -spec.palm_depth / 2 - spec.palm_arch * 0.6))
+    curl = max(0.0, pose.curl(name))
+    r = f.width * cam.scale * (0.36 + 0.16 * curl)
     d = pt.draw()
-    for f in spec.fingers:
-        q = cam.project(local(spec, spec.palm_length, f.across, -spec.palm_depth / 2 - spec.palm_arch * 0.6))
-        r = f.width * cam.scale * (0.5 + 0.22 * max(0.0, pose.curl(f.name)))
-        d.ellipse((*pt.s((q[0] - r, q[1] - r * 0.85)), *pt.s((q[0] + r, q[1] + r * 0.85))), fill=_a(style.flesh, fade), outline=_a(style.seam, 0.35 * fade), width=max(1, int(0.5 * cam.scale * pt.ss)))
-        hr = r * 0.55
-        o = 0.6 * cam.scale
-        d.ellipse((*pt.s((q[0] - hr - o, q[1] - hr - 1.5 * o)), *pt.s((q[0] + hr - o, q[1] + hr * 0.4 - 1.5 * o))), fill=_a(style.highlight, 0.24 * fade))
+    # No ring: the bump is a lit swell in the flesh, stronger in a fist.
+    pt.disk(d, q, r, _a(style.flesh, fade))
+    hr = r * 0.6
+    o = 0.5 * cam.scale
+    pt.glow(lambda g: g.ellipse((*pt.s((q[0] - hr - o, q[1] - hr - o)), *pt.s((q[0] + hr - o, q[1] + hr - o))), fill=_a(style.highlight, (0.25 + 0.25 * curl) * fade)), 0.5 * cam.scale)
 
 
 def _hull(points: List[Point]) -> List[Point]:
@@ -323,30 +376,38 @@ def draw_hand(spec: HandSpec, pose: HandPose, cam: Camera, canvas: Tuple[int, in
     layer = Image.new("RGBA", (canvas[0] * ss, canvas[1] * ss), (0, 0, 0, 0))
     pt = _Painter(layer, ss)
     marks = landmarks(spec, pose, cam)
-    ds = digits(spec, pose)
-    fingers = [ds[n] for n in FINGER_NAMES]
-    args = (style, glow, fade, tip_fade)
-    if cam.palm_faces_us():
-        # From the palm: the palm, a held thing, the fingers folding toward
-        # us over it (little to index), the thumb across them.
-        _draw_palm(pt, spec, pose, cam, style, glow, fade)
-        if between:
-            between(layer, marks, ss)
-        for dg in reversed(fingers):
-            _draw_digit(pt, cam, dg, *args)
-        _draw_digit(pt, cam, ds["thumb"], *args)
-    else:
-        # From the back: the thumb on the far edge, the fingers folding away
-        # behind the knuckle row, the back of the hand over them, then each
-        # finger's first phalanx again where it leaves the knuckles.
-        _draw_digit(pt, cam, ds["thumb"], *args)
-        for dg in fingers:
-            _draw_digit(pt, cam, dg, *args)
-        _draw_palm(pt, spec, pose, cam, style, glow, fade)
-        for dg in fingers:
-            _draw_digit(pt, cam, dg, *args, only_first=True)
-        _draw_knuckles(pt, spec, pose, cam, style, fade)
-        if between:
-            between(layer, marks, ss)
+    views = {name: _DigitView.of(cam, dg, tip_fade) for name, dg in digits(spec, pose).items()}
+    # DRAW ORDER, from the model, at any roll: each phalanx is in FRONT of
+    # the palm or BEHIND it by which side of the palm's plane it lies on
+    # (seen from our side); each group is painted far to near by depth.
+    # So from the palm a curl folds over it, from the back it tucks behind
+    # it, and in between the two orders cross over smoothly.
+    side = 1.0 if cam.palm_faces_us() else -1.0
+    front, behind = [], []
+    for name, dv in views.items():
+        for i in range(len(dv.pts) - 1):
+            if i >= dv.keep:
+                continue
+            mid = (dv.digit.joints[i] + dv.digit.joints[i + 1]) / 2
+            group = front if mid[2] * side >= -0.25 * spec.palm_depth else behind
+            group.append((cam.depth(mid), name, i))
+    back_of_hand = not cam.palm_faces_us()
+    first_in_front = {name for _d, name, i in front if i == 0}
+    for _depth, name, i in sorted(behind):
+        _draw_phalanx(pt, cam, views[name], i, style, glow, fade)
+    _draw_palm(pt, spec, pose, cam, style, glow, fade)
+    for name in FINGER_NAMES:
+        views[name].palm_drawn = True
+    if back_of_hand:
+        # The knuckles of fingers folded behind ride the back of the hand.
+        for name in FINGER_NAMES:
+            if name not in first_in_front:
+                _draw_knuckle(pt, spec, pose, cam, name, style, fade)
+    if between:
+        between(layer, marks, ss)
+    for _depth, name, i in sorted(front):
+        _draw_phalanx(pt, cam, views[name], i, style, glow, fade)
+        if back_of_hand and i == 0 and name in FINGER_NAMES:
+            _draw_knuckle(pt, spec, pose, cam, name, style, fade)
     out = _light(_ink(layer, style, ss, cam.scale, fade), cam, style, ss)
     return HandDrawing(out, marks, ss)
