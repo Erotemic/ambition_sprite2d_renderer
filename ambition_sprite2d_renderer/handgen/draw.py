@@ -156,6 +156,27 @@ class _DigitView:
         return a, (a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac), frac
 
 
+#: How far a phalanx's PAD swells out toward its palm side (of its width),
+#: and the thumb's first piece (its ball, the thenar mound).
+PAD_SWELL = 0.24
+THUMB_BALL_SWELL = 0.5
+
+
+def _pad_swell(cam: Camera, dv: _DigitView, i: int, a: Point, b: Point, ra: float, rb: float) -> Tuple[Point, Point, float, float]:
+    """The PAD's swell: a fuller capsule along the middle of the phalanx,
+    pushed toward its palm side. Seen face on it hides inside the finger;
+    from the side it gives the finger its volume (and in a curled hand from
+    the side, fills the space between the fingers and the palm)."""
+    joint = dv.digit.joints[i]
+    q0, q1 = cam.project(joint), cam.project(joint + dv.digit.pads[i])
+    ball = dv.digit.name == "thumb" and i == 0
+    k = (THUMB_BALL_SWELL if ball else PAD_SWELL) * dv.widths[i] / cam.scale
+    off = ((q1[0] - q0[0]) * k, (q1[1] - q0[1]) * k)
+    t0, t1, shrink = (0.1, 0.9, 1.05) if ball else (0.08, 0.92, 0.9)
+    lerp = lambda t: (a[0] + (b[0] - a[0]) * t + off[0], a[1] + (b[1] - a[1]) * t + off[1])  # noqa: E731
+    return lerp(t0), lerp(t1), (ra + (rb - ra) * t0) * shrink, (ra + (rb - ra) * t1) * shrink
+
+
 def _draw_phalanx(pt: _Painter, cam: Camera, dv: _DigitView, i: int, style: HandStyle, glow: float, fade: float) -> None:
     """One PHALANX, in its turn by depth: its seam and flesh, then where it
     meets a neighbour already drawn the flesh is patched over the seam (a
@@ -166,9 +187,11 @@ def _draw_phalanx(pt: _Painter, cam: Camera, dv: _DigitView, i: int, style: Hand
     w = dv.widths[i]
     ra, rb = dv.radius(i), dv.radius(i + 1) if frac >= 1.0 else dv.radius(i) + (dv.radius(i + 1) - dv.radius(i)) * frac
     seam = 0.45 * cam.scale
+    swell = _pad_swell(cam, dv, i, a, b, ra, rb)
     d = pt.draw()
-    pt.taper(d, a, b, ra + seam, rb + seam, _a(style.seam, fade))
-    pt.taper(d, a, b, ra, rb, _a(style.flesh, fade))
+    for colour, grow in ((_a(style.seam, fade), seam), (_a(style.flesh, fade), 0.0)):
+        pt.taper(d, a, b, ra + grow, rb + grow, colour)
+        pt.taper(d, swell[0], swell[1], swell[2] + grow, swell[3] + grow, colour)
     # The palm is the first phalanx's neighbour at the knuckle.
     for j, joint, r in ((i - 1, a, ra), (i + 1, dv.pts[i + 1], rb)):
         if j in dv.drawn or (j == -1 and dv.palm_drawn):
