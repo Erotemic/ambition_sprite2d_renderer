@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from .draw import STYLES, HandStyle, draw_hand
-from .model import Camera, HandPose, HandSpec, digits, palm_outline, thumb_web
+from .model import Camera, HandPose, HandSpec, digits, palm_face, thumb_web
 from .poses import POSES
 
 DIGIT_COLOURS = {"index": (232, 92, 92), "middle": (92, 200, 110), "ring": (90, 130, 236), "little": (232, 200, 70), "thumb": (236, 140, 60)}
@@ -27,9 +27,15 @@ def render_model(spec: HandSpec, pose: HandPose, cam: Camera, size: Tuple[int, i
     d = ImageDraw.Draw(img)
     S = lambda p: (p[0] * ss, p[1] * ss)  # noqa: E731
     palm_col = (236, 226, 214) if cam.palm_faces_us() else (170, 160, 150)
-    outline = palm_outline(spec)
-    depth = float(np.mean([cam.depth(p) for p in outline]))
-    parts = [(depth, "plate", outline, palm_col), (depth - 0.01, "plate", thumb_web(spec, pose), palm_col)]
+    near, far = palm_face(spec, cam.palm_faces_us()), palm_face(spec, not cam.palm_faces_us())
+    depth = float(np.mean([cam.depth(p) for p in near + far]))
+    edge = (150, 140, 130)
+    parts = [(depth - 0.02, "plate", far, edge), (depth - 0.01, "plate", thumb_web(spec, pose), palm_col), (depth, "plate", near, palm_col)]
+    # The slab's sides: a quad per outline edge, between the faces.
+    for i in range(len(near)):
+        j = (i + 1) % len(near)
+        quad = [near[i], near[j], far[j], far[i]]
+        parts.append((depth - 0.015, "plate", quad, edge))
     for name, dg in digits(spec, pose).items():
         for i in range(len(dg.joints) - 1):
             a, b = dg.joints[i], dg.joints[i + 1]

@@ -24,10 +24,10 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
 
 from ..core.draw import blending_draw
-from .model import FINGER_NAMES, Camera, Digit, HandPose, HandSpec, Point, digits, landmarks, local, palm_outline, thumb_web
+from .model import FINGER_NAMES, Camera, Digit, HandPose, HandSpec, Point, digits, face_depth, knuckle_edge, landmarks, local, palm_face, thumb_web
 
 RGBA = Tuple[int, int, int, int]
 
@@ -179,11 +179,22 @@ def _draw_digit(pt: _Painter, cam: Camera, digit: Digit, style: HandStyle, glow:
 def _draw_palm(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style: HandStyle, glow: float, fade: float) -> None:
     """The PALM and the thumb's web, one piece of flesh; shaded toward the
     heel; its pads and lines from the front, its tendons from the back."""
-    P = lambda u, v, n=0.0: cam.project(local(spec, u, v, n))  # noqa: E731
+    front = cam.palm_faces_us()
+    fn = face_depth(spec, cam)
+    P = lambda u, v, n=fn: cam.project(local(spec, u, v, n))  # noqa: E731
     d = pt.draw()
-    for part in (thumb_web(spec, pose), palm_outline(spec)):
-        d.polygon([pt.s(cam.project(p)) for p in part], fill=_a(style.flesh, fade))
-    outline = [cam.project(p) for p in palm_outline(spec)]
+    # The palm is a SLAB: its edge (the hull of both faces) in shade, then
+    # the face we see over it, the thumb's web with it; all one flesh.
+    near, far = palm_face(spec, front), palm_face(spec, not front)
+    hull = _hull([cam.project(p) for p in near + far])
+    d.polygon([pt.s(p) for p in hull], fill=_a(style.flesh, fade))
+    d.polygon([pt.s(p) for p in hull], fill=_a(style.shade, 0.45 * fade))
+    d.polygon([pt.s(cam.project(p)) for p in thumb_web(spec, pose)], fill=_a(style.flesh, fade))
+    d.polygon([pt.s(cam.project(p)) for p in near], fill=_a(style.flesh, fade))
+    # Its details (shade, pads, lines, tendons, bones) stay ON the face we
+    # see and the web: drawn apart, then clipped to them.
+    base, pt = pt, _Painter(Image.new("RGBA", pt.layer.size, (0, 0, 0, 0)), pt.ss)
+    d = pt.draw()
     h, length = spec.palm_half_width, spec.palm_length
     # The heel's shade, fading up the palm in bands.
     for k in range(5):
@@ -208,7 +219,7 @@ def _draw_palm(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style:
                 d.line([pt.s(p) for p in line], fill=_a(style.seam, 0.5 * fade), width=lw, joint="curve")
     else:
         # From the back its knuckle edge passes over the tucked fingers.
-        d.line([pt.s(outline[1]), pt.s(outline[2])], fill=_a(style.seam, fade), width=max(1, int(0.9 * cam.scale * pt.ss)))
+        d.line([pt.s(cam.project(p)) for p in knuckle_edge(spec, False)], fill=_a(style.seam, fade), width=max(1, int(0.9 * cam.scale * pt.ss)), joint="curve")
         if style.tendons:
             # One TENDON along each metacarpal, wrist to its own knuckle.
             for f, k in zip(spec.fingers, knuckles):
@@ -221,6 +232,13 @@ def _draw_palm(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style:
             start = P(length * 0.18, f.across * 0.4)
             pt.glow(lambda g, a=start, b=end: g.line([pt.s(a), pt.s(b)], fill=_a(style.bone, 0.5 * glow * fade * k), width=int(1.6 * cam.scale * pt.ss)), 0.8 * cam.scale)
             pt.draw().line([pt.s(start), pt.s(end)], fill=_a(style.bone, 0.75 * fade * k), width=max(1, int(0.6 * cam.scale * pt.ss)))
+    mask = Image.new("L", base.layer.size, 0)
+    md = ImageDraw.Draw(mask)
+    for part in (near, thumb_web(spec, pose)):
+        md.polygon([pt.s(cam.project(p)) for p in part], fill=255)
+    detail = np.asarray(pt.layer, np.float32)
+    detail[..., 3] *= np.asarray(mask, np.float32) / 255.0
+    base.layer.alpha_composite(Image.fromarray(detail.astype(np.uint8), "RGBA"))
 
 
 def _draw_knuckles(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, style: HandStyle, fade: float) -> None:
@@ -230,12 +248,33 @@ def _draw_knuckles(pt: _Painter, spec: HandSpec, pose: HandPose, cam: Camera, st
         return
     d = pt.draw()
     for f in spec.fingers:
-        q = cam.project(local(spec, spec.palm_length, f.across))
+        q = cam.project(local(spec, spec.palm_length, f.across, -spec.palm_depth / 2 - spec.palm_arch * 0.6))
         r = f.width * cam.scale * (0.5 + 0.22 * max(0.0, pose.curl(f.name)))
         d.ellipse((*pt.s((q[0] - r, q[1] - r * 0.85)), *pt.s((q[0] + r, q[1] + r * 0.85))), fill=_a(style.flesh, fade), outline=_a(style.seam, 0.35 * fade), width=max(1, int(0.5 * cam.scale * pt.ss)))
         hr = r * 0.55
         o = 0.6 * cam.scale
         d.ellipse((*pt.s((q[0] - hr - o, q[1] - hr - 1.5 * o)), *pt.s((q[0] + hr - o, q[1] + hr * 0.4 - 1.5 * o))), fill=_a(style.highlight, 0.24 * fade))
+
+
+def _hull(points: List[Point]) -> List[Point]:
+    """The convex hull (monotone chain)."""
+    pts = sorted(set(points))
+    if len(pts) < 3:
+        return pts
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower, upper = [], []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
 
 
 def _ink(hand: Image.Image, style: HandStyle, ss: int, scale: float, fade: float) -> Image.Image:

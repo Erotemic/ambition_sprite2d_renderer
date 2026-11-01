@@ -63,9 +63,14 @@ class HandSpec:
     thumb_spread: float = 58.0
     palm_length: float = 26.0
     palm_half_width: float = 9.0
+    #: The palm's thickness (n), and how much its back domes across the
+    #: knuckles (the metacarpal arch).
+    palm_depth: float = 6.0
+    palm_arch: float = 1.5
     #: How far each finger joint (knuckle, middle, end) bends at a full
     #: curl, and the thumb's (root, knuckle, end).
-    joint_bend: Tuple[float, float, float] = (70.0, 95.0, 70.0)
+    #: A full curl lands the fingertips on the palm's face (a fist).
+    joint_bend: Tuple[float, float, float] = (90.0, 100.0, 60.0)
     thumb_bend: Tuple[float, float, float] = (10.0, 35.0, 55.0)
     #: How much the fingers fan out from the middle (degrees per unit of v).
     fan: float = 1.2
@@ -77,7 +82,8 @@ class HandSpec:
         fingers = tuple(replace(f, across=f.across * width, width=f.width * width, bones=tuple(b * length for b in f.bones)) for f in self.fingers)
         r = self.thumb_root
         return replace(self, fingers=fingers, thumb_root=(r[0] * length, r[1] * width, r[2] * width), thumb_bones=tuple(b * length for b in self.thumb_bones),
-                       thumb_width=self.thumb_width * width, palm_length=self.palm_length * length, palm_half_width=self.palm_half_width * width)
+                       thumb_width=self.thumb_width * width, palm_length=self.palm_length * length, palm_half_width=self.palm_half_width * width,
+                       palm_depth=self.palm_depth * width, palm_arch=self.palm_arch * width)
 
     def mirrored(self) -> "HandSpec":
         return replace(self, handedness="left" if self.handedness == "right" else "right")
@@ -221,12 +227,57 @@ def digits(spec: HandSpec, pose: HandPose) -> Dict[str, Digit]:
     return out
 
 
-def palm_outline(spec: HandSpec) -> List[Vec]:
-    """The palm plate's corners in hand space: heel (index side), knuckle
-    edge (index side), knuckle edge (little side), heel (little side)."""
-    lo, hi = spec.fingers[0].across - 3.5, spec.fingers[-1].across + 3.5
+def _outline_uv(spec: HandSpec) -> Tuple[List[Tuple[float, float]], int, int]:
+    """The palm's rounded outline in (u, v), right-handed: up the index
+    side past the thumb's mound, along the knuckle edge (a little beyond
+    each knuckle, dipping between them), down the little finger's bulging
+    edge, round the heel. Returns it and the knuckle edge's first and last
+    index."""
     h, length = spec.palm_half_width, spec.palm_length
-    return [_mirror(spec, np.array(p)) for p in ((0.0, -h, 0.0), (length, lo, 0.0), (length, hi, 0.0), (0.0, h, 0.0))]
+    fs = spec.fingers
+    lo, hi = fs[0].across - 3.0, fs[-1].across + 3.0
+    pts = [(1.0, -0.95 * h), (length * 0.3, -h - 1.2), (length * 0.62, lo - 0.4), (length - 1.5, lo)]
+    first = len(pts) - 1
+    for k, f in enumerate(fs):
+        pts.append((length + 2.2, f.across))
+        if k + 1 < len(fs):
+            pts.append((length + 1.2, (f.across + fs[k + 1].across) / 2))
+    pts.append((length - 1.5, hi))
+    last = len(pts) - 1
+    pts += [(length * 0.62, hi + 0.3), (length * 0.3, 0.5 * (h + hi) + 1.0), (1.0, 0.95 * h), (-1.5, 0.5 * h), (-2.2, 0.0), (-1.5, -0.5 * h)]
+    return pts, first, last
+
+
+def palm_face(spec: HandSpec, front: bool) -> List[Vec]:
+    """The palm's outline on its FRONT (palm) face or its back, in hand
+    space; the back domes over the metacarpals."""
+    pts, _, _ = _outline_uv(spec)
+    half = spec.palm_depth / 2
+    out = []
+    for u, v in pts:
+        if front:
+            n = half
+        else:
+            w = max(0.0, 1.0 - (v / (spec.palm_half_width + 3.0)) ** 2)
+            n = -half - spec.palm_arch * w * min(1.0, max(0.0, u / spec.palm_length) * 1.5)
+        out.append(_mirror(spec, np.array([u, v, n])))
+    return out
+
+
+def knuckle_edge(spec: HandSpec, front: bool) -> List[Vec]:
+    """The knuckle edge of a face, index side to little."""
+    _, first, last = _outline_uv(spec)
+    return palm_face(spec, front)[first:last + 1]
+
+
+def palm_outline(spec: HandSpec) -> List[Vec]:
+    """The palm's outline at its middle depth (n 0)."""
+    return [_mirror(spec, np.array([u, v, 0.0])) for u, v in _outline_uv(spec)[0]]
+
+
+def face_depth(spec: HandSpec, cam: "Camera") -> float:
+    """The n of the palm face the camera sees."""
+    return spec.palm_depth / 2 if cam.palm_faces_us() else -spec.palm_depth / 2
 
 
 def thumb_web(spec: HandSpec, pose: HandPose) -> List[Vec]:
@@ -234,7 +285,7 @@ def thumb_web(spec: HandSpec, pose: HandPose) -> List[Vec]:
     knuckle, the wrist (the thumb's mound, from the palm)."""
     t = thumb(spec, pose)
     index = _mirror(spec, np.array([spec.palm_length, spec.fingers[0].across, 0.0]))
-    return [t.joints[0], t.joints[1], (t.joints[1] + index) / 2, index, _mirror(spec, np.array([0.0, -spec.palm_half_width * 0.5, 0.0]))]
+    return [t.joints[0], t.joints[1], (t.joints[1] + index) / 2, index, _mirror(spec, np.array([spec.palm_length * 0.3, -spec.palm_half_width, spec.thumb_root[2]]))]
 
 
 def local(spec: HandSpec, u: float, v: float, n: float = 0.0) -> Vec:
