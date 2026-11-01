@@ -386,8 +386,8 @@ def _hand(mode: str, near: bool):
     folds, what is in front of what); his own cartoon parts DRAW it (Jon,
     2026-10-31: "draw more custom 2d art over the reference pose, it is
     posed better, but lost some cartoon-y charm"): a flat palm with a dark
-    rim, each finger a stroke with its own dark line round it and a dot at
-    each knuckle, claws of horn, the seam sewn across the back of the hand,
+    rim, each finger a stroke with its own dark line round it, claws of horn,
+    the big scar sewn across the back of the hand,
     and the kit's ink, rim light and shade over it all."""
     mode = mode if mode in HAND_POSES else "soft"
     skin = SKIN if near else SKIN_SHADE
@@ -436,15 +436,14 @@ def _hand(mode: str, near: bool):
                 for part in (web, face):
                     K.poly(d, [at(p) for p in part], skin, SKIN_DEEP, 0.9 * HAND / 1.55)
                 if back:
-                    # The knuckles: ridges on the back of the hand.
-                    for f in HG.FINGER_NAMES:
-                        q = at(HG.model.local(spec, spec.palm_length, spec.finger(f).across, -spec.palm_depth / 2))
-                        K.oval(d, q, 0.9 * HAND, 0.8 * HAND, SKIN_DEEP)
-                        K.oval(d, (q[0] - 0.3 * HAND, q[1] - 0.2 * HAND), 0.55 * HAND, 0.45 * HAND, SKIN_LIGHT)
-                    # The back of the hand sewn on at the wrist.
-                    h = spec.palm_half_width * 0.85
-                    seam = [at(HG.model.local(spec, 4.0 + abs(v) / h, v, -spec.palm_depth / 2)) for v in (-h, -h / 2, 0.0, h / 2, h)]
-                    stitches(d, seam, tick=1.1, every=2.4, width=0.5)
+                    # The back of the hand sewn on at the wrist: a big scar,
+                    # its raised welt, its stitches (Jon, 2026-10-31: "bigger
+                    # scar").
+                    h = spec.palm_half_width * 1.05
+                    seam = [at(HG.model.local(spec, 6.0 + 2.5 * abs(v) / h, v, -spec.palm_depth / 2)) for v in (-h, -h / 2, 0.0, h / 2, h)]
+                    K.line(d, seam, SKIN_DEEP, 1.8)
+                    K.line(d, seam, SKIN_SHADE, 0.8)
+                    stitches(d, seam, tick=2.2, every=3.2, width=0.8)
                 continue
             dg = dgs[name]
             a, b = at(dg.joints[i]), at(dg.joints[i + 1])
@@ -458,10 +457,6 @@ def _hand(mode: str, near: bool):
                     r = w / 2 + rim * 0.85
                     K.oval(d, joint, r, r, skin if name != "thumb" or not back else SKIN_SHADE)
             drawn.add((name, i))
-            # A dot at the finger's middle knuckle, as his hands always had.
-            for j, joint in ((i, a), (i + 1, b)):
-                if j == 1 and {(name, 0), (name, 1)} <= drawn:
-                    K.oval(d, joint, 0.6 * HAND, 0.6 * HAND, SKIN_DEEP)
             if i == len(dg.joints) - 2 and claws[name]:
                 c = claws[name]
                 K.poly(d, c, CLAW)
