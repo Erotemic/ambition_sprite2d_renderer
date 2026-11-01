@@ -102,6 +102,7 @@ The package is organized by role; the import boundary `core` ← `authoring`
 | [`gui/`](ambition_sprite2d_renderer/gui/) | PySide6 rig editor | +PySide6 |
 | [`devtools/`](ambition_sprite2d_renderer/devtools/) | Author-facing inspection (`debug_hitboxes`) + editor bridges (`ldtk_manifest`) | — |
 | [`chargen/`](ambition_sprite2d_renderer/chargen/) | The character generator: specs → multiview SVG → humanoid rigs (see "Generated characters") | +authoring |
+| [`handgen/`](ambition_sprite2d_renderer/handgen/) | The hand generator: one 3D hand posed and drawn from either side (see "Generated hands") | — |
 | `configs/` · `data/` | YAML generator jobs · optional rig templates + `pack_plan.yaml` | data |
 
 ## Published target contract
@@ -720,6 +721,25 @@ visual:
 The guide uses logical source-canvas coordinates. It is equally valid for a
 procedural, part-based, or rigged generator and does not prescribe how the
 character is posed.
+
+## Generated hands (`handgen`)
+
+Hands at the Dealer's Hand's level of detail, from one 3D model. A
+`HandSpec` (skeleton and proportions; `SPECS` default/slender/broad/stubby,
+`.scaled()`, `.mirrored()` for a left hand) is posed by a `HandPose`
+(per-finger curls, thumb opposition, spread, hook; `POSES` and `blend`), seen
+by a `Camera` (wrist on screen, finger direction, `roll` 0 palm to 180
+back, pitch) and drawn by `draw_hand` in a `HandStyle` (`STYLES` skin,
+spectral, glove). The model places, the 2D parts draw: one ink outline round
+the silhouette, soft seams where parts overlap, faint joints, and the
+pad or nail side of each phalanx chosen by the model. `HandDrawing.landmarks`
+(joints, tips, `grip`) are for hanging things on; `between=` draws a held
+item over the palm and under the closing fingers.
+
+```bash
+uv run python -m ambition_sprite2d_renderer.handgen model --out OUT/model.png    # the bare model's turnaround
+uv run python -m ambition_sprite2d_renderer.handgen poses --style spectral --out OUT/poses.png
+```
 
 ## Character specs and review casts
 
