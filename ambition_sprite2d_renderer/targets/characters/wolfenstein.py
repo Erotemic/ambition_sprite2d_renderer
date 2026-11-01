@@ -346,9 +346,11 @@ HAND_POSES = {
     # Reaching: open, a little spread.
     "open": (HG.HandPose((0.08,) * 4, 0.0, spread=0.4), True, 4.0, 203.0),
     # Flat on his knees.
-    "flat": (HG.HandPose((0.02,) * 4, 0.1, spread=-0.4), False, 4.0, 203.0),
+    "flat": (HG.HandPose((0.02,) * 4, 0.1, spread=-0.4), True, 4.0, 203.0),
     # The hammer: a fist, the knuckles in front.
-    "fist": (HG.HandPose((1.0,) * 4, 0.9), False, 4.0, 203.0),
+    # (Its claws dig into his palm: the backs of his fingertips show their
+    # NAILS, the horn of each claw at its root.)
+    "fist": (HG.HandPose((1.0,) * 4, 0.9), "nails", 4.0, 203.0),
     # The lash: the index finger out at you, the rest closed.
     "point": (HG.HandPose((0.0, 1.0, 1.0, 1.0), 0.7), True, 4.0, 203.0),
     # On his bolts: curled round them.
@@ -407,6 +409,8 @@ def _hand(mode: str, near: bool):
     def claw(name: str) -> Optional[List[Point]]:
         if not claws_out or (mode == "point" and name not in ("index", "thumb")):
             return None
+        if claws_out == "nails" and name != "thumb":
+            return None  # drawn last, over the fingers (``nails``)
         j = dgs[name].joints
         way = (j[-1] - j[-2]) / (np.linalg.norm(j[-1] - j[-2]) or 1.0)
         length = reach * (0.6 if name == "thumb" else 1.0)
@@ -414,7 +418,10 @@ def _hand(mode: str, near: bool):
         dx, dy = point[0] - tip[0], point[1] - tip[1]
         ln = math.hypot(dx, dy)
         if ln < 1.2 * HAND:
-            return None  # pointing at us or away: hidden in the tip
+            # Pointing at us or away (a fist's): its horn seen end on, a
+            # nail on the fingertip.
+            ux, uy = (dx / ln, dy / ln) if ln > 1e-3 else (1.0, 0.0)
+            return [(tip[0] + ux * 0.4 * HAND, tip[1] + uy * 0.4 * HAND)]
         ux, uy = dx / ln, dy / ln
         return [(tip[0] - uy * 1.3 * HAND, tip[1] + ux * 1.3 * HAND), point, (tip[0] + uy * 1.3 * HAND, tip[1] - ux * 1.3 * HAND)]
 
@@ -426,7 +433,7 @@ def _hand(mode: str, near: bool):
         for name, dg in dgs.items():
             for i in range(len(dg.joints) - 1):
                 K.stroke(d, [at(dg.joints[i]), at(dg.joints[i + 1])], WHITE, width(name, i) + 2 * rim)
-            if claws[name]:
+            if claws[name] and len(claws[name]) == 3:
                 K.poly(d, claws[name], WHITE)
 
     def detail(d) -> None:
@@ -457,12 +464,38 @@ def _hand(mode: str, near: bool):
                     r = w / 2 + rim * 0.85
                     K.oval(d, joint, r, r, skin if name != "thumb" or not back else SKIN_SHADE)
             drawn.add((name, i))
-            if i == len(dg.joints) - 2 and claws[name]:
+            if i == len(dg.joints) - 2 and claws[name] and len(claws[name]) == 1:
+                q = claws[name][0]
+                K.oval(d, q, 1.15 * HAND, 0.95 * HAND, CLAW)
+                K.oval(d, (q[0] - 0.35 * HAND, q[1] - 0.3 * HAND), 0.4 * HAND, 0.3 * HAND, CLAW_TIP)
+            elif i == len(dg.joints) - 2 and claws[name]:
                 c = claws[name]
                 K.poly(d, c, CLAW)
                 K.line(d, [c[1], ((c[0][0] + c[2][0]) / 2.0 * 0.4 + c[1][0] * 0.6, (c[0][1] + c[2][1]) / 2.0 * 0.4 + c[1][1] * 0.6)], CLAW_TIP, 0.6)
 
-    return K.solid(("hand", mode, near, HAND, 3), shape, skin, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=SKIN_DEEP)
+    def nails(d) -> None:
+        # A fist's nails: on each fingertip whose back faces us.
+        for name in HG.FINGER_NAMES:
+            dg = dgs[name]
+            if cam.faces_us(dg.pads[-1]):
+                continue
+            a, b = at(dg.joints[-2]), at(dg.joints[-1])
+            q = (a[0] + (b[0] - a[0]) * 0.7, a[1] + (b[1] - a[1]) * 0.7)
+            ang = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+            r1, r2 = 1.7 * HAND, 1.25 * HAND
+            pts = [(q[0] + math.cos(math.radians(ang)) * r1 * math.cos(t) - math.sin(math.radians(ang)) * r2 * math.sin(t),
+                    q[1] + math.sin(math.radians(ang)) * r1 * math.cos(t) + math.cos(math.radians(ang)) * r2 * math.sin(t)) for t in np.linspace(0, math.tau, 16)]
+            K.poly(d, pts, CLAW)
+            K.oval(d, (q[0] - 0.3 * HAND, q[1] - 0.3 * HAND), 0.4 * HAND, 0.28 * HAND, CLAW_TIP)
+
+    if claws_out == "nails":
+        base_detail = detail
+
+        def detail(d) -> None:  # noqa: F811
+            base_detail(d)
+            nails(d)
+
+    return K.solid(("hand", mode, near, HAND, 4), shape, skin, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=SKIN_DEEP)
 
 
 X.hand = _hand
