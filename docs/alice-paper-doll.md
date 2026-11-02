@@ -27,5 +27,5 @@ From the Ambition root, update the installed quality tiers after publishing:
 
 ```bash
 ./scripts/regen/quality_variants.sh --sprites-only --target 'alice*'
-python3 scripts/check_quality_variants_are_fresh.py
+python3 scripts/checks/check_quality_variants_are_fresh.py
 ```
