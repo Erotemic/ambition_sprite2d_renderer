@@ -235,6 +235,8 @@ class FormSpec:
     # a form's body and legs do — halve the body without this and the ponytail
     # reaches past her feet, which is exactly what the first attempt looked like.
     hair_drop: float = 1.0
+    # Rows that use another row's pose data.
+    pose_aliases: Tuple[Tuple[str, str], ...] = ()
     #: How far the crouch sinks her head onto her shoulders, in authored units.
     #:
     #: A crouch is HALF HEIGHT — that is what `BodyMode::Crouching` does to her
@@ -571,7 +573,8 @@ CLASSIC_TALL_FORM = replace(
     TALL_FORM,
     target_name=f"{TARGET_BASE}_tall_classic",
     display_name="Mary-O v2 Tall Classic",
-    rows=TALL_ROWS + _attack_rows(),
+    rows=TALL_ROWS + [("fall", 1, 120)] + _attack_rows(),
+    pose_aliases=(("fall", "jump"),),
 )
 
 FIRE_FORM = FormSpec(
@@ -663,6 +666,8 @@ def poses_for_form(form: FormSpec) -> Dict[str, List[Pose]]:
     if form.tall and "crouch" in poses:
         # From the crouch AS HELD, the form's head drop included.
         poses = {**poses, **_crouch_transitions(poses["crouch"][0])}
+    if form.pose_aliases:
+        poses = {**poses, **{row: poses[source] for row, source in form.pose_aliases}}
     return poses
 
 

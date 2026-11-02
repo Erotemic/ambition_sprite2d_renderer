@@ -8,6 +8,7 @@ import pytest
 
 # The model first: it imports the fighter module after `Pose` exists.
 from ambition_sprite2d_renderer.targets.characters._mary_o_v2_model import (
+    CLASSIC_TALL_FORM,
     FIRE_FORM,
     SHORT_FORM,
     TALL_FORM,
@@ -73,3 +74,20 @@ def test_a_body_on_the_floor_lies_on_her_shoe_line(render_tall, row):
     box = render_tall(row, 0).getbbox()
     assert abs(box[3] - floor) <= 1, f"{row}: lowest paint at {box[3]}, shoe line {floor}"
     assert box[0] > 0 and box[2] < 160, f"{row}: art runs off the frame side {box}"
+
+
+def test_classic_fall_draws_jump_art_and_keeps_fighter_fall_distinct():
+    from ambition_sprite2d_renderer.targets.characters import mary_o_v2_svg_poc as svg_rig
+    from ambition_sprite2d_renderer.targets.characters._mary_o_v2_svg_poc import build_rig_document
+
+    for form in (CLASSIC_TALL_FORM, TALL_FORM):
+        docs = {source.target_name: build_rig_document(svg_rig.ASSET_PATH, source, "side")
+                for source in (SHORT_FORM, TALL_FORM, FIRE_FORM)}
+        rows = {name: frames for name, frames, _ms in form.rows}
+        jump = svg_rig._draw_poc_form(form, docs, "jump", 0, rows["jump"])
+        fall = svg_rig._draw_poc_form(form, docs, "fall", 0, rows["fall"])
+        assert jump.getbbox() and fall.getbbox()
+        if form == CLASSIC_TALL_FORM:
+            assert jump.tobytes() == fall.tobytes()
+        else:
+            assert jump.tobytes() != fall.tobytes()

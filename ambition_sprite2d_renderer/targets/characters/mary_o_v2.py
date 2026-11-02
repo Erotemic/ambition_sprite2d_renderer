@@ -46,15 +46,14 @@ from ._mary_o_v2_model import (
     FormSpec,
     Pose,
     form_collision_box,
+    poses_for_form,
     _form_with_palette,
     _mix_outfit_palette,
     _transition_form,
 )
 
 def _poses_for(form: FormSpec) -> Dict[str, List[Pose]]:
-    if form.tall:
-        return TALL_LIKE_POSES
-    return SHORT_POSES
+    return poses_for_form(form)
 
 
 def _publish_frame(sprite: Image.Image) -> Image.Image:
