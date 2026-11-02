@@ -1073,6 +1073,19 @@ def bonus_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
     d.rectangle((14 * s, 24 * s, 18 * s - 1, 28 * s - 1), fill=glyph)
 
 
+def brick_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
+    """Draw loose red bricks with open joints and small cracks."""
+    d.rectangle((0, 0, 32 * s - 1, 32 * s - 1), fill=rgba("#4E2630"))
+    for row, y in enumerate((1, 17)):
+        for x in ((1, 17) if row == 0 else (-7, 9, 25)):
+            left, right = max(1, x), min(30, x + 13)
+            d.rectangle((left * s, y * s, (right + 1) * s - 1, (y + 13) * s - 1), fill=rgba("#C45D4C"))
+            d.line([(left * s, y * s), (right * s, y * s)], fill=rgba("#F2AC78"), width=max(1, int(s)))
+            d.line([(right * s, (y + 1) * s), (right * s, (y + 12) * s)], fill=rgba("#8C3741"), width=max(1, int(s)))
+    d.line([(22 * s, 3 * s), (20 * s, 7 * s), (22 * s, 10 * s)], fill=rgba("#622E37"), width=max(1, int(s)))
+    d.line([(13 * s, 20 * s), (15 * s, 24 * s), (13 * s, 28 * s)], fill=rgba("#622E37"), width=max(1, int(s)))
+
+
 def spent_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
     """Draw a spent bonus block: same silhouette, desaturated and glyphless.
 
@@ -1910,6 +1923,15 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
     # without smearing. `tight_crop=False` keeps the full canvas so
     # the tiling math is straightforward.
     EntitySpriteSpec(
+        "brick_block_tile",
+        "brick_block_tile.png",
+        "EntityArt override (a breakable brick)",
+        "breakable brick",
+        "loose red bricks with open joints and small cracks",
+        size=(32, 32),
+        tight_crop=False,
+    ),
+    EntitySpriteSpec(
         "spent_block_tile",
         "spent_block_tile.png",
         "EntityArt override (a used bonus block)",
@@ -2114,6 +2136,7 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float], None]] = {
     "soft_glow": soft_glow,
     "bonus_block_tile": bonus_block_tile,
     "bridge_plank_tile": bridge_plank_tile,
+    "brick_block_tile": brick_block_tile,
     "spent_block_tile": spent_block_tile,
     "solid_tile": solid_tile,
     "one_way_tile": one_way_tile,
