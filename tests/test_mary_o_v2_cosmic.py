@@ -38,7 +38,7 @@ def test_each_frame_is_in_its_stage() -> None:
     the same, the other way."""
     stage = cosmic.STAGE
     for name, frames, _ms in cosmic.ROWS:
-        if name in ("transform", cosmic.LEAVE_ROW):
+        if name.startswith(("transform", "shrink")):
             continue
         for index in range(frames):
             box = frame(stage, cosmic.look_for(name, index)).getbbox()
@@ -82,14 +82,23 @@ def test_the_transformation_is_not_of_parts_where_light_is_on_the_whole_figure()
     assert any(not is_of_parts(look) for look in cosmic.transformation())
 
 
-def test_her_way_out_starts_as_the_form_and_ends_as_light_and_no_more() -> None:
-    """The game plays the row and then changes her character to the form of
-    her ladder, which can be each of three. So the last frame has no thing of
-    the cosmic form in it but light, and the first has her wings."""
+def test_each_base_form_has_an_entry_and_a_return_to_its_own_body() -> None:
+    from ambition_sprite2d_renderer.targets.characters import _mary_o_v2_model as model
+
     rows = {name: (frames, ms) for name, frames, ms in cosmic.ROWS}
-    looks = cosmic.detransformation()
-    assert rows[cosmic.LEAVE_ROW] == (len(looks), cosmic.LEAVE_FRAME_MS)
-    first, last = looks[0], looks[-1]
-    assert first.wing == 1.0 and first.light == 0.0
-    assert last.light == 1.0 and (last.wing, last.hair, last.ring, last.crown) == (0, 0, 0, None)
-    assert last.lift == 0.0
+    final_pictures = []
+    for form, entry, leave in (
+        (model.SHORT_FORM, "transform_small", "shrink_small"),
+        (model.CLASSIC_TALL_FORM, "transform_tall", "shrink_tall"),
+        (model.FIRE_FORM, "transform", "shrink"),
+    ):
+        enters, leaves = cosmic.transformation(form), cosmic.detransformation(form)
+        assert rows[entry][0] == len(enters)
+        assert rows[leave][0] == len(leaves)
+        assert not enters[0].cosmic and enters[0].base_form == form
+        assert frame(cosmic.STAGE, enters[-1]).tobytes() == frame(cosmic.STAGE, cosmic.look_for("idle", 0)).tobytes()
+        assert leaves[0].cosmic and leaves[0].wing == 1.0
+        assert not leaves[-1].cosmic and leaves[-1].base_form == form
+        assert leaves[-1].light == 0.0 and leaves[-1].crown is None
+        final_pictures.append(frame(cosmic.STAGE, leaves[-1]).tobytes())
+    assert len(set(final_pictures)) == 3

@@ -13,6 +13,7 @@ frame to what is drawn in it, so the room is not paid for in the page.
 from __future__ import annotations
 
 import copy
+import dataclasses
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -35,7 +36,7 @@ TRANSFORM_FRAMES = 36
 TRANSFORM_FRAME_MS = 95
 #: Her way out of the form (`detransformation`).
 LEAVE_ROW = "shrink"
-LEAVE_FRAMES = 18
+LEAVE_FRAMES = 24
 LEAVE_FRAME_MS = 95
 
 ROWS: List[Tuple[str, int, int]] = [
@@ -61,6 +62,10 @@ ROWS: List[Tuple[str, int, int]] = [
     # changes her character (`cosmic.rs`). It ends in light, so each form she
     # can come back to follows it.
     (LEAVE_ROW, LEAVE_FRAMES, LEAVE_FRAME_MS),
+    ("transform_small", TRANSFORM_FRAMES, TRANSFORM_FRAME_MS),
+    ("transform_tall", TRANSFORM_FRAMES, TRANSFORM_FRAME_MS),
+    ("shrink_small", LEAVE_FRAMES, LEAVE_FRAME_MS),
+    ("shrink_tall", LEAVE_FRAMES, LEAVE_FRAME_MS),
 ]
 
 POSES: Dict[str, List[Pose]] = M.poses_for_form(COSMIC_FORM)
@@ -95,8 +100,8 @@ def look_for(animation: str, frame_idx: int) -> Look:
     return Look(pose=pose, anim=animation)
 
 
-def transformation() -> List[Look]:
-    """The transformation, from her fire form: 36 frames."""
+def transformation(base_form: M.FormSpec = M.FIRE_FORM) -> List[Look]:
+    """Draw the change from one base form to the cosmic form."""
     looks: List[Look] = []
     reach = Pose(bob=-0.4, arm_front_angle=165, arm_back_angle=-12, leg_front_angle=4, leg_back_angle=-4)
     # 1. The call: she lifts her hand, and the star comes down to her in a column of light.
@@ -136,12 +141,12 @@ def transformation() -> List[Look]:
             break
         looks.append(Look(pose=Pose(bob=-0.8 * (1 - t), arm_front_angle=mix(152, 10, t), arm_back_angle=mix(-46, 0, t)), beat=mix(-22, 0, t), fan=mix(1.2, 1.0, t), lift=mix(5, 0, t), sway=mix(-0.8, 0, t)))
     assert len(looks) == TRANSFORM_FRAMES, len(looks)
-    return looks
+    return [dataclasses.replace(look, base_form=base_form,
+            wing_boost=look.wing_boost if base_form.magic_stage >= 2 else 0.0) for look in looks]
 
 
-def detransformation() -> List[Look]:
-    """Her way out of the form: 18 frames. The form goes from her in the
-    order it came to her, last thing first, and she goes out in light."""
+def detransformation(base_form: M.FormSpec = M.FIRE_FORM) -> List[Look]:
+    """Remove the cosmic features, then reveal the selected base form."""
     looks: List[Look] = []
     rest = Pose(bob=-0.2, arm_front_angle=8, arm_back_angle=0)
     low = Pose(bob=-0.4, arm_front_angle=-18, arm_back_angle=14, leg_front_angle=3, leg_back_angle=-3)
@@ -162,10 +167,15 @@ def detransformation() -> List[Look]:
     # 5. A figure of light: she turns one time about, and the star goes up from her.
     for i, spin in enumerate((0.45, -0.45, -1.0)):
         looks.append(Look(pose=low, hair=0, wing=0, ring=0, light=1.0, spin=spin, lift=mix(5, 3, (i + 1) / 3), crown=(mix(9, 26, (i + 1) / 3), mix(1.1, 0.8, (i + 1) / 3), -90 + (10 + i) * 30), column=1.0))
-    # 6. She goes out in a star of light, and comes down. The star over her
-    # is gone. The last frame is light and no more, so each form follows it.
+    # The cosmic features dissolve into light before the base form returns.
     for i, (burst, column) in enumerate(((0.45, 0.8), (0.8, 0.5), (1.0, 0.2))):
         looks.append(Look(pose=low, hair=0, wing=0, ring=0, light=1.0, lift=mix(3, 0, (i + 1) / 3), crown=None, burst=burst, burst_turn=i * 12.0, column=column))
+    rest = M.poses_for_form(base_form)["idle"][0]
+    for i in range(6):
+        t = (i + 1) / 6
+        looks.append(Look(cosmic=False, base_form=base_form, pose=rest, crown=None,
+                          light=1.0 - t, burst=0.7 * (1.0 - t), column=0.2 * (1.0 - t),
+                          wing_boost=0.9 if base_form.magic_stage >= 2 else 0.0))
     assert len(looks) == LEAVE_FRAMES, len(looks)
     return looks
 
@@ -216,15 +226,19 @@ def render_cosmic(out_dir: str | Path, **opts) -> List[Path]:
     del opts
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    looks = transformation()
-    leave = detransformation()
+    transitions = {
+        "transform": transformation(),
+        LEAVE_ROW: detransformation(),
+        "transform_small": transformation(M.SHORT_FORM),
+        "transform_tall": transformation(M.CLASSIC_TALL_FORM),
+        "shrink_small": detransformation(M.SHORT_FORM),
+        "shrink_tall": detransformation(M.CLASSIC_TALL_FORM),
+    }
 
     def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
         del nframes
-        if animation == "transform":
-            return frame(STAGE, looks[frame_idx])
-        if animation == LEAVE_ROW:
-            return frame(STAGE, leave[frame_idx])
+        if animation in transitions:
+            return frame(STAGE, transitions[animation][frame_idx])
         return frame(STAGE, look_for(animation, frame_idx))
 
     frame_transform: dict = {}
@@ -274,7 +288,7 @@ def _publish_parts(render_frame, outputs, frame_transform, out_dir: Path) -> dic
         rigdoc.composite_canvas(canvas, render_frame(row, index, count), (dx, dy))
         return canvas
 
-    part_rows = [name for name, _frames, _duration in ROWS if name not in ("transform", LEAVE_ROW)]
+    part_rows = [name for name, _frames, _duration in ROWS if not name.startswith(("transform", "shrink"))]
     flipbook = build_rig_flipbook(TARGET, ROWS, published, part_rows, sheet_feet(Path(outputs["yaml"])), size)
     flipbook.pack()
     flipbook.realize = REALIZE_PARTS

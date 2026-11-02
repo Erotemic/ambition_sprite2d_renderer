@@ -87,7 +87,8 @@ IDLE_HEAD = _side_pose_head_origin(COSMIC_FORM, Pose())
 class Look:
     pose: Pose = field(default_factory=Pose)
     anim: str = "idle"
-    cosmic: bool = True       # the form under the light: fire, or cosmic
+    cosmic: bool = True
+    base_form: M.FormSpec = field(default_factory=lambda: M.FIRE_FORM)
     hair: float = 1.0         # how long the long hair is, 0 to 1
     wing: float = 1.0         # how long the feathers are, 0 to 1
     beat: float = 0.0         # the wing about its root, degrees: + is the down stroke
@@ -286,8 +287,9 @@ def figure_layers(stage: Stage, look: Look):
     OX, W = stage.ox, stage.w
     dead = look.pose.mode == "dead"
 
+    form = COSMIC_FORM if look.cosmic else look.base_form
+
     def paint(px):
-        form = COSMIC_FORM if look.cosmic else M.FIRE_FORM
         if dead:
             _draw_dead_front(px, form, look.pose)
         elif look.cosmic:
@@ -311,7 +313,7 @@ def figure_layers(stage: Stage, look: Look):
     if dead:
         hdx, hdy = 0.0, 0.0
     else:
-        hx, hy, _ = _side_pose_head_origin(COSMIC_FORM, look.pose)
+        hx, hy, _ = _side_pose_head_origin(form, look.pose)
         hdx, hdy = hx - IDLE_HEAD[0], hy - IDLE_HEAD[1]
     head = (OX + 10.2 + hdx, oy + 4.2 + hdy)
     worn = look.cosmic and not dead
