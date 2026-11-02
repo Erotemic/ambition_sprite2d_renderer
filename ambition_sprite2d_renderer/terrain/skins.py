@@ -320,6 +320,25 @@ def _courses(tile: Tile, skin: Skin, row_h: float, unit_w: float, joint: float, 
             tile.put(low, skin.dark, 0.35)
 
 
+def breakable_brick(skin: Skin) -> Image.Image:
+    """Draw loose masonry in the room palette, with open joints and cracks."""
+    tile = Tile((32, 32), True, True, skin.key, "breakable_brick")
+    tile.put(np.ones_like(tile.alpha), skin.dark)
+    for row, y in enumerate((1, 17)):
+        for x in ((1, 17) if row == 0 else (-7, 9, 25)):
+            left, right = max(1, x), min(30, x + 13)
+            body = tile.mask(lambda p, dx, dy: _box(p, dx, dy, left, y, right + 1, y + 13))
+            tile.put(body, _mix(skin.base, skin.light, 0.28))
+            top = tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(left, y), (right, y)], 1.0))
+            tile.put(top, skin.light)
+            edge = tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(right, y + 1), (right, y + 12)], 1.0))
+            tile.put(edge, _mix(skin.base, skin.dark, 0.45))
+    for points in ([(22, 3), (20, 7), (22, 10)], [(13, 20), (15, 24), (13, 28)]):
+        crack = tile.mask(lambda p, dx, dy: _line(p, dx, dy, points, 1.0))
+        tile.put(crack, skin.dark)
+    return tile.publish()
+
+
 def fill(skin: Skin) -> Image.Image:
     tile = Tile(FILL, True, True, skin.key, "fill")
     rng = tile.rng
@@ -1011,6 +1030,7 @@ def oneway(skin: Skin) -> Image.Image:
 
 PARTS: dict[str, Callable[[Skin], Image.Image]] = {
     "fill": fill,
+    "breakable_brick": breakable_brick,
     "cap": cap,
     "under": under,
     "side": side,
