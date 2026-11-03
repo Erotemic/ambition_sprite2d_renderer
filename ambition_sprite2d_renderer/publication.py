@@ -501,7 +501,7 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=
     return published
 
 
-def inventory(*, deep=False, requested=None) -> dict:
+def inventory(*, deep=False, requested=None, include_atlases=True) -> dict:
     from .products import Digests
     report = discover()
     sources, chain = source_files(), toolchain()
@@ -544,7 +544,7 @@ def inventory(*, deep=False, requested=None) -> dict:
             members = [p for p in (manifest or {}).get("files", {}) if p.startswith(TIERS[tier] + "/")]
             unit["status"]["tiers"][tier] = {"state": state if members else "missing", "missing": [], "components": {}}
         units[unit["id"]] = unit
-    for tier in TIERS:
+    for tier in TIERS if include_atlases else ():
         uid = "atlas:"+tier
         key = selected["bundles"].get(uid)
         manifest = store.bundle(key) if key else None
@@ -670,7 +670,7 @@ def main(argv=None):
             result = adopt_existing(args.adopt_existing, scope=args.scope)
         elif args.check:
             names, _ = names_in(args.scope, args.target)
-            result = inventory(deep=args.deep, requested=set(names))
+            result = inventory(deep=args.deep, requested=set(names), include_atlases=not args.target)
             if not args.json:
                 for uid, unit in result["units"].items():
                     scope = unit["status"].get("scope")
