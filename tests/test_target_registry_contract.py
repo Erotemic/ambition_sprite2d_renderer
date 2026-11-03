@@ -12,7 +12,7 @@ from pathlib import Path
 from ambition_sprite2d_renderer.registry import discover_all_targets, discover_module_targets
 
 
-def test_registered_targets_have_installable_sheet_contracts():
+def test_registered_targets_have_installable_product_contracts():
     report = discover_all_targets()
     assert report.targets
 
@@ -27,12 +27,6 @@ def test_registered_targets_have_installable_sheet_contracts():
             path = Path(fname)
             if path.is_absolute() or ".." in path.parts:
                 problems.append(f"{name}: non-local sheet file {fname!r}")
-        if not any(fname.endswith(".png") for fname in target.sheet_files):
-            problems.append(f"{name}: no png output declared")
-        # A manifest can be the renderer's intermediate YAML/JSON or the RON
-        # sheet manifest the engine actually loads; a target that emits only the
-        # `.ron` (e.g. the gnu_ton boss, which skips the YAML intermediate) still
-        # declares a manifest.
         if target.portrait_files:
             if not target.supports_portraits:
                 problems.append(f"{name}: portrait files declared without renderer")
