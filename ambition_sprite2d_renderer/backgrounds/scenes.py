@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, art_dimension, art_quarters, eureka, evil, foregrounds, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
+from . import arenas, art_dimension, art_quarters, eureka, evil, foregrounds, history_eras, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from .artkit import Art
 from .parts import LAYER_BLUR, LAYER_SIZE
 
@@ -88,6 +88,16 @@ SCENES: dict[str, Scene] = {
     "art_resonance": art_quarters.art_resonance,
     "art_stage": art_quarters.art_stage,
     "art_forge": art_quarters.art_forge,
+    # The History dimension: eight eras on one road, from the first farms
+    # to the mills (`history_eras.py`).
+    "history_crescent": history_eras.history_crescent,
+    "history_nile": history_eras.history_nile,
+    "history_classical": history_eras.history_classical,
+    "history_silk": history_eras.history_silk,
+    "history_steppe": history_eras.history_steppe,
+    "history_monsoon": history_eras.history_monsoon,
+    "history_sail": history_eras.history_sail,
+    "history_industrial": history_eras.history_industrial,
 }
 
 

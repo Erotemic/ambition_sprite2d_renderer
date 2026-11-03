@@ -295,6 +295,111 @@ def star_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def pylon(tile: Tile, c: dict) -> np.ndarray:
+    """The door of a temple of Egypt: two leaves of wood with columns of
+    signs cut in them, a cornice over the frame, and the winged sun over the
+    leaves with its disc of light."""
+    leaf = _frame(tile, c)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.6), c["dark"], 0.8)
+    # The cornice: a band that leans out over the top of the frame.
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, 3.4)), c["frame_light"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 3.4, W, 4.4)), c["dark"], 0.5)
+    # Columns of signs in each leaf.
+    rng = tile.rng
+    for x in (14.0, 22.0, 41.0, 49.0):
+        tile.put(leaf * (np.abs(tile.x - x - 3.6) < 0.3) * (tile.y > 36.0) * (tile.y < 106.0), c["dark"], 0.5)
+        signs = [(x + rng.uniform(0.6, 2.6), y) for y in np.arange(40.0, 104.0, 5.0)]
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, sx, sy, sx + rng.choice([1.0, 1.6, 2.4]), sy + rng.choice([1.0, 2.0])) for sx, sy in signs]) * leaf, c["leaf_light"], 0.55)
+    # The winged sun: a disc of light and two wings of gold.
+    cx, cy = W * 0.5, 22.0
+    for side in (-1.0, 1.0):
+        wing = [(cx + side * 4.0, cy - 2.0), (cx + side * 22.0, cy - 4.0), (cx + side * 24.0, cy - 1.0), (cx + side * 20.0, cy + 2.6), (cx + side * 4.0, cy + 2.0)]
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, wing)), c["accent"])
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(cx + side * (8.0 + k * 3.6), cy - 2.4), (cx + side * (7.0 + k * 3.6), cy + 1.8)], 0.4) for k in range(5)]), c["dark"], 0.45)
+    _window(tile, c, cx - 4.0, cy - 4.0, cx + 4.0, cy + 4.0, round_=True)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, cx + side * 5.4, cy + 3.0, 1.0, ry=1.8) for side in (-1.0, 1.0)]), c["accent"])
+    return leaf
+
+
+def temple(tile: Tile, c: dict) -> np.ndarray:
+    """The door of a Greek temple: two leaves of bronze with panels and studs
+    between two fluted columns, a lintel with the key pattern, and a small
+    round light in the lintel."""
+    leaf = _frame(tile, c)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.6), c["dark"], 0.8)
+    # The columns stand on the frame at each side.
+    for x0 in (0.0, W - 7.0):
+        col = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, 8.0, x0 + 7.0, H - STEP))
+        tile.put(col, c["frame"])
+        for k in range(3):
+            tile.put(col * (np.abs(tile.x - (x0 + 1.6 + k * 1.9)) < 0.35), c["dark"], 0.35)
+        tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0 - 0.0, 8.0, x0 + 7.0, 10.0), _box(p, dx, dy, x0, H - STEP - 2.0, x0 + 7.0, H - STEP))), c["frame_light"])
+    # The lintel and its key pattern.
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, 8.0)), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, 1.0)), c["frame_light"])
+
+    def key(p, dx, dy, x):
+        _line(p, dx, dy, [(x, 6.6), (x, 2.0), (x + 4.4, 2.0), (x + 4.4, 5.0), (x + 1.8, 5.0), (x + 1.8, 3.4), (x + 3.0, 3.4)], 0.7)
+        _line(p, dx, dy, [(x, 6.6), (x + 6.0, 6.6)], 0.7)
+
+    tile.put(tile.mask(lambda p, dx, dy: [key(p, dx, dy, 1.5 + k * 6.0) for k in range(10)]), c["accent"])
+    # The panels of the bronze leaves, with studs.
+    for x0 in (F + 3.0, W * 0.5 + 2.6):
+        for y0, y1 in ((16.0, 54.0), (60.0, 108.0)):
+            x1 = x0 + W * 0.5 - F - 5.6
+            tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0, y0, x1, y0 + 0.8), _box(p, dx, dy, x0, y0, x0 + 0.8, y1))) * leaf, c["leaf_light"], 0.6)
+            tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0, y1 - 0.8, x1, y1), _box(p, dx, dy, x1 - 0.8, y0, x1, y1))) * leaf, c["dark"], 0.5)
+            tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.8) for x in (x0 + 3.0, x1 - 3.0) for y in (y0 + 3.0, y1 - 3.0)]) * leaf, c["leaf_light"], 0.8)
+    _window(tile, c, W * 0.5 - 4.0, 9.0, W * 0.5 + 4.0, 15.0, round_=True)
+    return leaf
+
+
+def studded(tile: Tile, c: dict) -> np.ndarray:
+    """A door of two leaves in lacquer or carved wood, set with rows of
+    studs of brass, a ring to knock with on each leaf, and a small window
+    of lattice over them."""
+    leaf = _frame(tile, c)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.6), c["dark"], 0.8)
+    tile.tone((tile.noise(3, 10, 2) - 0.5) * 0.10 * leaf)
+    # A carved band round the frame.
+    band = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 1.4, 1.4, W - 1.4, H - STEP)) * (1.0 - tile.mask(lambda p, dx, dy: _box(p, dx, dy, 3.6, 3.6, W - 3.6, H - STEP)))
+    tile.put(band * (((tile.x + tile.y) % 3.0) < 1.2), c["dark"], 0.45)
+    studs = [(x, y) for x in (F + 5.0, F + 11.0, F + 17.0, W - F - 17.0, W - F - 11.0, W - F - 5.0) for y in np.arange(36.0, 112.0, 9.0)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x + 0.4, y + 0.4, 1.4) for x, y in studs]) * leaf, c["dark"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 1.3) for x, y in studs]) * leaf, c["accent"])
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.4, y - 0.4, 0.45) for x, y in studs]) * leaf, (255, 250, 220), 0.6)
+    for x in (W * 0.5 - 4.4, W * 0.5 + 4.4):
+        tile.put(tile.mask(lambda p, dx, dy: p.ellipse([(x - 2.6) * K + dx, (66.0 - 2.6) * K + dy, (x + 2.6) * K + dx, (66.0 + 2.6) * K + dy], outline=255, width=int(0.8 * K))), c["accent"])
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, 63.0, 1.4)), c["accent"])
+    _window(tile, c, 20.0, 14.0, W - 20.0, 26.0)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.4, 14.0, x + 0.4, 26.0) for x in (25.0, 31.5, 38.0)] + [_box(p, dx, dy, 20.0, y - 0.4, W - 20.0, y + 0.4) for y in (18.0, 22.0)]), c["frame"])
+    return leaf
+
+
+def ger_door(tile: Tile, c: dict) -> np.ndarray:
+    """The painted door of a ger: one leaf of orange wood, its border and a
+    lattice of the endless knot in blue and white, and a small window over
+    it in the frame."""
+    leaf = _frame(tile, c)
+    x0, y0, x1, y1 = F + 3.0, F + 22.0, W - F - 3.0, H - STEP - 4.0
+    border = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0, x1, y1)) * (1.0 - tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 1.4, y0 + 1.4, x1 - 1.4, y1 - 1.4)))
+    tile.put(border * leaf, c["accent"])
+    # The knot: two sets of bands at a slant that cross in a lattice, each
+    # band light in its middle.
+    cx, cy = W * 0.5, (y0 + y1) * 0.5
+    inner = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 4.0, y0 + 6.0, x1 - 4.0, y1 - 6.0)) * leaf
+    d1 = np.abs(((tile.x - cx) + (tile.y - cy)) % 9.0 - 4.5)
+    d2 = np.abs(((tile.x - cx) - (tile.y - cy)) % 9.0 - 4.5)
+    knot = inner * np.clip(1.2 - np.minimum(d1, d2), 0.0, 1.0)
+    tile.put(knot, c["accent"])
+    tile.put(inner * np.clip(0.6 - np.minimum(d1, d2), 0.0, 1.0), (240, 236, 220), 0.8)
+    # Suns in the corners of the border.
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 1.6) for x in (x0 + 0.7, x1 - 0.7) for y in (y0 + 0.7, y1 - 0.7)]), (240, 236, 220))
+    _window(tile, c, 22.0, 10.0, W - 22.0, 20.0)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, W - F - 6.0, 66.0, 1.8)), c["accent"])
+    return leaf
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -312,6 +417,10 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     book: (SWING, False),
     organ: (SLIDE, True),
     star_door: (SWING, False),
+    pylon: (SWING, True),
+    temple: (SWING, True),
+    studded: (SWING, True),
+    ger_door: (SWING, False),
 }
 
 
@@ -369,6 +478,21 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "art_resonance": (organ, _colours((40, 34, 52), (196, 152, 72), (12, 12, 22), (80, 230, 255), (170, 240, 255))),
     "art_stage": (star_door, _colours((60, 30, 34), (40, 34, 44), (20, 12, 16), (236, 182, 70), (255, 230, 170))),
     "art_forge": (iron, _colours((150, 74, 48), (70, 50, 44), (30, 14, 10), (184, 100, 60), (255, 156, 70))),
+    # The History dimension. The Crescent: a door of cedar in an arch of
+    # mudbrick, a step of lapis; the Nile: a temple door under the winged
+    # sun; the Classical Shore: bronze between two columns; the Silk Road:
+    # red lacquer with studs of brass; the steppe: the painted orange door of
+    # a ger; the Monsoon Coast: carved wood with brass bosses; the Age of
+    # Sail: the green door of a counting house; the Industrial Age: an iron
+    # mill door with rivets in a frame of brick.
+    "history_crescent": (plank, _colours((186, 138, 92), (120, 66, 42), (50, 30, 22), (52, 84, 164), (255, 214, 150))),
+    "history_nile": (pylon, _colours((214, 176, 120), (110, 76, 48), (54, 36, 24), (226, 180, 70), (255, 206, 120))),
+    "history_classical": (temple, _colours((226, 222, 212), (126, 94, 52), (40, 36, 34), (180, 82, 52), (255, 236, 190))),
+    "history_silk": (studded, _colours((70, 40, 30), (160, 38, 34), (36, 16, 14), (220, 172, 72), (255, 196, 110))),
+    "history_steppe": (ger_door, _colours((150, 70, 34), (222, 118, 40), (50, 26, 14), (52, 96, 170), (255, 220, 160))),
+    "history_monsoon": (studded, _colours((122, 82, 52), (138, 96, 58), (48, 32, 22), (230, 186, 80), (255, 214, 140))),
+    "history_sail": (plank, _colours((164, 154, 140), (52, 82, 66), (26, 30, 28), (202, 160, 72), (255, 214, 150))),
+    "history_industrial": (iron, _colours((132, 64, 48), (72, 74, 82), (24, 22, 24), (190, 150, 80), (255, 206, 120))),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

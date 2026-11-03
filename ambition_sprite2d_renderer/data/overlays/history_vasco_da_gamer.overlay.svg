@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600mm" height="600mm" viewBox="0 0 1600 600" data-overlay-ref="height:170 head:27.37">
+<!-- Hand-drawn overlay art for Vasco da Gamer (chargen/overlay.py). A gamer's headset over his hair, its microphone at his mouth; in his near hand a brass astrolabe that he holds like a game controller. Each group draws one rig part of one view, in SVG units with its anchor joint at (0, 0); its transform only places it over the chargen SVG for an editor. -->
+<g data-view="front">
+  <g data-overlay-part="hair" data-overlay-mode="over" data-overlay-anchor="neck" data-overlay-scale="head head" transform="translate(160,218)">
+    <path d="M-33,-31 L-32.37,-38.41 L-30.49,-45.54 L-27.44,-52.11 L-23.33,-57.87 L-18.33,-62.6 L-12.63,-66.11 L-6.44,-68.27 L-0,-69 L6.44,-68.27 L12.63,-66.11 L18.33,-62.6 L23.33,-57.87 L27.44,-52.11 L30.49,-45.54 L32.37,-38.41 L33,-31" fill="none" stroke="#1d1714" stroke-width="6.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-33,-31 L-32.37,-38.41 L-30.49,-45.54 L-27.44,-52.11 L-23.33,-57.87 L-18.33,-62.6 L-12.63,-66.11 L-6.44,-68.27 L-0,-69 L6.44,-68.27 L12.63,-66.11 L18.33,-62.6 L23.33,-57.87 L27.44,-52.11 L30.49,-45.54 L32.37,-38.41 L33,-31" fill="none" stroke="#3a3a44" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-33,-31 L-32.37,-38.41 L-30.49,-45.54 L-27.44,-52.11 L-23.33,-57.87 L-18.33,-62.6 L-12.63,-66.11 L-6.44,-68.27 L-0,-69 L6.44,-68.27 L12.63,-66.11 L18.33,-62.6 L23.33,-57.87 L27.44,-52.11 L30.49,-45.54 L32.37,-38.41 L33,-31" fill="none" stroke="#6a6a78" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-26,-30 L-26.2,-27.22 L-26.76,-24.71 L-27.65,-22.72 L-28.76,-21.44 L-30,-21 L-31.24,-21.44 L-32.35,-22.72 L-33.24,-24.71 L-33.8,-27.22 L-34,-30 L-33.8,-32.78 L-33.24,-35.29 L-32.35,-37.28 L-31.24,-38.56 L-30,-39 L-28.76,-38.56 L-27.65,-37.28 L-26.76,-35.29 L-26.2,-32.78 Z" fill="#2a2a32" stroke="#1d1714" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-27.2,-31 L-27.31,-29.3 L-27.62,-27.77 L-28.11,-26.55 L-28.72,-25.77 L-29.4,-25.5 L-30.08,-25.77 L-30.69,-26.55 L-31.18,-27.77 L-31.49,-29.3 L-31.6,-31 L-31.49,-32.7 L-31.18,-34.23 L-30.69,-35.45 L-30.08,-36.23 L-29.4,-36.5 L-28.72,-36.23 L-28.11,-35.45 L-27.62,-34.23 L-27.31,-32.7 Z" fill="#e8368c"/>
+    <path d="M34,-30 L33.8,-27.22 L33.24,-24.71 L32.35,-22.72 L31.24,-21.44 L30,-21 L28.76,-21.44 L27.65,-22.72 L26.76,-24.71 L26.2,-27.22 L26,-30 L26.2,-32.78 L26.76,-35.29 L27.65,-37.28 L28.76,-38.56 L30,-39 L31.24,-38.56 L32.35,-37.28 L33.24,-35.29 L33.8,-32.78 Z" fill="#2a2a32" stroke="#1d1714" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M32.8,-31 L32.69,-29.3 L32.38,-27.77 L31.89,-26.55 L31.28,-25.77 L30.6,-25.5 L29.92,-25.77 L29.31,-26.55 L28.82,-27.77 L28.51,-29.3 L28.4,-31 L28.51,-32.7 L28.82,-34.23 L29.31,-35.45 L29.92,-36.23 L30.6,-36.5 L31.28,-36.23 L31.89,-35.45 L32.38,-34.23 L32.69,-32.7 Z" fill="#e8368c"/>
+    <path d="M-29,-24 L-19.5,-4 L-9,-10" fill="none" stroke="#1d1714" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-29,-24 L-19.5,-4 L-9,-10" fill="none" stroke="#3a3a44" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-5.6,-10 L-5.77,-8.95 L-6.25,-8 L-7,-7.25 L-7.95,-6.77 L-9,-6.6 L-10.05,-6.77 L-11,-7.25 L-11.75,-8 L-12.23,-8.95 L-12.4,-10 L-12.23,-11.05 L-11.75,-12 L-11,-12.75 L-10.05,-13.23 L-9,-13.4 L-7.95,-13.23 L-7,-12.75 L-6.25,-12 L-5.77,-11.05 Z" fill="#2a2a32" stroke="#1d1714" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+  <g data-overlay-part="near_hand" data-overlay-mode="over" data-overlay-anchor="near_grip" data-overlay-scale="height height" transform="translate(160,400)">
+    <path d="M-16.5,14 L-7.42,9 L7.42,9 L16.5,14 L17.32,28 L13.2,35 L8.25,30 L-8.25,30 L-13.2,35 L-17.32,28 Z" fill="#d6aa42" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M6.05,20 L5.84,22.85 L5.24,25.5 L4.28,27.78 L3.03,29.53 L1.57,30.63 L0,31 L-1.57,30.63 L-3.02,29.53 L-4.28,27.78 L-5.24,25.5 L-5.84,22.85 L-6.05,20 L-5.84,17.15 L-5.24,14.5 L-4.28,12.22 L-3.03,10.47 L-1.57,9.37 L-0,9 L1.57,9.37 L3.03,10.47 L4.28,12.22 L5.24,14.5 L5.84,17.15 Z" fill="#b88a2a" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M4.68,20 L5.78,20" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M4.05,24.25 L5,25.25" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M2.34,27.36 L2.89,29.09" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,28.5 L0,30.5" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-2.34,27.36 L-2.89,29.09" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-4.05,24.25 L-5,25.25" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-4.68,20 L-5.78,20" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-4.05,15.75 L-5,14.75" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-2.34,12.64 L-2.89,10.91" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-0,11.5 L-0,9.5" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M2.34,12.64 L2.89,10.91" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M4.05,15.75 L5,14.75" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-3.85,25 L3.85,15" fill="none" stroke="#fae08c" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,16 L1.4,20 L0,24 L-1.4,20 Z" fill="#fae08c" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-13.42,21 L-9.02,21" fill="none" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-11.22,17 L-11.22,25" fill="none" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M12.32,16.6 L12.11,17.78 L11.56,18.5 L10.88,18.5 L10.33,17.78 L10.12,16.6 L10.33,15.42 L10.88,14.7 L11.56,14.7 L12.11,15.42 Z" fill="#28c8ec" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M14.3,20.6 L14.09,21.78 L13.54,22.5 L12.86,22.5 L12.31,21.78 L12.1,20.6 L12.31,19.42 L12.86,18.7 L13.54,18.7 L14.09,19.42 Z" fill="#e23a3a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M12.32,24.4 L12.11,25.58 L11.56,26.3 L10.88,26.3 L10.33,25.58 L10.12,24.4 L10.33,23.22 L10.88,22.5 L11.56,22.5 L12.11,23.22 Z" fill="#6ec05a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M10.34,20.6 L10.13,21.78 L9.58,22.5 L8.9,22.5 L8.35,21.78 L8.14,20.6 L8.35,19.42 L8.9,18.7 L9.58,18.7 L10.13,19.42 Z" fill="#f2c84a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</g>
+<g data-view="front_3q">
+  <g data-overlay-part="hair" data-overlay-mode="over" data-overlay-anchor="neck" data-overlay-scale="head head" transform="translate(480,218)">
+    <path d="M-17,-30 L-11.05,-58 L2.9,-70" fill="none" stroke="#1d1714" stroke-width="6.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-17,-30 L-11.05,-58 L2.9,-70" fill="none" stroke="#3a3a44" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-17,-30 L-11.05,-58 L2.9,-70" fill="none" stroke="#6a6a78" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-11,-30 L-11.29,-27.22 L-12.15,-24.71 L-13.47,-22.72 L-15.15,-21.44 L-17,-21 L-18.85,-21.44 L-20.53,-22.72 L-21.85,-24.71 L-22.71,-27.22 L-23,-30 L-22.71,-32.78 L-21.85,-35.29 L-20.53,-37.28 L-18.85,-38.56 L-17,-39 L-15.15,-38.56 L-13.47,-37.28 L-12.15,-35.29 L-11.29,-32.78 Z" fill="#2a2a32" stroke="#1d1714" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-13.1,-31 L-13.26,-29.3 L-13.73,-27.77 L-14.46,-26.55 L-15.38,-25.77 L-16.4,-25.5 L-17.42,-25.77 L-18.34,-26.55 L-19.07,-27.77 L-19.54,-29.3 L-19.7,-31 L-19.54,-32.7 L-19.07,-34.23 L-18.34,-35.45 L-17.42,-36.23 L-16.4,-36.5 L-15.38,-36.23 L-14.46,-35.45 L-13.73,-34.23 L-13.26,-32.7 Z" fill="#e8368c"/>
+    <path d="M-16,-24 L0.5,-5 L18,-11" fill="none" stroke="#1d1714" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-16,-24 L0.5,-5 L18,-11" fill="none" stroke="#3a3a44" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M21.4,-11 L21.23,-9.95 L20.75,-9 L20,-8.25 L19.05,-7.77 L18,-7.6 L16.95,-7.77 L16,-8.25 L15.25,-9 L14.77,-9.95 L14.6,-11 L14.77,-12.05 L15.25,-13 L16,-13.75 L16.95,-14.23 L18,-14.4 L19.05,-14.23 L20,-13.75 L20.75,-13 L21.23,-12.05 Z" fill="#2a2a32" stroke="#1d1714" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+  <g data-overlay-part="near_hand" data-overlay-mode="over" data-overlay-anchor="near_grip" data-overlay-scale="height height" transform="translate(480,400)">
+    <path d="M-22.5,14 L-10.12,9 L10.12,9 L22.5,14 L23.62,28 L18,35 L11.25,30 L-11.25,30 L-18,35 L-23.62,28 Z" fill="#d6aa42" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M8.25,20 L7.97,22.85 L7.14,25.5 L5.83,27.78 L4.13,29.53 L2.14,30.63 L0,31 L-2.14,30.63 L-4.12,29.53 L-5.83,27.78 L-7.14,25.5 L-7.97,22.85 L-8.25,20 L-7.97,17.15 L-7.14,14.5 L-5.83,12.22 L-4.13,10.47 L-2.14,9.37 L-0,9 L2.14,9.37 L4.13,10.47 L5.83,12.22 L7.14,14.5 L7.97,17.15 Z" fill="#b88a2a" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M6.38,20 L7.88,20" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M5.52,24.25 L6.82,25.25" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M3.19,27.36 L3.94,29.09" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,28.5 L0,30.5" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-3.19,27.36 L-3.94,29.09" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-5.52,24.25 L-6.82,25.25" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-6.38,20 L-7.88,20" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-5.52,15.75 L-6.82,14.75" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-3.19,12.64 L-3.94,10.91" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-0,11.5 L-0,9.5" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M3.19,12.64 L3.94,10.91" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M5.52,15.75 L6.82,14.75" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-5.25,25 L5.25,15" fill="none" stroke="#fae08c" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,16 L1.4,20 L0,24 L-1.4,20 Z" fill="#fae08c" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-18.3,21 L-12.3,21" fill="none" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-15.3,17 L-15.3,25" fill="none" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M16.8,16.6 L16.51,17.78 L15.76,18.5 L14.84,18.5 L14.09,17.78 L13.8,16.6 L14.09,15.42 L14.84,14.7 L15.76,14.7 L16.51,15.42 Z" fill="#28c8ec" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M19.5,20.6 L19.21,21.78 L18.46,22.5 L17.54,22.5 L16.79,21.78 L16.5,20.6 L16.79,19.42 L17.54,18.7 L18.46,18.7 L19.21,19.42 Z" fill="#e23a3a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M16.8,24.4 L16.51,25.58 L15.76,26.3 L14.84,26.3 L14.09,25.58 L13.8,24.4 L14.09,23.22 L14.84,22.5 L15.76,22.5 L16.51,23.22 Z" fill="#6ec05a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M14.1,20.6 L13.81,21.78 L13.06,22.5 L12.14,22.5 L11.39,21.78 L11.1,20.6 L11.39,19.42 L12.14,18.7 L13.06,18.7 L13.81,19.42 Z" fill="#f2c84a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</g>
+<g data-view="side">
+  <g data-overlay-part="hair" data-overlay-mode="over" data-overlay-anchor="neck" data-overlay-scale="head head" transform="translate(800,218)">
+    <path d="M-1,-30 L-7.65,-58 L-6.3,-70" fill="none" stroke="#1d1714" stroke-width="6.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-1,-30 L-7.65,-58 L-6.3,-70" fill="none" stroke="#3a3a44" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-1,-30 L-7.65,-58 L-6.3,-70" fill="none" stroke="#6a6a78" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M5,-30 L4.71,-27.22 L3.85,-24.71 L2.53,-22.72 L0.85,-21.44 L-1,-21 L-2.85,-21.44 L-4.53,-22.72 L-5.85,-24.71 L-6.71,-27.22 L-7,-30 L-6.71,-32.78 L-5.85,-35.29 L-4.53,-37.28 L-2.85,-38.56 L-1,-39 L0.85,-38.56 L2.53,-37.28 L3.85,-35.29 L4.71,-32.78 Z" fill="#2a2a32" stroke="#1d1714" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M2.9,-31 L2.74,-29.3 L2.27,-27.77 L1.54,-26.55 L0.62,-25.77 L-0.4,-25.5 L-1.42,-25.77 L-2.34,-26.55 L-3.07,-27.77 L-3.54,-29.3 L-3.7,-31 L-3.54,-32.7 L-3.07,-34.23 L-2.34,-35.45 L-1.42,-36.23 L-0.4,-36.5 L0.62,-36.23 L1.54,-35.45 L2.27,-34.23 L2.74,-32.7 Z" fill="#e8368c"/>
+    <path d="M0,-24 L17.5,-5 L36,-11" fill="none" stroke="#1d1714" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,-24 L17.5,-5 L36,-11" fill="none" stroke="#3a3a44" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M39.4,-11 L39.23,-9.95 L38.75,-9 L38,-8.25 L37.05,-7.77 L36,-7.6 L34.95,-7.77 L34,-8.25 L33.25,-9 L32.77,-9.95 L32.6,-11 L32.77,-12.05 L33.25,-13 L34,-13.75 L34.95,-14.23 L36,-14.4 L37.05,-14.23 L38,-13.75 L38.75,-13 L39.23,-12.05 Z" fill="#2a2a32" stroke="#1d1714" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+  <g data-overlay-part="near_hand" data-overlay-mode="over" data-overlay-anchor="near_grip" data-overlay-scale="height height" transform="translate(800,400)">
+    <path d="M-30,14 L-13.5,9 L13.5,9 L30,14 L31.5,28 L24,35 L15,30 L-15,30 L-24,35 L-31.5,28 Z" fill="#d6aa42" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M11,20 L10.63,22.85 L9.53,25.5 L7.78,27.78 L5.5,29.53 L2.85,30.63 L0,31 L-2.85,30.63 L-5.5,29.53 L-7.78,27.78 L-9.53,25.5 L-10.63,22.85 L-11,20 L-10.63,17.15 L-9.53,14.5 L-7.78,12.22 L-5.5,10.47 L-2.85,9.37 L-0,9 L2.85,9.37 L5.5,10.47 L7.78,12.22 L9.53,14.5 L10.63,17.15 Z" fill="#b88a2a" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M8.5,20 L10.5,20" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M7.36,24.25 L9.09,25.25" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M4.25,27.36 L5.25,29.09" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,28.5 L0,30.5" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-4.25,27.36 L-5.25,29.09" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-7.36,24.25 L-9.09,25.25" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-8.5,20 L-10.5,20" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-7.36,15.75 L-9.09,14.75" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-4.25,12.64 L-5.25,10.91" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-0,11.5 L-0,9.5" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M4.25,12.64 L5.25,10.91" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M7.36,15.75 L9.09,14.75" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-7,25 L7,15" fill="none" stroke="#fae08c" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,16 L1.4,20 L0,24 L-1.4,20 Z" fill="#fae08c" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-24.4,21 L-16.4,21" fill="none" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-20.4,17 L-20.4,25" fill="none" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M22.4,16.6 L22.02,17.78 L21.02,18.5 L19.78,18.5 L18.78,17.78 L18.4,16.6 L18.78,15.42 L19.78,14.7 L21.02,14.7 L22.02,15.42 Z" fill="#28c8ec" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M26,20.6 L25.62,21.78 L24.62,22.5 L23.38,22.5 L22.38,21.78 L22,20.6 L22.38,19.42 L23.38,18.7 L24.62,18.7 L25.62,19.42 Z" fill="#e23a3a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M22.4,24.4 L22.02,25.58 L21.02,26.3 L19.78,26.3 L18.78,25.58 L18.4,24.4 L18.78,23.22 L19.78,22.5 L21.02,22.5 L22.02,23.22 Z" fill="#6ec05a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M18.8,20.6 L18.42,21.78 L17.42,22.5 L16.18,22.5 L15.18,21.78 L14.8,20.6 L15.18,19.42 L16.18,18.7 L17.42,18.7 L18.42,19.42 Z" fill="#f2c84a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</g>
+<g data-view="back_3q">
+  <g data-overlay-part="hair" data-overlay-mode="over" data-overlay-anchor="neck" data-overlay-scale="head head" transform="translate(1120,218)">
+    <path d="M22,-30 L13.3,-58 L12.6,-70" fill="none" stroke="#1d1714" stroke-width="6.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M22,-30 L13.3,-58 L12.6,-70" fill="none" stroke="#3a3a44" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M22,-30 L13.3,-58 L12.6,-70" fill="none" stroke="#6a6a78" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M28,-30 L27.71,-27.22 L26.85,-24.71 L25.53,-22.72 L23.85,-21.44 L22,-21 L20.15,-21.44 L18.47,-22.72 L17.15,-24.71 L16.29,-27.22 L16,-30 L16.29,-32.78 L17.15,-35.29 L18.47,-37.28 L20.15,-38.56 L22,-39 L23.85,-38.56 L25.53,-37.28 L26.85,-35.29 L27.71,-32.78 Z" fill="#2a2a32" stroke="#1d1714" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M25.9,-31 L25.74,-29.3 L25.27,-27.77 L24.54,-26.55 L23.62,-25.77 L22.6,-25.5 L21.58,-25.77 L20.66,-26.55 L19.93,-27.77 L19.46,-29.3 L19.3,-31 L19.46,-32.7 L19.93,-34.23 L20.66,-35.45 L21.58,-36.23 L22.6,-36.5 L23.62,-36.23 L24.54,-35.45 L25.27,-34.23 L25.74,-32.7 Z" fill="#e8368c"/>
+  </g>
+  <g data-overlay-part="near_hand" data-overlay-mode="over" data-overlay-anchor="near_grip" data-overlay-scale="height height" transform="translate(1120,400)">
+    <path d="M-22.5,14 L-10.12,9 L10.12,9 L22.5,14 L23.62,28 L18,35 L11.25,30 L-11.25,30 L-18,35 L-23.62,28 Z" fill="#d6aa42" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M8.25,20 L7.97,22.85 L7.14,25.5 L5.83,27.78 L4.13,29.53 L2.14,30.63 L0,31 L-2.14,30.63 L-4.12,29.53 L-5.83,27.78 L-7.14,25.5 L-7.97,22.85 L-8.25,20 L-7.97,17.15 L-7.14,14.5 L-5.83,12.22 L-4.13,10.47 L-2.14,9.37 L-0,9 L2.14,9.37 L4.13,10.47 L5.83,12.22 L7.14,14.5 L7.97,17.15 Z" fill="#b88a2a" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M6.38,20 L7.88,20" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M5.52,24.25 L6.82,25.25" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M3.19,27.36 L3.94,29.09" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,28.5 L0,30.5" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-3.19,27.36 L-3.94,29.09" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-5.52,24.25 L-6.82,25.25" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-6.38,20 L-7.88,20" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-5.52,15.75 L-6.82,14.75" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-3.19,12.64 L-3.94,10.91" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-0,11.5 L-0,9.5" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M3.19,12.64 L3.94,10.91" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M5.52,15.75 L6.82,14.75" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-5.25,25 L5.25,15" fill="none" stroke="#fae08c" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,16 L1.4,20 L0,24 L-1.4,20 Z" fill="#fae08c" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-18.3,21 L-12.3,21" fill="none" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-15.3,17 L-15.3,25" fill="none" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M16.8,16.6 L16.51,17.78 L15.76,18.5 L14.84,18.5 L14.09,17.78 L13.8,16.6 L14.09,15.42 L14.84,14.7 L15.76,14.7 L16.51,15.42 Z" fill="#28c8ec" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M19.5,20.6 L19.21,21.78 L18.46,22.5 L17.54,22.5 L16.79,21.78 L16.5,20.6 L16.79,19.42 L17.54,18.7 L18.46,18.7 L19.21,19.42 Z" fill="#e23a3a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M16.8,24.4 L16.51,25.58 L15.76,26.3 L14.84,26.3 L14.09,25.58 L13.8,24.4 L14.09,23.22 L14.84,22.5 L15.76,22.5 L16.51,23.22 Z" fill="#6ec05a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M14.1,20.6 L13.81,21.78 L13.06,22.5 L12.14,22.5 L11.39,21.78 L11.1,20.6 L11.39,19.42 L12.14,18.7 L13.06,18.7 L13.81,19.42 Z" fill="#f2c84a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</g>
+<g data-view="back">
+  <g data-overlay-part="hair" data-overlay-mode="over" data-overlay-anchor="neck" data-overlay-scale="head head" transform="translate(1440,218)">
+    <path d="M-33,-31 L-32.37,-38.41 L-30.49,-45.54 L-27.44,-52.11 L-23.33,-57.87 L-18.33,-62.6 L-12.63,-66.11 L-6.44,-68.27 L-0,-69 L6.44,-68.27 L12.63,-66.11 L18.33,-62.6 L23.33,-57.87 L27.44,-52.11 L30.49,-45.54 L32.37,-38.41 L33,-31" fill="none" stroke="#1d1714" stroke-width="6.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-33,-31 L-32.37,-38.41 L-30.49,-45.54 L-27.44,-52.11 L-23.33,-57.87 L-18.33,-62.6 L-12.63,-66.11 L-6.44,-68.27 L-0,-69 L6.44,-68.27 L12.63,-66.11 L18.33,-62.6 L23.33,-57.87 L27.44,-52.11 L30.49,-45.54 L32.37,-38.41 L33,-31" fill="none" stroke="#3a3a44" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-33,-31 L-32.37,-38.41 L-30.49,-45.54 L-27.44,-52.11 L-23.33,-57.87 L-18.33,-62.6 L-12.63,-66.11 L-6.44,-68.27 L-0,-69 L6.44,-68.27 L12.63,-66.11 L18.33,-62.6 L23.33,-57.87 L27.44,-52.11 L30.49,-45.54 L32.37,-38.41 L33,-31" fill="none" stroke="#6a6a78" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-26,-30 L-26.2,-27.22 L-26.76,-24.71 L-27.65,-22.72 L-28.76,-21.44 L-30,-21 L-31.24,-21.44 L-32.35,-22.72 L-33.24,-24.71 L-33.8,-27.22 L-34,-30 L-33.8,-32.78 L-33.24,-35.29 L-32.35,-37.28 L-31.24,-38.56 L-30,-39 L-28.76,-38.56 L-27.65,-37.28 L-26.76,-35.29 L-26.2,-32.78 Z" fill="#2a2a32" stroke="#1d1714" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-27.2,-31 L-27.31,-29.3 L-27.62,-27.77 L-28.11,-26.55 L-28.72,-25.77 L-29.4,-25.5 L-30.08,-25.77 L-30.69,-26.55 L-31.18,-27.77 L-31.49,-29.3 L-31.6,-31 L-31.49,-32.7 L-31.18,-34.23 L-30.69,-35.45 L-30.08,-36.23 L-29.4,-36.5 L-28.72,-36.23 L-28.11,-35.45 L-27.62,-34.23 L-27.31,-32.7 Z" fill="#e8368c"/>
+    <path d="M34,-30 L33.8,-27.22 L33.24,-24.71 L32.35,-22.72 L31.24,-21.44 L30,-21 L28.76,-21.44 L27.65,-22.72 L26.76,-24.71 L26.2,-27.22 L26,-30 L26.2,-32.78 L26.76,-35.29 L27.65,-37.28 L28.76,-38.56 L30,-39 L31.24,-38.56 L32.35,-37.28 L33.24,-35.29 L33.8,-32.78 Z" fill="#2a2a32" stroke="#1d1714" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M32.8,-31 L32.69,-29.3 L32.38,-27.77 L31.89,-26.55 L31.28,-25.77 L30.6,-25.5 L29.92,-25.77 L29.31,-26.55 L28.82,-27.77 L28.51,-29.3 L28.4,-31 L28.51,-32.7 L28.82,-34.23 L29.31,-35.45 L29.92,-36.23 L30.6,-36.5 L31.28,-36.23 L31.89,-35.45 L32.38,-34.23 L32.69,-32.7 Z" fill="#e8368c"/>
+  </g>
+  <g data-overlay-part="near_hand" data-overlay-mode="over" data-overlay-anchor="near_grip" data-overlay-scale="height height" transform="translate(1440,400)">
+    <path d="M-16.5,14 L-7.42,9 L7.42,9 L16.5,14 L17.32,28 L13.2,35 L8.25,30 L-8.25,30 L-13.2,35 L-17.32,28 Z" fill="#d6aa42" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M6.05,20 L5.84,22.85 L5.24,25.5 L4.28,27.78 L3.03,29.53 L1.57,30.63 L0,31 L-1.57,30.63 L-3.02,29.53 L-4.28,27.78 L-5.24,25.5 L-5.84,22.85 L-6.05,20 L-5.84,17.15 L-5.24,14.5 L-4.28,12.22 L-3.03,10.47 L-1.57,9.37 L-0,9 L1.57,9.37 L3.03,10.47 L4.28,12.22 L5.24,14.5 L5.84,17.15 Z" fill="#b88a2a" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M4.68,20 L5.78,20" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M4.05,24.25 L5,25.25" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M2.34,27.36 L2.89,29.09" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,28.5 L0,30.5" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-2.34,27.36 L-2.89,29.09" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-4.05,24.25 L-5,25.25" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-4.68,20 L-5.78,20" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-4.05,15.75 L-5,14.75" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-2.34,12.64 L-2.89,10.91" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-0,11.5 L-0,9.5" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M2.34,12.64 L2.89,10.91" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M4.05,15.75 L5,14.75" fill="none" stroke="#7a5a14" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-3.85,25 L3.85,15" fill="none" stroke="#fae08c" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,16 L1.4,20 L0,24 L-1.4,20 Z" fill="#fae08c" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-13.42,21 L-9.02,21" fill="none" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-11.22,17 L-11.22,25" fill="none" stroke="#1d1714" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M12.32,16.6 L12.11,17.78 L11.56,18.5 L10.88,18.5 L10.33,17.78 L10.12,16.6 L10.33,15.42 L10.88,14.7 L11.56,14.7 L12.11,15.42 Z" fill="#28c8ec" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M14.3,20.6 L14.09,21.78 L13.54,22.5 L12.86,22.5 L12.31,21.78 L12.1,20.6 L12.31,19.42 L12.86,18.7 L13.54,18.7 L14.09,19.42 Z" fill="#e23a3a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M12.32,24.4 L12.11,25.58 L11.56,26.3 L10.88,26.3 L10.33,25.58 L10.12,24.4 L10.33,23.22 L10.88,22.5 L11.56,22.5 L12.11,23.22 Z" fill="#6ec05a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M10.34,20.6 L10.13,21.78 L9.58,22.5 L8.9,22.5 L8.35,21.78 L8.14,20.6 L8.35,19.42 L8.9,18.7 L9.58,18.7 L10.13,19.42 Z" fill="#f2c84a" stroke="#1d1714" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</g>
+</svg>

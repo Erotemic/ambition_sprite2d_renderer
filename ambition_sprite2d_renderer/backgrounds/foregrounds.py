@@ -42,6 +42,7 @@ from .art_quarters import resonance_foreground as _art_resonance
 from .art_quarters import stacks_foreground as _art_stacks
 from .art_quarters import stage_foreground as _art_stage
 from .artkit import Art, Pen, polar, scale
+from . import history_eras as _history
 from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
 from .military_tower import TOWER
 from .noodly import NOODLY
@@ -299,6 +300,15 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "art_resonance": (_art_resonance, scale(RESONANCE["near"], 0.9)),
     "art_stage": (_art_stage, scale(STAGE["near"], 0.9)),
     "art_forge": (_art_forge, scale(FORGE["near"], 0.9)),
+    # The History dimension: wheat, papyrus, lanterns, grass, ropes and
+    # wires. The noon of the Classical Shore and the Monsoon Coast have none:
+    # a thing in front hides their open sky.
+    "history_crescent": (_history.crescent_foreground, scale(_history.CRESCENT["near"], 0.9)),
+    "history_nile": (_history.nile_foreground, scale(_history.NILE["near"], 0.9)),
+    "history_silk": (_history.silk_foreground, scale(_history.SILK["near"], 0.9)),
+    "history_steppe": (_history.steppe_foreground, scale(_history.STEPPE["near"], 0.9)),
+    "history_sail": (_history.sail_foreground, scale(_history.SAIL["near"], 0.9)),
+    "history_industrial": (_history.industrial_foreground, scale(_history.INDUSTRIAL["near"], 0.9)),
 }
 
 

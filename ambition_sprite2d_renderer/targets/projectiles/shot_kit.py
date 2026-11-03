@@ -20,6 +20,8 @@ Each row is one look, registered by `game/ambition_content/src/projectiles.rs`:
   Art dimension's critic throws it).
 * ``sound_ring``: rings of sound that grow as they leave, cyan, with a pale
   front (the Art dimension's feedback wail shrieks them).
+* ``coin``: a gold coin that spins edge-on and face-on as it flies (the
+  History dimension's robber baron throws it).
 * ``rock``: a thrown rock, which tumbles.
 * ``bolt``: a bolt of magic: a violet diamond with a pale core and motes behind.
 * ``fireball_charged``: the robot's fireball fired at charge 1. A longer comet
@@ -77,6 +79,7 @@ ROWS: List[Tuple[str, int, int]] = [
     ("ghostfire", 6, 55),
     ("tomato", 4, 80),
     ("sound_ring", 6, 55),
+    ("coin", 6, 60),
 ]
 
 Point = Tuple[float, float]
@@ -451,6 +454,26 @@ def _sound_ring(phase: float) -> Image.Image:
     return img
 
 
+def _coin(phase: float) -> Image.Image:
+    img, d = _canvas()
+    # The coin spins about its vertical axis: its width is the cosine of the
+    # turn. The face shows on one half of the turn and the back on the other.
+    turn = math.cos(2.0 * math.pi * phase)
+    rx = max(2.4, 12.0 * abs(turn))
+    _ellipse(d, CX, CY, rx + 1.6, 13.6, (122, 78, 14, 255))
+    _ellipse(d, CX, CY, rx, 12.0, (236, 184, 48, 255) if turn >= 0.0 else (214, 158, 36, 255))
+    if rx > 6.0:
+        # The rim, and a dollar mark on the face.
+        _ellipse(d, CX, CY, rx * 0.72, 8.6, (250, 214, 96, 255))
+        w = rx * 0.18
+        _poly(d, [(CX - w, CY - 7.0), (CX + w, CY - 7.0), (CX + w, CY + 7.0), (CX - w, CY + 7.0)], (150, 98, 18, 255))
+    # A glint, and two short lines of air behind it.
+    _ellipse(d, CX - rx * 0.4, CY - 6.0, 1.8, 1.8, (255, 250, 220, 255))
+    for dy, length in ((-7.0, 14.0), (6.0, 10.0)):
+        _poly(d, [(46.0, CY + dy - 1.2), (46.0 - length, CY + dy), (46.0, CY + dy + 1.2)], (255, 236, 170, 150))
+    return img
+
+
 def _phase(frame_idx: int, nframes: int) -> float:
     return frame_idx / max(1, nframes)
 
@@ -471,6 +494,7 @@ _DRAW: Dict[str, Callable[[int, int], Image.Image]] = {
     "charge_2": lambda i, n: _charge(_phase(i, n), 2),
     "tomato": lambda i, n: _tomato(i),
     "sound_ring": lambda i, n: _sound_ring(_phase(i, n)),
+    "coin": lambda i, n: _coin(_phase(i, n)),
 }
 
 

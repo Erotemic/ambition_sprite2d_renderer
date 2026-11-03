@@ -151,6 +151,33 @@ def _confetti(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(strip * 0.95 + _soft(x, y, 0.40, 2.6) * 0.2, 0.0, 1.0), colour
 
 
+def _chaff(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A seed or a bit of chaff on the wind: a small grain, a little turned,
+    with a fine whisker off its end."""
+    x, y = _cell()
+    turn = (0.4, -0.6, 1.2, -1.4)[variant]
+    rx = x * math.cos(turn) - y * math.sin(turn)
+    ry = x * math.sin(turn) + y * math.cos(turn)
+    half = (0.10, 0.13, 0.08, 0.11)[variant]
+    grain = np.clip(1.0 - (np.sqrt((rx / half) ** 2 + (ry / (half * 0.42)) ** 2) - 1.0) / 0.35, 0.0, 1.0)
+    whisker = np.clip(1.0 - np.abs(ry) / 0.012, 0.0, 1.0) * (rx > half * 0.8) * (rx < half * 0.8 + 0.20)
+    return np.clip(grain + whisker * 0.7 + _soft(x, y, 0.36, 2.6) * 0.2, 0.0, 1.0), colour
+
+
+def _feather(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A small feather of a gull that turns as it falls: a quill and a
+    vane that is wider on one side."""
+    x, y = _cell()
+    turn = (0.6, -0.4, 1.4, -1.1)[variant]
+    rx = x * math.cos(turn) - y * math.sin(turn)
+    ry = x * math.sin(turn) + y * math.cos(turn)
+    half = (0.30, 0.26, 0.34, 0.22)[variant]
+    along = np.clip(1.0 - (rx / half) ** 2, 0.0, 1.0)
+    vane = np.clip((0.09 * along**0.7 - np.abs(ry - 0.02 * along)) / 0.025, 0.0, 1.0) * (np.abs(rx) < half)
+    quill = np.clip(1.0 - np.abs(ry) / 0.012, 0.0, 1.0) * (np.abs(rx) < half * 1.15)
+    return np.clip(vane * 0.85 + quill, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -220,6 +247,19 @@ MOTES = {
     "art_resonance": (_note, (150, 236, 255)),
     "art_stage": (_confetti, (255, 214, 120)),
     "art_forge": (_glow, (255, 156, 70)),
+    # The History dimension: chaff and seeds on the wind of the first
+    # farms; sand and gold dust on the Nile; olive leaves on the shore;
+    # paper that drifts on the Silk Road; grass seeds on the steppe; gold
+    # flecks and spray on the Monsoon Coast; feathers of gulls over the
+    # harbour; soot over the mills.
+    "history_crescent": (_chaff, (240, 206, 130)),
+    "history_nile": (_dot, (255, 220, 140)),
+    "history_classical": (_petal, (150, 168, 112)),
+    "history_silk": (_confetti, (246, 236, 214)),
+    "history_steppe": (_chaff, (236, 230, 180)),
+    "history_monsoon": (_twinkle, (255, 226, 150)),
+    "history_sail": (_feather, (246, 244, 236)),
+    "history_industrial": (_dot, (70, 64, 64)),
 }
 
 
@@ -265,6 +305,14 @@ SHADOWS = {
     "art_resonance": (6, 8, 24),
     "art_stage": (30, 8, 16),
     "art_forge": (24, 10, 6),
+    "history_crescent": (70, 44, 34),
+    "history_nile": (90, 52, 34),
+    "history_classical": (60, 70, 80),
+    "history_silk": (110, 70, 44),
+    "history_steppe": (40, 52, 28),
+    "history_monsoon": (60, 50, 44),
+    "history_sail": (24, 34, 34),
+    "history_industrial": (20, 16, 18),
 }
 SHADOW_PX = (96, 28)
 
