@@ -34,6 +34,8 @@ from typing import Callable
 import numpy as np
 
 from .arenas import BOSS, ECLIPSE, HUB
+from .art_dimension import ART
+from .art_dimension import art_foreground as _art
 from .artkit import Art, Pen, polar, scale
 from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
 from .military_tower import TOWER
@@ -287,6 +289,7 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "noodly": (_noodly, scale(NOODLY["noodle_dark"], 0.62)),
     "eclipse": (_eclipse, scale(ECLIPSE["rock"], 0.9)),
     "military_tower": (_military_tower, scale(TOWER["near"], 0.9)),
+    "art": (_art, scale(ART["near"], 0.8)),
 }
 
 

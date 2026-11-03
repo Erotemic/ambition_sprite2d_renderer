@@ -149,6 +149,11 @@ MOTES = {
     "open_sky": (_dot, (255, 252, 236)),
     # The clean state of the two-state hub: dust in the light of its halls.
     "hub_clean": (_dot, (255, 240, 206)),
+    # The Art dimension: flecks of paint in the air; dust of graphite off
+    # the pages; drops of ink that glow as they rise from the falls.
+    "art": (_petal, (246, 110, 196)),
+    "art_sketchbook": (_speck, (110, 112, 128)),
+    "art_inkfall": (_glow, (255, 120, 220)),
 }
 
 
@@ -187,6 +192,9 @@ SHADOWS = {
     "skybridge": (40, 52, 84),
     "open_sky": (60, 64, 80),
     "hub_clean": (60, 60, 80),
+    "art": (40, 24, 70),
+    "art_sketchbook": (120, 112, 100),
+    "art_inkfall": (8, 2, 20),
 }
 SHADOW_PX = (96, 28)
 

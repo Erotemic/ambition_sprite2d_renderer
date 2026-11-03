@@ -152,6 +152,16 @@ SKINS: tuple[Skin, ...] = (
     # The islands in the sky are rock that broke off, not a wall that was laid.
     Skin("skybridge", "rock", (150, 164, 198), (86, 100, 142), (216, 224, 242), (255, 236, 150), "grass", (112, 178, 96), "roots", "slab"),
     Skin("open_sky", "rock", (176, 164, 150), (104, 92, 92), (232, 222, 204), (255, 240, 170), "grass", (126, 184, 92), "roots", "plank"),
+    # The Art dimension (`backgrounds/art_dimension.py`). The surface: canvas
+    # under a coat of paint in the three primaries that runs over the edge,
+    # drops of paint under each block, and a palette for a platform.
+    Skin("art", "canvas", (92, 72, 134), (38, 26, 66), (146, 120, 190), (255, 210, 50), "paint", (232, 54, 172), "drips", "palette"),
+    # The Sketchbook Cliffs: the edges of the pages of a pad, under a line of
+    # pencil, and a ruler for a platform.
+    Skin("art_sketchbook", "paper", (190, 180, 160), (116, 108, 96), (232, 224, 204), (92, 94, 110), "pencil", (246, 241, 228), "lip", "ruler"),
+    # The Inkfall Caverns: violet rock under living ink that runs down the
+    # edge and glows, and drops of it under each block.
+    Skin("art_inkfall", "rock", (58, 38, 102), (20, 12, 44), (110, 80, 170), (60, 220, 250), "ink", (246, 70, 200), "drips", "slab"),
     # Great slabs, each with one sign cut in it that gives a little light.
     Skin("eclipse", "monolith", (30, 34, 86), (10, 12, 36), (72, 78, 152), (92, 232, 200), "edge", (44, 50, 112), "lip", "slab"),
 )
@@ -558,6 +568,39 @@ def fill(skin: Skin) -> Image.Image:
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, pitch * 0.42) for x, y in ends]), _mix(skin.base, skin.light, 0.5))
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, pitch * 0.16) for x, y in ends]), skin.dark, 0.55)
         tile.tone((tile.noise(3, 3, 3) - 0.5) * 0.20)
+    elif skin.material == "canvas":
+        # Canvas on a stretcher: a fine weave, and under-painting in broad
+        # strokes of the primaries, dull, so the cap is what shows.
+        tile.put(np.ones_like(tile.alpha), skin.base)
+        weave = np.sin(tile.x * math.pi * 2.0) * np.sin(tile.y * math.pi * 2.0)
+        tile.tone(weave * 0.07)
+        for colour in ((232, 54, 172), (40, 200, 236), (255, 210, 50)):
+            strokes = []
+            for _ in range(2):
+                x, y0 = rng.uniform(0, 64), rng.uniform(0, 64)
+                length, rise = rng.uniform(18.0, 34.0), rng.uniform(-6.0, 6.0)
+                strokes.append(([(x + length * t, y0 + rise * t + math.sin(t * 6.0) * 1.2) for t in np.linspace(0.0, 1.0, 13)], rng.uniform(3.0, 6.0)))
+            mask = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, w) for pts, w in strokes], blur=0.6)
+            tile.put(mask, _mix(skin.base, colour, 0.30), 0.55)
+            # The bristles of the brush leave lines along the stroke.
+            tile.tone(mask * (tile.noise(16, 64, 2) - 0.5) * 0.18)
+        tile.tone((tile.noise(4, 4, 3) - 0.5) * 0.12)
+    elif skin.material == "paper":
+        # The edges of pages in a stack: a thin line for each page, of a few
+        # tones, some pages out further than others.
+        tile.put(np.ones_like(tile.alpha), skin.base)
+        pitch = 2.0
+        rows = int(FILL[1] / pitch)
+        for row in range(rows):
+            y0 = row * pitch
+            tone = rng.uniform(-0.10, 0.10)
+            colour = _mix(skin.base, skin.light if tone > 0 else skin.dark, abs(tone) * 2.0)
+            tile.put(((tile.y >= y0) & (tile.y < y0 + pitch - 0.35)).astype(np.float32), colour)
+            tile.put(((tile.y >= y0 + pitch - 0.35) & (tile.y < y0 + pitch)).astype(np.float32), skin.dark, 0.45)
+        # A page that is creased: a short dark line across a few pages.
+        creases = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(3.0, 7.0)) for _ in range(4)]
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y), (x + 1.2, y + h)], 0.30) for x, y, h in creases]), skin.dark, 0.5)
+        tile.tone((tile.noise(3, 6, 3) - 0.5) * 0.10)
     elif skin.material == "timber":
         # Boards laid flat, eight to the tile, each board a few lengths. Each
         # board has its own tone, a grain along it and a nail at each end.
@@ -691,6 +734,19 @@ def cap(skin: Skin) -> Image.Image:
         # The shade the deck throws on the boards under it.
         tile.put(np.clip(1.0 - (y - s - thick) / 3.0, 0.0, 1.0) * (y >= s + thick), (0, 0, 0), 0.35)
         return tile.publish()
+    if skin.cap == "pencil":
+        # The top of the page is a line drawn in pencil, twice, as a hand
+        # draws it; the paper under it is hatched.
+        body = (y >= s - 0.3).astype(np.float32) * (y < s + 6.0)
+        tile.put(body, skin.cap_colour)
+        tile.put(np.clip((y - s - 3.0) / 3.0, 0, 1) * body, skin.base, 0.6)
+        for k, (lift, width) in enumerate(((0.0, 1.4), (0.8, 0.6))):
+            wobble = (tile.profile(6 + k * 3, 2) - 0.5) * 0.7
+            tile.put((np.abs(y - s - lift - wobble[None, :]) < width * 0.5).astype(np.float32), skin.accent, 0.95 - k * 0.3)
+        hatch = ((((tile.x - y) % 2.0) < 0.35) & (y > s + 1.4) & (y < s + 4.5)).astype(np.float32)
+        tile.put(hatch, skin.accent, 0.30)
+        tile.put(np.clip(1.0 - (y - s - 6.0) / 3.0, 0, 1) * (y >= s + 6.0), (0, 0, 0), 0.20)
+        return tile.publish()
     if skin.cap == "kerb":
         # A kerb of round stones set in the earth, of a few sizes, with moss
         # in the joints between them.
@@ -774,7 +830,7 @@ def cap(skin: Skin) -> Image.Image:
             tile.put(signs, skin.accent, 0.7)
     else:
         # Soft ground: a body that the surface cuts, with an uneven lower edge.
-        depth = {"grass": (5.0, 6.0), "moss": (4.0, 9.0), "sand": (3.5, 2.5), "frosting": (5.0, 0.0), "sauce": (5.0, 0.0)}[skin.cap]
+        depth = {"grass": (5.0, 6.0), "moss": (4.0, 9.0), "sand": (3.5, 2.5), "frosting": (5.0, 0.0), "sauce": (5.0, 0.0), "paint": (5.0, 0.0), "ink": (5.0, 0.0)}[skin.cap]
         lower = s + depth[0] + tile.profile(8, 3)[None, :] * depth[1]
         if skin.cap == "frosting":
             # Icing that runs down in round drips, eight to the tile.
@@ -787,6 +843,13 @@ def cap(skin: Skin) -> Image.Image:
             for k, (length, half) in enumerate(((7.4, 2.5), (2.8, 3.4), (5.2, 2.2), (2.2, 3.0), (6.4, 2.4), (3.4, 3.6), (4.6, 2.0), (2.6, 3.2))):
                 dx_ = (tile.x - (k * 8.0 + 4.0) + 32.0) % 64.0 - 32.0
                 lower = np.maximum(lower, s + 3.0 + length * np.sqrt(np.clip(1.0 - (dx_ / half) ** 2, 0.0, 1.0)))
+        elif skin.cap in ("paint", "ink"):
+            # A thick coat that runs over the edge in drips of each length,
+            # each with a round end.
+            lower = np.full_like(tile.x, s + 3.2)
+            for k, (length, half) in enumerate(((8.4, 2.2), (3.0, 3.2), (5.6, 1.8), (1.8, 2.8), (9.2, 2.0), (2.6, 3.4), (6.2, 1.9), (3.4, 2.6))):
+                dx_ = (tile.x - (k * 8.0 + 3.0 + (k % 3)) + 32.0) % 64.0 - 32.0
+                lower = np.maximum(lower, s + 3.2 + length * np.sqrt(np.clip(1.0 - (dx_ / half) ** 2, 0.0, 1.0)))
         top = s - (tile.profile(16, 2)[None, :] - 0.5) * (1.0 if skin.cap != "sand" else 0.6)
         body = np.clip((lower - y) * K * 0.5 + 0.5, 0, 1) * np.clip((y - top) * K * 0.5 + 0.5, 0, 1)
         tile.put(np.clip((lower + 2.5 - y) / 2.5, 0, 1) * (y >= top), (0, 0, 0), 0.34)
@@ -794,7 +857,20 @@ def cap(skin: Skin) -> Image.Image:
         tile.tone((tile.noise(16, 5, 2) - 0.5) * 0.30 * (tile.alpha > 0))
         tile.put(body * np.clip((y - (lower - 2.2)) / 2.2, 0, 1), skin.dark, 0.5)
         tile.put(body * np.clip(1.0 - (y - top) / 1.2, 0, 1), _mix(skin.cap_colour, (255, 255, 235), 0.42), 0.8)
-        if skin.cap == "sauce":
+        if skin.cap == "paint":
+            # The coat is in bands of the three primaries, side by side, with
+            # a soft join where two run together; a line of shine on top.
+            bands = ((0.0, skin.cap_colour), (22.0, skin.accent), (38.0, (40, 200, 236)), (56.0, skin.cap_colour))
+            for (x0, colour), (x1, _next) in zip(bands, bands[1:]):
+                part = np.clip((tile.x - x0 + 1.0) / 2.0, 0, 1) * np.clip((x1 + 1.0 - tile.x) / 2.0, 0, 1)
+                tile.put(body * part, colour)
+            tile.put(body * np.clip((y - (lower - 2.0)) / 2.0, 0, 1), skin.dark, 0.35)
+            tile.put(body * np.clip(1.0 - np.abs(y - s - 1.2) / 0.6, 0, 1), (255, 255, 255), 0.55)
+        elif skin.cap == "ink":
+            # Living ink: it glows at its ends, and a light line runs on it.
+            tile.put(body * np.clip((y - s - 3.0) / 6.0, 0, 1), skin.accent, 0.45)
+            tile.put(body * np.clip(1.0 - np.abs(y - s - 1.2) / 0.6, 0, 1), (255, 220, 250), 0.6)
+        elif skin.cap == "sauce":
             # The shine of the sauce, grated cheese on it and bits of basil.
             tile.put(body * np.clip(1.0 - np.abs(y - s - 1.4) / 0.6, 0, 1), _mix(skin.cap_colour, (255, 236, 210), 0.6), 0.5)
             cheese = [(rng.uniform(0, 64), s + rng.uniform(0.4, 3.2), rng.uniform(0, 3.14)) for _ in range(34)]
@@ -886,6 +962,16 @@ def under(skin: Skin) -> Image.Image:
                 leaves.append((pts[-1][0], pts[-1][1], 1))
         tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, w) for pts, w in strands]), colour)
         tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(x - s * 1.0, yy), (x + s * 0.9, yy - 0.5), (x + s * 0.9, yy + 0.5)]) for x, yy, s in leaves]), leaf)
+    elif skin.under == "drips":
+        # Drops of paint that hang under the block, each a run with a round
+        # end, in the colour of the coat on top and the accent.
+        drops = []
+        for k in range(9):
+            x = (k + rng.uniform(0.2, 0.8)) * 64.0 / 9.0
+            drops.append((x, rng.uniform(1.5, 8.0), rng.uniform(0.55, 0.95), skin.cap_colour if k % 3 else skin.accent))
+        for x, length, w, colour in drops:
+            tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x - w, e - 0.6, x + w, e + length), _dot(p, dx, dy, x, e + length, w * 1.35))), colour)
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x - w * 0.6, e, x - w * 0.15, e + length)), (255, 255, 255), 0.35)
     elif skin.under == "noodles":
         # Noodles that hang under the block: many, of each length, and the
         # end of a long one turns up in a curl.
@@ -994,6 +1080,30 @@ def oneway(skin: Skin) -> Image.Image:
         drips = [(rng.uniform(0, 64), rng.uniform(1.6, 3.6)) for _ in range(5)]
         tile.put(tile.mask(lambda p, dx, dy: [(_box(p, dx, dy, x - 0.5, 4.2, x + 0.5, 6.4 + h), _dot(p, dx, dy, x, 6.4 + h, 0.75)) for x, h in drips]), skin.cap_colour)
         tile.put(np.clip(1.0 - (y - 6.6) / 3.0, 0, 1) * (y >= 6.6) * (tile.alpha < 0.5), (0, 0, 0), 0.22)
+    elif skin.oneway == "palette":
+        # A painter's palette seen from its edge: a board of pale wood with
+        # blobs of paint on it, and the shade under it.
+        wood = (204, 160, 108)
+        wood_dark = (126, 88, 52)
+        tile.put((y < 5.4).astype(np.float32), wood)
+        tile.tone(((np.sin(tile.x * 0.9 + np.sin(tile.x * 0.13) * 3.0) * 0.5) * 0.10) * (y < 5.4))
+        tile.put((y < 0.8).astype(np.float32), _mix(wood, (255, 248, 230), 0.5))
+        tile.put(((y >= 4.4) & (y < 5.4)).astype(np.float32), wood_dark, 0.8)
+        blobs = [(k * 10.6 + rng.uniform(1.0, 4.0), rng.uniform(1.6, 2.6), c) for k, c in enumerate(((232, 54, 172), (255, 210, 50), (40, 200, 236), (250, 250, 250), (118, 64, 196), (255, 130, 60)))]
+        for x, r, colour in blobs:
+            tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, 0.9, r, ry=r * 0.55)), colour)
+            tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x - r * 0.3, 0.6, r * 0.35, ry=r * 0.18)), (255, 255, 255), 0.6)
+        tile.put(np.clip(1.0 - (y - 5.4) / 3.0, 0, 1) * (y >= 5.4), (0, 0, 0), 0.22)
+    elif skin.oneway == "ruler":
+        # A wooden ruler laid flat: marks along its top edge, a long one each
+        # eight units, and its numbers as small dark dots.
+        wood = (226, 196, 140)
+        tile.put((y < 5.0).astype(np.float32), wood)
+        tile.put((y < 0.7).astype(np.float32), _mix(wood, (255, 255, 240), 0.5))
+        tile.put(((y >= 4.3) & (y < 5.0)).astype(np.float32), (140, 108, 64), 0.8)
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, k * 2 - 0.15, 0.0, k * 2 + 0.15, 2.8 if k % 4 == 0 else 1.4) for k in range(33)]), skin.accent, 0.85)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 8 + 2.0, 3.6, 0.45) for k in range(8)]), skin.accent, 0.7)
+        tile.put(np.clip(1.0 - (y - 5.0) / 3.0, 0, 1) * (y >= 5.0), (0, 0, 0), 0.20)
     elif skin.oneway == "roof":
         # A ridge of roof tiles: a cap of half-round tiles along the top,
         # and the round ends of the rows of tiles hanging below it.

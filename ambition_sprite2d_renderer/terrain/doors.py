@@ -288,6 +288,11 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "math_undercroft": (plank, _colours((196, 178, 148), (70, 112, 170), (34, 38, 54), (214, 170, 84), (255, 204, 128))),
     # A house door from inside: green plank in a plaster arch.
     "math_interior": (plank, _colours((236, 222, 198), (60, 90, 80), (40, 52, 70), (90, 130, 90), (255, 214, 150))),
+    # The Art dimension: a door of painted planks in a frame of gold, like a
+    # picture; a door of the pages in pale wood; a stone door in the caves.
+    "art": (plank, _colours((226, 176, 64), (118, 64, 196), (38, 26, 66), (232, 54, 172), (255, 236, 190))),
+    "art_sketchbook": (plank, _colours((226, 196, 140), (232, 226, 210), (92, 94, 110), (92, 94, 110), (255, 250, 236))),
+    "art_inkfall": (stone, _colours((70, 50, 120), (40, 24, 80), (14, 8, 34), (246, 70, 200), (255, 170, 236))),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

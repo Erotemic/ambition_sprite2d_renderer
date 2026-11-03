@@ -611,6 +611,87 @@ def broken_column(tile: Tile, c: dict) -> None:
     _void_thing(tile, c, [body], [[(M + 0.2, G - 11.8), (M + 1.4, G - 8.0), (M - 0.4, G - 4.6)]])
 
 
+# The Art dimension. `bloom` is magenta paint, `glow` yellow, `plant`
+# cyan; `wood` is a brush handle and `stone_light` paper.
+
+
+def paint_pots(tile: Tile, c: dict) -> None:
+    """Two pots of paint: one stands, one lies on its side, its paint out."""
+    _shadow(tile, 8.0)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 3.4, G - 0.6, 6.0, ry=1.2)), c["bloom"], 0.75)
+    pot = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 7.0, G - 8.0, M - 0.8, G), _dot(p, dx, dy, M - 3.9, G - 8.0, 3.1, ry=0.9)))
+    tile.put(pot, c["metal"])
+    tile.put(pot * (tile.x < M - 5.2), _mix(c["metal"], (255, 255, 255), 0.25), 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 7.0, G - 6.6, M - 0.8, G - 4.2), _dot(p, dx, dy, M - 3.9, G - 8.0, 2.5, ry=0.6))), c["plant"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M - 6.0 + k * 2.0, G - 8.0, M - 5.2 + k * 2.0, G - 5.6 - k) for k in range(3)]), c["plant"], 0.8)
+    lying = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M + 1.0, G - 5.0, M + 7.0, G), _dot(p, dx, dy, M + 7.0, G - 2.5, 0.9, ry=2.5)))
+    tile.put(lying, _mix(c["metal"], c["dark"], 0.2))
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 7.0, G - 2.5, 0.7, ry=2.0)), c["bloom"])
+    tile.alpha *= tile.y < G
+
+
+def brush_jar(tile: Tile, c: dict) -> None:
+    """A jar of water with brushes in it, each with paint on its hairs."""
+    _shadow(tile, 5.0)
+    for x, top, lean, colour in ((-1.8, 17.0, -2.4, c["bloom"]), (0.2, 19.0, 0.4, c["plant"]), (1.8, 16.0, 2.6, c["glow"])):
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + x, G - 6.0), (M + x + lean, G - top)], 0.8)), c["wood"])
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x + lean * 1.05, G - top - 1.0, 0.9, ry=1.8)), colour)
+    jar = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 3.6, G - 7.4, M + 3.6, G), _dot(p, dx, dy, M, G - 7.4, 3.6, ry=0.7)))
+    tile.put(jar, _mix(c["stone_light"], c["plant"], 0.35), 0.75)
+    tile.put(jar * (tile.y > G - 5.0), _mix(c["plant"], c["bloom"], 0.4), 0.45)
+    tile.put(jar * (tile.x < M - 2.4), (255, 255, 255), 0.30)
+    tile.alpha *= tile.y < G
+
+
+def crayon_stubs(tile: Tile, c: dict) -> None:
+    """Three stubs of crayon that stand on their ends, each worn to a point."""
+    _shadow(tile, 6.5)
+    for x, h, colour in ((-4.2, 7.0, c["bloom"]), (0.0, 10.0, c["glow"]), (4.0, 6.0, c["plant"])):
+        body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M + x - 1.6, G), (M + x + 1.6, G), (M + x + 1.6, G - h), (M + x + 0.4, G - h - 2.2), (M + x - 0.6, G - h - 1.8), (M + x - 1.6, G - h)]))
+        tile.put(body, _mix(colour, c["dark"], 0.15))
+        tile.put(body * (tile.y > G - h * 0.65) * (tile.y < G - h * 0.25), _mix(c["stone_light"], c["dark"], 0.2), 0.8)
+        tile.put(body * (tile.x < M + x - 0.6), (255, 255, 255), 0.18)
+    tile.alpha *= tile.y < G
+
+
+def crumpled_paper(tile: Tile, c: dict) -> None:
+    """A page that someone screwed up and threw down: a ball of folds."""
+    _shadow(tile, 5.5)
+    ball = [(M - 5.0, G), (M - 5.6, G - 3.4), (M - 3.6, G - 7.0), (M - 0.4, G - 8.2), (M + 3.4, G - 7.0), (M + 5.4, G - 4.0), (M + 4.6, G)]
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, ball))
+    tile.put(body, c["stone_light"])
+    tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, pts) for pts in ([(M - 0.4, G - 8.2), (M + 1.0, G - 3.4), (M + 5.4, G - 4.0), (M + 3.4, G - 7.0)], [(M - 5.0, G), (M - 2.0, G - 3.0), (M + 1.0, G - 3.4), (M + 4.6, G)])]), c["stone"], 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 3.6, G - 7.0), (M - 2.0, G - 3.0), (M + 1.0, G - 3.4)], 0.3)), c["dark"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 4.4, G - 5.0), (M - 2.6, G - 5.6)], 0.25)) * body, c["metal"], 0.6)
+    tile.alpha *= tile.y < G
+
+
+def pencil_cup(tile: Tile, c: dict) -> None:
+    """A cup of pencils, sharpened."""
+    _shadow(tile, 5.0)
+    for x, top, lean in ((-2.0, 16.0, -2.0), (0.0, 18.5, 0.6), (2.0, 15.0, 2.4)):
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + x, G - 6.0), (M + x + lean * 0.85, G - top + 2.0)], 1.2)), c["glow"])
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M + x + lean * 0.85 - 0.6, G - top + 2.0), (M + x + lean * 0.85 + 0.6, G - top + 2.0), (M + x + lean, G - top)])), c["wood"])
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x + lean, G - top + 0.3, 0.3)), c["dark"])
+    cup = tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 3.6, G - 7.6, M + 3.6, G))
+    tile.put(cup, c["metal"])
+    tile.put(cup * (tile.x < M - 2.2), (255, 255, 255), 0.25)
+    tile.put(cup * (tile.x > M + 2.4), c["dark"], 0.35)
+    tile.alpha *= tile.y < G
+
+
+def ink_bottle(tile: Tile, c: dict) -> None:
+    """A squat bottle of ink with a quill in it; the ink in it glows."""
+    _shadow(tile, 5.5)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M + 0.4, G - 7.0), (M + 1.2, G - 7.0), (M + 6.4, G - 21.0), (M + 4.4, G - 16.0)])), c["stone_light"], 0.85)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 0.8, G - 7.0), (M + 6.0, G - 20.4)], 0.3)), c["dark"], 0.5)
+    body = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M, G - 3.6, 4.6, ry=3.6), _box(p, dx, dy, M - 1.8, G - 8.6, M + 1.8, G - 5.0)))
+    tile.put(body, _mix(c["stone"], c["dark"], 0.3))
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 3.0, 3.6, ry=2.6)), c["bloom"], 0.8)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 1.6, G - 4.6, 0.8, ry=1.4)), (255, 255, 255), 0.5)
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -635,6 +716,11 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # Inside the town's houses: pots and a planter by the walls.
     "math_interior": ((amphora, planter, flowers, amphora, planter, flowers), _palette((60, 44, 36), (236, 222, 198), (255, 240, 220), (176, 108, 78), (90, 70, 58), (90, 140, 90), (226, 90, 110), (255, 214, 150))),
     "noodly": ((meatballs, noodle_nest, pot, garlic, breadsticks, bush), _palette((52, 26, 18), (196, 150, 86), (238, 204, 132), (124, 66, 40), (120, 112, 118), (70, 132, 66), (172, 44, 32), (255, 226, 150))),
+    # The Art dimension: what a painter leaves on the ground; on the pages,
+    # what a person who draws leaves; in the caves, ink and crystals.
+    "art": ((paint_pots, brush_jar, crayon_stubs, bush, paint_pots, crayon_stubs), _palette((38, 26, 66), (120, 100, 160), (232, 226, 240), (176, 130, 84), (150, 148, 172), (40, 200, 236), (232, 54, 172), (255, 210, 50))),
+    "art_sketchbook": ((crumpled_paper, pencil_cup, crayon_stubs, crumpled_paper, rock, pencil_cup), _palette((92, 94, 110), (190, 180, 160), (246, 241, 228), (226, 196, 140), (160, 160, 172), (40, 200, 236), (236, 82, 170), (240, 200, 70))),
+    "art_inkfall": ((ink_bottle, crystal, rock, mushrooms, ink_bottle, crystal), _palette((14, 8, 34), (58, 38, 102), (226, 214, 240), (96, 64, 160), (70, 50, 120), (60, 220, 250), (246, 70, 200), (255, 170, 236))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),
@@ -686,6 +772,7 @@ LIGHTS: dict[Draw, tuple[float, float, float]] = {
     crystal: (M, 7.0, 0.22),
     mushrooms: (M + 1.0, 6.0, 0.14),
     console: (M, 10.4, 0.12),
+    ink_bottle: (M, 3.4, 0.22),
 }
 #: A pool of light is drawn this many times the side of a decor square, with
 #: its middle on the middle of the square.

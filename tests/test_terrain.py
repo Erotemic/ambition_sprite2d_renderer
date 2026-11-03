@@ -13,7 +13,7 @@ def test_each_part_of_a_skin_has_the_size_the_game_lays_it_at(skin: skins.Skin) 
     # The game repeats each picture at `PX_PER_UNIT`, and puts the surface
     # line of a cap on the top of a block. A picture of another size would be
     # laid at another scale, with no error.
-    sizes = {"fill": skins.FILL, "cap": skins.CAP, "under": skins.UNDER, "side": skins.SIDE, "oneway": skins.ONEWAY}
+    sizes = {"fill": skins.FILL, "breakable_brick": (32, 32), "cap": skins.CAP, "under": skins.UNDER, "side": skins.SIDE, "oneway": skins.ONEWAY}
     for part, make in skins.PARTS.items():
         image = make(skin)
         w, h = sizes[part]

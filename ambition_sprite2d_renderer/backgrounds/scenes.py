@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, eureka, evil, foregrounds, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
+from . import arenas, art_dimension, eureka, evil, foregrounds, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from .artkit import Art
 from .parts import LAYER_BLUR, LAYER_SIZE
 
@@ -81,6 +81,9 @@ SCENES: dict[str, Scene] = {
     "orbital_truss": orbital.orbital_truss,
     "eureka": eureka.eureka,
     "eureka_heights": eureka.eureka_heights,
+    "art": art_dimension.art,
+    "art_sketchbook": art_dimension.art_sketchbook,
+    "art_inkfall": art_dimension.art_inkfall,
 }
 
 
