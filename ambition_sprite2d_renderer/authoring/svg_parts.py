@@ -263,7 +263,182 @@ def view_pixel_origin(svg_path: Path, view: str) -> Optional[Tuple[float, float]
     return (x, y)
 
 
-@lru_cache(maxsize=256)
+#: Tags that draw nothing by themselves. A document of only these and
+#: `_DRAWABLE` tags is drawn a part at a time by `_selective_subset`.
+_INERT = {"svg", "g", "defs", "title", "desc", "metadata", "namedview", "clipPath", "mask", "linearGradient",
+          "radialGradient", "stop", "pattern", "filter", "marker", "symbol", "tspan", "textPath"}
+
+
+class _Document:
+    """A parsed rig document, shared by every part drawn from it. It is never
+    changed: a part is drawn from a copy of the elements it needs."""
+
+    def __init__(self, raw: bytes) -> None:
+        self.root = ET.fromstring(raw)
+        self.by_id: Dict[str, ET.Element] = {}
+        self.parent: Dict[ET.Element, ET.Element] = {}
+        for node in self.root.iter():
+            for child in node:
+                self.parent[child] = node
+            eid = node.get("id")
+            if eid is not None:
+                self.by_id[eid] = node
+        local = {_local(node.tag) for node in self.root.iter()}
+        #: Whether `_selective_subset` may draw its parts: every tag draws
+        #: nothing by itself or is one that the subset hides when it is not
+        #: kept (a `<style>`, whose selectors depend on the elements around
+        #: them, is neither).
+        self.selective = all(tag in _DRAWABLE or tag in _INERT or tag.startswith("fe") for tag in local)
+        #: Every id that an attribute refers to (`url(#id)`, `href="#id"`).
+        self.referenced: set = set()
+        for node in self.root.iter():
+            for value in node.attrib.values():
+                if "#" in value:
+                    self.referenced.update(a or b for a, b in _REFERENCE.findall(value))
+        #: The elements (by `id()`) that are, or hold, an element referred to.
+        self.holds: set = set()
+        for node in self.root.iter():
+            if node.get("id") in self.referenced:
+                cur: Optional[ET.Element] = node
+                while cur is not None and id(cur) not in self.holds:
+                    self.holds.add(id(cur))
+                    cur = self.parent.get(cur)
+
+
+@lru_cache(maxsize=8)
+def _document(svg_path: str, mtime_ns: int, size: int) -> _Document:
+    return _Document(_parse(svg_path, mtime_ns, size))
+
+
+def _selective_subset(doc: _Document, view: str, include_ids: Tuple[str, ...]) -> Tuple[ET.Element, set]:
+    """The document of one part, and its kept elements (by `id()`): the
+    same picture as the whole document with every other shape hidden, built
+    without copying what cannot draw.
+
+    It copies the kept elements, their ancestors, and each subtree that
+    something refers to (a gradient, a clip path, the target of a `use`),
+    and hides what it copies by the rules of the whole-document path: a view
+    layer that hosts no kept art, and each drawable that is not kept. What it
+    leaves out is the art of the other parts and views, which that path
+    hides, and elements that draw nothing."""
+    keep_src: set = set()
+    for iid in include_ids:
+        elem = doc.by_id.get(iid)
+        if elem is None or id(elem) in keep_src:
+            continue
+        cur: Optional[ET.Element] = elem
+        while cur is not None:
+            keep_src.add(id(cur))
+            cur = doc.parent.get(cur)
+        for child in elem.iter():
+            keep_src.add(id(child))
+
+    keep: set = set()
+    kept_uses: List[ET.Element] = []
+
+    def copy_of(node: ET.Element, whole: bool) -> Optional[ET.Element]:
+        # `keep_src` has the kept elements, their subtrees and their
+        # ancestors; an ancestor is copied, but not the rest of its subtree.
+        kept = id(node) in keep_src
+        whole = whole or node.get("id") in doc.referenced
+        if not (kept or whole or id(node) in doc.holds):
+            return None
+        dup = ET.Element(node.tag, dict(node.attrib))
+        dup.text, dup.tail = node.text, node.tail
+        if kept:
+            keep.add(id(dup))
+            if _local(node.tag) == "use":
+                kept_uses.append(dup)
+        for child in node:
+            sub = copy_of(child, whole)
+            if sub is not None:
+                dup.append(sub)
+        return dup
+
+    root = ET.Element(doc.root.tag, dict(doc.root.attrib))
+    root.text = doc.root.text
+    if id(doc.root) in keep_src:
+        keep.add(id(root))
+    for child in doc.root:
+        sub = copy_of(child, False)
+        if sub is None and _local(child.tag) == "defs":
+            sub = ET.Element(child.tag, dict(child.attrib))
+            sub.tail = child.tail
+        if sub is not None:
+            root.append(sub)
+
+    defs = next((node for node in root if _local(node.tag) == "defs"), None)
+    if defs is None:
+        defs = ET.Element(f"{{{SVG_NS}}}defs")
+        root.insert(0, defs)
+    copied_targets: Dict[str, str] = {}
+
+    def clone_ref_target(target_id: str) -> str:
+        existing = copied_targets.get(target_id)
+        if existing is not None:
+            return existing
+        target = doc.by_id.get(target_id)
+        if target is None:
+            return target_id
+        new_id = f"subset_ref_{len(copied_targets)}_{target_id}"
+        copied_targets[target_id] = new_id
+        dup = copy.deepcopy(target)
+        dup.set("id", new_id)
+        for node in dup.iter():
+            if node is not dup and node.get("id") is not None:
+                node.attrib.pop("id", None)
+            if _local(node.tag) == "use":
+                href = node.get("href") or node.get(f"{{{XLINK_NS}}}href") or ""
+                if href.startswith("#"):
+                    ref_id = clone_ref_target(href[1:])
+                    node.set("href", f"#{ref_id}")
+                    node.set(f"{{{XLINK_NS}}}href", f"#{ref_id}")
+        defs.append(dup)
+        for node in dup.iter():
+            keep.add(id(node))
+        keep.add(id(defs))
+        return new_id
+
+    for use in kept_uses:
+        href = use.get("href") or use.get(f"{{{XLINK_NS}}}href") or ""
+        if href.startswith("#"):
+            ref_id = clone_ref_target(href[1:])
+            use.set("href", f"#{ref_id}")
+            use.set(f"{{{XLINK_NS}}}href", f"#{ref_id}")
+    _show_editor_only(root, keep)
+    _hide_the_rest(root, keep, view)
+    return root, keep
+
+
+def _show_editor_only(root: ET.Element, keep: set) -> None:
+    """An artist can switch mutually exclusive expression sublayers in
+    Inkscape by toggling their display style. When the rig explicitly
+    selects any editor-visibility-marked part, restore that part's paint
+    without revealing its siblings. Otherwise hiding the default expression
+    to inspect another one would accidentally delete sprite source pixels."""
+    for elem in root.iter():
+        if (id(elem) in keep and elem.get("data-rig-editor-visibility") == "editor-only"):
+            style = elem.get("style", "")
+            remaining = [entry.strip() for entry in style.split(";")
+                         if entry.strip() and entry.strip().split(":", 1)[0].strip().lower() != "display"]
+            if remaining:
+                elem.set("style", ";".join(remaining))
+            else:
+                elem.attrib.pop("style", None)
+
+
+def _hide_the_rest(root: ET.Element, keep: set, view: str) -> None:
+    """Hide sibling view layers wholesale when they do not host any kept art,
+    then every drawable leaf we don't keep."""
+    for layer in root:
+        if _label(layer) is not None and _label(layer) != view and not any(id(node) in keep for node in layer.iter()):
+            _hide(layer)
+    for elem in root.iter():
+        if _local(elem.tag) in _DRAWABLE and id(elem) not in keep:
+            _hide(elem)
+
+
+@lru_cache(maxsize=1024)
 @profile
 def _rasterize_subset_cached(
     svg_path: str,
@@ -274,6 +449,11 @@ def _rasterize_subset_cached(
     dpi: float,
     origin: Optional[Tuple[float, float]] = None,
 ) -> Tuple[Optional[Image.Image], Tuple[int, int], float]:
+    doc = _document(svg_path, mtime_ns, size)
+    if doc.selective:
+        root, keep = _selective_subset(doc, view, include_ids)
+        image, offset = _render_kept(root, keep, float(dpi), origin)
+        return image, offset, dpi / MM_PER_INCH
     raw = _parse(svg_path, mtime_ns, size)
     root = ET.fromstring(raw)
 
@@ -347,30 +527,8 @@ def _rasterize_subset_cached(
             use.set("href", f"#{ref_id}")
             use.set(f"{{{XLINK_NS}}}href", f"#{ref_id}")
 
-    # An artist can switch mutually exclusive expression sublayers in
-    # Inkscape by toggling their display style. When the rig explicitly
-    # selects any editor-visibility-marked part, restore that part's paint
-    # without revealing its siblings. Otherwise hiding the default expression
-    # to inspect another one would accidentally delete sprite source pixels.
-    for elem in root.iter():
-        if (id(elem) in keep and elem.get("data-rig-editor-visibility") == "editor-only"):
-            style = elem.get("style", "")
-            remaining = [entry.strip() for entry in style.split(";")
-                         if entry.strip() and entry.strip().split(":", 1)[0].strip().lower() != "display"]
-            if remaining:
-                elem.set("style", ";".join(remaining))
-            else:
-                elem.attrib.pop("style", None)
-
-    # Hide sibling view layers wholesale when they do not host any kept art, then
-    # every drawable leaf we don't keep.
-    for layer in root:
-        if _label(layer) is not None and _label(layer) != view and not any(id(node) in keep for node in layer.iter()):
-            _hide(layer)
-    for elem in root.iter():
-        if _local(elem.tag) in _DRAWABLE and id(elem) not in keep:
-            _hide(elem)
-
+    _show_editor_only(root, keep)
+    _hide_the_rest(root, keep, view)
     _drop_hidden(root, keep)
     image, offset = _render_kept(root, keep, float(dpi), origin)
     return image, offset, dpi / MM_PER_INCH

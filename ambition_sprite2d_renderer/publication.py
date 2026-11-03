@@ -30,11 +30,18 @@ def store_root() -> Path:
     return Path(os.environ.get("AMBITION_ART_STORE", publication_root()))
 
 
-def publish_sprites(store: Store, replacements: dict, selected: dict, *, replace: bool, only_missing=False) -> dict:
+def publish_sprites(store: Store, replacements: dict, selected: dict, *, replace: bool, only_missing=False, hashes=None) -> dict:
+    """Publish ``replacements`` over ``selected``. With ``hashes`` (a
+    `Digests`), a bundle file whose size and mtime are the ones it was hashed
+    at is not hashed again: the store checks every selected bundle on each
+    publication, and the bundles are immutable."""
     bundles = {unit: key for unit, key in selected["bundles"].items()
                if not replace or not unit.startswith(("target:", "atlas:"))}
     bundles.update(replacements)
-    return store.publish(bundles, selected, replace=True, only_missing=only_missing)
+    published = store.publish(bundles, selected, replace=True, only_missing=only_missing, hashes=hashes)
+    if hashes is not None:
+        hashes.save()
+    return published
 
 
 _POLICY: dict = {}
@@ -518,7 +525,8 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=
     if not publish:
         return {"exact": True, "bundles": replacements,
                 "files": sorted({logical for key in replacements.values() for logical in store.bundle(key)["files"]})}
-    published = publish_sprites(store, replacements, selected, replace=not requested and not missing_only, only_missing=missing_only)
+    published = publish_sprites(store, replacements, selected, replace=not requested and not missing_only, only_missing=missing_only,
+                                hashes=hashes)
     # The targets that built are published; the ones that failed keep their
     # previous bundle, and the run reports them.
     if failures:

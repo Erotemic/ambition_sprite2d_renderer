@@ -62,6 +62,27 @@ def inspection(path: Path) -> dict:
             "concept": game.get("concept"), "identity_kind": game.get("identity_kind", "unknown")}
 
 
+#: The character files (the drawn views and their rigs) that the sheet of a
+#: resident wrote in this process, by the resident's spec file, its text and
+#: its grip. The portrait (the canonical frame) is drawn again from them: it
+#: is the same spec, and writing them is half the cost of a resident.
+_WRITTEN: Dict[Tuple[Path, str, str], dict] = {}
+
+
+def _rigs(path: Path, spec: CharacterSpec, grip: str, out_dir: Path) -> dict:
+    """The rigs of the resident at ``path``: the ones this process wrote for
+    the same spec text and grip, when their files are still there; otherwise
+    new ones, written to ``out_dir``."""
+    from ambition_sprite2d_renderer.chargen.rig import write_character
+
+    key = (path.resolve(), path.read_text(encoding="utf8"), grip)
+    rigs = _WRITTEN.get(key)
+    if rigs is None or not all(Path(rig).is_file() for rig in rigs.values()):
+        rigs = write_character(spec, out_dir, grip=grip).rigs
+        _WRITTEN[key] = rigs
+    return rigs
+
+
 def _make(path: Path):
     target = path.name.removesuffix(".chargen.yaml")
 
@@ -70,16 +91,32 @@ def _make(path: Path):
         spec, game = load(path)
         meta = actor_metadata(spec, character_id=game["character_id"], description=game["description"])
         rows = publication_rows(game)
-        return publish_sheet(spec, Path(out_dir), target=target, metadata=meta, rows=list(rows), grip=game.get("grip", "blade"))
+        grip = game.get("grip", "blade")
+        rigs = _rigs(path, spec, grip, Path(out_dir))
+        return publish_sheet(spec, Path(out_dir), rigs, target=target, metadata=meta, rows=list(rows), grip=grip)
 
-    return target, render
+    def render_canonical(out_dir: str | Path, **opts) -> Path:
+        """The canonical frame alone (the portrait's source), drawn afresh
+        from the resident's character files (see `_WRITTEN`)."""
+        from ambition_sprite2d_renderer.authoring.sheet_build import canonical_render_only
+
+        out_dir = Path(out_dir)
+        with canonical_render_only():
+            render(out_dir, **opts)
+        for name in (f"{target}_canonical_transparent.png", f"{target}_canonical.png"):
+            if (out_dir / name).is_file():
+                return out_dir / name
+        raise FileNotFoundError(f"{target}: the canonical render wrote no canonical image in {out_dir}")
+
+    return target, render, render_canonical
 
 
 def _targets() -> Dict[str, dict]:
     out: Dict[str, dict] = {}
     for path in sorted(SPECS.glob("*.chargen.yaml")):
-        target, render = _make(path)
-        out[target] = {"render": render, "actor_metadata": lambda path=path: _metadata(path), "data": [path], "inspection": lambda path=path: inspection(path)}
+        target, render, render_canonical = _make(path)
+        out[target] = {"render": render, "render_canonical": render_canonical, "actor_metadata": lambda path=path: _metadata(path),
+                       "data": [path], "inspection": lambda path=path: inspection(path)}
     return out
 
 

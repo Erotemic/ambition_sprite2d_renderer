@@ -90,7 +90,7 @@ def build(units, *, missing_only=False, jobs=1):
     store = Store(publication.store_root())
     selected = store.selected()
     pending = []
-    hashes = Digests()
+    hashes = Digests(publication.RENDERER / ".cache/publication-inputs.json")
     sources, chain = publication.source_files(), publication.toolchain()
     for uid in dict.fromkeys(units):
         plan = definitions[uid]
@@ -130,7 +130,9 @@ def build(units, *, missing_only=False, jobs=1):
                 for future in drawn.values():
                     if not future.cancelled() and future.exception() is None:
                         shutil.rmtree(future.result()[0], ignore_errors=True)
-    return store.publish(replacements, selected, only_missing=missing_only)
+    published = store.publish(replacements, selected, only_missing=missing_only, hashes=hashes)
+    hashes.save()
+    return published
 
 
 def main(argv=None):

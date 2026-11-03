@@ -37,6 +37,7 @@ the shoe or the ball is on the frames of the move's Active window
 
 from __future__ import annotations
 
+import functools
 import io
 import math
 import random
@@ -1782,7 +1783,7 @@ def _generous(bbox: dict) -> dict:
 
 
 def _measured_hitboxes() -> Dict[str, dict]:
-    counts = {name: n for name, n, _ms in ROWS}
+    counts = _FRAME_COUNTS
     out: Dict[str, dict] = {}
     for row, (t0, t1, parts) in STRIKES.items():
         n = counts[row]
@@ -1803,7 +1804,18 @@ def _measured_hitboxes() -> Dict[str, dict]:
     return out
 
 
-ATTACK_HITBOXES: Dict[str, dict] = _measured_hitboxes()
+#: The frames of each row, as the module defines them: a strike's box is
+#: measured on its whole row whatever rows a caller publishes.
+_FRAME_COUNTS: Dict[str, int] = {name: n for name, n, _ms in ROWS}
+
+
+@functools.lru_cache(maxsize=1)
+def attack_hitboxes() -> Dict[str, dict]:
+    """The measured strike boxes (:func:`_measured_hitboxes`). They are
+    measured when a sheet is drawn, not when the module is imported: drawing
+    the strike poses takes seconds, and every listing of the targets imports
+    this module."""
+    return _measured_hitboxes()
 
 
 def _melee_events(active_from: float, active_to: float, source: str) -> List[dict]:
@@ -2018,7 +2030,7 @@ def _render_form(target_name: str, skin: Skin, actor_metadata: dict, out_dir: st
         auto_crop=False,
         actor_metadata=actor_metadata,
         animation_key_map=ANIMATION_KEY_MAP,
-        attack_hitboxes=ATTACK_HITBOXES,
+        attack_hitboxes=attack_hitboxes(),
         body_metrics_fn=_body_metrics(bodies),
         hurtbox_parts=bodies,
     )
