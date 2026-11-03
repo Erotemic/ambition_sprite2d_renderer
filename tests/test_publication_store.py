@@ -114,3 +114,57 @@ def test_a_target_check_does_not_require_library_atlases(tmp_path, monkeypatch, 
     assert publication.main(["--check", "--json"]) == 1
     complete = json.loads(capsys.readouterr().out)
     assert complete["units"]["atlas:full"]["status"]["state"] == "missing"
+
+
+@pytest.mark.parametrize('owner', ['target:one', 'producer:sprites'])
+def test_missing_only_keeps_accepted_bytes_and_unrelated_products(tmp_path, monkeypatch, owner):
+    """An explicit missing-only build must keep an accepted stale target."""
+    from types import SimpleNamespace
+    from ambition_sprite2d_renderer import publication
+
+    store = Store(tmp_path / 'store')
+    source = tmp_path / 'one.png'
+    source.write_bytes(b'accepted bytes')
+    key = store.accept(owner, {'sprites/one.png': (source, 'runtime', 'full')}, {})
+    other = store.accept('producer:music', {'audio/music/one.ogg': (source, 'runtime', 'full')}, {})
+    selected = store.publish({owner: key, 'producer:music': other}, None)
+    monkeypatch.setattr(publication, 'store_root', lambda: store.root)
+    monkeypatch.setattr(publication, 'source_files', lambda: {})
+    monkeypatch.setattr(publication, 'toolchain', lambda: {})
+    monkeypatch.setattr(publication, 'discover', lambda: SimpleNamespace(targets={
+        'one': SimpleNamespace(name='one', category='props', _actor_metadata={}, _inspection={})}, failures=[], warnings=[]))
+    monkeypatch.setattr(publication, 'definition', lambda target: {
+        'id': 'target:one', 'target': 'one', 'root': 'sprites', 'required': ['sprites/one.png'],
+        'tiers': [], 'repair': 'publish one'})
+    monkeypatch.setattr(publication, 'pack_parents', lambda report: {'sprites/unrelated.yaml': 'target:unrelated'})
+    result = publication.build(requested=['one'], missing_only=True)
+    assert result['generation'] == selected['generation']
+    assert store.paths()['sprites/one.png'].read_bytes() == b'accepted bytes'
+    assert result['bundles'] == {owner: key, 'producer:music': other}
+    if owner == 'producer:sprites':
+        report = publication.inventory(requested={'one'}, include_atlases=False)
+        assert report['units']['target:one']['status']['state'] == 'partial'
+
+
+def test_missing_only_publication_keeps_a_concurrent_publish(tmp_path):
+    store = Store(tmp_path / 'store')
+    source = tmp_path / 'pixels'
+    source.write_bytes(b'planned')
+    planned = store.accept('target:one', {'sprites/one.png': (source, 'runtime', 'full')}, {})
+    base = store.selected()
+    source.write_bytes(b'published elsewhere')
+    current = store.accept('target:one', {'sprites/one.png': (source, 'runtime', 'full')}, {})
+    accepted = store.publish({'target:one': current}, base)
+    result = store.publish({'target:one': planned}, base, only_missing=True)
+    assert result['generation'] == accepted['generation']
+    assert store.paths()['sprites/one.png'].read_bytes() == b'published elsewhere'
+
+
+def test_missing_only_publication_keeps_files_owned_by_a_collection(tmp_path):
+    store = Store(tmp_path / 'store')
+    source = tmp_path / 'pixels'
+    source.write_bytes(b'pixels')
+    collection = store.accept('producer:backgrounds', {'room_dressing/paint.png': (source, 'runtime', 'full')}, {}, roots=['room_dressing'])
+    accepted = store.publish({'producer:backgrounds': collection}, None)
+    scoped = store.accept('skin:paint', {'room_dressing/paint.png': (source, 'runtime', 'full')}, {}, roots=['room_dressing'])
+    assert store.publish({'skin:paint': scoped}, accepted, only_missing=True)['generation'] == accepted['generation']

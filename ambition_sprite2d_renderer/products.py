@@ -131,6 +131,8 @@ def describe(targets: dict) -> tuple[dict, list[str]]:
                     "required": [path.relative_to(book.dest).as_posix() for path, _ in products],
                     "optional": [], "metadata": {}, "source": None, "tiers": tiers,
                     "repair": book.command.format(unit=name)}
+                if prefix in {"theme", "skin"}:
+                    units[uid]["repair"] = f"./scripts/regen/backgrounds.sh --{prefix} {name}"
     except Exception as error:
         warnings.append(f"background or terrain discovery failed: {error}")
     return units, warnings
@@ -222,26 +224,62 @@ def evaluate(plan: dict, record: dict | None, root: Path, repo: Path, hashes: Di
             "required": sorted(members), "tiers": tier_rows, "repair": plan["repair"]}
 
 
-def inventory(repo: Path, *, deep: bool = False) -> dict:
+def catalog() -> dict:
+    """Describe products from source without reading generated payloads."""
+    from . import publication
+    from .publication_store import Store
+    plan = publication.plan(scope="all")
+    units = plan["units"]
+    for unit in units.values():
+        unit["required"] = [path.removeprefix(unit["root"] + "/") for path in unit["required"]]
+    other, warnings = describe({})
+    units.update({uid: unit for uid, unit in other.items() if unit["kind"] != "atlas"})
+    store = Store(publication.store_root())
+    selected = store.selected()
+    for uid, unit in units.items():
+        logical = [unit["root"] + "/" + path for path in unit["required"]]
+        logical += [unit["root"] + TIERS[tier] + "/" + path
+                    for tier in unit.get("tiers", []) if tier in TIERS for path in unit["required"]]
+        accepted = uid in selected["bundles"] or any(path in selected["files"] for path in logical)
+        unit["status"] = {"state": "not-checked" if accepted else "missing"}
+    return {"schema": "ambition.art_products.v1", "units": units, "publication": selected,
+            "store": str(store.root), "complete": plan["complete"], "warnings": plan["warnings"] + warnings}
+
+
+def inventory(repo: Path, *, deep: bool = False, requested=None) -> dict:
     from . import publication
     from .content_library import read, publication_root
     from .publication_store import Store
     from .provenance import provenance_root, read_record
-    store = Store(publication_root())
+    store = Store(publication.store_root())
     selected = store.selected()
-    report = publication.inventory(deep=deep) if "sprites" in read().get("producers", {}) else {
+    targets = None if requested is None else {uid.removeprefix("target:") for uid in requested if uid.startswith("target:")}
+    report = publication.inventory(deep=deep, requested=targets, include_atlases=requested is None) if "sprites" in read().get("producers", {}) and (targets is None or targets) else {
         "schema": "ambition.art_products.v1", "complete": True, "warnings": [], "units": {},
         "receipts": [], "publication": selected, "store": str(store.root)}
     selected = report["publication"]
     files = {logical: store.root / member["path"] for logical, member in selected["files"].items()}
     other, warnings = describe({})
+    if requested is not None:
+        other = {uid: unit for uid, unit in other.items() if uid in requested}
     hashes = Digests(Path(__file__).resolve().parents[1] / ".cache/art_inputs.json", deep=deep)
     records = {uid: read_record(provenance_root() / unit["root"] / f"{unit['generator']['id']}.json", selected)
                for uid, unit in other.items() if unit["kind"] != "atlas"}
     count = publication.readers({"inputs": {item["path"]: None for item in ((record or {}).get("generation") or record or {}).get("inputs", [])}}
                                 for record in records.values())
+    scoped_inputs = (publication.source_files(), publication.toolchain()) if set(other) & selected["bundles"].keys() else None
     for uid, unit in other.items():
         if unit["kind"] == "atlas":
+            continue
+        scoped_key = selected["bundles"].get(uid)
+        if scoped_key:
+            manifest = store.bundle(scoped_key)
+            state, reasons = publication.recipe_state(manifest["recipe"], *scoped_inputs, hashes)
+            defects = store.integrity(scoped_key, hashes=hashes)
+            unit["status"] = {"state": "partial" if defects else state, "reasons": reasons + defects,
+                              "tiers": {}, "repair": unit["repair"]}
+            unit["bundle"] = scoped_key
+            report["units"][uid] = unit
             continue
         record = records[uid]
         sample = next(((rel, files[unit["root"] + "/" + rel]) for rel in unit["required"] if unit["root"] + "/" + rel in files), None)
@@ -278,9 +316,11 @@ def main() -> int:
     from .provenance import repo_root
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--deep", action="store_true")
+    parser.add_argument("--catalog", action="store_true", help="describe source products without checking payloads")
+    parser.add_argument("--unit", action="append", help="check only these producer units")
     parser.add_argument("--check-sprites", action="store_true", help="check full sprite receipts for the publisher")
     args = parser.parse_args()
-    report = inventory(repo_root(), deep=args.deep)
+    report = catalog() if args.catalog else inventory(repo_root(), deep=args.deep, requested=set(args.unit) if args.unit is not None else None)
     if args.check_sprites:
         return int(not report["complete"] or any(unit["status"]["state"] != "current" for unit in report["units"].values() if unit["root"] == "sprites"))
     print(json.dumps(report, sort_keys=True))

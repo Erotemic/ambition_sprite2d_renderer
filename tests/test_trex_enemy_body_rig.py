@@ -65,3 +65,30 @@ def test_the_jaw_attachment_lands_on_his_drawn_mouth_in_every_hold_frame(doc):
             if not near:
                 misses.append(f"{row}[{index}] jaw at ({px:.1f}, {py:.1f})")
     assert not misses, "the jaw point is in empty air:\n" + "\n".join(misses)
+
+
+def test_gameplay_publication_needs_one_measurement_frame_and_no_image_payload(tmp_path, monkeypatch):
+    from ambition_sprite2d_renderer.targets.props import trex_enemy_gameplay
+    from ambition_sprite2d_renderer.authoring.body_rig import BodyRigProduct
+
+    frames, products = [], []
+    draw, write = trex_enemy.render_frame, BodyRigProduct.write
+    def measure(*args):
+        frames.append(args)
+        return draw(*args)
+    def save(product, destination):
+        products.append(product)
+        return write(product, destination)
+    monkeypatch.setattr(trex_enemy, 'render_frame', measure)
+    monkeypatch.setattr(BodyRigProduct, 'write', save)
+    files = trex_enemy_gameplay.render(tmp_path)
+    assert len(frames) == 1
+    assert set(tmp_path.iterdir()) == set(files)
+    assert all(path.suffix == '.ron' for path in files)
+    product, = products
+    product.validate()
+    clip, count, _duration = trex_enemy.ROWS[0]
+    solved, _params = trex_enemy._doc().solve(clip, trex_enemy._doc().frame_time(clip, 0, count))
+    feet = tuple(offset + size / 2 for offset, size in zip(product.origin_from_centre, trex_enemy.FRAME_SIZE))
+    for (name, _parent), pose in zip(product.joints, product.clips[clip][2][0]):
+        assert tuple(pose.translation[axis] + feet[axis] for axis in (0, 1)) == pytest.approx(solved[name].origin)

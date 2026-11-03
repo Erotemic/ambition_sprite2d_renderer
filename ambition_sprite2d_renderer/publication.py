@@ -30,11 +30,11 @@ def store_root() -> Path:
     return Path(os.environ.get("AMBITION_ART_STORE", publication_root()))
 
 
-def publish_sprites(store: Store, replacements: dict, selected: dict, *, replace: bool) -> dict:
+def publish_sprites(store: Store, replacements: dict, selected: dict, *, replace: bool, only_missing=False) -> dict:
     bundles = {unit: key for unit, key in selected["bundles"].items()
                if not replace or not unit.startswith(("target:", "atlas:"))}
     bundles.update(replacements)
-    return store.publish(bundles, selected, replace=True)
+    return store.publish(bundles, selected, replace=True, only_missing=only_missing)
 
 
 _POLICY: dict = {}
@@ -64,6 +64,22 @@ def names_in(scope: str | None, requested=()) -> tuple[list[str], object]:
     missing = sorted(set(names) - report.targets.keys())
     if missing:
         raise ValueError(f"Unregistered publication targets: {', '.join(missing)}. {report.failures}")
+    ordered, visiting = [], set()
+    def visit(name):
+        if name in visiting:
+            raise ValueError(f"Publication dependency cycle at {name}")
+        if name in ordered:
+            return
+        if name not in report.targets:
+            raise ValueError(f"Unregistered publication dependency: {name}")
+        visiting.add(name)
+        for dependency in getattr(report.targets[name], "publication_dependencies", ()):
+            visit(dependency)
+        visiting.remove(name)
+        ordered.append(name)
+    for name in names:
+        visit(name)
+    names = ordered
     return names, report
 
 
@@ -85,13 +101,16 @@ def definition(target) -> dict:
             "generator": target_generator(target), "required": sorted(set(required)),
             "dynamic_members": any(name.endswith("_spritesheet.ron") for name in required),
             "static_prop": static, "root": output_root, "tiers": getattr(target, "publication_tiers", list(TIERS)),
+            "dependencies": getattr(target, "publication_dependencies", []),
+            "gameplay_targets": getattr(target, "gameplay_targets", []),
+            "semantic_effects": getattr(target, "semantic_effects", []),
             "repair": f"./scripts/regen/sprites.sh --target {target.name}"}
 
 
 def plan(scope=None, requested=()) -> dict:
     scope = scope or library()["producers"]["sprites"]["collection"]
     names, report = names_in(scope, requested)
-    return {"schema": "ambition.art_plan.v1", "scope": scope, "complete": not report.failures,
+    return {"schema": "ambition.art_plan.v1", "scope": scope, "complete": bool(requested) or not report.failures,
             "warnings": report.warnings, "failures": report.failures,
             "units": {"target:" + name: definition(report.targets[name]) for name in names},
             "exact": False, "unresolved": [name for name in names if any(p.endswith("_spritesheet.ron") for p in artifacts.required_names(report.targets[name]))]}
@@ -376,18 +395,19 @@ def build_packs(store: Store, bundles: dict, report, sources: dict, chain: dict,
     return result
 
 
-def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=False) -> dict:
+def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=False, missing_only=False) -> dict:
     """Publish the targets of `scope`. A target is rebuilt unless an accepted
     bundle is current. With `loose`, a bundle stale only for shared reasons
     (`stale_scope`) is kept too: it stays possibly stale until a strict build."""
     names, report = names_in(scope, requested)
-    if report.failures:
+    if report.failures and not requested:
         raise ValueError(f"Target discovery failed: {report.failures}")
     store = Store(store_root())
     selected = store.selected()
-    atlas_owners = set(pack_parents(report).values())
-    if any("target:"+name in atlas_owners for name in names):
-        names = list(dict.fromkeys(names + [unit.removeprefix("target:") for unit in atlas_owners if unit not in selected["bundles"]]))
+    if not requested and not missing_only:
+        atlas_owners = set(pack_parents(report).values())
+        if any("target:"+name in atlas_owners for name in names):
+            names = list(dict.fromkeys(names + [unit.removeprefix("target:") for unit in atlas_owners if unit not in selected["bundles"]]))
     sources, chain = source_files(), toolchain()
     from .products import Digests
     hashes = Digests(RENDERER / ".cache/publication-inputs.json")
@@ -411,6 +431,9 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=
         return state == "current" or (loose and stale_scope(reasons) == "shared")
     for name in names:
         unit = "target:" + name
+        if missing_only and (unit in selected["bundles"] or any(
+                path in selected["files"] for path in definition(report.targets[name])["required"])):
+            continue
         candidates = accepted.get(unit, [])
         candidates.sort(key=lambda row: row[0] != selected["bundles"].get(unit))
         reusable = next((key for key, manifest in candidates if not force
@@ -448,7 +471,8 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=
                         command = [sys.executable, "-m", "kernprof", "-l", "-o", str(Path(profile) / (name + ".lprof")),
                                    "-m", "ambition_sprite2d_renderer.publication", "--worker", json.dumps(spec)]
                     done = subprocess.run(command,
-                        cwd=snapshot_renderer, env=dict(os.environ, PYTHONPATH=str(snapshot_renderer), AMBITION_REPO_ROOT=str(snapshot)),
+                        cwd=snapshot_renderer, env=dict(os.environ, PYTHONPATH=str(snapshot_renderer), AMBITION_REPO_ROOT=str(snapshot),
+                                                       AMBITION_CONTENT_LIBRARY=library_path().relative_to(repo_root()).as_posix()),
                         capture_output=True, text=True)
                     if done.returncode:
                         raise ValueError(f"{name}: {done.stderr[-4000:]}\n{done.stdout[-1000:]}")
@@ -489,11 +513,12 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=
             if toolchain() != chain:
                 print("art: the rendering toolchain changed during generation; the new bundles are stale", file=sys.stderr)
     candidate = selected["bundles"] | replacements
-    replacements.update(build_packs(store, candidate, report, sources, chain, force=force))
+    if not requested and not missing_only:
+        replacements.update(build_packs(store, candidate, report, sources, chain, force=force))
     if not publish:
         return {"exact": True, "bundles": replacements,
                 "files": sorted({logical for key in replacements.values() for logical in store.bundle(key)["files"]})}
-    published = publish_sprites(store, replacements, selected, replace=not requested)
+    published = publish_sprites(store, replacements, selected, replace=not requested and not missing_only, only_missing=missing_only)
     # The targets that built are published; the ones that failed keep their
     # previous bundle, and the run reports them.
     if failures:
@@ -520,6 +545,8 @@ def inventory(*, deep=False, requested=None, include_atlases=True) -> dict:
         defects = [dict(defect, scope="direct") for defect in store.integrity(key, hashes=hashes)] if key else [{"code": "missing-bundle", "scope": "direct"}]
         if defects:
             state = "missing" if not manifest else "partial" if any(r["code"] == "missing" for r in defects) else "stale"
+        if not manifest and any(path in selected["files"] for path in unit["required"]):
+            state = "partial"
         output_root = unit["root"]
         unit["kind"] = {"characters": "actor", "props": "prop", "tiles": "tile", "icons": "icon", "projectiles": "projectile"}.get(target.category, target.category)
         unit["required"] = [p.removeprefix(output_root + "/") for p in unit["required"]]
@@ -536,7 +563,20 @@ def inventory(*, deep=False, requested=None, include_atlases=True) -> dict:
         unit["bundle"] = key
         unit["publication"] = {"selected": bool(key), "files": manifest["files"] if manifest else {}}
         if manifest:
-            unit["required"] = [p.removeprefix(output_root + "/") for p,v in manifest["files"].items() if p.startswith(output_root + "/") and v["role"] == "runtime"]
+            unit["required"] = sorted(set(unit["required"]) | {p.removeprefix(output_root + "/") for p,v in manifest["files"].items() if p.startswith(output_root + "/") and v["role"] == "runtime"})
+        unit["accepted_effects"] = None
+        if manifest and unit.get("semantic_effects"):
+            from .yaml_io import safe_load
+            published_effects = set()
+            for logical, member in manifest["files"].items():
+                if logical.startswith(output_root + "/") and logical.endswith("_spritesheet.yaml"):
+                    path = store.root / "bundles" / key / member["path"]
+                    if path.is_file():
+                        data = safe_load(path.read_text())
+                        published_effects.update(row["animation"] for row in data["rows"])
+                        unit["accepted_effects"] = sorted(published_effects)
+            if unit["accepted_effects"] is None and state == "current":
+                unit["accepted_effects"] = unit["semantic_effects"]
         unit["status"] = {"state": state, "reasons": reasons + defects, "scope": stale_scope(reasons + defects) if state == "stale" else None,
                           "evidence_complete": bool(manifest and manifest["recipe"]),
                           "required": unit["required"], "tiers": {}, "repair": unit["repair"]}
@@ -558,7 +598,7 @@ def inventory(*, deep=False, requested=None, include_atlases=True) -> dict:
             "status":{"state":state,"reasons":reasons+defects,"scope":stale_scope(reasons+defects) if state == "stale" else None,
                       "evidence_complete":bool(manifest and manifest["recipe"]),"tiers":{},"repair":"./scripts/regen/sprites.sh"}}
     hashes.save()
-    return {"schema": "ambition.art_products.v1", "complete": not report.failures, "warnings": list(report.warnings),
+    return {"schema": "ambition.art_products.v1", "complete": requested is not None or not report.failures, "warnings": list(report.warnings),
             "units": units, "receipts": [], "publication": selected, "store": str(store.root)}
 
 
@@ -578,7 +618,9 @@ def audit(asset_root: Path | None = None) -> dict:
     active = set(selected["bundles"].values())
     historical = [path.name for path in (store.root / "bundles").iterdir()
                   if path.is_dir() and not path.name.startswith(".") and path.name not in active] if (store.root / "bundles").is_dir() else []
-    registered = {"target:" + name for name in discover().targets} | {"atlas:" + tier for tier in TIERS}
+    from .products import describe
+    scenery, _ = describe({})
+    registered = {"target:" + name for name in discover().targets} | {"atlas:" + tier for tier in TIERS} | set(scenery)
     return {"schema":"ambition.art_audit.v1", "generation":selected["generation"],
             "unmanaged_files":unmanaged, "historical_bundles":sorted(historical),
             "unregistered_units": sorted(set(selected["bundles"]) - registered)}
@@ -653,6 +695,7 @@ def main(argv=None):
     parser.add_argument("--deep", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--missing-only", action="store_true", help="keep every selected target, including stale and partial products")
     parser.add_argument("--loose", action="store_true",
                         help="rebuild only targets whose own inputs changed; keep those that only shared renderer code made stale")
     parser.add_argument("--resolve-layout", action="store_true")
@@ -687,7 +730,7 @@ def main(argv=None):
                 return int(not result["complete"])
         else:
             result = build(args.scope, args.target, force=args.force, jobs=args.jobs,
-                           publish=not args.resolve_layout, loose=args.loose)
+                           publish=not args.resolve_layout, loose=args.loose, missing_only=args.missing_only)
         if not args.json and not any((args.audit, args.adopt_existing, args.check, args.plan, args.resolve_layout)):
             print(f"Published {result['generation']}: {len(result['bundles'])} bundles, {len(result['files'])} runtime files.")
         else:

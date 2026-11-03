@@ -70,6 +70,7 @@ class BodyRigProduct:
     #: row name -> (looping, frame duration in seconds, frames); a frame holds
     #: one ``JointPose`` per joint, in ``joints`` order.
     clips: Dict[str, Tuple[bool, float, List[List[JointPose]]]] = field(default_factory=dict)
+    origin_from_centre: Point = (0.0, 0.0)
 
     def validate(self) -> None:
         names = [name for name, _parent in self.joints]
@@ -104,6 +105,7 @@ class BodyRigProduct:
             "(",
             f"    schema_version: {SCHEMA_VERSION},",
             f"    target: {_s(self.target)},",
+            f"    origin_from_centre: {_p(self.origin_from_centre)},",
             "    joints: [",
         ]
         for name, parent in self.joints:

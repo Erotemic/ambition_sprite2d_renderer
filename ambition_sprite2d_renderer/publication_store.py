@@ -142,7 +142,7 @@ class Store:
                 defects.append({"code": "changed-output", "path": logical})
         return defects
 
-    def publish(self, replacements: dict[str, str], base, *, replace: bool = False, hashes=None) -> dict:
+    def publish(self, replacements: dict[str, str], base, *, replace: bool = False, hashes=None, only_missing=False) -> dict:
         """Select ``replacements`` and return the new selection.
 
         ``base`` is the selection the caller planned against: the selection
@@ -154,6 +154,9 @@ class Store:
         wins per unit). With only a generation, the changes are
         ``replacements``.
 
+        ``only_missing`` keeps accepted units and paths under the publication
+        lock. A concurrent publisher's products are kept too.
+
         A bundle whose recorded parent is not the selected one is still
         selected. It is listed in ``stale`` with its reason, so a status query
         reports it and the next build of that unit replaces it.
@@ -162,6 +165,12 @@ class Store:
         with (self.root / ".publish.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             previous = self.selected()
+            if only_missing:
+                replacements = {unit: key for unit, key in replacements.items()
+                                if unit not in previous['bundles'] and not any(
+                                    item['role'] == 'runtime' and logical in previous['files']
+                                    for logical, item in self.bundle(key)['files'].items())}
+                replace = False
             planned = base.get("generation") if isinstance(base, dict) else base
             if previous["generation"] != planned:
                 before = base.get("bundles", {}) if isinstance(base, dict) else {}

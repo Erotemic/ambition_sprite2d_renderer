@@ -646,6 +646,10 @@ def _build_module_target(
     target._inspection = getattr(mod, "INSPECTION", None)
     target.publication_root = getattr(mod, "PUBLICATION_ROOT", "sprites")
     target.publication_tiers = getattr(mod, "PUBLICATION_TIERS", ["full", "half", "quarter", "potato"])
+    target.publication_dependencies = list(getattr(mod, "PUBLICATION_DEPENDENCIES", ()))
+    target.gameplay_targets = list(getattr(mod, "GAMEPLAY_TARGETS", ()))
+    fx = getattr(mod, "FX", None)
+    target.semantic_effects = [row[0] for row in getattr(mod, "ROWS", ())] if isinstance(fx, dict) and "cue_family" in fx else []
     return target
 
 
