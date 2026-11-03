@@ -400,6 +400,55 @@ def ger_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def hide_door(tile: Tile, c: dict) -> np.ndarray:
+    """A door of hide stretched on a frame of branches: the hide in pieces
+    sewn with sinew, cords that lash it to the frame, and a small round
+    smoke hole that the fire inside lights."""
+    leaf = _frame(tile, c, arch=16.0)
+    tile.tone((tile.noise(4, 8, 3) - 0.5) * 0.22 * leaf)
+    # The bark of the branches of the frame.
+    frame = 1.0 - tile.mask(lambda p, dx, dy: (_box(p, dx, dy, F, F + 16.0, W - F, H - STEP), p.ellipse([F * K + dx, F * K + dy, (W - F) * K + dx, (F + 32.0) * K + dy], fill=255)))
+    tile.put(frame * (np.abs(((tile.x + tile.y * 0.15) % 2.2) - 1.1) < 0.25) * (tile.y < H - STEP), c["dark"], 0.35)
+    # The seams: one down the middle and one across, each with its stitches.
+    seam_x = [(W * 0.5 + math.sin(y * 0.25) * 0.8, y) for y in np.arange(12.0, H - STEP - 2.0, 3.0)]
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, seam_x, 0.35)) * leaf, c["dark"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 1.0, y - 0.25, x + 1.0, y + 0.25) for x, y in seam_x]) * leaf, c["leaf_light"], 0.7)
+    seam_y = [(x, 74.0 + math.sin(x * 0.3) * 0.8) for x in np.arange(F, W - F, 3.0)]
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, seam_y, 0.35)) * leaf, c["dark"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.25, y - 1.0, x + 0.25, y + 1.0) for x, y in seam_y]) * leaf, c["leaf_light"], 0.7)
+    # Cords that lash the hide to the frame.
+    for side in (0.0, 1.0):
+        x0 = 1.0 if side == 0.0 else W - 1.0
+        x1 = F + 2.6 if side == 0.0 else W - F - 2.6
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x0, y), (x1, y + 1.4)], 0.6) for y in (40.0, 60.0, 80.0, 100.0)]), c["frame_light"], 0.85)
+    _window(tile, c, W * 0.5 - 5.0, 26.0, W * 0.5 + 5.0, 36.0, round_=True)
+    return leaf
+
+
+def reed_door(tile: Tile, c: dict) -> np.ndarray:
+    """A door of reeds in bundles, side by side in a frame of poles, with
+    three bands of cord across them and a small window of open weave."""
+    leaf = _frame(tile, c)
+    rng = tile.rng
+    x = F
+    while x < W - F:
+        w = rng.uniform(2.2, 3.4)
+        tone = rng.uniform(-0.12, 0.10)
+        colour = _mix(c["leaf"], c["leaf_light"] if tone > 0 else c["dark"], abs(tone) * 1.8)
+        tile.put(leaf * (tile.x >= x) * (tile.x < x + w), colour)
+        tile.put(leaf * (np.abs(tile.x - x) < 0.3), c["dark"], 0.55)
+        tile.put(leaf * (np.abs(tile.x - x - w * 0.35) < 0.25), c["leaf_light"], 0.35)
+        x += w
+    for y in (40.0, 70.0, 100.0):
+        band = leaf * (np.abs(tile.y - y) < 1.4)
+        tile.put(band, c["frame"])
+        tile.put(band * (np.abs(((tile.x + tile.y) % 1.6) - 0.8) < 0.25), c["frame_light"], 0.6)
+    _window(tile, c, 20.0, 14.0, W - 20.0, 26.0)
+    weave = tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x0 - 0.4, 14.0, x0 + 0.4, 26.0) for x0 in (24.0, 28.0, 32.0, 36.0, 40.0)] + [_box(p, dx, dy, 20.0, y0 - 0.4, W - 20.0, y0 + 0.4) for y0 in (18.0, 22.0)])
+    tile.put(weave, c["leaf"])
+    return leaf
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -421,6 +470,8 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     temple: (SWING, True),
     studded: (SWING, True),
     ger_door: (SWING, False),
+    hide_door: (SWING, False),
+    reed_door: (SWING, False),
 }
 
 
@@ -493,6 +544,22 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "history_monsoon": (studded, _colours((122, 82, 52), (138, 96, 58), (48, 32, 22), (230, 186, 80), (255, 214, 140))),
     "history_sail": (plank, _colours((164, 154, 140), (52, 82, 66), (26, 30, 28), (202, 160, 72), (255, 214, 150))),
     "history_industrial": (iron, _colours((132, 64, 48), (72, 74, 82), (24, 22, 24), (190, 150, 80), (255, 206, 120))),
+    # The History dimension, second pass. A hide on a frame of branches in
+    # the Rift Valley, Sahul and the painted cave, and on a frame of ivory in
+    # the Ice Age; a screen of reeds in the Green Sahara, on the Yellow River,
+    # in the maize fields and in the highlands; a stone in an arch on the
+    # downs; planks in the north and on the Indus.
+    "history_savanna": (hide_door, _colours((120, 86, 56), (178, 130, 86), (50, 32, 20), (190, 90, 50), (255, 190, 110))),
+    "history_green_sahara": (reed_door, _colours((110, 80, 50), (196, 170, 104), (60, 44, 26), (176, 64, 44), (255, 220, 150))),
+    "history_ice_age": (hide_door, _colours((226, 216, 190), (140, 102, 72), (40, 30, 24), (130, 180, 220), (255, 190, 110))),
+    "history_megalith": (stone, _colours((150, 150, 142), (120, 118, 110), (40, 40, 38), (110, 150, 70), (255, 226, 160))),
+    "history_northwoods": (plank, _colours((90, 96, 100), (120, 84, 56), (30, 24, 20), (172, 54, 44), (255, 210, 150))),
+    "history_indus": (plank, _colours((186, 96, 62), (130, 86, 54), (56, 30, 20), (226, 196, 150), (255, 214, 150))),
+    "history_yellow_river": (reed_door, _colours((150, 110, 66), (206, 182, 120), (70, 52, 30), (150, 70, 50), (255, 224, 160))),
+    "history_maize": (reed_door, _colours((120, 100, 80), (206, 186, 120), (50, 40, 30), (60, 140, 110), (255, 220, 150))),
+    "history_sahul": (hide_door, _colours((150, 110, 80), (160, 96, 60), (50, 24, 16), (200, 90, 50), (255, 170, 80))),
+    "history_highlands": (reed_door, _colours((90, 70, 48), (170, 150, 100), (30, 30, 20), (84, 138, 58), (255, 220, 160))),
+    "history_painted_cave": (hide_door, _colours((122, 92, 70), (150, 108, 72), (30, 18, 14), (170, 60, 36), (255, 180, 90))),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

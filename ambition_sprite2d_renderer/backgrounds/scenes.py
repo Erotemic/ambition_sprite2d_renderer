@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, art_dimension, art_quarters, eureka, evil, foregrounds, history_eras, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
+from . import arenas, art_dimension, art_quarters, eureka, evil, foregrounds, history_eras, history_origins, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from .artkit import Art
 from .parts import LAYER_BLUR, LAYER_SIZE
 
@@ -98,6 +98,19 @@ SCENES: dict[str, Scene] = {
     "history_monsoon": history_eras.history_monsoon,
     "history_sail": history_eras.history_sail,
     "history_industrial": history_eras.history_industrial,
+    # The History dimension, second pass: the places of the first people and
+    # the first farmers, one to each floor of the grid (`history_origins.py`).
+    "history_savanna": history_origins.history_savanna,
+    "history_green_sahara": history_origins.history_green_sahara,
+    "history_ice_age": history_origins.history_ice_age,
+    "history_megalith": history_origins.history_megalith,
+    "history_northwoods": history_origins.history_northwoods,
+    "history_indus": history_origins.history_indus,
+    "history_yellow_river": history_origins.history_yellow_river,
+    "history_maize": history_origins.history_maize,
+    "history_sahul": history_origins.history_sahul,
+    "history_highlands": history_origins.history_highlands,
+    "history_painted_cave": history_origins.history_painted_cave,
 }
 
 

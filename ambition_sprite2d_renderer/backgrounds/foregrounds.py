@@ -43,6 +43,7 @@ from .art_quarters import stacks_foreground as _art_stacks
 from .art_quarters import stage_foreground as _art_stage
 from .artkit import Art, Pen, polar, scale
 from . import history_eras as _history
+from . import history_origins as _origins
 from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
 from .military_tower import TOWER
 from .noodly import NOODLY
@@ -309,6 +310,17 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_steppe": (_history.steppe_foreground, scale(_history.STEPPE["near"], 0.9)),
     "history_sail": (_history.sail_foreground, scale(_history.SAIL["near"], 0.9)),
     "history_industrial": (_history.industrial_foreground, scale(_history.INDUSTRIAL["near"], 0.9)),
+    # The History dimension, second pass: grass, millet and spinifex that
+    # stand from below; boughs of pine, fronds of fern and stalactites that
+    # hang. The Ice Age, the downs, the Indus and the maize fields have none:
+    # their land and their sky are open.
+    "history_savanna": (_origins.savanna_foreground, scale(_origins.SAVANNA["near"], 0.9)),
+    "history_green_sahara": (_origins.green_sahara_foreground, scale(_origins.GREEN_SAHARA["near"], 0.9)),
+    "history_northwoods": (_origins.northwoods_foreground, scale(_origins.NORTHWOODS["near"], 0.9)),
+    "history_yellow_river": (_origins.yellow_river_foreground, scale(_origins.YELLOW_RIVER["near"], 0.9)),
+    "history_sahul": (_origins.sahul_foreground, scale(_origins.SAHUL["near"], 0.9)),
+    "history_highlands": (_origins.highlands_foreground, scale(_origins.HIGHLANDS["near"], 0.9)),
+    "history_painted_cave": (_origins.painted_cave_foreground, scale(_origins.PAINTED_CAVE["near"], 0.9)),
 }
 
 

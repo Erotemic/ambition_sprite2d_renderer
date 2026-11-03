@@ -178,6 +178,32 @@ def _feather(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(vane * 0.85 + quill, 0.0, 1.0), colour
 
 
+def _flake(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A flake of snow: six arms, each with two small branches, a little
+    turned."""
+    reach = (0.20, 0.26, 0.16, 0.23)[variant]
+    turn = (0.0, 0.3, 0.6, 0.15)[variant]
+    lines = []
+    for k in range(6):
+        a = turn + k * math.pi / 3.0
+        ca, sa = math.cos(a), math.sin(a)
+        lines.append([(0.0, 0.0), (ca * reach, sa * reach)])
+        for side in (-1.0, 1.0):
+            b = a + side * 0.8
+            base = (ca * reach * 0.55, sa * reach * 0.55)
+            lines.append([base, (base[0] + math.cos(b) * reach * 0.3, base[1] + math.sin(b) * reach * 0.3)])
+    return _strokes(lines, 0.012, 0.35), colour
+
+
+def _raindrop(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A drop of the monsoon rain: a short thin streak that leans with the
+    wind."""
+    length = (0.20, 0.26, 0.16, 0.30)[variant]
+    lean = (0.30, 0.25, 0.35, 0.28)[variant]
+    top = (lean * length * 0.5, -length * 0.5)
+    return _strokes([[top, (-top[0], -top[1])]], 0.010, 0.25), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -260,6 +286,22 @@ MOTES = {
     "history_monsoon": (_twinkle, (255, 226, 150)),
     "history_sail": (_feather, (246, 244, 236)),
     "history_industrial": (_dot, (70, 64, 64)),
+    # The History dimension, second pass: seeds of grass in the Rift Valley;
+    # pollen over the Green Sahara; snow in the Ice Age; blossom of hawthorn
+    # on the downs; mist in the north; monsoon rain on the Indus; dust of
+    # the loess; pollen of maize; sparks of a fire in Sahul; fireflies in the
+    # highlands; sparks of the torches in the painted cave.
+    "history_savanna": (_chaff, (236, 200, 120)),
+    "history_green_sahara": (_dot, (250, 240, 170)),
+    "history_ice_age": (_flake, (240, 246, 255)),
+    "history_megalith": (_petal, (242, 238, 228)),
+    "history_northwoods": (_dot, (214, 222, 220)),
+    "history_indus": (_raindrop, (200, 214, 230)),
+    "history_yellow_river": (_dot, (232, 204, 140)),
+    "history_maize": (_chaff, (240, 220, 140)),
+    "history_sahul": (_glow, (255, 170, 80)),
+    "history_highlands": (_glow, (210, 250, 160)),
+    "history_painted_cave": (_glow, (255, 176, 96)),
 }
 
 
@@ -313,6 +355,17 @@ SHADOWS = {
     "history_monsoon": (60, 50, 44),
     "history_sail": (24, 34, 34),
     "history_industrial": (20, 16, 18),
+    "history_savanna": (70, 40, 24),
+    "history_green_sahara": (40, 52, 28),
+    "history_ice_age": (60, 80, 120),
+    "history_megalith": (40, 52, 34),
+    "history_northwoods": (20, 30, 30),
+    "history_indus": (70, 36, 26),
+    "history_yellow_river": (80, 60, 36),
+    "history_maize": (50, 48, 30),
+    "history_sahul": (80, 30, 20),
+    "history_highlands": (20, 36, 24),
+    "history_painted_cave": (24, 14, 10),
 }
 SHADOW_PX = (96, 28)
 
