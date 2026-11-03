@@ -91,6 +91,66 @@ def _speck(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(_soft(x, y, r, 1.1) * 1.3 + _soft(x, y, r * 2.4, 2.4) * 0.25, 0.0, 1.0), colour
 
 
+def _strokes(lines: list[list[tuple[float, float]]], width: float, glow: float) -> np.ndarray:
+    """Soft strokes through `lines` (each in the coordinates of a cell, the
+    middle at 0), with a faint light round them."""
+    x, y = _cell()
+    near = np.full(x.shape, 9.0)
+    for pts in lines:
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            dx, dy = x1 - x0, y1 - y0
+            t = np.clip(((x - x0) * dx + (y - y0) * dy) / max(dx * dx + dy * dy, 1e-9), 0.0, 1.0)
+            near = np.minimum(near, np.hypot(x - x0 - t * dx, y - y0 - t * dy))
+    core = np.clip(1.0 - (near - width) / 0.03, 0.0, 1.0)
+    return np.clip(core + np.clip(1.0 - near / 0.2, 0.0, 1.0) ** 2 * glow, 0.0, 1.0)
+
+
+def _letter(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A letter that floats: A, V, K or M, a little turned."""
+    shapes = (
+        [[(-0.16, 0.20), (0.0, -0.22), (0.16, 0.20)], [(-0.09, 0.05), (0.09, 0.05)]],
+        [[(-0.18, -0.18), (0.0, 0.20), (0.18, -0.18)]],
+        [[(-0.12, -0.22), (-0.12, 0.22)], [(0.14, -0.22), (-0.12, 0.02), (0.14, 0.22)]],
+        [[(-0.20, 0.20), (-0.20, -0.20), (0.0, 0.06), (0.20, -0.20), (0.20, 0.20)]],
+    )[variant]
+    turn = (0.2, -0.3, 0.1, -0.15)[variant]
+    c, s = math.cos(turn), math.sin(turn)
+    lines = [[(px * c - py * s, px * s + py * c) for px, py in stroke] for stroke in shapes]
+    return _strokes(lines, 0.022, 0.25), colour
+
+
+def _note(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A small note that glows: a head, a stem, and a flag or a beam."""
+    x, y = _cell()
+    heads = ((-0.06, 0.14),) if variant != 2 else ((-0.16, 0.16), (0.12, 0.10))
+    mask = np.zeros_like(x)
+    for hx, hy in heads:
+        rx, ry = x - hx, y - hy
+        u = rx * math.cos(0.45) + ry * math.sin(0.45)
+        v = -rx * math.sin(0.45) + ry * math.cos(0.45)
+        mask = np.maximum(mask, np.clip(1.0 - (np.sqrt((u / 0.085) ** 2 + (v / 0.06) ** 2) - 1.0) / 0.25, 0.0, 1.0))
+    if variant == 2:
+        lines = [[(-0.085, 0.14), (-0.085, -0.18)], [(0.195, 0.08), (0.195, -0.24)], [(-0.085, -0.18), (0.195, -0.24)]]
+    elif variant == 3:
+        lines = [[(0.015, 0.12), (0.015, -0.22)]]
+    else:
+        lines = [[(0.015, 0.12), (0.015, -0.22), (0.12, -0.10), (0.14, 0.0)]]
+        if variant == 1:
+            lines.append([(0.015, -0.14), (0.12, -0.02)])
+    return np.clip(np.maximum(mask, _strokes(lines, 0.012, 0.0)) + _soft(x, y, 0.45, 2.4) * 0.35, 0.0, 1.0), colour
+
+
+def _confetti(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A bit of confetti: a small strip of paper, turned."""
+    x, y = _cell()
+    turn = (0.5, -0.9, 1.6, 0.1)[variant]
+    rx = x * math.cos(turn) - y * math.sin(turn)
+    ry = x * math.sin(turn) + y * math.cos(turn)
+    half = ((0.16, 0.06), (0.12, 0.08), (0.20, 0.05), (0.10, 0.10))[variant]
+    strip = np.clip((half[0] - np.abs(rx)) / 0.03, 0.0, 1.0) * np.clip((half[1] - np.abs(ry)) / 0.03, 0.0, 1.0)
+    return np.clip(strip * 0.95 + _soft(x, y, 0.40, 2.6) * 0.2, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -154,6 +214,12 @@ MOTES = {
     "art": (_petal, (246, 110, 196)),
     "art_sketchbook": (_speck, (110, 112, 128)),
     "art_inkfall": (_glow, (255, 120, 220)),
+    # The four quarters: letters that float off the pages; small notes that
+    # glow; confetti in the light of the stage; sparks from the kilns.
+    "art_stacks": (_letter, (64, 46, 40)),
+    "art_resonance": (_note, (150, 236, 255)),
+    "art_stage": (_confetti, (255, 214, 120)),
+    "art_forge": (_glow, (255, 156, 70)),
 }
 
 
@@ -195,6 +261,10 @@ SHADOWS = {
     "art": (40, 24, 70),
     "art_sketchbook": (120, 112, 100),
     "art_inkfall": (8, 2, 20),
+    "art_stacks": (60, 38, 28),
+    "art_resonance": (6, 8, 24),
+    "art_stage": (30, 8, 16),
+    "art_forge": (24, 10, 6),
 }
 SHADOW_PX = (96, 28)
 

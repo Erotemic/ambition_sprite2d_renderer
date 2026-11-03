@@ -162,6 +162,21 @@ SKINS: tuple[Skin, ...] = (
     # The Inkfall Caverns: violet rock under living ink that runs down the
     # edge and glows, and drops of it under each block.
     Skin("art_inkfall", "rock", (58, 38, 102), (20, 12, 44), (110, 80, 170), (60, 220, 250), "ink", (246, 70, 200), "drips", "slab"),
+    # The four quarters of the Art dimension (`backgrounds/art_quarters.py`).
+    # The Story Stacks: books that lie in stacks, their spines to the view,
+    # under the gilt edges of their pages; ribbons of bookmarks hang under
+    # each block, and a shelf board is the platform.
+    Skin("art_stacks", "books", (104, 62, 46), (40, 24, 20), (156, 104, 72), (222, 172, 70), "pages", (240, 226, 192), "ribbons", "shelf"),
+    # The Resonant Reach: the black lacquer of a piano with keys of ivory in
+    # it, under a rail of brass; a line of a stave is the platform.
+    Skin("art_resonance", "keys", (34, 34, 52), (12, 12, 22), (88, 90, 120), (80, 230, 255), "brass", (214, 170, 80), "lip", "stave"),
+    # The Amphitheatre: the black boards of a stage under an edge of gold
+    # with footlights in it, a fringe of red velvet under each block, and a
+    # catwalk for a platform.
+    Skin("art_stage", "timber", (66, 40, 40), (24, 14, 18), (110, 70, 62), (236, 182, 70), "footlights", (236, 182, 70), "fringe", "catwalk"),
+    # The Workshop Deeps: bricks fired in a kiln, a few of them glazed and
+    # some scorched, under a plate of copper; a workbench is the platform.
+    Skin("art_forge", "fired", (112, 54, 40), (40, 18, 14), (146, 80, 56), (255, 140, 50), "copper", (204, 116, 66), "bolts", "bench"),
     # Great slabs, each with one sign cut in it that gives a little light.
     Skin("eclipse", "monolith", (30, 34, 86), (10, 12, 36), (72, 78, 152), (92, 232, 200), "edge", (44, 50, 112), "lip", "slab"),
 )
@@ -601,6 +616,79 @@ def fill(skin: Skin) -> Image.Image:
         creases = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(3.0, 7.0)) for _ in range(4)]
         tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y), (x + 1.2, y + h)], 0.30) for x, y, h in creases]), skin.dark, 0.5)
         tile.tone((tile.noise(3, 6, 3) - 0.5) * 0.10)
+    elif skin.material == "books":
+        # Books that lie flat in stacks, their spines to the view: a row of
+        # spines of each height, each spine of its own binding, with bands of
+        # gold near its ends and a title in the middle.
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        bindings = (skin.base, (110, 36, 44), (48, 80, 62), (44, 54, 92), (130, 92, 52))
+        y0 = 0.0
+        titles, bands = [], []
+        while y0 < FILL[1] - 0.5:
+            h = min(rng.choice([4.0, 5.0, 6.0, 7.0]), FILL[1] - y0)
+            if FILL[1] - (y0 + h) < 3.0:
+                h = FILL[1] - y0
+            x0 = rng.uniform(0.0, 20.0)
+            end = x0 + 64.0
+            while x0 < end - 1.0:
+                length = min(rng.choice([18.0, 24.0, 30.0, 40.0]), end - x0)
+                if end - (x0 + length) < 10.0:
+                    length = end - x0
+                tone = rng.uniform(-0.10, 0.08)
+                colour = _mix(rng.choice(bindings), skin.dark, 0.42 + max(0.0, -tone))
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.5, y0 + 0.35, x0 + length - 0.5, y0 + h - 0.35)), colour)
+                # A spine is round: a light line on its top, shade on its foot.
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.5, y0 + 0.35, x0 + length - 0.5, y0 + 1.0)), skin.light, 0.22)
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.5, y0 + h - 1.1, x0 + length - 0.5, y0 + h - 0.35)), skin.dark, 0.45)
+                bands += [(x0 + 2.2, y0, h), (x0 + length - 3.0, y0, h)]
+                if length > 22.0:
+                    titles.append((x0 + length * 0.5, y0 + h * 0.5, min(8.0, length * 0.3)))
+                x0 += length
+            y0 += h
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x, y + 0.6, x + 0.7, y + h - 0.6) for x, y, h in bands]), skin.accent, 0.32)
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - w * 0.5, y - 0.35, x + w * 0.5, y + 0.35) for x, y, w in titles]), skin.accent, 0.28)
+        tile.tone((tile.noise(4, 8, 3) - 0.5) * 0.14)
+    elif skin.material == "keys":
+        # The black lacquer of a piano, with a keyboard set in it: keys of
+        # ivory, gone dim in the dark, and the black keys over them. A line
+        # of light on the lacquer, as on a polished case.
+        tile.put(np.ones_like(tile.alpha), skin.base)
+        ivory = _mix((236, 228, 206), skin.dark, 0.62)
+        for row in range(2):
+            y0 = row * 32.0
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, y0 + 2.0, 64.0, y0 + 18.0)), skin.dark)
+            for k in range(8):
+                x0 = k * 8.0 + (4.0 if row else 0.0)
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.35, y0 + 2.4, x0 + 7.65, y0 + 17.6)), _mix(ivory, skin.dark, rng.uniform(0.0, 0.12)))
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.35, y0 + 16.4, x0 + 7.65, y0 + 17.6)), skin.dark, 0.35)
+            for k in range(8):
+                if (k + (1 if row else 0)) % 7 in (2, 6):
+                    continue
+                x0 = k * 8.0 + 5.4 + (4.0 if row else 0.0)
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0 + 2.4, x0 + 5.2, y0 + 12.0)), skin.dark)
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.8, y0 + 2.4, x0 + 1.6, y0 + 11.0)), skin.light, 0.30)
+            # The lacquer under the keys: a long soft shine.
+            tile.put(np.clip(1.0 - np.abs(tile.y - (y0 + 25.0)) / 2.0, 0.0, 1.0) * (0.55 + 0.45 * np.sin(tile.x * math.pi / 32.0 + row)) ** 2, skin.light, 0.35)
+        tile.tone((tile.noise(4, 4, 3) - 0.5) * 0.10)
+    elif skin.material == "fired":
+        # Bricks fired in a kiln: each of its own tone, its end scorched
+        # dark where the fire was, a few glazed, and heat in a few joints.
+        _courses(tile, skin, 8.0, 16.0, 0.6, 0.5)
+        for row in range(8):
+            for i in range(4):
+                x0 = i * 16.0 + (8.0 if row % 2 else 0.0)
+                y0 = row * 8.0
+                kind = rng.random()
+                if kind < 0.35:
+                    burn = np.clip(1.0 - ((tile.x - x0) % 64.0) / 7.0, 0.0, 1.0) * (((tile.x - x0) % 64.0) < 16.0) * (tile.y >= y0) * (tile.y < y0 + 8.0)
+                    tile.put(burn, skin.dark, 0.55)
+                elif kind < 0.45:
+                    glaze = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 1.0, y0 + 1.0, x0 + 15.0, y0 + 7.0))
+                    tile.put(glaze, (52, 84, 92), 0.30)
+                    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 2.0, y0 + 1.4, x0 + 9.0, y0 + 2.0)), (200, 226, 226), 0.18)
+        seams = [(rng.randrange(8) * 8.0, rng.uniform(0, 64), rng.uniform(5.0, 12.0)) for _ in range(3)]
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x, y - 0.3, x + w, y + 0.3) for y, x, w in seams], blur=0.6), skin.accent, 0.45)
+        tile.tone((tile.noise(3, 3, 4) - 0.55) * 0.28)
     elif skin.material == "timber":
         # Boards laid flat, eight to the tile, each board a few lengths. Each
         # board has its own tone, a grain along it and a nail at each end.
@@ -746,6 +834,64 @@ def cap(skin: Skin) -> Image.Image:
         hatch = ((((tile.x - y) % 2.0) < 0.35) & (y > s + 1.4) & (y < s + 4.5)).astype(np.float32)
         tile.put(hatch, skin.accent, 0.30)
         tile.put(np.clip(1.0 - (y - s - 6.0) / 3.0, 0, 1) * (y >= s + 6.0), (0, 0, 0), 0.20)
+        return tile.publish()
+    if skin.cap == "pages":
+        # The edges of the pages of the top book: a pale band of many thin
+        # lines, gilt on its top, and the shade it throws under it.
+        thick = 5.0
+        body = ((y >= s - 0.3) & (y < s + thick)).astype(np.float32)
+        tile.put(body, skin.cap_colour)
+        lines = (((y - s) % 0.8) < 0.22) & (y > s + 1.2) & (y < s + thick - 0.6)
+        tile.put(lines.astype(np.float32), _mix(skin.cap_colour, skin.dark, 0.35), 0.55)
+        tile.tone(((tile.profile(10, 2) - 0.5) * 0.12)[None, :] * body)
+        tile.put(((y >= s - 0.3) & (y < s + 1.0)).astype(np.float32), skin.accent)
+        tile.put(((y >= s - 0.3) & (y < s + 0.3)).astype(np.float32), _mix(skin.accent, (255, 250, 220), 0.5))
+        tile.put(((y >= s + thick - 0.8) & (y < s + thick)).astype(np.float32), skin.dark, 0.6)
+        tile.put(np.clip(1.0 - (y - s - thick) / 3.0, 0.0, 1.0) * (y >= s + thick), (0, 0, 0), 0.35)
+        return tile.publish()
+    if skin.cap == "brass":
+        # A rail of polished brass: a round top that catches the light, a
+        # line cut along it, and a strip of red felt under it, as under the
+        # keys of a piano.
+        thick = 4.6
+        body = ((y >= s - 0.2) & (y < s + thick)).astype(np.float32)
+        tile.put(body, skin.cap_colour)
+        tile.put(np.clip(1.0 - np.abs(y - s - 0.9) / 0.9, 0.0, 1.0) * body, (255, 244, 200), 0.75)
+        tile.put(((y >= s + 2.5) & (y < s + 2.9)).astype(np.float32), _mix(skin.cap_colour, skin.dark, 0.6), 0.8)
+        tile.put(((y >= s + 3.6) & (y < s + thick)).astype(np.float32), (140, 30, 44))
+        tile.tone(((tile.profile(4, 2) - 0.5) * 0.18)[None, :] * body)
+        tile.put(np.clip(1.0 - (y - s - thick) / 3.0, 0.0, 1.0) * (y >= s + thick), (0, 0, 0), 0.40)
+        return tile.publish()
+    if skin.cap == "footlights":
+        # The edge of a stage: a board with a moulding of gold, and in it a
+        # footlight each sixteen units, a small warm light in a hood.
+        thick = 5.0
+        body = ((y >= s - 0.2) & (y < s + thick)).astype(np.float32)
+        tile.put(body, _mix(skin.base, skin.dark, 0.3))
+        tile.put(((y >= s - 0.2) & (y < s + 1.3)).astype(np.float32), skin.cap_colour)
+        tile.put(((y >= s - 0.2) & (y < s + 0.4)).astype(np.float32), _mix(skin.cap_colour, (255, 250, 220), 0.5))
+        tile.put(((y >= s + 3.6) & (y < s + 4.3)).astype(np.float32), skin.cap_colour, 0.8)
+        hoods = tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 16.0 + 8.0, s + 2.5, 2.2, ry=1.1) for k in range(4)])
+        tile.put(hoods, skin.dark)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 16.0 + 8.0, s + 2.2, 2.6, ry=1.6) for k in range(4)], blur=0.9), (255, 220, 150), 0.55)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 16.0 + 8.0, s + 2.3, 1.0, ry=0.6) for k in range(4)]), (255, 244, 210))
+        tile.put(np.clip(1.0 - (y - s - thick) / 3.0, 0.0, 1.0) * (y >= s + thick), (0, 0, 0), 0.40)
+        return tile.publish()
+    if skin.cap == "copper":
+        # A plate of copper on the edge: rivets, joints, and the green of
+        # age in a few places.
+        thick = 4.8
+        body = ((y >= s - 0.2) & (y < s + thick)).astype(np.float32)
+        tile.put(body, skin.cap_colour)
+        tile.tone(((tile.noise(10, 2, 2) - 0.5) * 0.20) * body)
+        tile.put(((y >= s - 0.2) & (y < s + 0.7)).astype(np.float32), _mix(skin.cap_colour, (255, 226, 190), 0.55))
+        tile.put(((y >= s + thick - 0.8) & (y < s + thick)).astype(np.float32), skin.dark, 0.7)
+        patina = np.clip((tile.noise(8, 2, 3) - 0.62) * 6.0, 0.0, 1.0) * body * (y > s + 1.0)
+        tile.put(patina, (86, 160, 136), 0.55)
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, k * 32.0 - 0.3, s, k * 32.0 + 0.3, s + thick) for k in range(3)]), skin.dark, 0.7)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 8.0 + 4.0, s + 2.6, 0.65) for k in range(8)]), _mix(skin.cap_colour, (255, 236, 200), 0.5))
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 8.0 + 4.2, s + 2.9, 0.65) for k in range(8)]), skin.dark, 0.35)
+        tile.put(np.clip(1.0 - (y - s - thick) / 3.0, 0.0, 1.0) * (y >= s + thick), (0, 0, 0), 0.40)
         return tile.publish()
     if skin.cap == "kerb":
         # A kerb of round stones set in the earth, of a few sizes, with moss
@@ -972,6 +1118,26 @@ def under(skin: Skin) -> Image.Image:
         for x, length, w, colour in drops:
             tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x - w, e - 0.6, x + w, e + length), _dot(p, dx, dy, x, e + length, w * 1.35))), colour)
             tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x - w * 0.6, e, x - w * 0.15, e + length)), (255, 255, 255), 0.35)
+    elif skin.under == "ribbons":
+        # Bookmarks that hang out of the books: ribbons of each length, each
+        # with a notch cut in its end.
+        for k in range(5):
+            x = (k + rng.uniform(0.25, 0.75)) * 64.0 / 5.0
+            length = rng.uniform(4.0, 10.0)
+            w = rng.uniform(0.7, 1.0)
+            colour = (skin.accent, (168, 40, 52), (60, 110, 160))[k % 3]
+            ribbon = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x - w, e - 0.6), (x + w, e - 0.6), (x + w, e + length), (x, e + length - w * 1.2), (x - w, e + length)]))
+            tile.put(ribbon, colour)
+            tile.put(ribbon * (tile.x < x - w * 0.3), (255, 255, 255), 0.20)
+    elif skin.under == "fringe":
+        # A skirt of red velvet under the stage, in swags, with a gold fringe
+        # on its lower edge.
+        drop = e + 3.2 + 2.0 * np.abs(np.sin(tile.x * math.pi / 16.0))
+        body = np.clip((drop - y) * K * 0.5 + 0.5, 0, 1) * (y >= e - 0.6)
+        tile.put(body, (128, 22, 36))
+        tile.put(body * (0.5 + 0.5 * np.cos(tile.x * math.pi / 2.0)) ** 2, (60, 6, 16), 0.45)
+        fringe = (y >= drop - 0.2) & (y < drop + 1.4) & ((tile.x % 1.0) < 0.55)
+        tile.put(fringe.astype(np.float32), skin.accent)
     elif skin.under == "noodles":
         # Noodles that hang under the block: many, of each length, and the
         # end of a long one turns up in a curl.
@@ -1104,6 +1270,62 @@ def oneway(skin: Skin) -> Image.Image:
         tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, k * 2 - 0.15, 0.0, k * 2 + 0.15, 2.8 if k % 4 == 0 else 1.4) for k in range(33)]), skin.accent, 0.85)
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 8 + 2.0, 3.6, 0.45) for k in range(8)]), skin.accent, 0.7)
         tile.put(np.clip(1.0 - (y - 5.0) / 3.0, 0, 1) * (y >= 5.0), (0, 0, 0), 0.20)
+    elif skin.oneway == "shelf":
+        # A shelf board: a gilt edge on its front, and a bracket of turned
+        # wood under it each 32 units.
+        wood, wood_dark = (118, 72, 44), (58, 34, 22)
+        tile.put((y < 4.6).astype(np.float32), wood)
+        tile.tone(((np.sin(tile.x * 0.8 + np.sin(tile.x * 0.11) * 3.0) * 0.5) * 0.12) * (y < 4.6))
+        tile.put((y < 0.8).astype(np.float32), _mix(wood, (255, 236, 200), 0.45))
+        tile.put(((y >= 1.6) & (y < 2.2)).astype(np.float32), skin.accent, 0.85)
+        tile.put(((y >= 3.8) & (y < 4.6)).astype(np.float32), wood_dark, 0.8)
+        brackets = tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(k * 32 + 13, 4.6), (k * 32 + 19, 4.6), (k * 32 + 17, 7.0), (k * 32 + 17.6, 9.0), (k * 32 + 16, 11.0), (k * 32 + 14.4, 9.0), (k * 32 + 15, 7.0)]) for k in range(2)])
+        tile.put(brackets, wood_dark)
+        tile.put(np.clip(1.0 - (y - 4.6) / 3.0, 0, 1) * (y >= 4.6) * (1.0 - brackets), (0, 0, 0), 0.24)
+    elif skin.oneway == "stave":
+        # A line of a stave: a strip of the paper of sheet music on a rail of
+        # brass, its five lines in ink, a bar line each 32 units, and a note
+        # here and there.
+        paper = (196, 188, 166)
+        tile.put((y < 6.4).astype(np.float32), paper)
+        tile.put((y < 0.9).astype(np.float32), skin.cap_colour)
+        tile.put((y < 0.35).astype(np.float32), (255, 244, 200), 0.7)
+        for k in range(5):
+            tile.put(((y >= 1.5 + k * 1.0) & (y < 1.75 + k * 1.0)).astype(np.float32), skin.dark, 0.75)
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, k * 32 + 0.0, 1.5, k * 32 + 0.35, 5.75) for k in range(3)]), skin.dark, 0.8)
+        heads = [(rng.uniform(4, 28) + k * 32.0, 1.6 + rng.randint(0, 8) * 0.5) for k in range(2)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, 0.75, ry=0.55) for x, yy in heads]), skin.dark)
+        tile.put(((y >= 5.8) & (y < 6.4)).astype(np.float32), skin.dark, 0.8)
+        tile.put(np.clip(1.0 - (y - 6.4) / 3.0, 0, 1) * (y >= 6.4), skin.accent, 0.18)
+    elif skin.oneway == "catwalk":
+        # A catwalk over a stage: a deck of black steel with holes in it, a
+        # line of gold on its edge, and a lamp clamped under it.
+        steel = (40, 34, 40)
+        tile.put((y < 3.2).astype(np.float32), steel)
+        tile.put((y < 0.6).astype(np.float32), skin.accent, 0.9)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 4.0 + 2.0, 1.9, 0.6) for k in range(16)]), skin.dark, 0.8)
+        truss = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(k * 8, 3.2), (k * 8 + 4, 7.4), (k * 8 + 8, 3.2)], 0.6) for k in range(8)])
+        tile.put(truss, _mix(steel, (90, 80, 90), 0.4))
+        tile.put(((y >= 7.0) & (y < 7.8)).astype(np.float32), _mix(steel, (90, 80, 90), 0.4))
+        lamps = tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(k * 32 + 14, 7.8), (k * 32 + 18, 7.8), (k * 32 + 19.5, 11.0), (k * 32 + 12.5, 11.0)]) for k in range(2)])
+        tile.put(lamps, steel)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 32 + 16, 11.0, 2.4, ry=0.8) for k in range(2)]), (255, 236, 190))
+        tile.put(np.clip(1.0 - (y - 7.8) / 3.0, 0, 1) * (y >= 7.8) * (1.0 - lamps), (0, 0, 0), 0.20)
+    elif skin.oneway == "bench":
+        # A workbench: a thick top of wood with the marks of tools on it, a
+        # vise at one end, and braces under it.
+        wood, wood_dark = (150, 104, 62), (72, 46, 28)
+        tile.put((y < 5.2).astype(np.float32), wood)
+        tile.tone((tile.noise(3, 10, 2) - 0.5) * 0.28 * (y < 5.2))
+        tile.put((y < 0.8).astype(np.float32), _mix(wood, (255, 236, 200), 0.4))
+        tile.put(((y >= 4.4) & (y < 5.2)).astype(np.float32), wood_dark, 0.8)
+        cuts = [(rng.uniform(0, 64), rng.uniform(1.4, 3.6), rng.uniform(2.0, 4.0)) for _ in range(5)]
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, yy), (x + w, yy + 0.3)], 0.25) for x, yy, w in cuts]), wood_dark, 0.6)
+        tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, 40.0, 0.4, 46.0, 6.6), _box(p, dx, dy, 42.4, 6.6, 43.6, 9.0))), (92, 96, 104))
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 40.0, 0.4, 46.0, 1.2)), (170, 176, 184), 0.8)
+        braces = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(k * 32 + 6, 5.2), (k * 32 + 12, 11.0)], 1.1) for k in range(2)] + [_line(p, dx, dy, [(k * 32 + 26, 5.2), (k * 32 + 20, 11.0)], 1.1) for k in range(2)])
+        tile.put(braces, wood_dark)
+        tile.put(np.clip(1.0 - (y - 5.2) / 3.0, 0, 1) * (y >= 5.2) * (1.0 - braces), (0, 0, 0), 0.24)
     elif skin.oneway == "roof":
         # A ridge of roof tiles: a cap of half-round tiles along the top,
         # and the round ends of the rows of tiles hanging below it.

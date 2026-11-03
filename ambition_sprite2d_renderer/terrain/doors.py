@@ -229,6 +229,72 @@ def void_gate(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def book(tile: Tile, c: dict) -> np.ndarray:
+    """A door like the cover of a great book: leather with a border tooled
+    in gold, gold corners, a title plate that gives light, and a clasp."""
+    leaf = _frame(tile, c)
+    x0, y0, x1, y1 = F + 3.0, F + 3.0, W - F - 3.0, H - STEP - 3.0
+    border = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0, x1, y1)) * (1.0 - tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 1.0, y0 + 1.0, x1 - 1.0, y1 - 1.0)))
+    tile.put(border * leaf, c["accent"], 0.9)
+    corners = [[(x, y), (x + sx * 9.0, y), (x, y + sy * 9.0)] for x, y, sx, sy in ((x0, y0, 1, 1), (x1, y0, -1, 1), (x0, y1, 1, -1), (x1, y1, -1, -1))]
+    tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, pts) for pts in corners]) * leaf, c["accent"])
+    # The spine side: raised bands across the leaf by the hinge.
+    for y in (30.0, 60.0, 90.0):
+        tile.put(leaf * (np.abs(tile.y - y) < 1.3) * (tile.x < F + 7.0), c["frame"])
+        tile.put(leaf * (np.abs(tile.y - y + 1.0) < 0.35) * (tile.x < F + 7.0), c["frame_light"], 0.7)
+    _window(tile, c, 20.0, 20.0, W - 20.0, 32.0)
+    # A sun in gold on the cover, and a clasp on the right edge.
+    cx, cy = W * 0.5 + 2.0, 62.0
+    tile.put(tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, cx, cy, 5.0), [_line(p, dx, dy, [(cx + 6.5 * math.cos(a), cy + 6.5 * math.sin(a)), (cx + 10.0 * math.cos(a), cy + 10.0 * math.sin(a))], 1.0) for a in np.linspace(0.0, math.tau, 13)[:-1]])) * leaf, c["accent"], 0.85)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, W - F - 7.0, 56.0, W - F + 1.5, 66.0), _dot(p, dx, dy, W - F - 7.0, 61.0, 2.0))), c["accent"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, W - F - 7.0, 56.0, W - F + 1.5, 57.0)), (255, 255, 255), 0.4)
+    return leaf
+
+
+def organ(tile: Tile, c: dict) -> np.ndarray:
+    """A door made of organ pipes of brass in a dark case, the tallest in the
+    middle, each with its mouth; a round window of light over them."""
+    leaf = _frame(tile, c, arch=14.0)
+    tile.put(leaf, c["dark"], 0.5)
+    count = 7
+    pitch = (W - 2 * F) / count
+    for k in range(count):
+        x = F + pitch * (k + 0.5)
+        top = 44.0 + abs(k - 3) * 7.0
+        body = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x - pitch * 0.38, top, x + pitch * 0.38, H - STEP - 8.0), _poly(p, dx, dy, [(x - pitch * 0.38, H - STEP - 8.0), (x + pitch * 0.38, H - STEP - 8.0), (x + pitch * 0.12, H - STEP), (x - pitch * 0.12, H - STEP)]))) * leaf
+        tile.put(body, c["leaf"])
+        tile.put(body * (np.abs(tile.x - (x - pitch * 0.18)) < 0.7), c["leaf_light"], 0.7)
+        tile.put(body * (tile.x > x + pitch * 0.2), c["dark"], 0.35)
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x - pitch * 0.45, top - 1.2, x + pitch * 0.45, top)) * leaf, c["leaf_light"])
+        m = H - STEP - 22.0
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x - pitch * 0.26, m + 4.0), (x + pitch * 0.26, m + 4.0), (x + pitch * 0.26, m), (x, m - 2.4), (x - pitch * 0.26, m)])) * leaf, c["dark"], 0.9)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.4) * (tile.y > 40.0), c["dark"], 0.8)
+    _window(tile, c, 24.0, 18.0, W - 24.0, 33.0, round_=True)
+    return leaf
+
+
+def star_door(tile: Tile, c: dict) -> np.ndarray:
+    """A stage door: painted boards, a gold star on it for the one who is on
+    tonight, and a lamp in a cage over it."""
+    leaf = _frame(tile, c)
+    for k in range(1, 4):
+        x = F + k * (W - 2 * F) / 4.0
+        tile.put(leaf * (np.abs(tile.x - x) < 0.4), c["dark"], 0.6)
+    tile.tone((tile.noise(3, 10, 2) - 0.5) * 0.12 * leaf)
+    for y0, y1 in ((40.0, 72.0), (80.0, 108.0)):
+        tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, F + 5.0, y0, W - F - 5.0, y0 + 0.8), _box(p, dx, dy, F + 5.0, y0, F + 5.8, y1))) * leaf, c["leaf_light"], 0.45)
+        tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, F + 5.0, y1 - 0.8, W - F - 5.0, y1), _box(p, dx, dy, W - F - 5.8, y0, W - F - 5.0, y1))) * leaf, c["dark"], 0.5)
+    cx, cy, r = W * 0.5, 56.0, 11.0
+    star = [(cx + (r if k % 2 == 0 else r * 0.42) * math.cos(math.radians(-90 + k * 36)), cy + (r if k % 2 == 0 else r * 0.42) * math.sin(math.radians(-90 + k * 36))) for k in range(10)]
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x + 0.8, y + 0.8) for x, y in star])), c["dark"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, star)), c["accent"])
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [star[9], star[0], star[1], (cx, cy)])), (255, 255, 230), 0.4)
+    _window(tile, c, 25.0, 18.0, 38.0, 28.0)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.4, 16.6, x + 0.4, 29.4) for x in (29.0, 34.0)]), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, W - F - 6.0, 92.0, 1.8)), c["accent"])
+    return leaf
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -243,6 +309,9 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     stone: (SWING, True),
     blast: (SWING, False),
     void_gate: (SWING, True),
+    book: (SWING, False),
+    organ: (SLIDE, True),
+    star_door: (SWING, False),
 }
 
 
@@ -293,6 +362,13 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "art": (plank, _colours((226, 176, 64), (118, 64, 196), (38, 26, 66), (232, 54, 172), (255, 236, 190))),
     "art_sketchbook": (plank, _colours((226, 196, 140), (232, 226, 210), (92, 94, 110), (92, 94, 110), (255, 250, 236))),
     "art_inkfall": (stone, _colours((70, 50, 120), (40, 24, 80), (14, 8, 34), (246, 70, 200), (255, 170, 236))),
+    # The four quarters: the cover of a book in red leather and gold; a door
+    # of organ pipes in brass; a stage door with its star; a workshop door of
+    # iron bands and rivets in a frame of fired brick.
+    "art_stacks": (book, _colours((84, 50, 34), (128, 40, 50), (40, 24, 20), (222, 172, 70), (255, 226, 160))),
+    "art_resonance": (organ, _colours((40, 34, 52), (196, 152, 72), (12, 12, 22), (80, 230, 255), (170, 240, 255))),
+    "art_stage": (star_door, _colours((60, 30, 34), (40, 34, 44), (20, 12, 16), (236, 182, 70), (255, 230, 170))),
+    "art_forge": (iron, _colours((150, 74, 48), (70, 50, 44), (30, 14, 10), (184, 100, 60), (255, 156, 70))),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

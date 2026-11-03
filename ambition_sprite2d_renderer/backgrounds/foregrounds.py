@@ -36,6 +36,11 @@ import numpy as np
 from .arenas import BOSS, ECLIPSE, HUB
 from .art_dimension import ART
 from .art_dimension import art_foreground as _art
+from .art_quarters import FORGE, RESONANCE, STACKS, STAGE
+from .art_quarters import forge_foreground as _art_forge
+from .art_quarters import resonance_foreground as _art_resonance
+from .art_quarters import stacks_foreground as _art_stacks
+from .art_quarters import stage_foreground as _art_stage
 from .artkit import Art, Pen, polar, scale
 from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
 from .military_tower import TOWER
@@ -290,6 +295,10 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "eclipse": (_eclipse, scale(ECLIPSE["rock"], 0.9)),
     "military_tower": (_military_tower, scale(TOWER["near"], 0.9)),
     "art": (_art, scale(ART["near"], 0.8)),
+    "art_stacks": (_art_stacks, scale(STACKS["near"], 0.8)),
+    "art_resonance": (_art_resonance, scale(RESONANCE["near"], 0.9)),
+    "art_stage": (_art_stage, scale(STAGE["near"], 0.9)),
+    "art_forge": (_art_forge, scale(FORGE["near"], 0.9)),
 }
 
 

@@ -692,6 +692,213 @@ def ink_bottle(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+# The four quarters of the Art dimension. In the Story Stacks `wood` is
+# leather and `stone_light` paper; in the Resonant Reach `metal` is brass;
+# on the stage `bloom` is the red of a rose; in the Workshop Deeps `wood` is
+# clay.
+
+
+def book_pile(tile: Tile, c: dict) -> None:
+    """Three books that lie in a pile, each a little turned, the pages of
+    each a pale line on its side."""
+    _shadow(tile, 7.5)
+    y = G
+    for k, (w, h, shift, colour) in enumerate(((7.0, 3.2, -0.6, c["wood"]), (6.0, 2.8, 0.8, c["bloom"]), (5.2, 2.6, -0.2, c["plant"]))):
+        x0, x1 = M - w + shift, M + w + shift
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y - h, x1, y)), _mix(colour, c["dark"], 0.25))
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.6, y - h + 0.5, x1, y - 0.5)), c["stone_light"], 0.85)
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y - h, x0 + 1.4, y)), _mix(colour, c["dark"], 0.1))
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.4, y - h + 0.6, x0 + 0.8, y - 0.6)), c["glow"], 0.7)
+        y -= h
+    tile.alpha *= tile.y < G
+
+
+def candle_stub(tile: Tile, c: dict) -> None:
+    """A stub of a candle in a dish, with wax down its side; its flame is lit."""
+    _shadow(tile, 5.0)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 1.0, 5.0, ry=1.0)), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 1.8, G - 8.0, M + 1.8, G - 1.0), _dot(p, dx, dy, M + 1.8, G - 3.0, 0.7, ry=1.6))), c["stone_light"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M + 0.6, G - 8.0, M + 1.8, G - 1.0)), c["dark"], 0.25)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 10.6, 4.0), blur=1.4), c["glow"], 0.40)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 0.9, G - 8.6), (M, G - 12.6), (M + 0.9, G - 8.6), (M, G - 8.0)])), c["glow"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 9.0, 0.45)), (255, 255, 240))
+    tile.alpha *= tile.y < G
+
+
+def loose_pages(tile: Tile, c: dict) -> None:
+    """Pages that fell out of a book: two lie flat, one curls up, each with
+    lines of writing on it."""
+    _shadow(tile, 8.0)
+    flat = [[(M - 8.0, G), (M - 6.0, G - 1.6), (M + 1.0, G - 1.4), (M + 0.0, G)], [(M - 1.0, G), (M + 1.6, G - 1.8), (M + 8.0, G - 1.2), (M + 7.0, G)]]
+    tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, pts) for pts in flat]), c["stone_light"])
+    curl = [(M - 3.0, G - 1.2), (M - 1.0, G - 8.0), (M + 1.4, G - 10.6), (M + 3.6, G - 9.2), (M + 2.0, G - 6.0), (M + 1.6, G - 1.4)]
+    page = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, curl))
+    tile.put(page, _mix(c["stone_light"], c["stone"], 0.25))
+    lines = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M - 1.8 + k * 0.6, G - 3.0 - k * 1.6), (M + 1.4 + k * 0.4, G - 3.4 - k * 1.6)], 0.25) for k in range(4)])
+    tile.put(lines * page, c["dark"], 0.55)
+    tile.alpha *= tile.y < G
+
+
+def tuning_fork(tile: Tile, c: dict) -> None:
+    """A tuning fork that stands on its foot, two rings of sound round it."""
+    _shadow(tile, 3.5)
+    tile.put(tile.mask(lambda p, dx, dy: [p.ellipse([(M - r) * K + dx, (G - 15.0 - r) * K + dy, (M + r) * K + dx, (G - 15.0 + r) * K + dy], outline=255, width=max(1, int(0.4 * K))) for r in (5.0, 7.6)], blur=0.3), c["glow"], 0.30)
+    fork = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M, G - 1.0, 2.2, ry=1.0), _box(p, dx, dy, M - 0.5, G - 8.0, M + 0.5, G - 1.0), _box(p, dx, dy, M - 2.6, G - 19.0, M - 1.6, G - 9.4), _box(p, dx, dy, M + 1.6, G - 19.0, M + 2.6, G - 9.4), p.arc([(M - 2.6) * K + dx, (G - 11.6) * K + dy, (M + 2.6) * K + dx, (G - 7.6) * K + dy], 0, 180, fill=255, width=int(1.0 * K))))
+    tile.put(fork, c["metal"])
+    tile.put(fork * (tile.x < M - 1.9), (255, 244, 210), 0.45)
+    tile.alpha *= tile.y < G
+
+
+def sheet_music(tile: Tile, c: dict) -> None:
+    """Sheets of music that lie on the ground, one on its edge: staves of
+    five lines, with notes."""
+    _shadow(tile, 8.0)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 8.0, G), (M - 6.6, G - 2.0), (M + 7.0, G - 2.0), (M + 8.0, G)])), c["stone_light"])
+    stand = [(M - 4.6, G - 0.8), (M - 5.4, G - 12.0), (M + 3.4, G - 13.0), (M + 4.4, G - 1.2)]
+    page = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, stand))
+    tile.put(page, _mix(c["stone_light"], c["stone"], 0.2))
+    lines = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M - 4.6 - (9.0 - y) * 0.07, G - y), (M + 3.6 + (9.0 - y) * 0.09, G - y - 0.6)], 0.18) for y in (3.0, 3.8, 4.6, 5.4, 6.2, 8.4, 9.2, 10.0, 10.8)])
+    tile.put(lines * page, c["dark"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - y, 0.55, ry=0.4) for x, y in ((-2.6, 4.2), (-0.4, 5.4), (1.6, 3.8), (-1.6, 9.6), (1.0, 10.4))]) * page, c["dark"], 0.85)
+    tile.alpha *= tile.y < G
+
+
+def hand_bells(tile: Tile, c: dict) -> None:
+    """Two hand bells of brass, one stands and one lies on its side."""
+    _shadow(tile, 7.0)
+    bell = [(M - 7.0, G), (M - 6.2, G - 2.0), (M - 5.2, G - 7.0), (M - 4.0, G - 8.4), (M - 2.0, G - 8.4), (M - 0.8, G - 7.0), (M + 0.2, G - 2.0), (M + 1.0, G)]
+    tile.put(tile.mask(lambda p, dx, dy: (_poly(p, dx, dy, bell), _box(p, dx, dy, M - 3.6, G - 12.6, M - 2.4, G - 8.4), _dot(p, dx, dy, M - 3.0, G - 13.0, 1.4))), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, bell[:4] + [(M - 4.4, G - 1.0)])), (255, 244, 210), 0.35)
+    lying = tile.mask(lambda p, dx, dy: (_poly(p, dx, dy, [(M + 2.0, G - 1.6), (M + 7.0, G - 3.2), (M + 7.8, G), (M + 2.8, G)]), _dot(p, dx, dy, M + 7.6, G - 1.6, 1.0, ry=1.6)))
+    tile.put(lying, _mix(c["metal"], c["dark"], 0.2))
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 7.6, G - 1.6, 0.6, ry=1.1)), c["dark"], 0.7)
+    tile.alpha *= tile.y < G
+
+
+def metronome(tile: Tile, c: dict) -> None:
+    """A metronome: a case like a small pyramid, and its arm that swings."""
+    _shadow(tile, 5.0)
+    case = [(M - 4.6, G), (M + 4.6, G), (M + 1.8, G - 15.0), (M - 1.8, G - 15.0)]
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, case)), c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 4.6, G), (M - 2.4, G), (M - 0.6, G - 15.0), (M - 1.8, G - 15.0)])), c["wood_light"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 2.0, G - 3.0), (M + 2.0, G - 3.0), (M + 1.0, G - 12.6), (M - 1.0, G - 12.6)])), c["dark"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M, G - 4.0), (M + 3.2, G - 17.6)], 0.45)), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M + 1.6, G - 13.0, M + 3.2, G - 11.6)), c["metal"])
+    tile.alpha *= tile.y < G
+
+
+def footlight(tile: Tile, c: dict) -> None:
+    """A footlight: a low hood of metal open to the stage, a warm lamp in it."""
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 2.4, G - 1.6), (M + 2.4, G - 1.6), (M + 6.0, G - 14.0), (M - 6.0, G - 14.0)]), blur=1.2) * np.clip((tile.y - (G - 14.0)) / 12.0, 0, 1), c["glow"], 0.22)
+    hood = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 5.0, G - 1.4, M + 5.0, G), _poly(p, dx, dy, [(M - 4.0, G - 1.4), (M + 4.0, G - 1.4), (M + 4.0, G - 4.0), (M - 2.0, G - 6.0), (M - 4.0, G - 4.6)])))
+    tile.put(hood, c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 1.4, G - 3.4, 1.8, ry=1.2)), _mix(c["glow"], (255, 255, 255), 0.4))
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 5.0, G - 1.4, M + 5.0, G - 0.9)), c["stone_light"], 0.6)
+
+
+def roses(tile: Tile, c: dict) -> None:
+    """Roses thrown on the stage: three heads on their stems, a petal by them."""
+    for x, y, angle in ((-5.0, 1.6, 0.3), (0.5, 2.2, -0.2), (4.6, 1.4, 0.1)):
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + x, G - y), (M + x + 4.0 * math.cos(angle), G - y + 0.6 + 4.0 * math.sin(angle))], 0.4)), c["plant"])
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x, G - y - 0.4, 1.8, ry=1.6)), c["bloom"])
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x - 0.4, G - y - 0.8, 0.8, ry=0.6)), _mix(c["bloom"], (255, 220, 220), 0.35))
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M + x + 1.0, G - y + 0.4), (M + x + 2.6, G - y - 0.6), (M + x + 2.0, G - y + 0.8)])), c["plant"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 8.0, G - 0.4, 0.9, ry=0.4)), c["bloom"])
+    tile.alpha *= tile.y < G
+
+
+def prop_crown(tile: Tile, c: dict) -> None:
+    """A crown of the props: gold paint on board, its jewels of glass."""
+    _shadow(tile, 6.0)
+    pts = [(M - 6.0, G - 0.4), (M - 6.6, G - 8.0), (M - 3.4, G - 4.6), (M, G - 10.0), (M + 3.4, G - 4.6), (M + 6.6, G - 8.0), (M + 6.0, G - 0.4)]
+    body = tile.mask(lambda p, dx, dy: (_poly(p, dx, dy, pts), _dot(p, dx, dy, M, G - 1.0, 6.0, ry=1.2)))
+    tile.put(body, c["metal"])
+    tile.put(body * (tile.x < M - 2.0), (255, 244, 200), 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.7) for x, y in ((M - 6.6, G - 8.4), (M, G - 10.4), (M + 6.6, G - 8.4))]), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - 2.6, 0.9) for x in (-3.4, 0.0, 3.4)]), c["bloom"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 2.6, 0.9)), c["plant"])
+    tile.alpha *= tile.y < G
+
+
+def stage_masks(tile: Tile, c: dict) -> None:
+    """The two masks of the theatre that lean on each other: the one that
+    smiles is pale, the one that weeps is dark."""
+    _shadow(tile, 7.0)
+    for x, tilt, colour, mouth in ((-3.2, -0.25, c["stone_light"], 1.0), (3.4, 0.25, c["stone"], -1.0)):
+        cx, cy = M + x, G - 7.4
+        face = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, cx, cy, 4.0, ry=5.2), _box(p, dx, dy, cx - 2.4, cy + 2.0, cx + 2.4, G)))
+        tile.put(face, colour)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, cx + ex, cy - 1.4 - ex * tilt * 0.4, 0.9, ry=0.6) for ex in (-1.6, 1.6)]), c["dark"], 0.85)
+        tile.put(tile.mask(lambda p, dx, dy: p.arc([(cx - 1.8) * K + dx, (cy + 0.6 - (1.6 if mouth < 0 else 0.0)) * K + dy, (cx + 1.8) * K + dx, (cy + 3.0 + (0.0 if mouth > 0 else -0.6)) * K + dy], 20 if mouth > 0 else 200, 160 if mouth > 0 else 340, fill=255, width=int(0.5 * K))), c["dark"], 0.8)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 7.0, G - 9.0), (M - 9.0, G - 4.0), (M - 8.0, G - 1.0)], 0.4)), c["bloom"], 0.8)
+    tile.alpha *= tile.y < G
+
+
+def clay_pots(tile: Tile, c: dict) -> None:
+    """Pots fresh from the wheel: a tall one with lines thrown in it, and a
+    bowl."""
+    _shadow(tile, 7.5)
+    tall = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M - 2.6, G - 4.6, 4.0, ry=4.6), _box(p, dx, dy, M - 4.0, G - 12.0, M - 1.2, G - 7.0), _box(p, dx, dy, M - 4.8, G - 12.6, M - 0.4, G - 11.6)))
+    tile.put(tall, c["wood"])
+    tile.put(tall * (tile.x < M - 4.6), c["wood_light"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M - 6.4, G - y, M + 1.2, G - y + 0.3) for y in (3.0, 5.0, 7.0)]) * tall, c["dark"], 0.30)
+    bowl = tile.mask(lambda p, dx, dy: p.pieslice([(M + 1.4) * K + dx, (G - 9.6) * K + dy, (M + 9.0) * K + dx, (G - 0.2) * K + dy], 0, 180, fill=255))
+    tile.put(bowl, _mix(c["wood"], c["bloom"], 0.25))
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 5.2, G - 4.9, 3.8, ry=0.7)), c["dark"], 0.5)
+    tile.alpha *= tile.y < G
+
+
+def thread_spools(tile: Tile, c: dict) -> None:
+    """Spools of thread for a loom, two that stand and one on its side."""
+    _shadow(tile, 7.5)
+    for x, h, colour in ((-4.4, 9.0, c["bloom"]), (0.6, 7.0, c["plant"])):
+        spool = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M + x - 2.6, G - h, M + x + 2.6, G - h + 1.0), _box(p, dx, dy, M + x - 2.6, G - 1.0, M + x + 2.6, G), _box(p, dx, dy, M + x - 2.0, G - h, M + x + 2.0, G)))
+        tile.put(spool, c["wood"])
+        thread = tile.mask(lambda p, dx, dy: _box(p, dx, dy, M + x - 2.0, G - h + 1.0, M + x + 2.0, G - 1.0))
+        tile.put(thread, colour)
+        tile.put(thread * ((tile.y * 3.0) % 1.0 < 0.4), c["dark"], 0.20)
+        tile.put(thread * (tile.x < M + x - 1.0), (255, 255, 255), 0.18)
+    tile.put(tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M + 6.6, G - 2.4, 2.4), _box(p, dx, dy, M + 4.0, G - 4.4, M + 9.2, G))), c["glow"])
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 4.2, G - 0.6), (M + 1.0, G - 0.3), (M - 2.0, G - 0.2)], 0.3)), c["glow"])
+    tile.alpha *= tile.y < G
+
+
+def gear_wheel(tile: Tile, c: dict) -> None:
+    """A gear of brass that stands on its edge against a small one."""
+    _shadow(tile, 8.0)
+
+    def gear(p, dx, dy, cx, cy, r, teeth):
+        pts = []
+        for k in range(teeth):
+            a0 = math.tau * k / teeth
+            for frac, rad in ((0.0, r), (0.18, r + 1.2), (0.48, r + 1.2), (0.66, r)):
+                a = a0 + math.tau / teeth * frac
+                pts.append((cx + math.cos(a) * rad, cy + math.sin(a) * rad))
+        _poly(p, dx, dy, pts)
+
+    tile.put(tile.mask(lambda p, dx, dy: gear(p, dx, dy, M + 5.4, G - 3.2, 2.0, 8)), _mix(c["metal"], c["dark"], 0.25))
+    tile.put(tile.mask(lambda p, dx, dy: gear(p, dx, dy, M - 1.6, G - 7.4, 6.0, 12)), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 1.6, G - 7.4, 4.2)), _mix(c["metal"], c["dark"], 0.35))
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M - 1.6, G - 7.4), (M - 1.6 + math.cos(a) * 4.4, G - 7.4 + math.sin(a) * 4.4)], 0.9) for a in (0.3, 2.4, 4.5)]), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 1.6, G - 7.4, 1.2)), c["dark"], 0.8)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 3.0, G - 9.4, 2.4, ry=1.6)), (255, 240, 200), 0.18)
+    tile.alpha *= tile.y < G
+
+
+def blueprint_rolls(tile: Tile, c: dict) -> None:
+    """Rolls of plans: one lies open a little, its blue lines show."""
+    _shadow(tile, 8.0)
+    sheet = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 6.0, G), (M - 5.0, G - 2.6), (M + 7.6, G - 2.6), (M + 8.0, G)]))
+    tile.put(sheet, (60, 104, 150))
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M - 3.0 + k * 2.6, G - 0.4), (M - 2.4 + k * 2.6, G - 2.2)], 0.2) for k in range(4)]) * sheet, (200, 230, 250), 0.6)
+    for x, y, r in ((-6.0, 1.6, 1.6), (-3.0, 4.6, 1.5), (-5.0, 7.4, 1.4)):
+        roll = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M + x - 3.0, G - y - r, M + x + 5.0, G - y + r), _dot(p, dx, dy, M + x + 5.0, G - y, r * 0.55, ry=r)))
+        tile.put(roll, _mix((226, 230, 236), c["dark"], 0.15))
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x + 5.0, G - y, r * 0.35, ry=r * 0.6)), (60, 104, 150), 0.8)
+        tile.put(roll * (tile.y > G - y + r * 0.3), c["dark"], 0.20)
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -721,6 +928,12 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "art": ((paint_pots, brush_jar, crayon_stubs, bush, paint_pots, crayon_stubs), _palette((38, 26, 66), (120, 100, 160), (232, 226, 240), (176, 130, 84), (150, 148, 172), (40, 200, 236), (232, 54, 172), (255, 210, 50))),
     "art_sketchbook": ((crumpled_paper, pencil_cup, crayon_stubs, crumpled_paper, rock, pencil_cup), _palette((92, 94, 110), (190, 180, 160), (246, 241, 228), (226, 196, 140), (160, 160, 172), (40, 200, 236), (236, 82, 170), (240, 200, 70))),
     "art_inkfall": ((ink_bottle, crystal, rock, mushrooms, ink_bottle, crystal), _palette((14, 8, 34), (58, 38, 102), (226, 214, 240), (96, 64, 160), (70, 50, 120), (60, 220, 250), (246, 70, 200), (255, 170, 236))),
+    # The four quarters: the things a writer leaves, a musician, an actor
+    # and a maker.
+    "art_stacks": ((book_pile, candle_stub, loose_pages, ink_bottle, book_pile, candle_stub), _palette((40, 24, 20), (196, 180, 150), (240, 226, 192), (124, 66, 42), (150, 126, 90), (54, 94, 72), (128, 40, 50), (255, 200, 110))),
+    "art_resonance": ((metronome, tuning_fork, hand_bells, sheet_music, tuning_fork, hand_bells), _palette((12, 12, 22), (150, 150, 170), (236, 228, 206), (70, 44, 34), (214, 170, 80), (60, 120, 110), (180, 40, 60), (80, 230, 255))),
+    "art_stage": ((footlight, roses, prop_crown, stage_masks, footlight, roses), _palette((24, 14, 18), (120, 100, 110), (236, 226, 214), (110, 70, 62), (220, 170, 70), (60, 110, 60), (190, 30, 50), (255, 220, 150))),
+    "art_forge": ((clay_pots, thread_spools, gear_wheel, blueprint_rolls, anvil, coal), _palette((30, 14, 10), (110, 76, 60), (196, 150, 120), (176, 92, 60), (196, 150, 72), (60, 176, 206), (222, 62, 84), (255, 140, 50))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),
@@ -773,6 +986,9 @@ LIGHTS: dict[Draw, tuple[float, float, float]] = {
     mushrooms: (M + 1.0, 6.0, 0.14),
     console: (M, 10.4, 0.12),
     ink_bottle: (M, 3.4, 0.22),
+    candle_stub: (M, 10.6, 0.34),
+    tuning_fork: (M, 15.0, 0.14),
+    footlight: (M + 1.4, 3.4, 0.30),
 }
 #: A pool of light is drawn this many times the side of a decor square, with
 #: its middle on the middle of the square.
