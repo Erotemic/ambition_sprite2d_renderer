@@ -16,6 +16,10 @@ Each row is one look, registered by `game/ambition_content/src/projectiles.rs`:
   crescent front, with streamers behind.
 * ``hadouken_super``: the same, larger, with a second crescent and sparks.
 * ``spit``: a glob of venom with drops behind it (the dilophosaurus).
+* ``tomato``: a ripe tomato that tumbles, its green top turning with it (the
+  Art dimension's critic throws it).
+* ``sound_ring``: rings of sound that grow as they leave, cyan, with a pale
+  front (the Art dimension's feedback wail shrieks them).
 * ``rock``: a thrown rock, which tumbles.
 * ``bolt``: a bolt of magic: a violet diamond with a pale core and motes behind.
 * ``fireball_charged``: the robot's fireball fired at charge 1. A longer comet
@@ -71,6 +75,8 @@ ROWS: List[Tuple[str, int, int]] = [
     ("charge_1", 8, 50),
     ("charge_2", 8, 40),
     ("ghostfire", 6, 55),
+    ("tomato", 4, 80),
+    ("sound_ring", 6, 55),
 ]
 
 Point = Tuple[float, float]
@@ -412,6 +418,39 @@ def _bolt(phase: float) -> Image.Image:
     return img
 
 
+def _tomato(frame: int) -> Image.Image:
+    img, d = _canvas()
+    deg = 90.0 * frame
+    at = (CX, CY)
+    _ellipse(d, CX, CY, 15.0, 13.5, (110, 16, 22, 255))
+    _ellipse(d, CX, CY, 13.4, 12.0, (222, 40, 40, 255))
+    # The light is from above; it does not turn with the tomato.
+    _ellipse(d, CX - 3.0, CY - 5.0, 5.0, 3.2, (255, 132, 116, 255))
+    # The green top, which does.
+    leaves = [(0.0, -13.0), (4.0, -18.0), (2.0, -12.0), (8.0, -14.0), (1.0, -10.0), (-6.0, -15.0), (-1.0, -11.0)]
+    _poly(d, _turn(leaves, deg, at), (54, 134, 40, 255))
+    # Two short lines of air behind it.
+    for dy, length in ((-8.0, 14.0), (7.0, 10.0)):
+        _poly(d, [(42.0, CY + dy - 1.2), (42.0 - length, CY + dy), (42.0, CY + dy + 1.2)], (255, 220, 214, 160))
+    return img
+
+
+def _sound_ring(phase: float) -> Image.Image:
+    img, d = _canvas()
+    # Three rings, each a front arc: the newest at the front, the older ones
+    # grown and fading behind it.
+    for k in range(3):
+        t = (phase + k / 3.0) % 1.0
+        r = 11.0 + 15.0 * t
+        x = CX + 12.0 - 26.0 * t
+        a = int(255 * (1.0 - 0.8 * t))
+        for width, fill in ((6.0, (30, 120, 170, a)), (3.2, (150, 240, 255, a))):
+            pts = [(x + r * math.cos(u) * 0.55, CY + r * math.sin(u)) for u in [(-1.2 + 2.4 * i / 16) for i in range(17)]]
+            d.line(_s(pts), fill=fill, width=int(width * SUPERSAMPLE), joint="curve")
+    _ellipse(d, CX + 13.0, CY, 5.0, 5.0, (210, 250, 255, 255))
+    return img
+
+
 def _phase(frame_idx: int, nframes: int) -> float:
     return frame_idx / max(1, nframes)
 
@@ -430,6 +469,8 @@ _DRAW: Dict[str, Callable[[int, int], Image.Image]] = {
     "charge_0": lambda i, n: _charge(_phase(i, n), 0),
     "charge_1": lambda i, n: _charge(_phase(i, n), 1),
     "charge_2": lambda i, n: _charge(_phase(i, n), 2),
+    "tomato": lambda i, n: _tomato(i),
+    "sound_ring": lambda i, n: _sound_ring(_phase(i, n)),
 }
 
 
