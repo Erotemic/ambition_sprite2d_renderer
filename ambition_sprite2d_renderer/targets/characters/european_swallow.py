@@ -1,4 +1,4 @@
-"""SVG-rigged European swallow: a small fast bird, unladen.
+"""SVG-rigged European swallow: a small fast bird.
 
 Blue-black above, a chestnut forehead and throat over a dark band, cream
 below, long pointed wings and a deeply forked tail with streamers. It flies
@@ -59,8 +59,8 @@ ACTOR_METADATA = _flyer.actor_metadata(
         "It flies on quick shallow beats, darts in beak first and sings from a perch."
     ),
     gameplay=(
-        "Use as the fastest flyer and the weakest: it carries nothing, so nothing slows it. "
-        "Birds are dinosaurs, so the T-rex calls it with the rest of his kin."
+        "One European swallow cannot lift a coconut. Two birds can carry one with a string and drop it over a target. "
+        "Birds are dinosaurs, so the T-rex calls this bird with the rest of his kin."
     ),
     barks=["Unladen.", "I migrate. That is the whole difference.", "Tswit!"],
 )
