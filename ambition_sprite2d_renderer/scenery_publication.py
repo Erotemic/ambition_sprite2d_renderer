@@ -1,4 +1,12 @@
-"""Publish selected scene and terrain products with the shared bundle store."""
+"""Publish selected scene and terrain products with the shared bundle store.
+
+    python -m ambition_sprite2d_renderer.scenery_publication --theme art --skin art
+    python -m ambition_sprite2d_renderer.scenery_publication --missing-only
+
+`--missing-only` keeps every product that is already published, stale and
+partial ones too, as the sprite publication's flag does. With no `--theme` or
+`--skin` it selects every scene, skin and sky part, so it builds only what is
+not published at all."""
 from __future__ import annotations
 
 import argparse
@@ -13,8 +21,29 @@ from .products import describe, Digests
 from .publication_store import Store, identity
 
 
+#: The kinds of product this module draws, and the command that draws each.
+#: A sky part is drawn by `backgrounds parts`, which draws all the parts at
+#: once; the unit keeps only its own files.
+SCENERY_KINDS = ('theme', 'skin', 'sky')
+
+
+def _command(prefix, name, output):
+    if prefix == 'skin':
+        return ['terrain', 'draw', '--out-dir', str(output), name]
+    if prefix == 'sky':
+        return ['backgrounds', 'parts', '--out-dir', str(output)]
+    return ['backgrounds', 'draw', '--out-dir', str(output), name]
+
+
+def every_unit(definitions):
+    """Every scenery product that this module can draw."""
+    return [uid for uid in definitions if uid.split(':', 1)[0] in SCENERY_KINDS]
+
+
 def build(units, *, missing_only=False):
     definitions, warnings = describe({})
+    if not units:
+        units = every_unit(definitions)
     unknown = set(units) - definitions.keys()
     if unknown:
         raise ValueError(f"Unknown scenery products: {sorted(unknown)}. {warnings}")
@@ -27,9 +56,9 @@ def build(units, *, missing_only=False):
         plan = definitions[uid]
         paths = [plan['root'] + '/' + name for name in plan['required']]
         present = [name in selected['files'] for name in paths]
-        if missing_only and any(present):
-            continue
         key = selected['bundles'].get(uid)
+        if missing_only and (key or any(present)):
+            continue
         if key and publication.recipe_state(store.bundle(key)['recipe'], sources, chain, hashes)[0] == 'current' and not store.integrity(key):
             continue
         pending.append(uid)
@@ -49,9 +78,9 @@ def build(units, *, missing_only=False):
                                    AMBITION_CONTENT_LIBRARY=publication.library_path().relative_to(publication.repo_root()).as_posix(),
                                    AMBITION_GENERATION_ROOT=str(work / 'runtime/full'),
                                    AMBITION_ART_PROVENANCE_ROOT=str(work / 'provenance'))
-                module = 'terrain' if prefix == 'skin' else 'backgrounds'
-                subprocess.run([sys.executable, '-m', 'ambition_sprite2d_renderer.' + module,
-                                'draw', '--out-dir', str(output), name], cwd=renderer, env=environment, check=True)
+                module, *arguments = _command(prefix, name, output)
+                subprocess.run([sys.executable, '-m', 'ambition_sprite2d_renderer.' + module, *arguments],
+                               cwd=renderer, env=environment, check=True)
                 files = {}
                 from PIL import Image
                 for relative in plan['required']:
@@ -81,11 +110,13 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--theme', action='append', default=[])
     parser.add_argument('--skin', action='append', default=[])
-    parser.add_argument('--missing-only', action='store_true')
+    parser.add_argument('--missing-only', action='store_true',
+                        help='keep every published product, stale and partial ones too; with no --theme or --skin, '
+                             'select every scene, skin and sky part')
     args = parser.parse_args(argv)
     units = ['theme:' + name for name in args.theme] + ['skin:' + name for name in args.skin]
-    if not units:
-        parser.error('select --theme or --skin')
+    if not units and not args.missing_only:
+        parser.error('select --theme or --skin, or --missing-only')
     try:
         build(units, missing_only=args.missing_only)
         return 0
