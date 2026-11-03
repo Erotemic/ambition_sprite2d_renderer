@@ -25,6 +25,7 @@ import copy
 import io
 import inspect
 import math
+import re
 import warnings
 import xml.etree.ElementTree as ET
 from functools import lru_cache
@@ -370,8 +371,60 @@ def _rasterize_subset_cached(
         if _local(elem.tag) in _DRAWABLE and id(elem) not in keep:
             _hide(elem)
 
+    _drop_hidden(root, keep)
     image, offset = _render_kept(root, keep, float(dpi), origin)
     return image, offset, dpi / MM_PER_INCH
+
+
+def _hidden(elem: ET.Element) -> bool:
+    """True when ``elem`` has ``display:none`` (its style wins over its
+    ``display`` attribute, and the last declaration in the style wins)."""
+    shown = elem.get("display")
+    for entry in (elem.get("style") or "").split(";"):
+        name, _, value = entry.partition(":")
+        if name.strip().lower() == "display":
+            shown = value.strip()
+    return (shown or "").lower() == "none"
+
+
+_REFERENCE = re.compile(r"url\(\s*['\"]?#([^)'\"\s]+)|^#(.+)$")
+
+
+def _drop_hidden(root: ET.Element, keep: set) -> None:
+    """Remove each hidden subtree that draws nothing for the subset.
+
+    A part is drawn from the whole document with every other shape hidden,
+    and the document goes to resvg as text. Most of that text is hidden art
+    (the other views and the other parts), and writing it was most of the
+    cost of a part. A ``display:none`` subtree draws nothing (nor does any
+    element under it), so removing it changes no pixel, unless something refers to an id in it (a gradient, a
+    clip path, a ``use``): such a subtree stays, and an element that is
+    referred to stays whole. A kept element always stays
+    (the coarse pass looks for it). A document with a ``<style>`` is left
+    whole, because a CSS selector can depend on the elements around it."""
+    if any(_local(node.tag) == "style" for node in root.iter()):
+        return
+    referenced = set()
+    for node in root.iter():
+        for value in node.attrib.values():
+            if "#" in value:
+                referenced.update(a or b for a, b in _REFERENCE.findall(value))
+
+    def droppable(elem: ET.Element) -> bool:
+        return all(id(node) not in keep and node.get("id") not in referenced for node in elem.iter())
+
+    def prune(node: ET.Element, under_hidden: bool) -> None:
+        # Under a hidden element nothing draws, hidden or not.
+        for child in list(node):
+            if child.get("id") in referenced:
+                continue  # its content is what it refers to: a gradient's stops
+            hidden = under_hidden or _hidden(child)
+            if hidden and droppable(child):
+                node.remove(child)
+            else:
+                prune(child, hidden)
+
+    prune(root, False)
 
 
 def _render_png(root: ET.Element, dpi: float) -> Image.Image:
