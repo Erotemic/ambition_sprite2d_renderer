@@ -355,6 +355,9 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_wallacea": (_southeast_asia.wallacea_foreground, scale(_southeast_asia.WALLACEA["near"], 0.9)),
     "history_austronesia": (_southeast_asia.austronesia_foreground, scale(_southeast_asia.AUSTRONESIA["near"], 0.9)),
     "history_red_river": (_southeast_asia.red_river_foreground, scale(_southeast_asia.RED_RIVER["near"], 0.9)),
+    "history_strait": (_southeast_asia.strait_foreground, scale(_southeast_asia.STRAIT["near"], 0.9)),
+    "history_borobudur": (_southeast_asia.borobudur_foreground, scale(_southeast_asia.BOROBUDUR["near"], 0.9)),
+    "history_angkor": (_southeast_asia.angkor_foreground, scale(_southeast_asia.ANGKOR["near"], 0.9)),
 }
 
 

@@ -3,7 +3,8 @@
 The History dimension is a grid. East is later, and each floor is a region
 of the world. These rooms show the peoples of Southeast Asia: the first
 painters of the karst caves of Sulawesi, the Austronesian seafarers who
-came to the islands, and the bronze age of the Red River delta. They use
+came to the islands, the bronze age of the Red River delta, and the age of
+the trade ports and the great temples. They use
 the same sepia of an old textbook and the same rules as `history_eras.py`
 and `history_origins.py`. The people of these places show skill,
 invention and a long history of their own; nothing here is a joke on them.
@@ -29,6 +30,28 @@ invention and a long history of their own; nothing here is a joke on them.
   like a boat. In front, flooded rice paddies are like mirrors of the sky,
   between raised green dikes. White egrets stand in the water and fly over
   it.
+- ``history_strait`` (Palembang on the Musi, the port of Srivijaya, about
+  680 CE). A hot, hazy day under a white sky. A wide brown river goes
+  across. Houses of wood and palm thatch stand on posts on the far bank,
+  and houses on rafts float in a row in front of them. Two big ships of
+  planks lie at anchor, with canted sails of woven matting; small boats
+  go between them. Rainforest and low hills are behind. Nipa palms and
+  mooring posts stand at the sides.
+- ``history_borobudur`` (the Kedu plain of central Java, about 825 CE). A
+  misty sunrise. The great stepped monument stands whole on its hill, seen
+  from outside and far off: square terraces, round terraces of closed bell
+  stupas, and a great stupa on the top. Merapi smokes a little behind it
+  and Merbabu stands beside it. Rice fields and coconut palms are in the
+  mist in front. Ferns and tumbled grey blocks stand at the sides.
+- ``history_angkor`` (Angkor, about 1150 to 1200 CE). A gold afternoon. The
+  five towers of Angkor Wat stand as a silhouette across its wide moat,
+  and the temple shows upside down in the water. The long flat water of
+  the West Baray is far off at the left. Sugar palms stand in the rice
+  fields, and water buffalo graze far off. Lotus grows in ponds at the
+  sides.
+
+No picture here shows a god, a Buddha, a face of a temple or a relief of a
+deity. The monuments are far off and seen from outside.
 
 The bright detail is far off or at the edges, and the middle of each near
 layer is calm, so the play in front of it reads. The things that drift in the
@@ -40,8 +63,8 @@ from __future__ import annotations
 import numpy as np
 
 from .artkit import Art, Pen, mix, polar, scale, smoothstep
-from .history_americas_pacific import _canopy, _coconut_palm, _fronds, _pandanus
-from .history_eras import REST_BOTTOM, _air, _at, _heaps, _sun, _textbook
+from .history_americas_pacific import _canopy, _coconut_palm, _dugout, _fronds, _pandanus, _turn
+from .history_eras import REST_BOTTOM, _air, _at, _heaps, _plume, _sun, _textbook
 from .history_origins import _arch, _banana, _land, _leaf
 from .parts import HORIZON, fog, haze, shafts, solid
 
@@ -941,3 +964,987 @@ def red_river_foreground(art_: Art, pen: Pen, layer_lights: list) -> None:
             length = rng.uniform(0.030, 0.045)
             tip = (x + s * length * 0.6, min(0.384, y + length))
             _leaf(pen, [(x, y), ((x + tip[0]) * 0.5 + s * 0.004, (y + tip[1]) * 0.5), tip], 0.0035, 0.5)
+
+
+# ---------------------------------------------------------------------------
+# Parts of the three rooms of the age of the temples and the trade
+# ---------------------------------------------------------------------------
+
+
+def _reflect(a: Art, mask: np.ndarray, water_v: float) -> np.ndarray:
+    """`mask` turned upside down about the level `water_v`: the picture of
+    a thing in still water under it. Only the part under `water_v` is kept."""
+    n = a.n
+    wy = int(round(water_v * n))
+    out = np.zeros_like(mask)
+    ys = np.arange(max(wy, 0), min(n, 2 * wy + 1))
+    out[ys] = mask[np.clip(2 * wy - ys, 0, n - 1)]
+    return out
+
+
+def _ripple(a: Art, tag: str, mask: np.ndarray) -> np.ndarray:
+    """A reflection broken into short level strokes, as a little wind
+    breaks the face of the water."""
+    strokes = smoothstep(0.30, 0.55, a.noise(tag, cells=60.0, octaves=2, stretch=10.0))
+    return mask * (0.45 + 0.55 * strokes)
+
+
+def _jong(hull: Pen, wood: Pen, sails: Pen, mats: Pen, roof: Pen, u: float, v: float, s: float, facing: float = 1.0) -> None:
+    """A big ship of the islands at anchor (a jong, as the ships on the
+    reliefs of the time show them): a long hull of planks with a high bow
+    and a high stern, a house of thatch on its deck, a steering oar at the
+    quarter, and two masts. Each mast carries a rectangle of woven matting
+    on a yard and a boom, canted, so its fore edge leans up and forward.
+    `s` is the length of the hull and `(u, v)` the middle of its waterline."""
+    f = facing
+
+    def at(x: float, y: float) -> tuple[float, float]:
+        return (u + f * x * s, v - y * s)
+
+    hull.poly([at(-0.54, 0.19), at(-0.46, 0.12), at(-0.30, 0.088), at(0.0, 0.082), at(0.30, 0.088), at(0.46, 0.115), at(0.56, 0.17),
+               at(0.50, 0.10), at(0.44, 0.01), at(0.36, -0.004), at(-0.38, -0.004), at(-0.46, 0.02), at(-0.50, 0.11)])
+    # The strakes of the hull, and the posts of the bow and the stern.
+    wood.line([at(-0.47, 0.06), at(-0.2, 0.045), at(0.2, 0.045), at(0.48, 0.065)], s * 0.006)
+    wood.line([at(-0.50, 0.12), at(-0.55, 0.22)], s * 0.012)
+    wood.line([at(0.52, 0.12), at(0.58, 0.20)], s * 0.012)
+    # The steering oar at the quarter, and the cable of the anchor at the bow.
+    wood.line([at(-0.36, 0.13), at(-0.44, -0.06)], s * 0.016)
+    wood.line([at(0.55, 0.17), at(0.66, -0.004)], s * 0.004)
+    roof.poly(_arch(at(-0.16, 0.08), at(-0.02, 0.21), at(0.13, 0.08), 10) + [at(0.13, 0.078), at(-0.16, 0.078)])
+    for m, top, reach in ((0.26, 0.66, 1.0), (-0.24, 0.56, 0.85)):
+        wood.line([at(m, 0.08), at(m, top)], s * 0.010)
+        r = reach
+        # The sail: lower aft, lower fore, upper fore, upper aft.
+        quad = [at(m - 0.17 * r, 0.17), at(m + 0.17 * r, 0.25), at(m + 0.27 * r, top - 0.02), at(m - 0.07 * r, top - 0.10)]
+        sails.poly(quad)
+        wood.line([quad[0], quad[1]], s * 0.009)
+        wood.line([quad[3], quad[2]], s * 0.009)
+        # The battens of the matting, across the sail, parallel to the yard.
+        for k in range(1, 5):
+            t = k / 5.0
+            mats.line([(quad[0][0] + (quad[3][0] - quad[0][0]) * t, quad[0][1] + (quad[3][1] - quad[0][1]) * t),
+                       (quad[1][0] + (quad[2][0] - quad[1][0]) * t, quad[1][1] + (quad[2][1] - quad[1][1]) * t)], s * 0.004)
+        # A stay from the head of the mast to the bow or the stern.
+        wood.line([at(m, top), at(0.55 if m > 0 else -0.53, 0.18)], s * 0.003)
+
+
+def _raft_house(raft: Pen, walls: Pen, roof: Pen, door: Pen, u: float, v: float, w: float) -> None:
+    """A house that floats on a raft of logs at the edge of the river, seen
+    from its end: a wall of planks, a gable of thatch, a dark door, and the
+    raft low on the water."""
+    raft.rect(u - w * 1.25, v - w * 0.16, u + w * 1.25, v + w * 0.04)
+    walls.rect(u - w, v - w * 0.95, u + w, v - w * 0.16)
+    roof.poly([(u - w * 1.35, v - w * 0.80), (u - w * 1.10, v - w * 0.90), (u, v - w * 1.85), (u + w * 1.10, v - w * 0.90), (u + w * 1.35, v - w * 0.80)])
+    door.rect(u - w * 0.28, v - w * 0.70, u + w * 0.28, v - w * 0.16)
+
+
+def _bank_house(posts: Pen, walls: Pen, roof: Pen, u: float, v: float, w: float) -> None:
+    """A house of wood and thatch on tall posts at the edge of the water,
+    seen from its side: a long, steep roof whose ridge is shorter than its
+    eaves, with a horn of wood at each end of the ridge."""
+    floor = v - w * 0.75
+    for k in range(4):
+        posts.line([(u - w * 0.9 + k * w * 0.6, v + 0.002), (u - w * 0.9 + k * w * 0.6, floor)], w * 0.10)
+    posts.rect(u - w * 1.05, floor - w * 0.06, u + w * 1.05, floor)
+    walls.rect(u - w * 0.95, floor - w * 0.50, u + w * 0.95, floor - w * 0.06)
+    eave, ridge = floor - w * 0.38, floor - w * 1.35
+    roof.poly([(u - w * 1.30, eave), (u - w * 0.70, ridge), (u + w * 0.70, ridge), (u + w * 1.30, eave)])
+    for s in (-1.0, 1.0):
+        posts.line([(u + s * w * 0.66, ridge + w * 0.02), (u + s * w * 0.86, ridge - w * 0.22)], w * 0.08)
+
+
+def _emergent(trunk: Pen, crown: Pen, rng, u: float, v: float, h: float) -> None:
+    """A tall tree of the rainforest that stands over the others: a pale
+    straight trunk and a wide, flat crown in a few lumps."""
+    trunk.line([(u, v), (u + rng.uniform(-0.004, 0.004), v - h * 0.82)], h * 0.040)
+    for _ in range(8):
+        crown.ellipse(u + rng.uniform(-0.26, 0.26) * h, v - h * rng.uniform(0.84, 0.98), h * rng.uniform(0.16, 0.24), h * rng.uniform(0.08, 0.12))
+
+
+def _nipa(pen: Pen, rng, u: float, v: float, h: float, count: int = 7) -> None:
+    """A nipa palm of the tidal mud: it has no trunk. Its long feather
+    fronds come up out of the mud and arch out, and each frond has rows
+    of long, stiff leaflets that point to its tip."""
+    for k in range(count):
+        t = (k + 0.5) / count - 0.5
+        ang = -90.0 + t * 110.0 + rng.uniform(-6.0, 6.0)
+        length = h * rng.uniform(0.80, 1.0) * (1.0 - abs(t) * 0.35)
+        base = (u + t * h * 0.08, v)
+        tip = polar(*base, length, ang)
+        tip = (tip[0] + t * h * 0.25, tip[1] + length * 0.12)
+        rib = _arch(base, polar(*base, length * 0.6, ang - t * 12.0), tip, 16)
+        pen.line(rib, h * 0.012)
+        for i in range(3, len(rib) - 1):
+            x, y = rib[i]
+            nx, ny = rib[i + 1][0] - rib[i - 1][0], rib[i + 1][1] - rib[i - 1][1]
+            d = max(float(np.hypot(nx, ny)), 1e-9)
+            nx, ny = nx / d, ny / d
+            side = h * 0.13 * (1.0 - i / len(rib)) ** 0.6
+            for sgn in (-1.0, 1.0):
+                end = (x - ny * side * sgn + nx * side * 0.9, y + nx * side * sgn + ny * side * 0.9 + side * 0.15)
+                _leaf(pen, [(x, y), ((x + end[0]) * 0.5, (y + end[1]) * 0.5), end], h * 0.007, 0.6)
+
+
+def _sugar_palm(trunk: Pen, crown: Pen, rng, u: float, v: float, h: float) -> None:
+    """A sugar palm (Borassus): a tall, bare, straight trunk, a little wider
+    at its foot, and on its top a round head of stiff fan leaves. Each fan
+    is a wide wedge of blades on a long stalk, so the edge of the head is a
+    ring of points. Old dead leaves hang under the head."""
+    w = h * 0.022
+    lean = rng.uniform(-0.03, 0.03) * h
+    top = (u + lean, v - h * 0.84)
+    trunk.poly([(u - w * 1.5, v + 0.002), (u + w * 1.5, v + 0.002), (top[0] + w * 0.8, top[1]), (top[0] - w * 0.8, top[1])])
+    r = h * 0.12
+    cx, cy = top[0], top[1] - r * 0.55
+    crown.ellipse(cx, cy, r * 0.62, r * 0.55)
+    for k in range(15):
+        ang = -200.0 + k * 220.0 / 14.0 + rng.uniform(-6.0, 6.0)
+        stalk = polar(cx, cy, r * 0.55, ang)
+        fan_r = r * rng.uniform(0.40, 0.55)
+        a0, a1 = ang - 38.0, ang + 38.0
+        pts = [stalk] + [polar(*stalk, fan_r * (0.86 if j % 2 else 1.0), a0 + (a1 - a0) * j / 8.0) for j in range(9)]
+        crown.poly(pts)
+        crown.line([(cx, cy), stalk], r * 0.05)
+    # The skirt of dead leaves under the head.
+    crown.poly([(cx - r * 0.42, cy + r * 0.25), (cx + r * 0.42, cy + r * 0.25), (cx + r * 0.22, cy + r * 0.85), (cx - r * 0.20, cy + r * 0.90)])
+
+
+def _buffalo(pen: Pen, u: float, v: float, s: float, facing: float = 1.0, graze: bool = False) -> None:
+    """A water buffalo far off: a heavy, low body, a short neck, and wide
+    horns that sweep back in a crescent."""
+    f = facing
+    pen.ellipse(u, v - s * 0.55, s * 0.55, s * 0.26)
+    for dx in (-0.36, -0.20, 0.22, 0.38):
+        pen.line([(u + f * dx * s, v - s * 0.45), (u + f * dx * s, v)], s * 0.09)
+    head = (u + f * s * 0.62, v - s * (0.30 if graze else 0.58))
+    pen.line([(u + f * s * 0.40, v - s * 0.62), head], s * 0.20)
+    pen.ellipse(head[0] + f * s * 0.06, head[1] + s * 0.04, s * 0.13, s * 0.10)
+    pen.line(_arch((head[0] - f * s * 0.02, head[1] - s * 0.06), (head[0] - f * s * 0.30, head[1] - s * 0.28), (head[0] - f * s * 0.40, head[1] - s * 0.06), 8), s * 0.045)
+    pen.line([(u - f * s * 0.54, v - s * 0.62), (u - f * s * 0.62, v - s * 0.30)], s * 0.035)
+
+
+# ---------------------------------------------------------------------------
+# The Strait: Palembang on the Musi, the port of Srivijaya
+# ---------------------------------------------------------------------------
+
+
+STRAIT = {
+    "top": (150, 178, 192),
+    "mid": (212, 220, 212),
+    "low": (246, 242, 228),
+    "glow": (255, 246, 220),
+    "sun": (255, 254, 246),
+    "hills": (96, 130, 112),
+    "forest": (58, 96, 58),
+    "forest_light": (118, 150, 84),
+    "trunk": (196, 184, 160),
+    "river": (138, 104, 70),
+    "river_light": (210, 184, 140),
+    "glint": (255, 250, 232),
+    "wood": (92, 64, 44),
+    "wood_light": (150, 112, 74),
+    "plank": (128, 92, 60),
+    "thatch": (176, 144, 88),
+    "mat": (196, 166, 108),
+    "mat_dark": (128, 100, 62),
+    "mud": (104, 86, 66),
+    "nipa": (70, 112, 58),
+    "nipa_light": (150, 176, 92),
+    "far": (214, 218, 206),
+    "near": (40, 36, 28),
+    "near_light": (150, 126, 90),
+}
+
+
+def history_strait(layer_key: str, art_: Art) -> np.ndarray:
+    a = art_
+    p = STRAIT
+    sun_at = (0.60, 0.22)
+    bank_v = HORIZON + 0.008
+    if layer_key == "sky":
+        # A white, hot sky: pale blue high up and white with haze low down,
+        # with the sun a glare in it. Low hills of forest far off go into
+        # the haze.
+        layer = a.opaque(a.ramp([(0.0, scale(p["top"], 0.9)), (0.22, p["top"]), (0.44, p["mid"]), (HORIZON - 0.01, p["low"]),
+                                 (HORIZON + 0.002, p["river_light"]), (1.0, p["river"])]))
+        _sun(a, layer, *sun_at, 0.020, p["sun"], p["glow"], 0.75)
+        a.tint(layer, fog(a, "strait high haze", 0.34, 0.12, 2.0), p["low"], 0.35)
+        for k, (base, amp, pale) in enumerate(((HORIZON - 0.040, 0.020, 0.60), (HORIZON - 0.026, 0.012, 0.42))):
+            mask, _ = a.ridge(("strait hills", k), base, amp, cells=3.0 + k * 2.0, octaves=4)
+            colour = mix(p["hills"], p["low"], pale)
+            a.put(layer, mask, a.ramp([(0.0, colour), (base - amp, colour), (HORIZON, mix(colour, p["low"], 0.5)), (1.0, colour)]))
+            a.tint(layer, mask * fog(a, ("strait hill haze", k), base + 0.004, 0.02, 3.0), p["low"], 0.6)
+        _textbook(a, layer, 0.07)
+        return layer
+    if layer_key == "far_backplate":
+        rng = a.rand("far strait")
+        # The far bank: rainforest down to the water, with tall trees over it.
+        trees, tree_pen = a.drawing()
+        trunks, trunk_pen = a.drawing()
+        _, bline = a.ridge("strait far bank", bank_v, 0.002, cells=5.0, octaves=2)
+        bank = _land(a, bline - 0.010)
+        _canopy(tree_pen, rng, bline, -0.02, 1.02, 0.016, 0.010, 0.020, 220)
+        _canopy(tree_pen, rng, bline - 0.016, -0.02, 1.02, 0.012, 0.012, 0.022, 120)
+        for u in (0.04, 0.17, 0.33, 0.49, 0.71, 0.86, 0.97):
+            _emergent(trunk_pen, tree_pen, rng, u, _at(bline, u) - 0.014, rng.uniform(0.055, 0.080))
+        palms, palm_pen = a.drawing()
+        for u in (0.09, 0.13, 0.26, 0.58, 0.64, 0.80, 0.92):
+            _far_palm(trunk_pen, palm_pen, rng, u, _at(bline, u) + 0.002, rng.uniform(0.035, 0.050), rng.uniform(-0.006, 0.006))
+        # Houses on posts at the edge of the far bank, and houses on rafts
+        # in a row in front of them. The middle of the bank is forest.
+        hp = {key: a.drawing() for key in ("posts", "walls", "roof", "door")}
+        for u, w in ((0.05, 0.013), (0.12, 0.011), (0.20, 0.014), (0.27, 0.012), (0.77, 0.013), (0.84, 0.015), (0.91, 0.012), (0.97, 0.013)):
+            _bank_house(hp["posts"][1], hp["walls"][1], hp["roof"][1], u, bank_v + 0.006, w)
+        for u, w in ((0.085, 0.011), (0.16, 0.012), (0.235, 0.011), (0.805, 0.012), (0.875, 0.011), (0.94, 0.012)):
+            _raft_house(hp["posts"][1], hp["walls"][1], hp["roof"][1], hp["door"][1], u, bank_v + 0.020, w)
+        # Two big ships at anchor in the river, and small boats.
+        ship = {key: a.drawing() for key in ("hull", "wood", "sails", "mats", "roof")}
+        for u, v, s, f in ((0.38, 0.655, 0.20, -1.0), (0.65, 0.636, 0.14, 1.0)):
+            _jong(ship["hull"][1], ship["wood"][1], ship["sails"][1], ship["mats"][1], ship["roof"][1], u, v, s, f)
+        boats, boat_pen = a.drawing()
+        crew, crew_pen = a.drawing()
+        for u, v, s, n in ((0.19, 0.642, 0.040, 2), (0.52, 0.676, 0.034, 1), (0.84, 0.662, 0.046, 3)):
+            _dugout(boat_pen, crew_pen, u, v, s, n)
+        river = smoothstep(bank_v + 0.002, bank_v + 0.006, a.v)
+        tree_mask = a.mask_of(trees) * (a.v < bank_v + 0.004)
+        trunk_mask = a.mask_of(trunks)
+        palm_mask = a.mask_of(palms)
+        house = {key: a.mask_of(img) for key, (img, _) in hp.items()}
+        sm = {key: a.mask_of(img) for key, (img, _) in ship.items()}
+        boat_mask = a.mask_of(boats)
+        crew_mask = a.mask_of(crew)
+        things = np.maximum.reduce([*house.values(), *sm.values(), boat_mask, crew_mask])
+        mask = np.maximum.reduce([bank * (a.v < bank_v + 0.006), tree_mask, trunk_mask, palm_mask, river, things])
+        layer = solid(a, mask, mix(p["forest"], p["far"], 0.45), p["forest"], HORIZON - 0.06, bank_v, "strait far", 0.05)
+        # The forest: crowns lit at the top, dark between them.
+        a.put(layer, tree_mask, a.ramp([(0.0, mix(p["forest"], p["far"], 0.40)), (bank_v - 0.06, mix(p["forest"], p["far"], 0.40)), (bank_v, mix(p["forest"], p["far"], 0.15)), (1.0, p["forest"])]))
+        a.light(layer, a.rim(tree_mask, 0.002, 0.003, 0.4) * tree_mask, p["forest_light"], 0.45)
+        a.put(layer, trunk_mask, mix(mix(p["trunk"], p["forest"], 0.45), p["far"], 0.3))
+        a.put(layer, palm_mask, mix(p["forest"], p["far"], 0.25))
+        a.light(layer, a.rim(palm_mask, 0.002, 0.002, 0.3) * palm_mask, p["forest_light"], 0.4)
+        # The river: wide and brown with mud, paler far off in the haze, and
+        # lines of light where the current runs.
+        a.put(layer, river, a.ramp([(0.0, mix(p["river_light"], p["low"], 0.35)), (bank_v, mix(p["river_light"], p["low"], 0.35)), (0.66, mix(p["river"], p["river_light"], 0.35)), (0.75, p["river"]), (1.0, p["river"])]))
+        a.light(layer, river * smoothstep(0.62, 0.80, a.noise("strait current", cells=90.0, octaves=2, stretch=30.0)), p["river_light"], 0.35)
+        a.light(layer, river * a.spot(sun_at[0], bank_v + 0.03, 0.30, 1.4, squash=2.8), p["glint"], 0.35)
+        a.light(layer, river * a.spot(sun_at[0], bank_v + 0.03, 0.25, 1.0, squash=2.8) * smoothstep(0.74, 0.86, a.noise("strait glints", cells=260.0, octaves=1, stretch=10.0)), p["glint"], 0.85)
+        # The things on the water, each with its picture in the water under
+        # it, broken by the current.
+        for key in ("hull", "sails", "roof"):
+            flip = _ripple(a, f"strait ripple {key}", _reflect(a, sm[key], 0.655 if key == "hull" else 0.648)) * river * (1.0 - things)
+            a.put(layer, flip, mix(p["river"], p["wood"], 0.45), 0.30)
+        a.put(layer, a.shift(np.maximum.reduce([house["posts"], boat_mask]), 0.0, 0.004) * river * (1.0 - things), mix(p["river"], p["wood"], 0.5), 0.35)
+        # The houses: dark posts and walls of planks, roofs of palm thatch.
+        a.put(layer, house["posts"], mix(p["wood"], p["far"], 0.2))
+        a.put(layer, house["walls"], mix(p["plank"], p["far"], 0.15))
+        a.shade(layer, house["walls"] * (np.abs(((a.u * 700.0) % 1.0) - 0.5) > 0.38), 0.25)
+        roofs = house["roof"]
+        a.put(layer, roofs, mix(p["thatch"], p["far"], 0.12))
+        a.shade(layer, roofs * smoothstep(0.3, 0.9, a.noise("strait thatch", cells=220.0, octaves=1, stretch=0.12)), 0.15)
+        a.light(layer, a.rim(roofs, 0.0, 0.003, 0.0) * roofs, p["glow"], 0.45)
+        a.shade(layer, a.rim(roofs, 0.0, -0.003, 0.0) * roofs, 0.35)
+        a.put(layer, house["door"], scale(p["wood"], 0.5))
+        # The ships: dark planks, lit along the sheer; sails of matting with
+        # dark battens; a house of thatch on the deck.
+        a.put(layer, sm["hull"], p["wood"])
+        a.light(layer, a.rim(sm["hull"], 0.0, 0.003, 0.0) * sm["hull"], p["wood_light"], 0.7)
+        a.put(layer, sm["roof"], p["thatch"])
+        a.light(layer, a.rim(sm["roof"], 0.0, 0.003, 0.0) * sm["roof"], p["glow"], 0.4)
+        a.put(layer, sm["sails"], p["mat"])
+        a.shade(layer, sm["sails"] * smoothstep(0.35, 0.75, a.noise("strait weave", cells=260.0, octaves=1)), 0.10)
+        a.light(layer, a.rim(sm["sails"], 0.003, 0.0, 0.3) * sm["sails"], p["glow"], 0.45)
+        a.put(layer, sm["mats"] * sm["sails"], p["mat_dark"], 0.85)
+        a.put(layer, sm["wood"], scale(p["wood"], 0.8))
+        a.put(layer, boat_mask, p["wood"])
+        a.put(layer, crew_mask, scale(p["wood"], 0.6))
+        # The haze of the heat: thick on the far bank, thinner near.
+        a.tint(layer, fog(a, "strait bank haze", bank_v - 0.004, 0.022, 3.0) * mask, p["low"], 0.40)
+        haze(a, layer, p["low"], 0.08, None)
+        layer[..., 3] = np.minimum(layer[..., 3], mask)
+        return layer
+    if layer_key == "near_background":
+        rng = a.rand("near strait")
+        bank, bank_pen = a.drawing()
+        posts, post_pen = a.drawing()
+        ropes, rope_pen = a.drawing()
+        nipa, nipa_pen = a.drawing()
+        ground, line = a.ridge("near strait", 0.705, 0.004, cells=4.0, octaves=3)
+        pts = [(u, _at(line, u) - 0.030 * smoothstep(0.26, 0.02, u) - 0.034 * smoothstep(0.74, 0.98, u)) for u in np.linspace(0.0, 1.0, 60)]
+        bank_pen.poly([(0.0, 1.0)] + pts + [(1.0, 1.0)])
+
+        def bank_at(u: float) -> float:
+            return float(np.interp(u, [q[0] for q in pts], [q[1] for q in pts]))
+
+        # Nipa palms in the mud at the two sides; mooring posts with a turn
+        # of rope on each. The bank in the middle is calm.
+        for u, h in ((0.03, 0.30), (0.11, 0.22), (0.86, 0.24), (0.96, 0.32)):
+            _nipa(nipa_pen, rng, u, bank_at(u) + 0.006, h, 9)
+        for u, h in ((0.20, 0.13), (0.245, 0.10), (0.78, 0.12)):
+            v0 = bank_at(u) + 0.010
+            post_pen.line([(u, v0), (u + rng.uniform(-0.003, 0.003), v0 - h)], 0.011)
+            post_pen.ellipse(u, v0 - h, 0.0065, 0.004)
+            for k in range(3):
+                rope_pen.line([(u - 0.007, v0 - h * 0.78 + k * 0.006), (u + 0.007, v0 - h * 0.78 + k * 0.006 + 0.003)], 0.0028)
+        rope_pen.curve((0.207, bank_at(0.20) - 0.10), (0.30, bank_at(0.30) + 0.004), 0.02, 0.0022)
+        bank_mask = np.maximum(a.mask_of(bank), ground)
+        post_mask = a.mask_of(posts)
+        rope_mask = a.mask_of(ropes)
+        nipa_mask = a.mask_of(nipa)
+        mask = np.maximum.reduce([bank_mask, post_mask, rope_mask, nipa_mask])
+        layer = a.blank()
+        mud = a.ramp([(0.0, mix(p["mud"], p["near"], 0.25)), (0.67, mix(p["mud"], p["near"], 0.25)), (0.80, mix(p["mud"], p["near"], 0.70)), (1.0, p["near"])])
+        a.put(layer, bank_mask, mud)
+        a.light(layer, bank_mask * smoothstep(0.62, 0.80, a.noise("strait wet mud", cells=40.0, octaves=2, stretch=6.0)) * smoothstep(0.76, 0.70, a.v), p["river_light"], 0.30)
+        a.light(layer, a.rim(bank_mask, 0.0, 0.003, 0.4) * bank_mask, p["glow"], 0.35)
+        a.put(layer, post_mask, mix(p["wood"], p["near"], 0.35))
+        a.light(layer, a.rim(post_mask, 0.003, 0.0, 0.2) * post_mask, p["wood_light"], 0.45)
+        a.put(layer, rope_mask, mix(p["mat"], p["near"], 0.30))
+        a.put(layer, nipa_mask, mix(p["nipa"], p["near"], 0.30))
+        a.light(layer, a.rim(nipa_mask, 0.002, 0.002, 0.3) * nipa_mask, mix(p["nipa_light"], p["glow"], 0.2), 0.40)
+        a.shade(layer, a.rim(mask, -0.004, -0.003, 1.0) * mask, 0.20)
+        haze(a, layer, p["low"], 0.08, None)
+        return layer
+    layer = _air(a, p, "strait hot air", p["low"], 0.26, scale(p["near"], 0.8), 0.16)
+    a.put(layer, shafts(a, "strait shafts", 3, 0.10, 0.0, 0.85, 0.05), p["glow"], 0.06)
+    return layer
+
+
+def strait_foreground(art_: Art, pen: Pen, layer_lights: list) -> None:
+    """The fronds of nipa palms that stand from below at two places, and a
+    loop of mooring line that hangs from above at one place."""
+    del layer_lights
+    rng = art_.rand("strait foreground")
+    for k in range(2):
+        u0 = (k + rng.uniform(0.2, 0.8)) / 2.0
+        for j in range(4):
+            t = j / 3.0 - 0.5
+            base = (u0 + t * 0.012, REST_BOTTOM + 0.10)
+            length = rng.uniform(0.11, 0.14) * (1.0 - abs(t) * 0.3)
+            tip = polar(*base, length, -90.0 + t * 60.0)
+            tip = (tip[0] + t * 0.03, max(tip[1], REST_BOTTOM - 0.014))
+            rib = _arch(base, polar(*base, length * 0.6, -90.0 + t * 40.0), tip, 12)
+            pen.line([(base[0], 1.0)] + rib, 0.0022)
+            for i in range(2, len(rib) - 1):
+                x, y = rib[i]
+                side = 0.016 * (1.0 - i / len(rib)) ** 0.6
+                for s in (-1.0, 1.0):
+                    end = (x + s * side * 0.8, max(y - side * 0.9, REST_BOTTOM - 0.012))
+                    pen.line([(x, y), end], 0.0013)
+    u = rng.uniform(0.30, 0.55)
+    pen.curve((u, 0.0), (u + 0.09, 0.0), 0.384, 0.0030)
+
+
+# ---------------------------------------------------------------------------
+# Borobudur: the Kedu plain of central Java
+# ---------------------------------------------------------------------------
+
+
+BOROBUDUR = {
+    "top": (92, 116, 148),
+    "mid": (212, 184, 176),
+    "low": (250, 220, 182),
+    "glow": (255, 226, 176),
+    "sun": (255, 244, 214),
+    "cloud": (246, 214, 190),
+    "volcano": (104, 112, 140),
+    "volcano_light": (176, 168, 176),
+    "smoke": (226, 222, 222),
+    "hills": (110, 124, 140),
+    "stone": (132, 130, 126),
+    "stone_light": (204, 196, 182),
+    "stone_dark": (70, 70, 74),
+    "hill": (74, 104, 66),
+    "forest": (60, 94, 60),
+    "forest_light": (130, 160, 96),
+    "paddy": (106, 150, 70),
+    "paddy_light": (170, 192, 104),
+    "water": (206, 190, 182),
+    "dike": (84, 112, 60),
+    "palm": (60, 98, 58),
+    "trunk": (120, 104, 84),
+    "mist": (240, 228, 214),
+    "far": (214, 204, 200),
+    "near": (30, 38, 30),
+    "near_light": (110, 130, 92),
+    "fern": (64, 112, 60),
+    "fern_light": (142, 176, 98),
+    "moss": (60, 98, 56),
+    "rock": (120, 120, 116),
+}
+
+
+def _cone(pen: Pen, rng, u: float, v_foot: float, v_top: float, left: float, right: float, crater: float, notch: bool = True) -> None:
+    """A volcano: concave sides that are steep near the top and long at the
+    foot, and a summit `crater` wide. `left` and `right` are the reach of
+    the foot on each side. With `notch` the summit has the dip of a live
+    crater; without it the summit is a worn, round top."""
+    ts = np.linspace(0.0, 1.0, 18)
+    lside = [(u - crater - left * (1.0 - t) ** 2.3 + rng.uniform(-0.002, 0.002), v_foot - (v_foot - v_top) * t) for t in ts]
+    rside = [(u + crater + right * (1.0 - t) ** 2.1 + rng.uniform(-0.002, 0.002), v_foot - (v_foot - v_top) * t) for t in ts]
+    if notch:
+        top = [(u - crater * 0.4, v_top + 0.003), (u + crater * 0.3, v_top + 0.001)]
+    else:
+        top = [(u + crater * np.cos(t), v_top - 0.010 * np.sin(t)) for t in np.linspace(np.pi, 0.0, 9)]
+    pen.poly(lside + top + rside[::-1])
+
+
+def _bell_stupa(pen: Pen, u: float, v: float, w: float, h: float) -> None:
+    """A stupa in the shape of a bell, on a round base of lotus petals,
+    with a small square block and a short spire on its top. It is closed:
+    from far off the lattice of its dome does not show."""
+    pen.rect(u - w * 0.55, v - h * 0.14, u + w * 0.55, v)
+    pen.ellipse(u, v - h * 0.40, w * 0.50, h * 0.36)
+    pen.rect(u - w * 0.50, v - h * 0.40, u + w * 0.50, v - h * 0.10)
+    pen.rect(u - w * 0.12, v - h * 0.86, u + w * 0.12, v - h * 0.70)
+    pen.poly([(u - w * 0.07, v - h * 0.86), (u + w * 0.07, v - h * 0.86), (u, v - h * 1.10)])
+
+
+def _borobudur(stone: Pen, lit: Pen, dark: Pen, bells: Pen, u: float, v: float, hw: float, h: float) -> None:
+    """Borobudur from far off, whole and from outside. Six square terraces
+    step in, one on the other, each with a row of small spires on its
+    balustrade. On them are three round terraces, each with a ring of bell
+    stupas. A great bell stupa with a spire stands in the middle of the
+    top. The light comes from the right."""
+    y = v
+    for k, (frac, tier) in enumerate(((1.00, 0.080), (0.90, 0.066), (0.82, 0.062), (0.74, 0.058), (0.66, 0.054), (0.58, 0.050))):
+        w = hw * frac
+        top = y - h * tier
+        stone.rect(u - w, top, u + w, y)
+        # The corners of each terrace are set back in steps.
+        dark.rect(u - w, y - h * 0.012, u + w, y)
+        lit.rect(u + w * 0.55, top, u + w, top + h * 0.012)
+        lit.rect(u + w * 0.88, top, u + w, y - h * 0.012)
+        count = int(10 + 4 * (5 - k))
+        for j in range(count + 1):
+            x = u - w + 2.0 * w * j / count
+            stone.poly([(x - hw * 0.010, top + 0.0005), (x + hw * 0.010, top + 0.0005), (x, top - h * 0.022)])
+        y = top
+    for k, (frac, tier, count) in enumerate(((0.46, 0.032, 9), (0.38, 0.030, 7), (0.30, 0.028, 5))):
+        w = hw * frac
+        top = y - h * tier
+        stone.ellipse(u, top + h * tier * 0.5, w, h * tier * 0.55)
+        stone.rect(u - w, top + h * tier * 0.5, u + w, y)
+        lit.rect(u + w * 0.70, top + h * tier * 0.3, u + w, y)
+        for j in range(count):
+            x = u - w * 0.90 + 1.80 * w * j / (count - 1)
+            _bell_stupa(bells, x, top + h * 0.004, hw * 0.075, h * 0.120)
+        y = top
+    _bell_stupa(stone, u, y + h * 0.004, hw * 0.24, h * 0.30)
+    lit.ellipse(u + hw * 0.07, y - h * 0.12, hw * 0.05, h * 0.09)
+
+
+def history_borobudur(layer_key: str, art_: Art) -> np.ndarray:
+    a = art_
+    p = BOROBUDUR
+    sun_at = (0.745, 0.470)
+    if layer_key == "sky":
+        # Sunrise: a blue-grey sky high up, rose and gold low down, and the
+        # sun just up between the two volcanoes. Merapi at the left smokes
+        # a little; Merbabu at the right is wider and older.
+        # Under the horizon is the far plain in the mist, so a gap in the
+        # layers in front shows land and not sky.
+        layer = a.opaque(a.ramp([(0.0, scale(p["top"], 0.85)), (0.22, p["top"]), (0.44, p["mid"]), (HORIZON - 0.01, p["low"]),
+                                 (HORIZON + 0.002, mix(p["hill"], p["mist"], 0.55)), (1.0, mix(p["hill"], p["mist"], 0.35))]))
+        _sun(a, layer, *sun_at, 0.024, p["sun"], p["glow"], 0.80)
+        streaks = smoothstep(0.55, 0.80, a.noise("borobudur streaks", cells=6.0, octaves=3, stretch=14.0)) * a.band(0.40, 0.08, 1.2)
+        a.light(layer, streaks, p["cloud"], 0.45)
+        rng = a.rand("borobudur volcanoes")
+        smoke = _plume(a, "merapi smoke", 0.642, 0.478, 0.045, -0.035, 0.008)
+        a.put(layer, smoke, p["smoke"], 0.60)
+        for k, (u, top, left, right, crater, pale) in enumerate(((0.86, 0.502, 0.26, 0.26, 0.016, 0.40), (0.64, 0.478, 0.22, 0.16, 0.006, 0.28))):
+            cone, pen = a.drawing()
+            # Merbabu has an old, worn summit; Merapi a live crater.
+            _cone(pen, rng, u, HORIZON + 0.004, top, left, right, crater, notch=crater < 0.01)
+            mask = a.mask_of(cone, blur=0.4)
+            colour = mix(p["volcano"], p["mid"], pale)
+            a.put(layer, mask, a.ramp([(0.0, colour), (top, colour), (HORIZON - 0.03, mix(colour, p["low"], 0.45)), (1.0, p["low"])]))
+            gullies = smoothstep(0.62, 0.82, a.noise(("borobudur gullies", k), cells=40.0, octaves=2, stretch=0.25))
+            a.shade(layer, mask * gullies * smoothstep(top, top + 0.04, a.v) * smoothstep(HORIZON, HORIZON - 0.06, a.v), 0.05)
+            # The edge to the sun is lit.
+            a.light(layer, a.rim(mask, -0.006 if u < sun_at[0] else 0.006, 0.0, 1.5) * mask, p["glow"], 0.55)
+        a.light(layer, a.spot(*sun_at, 0.10, 1.6), p["glow"], 0.35)
+        # Low hills far off at the left (the Menoreh hills).
+        mask, _ = a.ridge("menoreh", HORIZON - 0.010, 0.010, cells=4.0, octaves=4)
+        a.put(layer, mask * smoothstep(0.55, 0.40, a.u), a.ramp([(0.0, mix(p["hills"], p["mid"], 0.35)), (HORIZON - 0.02, mix(p["hills"], p["mid"], 0.35)), (HORIZON, mix(p["hills"], p["low"], 0.6)), (1.0, p["low"])]))
+        a.tint(layer, fog(a, "borobudur low mist", HORIZON - 0.004, 0.022, 3.0), p["mist"], 0.70)
+        _textbook(a, layer, 0.07)
+        return layer
+    if layer_key == "far_backplate":
+        rng = a.rand("far borobudur")
+        mu, mv = 0.34, 0.600
+        # The hill under the monument, the plain round it, and the monument.
+        hill, hill_pen = a.drawing()
+        hill_pen.poly([(mu - 0.26, HORIZON + 0.018)] + [(mu + 0.26 * np.cos(t), mv + 0.006 - 0.032 * np.sin(t) ** 1.6) for t in np.linspace(np.pi, 0.0, 30)] + [(mu + 0.26, HORIZON + 0.018)])
+        _, pline = a.ridge("borobudur plain", HORIZON + 0.008, 0.003, cells=4.0, octaves=2)
+        plain = _land(a, pline)
+        trees, tree_pen = a.drawing()
+        _canopy(tree_pen, rng, pline, -0.02, 1.02, 0.006, 0.006, 0.012, 160)
+        hill_line = np.array([mv + 0.006 - 0.032 * max(0.0, 1.0 - ((x - mu) / 0.26) ** 2) ** 0.8 for x in np.linspace(0.0, 1.0, 400)])
+        _canopy(tree_pen, rng, hill_line, mu - 0.22, mu + 0.22, 0.004, 0.006, 0.011, 90)
+        mon = {key: a.drawing() for key in ("stone", "lit", "dark", "bells")}
+        _borobudur(mon["stone"][1], mon["lit"][1], mon["dark"][1], mon["bells"][1], mu, mv - 0.012, 0.125, 0.100)
+        palms, palm_pen = a.drawing()
+        trunks, trunk_pen = a.drawing()
+        for u in (0.04, 0.08, 0.13, 0.55, 0.60, 0.66, 0.72, 0.80, 0.88, 0.93, 0.98):
+            v = _at(pline, u) + rng.uniform(0.004, 0.030)
+            _far_palm(trunk_pen, palm_pen, rng, u, v, rng.uniform(0.040, 0.060) * (1.0 + (v - HORIZON) * 8.0), rng.uniform(-0.008, 0.008))
+        # The rice fields: terraces of flat water and young rice, each a
+        # level strip, deeper toward the eye, split by dikes.
+        fields, field_pen = a.drawing()
+        wet, wet_pen = a.drawing()
+        dikes, dike_pen = a.drawing()
+        vp = (0.45, HORIZON - 0.10)
+        v, gap = HORIZON + 0.022, 0.005
+        while v < 1.0:
+            width = 0.0010 + (v - HORIZON) * 0.012
+            dike_pen.line([(-0.02, v), (1.02, v)], width)
+            x = rng.uniform(-0.10, 0.0)
+            while x < 1.05:
+                y0, y1 = v, v + gap
+
+                def at(y: float, x0: float = x) -> float:
+                    return vp[0] + (x0 - vp[0]) * (y - vp[1]) / (v - vp[1])
+
+                length = rng.uniform(0.05, 0.12) * (1.0 + (v - HORIZON) * 5.0)
+                quad = [(x, y0), (x + length, y0), (at(y1, x + length), y1), (at(y1), y1)]
+                (wet_pen if rng.random() < 0.28 else field_pen).poly(quad)
+                dike_pen.line([(x, y0), (at(y1), y1)], width * 0.8)
+                x += length
+            v += gap
+            gap *= 1.32
+        hill_mask = a.mask_of(hill)
+        tree_mask = a.mask_of(trees)
+        ms = {key: a.mask_of(img) for key, (img, _) in mon.items()}
+        mon_mask = np.maximum(ms["stone"], ms["bells"])
+        palm_mask = np.maximum(a.mask_of(palms), a.mask_of(trunks))
+        land = np.maximum.reduce([plain, hill_mask, tree_mask])
+        mask = np.maximum.reduce([land, mon_mask, palm_mask])
+        layer = solid(a, mask, mix(p["hill"], p["far"], 0.40), p["hill"], HORIZON - 0.03, 0.70, "borobudur far", 0.05)
+        fields_on = (a.v > HORIZON + 0.022) * (1.0 - hill_mask)
+        a.put(layer, a.mask_of(fields) * fields_on, mix(p["paddy"], p["far"], 0.25))
+        a.light(layer, a.mask_of(fields) * fields_on * smoothstep(0.5, 0.8, a.noise("borobudur rice", cells=60.0, octaves=2, stretch=4.0)), p["paddy_light"], 0.35)
+        # A flooded paddy shows the sky: gold far off, rose and then blue
+        # nearer. It is a little green with the young rice in it.
+        mirror = a.ramp([(0.0, p["low"]), (HORIZON, mix(p["low"], p["paddy"], 0.25)), (0.68, mix(p["mid"], p["paddy"], 0.35)), (1.0, mix(p["top"], p["paddy"], 0.35))])
+        wet_mask = a.mask_of(wet) * fields_on
+        a.put(layer, wet_mask, mirror, 0.85)
+        a.light(layer, wet_mask * smoothstep(0.60, 0.80, a.noise("borobudur paddy glints", cells=90.0, octaves=2, stretch=10.0)), p["glow"], 0.35)
+        a.shade(layer, wet_mask * smoothstep(0.45, 0.75, a.noise("borobudur shoots", cells=320.0, octaves=1, stretch=0.2)), 0.10)
+        a.light(layer, wet_mask * a.spot(sun_at[0], 0.66, 0.30, 1.4, squash=3.0), p["glow"], 0.4)
+        a.put(layer, a.mask_of(dikes) * fields_on, mix(p["dike"], p["far"], 0.15), 0.9)
+        a.put(layer, tree_mask, a.ramp([(0.0, mix(p["forest"], p["far"], 0.45)), (HORIZON, mix(p["forest"], p["far"], 0.30)), (1.0, p["forest"])]))
+        a.light(layer, a.rim(tree_mask, -0.002, 0.003, 0.4) * tree_mask, mix(p["forest_light"], p["glow"], 0.3), 0.40)
+        # The monument: grey andesite, lit on the right and on the tops of
+        # the terraces, with dark lines under each terrace.
+        a.put(layer, ms["stone"], mix(p["stone"], p["far"], 0.15))
+        a.put(layer, ms["bells"], mix(p["stone"], p["stone_dark"], 0.15))
+        a.light(layer, a.rim(ms["bells"], -0.0015, 0.0, 0.0) * ms["bells"], p["stone_light"], 0.6)
+        a.put(layer, ms["dark"] * ms["stone"], p["stone_dark"], 0.55)
+        a.light(layer, ms["lit"] * mon_mask, mix(p["stone_light"], p["glow"], 0.3), 0.55)
+        a.light(layer, a.rim(mon_mask, -0.002, 0.0, 0.0) * mon_mask, p["glow"], 0.55)
+        a.put(layer, a.mask_of(trunks), mix(p["trunk"], p["far"], 0.25))
+        a.put(layer, a.mask_of(palms), mix(p["palm"], p["far"], 0.25))
+        a.light(layer, a.rim(a.mask_of(palms), -0.002, 0.002, 0.3) * a.mask_of(palms), p["forest_light"], 0.35)
+        # The morning mist: in the low ground round the hill and in bands
+        # over the fields.
+        a.tint(layer, fog(a, "borobudur hill mist", mv + 0.006, 0.010, 3.0) * mask, p["mist"], 0.65)
+        a.tint(layer, fog(a, "borobudur field mist", 0.665, 0.020, 2.0) * mask, p["mist"], 0.55)
+        a.tint(layer, fog(a, "borobudur far mist", HORIZON + 0.004, 0.012, 3.0) * mask, p["mist"], 0.50)
+        haze(a, layer, p["low"], 0.06, None)
+        layer[..., 3] = np.minimum(layer[..., 3], mask)
+        return layer
+    if layer_key == "near_background":
+        rng = a.rand("near borobudur")
+        bank, bank_pen = a.drawing()
+        blocks, block_pen = a.drawing()
+        grooves, groove_pen = a.drawing()
+        ferns, fern_pen = a.drawing()
+        ground, line = a.ridge("near borobudur", 0.705, 0.005, cells=4.0, octaves=3)
+        pts = [(u, _at(line, u) - 0.034 * smoothstep(0.26, 0.02, u) - 0.030 * smoothstep(0.74, 0.98, u)) for u in np.linspace(0.0, 1.0, 60)]
+        bank_pen.poly([(0.0, 1.0)] + pts + [(1.0, 1.0)])
+
+        def bank_at(u: float) -> float:
+            return float(np.interp(u, [q[0] for q in pts], [q[1] for q in pts]))
+
+        # Blocks of andesite that fell from a wall, each with its carved
+        # moulding, tumbled at the left and at the right; ferns between
+        # them. The middle is calm grass.
+        for u, w, h, turn in ((0.05, 0.050, 0.034, -8.0), (0.12, 0.036, 0.026, 12.0), (0.08, 0.030, 0.022, 4.0), (0.90, 0.044, 0.030, 6.0), (0.97, 0.034, 0.026, -10.0)):
+            base = bank_at(u) + 0.006
+            stack = 0.026 if (u, w) == (0.08, 0.030) else 0.0
+            cx, cy = u, base - h * 0.5 - stack
+            corners = [(cx - w * 0.5, cy - h * 0.5), (cx + w * 0.5, cy - h * 0.5), (cx + w * 0.5, cy + h * 0.5), (cx - w * 0.5, cy + h * 0.5)]
+            block_pen.poly(_turn(corners, (cx, cy), turn))
+            for f in (0.22, 0.32):
+                groove_pen.line(_turn([(cx - w * 0.5, cy - h * 0.5 + h * f), (cx + w * 0.5, cy - h * 0.5 + h * f)], (cx, cy), turn), 0.0016)
+        for u, h in ((0.16, 0.060), (0.02, 0.050), (0.83, 0.062), (0.995, 0.050)):
+            _fern(fern_pen, rng, u, bank_at(u) + 0.004, h, 9)
+        for _ in range(10):
+            u = rng.uniform(0.28, 0.72)
+            _fern(fern_pen, rng, u, bank_at(u) + 0.002, rng.uniform(0.010, 0.016), 5)
+        bank_mask = np.maximum(a.mask_of(bank), ground)
+        block_mask = a.mask_of(blocks)
+        groove_mask = a.mask_of(grooves) * block_mask
+        fern_mask = a.mask_of(ferns)
+        mask = np.maximum.reduce([bank_mask, block_mask, fern_mask])
+        layer = a.blank()
+        earth = a.ramp([(0.0, mix(p["moss"], p["near"], 0.35)), (0.66, mix(p["moss"], p["near"], 0.35)), (0.80, mix(p["moss"], p["near"], 0.75)), (1.0, p["near"])])
+        a.put(layer, bank_mask, earth)
+        a.light(layer, a.rim(bank_mask, 0.0, 0.003, 0.4) * bank_mask, p["glow"], 0.30)
+        a.put(layer, block_mask, mix(p["rock"], p["near"], 0.30))
+        a.shade(layer, block_mask * smoothstep(0.55, 0.80, a.noise("borobudur pits", cells=160.0, octaves=1)), 0.20)
+        a.light(layer, a.rim(block_mask, -0.003, 0.003, 0.3) * block_mask, mix(p["stone_light"], p["glow"], 0.3), 0.55)
+        a.put(layer, groove_mask, p["near"], 0.55)
+        moss = block_mask * smoothstep(0.55, 0.70, a.noise("borobudur block moss", cells=50.0, octaves=3))
+        a.put(layer, moss, mix(p["moss"], p["near"], 0.2), 0.8)
+        a.put(layer, fern_mask, mix(p["fern"], p["near"], 0.30))
+        a.light(layer, a.rim(fern_mask, -0.002, 0.002, 0.3) * fern_mask, mix(p["fern_light"], p["glow"], 0.2), 0.40)
+        a.shade(layer, a.rim(mask, 0.004, -0.003, 1.0) * mask, 0.20)
+        haze(a, layer, p["mist"], 0.10, None)
+        return layer
+    layer = _air(a, p, "borobudur morning mist", p["mist"], 0.34, scale(p["near"], 0.8), 0.16)
+    a.put(layer, shafts(a, "borobudur shafts", 4, -0.16, 0.0, 0.85, 0.05), p["glow"], 0.09)
+    return layer
+
+
+def borobudur_foreground(art_: Art, pen: Pen, layer_lights: list) -> None:
+    """Ferns that stand from below at two places, and the frond of a
+    coconut palm that hangs from above at one place."""
+    del layer_lights
+    rng = art_.rand("borobudur foreground")
+    for k in range(2):
+        u0 = (k + rng.uniform(0.2, 0.8)) / 2.0
+        for j in range(5):
+            t = j / 4.0 - 0.5
+            ang = -90.0 + t * 80.0
+            length = rng.uniform(0.10, 0.13) * (1.0 - abs(t) * 0.4)
+            base = (u0 + t * 0.01, REST_BOTTOM + 0.10)
+            tip = polar(*base, length, ang)
+            tip = (tip[0] + t * 0.04, max(tip[1] + length * 0.18, REST_BOTTOM - 0.012))
+            rib = _arch(base, polar(*base, length * 0.7, ang), tip, 12)
+            pen.line([(base[0], 1.0)] + rib, 0.0022)
+            for i in range(1, len(rib) - 1):
+                x, y = rib[i]
+                side = 0.012 * (1.0 - i / len(rib))
+                for s in (-1.0, 1.0):
+                    pen.line([(x, y), (x + s * side, max(y - side * 0.3, REST_BOTTOM - 0.010))], 0.0014)
+    u0 = rng.uniform(0.25, 0.45)
+    end = (u0 + 0.12, 0.384)
+    rib = _arch((u0 - 0.02, 0.0), (u0 + 0.02, 0.22), end, 20)
+    pen.line(rib, 0.0026)
+    for i, (x, y) in enumerate(rib[1:], 1):
+        side = 0.026 * (1.0 - i / 40.0)
+        if y + side * 0.9 > 0.392:
+            side = max(0.0, (0.392 - y) / 0.9)
+        pen.line([(x, y), (x + side * 0.45, y + side * 0.9)], 0.0015)
+        pen.line([(x, y), (x - side * 0.45, y + side * 0.9)], 0.0015)
+
+
+# ---------------------------------------------------------------------------
+# Angkor: the city of the Khmer and its great temple
+# ---------------------------------------------------------------------------
+
+
+ANGKOR = {
+    "top": (104, 136, 168),
+    "mid": (228, 202, 154),
+    "low": (252, 228, 176),
+    "glow": (255, 214, 140),
+    "sun": (255, 244, 206),
+    "cloud": (255, 238, 204),
+    "cloud_shadow": (206, 168, 128),
+    "temple": (112, 96, 92),
+    "temple_light": (226, 178, 128),
+    "temple_dark": (68, 56, 56),
+    "forest": (62, 88, 56),
+    "forest_light": (150, 158, 84),
+    "water": (196, 190, 170),
+    "water_light": (255, 236, 190),
+    "paddy": (118, 150, 64),
+    "paddy_gold": (204, 176, 90),
+    "dike": (96, 112, 54),
+    "palm": (58, 82, 50),
+    "trunk": (96, 78, 62),
+    "buffalo": (58, 52, 50),
+    "far": (226, 210, 178),
+    "near": (36, 34, 26),
+    "near_light": (150, 130, 84),
+    "lotus_leaf": (70, 118, 66),
+    "lotus_leaf_light": (150, 180, 104),
+    "lotus": (232, 150, 170),
+    "lotus_light": (252, 214, 222),
+    "mud": (90, 76, 58),
+}
+
+
+def _prasat(pen: Pen, bands: Pen, u: float, v: float, w: float, h: float) -> None:
+    """A tower of a Khmer temple, in the shape of a lotus bud: a square
+    base, then a body whose sides bow out a little and then curve in to a
+    point. It is built in tiers, so its outline steps in at each tier."""
+    base_h = h * 0.16
+    pen.rect(u - w * 1.12, v - base_h, u + w * 1.12, v)
+    left, right = [], []
+    tiers = 9
+    for k in range(tiers * 2 + 1):
+        t = k / (tiers * 2)
+        half = w * (1.0 - t**1.8) ** 0.6
+        # Each tier has a small step at its foot.
+        step = 1.0 if k % 2 == 0 else 0.92
+        y = v - base_h - (h - base_h) * t
+        left.append((u - half * step, y))
+        right.append((u + half * step, y))
+    pen.poly([(u - w, v - base_h + 0.0005)] + left + right[::-1] + [(u + w, v - base_h + 0.0005)])
+    pen.line([(u, v - h + 0.001), (u, v - h * 1.06)], w * 0.10)
+    for k in range(1, tiers):
+        t = k / tiers
+        y = v - base_h - (h - base_h) * t
+        half = w * (1.0 - t**1.8) ** 0.6
+        bands.line([(u - half, y), (u + half, y)], h * 0.010)
+
+
+def _angkor_wat(stone: Pen, back: Pen, bands: Pen, u: float, v: float, s: float) -> None:
+    """Angkor Wat from across its moat, as a silhouette: the long outer
+    gallery with its gate, the galleries of the temple that step up behind
+    it, and the five towers in the shape of lotus buds, the middle one the
+    tallest. The two rear towers stand a little in from the front two, so
+    all five show. `s` is half the width of the outer gallery."""
+    stone.rect(u - s, v - s * 0.060, u + s, v)
+    stone.poly([(u - s * 1.01, v - s * 0.060), (u - s * 0.98, v - s * 0.085), (u + s * 0.98, v - s * 0.085), (u + s * 1.01, v - s * 0.060)])
+    for gx, gw, gh in ((0.0, 0.10, 0.20), (-0.30, 0.05, 0.13), (0.30, 0.05, 0.13)):
+        stone.rect(u + gx * s - gw * s, v - s * gh * 0.6, u + gx * s + gw * s, v - s * 0.06)
+        stone.poly([(u + gx * s - gw * s * 0.8, v - s * gh * 0.6), (u + gx * s + gw * s * 0.8, v - s * gh * 0.6), (u + gx * s, v - s * gh)])
+    bands.line([(u - s, v - s * 0.030), (u + s, v - s * 0.030)], s * 0.008)
+    for frac, bottom, top in ((0.66, 0.06, 0.17), (0.48, 0.15, 0.27), (0.36, 0.25, 0.42)):
+        stone.rect(u - s * frac, v - s * top, u + s * frac, v - s * bottom)
+        stone.poly([(u - s * frac * 1.02, v - s * top), (u - s * frac * 0.97, v - s * (top + 0.025)), (u + s * frac * 0.97, v - s * (top + 0.025)), (u + s * frac * 1.02, v - s * top)])
+        bands.line([(u - s * frac, v - s * (top - 0.008)), (u + s * frac, v - s * (top - 0.008))], s * 0.007)
+    for dx, w, h, pen in ((-0.20, 0.050, 0.36, back), (0.20, 0.050, 0.36, back), (-0.31, 0.054, 0.33, stone), (0.31, 0.054, 0.33, stone), (0.0, 0.074, 0.56, stone)):
+        base = v - s * (0.44 if pen is back else 0.42)
+        _prasat(pen, bands, u + dx * s, base, w * s, h * s)
+
+
+def history_angkor(layer_key: str, art_: Art) -> np.ndarray:
+    a = art_
+    p = ANGKOR
+    sun_at = (0.84, 0.40)
+    wat_u, wat_v = 0.60, HORIZON + 0.014
+    moat_v = wat_v + 0.024
+    if layer_key == "sky":
+        # A gold afternoon: blue high up, warm gold low down, the sun low at
+        # the right, a few heaps of cloud lit gold, and the flat land with a
+        # line of far forest on the horizon.
+        layer = a.opaque(a.ramp([(0.0, scale(p["top"], 0.85)), (0.22, p["top"]), (0.46, p["mid"]), (HORIZON - 0.01, p["low"]),
+                                 (HORIZON + 0.002, mix(p["forest"], p["far"], 0.55)), (1.0, mix(p["forest"], p["far"], 0.35))]))
+        _sun(a, layer, *sun_at, 0.026, p["sun"], p["glow"], 0.80)
+        _heaps(a, layer, "angkor heaps", ((0.14, 0.44, 0.06, 0.05), (0.33, 0.40, 0.04, 0.035), (0.97, 0.48, 0.05, 0.04)), p["cloud"], p["cloud_shadow"], 0.80)
+        mask, _ = a.ridge("angkor far forest", HORIZON - 0.004, 0.003, cells=10.0, octaves=3)
+        a.put(layer, mask, mix(p["forest"], p["low"], 0.60))
+        a.tint(layer, fog(a, "angkor low haze", HORIZON - 0.004, 0.014, 3.0), p["low"], 0.55)
+        _textbook(a, layer, 0.08)
+        return layer
+    if layer_key == "far_backplate":
+        rng = a.rand("far angkor")
+        # The far bank of the moat: the land of the temple with forest at
+        # its two sides, and at the far left the long flat water of the
+        # West Baray behind its dike.
+        _, fline = a.ridge("angkor far land", HORIZON + 0.004, 0.0015, cells=6.0, octaves=2)
+        land_far = _land(a, fline) * (a.v < moat_v + 0.001)
+        baray = smoothstep(HORIZON + 0.0015, HORIZON + 0.0035, a.v) * smoothstep(HORIZON + 0.010, HORIZON + 0.008, a.v) * smoothstep(0.40, 0.36, a.u)
+        trees, tree_pen = a.drawing()
+        _canopy(tree_pen, rng, fline, -0.02, 0.36, 0.004, 0.004, 0.009, 60)
+        _canopy(tree_pen, rng, fline + 0.012, -0.02, 0.40, 0.008, 0.006, 0.013, 90)
+        _canopy(tree_pen, rng, fline + 0.012, 0.80, 1.02, 0.008, 0.006, 0.013, 60)
+        _canopy(tree_pen, rng, fline + 0.006, 0.38, 0.82, 0.003, 0.004, 0.008, 60)
+        wat = {key: a.drawing() for key in ("stone", "back", "bands")}
+        _angkor_wat(wat["stone"][1], wat["back"][1], wat["bands"][1], wat_u, wat_v, 0.20)
+        # The moat: wide, still water in front of the temple, with the
+        # causeway of stone across it to the gate.
+        moat = smoothstep(wat_v + 0.0005, wat_v + 0.0025, a.v) * smoothstep(moat_v + 0.001, moat_v - 0.001, a.v)
+        causeway, cause_pen = a.drawing()
+        cause_pen.poly([(wat_u - 0.010, wat_v), (wat_u + 0.010, wat_v), (wat_u + 0.016, moat_v + 0.002), (wat_u - 0.016, moat_v + 0.002)])
+        # The rice fields from the moat to the eye, with sugar palms in
+        # them and water buffalo far off.
+        fields, field_pen = a.drawing()
+        gold, gold_pen = a.drawing()
+        dikes, dike_pen = a.drawing()
+        vp = (wat_u, HORIZON - 0.10)
+        v, gap = moat_v + 0.004, 0.005
+        while v < 1.0:
+            width = 0.0010 + (v - HORIZON) * 0.012
+            dike_pen.line([(-0.02, v), (1.02, v)], width)
+            x = rng.uniform(-0.10, 0.0)
+            while x < 1.05:
+                y0, y1 = v, v + gap
+
+                def at(y: float, x0: float = x) -> float:
+                    return vp[0] + (x0 - vp[0]) * (y - vp[1]) / (v - vp[1])
+
+                length = rng.uniform(0.06, 0.14) * (1.0 + (v - HORIZON) * 5.0)
+                quad = [(x, y0), (x + length, y0), (at(y1, x + length), y1), (at(y1), y1)]
+                (gold_pen if rng.random() < 0.35 else field_pen).poly(quad)
+                dike_pen.line([(x, y0), (at(y1), y1)], width * 0.8)
+                x += length
+            v += gap
+            gap *= 1.32
+        palms, palm_pen = a.drawing()
+        trunks, trunk_pen = a.drawing()
+        for u, v, h in ((0.03, 0.640, 0.11), (0.09, 0.630, 0.08), (0.15, 0.655, 0.13), (0.24, 0.628, 0.07), (0.31, 0.645, 0.10), (0.40, 0.662, 0.12),
+                        (0.79, 0.634, 0.08), (0.85, 0.650, 0.11), (0.92, 0.628, 0.07), (0.97, 0.668, 0.14), (0.47, 0.627, 0.06), (0.73, 0.626, 0.06)):
+            _sugar_palm(trunk_pen, palm_pen, rng, u, v, h)
+        beasts, beast_pen = a.drawing()
+        for u, v, s, f, g in ((0.22, 0.652, 0.012, 1.0, True), (0.26, 0.656, 0.013, -1.0, False), (0.83, 0.668, 0.015, -1.0, True)):
+            _buffalo(beast_pen, u, v, s, f, g)
+        tree_mask = a.mask_of(trees) * (a.v < moat_v)
+        ws = {key: a.mask_of(img) for key, (img, _) in wat.items()}
+        wat_mask = np.maximum(ws["stone"], ws["back"])
+        cause_mask = a.mask_of(causeway) * moat
+        field_area = smoothstep(moat_v + 0.001, moat_v + 0.003, a.v)
+        palm_mask = a.mask_of(palms)
+        trunk_mask = a.mask_of(trunks)
+        beast_mask = a.mask_of(beasts)
+        mask = np.maximum.reduce([land_far, tree_mask, wat_mask, moat, field_area, palm_mask, trunk_mask])
+        layer = solid(a, mask, mix(p["forest"], p["far"], 0.45), mix(p["forest"], p["far"], 0.25), HORIZON, moat_v, "angkor far", 0.04)
+        a.put(layer, baray, mix(p["water_light"], p["low"], 0.4))
+        a.put(layer, tree_mask, a.ramp([(0.0, mix(p["forest"], p["far"], 0.40)), (HORIZON, mix(p["forest"], p["far"], 0.32)), (moat_v, mix(p["forest"], p["far"], 0.10)), (1.0, p["forest"])]))
+        a.light(layer, a.rim(tree_mask, -0.002, 0.002, 0.4) * tree_mask, mix(p["forest_light"], p["glow"], 0.3), 0.45)
+        # The temple: a warm grey silhouette against the gold sky, lit at
+        # its right edges by the low sun. The rear towers are paler.
+        a.put(layer, ws["back"], mix(p["temple"], p["far"], 0.28))
+        a.put(layer, ws["stone"], p["temple"])
+        a.put(layer, ws["bands"] * wat_mask, p["temple_dark"], 0.45)
+        a.light(layer, a.rim(wat_mask, -0.002, 0.0, 0.0) * wat_mask, p["temple_light"], 0.65)
+        a.light(layer, a.rim(ws["stone"], -0.0015, 0.0, 0.0) * ws["stone"], p["temple_light"], 0.45)
+        # The moat: it shows the gold sky, and the temple upside down in it.
+        a.put(layer, moat, a.ramp([(0.0, p["water_light"]), (wat_v, mix(p["water_light"], p["low"], 0.3)), (moat_v, mix(p["water"], p["mid"], 0.4)), (1.0, p["water"])]))
+        flip = _ripple(a, "angkor moat ripple", _reflect(a, wat_mask, wat_v + 0.0015)) * moat
+        a.put(layer, flip, mix(p["temple"], p["water"], 0.35), 0.75)
+        a.put(layer, _ripple(a, "angkor moat trees", _reflect(a, tree_mask, wat_v + 0.0015)) * moat * (1.0 - flip), mix(p["forest"], p["water"], 0.45), 0.6)
+        a.light(layer, moat * smoothstep(0.66, 0.84, a.noise("angkor moat glints", cells=160.0, octaves=1, stretch=10.0)) * a.spot(sun_at[0], moat_v, 0.35, 1.0, squash=3.0), p["water_light"], 0.8)
+        a.put(layer, cause_mask, mix(p["temple"], p["temple_light"], 0.45))
+        a.shade(layer, cause_mask * (np.abs(a.u - wat_u) > 0.010 + (a.v - wat_v) * 0.25), 0.25)
+        # The fields: young green rice and rice gone gold, and dikes.
+        a.put(layer, a.mask_of(fields) * field_area, mix(p["paddy"], p["far"], 0.20))
+        a.put(layer, a.mask_of(gold) * field_area, mix(p["paddy_gold"], p["far"], 0.15))
+        a.light(layer, field_area * smoothstep(0.55, 0.80, a.noise("angkor rice", cells=60.0, octaves=2, stretch=4.0)), p["glow"], 0.20)
+        a.put(layer, a.mask_of(dikes) * field_area, p["dike"], 0.85)
+        a.light(layer, field_area * a.spot(sun_at[0], moat_v, 0.45, 1.6, squash=3.0), p["glow"], 0.25)
+        # The palms, the buffalo and their shade.
+        a.put(layer, a.shift(beast_mask, -0.004, 0.0015) * field_area * (1.0 - beast_mask), p["dike"], 0.6)
+        a.put(layer, beast_mask, p["buffalo"])
+        a.light(layer, a.rim(beast_mask, -0.0015, 0.0015, 0.0) * beast_mask, p["temple_light"], 0.5)
+        a.put(layer, trunk_mask, a.ramp([(0.0, mix(p["trunk"], p["far"], 0.35)), (moat_v, mix(p["trunk"], p["far"], 0.25)), (1.0, p["trunk"])]))
+        a.light(layer, a.rim(trunk_mask, -0.002, 0.0, 0.0) * trunk_mask, p["glow"], 0.55)
+        a.put(layer, palm_mask, a.ramp([(0.0, mix(p["palm"], p["far"], 0.30)), (0.56, mix(p["palm"], p["far"], 0.20)), (1.0, p["palm"])]))
+        a.light(layer, a.rim(palm_mask, -0.003, 0.002, 0.3) * palm_mask, mix(p["forest_light"], p["glow"], 0.4), 0.50)
+        a.tint(layer, fog(a, "angkor far haze", HORIZON + 0.004, 0.016, 3.0) * mask, p["low"], 0.45)
+        haze(a, layer, p["low"], 0.07, None)
+        layer[..., 3] = np.minimum(layer[..., 3], mask)
+        return layer
+    if layer_key == "near_background":
+        rng = a.rand("near angkor")
+        bank, bank_pen = a.drawing()
+        pond, pond_pen = a.drawing()
+        pads, pad_pen = a.drawing()
+        stems, stem_pen = a.drawing()
+        flowers, flower_pen = a.drawing()
+        trunks, trunk_pen = a.drawing()
+        crowns, crown_pen = a.drawing()
+        ground, line = a.ridge("near angkor", 0.705, 0.004, cells=4.0, octaves=3)
+        pts = [(u, _at(line, u) - 0.022 * smoothstep(0.26, 0.02, u) - 0.026 * smoothstep(0.74, 0.98, u)) for u in np.linspace(0.0, 1.0, 60)]
+        bank_pen.poly([(0.0, 1.0)] + pts + [(1.0, 1.0)])
+
+        def bank_at(u: float) -> float:
+            return float(np.interp(u, [q[0] for q in pts], [q[1] for q in pts]))
+
+        # Ponds of still water at the two sides with lotus in them: round
+        # leaves that lie on the water or stand up on their stalks, buds,
+        # and open flowers. A tall sugar palm stands at each side.
+        for u0, u1 in ((-0.02, 0.27), (0.73, 1.02)):
+            rim = [(x, bank_at(min(max(x, 0.0), 1.0)) + 0.006 + 0.006 * np.sin(np.pi * (x - u0) / (u1 - u0))) for x in np.linspace(u0, u1, 16)]
+            pond_pen.poly(rim + [(x, y + 0.050 * np.sin(np.pi * (x - u0) / (u1 - u0)) ** 0.5) for x, y in rim[::-1]])
+            for _ in range(12):
+                u = rng.uniform(u0 + 0.02, u1 - 0.02)
+                v = bank_at(min(max(u, 0.0), 1.0)) + rng.uniform(0.012, 0.040)
+                r = rng.uniform(0.012, 0.022)
+                if rng.random() < 0.45:
+                    lift = rng.uniform(0.03, 0.07)
+                    stem_pen.line(_arch((u, v), (u + 0.004, v - lift * 0.6), (u + rng.uniform(-0.01, 0.01), v - lift), 6), 0.0022)
+                    pad_pen.ellipse(u, v - lift, r * 0.95, r * 0.42)
+                else:
+                    pad_pen.ellipse(u, v, r, r * 0.26)
+            for _ in range(4):
+                u = rng.uniform(u0 + 0.03, u1 - 0.03)
+                v = bank_at(min(max(u, 0.0), 1.0)) + 0.016
+                lift = rng.uniform(0.05, 0.09)
+                top = (u + rng.uniform(-0.008, 0.008), v - lift)
+                stem_pen.line(_arch((u, v), (u - 0.003, v - lift * 0.6), top, 6), 0.0020)
+                if rng.random() < 0.5:
+                    flower_pen.poly([(top[0] - 0.006, top[1]), (top[0], top[1] - 0.020), (top[0] + 0.006, top[1]), (top[0], top[1] + 0.004)])
+                else:
+                    for ang in (-150.0, -120.0, -90.0, -60.0, -30.0):
+                        tip = polar(top[0], top[1], 0.016, ang)
+                        flower_pen.poly([(top[0] - 0.003, top[1]), tip, (top[0] + 0.003, top[1])])
+                    flower_pen.ellipse(top[0], top[1], 0.007, 0.004)
+        _sugar_palm(trunk_pen, crown_pen, rng, 0.05, bank_at(0.05) + 0.010, 0.40)
+        _sugar_palm(trunk_pen, crown_pen, rng, 0.94, bank_at(0.94) + 0.010, 0.46)
+        bank_mask = np.maximum(a.mask_of(bank), ground)
+        pond_mask = a.mask_of(pond) * bank_mask
+        pad_mask = a.mask_of(pads)
+        stem_mask = a.mask_of(stems)
+        flower_mask = a.mask_of(flowers)
+        trunk_mask = a.mask_of(trunks)
+        crown_mask = a.mask_of(crowns)
+        mask = np.maximum.reduce([bank_mask, pad_mask, stem_mask, flower_mask, trunk_mask, crown_mask])
+        layer = a.blank()
+        earth = a.ramp([(0.0, mix(p["mud"], p["near"], 0.25)), (0.66, mix(p["mud"], p["near"], 0.25)), (0.80, mix(p["mud"], p["near"], 0.70)), (1.0, p["near"])])
+        a.put(layer, bank_mask, earth)
+        a.put(layer, bank_mask * a.band(_at(line, 0.5) + 0.004, 0.006, 1.0), mix(p["paddy"], p["near"], 0.35), 0.8)
+        a.light(layer, a.rim(bank_mask, 0.0, 0.003, 0.4) * bank_mask, p["glow"], 0.35)
+        a.put(layer, pond_mask, a.ramp([(0.0, mix(p["mid"], p["near"], 0.45)), (0.70, mix(p["mid"], p["near"], 0.55)), (0.78, mix(p["top"], p["near"], 0.75)), (1.0, p["near"])]))
+        a.light(layer, pond_mask * smoothstep(0.62, 0.80, a.noise("angkor pond", cells=60.0, octaves=2, stretch=10.0)), p["water_light"], 0.30)
+        a.shade(layer, a.rim(pond_mask, 0.0, 0.004, 0.4) * pond_mask, 0.35)
+        a.put(layer, stem_mask, mix(p["lotus_leaf"], p["near"], 0.40))
+        a.put(layer, pad_mask, mix(p["lotus_leaf"], p["near"], 0.25))
+        a.light(layer, a.rim(pad_mask, 0.0, 0.003, 0.2) * pad_mask, p["lotus_leaf_light"], 0.55)
+        a.put(layer, flower_mask, mix(p["lotus"], p["near"], 0.10))
+        a.light(layer, a.rim(flower_mask, -0.002, 0.002, 0.2) * flower_mask, p["lotus_light"], 0.55)
+        a.put(layer, trunk_mask, mix(p["trunk"], p["near"], 0.40))
+        a.light(layer, a.rim(trunk_mask, -0.003, 0.0, 0.3) * trunk_mask, p["glow"], 0.35)
+        a.put(layer, crown_mask, mix(p["palm"], p["near"], 0.30))
+        a.light(layer, a.rim(crown_mask, -0.003, 0.003, 0.4) * crown_mask, mix(p["forest_light"], p["glow"], 0.3), 0.45)
+        a.shade(layer, a.rim(mask, 0.004, -0.003, 1.0) * mask, 0.20)
+        haze(a, layer, p["low"], 0.07, None)
+        return layer
+    layer = _air(a, p, "angkor gold air", p["low"], 0.22, scale(p["near"], 0.8), 0.18)
+    a.put(layer, shafts(a, "angkor shafts", 3, -0.18, 0.0, 0.85, 0.05), p["glow"], 0.10)
+    return layer
+
+
+def angkor_foreground(art_: Art, pen: Pen, layer_lights: list) -> None:
+    """Lotus on its stalks stands from below at two places: a leaf like
+    a shallow cup and a bud. A fan leaf of a sugar palm hangs from above at
+    one place."""
+    del layer_lights
+    rng = art_.rand("angkor foreground")
+    for k in range(2):
+        u0 = (k + rng.uniform(0.2, 0.8)) / 2.0
+        for j in range(3):
+            u = u0 + (j - 1) * 0.018
+            top = REST_BOTTOM - rng.uniform(-0.002, 0.010)
+            lean = rng.uniform(-0.02, 0.02)
+            stalk = _arch((u, 1.0), (u + lean * 0.3, top + 0.10), (u + lean, top), 10)
+            pen.line(stalk, 0.0018)
+            x, y = stalk[-1]
+            if j == 1:
+                pen.poly([(x - 0.006, y + 0.004), (x, y - 0.014), (x + 0.006, y + 0.004), (x, y + 0.008)])
+            else:
+                pen.poly([(x - 0.020, y - 0.004), (x, y + 0.004), (x + 0.020, y - 0.004), (x + 0.012, y + 0.002), (x - 0.012, y + 0.002)])
+    u = rng.uniform(0.30, 0.55)
+    stalk = _arch((u - 0.04, 0.0), (u, 0.20), (u + 0.02, 0.33), 12)
+    pen.line(stalk, 0.0026)
+    cx, cy = stalk[-1]
+    for j in range(13):
+        ang = 20.0 + j * 140.0 / 12.0
+        tip = polar(cx, cy, 0.05, ang)
+        tip = (tip[0], min(tip[1], 0.386))
+        pen.line([(cx, cy), tip], 0.0022)

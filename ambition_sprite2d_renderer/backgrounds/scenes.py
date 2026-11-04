@@ -130,6 +130,9 @@ SCENES: dict[str, Scene] = {
     "history_wallacea": history_southeast_asia.history_wallacea,
     "history_austronesia": history_southeast_asia.history_austronesia,
     "history_red_river": history_southeast_asia.history_red_river,
+    "history_strait": history_southeast_asia.history_strait,
+    "history_borobudur": history_southeast_asia.history_borobudur,
+    "history_angkor": history_southeast_asia.history_angkor,
 }
 
 

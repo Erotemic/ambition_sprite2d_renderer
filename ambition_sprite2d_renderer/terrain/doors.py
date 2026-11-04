@@ -1001,6 +1001,207 @@ def red_river_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf * (1.0 - eave)
 
 
+def _courses_of(tile: Tile, c: dict, mask: np.ndarray, rows: tuple[float, ...], widths: tuple[float, ...], colour: RGB, light: RGB) -> None:
+    """Dressed blocks laid in courses over `mask`, each course of the
+    height in `rows` in turn, each block of a width from `widths` and of
+    its own tone, with a lit top and left edge and a dark joint."""
+    rng = tile.rng
+    tile.put(mask, c["dark"])
+    y0, k = 0.0, 0
+    while y0 < H:
+        row_h = rows[k % len(rows)]
+        x = -rng.uniform(0.0, 8.0)
+        while x < W:
+            w = rng.choice(widths)
+            tone = rng.uniform(-0.14, 0.12)
+            fill = _mix(colour, light if tone > 0 else c["dark"], abs(tone) * 1.4)
+            block = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x + 0.35, y0 + 0.35, x + w - 0.35, y0 + row_h - 0.35)) * mask
+            tile.put(block, fill)
+            tile.put(block * ((tile.y < y0 + 1.0) | (tile.x < x + 1.0)), light, 0.35)
+            x += w
+        y0 += row_h
+        k += 1
+
+
+def strait_door(tile: Tile, c: dict) -> np.ndarray:
+    """The door of a house that floats on a raft on the Musi at Palembang:
+    a leaf of dark planks, with a panel of nipa thatch in its upper part,
+    in a wall of planks under a deep eave of palm thatch. The house stands
+    on a raft of logs, and the round ends of the logs show under its sill.
+    A small window in the leaf shows the light of a lamp."""
+    inner = _frame(tile, c)
+    sill = 98.0
+    floor = H - STEP
+    # The wall: wide boards that stand upright.
+    wall = inner * (tile.y < sill)
+    tile.put(wall, c["wall"])
+    board = (tile.x - F) % 6.5
+    tile.put(wall * (board < 0.6), c["dark"], 0.55)
+    tile.put(wall * (board > 0.6) * (board < 1.4), c["frame_light"], 0.25)
+    tile.tone((tile.noise(3, 20, 2) - 0.5) * 0.18 * wall)
+    # The leaf: planks with a panel of nipa thatch held by battens.
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 14.0, 26.0, W - 14.0, sill))
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 12, 2) - 0.5) * 0.20 * leaf)
+    for k in range(1, 5):
+        x = 14.0 + k * (W - 28.0) / 5.0
+        tile.put(leaf * (np.abs(tile.x - x) < 0.4), c["dark"], 0.75)
+        tile.put(leaf * (np.abs(tile.x - x - 0.8) < 0.3), c["leaf_light"], 0.30)
+    panel = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 16.0, 32.0, W - 16.0, 58.0))
+    tile.put(panel, c["thatch"])
+    rows = (tile.y - 32.0) % 3.2
+    tile.put(panel * np.clip(1.0 - rows / 1.2, 0, 1), _mix(c["thatch"], (255, 240, 200), 0.35), 0.55)
+    tile.put(panel * (rows > 2.6), c["dark"], 0.40)
+    tile.put(panel * (np.abs(((tile.x * 1.7) % 1.0) - 0.5) < 0.08), c["dark"], 0.15)
+    for y in (30.0, 58.0, 76.0, 94.0):
+        batten = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 14.0, y, W - 14.0, y + 2.4))
+        tile.put(batten, _mix(c["leaf"], c["dark"], 0.2))
+        tile.put(batten * (tile.y < y + 0.6), c["leaf_light"], 0.45)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y + 1.2, 0.55) for x in (16.5, W * 0.5, W - 16.5)]), c["leaf_light"], 0.7)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, 12.6, 24.6, W - 12.6, 26.0), _box(p, dx, dy, 12.6, 24.6, 14.0, sill), _box(p, dx, dy, W - 14.0, 24.6, W - 12.6, sill))), c["frame"])
+    _window(tile, c, W * 0.5 - 4.0, 64.0, W * 0.5 + 4.0, 71.0)
+    # The raft: a deck beam on the round ends of the logs, and the river
+    # dark in the gaps between them.
+    raft = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, sill, W - F, floor))
+    tile.put(raft, _mix(c["dark"], (60, 70, 66), 0.3))
+    beam = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, sill, W, sill + 3.0))
+    tile.put(beam, c["frame"])
+    tile.put(beam * (tile.y < sill + 0.8), c["frame_light"], 0.6)
+    ends = [(x, sill + 3.0 + 4.6) for x in np.arange(F + 4.0, W - F - 2.0, 7.6)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 3.6) for x, y in ends]) * raft, _mix(c["frame"], c["wall"], 0.4))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 2.4) for x, y in ends]) * raft, _mix(c["wall"], (255, 240, 210), 0.25))
+    tile.put(tile.mask(lambda p, dx, dy: [p.ellipse([(x - r) * K + dx, (y - r) * K + dy, (x + r) * K + dx, (y + r) * K + dy], outline=255, width=max(1, int(0.3 * K))) for x, y in ends for r in (1.0, 1.8)]) * raft, c["frame"], 0.6)
+    eave = _thatch_eave(tile, c, 16.0, 0.0)
+    return leaf * (1.0 - eave)
+
+
+def borobudur_door(tile: Tile, c: dict) -> np.ndarray:
+    """A gateway of grey andesite, as the gates of the terraces of
+    Borobudur are built: the courses of the wall step in over the opening
+    in a corbelled arch, each course a little further in than the one under
+    it, with no keystone. A moulding with a band of lotus petals runs over
+    the gate. A leaf of dark teak with studs of bronze closes it."""
+    inner = _frame(tile, c)
+    floor = H - STEP
+    x0, x1, spring = 13.0, W - 13.0, 50.0
+    steps = [(x0 + k * 4.6, x1 - k * 4.6, spring - k * 6.0) for k in range(4)]
+    opening_pts = [(x0, floor), (x0, spring)]
+    for k, (a, b, y) in enumerate(steps[1:], 1):
+        opening_pts += [(steps[k - 1][0], y), (a, y)]
+    top = steps[-1][2]
+    opening_pts += [(steps[-1][0], top - 1.0), (steps[-1][1], top - 1.0)]
+    for k in range(len(steps) - 1, 0, -1):
+        opening_pts += [(steps[k][1], steps[k][2]), (steps[k - 1][1], steps[k][2])]
+    opening_pts += [(x1, spring), (x1, floor)]
+    opening = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, opening_pts))
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, floor)) * (1.0 - opening)
+    _courses_of(tile, c, wall, (6.0,), (10.0, 13.0, 16.0), c["frame"], c["frame_light"])
+    holes = [(tile.rng.uniform(0, W), tile.rng.uniform(0, floor), tile.rng.uniform(0.2, 0.45)) for _ in range(40)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r) for x, y, r in holes]) * wall, c["dark"], 0.6)
+    tile.put(wall * np.clip((tile.noise(10, 18, 2) - 0.66) * 6.0, 0, 1), _mix(c["frame_light"], (210, 216, 180), 0.5), 0.45)
+    # The edge of the opening is in shade, as the wall is deep.
+    rim = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, opening_pts), blur=1.4)
+    tile.put(wall * np.clip(rim * 2.0, 0, 1), c["dark"], 0.40)
+    # The moulding over the gate: a round torus and a band of petals.
+    band_y = 10.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, band_y, W, band_y + 7.0)), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, band_y, W, band_y + 1.0)), c["frame_light"], 0.7)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, band_y + 2.6, W, band_y + 3.2)), c["dark"], 0.7)
+    petals = [k * 4.2 + 2.1 for k in range(16)]
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, band_y + 3.2, W, band_y + 7.0)), c["dark"], 0.55)
+    shape = tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(x - 1.7, band_y + 7.0), (x - 1.6, band_y + 5.0), (x, band_y + 3.4), (x + 1.6, band_y + 5.0), (x + 1.7, band_y + 7.0)]) for x in petals])
+    tile.put(shape, c["frame"])
+    tile.put(shape * np.clip(1.0 - ((tile.x + 2.1) % 4.2) / 2.0, 0, 1), c["frame_light"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, band_y + 7.0, W, band_y + 7.8)), c["dark"], 0.6)
+    # The leaf: upright planks of teak, studs of bronze in rows.
+    leaf = inner * opening
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 14, 2) - 0.5) * 0.20 * leaf)
+    for k in range(1, 5):
+        x = x0 + k * (x1 - x0) / 5.0
+        tile.put(leaf * (np.abs(tile.x - x) < 0.4), c["dark"], 0.75)
+        tile.put(leaf * (np.abs(tile.x - x - 0.8) < 0.3), c["leaf_light"], 0.30)
+    for y in (54.0, 78.0, 102.0):
+        tile.put(leaf * (np.abs(tile.y - y) < 1.4), _mix(c["leaf"], c["dark"], 0.3))
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x0 + 3.0 + j * 5.2, y, 0.9) for j in range(8)]) * leaf, c["accent"], 0.9)
+    _window(tile, {**c, "frame": c["leaf"]}, W * 0.5 - 3.5, 36.0, W * 0.5 + 3.5, 43.0, round_=True)
+    return leaf
+
+
+def angkor_door(tile: Tile, c: dict) -> np.ndarray:
+    """A doorway of a Khmer temple in a wall of red laterite: a frame of
+    grey-pink sandstone, with a round colonnette in rings at each side and
+    a lintel over it carved with a winding vine. Over the lintel the
+    courses of the wall step in to a point, a corbelled arch. A leaf of
+    dark wood closes the doorway."""
+    inner = _frame(tile, c)
+    floor = H - STEP
+    x0, x1 = 15.0, W - 15.0
+    lintel_top, lintel_bottom = 30.0, 38.0
+    # The opening: straight jambs up to the lintel. Over the lintel the
+    # corbelled arch is a tall stepped triangle, filled with a tympanum of
+    # plain sandstone.
+    tymp_pts = [(x0 - 1.0, lintel_top)]
+    for k in range(6):
+        y = lintel_top - k * 3.4
+        tymp_pts += [(x0 - 1.0 + k * 2.7, y), (x0 - 1.0 + k * 2.7, y - 3.4)]
+    tymp_pts += [(W * 0.5, lintel_top - 6 * 3.4 - 1.2)]
+    for k in range(5, -1, -1):
+        y = lintel_top - k * 3.4
+        tymp_pts += [(x1 + 1.0 - k * 2.7, y - 3.4), (x1 + 1.0 - k * 2.7, y)]
+    tymp_pts += [(x1 + 1.0, lintel_top)]
+    tympanum = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, tymp_pts))
+    opening = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, lintel_bottom, x1, floor))
+    frame_mask = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 7.0, lintel_top - 1.0, x1 + 7.0, floor))
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, floor)) * (1.0 - np.maximum(frame_mask, tympanum))
+    # The wall: big blocks of laterite, full of pits.
+    _courses_of(tile, c, wall, (6.0, 5.0), (10.0, 13.0, 16.0), c["laterite"], _mix(c["laterite"], (255, 210, 170), 0.3))
+    pits = np.clip((tile.noise(20, 36, 2) - 0.64) * 8.0, 0, 1)
+    tile.put(wall * pits, _mix(c["dark"], (40, 16, 10), 0.4), 0.8)
+    tile.put(wall * np.clip((np.roll(tile.noise(20, 36, 2), -2, axis=0) - 0.64) * 8.0, 0, 1) * (1.0 - pits), (255, 200, 160), 0.18)
+    # The tympanum: plain sandstone in its courses, each course a step of
+    # the arch.
+    tile.put(tympanum, _mix(c["frame"], c["dark"], 0.10))
+    for k in range(7):
+        y = lintel_top - k * 3.4
+        tile.put(tympanum * (np.abs(tile.y - y) < 0.3), c["dark"], 0.55)
+        tile.put(tympanum * (np.abs(tile.y - y + 0.6) < 0.3), c["frame_light"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, tymp_pts), blur=0.8) * (1.0 - tympanum) * wall, c["dark"], 0.45)
+    # The sandstone frame and the colonnettes.
+    frame_only = frame_mask * (1.0 - opening)
+    tile.put(frame_only, c["frame"])
+    tile.tone((tile.noise(6, 14, 2) - 0.5) * 0.14 * frame_only)
+    for cx in (x0 - 3.5, x1 + 3.5):
+        col = tile.mask(lambda p, dx, dy: _box(p, dx, dy, cx - 2.4, lintel_bottom, cx + 2.4, floor))
+        tile.put(col * np.clip(1.0 - np.abs(tile.x - cx + 0.9) / 1.0, 0, 1), c["frame_light"], 0.55)
+        tile.put(col * np.clip((tile.x - cx - 0.6) / 1.8, 0, 1), c["dark"], 0.45)
+        for y in np.arange(lintel_bottom + 3.0, floor, 6.0):
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, cx - 2.8, y, cx + 2.8, y + 1.2)), _mix(c["frame"], c["frame_light"], 0.3))
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, cx - 2.8, y + 1.2, cx + 2.8, y + 1.6)), c["dark"], 0.5)
+    lintel = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 7.0, lintel_top, x1 + 7.0, lintel_bottom))
+    tile.put(lintel, c["frame"])
+    tile.put(lintel * (tile.y < lintel_top + 0.8), c["frame_light"], 0.65)
+    tile.put(lintel * (tile.y > lintel_bottom - 0.8), c["dark"], 0.55)
+    vine = [(x, (lintel_top + lintel_bottom) * 0.5 + 1.6 * math.sin((x - x0) * math.pi / 5.0)) for x in np.linspace(x0 - 5.0, x1 + 5.0, 60)]
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, vine, 0.5)), c["dark"], 0.55)
+    curls = [(x0 - 5.0 + k * 5.0 + 2.5, (lintel_top + lintel_bottom) * 0.5 + (1.4 if k % 2 else -1.4)) for k in range(int((x1 - x0 + 10.0) / 5.0))]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.9, ry=0.6) for x, y in curls]), _mix(c["frame"], c["dark"], 0.4))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.2, y - 0.2, 0.4, ry=0.25) for x, y in curls]), c["frame_light"], 0.5)
+    # The leaf: planks of dark wood with two iron bands.
+    leaf = inner * opening
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 14, 2) - 0.5) * 0.20 * leaf)
+    for k in range(1, 4):
+        x = x0 + k * (x1 - x0) / 4.0
+        tile.put(leaf * (np.abs(tile.x - x) < 0.4), c["dark"], 0.75)
+        tile.put(leaf * (np.abs(tile.x - x - 0.8) < 0.3), c["leaf_light"], 0.30)
+    for y in (58.0, 96.0):
+        tile.put(leaf * (np.abs(tile.y - y) < 1.3), _mix(c["leaf"], c["dark"], 0.45))
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x1 - 5.0, 78.0, 1.2)), c["accent"])
+    _window(tile, {**c, "frame": c["frame"]}, W * 0.5 - 3.5, 44.0, W * 0.5 + 3.5, 51.0)
+    return leaf
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -1035,6 +1236,9 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     wallacea_door: (SWING, False),
     austronesia_door: (SWING, False),
     red_river_door: (SWING, False),
+    strait_door: (SWING, False),
+    borobudur_door: (SWING, False),
+    angkor_door: (SWING, False),
 }
 
 
@@ -1161,6 +1365,17 @@ DOORS: dict[str, tuple[Draw, dict]] = {
                                                "wall": (214, 196, 140), "thatch": (184, 156, 96), "cord": (120, 84, 50)}),
     "history_red_river": (red_river_door, {**_colours((122, 88, 56), (88, 58, 38), (34, 24, 18), (196, 150, 70), (255, 214, 150)),
                                            "wall": (140, 104, 70), "thatch": (170, 144, 92), "carving": (190, 150, 96)}),
+    # The Strait: a door of planks and nipa thatch in a house on a raft,
+    # the ends of the logs under its sill. Borobudur: a gate of andesite
+    # with a corbelled arch and a band of lotus petals, a leaf of teak with
+    # studs of bronze. Angkor: a sandstone doorway with colonnettes and a
+    # lintel carved with a vine, a corbelled arch over it, in a wall of
+    # laterite.
+    "history_strait": (strait_door, {**_colours((96, 68, 46), (82, 58, 40), (30, 22, 16), (176, 136, 70), (255, 214, 150)),
+                                     "wall": (132, 100, 68), "thatch": (178, 146, 90)}),
+    "history_borobudur": (borobudur_door, {**_colours((132, 132, 128), (88, 58, 38), (36, 36, 38), (184, 146, 70), (255, 220, 160))}),
+    "history_angkor": (angkor_door, {**_colours((182, 158, 150), (92, 56, 38), (44, 30, 26), (200, 160, 80), (255, 212, 140)),
+                                     "laterite": (150, 76, 52)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

@@ -18,6 +18,16 @@ The top of a drum has a star with rays in its middle, rings of patterns
 and birds in flight round it, and on many drums small frogs of bronze sit
 on the rim.
 
+From about 650 CE the kingdom of Srivijaya, on Sumatra, held the straits
+between India and China. Its ships were big ships of planks, the jong:
+they had no outrigger, two or more masts with canted sails of matting, and
+two steering oars at the stern. They carried pepper, camphor, cloth and
+Chinese jars. In central Java (about 800 CE) the builders of Borobudur
+carved ships with outriggers into the walls, and set bell-shaped stupas
+with lattice walls on its round terraces. At Angkor (about 1100 CE) the
+Khmer built their temples of sandstone on cores of red laterite; oxen
+pulled the blocks and the goods in carts with big wheels.
+
 These props are drawn in the cel style of the dimension's cast
 (`targets/characters/_history_americas_kit.py`): flat colour, one shade, a
 bold warm outline. They show the skill of the people who made them.
@@ -37,6 +47,24 @@ bold warm outline. They show the skill of the people who made them.
   on a dike, and a flat basket.
 - ``history_red_slip_pots``: scenery, three round pots with a red slip; one
   has a band of stamped dots.
+- ``history_jong``: the look of a platform, a big ship of planks with no
+  outrigger, two masts with canted tanja sails, a deckhouse of thatch and
+  two steering oars at the stern. The top of its gunwale is the platform
+  (`platform_looks.ron`: `JONG_SPAN` = (24, 424), `JONG_TOP` = 132, in a
+  448 x 224 frame).
+- ``history_ship_relief``: scenery, a panel of grey andesite carved in the
+  style of Borobudur: a ship with an outrigger, its sails and its crew,
+  inside a moulded frame. It shows daily life only.
+- ``history_bell_stupa``: scenery, a bell-shaped stupa of andesite with
+  diamond-shaped holes, on a round base of lotus petals, with a square
+  block and a short spire on its top. The space inside is dark.
+- ``history_sandstone_blocks``: scenery, dressed blocks of grey-pink
+  sandstone, some with pairs of peg holes, a block of red laterite and a
+  wooden lever.
+- ``history_ox_cart``: scenery, a Khmer cart with two spoked wheels and a
+  curved roof of matting, pulled by one zebu ox.
+- ``history_trade_goods``: scenery, sacks of black pepper (one open), a
+  bundle of camphor wood, two Chinese storage jars and a bolt of cloth.
 
 The numbers are frame pixels; the game shows each prop at half its frame.
 No drop shadows: the game draws them.
@@ -62,6 +90,15 @@ STILT_HOUSE_FRAME = (192, 224)
 DRUM_FRAME = (96, 80)
 SHEAVES_FRAME = (128, 64)
 POTS_FRAME = (96, 64)
+JONG_FRAME = (448, 224)
+JONG_SPAN = (24.0, 424.0)
+JONG_TOP = 132.0
+JONG_DEPTH = 52.0
+RELIEF_FRAME = (256, 128)
+BELL_STUPA_FRAME = (128, 160)
+BLOCKS_FRAME = (160, 80)
+OX_CART_FRAME = (192, 128)
+GOODS_FRAME = (160, 96)
 
 LIMESTONE = (226, 218, 198, 255)
 LIMESTONE_SHADE = (192, 182, 160, 255)
@@ -108,6 +145,56 @@ SLIP = (176, 72, 46, 255)
 SLIP_SHADE = (126, 46, 32, 255)
 SLIP_LIGHT = (214, 118, 82, 255)
 CLAY = (196, 142, 98, 255)
+
+ROPE = (196, 168, 112, 255)
+MATTING = (204, 174, 112, 255)
+MATTING_LIGHT = (228, 204, 146, 255)
+MATTING_SHADE = (166, 134, 80, 255)
+MATTING_DARK = (122, 94, 56, 255)
+
+STONE = (148, 144, 138, 255)
+STONE_LIGHT = (186, 182, 172, 255)
+STONE_SHADE = (118, 114, 110, 255)
+STONE_DARK = (80, 76, 74, 255)
+LICHEN = (96, 112, 84, 255)
+STONE_SUNK = (108, 104, 100, 255)
+HOLLOW = (34, 28, 28, 255)
+
+SAND = (168, 148, 142, 255)
+SAND_LIGHT = (196, 180, 170, 255)
+SAND_SHADE = (132, 112, 108, 255)
+SAND_DARK = (88, 72, 70, 255)
+LATERITE = (162, 76, 50, 255)
+LATERITE_LIGHT = (192, 108, 74, 255)
+LATERITE_SHADE = (122, 52, 36, 255)
+LATERITE_DARK = (84, 36, 26, 255)
+
+ZEBU = (220, 208, 186, 255)
+ZEBU_LIGHT = (240, 232, 214, 255)
+ZEBU_SHADE = (176, 160, 136, 255)
+ZEBU_DARK = (106, 90, 76, 255)
+HORN = (196, 180, 150, 255)
+HOOF = (62, 50, 42, 255)
+HORN_TIP = (70, 60, 52, 255)
+
+STONEWARE = (190, 172, 140, 255)
+GLAZE = (120, 110, 54, 255)
+GLAZE_LIGHT = (176, 166, 100, 255)
+GLAZE_SHADE = (82, 72, 36, 255)
+SACKING = (186, 160, 112, 255)
+SACKING_LIGHT = (214, 192, 146, 255)
+SACKING_SHADE = (140, 116, 76, 255)
+PEPPER = (52, 44, 40, 255)
+PEPPER_DARK = (30, 24, 22, 255)
+PEPPER_LIGHT = (110, 98, 88, 255)
+CAMPHOR = (210, 186, 140, 255)
+CAMPHOR_LIGHT = (232, 214, 172, 255)
+CAMPHOR_SHADE = (164, 136, 92, 255)
+RATTAN = (150, 112, 60, 255)
+CLOTH = (58, 72, 128, 255)
+CLOTH_LIGHT = (96, 112, 168, 255)
+CLOTH_SHADE = (38, 46, 90, 255)
+CLOTH_BAND = (176, 60, 44, 255)
 
 
 def _lumpy_edge(points: Sequence[Point], rng: random.Random, amount: float, steps: int = 4) -> List[Point]:
@@ -619,10 +706,667 @@ def _draw_red_slip_pots(anim: str, i: int, n: int):
 
 
 # ---------------------------------------------------------------------------
+# Shared parts of the ships: a canted sail of matting.
+# ---------------------------------------------------------------------------
+
+
+def _box(cx: float, cy: float, w: float, h: float, deg: float) -> List[Point]:
+    """A rectangle about its middle, turned `deg` clockwise. The corners go
+    top left, top right, bottom right, bottom left."""
+    pts = [(cx - w / 2.0, cy - h / 2.0), (cx + w / 2.0, cy - h / 2.0), (cx + w / 2.0, cy + h / 2.0), (cx - w / 2.0, cy + h / 2.0)]
+    return K.turn(pts, cx, cy, deg)
+
+
+def _mix(p: Point, q: Point, u: float) -> Point:
+    return (p[0] + (q[0] - p[0]) * u, p[1] + (q[1] - p[1]) * u)
+
+
+def _tanja_sail(f: K.Frame, cx: float, cy: float, w: float, h: float, deg: float, boom: float) -> Tuple[Point, Point]:
+    """A tanja sail: a rectangle of woven matting, tilted forward, with a
+    boom of bamboo along its top and its bottom. The ship sails to the
+    right, so a turn clockwise tips the top of the sail to the bow. The
+    sailors of the archipelago set the sail at this cant so that it can
+    take the wind from the side. The return is the two ends of the lower
+    boom (aft, fore), for the sheets."""
+    tl, tr, br, bl = _box(cx, cy, w, h, deg)
+    f.poly([tl, tr, br, bl], MATTING)
+    # The belly of the sail is in shade at its lower aft corner.
+    f.poly([_mix(tl, bl, 0.45), _mix(bl, br, 0.0), _mix(bl, br, 0.62), _mix(tr, br, 0.80)], MATTING_SHADE, body=False)
+    f.poly([_mix(tl, tr, 0.05), _mix(tl, tr, 0.30), _mix(tl, bl, 0.30), _mix(tl, bl, 0.06)], MATTING_LIGHT, body=False)
+    # The seams of the mats run along the booms; short cross strokes show
+    # the weave between them.
+    rows = max(4, int(h / 11.0))
+    for k in range(1, rows):
+        u = k / float(rows)
+        f.ink([_mix(tl, bl, u), _mix(tr, br, u)], 0.8, MATTING_DARK)
+    cols = max(5, int(w / 9.0))
+    for k in range(rows):
+        for j in range(cols):
+            u = (k + 0.5) / rows
+            v = (j + 0.5 + 0.5 * (k % 2)) / cols
+            if v >= 1.0:
+                continue
+            a = _mix(_mix(tl, bl, u - 0.25 / rows), _mix(tr, br, u - 0.25 / rows), v)
+            b = _mix(_mix(tl, bl, u + 0.25 / rows), _mix(tr, br, u + 0.25 / rows), v)
+            f.ink([a, b], 0.6, K.alpha(MATTING_DARK, 0.55))
+    # The booms of bamboo stick out a little past the mat, with nodes.
+    out = []
+    for p, q in ((tl, tr), (bl, br)):
+        dx, dy = (q[0] - p[0]) / w, (q[1] - p[1]) / w
+        a = (p[0] - dx * boom, p[1] - dy * boom)
+        b = (q[0] + dx * boom, q[1] + dy * boom)
+        f.limb([a, b], 3.4, BAMBOO)
+        f.ink([(a[0], a[1] - 0.9), (b[0], b[1] - 0.9)], 0.8, BAMBOO_LIGHT)
+        for k in range(1, 6):
+            n = _mix(a, b, k / 6.0)
+            f.ink([(n[0] + dy * 1.6, n[1] - dx * 1.6), (n[0] - dy * 1.6, n[1] + dx * 1.6)], 0.8, BAMBOO_SHADE)
+        out.append((a, b))
+    return out[1]
+
+
+# ---------------------------------------------------------------------------
+# The jong: a big ship of planks (a platform).
+# ---------------------------------------------------------------------------
+
+
+def _jong_sheer(x: float) -> float:
+    """The top of the gunwale at `x`: level in the middle, and swept up to
+    the high stern and the higher bow."""
+    x0, x1 = JONG_SPAN
+    u = (x - (x0 + x1) / 2.0) / ((x1 - x0) / 2.0)
+    over = max(0.0, (abs(u) - 0.55) / 0.45)
+    rise = 38.0 if u > 0 else 32.0
+    return JONG_TOP - rise * over ** 2
+
+
+def _jong_keel(x: float) -> float:
+    """The bottom of the hull at `x`. The ends curve up to the stem and the
+    sternpost; the middle is deep, for cargo."""
+    x0, x1 = JONG_SPAN
+    k0, k1 = x0 + 20.0, x1 - 22.0
+    u = max(-1.0, min(1.0, (x - (k0 + k1) / 2.0) / ((k1 - k0) / 2.0)))
+    return JONG_TOP - 8.0 + (JONG_DEPTH + 8.0) * (1.0 - abs(u) ** 3.2) ** 0.55
+
+
+def _quarter_rudder(f: K.Frame, top: Point, blade: Point, wood: RGBA, shade: RGBA, body: bool = True) -> None:
+    """A steering oar that hangs on the quarter of the ship. Its loom goes
+    down from a beam at the stern, and a wide blade goes in the water."""
+    f.limb([top, blade], 4.4, wood, body)
+    dx, dy = blade[0] - top[0], blade[1] - top[1]
+    r = math.hypot(dx, dy)
+    ux, uy = dx / r, dy / r
+    px, py = -uy, ux
+    b0 = (blade[0] - ux * 30.0, blade[1] - uy * 30.0)
+    f.poly([(b0[0] + px * 2.4, b0[1] + py * 2.4), (blade[0] + px * 7.0, blade[1] + py * 7.0), (blade[0] + ux * 3.0, blade[1] + uy * 3.0),
+            (blade[0] - px * 5.0, blade[1] - py * 5.0), (b0[0] - px * 2.4, b0[1] - py * 2.4)], wood, body)
+    f.ink([(b0[0] + px * 0.8, b0[1] + py * 0.8), (blade[0] + px * 1.8, blade[1] + py * 1.8)], 1.0, shade)
+
+
+def _draw_jong(anim: str, i: int, n: int):
+    f = K.Frame(JONG_FRAME)
+    x0, x1 = JONG_SPAN
+    top = JONG_TOP
+    xs = [x0 + (x1 - x0) * k / 80.0 for k in range(81)]
+    # The far quarter rudder: only its blade shows under the hull.
+    _quarter_rudder(f, (x0 + 46.0, top - 22.0), (x0 + 16.0, top + 64.0), WOOD_DARK, K.shade(WOOD_DARK, 0.7))
+    # The two masts, with stays to the bow and the stern.
+    main_x, fore_x = 236.0, 338.0
+    f.limb([(main_x, top), (main_x, 16.0)], 4.6, WOOD)
+    f.limb([(fore_x, top), (fore_x, 36.0)], 4.0, WOOD)
+    f.ink([(main_x, 18.0), (x1 - 4.0, _jong_sheer(x1 - 4.0))], 0.9, ROPE)
+    f.ink([(main_x, 18.0), (x0 + 30.0, _jong_sheer(x0 + 30.0) - 2.0)], 0.9, ROPE)
+    f.ink([(fore_x, 38.0), (x1 - 2.0, _jong_sheer(x1 - 2.0) + 2.0)], 0.9, ROPE)
+    # The deckhouse of thatch, aft, on the deck behind the gunwale.
+    hx0, hx1 = 62.0, 150.0
+    f.poly([(hx0 + 4.0, top - 22.0), (hx1 - 4.0, top - 22.0), (hx1 - 4.0, top), (hx0 + 4.0, top)], WEAVE)
+    for y in range(int(top) - 19, int(top), 4):
+        f.ink([(hx0 + 6.0, y), (hx1 - 6.0, y)], 0.6, WEAVE_SHADE)
+    f.poly([(hx0 + 30.0, top - 18.0), (hx0 + 44.0, top - 18.0), (hx0 + 44.0, top), (hx0 + 30.0, top)], DOORWAY, body=False)
+    roof = [(hx0 - 4.0, top - 18.0)] + [(hx0 + (hx1 - hx0) * u, top - 22.0 - 20.0 * math.sin(math.pi * u) ** 0.7) for u in [k / 12.0 for k in range(13)]] + [(hx1 + 4.0, top - 18.0)]
+    f.poly(roof + [(hx1 + 2.0, top - 14.0), (hx0 - 2.0, top - 14.0)], THATCH)
+    f.poly([(hx0 - 4.0, top - 18.0), (hx1 + 4.0, top - 18.0), (hx1 + 2.0, top - 14.0), (hx0 - 2.0, top - 14.0)], THATCH_SHADE, body=False)
+    rng = random.Random("history_jong thatch")
+    for k in range(22):
+        u = (k + 0.5) / 22.0
+        rx, ry = hx0 + (hx1 - hx0) * u, top - 22.0 - 20.0 * math.sin(math.pi * u) ** 0.7
+        f.ink([(rx, ry + 3.0), (rx + (u - 0.5) * 8.0 + rng.uniform(-1.0, 1.0), top - 16.0)], 0.7, THATCH_SHADE if k % 2 else THATCH_LIGHT)
+    f.ink([(hx0 + (hx1 - hx0) * u, top - 22.0 - 20.0 * math.sin(math.pi * u) ** 0.7) for u in [k / 12.0 for k in range(2, 11)]], 1.4, THATCH_LIGHT)
+    # The hull: strakes of planks, edge to edge, joined with wooden dowels.
+    # Its gunwale is the platform.
+    keel_xs = [x for x in xs if x0 + 20.0 <= x <= x1 - 22.0]
+    hull = [(x, _jong_sheer(x)) for x in xs] + [(x, _jong_keel(x)) for x in keel_xs[::-1]]
+    f.poly(hull, WOOD)
+    f.poly([(x, _jong_sheer(x) + (_jong_keel(x) - _jong_sheer(x)) * 0.58) for x in keel_xs] + [(x, _jong_keel(x)) for x in keel_xs[::-1]], WOOD_DARK, body=False)
+    for t in (0.22, 0.40, 0.58, 0.76):
+        seam = [(x, _jong_sheer(x) + (_jong_keel(x) - _jong_sheer(x)) * t) for x in keel_xs]
+        f.ink(seam, 0.9, K.shade(WOOD_DARK, 0.8))
+        for k in range(3, len(seam) - 3, 4):
+            f.dot(seam[k][0] + 3.0, seam[k][1] + 4.0, 0.8, K.shade(WOOD_DARK, 0.75))
+    # The wale: a heavy timber along the top strake, painted red.
+    wale = [(x, _jong_sheer(x) + 7.0) for x in keel_xs]
+    f.limb(wale, 4.4, SLIP_SHADE, body=False)
+    f.ink([(x, y - 1.0) for x, y in wale], 1.2, SLIP)
+    f.ink([(x, _jong_sheer(x) + 1.6) for x in xs[2:-2]], 1.2, WOOD_LIGHT)
+    # The stem and the sternpost, a little proud of the planks.
+    f.limb([(x1 - 2.0, _jong_sheer(x1 - 2.0) + 1.0), (x1 - 12.0, _jong_keel(x1 - 22.0) - 2.0)], 3.0, WOOD_LIGHT, body=False)
+    f.limb([(x0 + 2.0, _jong_sheer(x0 + 2.0) + 1.0), (x0 + 12.0, _jong_keel(x0 + 20.0) - 2.0)], 3.0, WOOD_LIGHT, body=False)
+    # The beam at the stern that holds the quarter rudders, and the near
+    # rudder in front of the hull.
+    f.limb([(x0 + 40.0, top - 12.0), (x0 + 78.0, top - 4.0)], 5.0, WOOD_DARK)
+    _quarter_rudder(f, (x0 + 74.0, top - 16.0), (x0 + 46.0, top + 72.0), WOOD_LIGHT, WOOD_DARK)
+    f.ellipse(x0 + 69.0, top - 5.0, 3.4, 3.0, ROPE)
+    # The sails: a big one on the mainmast and a smaller one forward.
+    aft, fore = _tanja_sail(f, main_x + 8.0, 66.0, 100.0, 80.0, 20.0, 8.0)
+    f.ink([aft, (main_x - 70.0, top - 1.0)], 0.9, ROPE)
+    aft, fore = _tanja_sail(f, fore_x + 10.0, 82.0, 70.0, 58.0, 20.0, 6.0)
+    f.ink([aft, (fore_x - 40.0, top - 1.0)], 0.9, ROPE)
+    # The halyards: a rope from each masthead to its upper boom.
+    f.ink([(main_x, 18.0), (main_x + 2.0, 24.0)], 1.0, ROPE)
+    f.ink([(fore_x, 38.0), (fore_x + 2.0, 50.0)], 1.0, ROPE)
+    return A.finish(f, width=1.4)
+
+
+# ---------------------------------------------------------------------------
+# A relief of a ship, in the style of Borobudur.
+# ---------------------------------------------------------------------------
+
+
+def _carve_poly(f: K.Frame, pts: Sequence[Point], fill: RGBA = None) -> None:
+    """A raised shape in the stone. The light comes from the top left, so
+    the shape has a light edge on that side and a dark edge on the other."""
+    f.poly([(x + 1.6, y + 1.6) for x, y in pts], STONE_DARK, body=False)
+    f.poly([(x - 0.9, y - 0.9) for x, y in pts], STONE_LIGHT, body=False)
+    f.poly(pts, fill or STONE, body=False)
+
+
+def _carve_line(f: K.Frame, pts: Sequence[Point], width: float, fill: RGBA = None) -> None:
+    """A raised rod in the stone (a mast, an arm, a rope), lit as `_carve_poly`."""
+    f.limb([(x + 1.2, y + 1.2) for x, y in pts], width, STONE_DARK, body=False)
+    f.limb([(x - 0.7, y - 0.7) for x, y in pts], width, STONE_LIGHT, body=False)
+    f.limb(pts, width, fill or STONE, body=False)
+
+
+def _groove(f: K.Frame, pts: Sequence[Point], width: float = 0.8) -> None:
+    """A line cut into the stone: dark, with a light lip under it."""
+    f.ink([(x + 0.5, y + 0.6) for x, y in pts], width, STONE_LIGHT)
+    f.ink(pts, width, STONE_DARK)
+
+
+def _sailor(f: K.Frame, x: float, y: float, reach: Point, step: float = 0.0) -> None:
+    """A small carved sailor: a round head with no face, a body, legs and
+    two arms to `reach` (a rope, an oar). `y` is the hip."""
+    neck = (x + step * 0.3, y - 9.0)
+    _carve_line(f, [(x - 2.4 + step, y + 8.0), (x, y), (x + 2.4, y + 8.0)], 1.8)
+    _carve_line(f, [(x, y), neck], 3.0)
+    _carve_line(f, [(neck[0], neck[1] + 1.0), reach], 1.5)
+    _carve_line(f, [(neck[0], neck[1] + 2.0), (reach[0] - 1.5, reach[1] + 3.0)], 1.5)
+    f.ellipse(neck[0] + 1.0, neck[1] - 2.0, 2.6, 2.6, STONE_DARK, body=False)
+    f.ellipse(neck[0] - 0.4, neck[1] - 3.4, 2.6, 2.6, STONE_LIGHT, body=False)
+    f.ellipse(neck[0], neck[1] - 3.0, 2.6, 2.6, STONE, body=False)
+
+
+def _stone_grain(f: K.Frame, box: Tuple[float, float, float, float], count: int, seed: str) -> None:
+    """Andesite is a volcanic stone with small holes; the rain leaves pale
+    and dark marks on it."""
+    rng = random.Random(seed)
+    x0, y0, x1, y1 = box
+    for _ in range(count):
+        x, y = rng.uniform(x0, x1), rng.uniform(y0, y1)
+        if rng.random() < 0.6:
+            f.dot(x, y, rng.uniform(0.4, 0.8), K.alpha(STONE_DARK, 0.6))
+        else:
+            f.dot(x, y, rng.uniform(0.4, 0.8), K.alpha(STONE_LIGHT, 0.5))
+    for _ in range(max(1, count // 40)):
+        x, y = rng.uniform(x0 + 8.0, x1 - 8.0), rng.uniform(y0 + 4.0, y1 - 8.0)
+        f.ellipse(x, y, rng.uniform(4.0, 9.0), rng.uniform(2.0, 4.0), K.alpha(LICHEN, 0.22), body=False)
+
+
+def _draw_ship_relief(anim: str, i: int, n: int):
+    f = K.Frame(RELIEF_FRAME)
+    w, h = RELIEF_FRAME
+    x0, y0, x1, y1 = 6.0, 6.0, w - 6.0, h - 6.0
+    # The block and its moulded frame: an outer band, a step, and the
+    # sunk field of the picture. Each step has a lit top and left and a
+    # dark bottom and right.
+    f.poly([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], STONE)
+    for d, light, dark in ((0.0, STONE_LIGHT, STONE_DARK), (7.0, STONE_DARK, STONE_LIGHT), (10.0, STONE_LIGHT, STONE_DARK)):
+        a0, b0, a1, b1 = x0 + d, y0 + d, x1 - d, y1 - d
+        f.ink([(a0 + 1.0, b1 - 1.0), (a0 + 1.0, b0 + 1.0), (a1 - 1.0, b0 + 1.0)], 1.4, light)
+        f.ink([(a1 - 1.0, b0 + 1.0), (a1 - 1.0, b1 - 1.0), (a0 + 1.0, b1 - 1.0)], 1.4, dark)
+    fx0, fy0, fx1, fy1 = x0 + 13.0, y0 + 13.0, x1 - 13.0, y1 - 13.0
+    f.poly([(fx0, fy0), (fx1, fy0), (fx1, fy1), (fx0, fy1)], STONE_SUNK, body=False)
+    f.ink([(fx0, fy1), (fx0, fy0), (fx1, fy0)], 2.0, STONE_DARK)
+    # A row of small carved squares on the outer band, as on the moulding.
+    for k in range(int((x1 - x0 - 20.0) / 12.0)):
+        bx = x0 + 12.0 + k * 12.0
+        f.poly([(bx, y0 + 2.4), (bx + 6.0, y0 + 2.4), (bx + 6.0, y0 + 5.4), (bx, y0 + 5.4)], STONE_LIGHT, body=False)
+        f.poly([(bx, y1 - 5.4), (bx + 6.0, y1 - 5.4), (bx + 6.0, y1 - 2.4), (bx, y1 - 2.4)], STONE_DARK, body=False)
+    # The sea: rows of waves that curl over, at the foot of the field.
+    for row, (wy, step) in enumerate(((fy1 - 12.0, 16.0), (fy1 - 5.0, 16.0))):
+        for k in range(int((fx1 - fx0) / step)):
+            cx = fx0 + 6.0 + k * step + (step / 2.0 if row else 0.0)
+            if cx > fx1 - 8.0:
+                continue
+            curl = [(cx - 7.0, wy + 3.0), (cx - 3.0, wy - 1.0), (cx + 2.0, wy - 2.6), (cx + 5.0, wy - 1.0), (cx + 4.0, wy + 1.4), (cx + 1.0, wy + 1.0)]
+            _carve_line(f, curl, 1.6)
+    # The outrigger: a long float under the near side, held by booms.
+    sx0, sx1, top = 46.0, 210.0, 74.0
+    for bx in (88.0, 160.0):
+        _carve_line(f, [(bx, top + 2.0), (bx + 10.0, top + 22.0)], 2.0)
+    _carve_poly(f, [(70.0, top + 17.0), (186.0, top + 17.0), (192.0, top + 20.0), (184.0, top + 23.0), (72.0, top + 23.0), (64.0, top + 20.0)])
+    # The masts and their canted sails, with stays.
+    _carve_line(f, [(100.0, top), (100.0, 22.0)], 2.4)
+    _carve_line(f, [(160.0, top), (160.0, 32.0)], 2.2)
+    for corners in (_box(104.0, 42.0, 44.0, 32.0, 20.0), _box(164.0, 48.0, 32.0, 26.0, 20.0)):
+        tl, tr, br, bl = corners
+        _carve_poly(f, corners)
+        for u in (0.33, 0.66):
+            _groove(f, [_mix(tl, bl, u), _mix(tr, br, u)], 0.7)
+        for p, q in ((tl, tr), (bl, br)):
+            _carve_line(f, [_mix(q, p, 1.12), _mix(p, q, 1.12)], 1.8)
+    _groove(f, [(160.0, 33.0), (sx1 - 2.0, top - 16.0)], 0.6)
+    _groove(f, [(100.0, 23.0), (sx0 + 4.0, top - 14.0)], 0.6)
+    # The crew: one hauls on a sheet, two stand at the side, and one
+    # holds the steering oar at the stern.
+    _sailor(f, 128.0, top - 9.0, (138.0, top - 22.0), 1.0)
+    _sailor(f, 84.0, top - 9.0, (78.0, top - 22.0), -1.0)
+    _sailor(f, 190.0, top - 9.0, (198.0, top - 20.0), 0.0)
+    _sailor(f, 60.0, top - 9.0, (52.0, top - 14.0), 0.0)
+    _carve_line(f, [(56.0, top - 18.0), (42.0, top + 18.0)], 2.0)
+    _carve_poly(f, [(38.0, top + 12.0), (46.0, top + 16.0), (42.0, top + 26.0), (35.0, top + 22.0)])
+    # The hull, over the feet of the crew: high ends, and lines of planks.
+    hull = [(sx0 - 2.0, top - 16.0), (sx0 + 12.0, top - 4.0), (sx0 + 30.0, top), (sx1 - 30.0, top), (sx1 - 10.0, top - 4.0), (sx1 + 4.0, top - 20.0),
+            (sx1 - 4.0, top - 6.0), (sx1 - 22.0, top + 12.0), (sx0 + 26.0, top + 12.0), (sx0 + 6.0, top - 2.0)]
+    _carve_poly(f, hull)
+    _groove(f, [(sx0 + 20.0, top + 4.0), (sx1 - 18.0, top + 4.0)], 0.7)
+    _groove(f, [(sx0 + 22.0, top + 8.0), (sx1 - 20.0, top + 8.0)], 0.7)
+    # The stone: grain, holes and lichen over everything, and some wear.
+    _stone_grain(f, (x0 + 2.0, y0 + 2.0, x1 - 2.0, y1 - 2.0), 260, "history_ship_relief stone")
+    return A.finish(f, width=1.2)
+
+
+# ---------------------------------------------------------------------------
+# A bell stupa with a lattice, as on the round terraces of Borobudur.
+# ---------------------------------------------------------------------------
+
+
+def _bell_half_width(y: float) -> float:
+    """The half width of the bell at the height `y` (frame pixels). The bell
+    is wide at its foot and round at its top."""
+    pts = [(48.0, 12.0), (52.0, 20.0), (60.0, 28.0), (72.0, 36.0), (86.0, 41.0), (100.0, 44.0), (114.0, 45.5), (124.0, 46.0)]
+    if y <= pts[0][0]:
+        return pts[0][1]
+    for (ya, wa), (yb, wb) in zip(pts, pts[1:]):
+        if y <= yb:
+            return wa + (wb - wa) * (y - ya) / (yb - ya)
+    return pts[-1][1]
+
+
+def _draw_bell_stupa(anim: str, i: int, n: int):
+    f = K.Frame(BELL_STUPA_FRAME)
+    w, h = BELL_STUPA_FRAME
+    cx = w / 2.0
+    ground = h - 6.0
+    # The round base: a low plinth and a cushion of lotus petals.
+    f.poly([(cx - 54.0, ground - 12.0), (cx + 54.0, ground - 12.0), (cx + 55.0, ground), (cx - 55.0, ground)], STONE)
+    f.ellipse(cx, ground - 12.0, 54.0, 4.0, STONE)
+    f.poly([(cx + 20.0, ground - 12.0), (cx + 54.0, ground - 12.0), (cx + 55.0, ground), (cx + 26.0, ground)], STONE_SHADE, body=False)
+    f.ink([(cx - 53.0, ground - 10.0), (cx + 53.0, ground - 10.0)], 0.9, STONE_LIGHT)
+    lotus_top = 122.0
+    f.poly([(cx - 50.0, lotus_top + 2.0), (cx + 50.0, lotus_top + 2.0), (cx + 53.0, ground - 13.0), (cx - 53.0, ground - 13.0)], STONE)
+    f.poly([(cx + 22.0, lotus_top + 2.0), (cx + 50.0, lotus_top + 2.0), (cx + 53.0, ground - 13.0), (cx + 26.0, ground - 13.0)], STONE_SHADE, body=False)
+    # The petals stand up round the cushion. At the sides they turn away,
+    # so they are narrower there.
+    for j in range(-6, 7):
+        phi = j * math.radians(13.0)
+        if abs(phi) > math.radians(82.0):
+            continue
+        px = cx + 51.0 * math.sin(phi)
+        hw = 4.6 * math.cos(phi) + 0.6
+        base_y, tip_y = ground - 14.0, lotus_top + 4.0
+        petal = [(px - hw, base_y), (px - hw, base_y - 6.0), (px, tip_y), (px + hw, base_y - 6.0), (px + hw, base_y)]
+        f.poly(petal, STONE_SHADE if phi > 0.5 else STONE_LIGHT if phi < -0.6 else K.shade(STONE, 1.06), body=False)
+        f.ink([(px + hw, base_y), (px + hw, base_y - 6.0), (px, tip_y)], 0.7, STONE_DARK)
+    # The bell: a curve on each side, round over the top.
+    ys = [lotus_top + 2.0 - k * (lotus_top + 2.0 - 48.0) / 30.0 for k in range(31)]
+    left = [(cx - _bell_half_width(y), y) for y in ys]
+    right = [(cx + _bell_half_width(y), y) for y in ys]
+    cap = [(cx + 12.0 * math.cos(a), 48.0 - 3.0 * math.sin(a)) for a in [math.pi * k / 8.0 for k in range(9)]]
+    bell = left + cap[::-1][1:-1] + right[::-1]
+    f.poly(bell, STONE)
+    f.poly([(cx + _bell_half_width(y) * 0.45, y) for y in ys] + [(cx + _bell_half_width(y) - 0.5, y) for y in ys[::-1]], STONE_SHADE, body=False)
+    f.poly([(cx - _bell_half_width(y) + 2.0, y) for y in ys[2:-4]] + [(cx - _bell_half_width(y) * 0.72, y) for y in ys[-5:1:-1]], STONE_LIGHT, body=False)
+    # A rim at the foot of the bell.
+    f.poly([(cx - 47.0, lotus_top - 4.0), (cx + 47.0, lotus_top - 4.0), (cx + 47.0, lotus_top + 2.0), (cx - 47.0, lotus_top + 2.0)], STONE)
+    f.poly([(cx + 20.0, lotus_top - 4.0), (cx + 47.0, lotus_top - 4.0), (cx + 47.0, lotus_top + 2.0), (cx + 20.0, lotus_top + 2.0)], STONE_SHADE, body=False)
+    f.ink([(cx - 46.0, lotus_top - 3.0), (cx + 46.0, lotus_top - 3.0)], 0.8, STONE_LIGHT)
+    # The lattice: rows of diamond holes in the wall of the bell. The
+    # space inside is dark; nothing in it shows.
+    for row, (y, hh, step) in enumerate(((106.0, 7.0, 0.30), (88.0, 6.4, 0.32), (71.0, 5.6, 0.36), (57.0, 4.0, 0.46))):
+        half = _bell_half_width(y)
+        off = 0.5 * step if row % 2 else 0.0
+        for j in range(-8, 9):
+            phi = j * step + off
+            if abs(phi) > 1.20:
+                continue
+            px = cx + half * math.sin(phi)
+            hw = (half * step * 0.30) * math.cos(phi)
+            if hw < 1.0:
+                continue
+            hole = [(px, y - hh), (px + hw, y), (px, y + hh), (px - hw, y)]
+            f.poly(hole, HOLLOW, body=False)
+            # The lit lower edges of the hole show the thick wall.
+            f.ink([(px - hw, y), (px, y + hh), (px + hw, y)], 0.7, STONE_LIGHT if phi < 0.4 else STONE)
+    # The harmika: a square block on the top of the bell, and a short
+    # spire with eight faces on it.
+    f.poly([(cx - 11.0, 46.0), (cx + 11.0, 46.0), (cx + 11.0, 32.0), (cx - 11.0, 32.0)], STONE)
+    f.poly([(cx - 13.0, 34.0), (cx + 13.0, 34.0), (cx + 13.0, 30.0), (cx - 13.0, 30.0)], STONE)
+    f.poly([(cx + 4.0, 46.0), (cx + 11.0, 46.0), (cx + 11.0, 34.0), (cx + 4.0, 34.0)], STONE_SHADE, body=False)
+    f.ink([(cx - 12.0, 31.0), (cx + 12.0, 31.0)], 0.8, STONE_LIGHT)
+    f.poly([(cx - 6.0, 30.0), (cx + 6.0, 30.0), (cx + 3.4, 10.0), (cx - 3.4, 10.0)], STONE)
+    f.poly([(cx + 1.6, 30.0), (cx + 6.0, 30.0), (cx + 3.4, 10.0), (cx + 1.0, 10.0)], STONE_SHADE, body=False)
+    f.ink([(cx - 2.2, 29.0), (cx - 1.4, 11.0)], 0.8, STONE_LIGHT)
+    for y in (24.0, 18.0):
+        f.ink([(cx - 5.4 + (30.0 - y) * 0.12, y), (cx + 5.4 - (30.0 - y) * 0.12, y)], 0.7, STONE_DARK)
+    _stone_grain(f, (cx - 36.0, 60.0, cx + 36.0, lotus_top - 6.0), 70, "history_bell_stupa bell")
+    _stone_grain(f, (cx - 48.0, lotus_top + 4.0, cx + 48.0, ground - 3.0), 50, "history_bell_stupa base")
+    return A.finish(f, width=1.2)
+
+
+# ---------------------------------------------------------------------------
+# Blocks of sandstone and laterite, as the builders of Angkor left them.
+# ---------------------------------------------------------------------------
+
+
+def _block(f: K.Frame, x0: float, y0: float, x1: float, y1: float, depth: Point, face: RGBA, light: RGBA, shade: RGBA, dark: RGBA) -> None:
+    """A dressed block seen a little from above and from the left: its front
+    face, its top face and its right side. `depth` is how far the back
+    edge is from the front edge."""
+    dx, dy = depth
+    f.poly([(x0, y0), (x1, y0), (x1 + dx, y0 + dy), (x1 + dx, y1 + dy), (x1, y1), (x0, y1)], face)
+    f.poly([(x0, y0), (x0 + dx, y0 + dy), (x1 + dx, y0 + dy), (x1, y0)], light, body=False)
+    f.poly([(x1, y0), (x1 + dx, y0 + dy), (x1 + dx, y1 + dy), (x1, y1)], shade, body=False)
+    f.ink([(x0, y0), (x1, y0), (x1, y1)], 0.8, dark)
+
+
+def _peg_holes(f: K.Frame, a: Point, b: Point, squash: float = 1.0) -> None:
+    """Two small round holes at `a` and `b`. The builders put pegs in them
+    to lift the block and set it in its place. `squash` makes the holes
+    flat, for a hole in a top face seen at a slant."""
+    for px, py in (a, b):
+        f.ellipse(px, py, 1.5, 1.6 * squash, SAND_DARK, body=False)
+        f.ellipse(px + 0.3, py + 0.5 * squash, 0.8, 0.8 * squash, K.shade(SAND_DARK, 0.6), body=False)
+
+
+def _draw_sandstone_blocks(anim: str, i: int, n: int):
+    f = K.Frame(BLOCKS_FRAME)
+    w, h = BLOCKS_FRAME
+    ground = h - 12.0
+    rng = random.Random("history_sandstone_blocks")
+    # The red laterite block, at the back left. Laterite is soft when it is
+    # cut and goes hard in the air; its face is full of pits.
+    _block(f, 10.0, 32.0, 44.0, ground - 4.0, (7.0, -6.0), LATERITE, LATERITE_LIGHT, LATERITE_SHADE, LATERITE_DARK)
+    for _ in range(34):
+        px, py = rng.uniform(12.0, 42.0), rng.uniform(34.0, ground - 6.0)
+        f.ellipse(px, py, rng.uniform(0.7, 1.6), rng.uniform(0.6, 1.2), LATERITE_DARK, body=False)
+    for _ in range(10):
+        f.dot(rng.uniform(12.0, 42.0), rng.uniform(34.0, ground - 6.0), 0.7, LATERITE_LIGHT)
+    # The sandstone: a long block at the front, one beside it, and one on
+    # top. Each is cut square and smooth.
+    blocks = ((34.0, 44.0, 96.0, ground), (104.0, 48.0, 142.0, ground), (46.0, 22.0, 92.0, 44.0))
+    for k, (x0, y0, x1, y1) in enumerate(blocks):
+        _block(f, x0, y0, x1, y1, (8.0, -6.0), K.shade(SAND, 1.0 + 0.03 * k), SAND_LIGHT, SAND_SHADE, SAND_DARK)
+    for x0, y0, x1, y1 in blocks:
+        # The bedding of the stone shows as faint lines, and the grain of
+        # the sand as small specks.
+        for k in range(2):
+            yy = y0 + (y1 - y0) * (0.4 + 0.3 * k) + rng.uniform(-1.0, 1.0)
+            f.ink([(x0 + 3.0, yy), ((x0 + x1) / 2.0, yy + rng.uniform(-0.8, 0.8)), (x1 - 3.0, yy + rng.uniform(-0.8, 0.8))], 0.6, K.alpha(SAND_SHADE, 0.7))
+        for _ in range(int((x1 - x0) * (y1 - y0) / 40.0)):
+            f.dot(rng.uniform(x0 + 2.0, x1 - 2.0), rng.uniform(y0 + 2.0, y1 - 2.0), 0.5, K.alpha(SAND_DARK if rng.random() < 0.5 else SAND_LIGHT, 0.5))
+    # The peg holes, near the top edge of two blocks.
+    # The peg holes: a pair on the front of two blocks, near one end, and
+    # a pair in the top of the upper block.
+    _peg_holes(f, (88.0, 52.0), (88.0, 59.0))
+    _peg_holes(f, (136.0, 58.0), (136.0, 65.0))
+    _peg_holes(f, (66.0, 19.0), (74.0, 19.0), 0.55)
+    # A few chips at the corners.
+    f.poly([(96.0, 60.0), (96.0, 66.0), (93.0, 64.0)], SAND_SHADE, body=False)
+    f.poly([(46.0, 22.0), (50.0, 22.0), (46.0, 26.0)], SAND_SHADE, body=False)
+    # The lever: a long pole of hard wood that lies on the ground in front.
+    # The workers put it under a block to move it a little at a time.
+    f.limb([(30.0, ground + 6.0), (148.0, ground + 2.5)], 4.6, WOOD)
+    f.ink([(32.0, ground + 4.7), (146.0, ground + 1.3)], 1.0, WOOD_LIGHT)
+    f.ellipse(148.0, ground + 2.5, 1.4, 2.0, WOOD_DARK, body=False)
+    return A.finish(f, width=1.2)
+
+
+# ---------------------------------------------------------------------------
+# A Khmer ox cart.
+# ---------------------------------------------------------------------------
+
+
+def _wheel(f: K.Frame, cx: float, cy: float, r: float, rim: RGBA, spoke: RGBA, light: RGBA, n_spokes: int = 12) -> None:
+    """A spoked wheel: a thick rim, a hub and straight spokes. The ground
+    shows between the spokes."""
+    for k in range(n_spokes):
+        a = math.tau * k / n_spokes + 0.1
+        f.limb([(cx + math.cos(a) * 3.0, cy + math.sin(a) * 3.0), (cx + math.cos(a) * (r - 3.0), cy + math.sin(a) * (r - 3.0))], 1.8, spoke)
+    ring = K.ellipse_points(cx, cy, r - 2.2, r - 2.2, 48)
+    f.limb(ring + ring[:2], 4.4, rim)
+    f.ink(K.ellipse_points(cx, cy, r - 1.2, r - 1.2, 48)[26:40], 1.0, light)
+    f.ellipse(cx, cy, 5.0, 5.0, rim)
+    f.ellipse(cx, cy, 2.2, 2.2, K.shade(spoke, 0.7), body=False)
+
+
+def _draw_ox_cart(anim: str, i: int, n: int):
+    f = K.Frame(OX_CART_FRAME)
+    w, h = OX_CART_FRAME
+    ground = h - 7.0
+    # The far wheel shows a little behind the near wheel.
+    wx, wy, wr = 56.0, ground - 25.0, 25.0
+    _wheel(f, wx + 7.0, wy - 2.0, wr, WOOD_DARK, K.shade(WOOD_DARK, 0.8), WOOD)
+    # The far shaft, behind the ox.
+    f.limb([(98.0, wy - 10.0), (165.0, 74.0)], 3.0, WOOD_DARK)
+    # The ox: a zebu with a hump on its shoulders, a loose dewlap under the
+    # neck, short horns and ears that hang down. It walks to the right. Its
+    # body is deep and its legs are short and thick, so it reads as an ox.
+    for x0, x1 in ((118.0, 116.0), (152.0, 151.0)):
+        f.limb([(x0, 100.0), (x1, ground - 6.0), (x1 + 0.5, ground - 1.0)], 5.0, ZEBU_SHADE)
+        f.ellipse(x1 + 1.0, ground - 1.0, 3.0, 1.6, HOOF)
+    body = [(104.0, 80.0), (110.0, 74.0), (128.0, 73.0), (142.0, 72.0), (146.0, 66.0), (150.0, 60.0), (158.0, 59.0), (163.0, 64.0),
+            (165.0, 70.0), (169.0, 74.0), (171.0, 82.0), (169.0, 92.0), (163.0, 100.0), (155.0, 106.0), (130.0, 107.0), (114.0, 105.0),
+            (105.0, 96.0)]
+    f.poly(body, ZEBU)
+    # The dewlap hangs from the throat to the chest.
+    f.poly([(165.0, 90.0), (169.0, 94.0), (164.0, 107.0), (157.0, 111.0), (152.0, 105.0), (158.0, 99.0)], ZEBU)
+    f.ink([(166.0, 95.0), (159.0, 107.0)], 0.8, ZEBU_SHADE)
+    # The far horn, behind the head.
+    f.limb([(174.0, 73.0), (177.0, 66.0), (176.0, 62.0)], 2.4, K.shade(HORN, 0.8))
+    # The head: broad and short, carried low, with a square dark muzzle.
+    head = [(165.0, 72.0), (175.0, 71.0), (180.0, 77.0), (185.0, 89.0), (185.0, 97.0), (180.0, 100.0), (174.0, 99.0), (169.0, 90.0),
+            (164.0, 81.0)]
+    f.poly(head, ZEBU)
+    f.poly([(179.0, 90.0), (185.0, 90.0), (185.0, 97.0), (180.0, 100.0), (176.0, 97.0)], ZEBU_DARK, body=False)
+    f.dot(182.5, 93.5, 0.8, K.shade(ZEBU_DARK, 0.5))
+    f.ink([(172.0, 74.0), (178.0, 80.0), (181.0, 88.0)], 0.7, ZEBU_LIGHT)
+    f.dot(174.5, 80.0, 1.2, A.OUTLINE)
+    # The near horn curves up and out; the ear hangs down beside the head.
+    f.limb([(170.0, 73.0), (171.0, 66.0), (168.0, 61.0)], 2.8, HORN)
+    f.dot(168.2, 61.4, 1.0, HORN_TIP)
+    f.poly([(167.0, 76.0), (160.0, 80.0), (157.0, 87.0), (160.0, 88.0), (168.0, 82.0)], ZEBU_SHADE)
+    # The hump is darker, as on many zebu; the back is in light and the
+    # belly in shade.
+    f.poly([(146.0, 66.0), (150.0, 60.0), (158.0, 59.0), (163.0, 64.0), (160.0, 70.0), (151.0, 72.0)], K.alpha(ZEBU_SHADE, 0.55), body=False)
+    f.poly([(108.0, 100.0), (130.0, 103.0), (155.0, 102.0), (163.0, 99.0), (155.0, 106.0), (130.0, 107.0), (114.0, 105.0)], ZEBU_SHADE, body=False)
+    f.ink([(110.0, 76.0), (126.0, 75.5), (141.0, 74.5)], 1.2, ZEBU_LIGHT)
+    f.ink([(147.0, 74.0), (150.0, 88.0), (154.0, 100.0)], 0.8, ZEBU_SHADE)
+    f.ink([(120.0, 78.0), (115.0, 96.0)], 0.8, ZEBU_SHADE)
+    # The tail, with a dark tuft.
+    f.limb([(105.0, 80.0), (101.0, 92.0), (101.0, 106.0)], 1.4, ZEBU_SHADE)
+    f.ellipse(101.0, 108.0, 1.8, 3.0, ZEBU_DARK)
+    # The near legs, short and thick.
+    for x0, x1 in ((123.0, 122.0), (158.0, 160.0)):
+        f.limb([(x0, 102.0), (x1, ground - 6.0), (x1 + 0.5, ground - 1.0)], 5.6, ZEBU)
+        f.ellipse(x1 + 1.0, ground - 1.0, 3.2, 1.7, HOOF)
+    # The cart: a bed of planks on the axle, low side boards, and a roof
+    # of matting bent over hoops, that keeps off the sun and the rain.
+    bx0, bx1, bed = 14.0, 100.0, wy - 8.0
+    f.poly([(bx0, bed - 18.0), (bx1, bed - 18.0), (bx1, bed + 4.0), (bx0, bed + 4.0)], WOOD)
+    f.poly([(bx0, bed - 2.0), (bx1, bed - 2.0), (bx1, bed + 4.0), (bx0, bed + 4.0)], WOOD_DARK, body=False)
+    for k in range(1, 6):
+        x = bx0 + (bx1 - bx0) * k / 6.0
+        f.ink([(x, bed - 17.0), (x, bed - 2.0)], 0.9, WOOD_DARK)
+    f.ink([(bx0 + 1.0, bed - 16.0), (bx1 - 1.0, bed - 16.0)], 1.0, WOOD_LIGHT)
+    roof_base = bed - 18.0
+    arch = [(bx0 - 6.0 + (bx1 - bx0 + 12.0) * u, roof_base - 34.0 * math.sin(math.pi * u) ** 0.55) for u in [k / 16.0 for k in range(17)]]
+    f.poly(arch + [(bx1 + 6.0, roof_base + 2.0), (bx0 - 6.0, roof_base + 2.0)], MATTING)
+    inner = [(bx0 - 2.0 + (bx1 - bx0 + 4.0) * u, roof_base - 26.0 * math.sin(math.pi * u) ** 0.55) for u in [k / 16.0 for k in range(17)]]
+    f.poly(inner[8:] + [(bx1 + 6.0, roof_base + 2.0)] + arch[::-1][:9], MATTING_SHADE, body=False)
+    for k in range(1, 8):
+        u = k / 8.0
+        x = bx0 - 6.0 + (bx1 - bx0 + 12.0) * u
+        top_y = roof_base - 34.0 * math.sin(math.pi * u) ** 0.55
+        f.ink([(x, top_y + 1.0), (x, roof_base)], 0.9, MATTING_DARK)
+    for k in range(1, 4):
+        pts = [(bx0 - 6.0 + (bx1 - bx0 + 12.0) * u, roof_base - (34.0 - k * 8.0) * math.sin(math.pi * u) ** 0.55) for u in [q / 16.0 for q in range(1, 16)]]
+        f.ink(pts, 0.6, K.alpha(MATTING_DARK, 0.6))
+    f.ink(arch[2:-2], 1.0, MATTING_LIGHT)
+    f.limb([(bx0 - 6.0, roof_base + 1.0), (bx1 + 6.0, roof_base + 1.0)], 2.4, BAMBOO_SHADE)
+    # The near shaft, from the bed to the yoke on the neck of the ox, in
+    # front of the hump.
+    f.limb([(bx1 - 4.0, bed), (165.0, 76.0)], 3.4, WOOD_LIGHT)
+    f.limb([(162.0, 65.0), (166.0, 80.0)], 3.4, WOOD_DARK)
+    f.ink([(161.0, 70.0), (168.0, 69.0)], 1.2, ROPE)
+    # The near wheel, in front.
+    _wheel(f, wx, wy, wr, WOOD, WOOD_DARK, WOOD_LIGHT)
+    return A.finish(f, width=1.2)
+
+
+# ---------------------------------------------------------------------------
+# Goods of the sea trade.
+# ---------------------------------------------------------------------------
+
+
+def _jar(f: K.Frame, cx: float, foot: float, r: float, height: float) -> None:
+    """A Chinese storage jar of stoneware: a wide shoulder, a short neck, and
+    four small lugs at the shoulder for the cord that ties the lid. The
+    glaze is green-brown and stops above the foot, where the grey-buff
+    body shows."""
+    top = foot - height
+    shoulder = top + height * 0.28
+    side = [(cx - r * 0.62, foot), (cx - r * 0.80, foot - height * 0.30), (cx - r, shoulder + height * 0.12), (cx - r * 0.86, shoulder - 2.0),
+            (cx - r * 0.42, top + 4.0)]
+    f.poly(side + [(2 * cx - x, y) for x, y in side[::-1]], STONEWARE)
+    glaze_end = foot - height * 0.20
+    f.poly([(cx - r * 0.76, glaze_end)] + side[2:] + [(2 * cx - x, y) for x, y in side[2:][::-1]] + [(cx + r * 0.76, glaze_end)], GLAZE, body=False)
+    # The drips at the lower edge of the glaze.
+    for dx in (-0.5, -0.1, 0.35):
+        x = cx + dx * r
+        f.poly([(x - 1.6, glaze_end), (x + 1.6, glaze_end), (x + 0.6, glaze_end + 4.0), (x - 0.6, glaze_end + 4.0)], GLAZE, body=False)
+    # One shade and one shine.
+    f.poly([(cx + r * 0.35, shoulder - 1.0), (cx + r * 0.86, shoulder - 2.0), (cx + r, shoulder + height * 0.12), (cx + r * 0.80, foot - height * 0.30),
+            (cx + r * 0.62, foot), (cx + r * 0.42, foot), (cx + r * 0.62, shoulder + height * 0.2)], K.alpha(GLAZE_SHADE, 0.85), body=False)
+    f.ellipse(cx - r * 0.5, shoulder + 4.0, r * 0.16, height * 0.09, GLAZE_LIGHT, body=False)
+    # The neck and the mouth.
+    f.poly([(cx - r * 0.40, top + 5.0), (cx + r * 0.40, top + 5.0), (cx + r * 0.38, top), (cx - r * 0.38, top)], GLAZE)
+    f.ellipse(cx, top, r * 0.44, 2.2, GLAZE)
+    f.ellipse(cx, top, r * 0.30, 1.2, HOLLOW, body=False)
+    # The lugs: small loops at the shoulder. One sticks out at each side;
+    # a third is on the front, and the fourth is at the back.
+    for sx in (-1.0, 1.0):
+        lx, ly = cx + sx * r * 0.88, shoulder - 1.0
+        f.poly([(lx - sx * 2.0, ly - 2.0), (lx + sx * 3.2, ly - 2.4), (lx + sx * 3.6, ly + 1.4), (lx - sx * 2.0, ly + 2.0)], GLAZE)
+        f.dot(lx + sx * 1.4, ly - 0.4, 0.8, HOLLOW)
+    f.poly([(cx - 3.0, shoulder - 5.0), (cx + 3.0, shoulder - 5.0), (cx + 2.4, shoulder - 1.0), (cx - 2.4, shoulder - 1.0)], GLAZE_SHADE, body=False)
+    f.ellipse(cx, shoulder - 3.0, 1.2, 1.0, HOLLOW, body=False)
+
+
+def _sack(f: K.Frame, cx: float, foot: float, r: float, height: float, open_top: bool) -> None:
+    """A sack of woven fibre, fat at the foot. A closed sack is tied at the
+    top; an open one has its mouth rolled down, and the black pepper shows."""
+    top = foot - height
+    if open_top:
+        shape = [(cx - r * 0.86, foot), (cx - r, foot - height * 0.45), (cx - r * 0.92, top + 4.0), (cx + r * 0.92, top + 4.0), (cx + r, foot - height * 0.45),
+                 (cx + r * 0.86, foot)]
+    else:
+        shape = [(cx - r * 0.86, foot), (cx - r, foot - height * 0.40), (cx - r * 0.70, top + height * 0.28), (cx - 3.0, top + 8.0), (cx + 3.0, top + 8.0),
+                 (cx + r * 0.70, top + height * 0.28), (cx + r, foot - height * 0.40), (cx + r * 0.86, foot)]
+    f.poly(shape, SACKING)
+    f.poly([(cx + r * 0.2, top + 10.0), (cx + r * 0.7, top + height * 0.3), (cx + r, foot - height * 0.4), (cx + r * 0.86, foot), (cx + r * 0.3, foot)],
+           SACKING_SHADE, body=False)
+    rng = random.Random(f"sack {cx}")
+    for k in range(1, int(height / 5.0)):
+        y = foot - k * 5.0
+        f.ink([(cx - r * 0.8, y + rng.uniform(-0.5, 0.5)), (cx + r * 0.8, y + rng.uniform(-0.5, 0.5))], 0.5, K.alpha(SACKING_SHADE, 0.6))
+    if open_top:
+        # The heap of pepper, then the rolled lip in front of it.
+        f.ellipse(cx, top + 4.0, r * 0.88, 5.0, PEPPER)
+        f.poly([(cx - r * 0.8, top + 4.0), (cx - r * 0.4, top - 1.0), (cx, top - 3.0), (cx + r * 0.4, top - 1.0), (cx + r * 0.8, top + 4.0)], PEPPER)
+        for _ in range(40):
+            a = rng.uniform(0.0, math.tau)
+            d = rng.uniform(0.0, 1.0)
+            px, py = cx + math.cos(a) * r * 0.75 * d, top + 2.0 + math.sin(a) * 3.0 * d - (1.0 - d) * 3.0
+            f.dot(px, py, 0.9, PEPPER_DARK)
+            f.dot(px - 0.3, py - 0.3, 0.35, PEPPER_LIGHT)
+        f.limb([(cx - r * 0.96, top + 6.0), (cx, top + 9.0), (cx + r * 0.96, top + 6.0)], 4.6, SACKING)
+        f.ink([(cx - r * 0.9, top + 5.0), (cx, top + 7.6), (cx + r * 0.9, top + 5.0)], 1.0, SACKING_LIGHT)
+    else:
+        # The neck, tied with a cord, and the tuft above it.
+        f.poly([(cx - 3.4, top + 9.0), (cx + 3.4, top + 9.0), (cx + 5.0, top + 2.0), (cx + 1.0, top), (cx - 5.0, top + 2.0)], SACKING)
+        f.limb([(cx - 4.0, top + 7.0), (cx + 4.0, top + 7.0)], 1.8, ROPE)
+        f.ink([(cx - r * 0.5, top + height * 0.36), (cx - r * 0.2, top + 12.0)], 0.9, SACKING_LIGHT)
+
+
+def _draw_trade_goods(anim: str, i: int, n: int):
+    f = K.Frame(GOODS_FRAME)
+    w, h = GOODS_FRAME
+    ground = h - 6.0
+    # Two jars at the back left, the taller one behind.
+    _jar(f, 24.0, ground - 2.0, 15.0, 54.0)
+    _jar(f, 48.0, ground, 13.0, 44.0)
+    # The bundle of camphor wood at the back right: split sticks tied with
+    # rattan. Camphor came from the forests of Sumatra and Borneo; its
+    # crystals are a medicine and a scent.
+    bx0, bx1, by = 104.0, 152.0, ground - 20.0
+    logs = [(0.0, 6.0), (7.0, 6.2), (14.0, 6.0), (3.5, -0.2), (10.5, 0.0), (7.0, -6.4)]
+    for k, (dx, dy) in enumerate(logs):
+        y = by + dy
+        x = bx0 + dx * 0.3
+        f.limb([(x, y), (bx1 - 3.0 - (k * 37 % 5), y - 1.0)], 6.4, CAMPHOR if k % 2 else K.shade(CAMPHOR, 0.94))
+        f.ink([(x + 2.0, y - 1.6), (bx1 - 8.0, y - 2.6)], 0.7, CAMPHOR_LIGHT)
+        f.ink([(x + 6.0, y + 1.6), (bx1 - 12.0, y + 0.8)], 0.6, CAMPHOR_SHADE)
+    # The cut ends of the sticks show at the right, with their rings.
+    ends = [(bx1 - 3.0 - (k * 37 % 5), by + dy - 1.0) for k, (dx, dy) in enumerate(logs)]
+    for ex, ey in ends:
+        f.ellipse(ex, ey, 2.6, 3.2, CAMPHOR_LIGHT)
+        f.ellipse(ex, ey, 1.2, 1.6, CAMPHOR_SHADE, body=False)
+    for tx in (bx0 + 12.0, bx1 - 12.0):
+        f.limb([(tx, by - 10.0), (tx + 1.0, by + 9.0)], 2.2, RATTAN)
+    # The pepper: two closed sacks, and an open one in front.
+    _sack(f, 80.0, ground - 2.0, 15.0, 40.0, False)
+    _sack(f, 106.0, ground, 13.0, 30.0, False)
+    _sack(f, 72.0, ground, 15.0, 26.0, True)
+    # A bolt of cloth that lies in front: a roll of cotton dyed with indigo,
+    # with red bands. Cloth from India was a main good of the trade.
+    cx0, cx1, cy, cr = 96.0, 148.0, ground - 6.0, 6.0
+    f.poly([(cx0, cy - cr), (cx1, cy - cr), (cx1, cy + cr), (cx0, cy + cr)], CLOTH)
+    f.poly([(cx0, cy + 2.0), (cx1, cy + 2.0), (cx1, cy + cr), (cx0, cy + cr)], CLOTH_SHADE, body=False)
+    for bx in (cx0 + 12.0, cx0 + 16.0, cx1 - 18.0, cx1 - 14.0):
+        f.limb([(bx, cy - cr + 0.6), (bx, cy + cr - 0.6)], 1.6, CLOTH_BAND, body=False)
+    f.ink([(cx0 + 2.0, cy - cr + 1.6), (cx1 - 2.0, cy - cr + 1.6)], 1.0, CLOTH_LIGHT)
+    f.ellipse(cx1, cy, 3.0, cr, CLOTH)
+    spiral = [(cx1 + 0.4 * math.cos(a) * (a / 12.0) * 3.0, cy + math.sin(a) * (a / 12.0) * cr) for a in [k * 0.4 for k in range(31)]]
+    f.ink(spiral, 0.6, CLOTH_SHADE)
+    return A.finish(f, width=1.2)
+
+
+# ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
 
 SCENERY = ["prop", "scenery", "history", "southeast_asia"]
+PLATFORM = ["prop", "platform", "history", "southeast_asia"]
 
 FRAMES: Dict[str, Tuple[int, int]] = {
     "history_pig_painting": PIG_PAINTING_FRAME,
@@ -631,6 +1375,12 @@ FRAMES: Dict[str, Tuple[int, int]] = {
     "history_bronze_drum": DRUM_FRAME,
     "history_rice_sheaves": SHEAVES_FRAME,
     "history_red_slip_pots": POTS_FRAME,
+    "history_jong": JONG_FRAME,
+    "history_ship_relief": RELIEF_FRAME,
+    "history_bell_stupa": BELL_STUPA_FRAME,
+    "history_sandstone_blocks": BLOCKS_FRAME,
+    "history_ox_cart": OX_CART_FRAME,
+    "history_trade_goods": GOODS_FRAME,
 }
 DRAW: Dict[str, Callable] = {
     "history_pig_painting": _draw_pig_painting,
@@ -639,6 +1389,12 @@ DRAW: Dict[str, Callable] = {
     "history_bronze_drum": _draw_bronze_drum,
     "history_rice_sheaves": _draw_rice_sheaves,
     "history_red_slip_pots": _draw_red_slip_pots,
+    "history_jong": _draw_jong,
+    "history_ship_relief": _draw_ship_relief,
+    "history_bell_stupa": _draw_bell_stupa,
+    "history_sandstone_blocks": _draw_sandstone_blocks,
+    "history_ox_cart": _draw_ox_cart,
+    "history_trade_goods": _draw_trade_goods,
 }
 DISPLAY = {
     "history_pig_painting": "Pig Painting",
@@ -647,6 +1403,12 @@ DISPLAY = {
     "history_bronze_drum": "Bronze Drum",
     "history_rice_sheaves": "Rice Sheaves",
     "history_red_slip_pots": "Red-Slip Pots",
+    "history_jong": "Jong",
+    "history_ship_relief": "Ship Relief",
+    "history_bell_stupa": "Bell Stupa",
+    "history_sandstone_blocks": "Sandstone Blocks",
+    "history_ox_cart": "Ox Cart",
+    "history_trade_goods": "Trade Goods",
 }
 ROWS: Dict[str, List[Tuple[str, int, int]]] = {}
 
@@ -656,6 +1418,13 @@ def _foot(name: str) -> Dict[str, Tuple[float, float]]:
     return {"foot": (w / 2.0, float(h))}
 
 
+#: The anchors of each prop. A platform has a "top" anchor at the middle of
+#: the surface that a player stands on; the other props have a "foot".
+ANCHORS: Dict[str, Dict[str, Tuple[float, float]]] = {name: _foot(name) for name in DISPLAY}
+ANCHORS["history_jong"] = {"top": ((JONG_SPAN[0] + JONG_SPAN[1]) / 2.0, JONG_TOP)}
+TAGS: Dict[str, List[str]] = {name: SCENERY for name in DISPLAY}
+TAGS["history_jong"] = PLATFORM
+
 TARGETS: Dict[str, dict] = {
-    name: _publisher(name, DISPLAY[name], ROWS.get(name, STILL), FRAMES[name], DRAW[name], _foot(name), "Scenery", SCENERY) for name in DISPLAY
+    name: _publisher(name, DISPLAY[name], ROWS.get(name, STILL), FRAMES[name], DRAW[name], ANCHORS[name], "Scenery", TAGS[name]) for name in DISPLAY
 }

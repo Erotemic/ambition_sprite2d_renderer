@@ -318,6 +318,57 @@ def _paddy_mist(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return _chaff((236, 204, 120), variant)
 
 
+def _midge_glint(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """The air over a hot river: small midges that dance, and glints of
+    the sun off the water. The first two variants are midges: a dark speck
+    of a body with two pale, blurred wings. The other two are glints: a
+    bright point with four short rays. A midge has its own dark colour."""
+    x, y = _cell()
+    if variant < 2:
+        turn = (0.3, -0.5)[variant]
+        rx = x * math.cos(turn) - y * math.sin(turn)
+        ry = x * math.sin(turn) + y * math.cos(turn)
+        body = _soft(rx, ry, 0.07, 1.0, squash=1.8)
+        wings = _soft(rx - 0.02, ry + 0.08, 0.10, 1.2, squash=0.6) + _soft(rx + 0.04, ry + 0.07, 0.09, 1.2, squash=0.6)
+        return np.clip(body * 1.4 + wings * 0.45, 0.0, 1.0), (64, 54, 42)
+    reach = (0.24, 0.30)[variant - 2]
+    rays = np.maximum(np.clip(1.0 - np.abs(y) / 0.018, 0, 1) * np.clip(1.0 - np.abs(x) / reach, 0, 1) ** 2,
+                      np.clip(1.0 - np.abs(x) / 0.018, 0, 1) * np.clip(1.0 - np.abs(y) / (reach * 0.7), 0, 1) ** 2)
+    return np.clip(rays + _soft(x, y, 0.07, 1.2) * 1.3 + _soft(x, y, 0.26, 2.4) * 0.25, 0.0, 1.0), colour
+
+
+def _morning_mist(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """Mist of the morning that drifts over the plain and in the trees:
+    soft wisps, wider than tall, in three sizes. The fourth variant is two
+    wisps that drift together."""
+    x, y = _cell()
+    if variant == 3:
+        return np.clip(_soft(x + 0.09, y + 0.04, 0.22, 1.6, squash=1.4) * 0.40 + _soft(x - 0.12, y - 0.06, 0.18, 1.6, squash=1.5) * 0.35, 0.0, 1.0), colour
+    r = (0.16, 0.21, 0.25)[variant]
+    return np.clip(_soft(x, y, r, 1.6, squash=1.6) * (0.60, 0.48, 0.40)[variant], 0.0, 1.0), colour
+
+
+def _dragonfly_pollen(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """The air over the ponds of Angkor in the afternoon. The first
+    variant is a dragonfly: a long thin body and four narrow wings held
+    out flat. Its colour is its own, a warm red. The other three are
+    grains of pollen in the gold light: small soft points."""
+    x, y = _cell()
+    if variant == 0:
+        turn = 0.25
+        rx = x * math.cos(turn) - y * math.sin(turn)
+        ry = x * math.sin(turn) + y * math.cos(turn)
+        body = np.clip(1.0 - np.abs(ry) / 0.022, 0.0, 1.0) * (rx > -0.30) * (rx < 0.22)
+        head = _soft(rx - 0.24, ry, 0.045, 1.0)
+        wings = np.zeros_like(rx)
+        for ox in (0.10, 0.02):
+            for side in (-1.0, 1.0):
+                wings = np.maximum(wings, _soft(rx - ox, ry - side * 0.15, 0.16, 1.0, squash=0.28))
+        return np.clip(body + head + wings * 0.45, 0.0, 1.0), (176, 78, 52)
+    r = (0.06, 0.08, 0.10)[variant - 1]
+    return np.clip(_soft(x, y, r, 1.3) * 1.1 + _soft(x, y, r * 2.6, 2.4) * 0.25, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -444,6 +495,12 @@ MOTES = {
     "history_wallacea": (_haze, (240, 244, 230)),
     "history_austronesia": (_spray, (240, 250, 250)),
     "history_red_river": (_paddy_mist, (232, 238, 240)),
+    # Midges and glints of the sun over the Musi at Palembang; mist of the
+    # morning over the Kedu plain at Borobudur; a dragonfly and pollen in
+    # the gold light of Angkor.
+    "history_strait": (_midge_glint, (255, 250, 228)),
+    "history_borobudur": (_morning_mist, (244, 236, 228)),
+    "history_angkor": (_dragonfly_pollen, (255, 226, 150)),
 }
 
 
@@ -522,6 +579,9 @@ SHADOWS = {
     "history_wallacea": (38, 44, 34),
     "history_austronesia": (36, 30, 28),
     "history_red_river": (52, 42, 32),
+    "history_strait": (44, 34, 24),
+    "history_borobudur": (40, 46, 38),
+    "history_angkor": (58, 40, 28),
 }
 SHADOW_PX = (96, 28)
 
