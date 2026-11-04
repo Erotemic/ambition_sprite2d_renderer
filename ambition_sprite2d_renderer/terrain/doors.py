@@ -600,6 +600,55 @@ def saint_domingue_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf * (1.0 - eave)
 
 
+def gold_coast_door(tile: Tile, c: dict) -> np.ndarray:
+    """The Door of No Return of a fort on the Gold Coast: a narrow, low
+    doorway through a very thick wall of stone washed white with lime. It
+    has no ornament. The thickness of the wall shows in the doorway: its
+    left side catches the light, and the underside of the lintel is in
+    shade. Inside, the passage is dark. At its far end a small, narrow
+    opening shows the bright sea light beyond: pale sky, the grey-green sea
+    and a white line of surf. That far light is the one light of this door.
+    The lime has worn off the wall in places, so the grey stone shows."""
+    _frame(tile, c)
+    # The wall round the doorway: thick jambs and a deep lintel make the
+    # opening narrow and low.
+    jamb, lintel, reveal = 6.0, 22.0, 3.4
+    x0, x1, y0, y1 = F + jamb, W - F - jamb, lintel, H - STEP
+    wall = (1.0 - tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0, x1, y1))) * (tile.y < H - STEP)
+    inner = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, F, W - F, H - STEP))
+    tile.put(wall * inner, c["frame"])
+    tile.tone((tile.noise(6, 12, 3) - 0.5) * 0.08 * wall)
+    worn = np.clip((tile.noise(4, 8, 3) - 0.60) * 6.0, 0.0, 1.0) * wall
+    tile.put(worn, c["stone"], 0.75)
+    tile.put(worn * (np.abs(((tile.y + (tile.noise(3, 3, 2) - 0.5) * 3.0) % 6.0) - 3.0) < 0.35), c["dark"], 0.35)
+    # The thickness of the wall: the left side of the doorway, lit, and the
+    # underside of the lintel, in shade. Both go in toward the far end.
+    side = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0, y0), (x0 + reveal, y0 + reveal), (x0 + reveal, y1), (x0, y1)]))
+    soffit = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0, y0), (x1, y0), (x1, y0 + reveal), (x0 + reveal, y0 + reveal)]))
+    tile.put(side, _mix(c["frame"], c["dark"], 0.22))
+    tile.put(side * np.clip((tile.y - y0) / (y1 - y0), 0.0, 1.0), c["glow"], 0.20)
+    tile.put(soffit, _mix(c["frame"], c["dark"], 0.55))
+    # The passage: dark, darkest at its top.
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + reveal, y0 + reveal, x1, y1))
+    tile.put(leaf, c["leaf"])
+    tile.put(leaf * np.clip(1.0 - (tile.y - y0) / 40.0, 0.0, 1.0), c["dark"], 0.7)
+    # The far opening at the end of the passage, and the sea light in it.
+    fx0, fx1, fy0, fy1 = 27.0, 35.0, 52.0, 101.0
+    far = tile.mask(lambda p, dx, dy: _box(p, dx, dy, fx0, fy0, fx1, fy1))
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, fx0 - 3.0, fy0 - 3.0, fx1 + 3.0, fy1 + 2.0), blur=3.0) * leaf, c["glow"], 0.22)
+    sea_y = fy0 + (fy1 - fy0) * 0.58
+    tile.put(far * (tile.y < sea_y), c["sky"])
+    tile.put(far * (tile.y >= sea_y), c["sea"])
+    tile.put(far * np.clip((tile.y - sea_y) / (fy1 - sea_y), 0.0, 1.0), c["leaf"], 0.35)
+    tile.put(far * (np.abs(tile.y - sea_y - 5.0) < 0.6), c["sky"], 0.9)
+    tile.put(far * (np.abs(tile.y - sea_y - 9.0) < 0.4), c["sky"], 0.6)
+    # The far light on the floor of the passage: a faint path to the near
+    # threshold.
+    floor = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(fx0, fy1), (fx1, fy1), (x1 - 3.0, y1), (x0 + reveal + 4.0, y1)]))
+    tile.put(floor * leaf * np.clip((tile.y - fy1) / (y1 - fy1), 0.0, 1.0) ** 0.5, c["glow"], 0.10)
+    return leaf
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -628,6 +677,7 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     mat_door: (SWING, False),
     benin_door: (SWING, False),
     saint_domingue_door: (SWING, False),
+    gold_coast_door: (SWING, False),
 }
 
 
@@ -732,6 +782,10 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     # Saint-Domingue: a door of planks in a whitewashed wall of stone, under
     # an eave of thatch, on a step of red earth.
     "history_saint_domingue": (saint_domingue_door, {**_colours((232, 226, 206), (124, 92, 62), (40, 28, 20), (164, 80, 50), (255, 214, 150)), "thatch": (178, 148, 92)}),
+    # The Gold Coast: the Door of No Return, a narrow, low doorway through a
+    # thick wall washed white; dark inside, with the sea light far beyond.
+    "history_gold_coast": (gold_coast_door, {**_colours((232, 230, 222), (40, 38, 38), (14, 14, 16), (150, 146, 138), (226, 236, 230)),
+                                             "stone": (150, 148, 142), "sky": (236, 240, 236), "sea": (128, 164, 156)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

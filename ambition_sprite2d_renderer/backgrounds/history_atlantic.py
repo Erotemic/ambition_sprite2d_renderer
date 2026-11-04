@@ -26,6 +26,16 @@ here is a joke on them.
   smoke go up from the plain: in August 1791 the enslaved people of the
   north rose, and the cane fields burned. The smoke is far and quiet.
   Royal palms and banana plants stand at the sides, on a bank of red earth.
+- ``history_gold_coast`` (a fort on the Gold Coast, in the 1700s). A bright,
+  hazy, grey-white day. On a low point of dark rocks over the sea stands a
+  long castle of the trading companies, washed white: thick walls, a square
+  bastion at each end, a higher block in the middle and a few small dark
+  windows. White surf breaks on the rocks. Beside the castle is the fishing
+  town, low houses among coconut palms. A line of Fante canoes is drawn up
+  on the beach: they are the only bright colours of the scene. The castle
+  is a composite, not a copy of Cape Coast or Elmina. Dark rocks and a
+  coconut palm stand at each side. The room is sober: it shows the place
+  and nothing more.
 
 The bright detail is far off or at the edges, and the middle of each near
 layer is calm, so the play in front of it reads. The things that drift in the
@@ -34,11 +44,13 @@ air are the room's motes (`terrain/motes.py`), not part of these pictures.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from .artkit import Art, Pen, mix, scale, smoothstep
-from .history_americas_pacific import _canopy, _fronds, _royal_palm
-from .history_eras import REST_BOTTOM, _air, _at, _heaps, _plume, _sun, _textbook
+from .history_americas_pacific import _canopy, _coconut_palm, _fronds, _royal_palm
+from .history_eras import REST_BOTTOM, _air, _at, _heaps, _outline, _plume, _sun, _textbook
 from .history_origins import _arch, _banana, _cane, _land, _leaf
 from .parts import HORIZON, fog, haze, shafts, solid
 
@@ -663,3 +675,280 @@ def saint_domingue_foreground(art_: Art, pen: Pen, layer_lights: list) -> None:
         top = REST_BOTTOM - rng.uniform(-0.004, 0.010)
         bend = rng.uniform(-0.05, 0.05)
         _leaf(pen, _arch((u, 1.0), (u + bend * 0.2, top + 0.08), (u + bend, top), 10), 0.004, 0.6)
+
+
+# ---------------------------------------------------------------------------
+# The Gold Coast: a fort of the trading companies over the sea, in the 1700s
+# ---------------------------------------------------------------------------
+
+
+GOLD_COAST = {
+    "top": (170, 180, 184),
+    "mid": (214, 218, 214),
+    "low": (224, 226, 222),
+    "glow": (250, 248, 238),
+    "sun": (252, 250, 240),
+    "cloud": (240, 240, 234),
+    "cloud_shadow": (196, 200, 198),
+    "sea": (122, 150, 142),
+    "sea_far": (176, 192, 186),
+    "sea_light": (232, 238, 232),
+    "surf": (246, 246, 240),
+    "rock": (74, 74, 72),
+    "rock_light": (130, 128, 122),
+    "wall": (248, 246, 238),
+    "wall_shade": (178, 180, 176),
+    "window": (58, 58, 60),
+    "sand": (214, 202, 172),
+    "sand_wet": (168, 164, 146),
+    "house": (190, 166, 128),
+    "roof": (132, 118, 96),
+    "trunk": (150, 136, 112),
+    "palm": (70, 96, 70),
+    "palm_light": (130, 150, 110),
+    "canoe_red": (196, 56, 46),
+    "canoe_yellow": (232, 190, 64),
+    "canoe_green": (60, 140, 88),
+    "canoe_blue": (52, 100, 168),
+    "far": (206, 208, 202),
+    "near": (40, 40, 40),
+    "near_light": (110, 108, 100),
+}
+
+#: The coast: at the horizon the land begins at this `u`, and the sea is to
+#: the left of it. Nearer, the beach reaches further to the left.
+GC_COAST_U = 0.34
+
+
+def _castle(walls: Pen, shade: Pen, holes: Pen, u0: float, u1: float, v: float, h: float) -> None:
+    """A castle of the trading companies on its rock: a long, low curtain
+    wall with a parapet, a square bastion at each end that stands out and
+    is a little higher, and a higher block of buildings in the middle. The
+    walls are thick, so the windows are few, small and dark. Embrasures
+    (gaps for cannon) cut the parapets of the bastions and of the sea
+    wall."""
+    w = u1 - u0
+    # The curtain wall.
+    walls.rect(u0, v - h * 0.62, u1, v)
+    # The block of buildings in the middle: two floors over the wall, with
+    # a low hipped roof line.
+    bu0, bu1 = u0 + w * 0.34, u0 + w * 0.70
+    walls.rect(bu0, v - h * 1.05, bu1, v - h * 0.4)
+    walls.rect(bu0 + w * 0.05, v - h * 1.20, bu0 + w * 0.17, v - h * 1.0)
+    # The bastions: a little wider and higher than the wall, with a sloped
+    # foot (a batter) to the rock.
+    for bu, side in ((u0, -1.0), (u1, 1.0)):
+        half = w * 0.075
+        walls.poly([(bu - half * 1.25, v), (bu - half, v - h * 0.78), (bu + half, v - h * 0.78), (bu + half * 1.25, v)])
+        shade.poly([(bu + half * 0.15, v - h * 0.74), (bu + half, v - h * 0.78), (bu + half * 1.25, v), (bu + half * 0.15, v)])
+        for k in range(3):
+            x = bu - half * 0.7 + k * half * 0.7
+            holes.rect(x - half * 0.10, v - h * 0.78, x + half * 0.10, v - h * 0.70)
+    # The embrasures of the sea wall, and its shade along the foot of the
+    # parapet.
+    for k in range(9):
+        x = u0 + w * (0.12 + k * 0.026)
+        if x < bu0 - w * 0.02:
+            holes.rect(x - w * 0.006, v - h * 0.62, x + w * 0.006, v - h * 0.55)
+    shade.rect(u0, v - h * 0.52, u1, v - h * 0.47)
+    shade.rect(bu1 - w * 0.06, v - h * 1.05, bu1, v - h * 0.4)
+    # A few small dark windows: in the block, and low in the wall.
+    for k in range(5):
+        x = bu0 + w * 0.04 + k * w * 0.065
+        holes.rect(x - w * 0.008, v - h * 0.94, x + w * 0.008, v - h * 0.84)
+        holes.rect(x - w * 0.008, v - h * 0.74, x + w * 0.008, v - h * 0.64)
+    for x in (u0 + w * 0.80, u0 + w * 0.88):
+        holes.rect(x - w * 0.007, v - h * 0.40, x + w * 0.007, v - h * 0.32)
+
+
+def _fante_canoe(hull: Pen, band: Pen, stripe: Pen, beak: Pen, u: float, v: float, s: float, tilt: float) -> None:
+    """A Fante fishing canoe drawn up on the beach, seen from the side: a
+    deep hull with a raised beak at each end. `band` takes the painted band
+    along its upper part, and `stripe` a second band under it."""
+    def at(x: float, depth: float) -> tuple[float, float]:
+        return (u + x * s, v - (0.20 - depth) * s - tilt * x * s)
+
+    hull.poly([at(-0.50, 0.0), at(0.50, 0.0), at(0.40, 0.20), at(-0.40, 0.20)])
+    band.poly([at(-0.50, 0.0), at(0.50, 0.0), at(0.47, 0.07), at(-0.47, 0.07)])
+    stripe.poly([at(-0.47, 0.07), at(0.47, 0.07), at(0.44, 0.13), at(-0.44, 0.13)])
+    for side in (-1.0, 1.0):
+        x, y = at(side * 0.50, 0.0)
+        beak.poly([(x - side * s * 0.03, y + s * 0.02), (x + side * s * 0.10, y - s * 0.07), (x + side * s * 0.10, y - s * 0.03), (x, y + s * 0.06)])
+
+
+def _gc_house(walls: Pen, roof: Pen, holes: Pen, u: float, v: float, w: float, h: float) -> None:
+    """A low house of the fishing town: walls of earth and a pitched roof
+    of thatch, with a dark doorway."""
+    walls.rect(u - w, v - h, u + w, v)
+    roof.poly([(u - w * 1.2, v - h * 0.9), (u - w * 0.4, v - h * 1.9), (u + w * 0.4, v - h * 1.9), (u + w * 1.2, v - h * 0.9)])
+    holes.rect(u - w * 0.18, v - h * 0.62, u + w * 0.18, v)
+
+
+def history_gold_coast(layer_key: str, art_: Art) -> np.ndarray:
+    a = art_
+    p = GOLD_COAST
+    sea_v = HORIZON - 0.004
+    if layer_key == "sky":
+        # A bright day, grey-white with haze: the sky is pale to the
+        # horizon, and the sea is grey-green under it.
+        layer = a.opaque(a.ramp([(0.0, p["top"]), (0.30, p["mid"]), (sea_v, p["low"]), (sea_v + 0.003, p["sea_far"]), (HORIZON + 0.08, p["sea"]),
+                                 (1.0, p["sea"])]))
+        _sun(a, layer, 0.70, 0.18, 0.022, p["sun"], p["glow"], 0.45)
+        # Thin high haze in long soft streaks.
+        streaks = smoothstep(0.55, 0.85, a.noise("gold coast haze", cells=6.0, octaves=3, stretch=6.0)) * smoothstep(0.50, 0.10, a.v)
+        a.tint(layer, streaks, p["cloud"], 0.55)
+        # The sea: soft light under the hazy sun and long low swells.
+        glints = smoothstep(0.62, 0.84, a.noise("gold coast glints", cells=70.0, octaves=2, stretch=7.0))
+        a.light(layer, (a.v > sea_v + 0.002) * glints * a.spot(0.70, HORIZON + 0.05, 0.30, 1.0, squash=1.6), p["sea_light"], 0.45)
+        swell = np.clip(1.0 - np.abs(((a.v - HORIZON) * 160.0 + a.noise("gold coast swell", cells=8.0, octaves=2) * 3.0) % 1.0 - 0.5) / 0.08, 0.0, 1.0)
+        a.light(layer, swell * (a.v > sea_v + 0.01), p["sea_light"], 0.12)
+        a.tint(layer, a.band(sea_v + 0.004, 0.010, 1.5), p["low"], 0.45)
+        _textbook(a, layer, 0.05)
+        return layer
+    if layer_key == "far_backplate":
+        rng = a.rand("far gold coast")
+        # The land: a low beach that runs from the right to the coast, and
+        # nearer, across the whole width.
+        _, shore = a.ridge("gold coast shore", HORIZON + 0.006, 0.002, cells=4.0, octaves=2)
+        coast = GC_COAST_U - (a.v - HORIZON) * 3.6
+        land = _land(a, shore) * smoothstep(coast - 0.006, coast + 0.006, a.u)
+        # The low point of dark rocks at the end of the land: a rough mass
+        # under the castle, and loose rocks that go out into the sea.
+        rocks, rock_pen = a.drawing()
+        top = [(u, HORIZON - 0.012 + 0.004 * math.sin(u * 61.0) + rng.uniform(-0.002, 0.002)) for u in np.linspace(GC_COAST_U - 0.03, 0.66, 30)]
+        rock_pen.poly([(GC_COAST_U - 0.05, HORIZON + 0.010)] + top + [(0.69, HORIZON + 0.010), (0.60, HORIZON + 0.016), (GC_COAST_U, HORIZON + 0.018)])
+        for _ in range(18):
+            u = rng.uniform(GC_COAST_U - 0.08, GC_COAST_U)
+            r = rng.uniform(0.004, 0.010)
+            rock_pen.ellipse(u, HORIZON + rng.uniform(0.000, 0.016), r * 1.5, r)
+        rock_mask = a.mask_of(rocks)
+        walls, wall_pen = a.drawing()
+        wshade, wshade_pen = a.drawing()
+        holes, hole_pen = a.drawing()
+        _castle(wall_pen, wshade_pen, hole_pen, GC_COAST_U + 0.01, 0.63, HORIZON - 0.010, 0.080)
+        # The town beside the castle: low houses among palms.
+        houses, house_pen = a.drawing()
+        roofs, roof_pen = a.drawing()
+        doors, door_pen = a.drawing()
+        trunks, trunk_pen = a.drawing()
+        crowns, crown_pen = a.drawing()
+        u = 0.66
+        while u < 1.02:
+            v = HORIZON + 0.010 + rng.uniform(0.0, 0.010)
+            _gc_house(house_pen, roof_pen, door_pen, u, v, rng.uniform(0.012, 0.018), rng.uniform(0.008, 0.012))
+            u += rng.uniform(0.030, 0.045)
+        for u in (0.64, 0.71, 0.77, 0.84, 0.90, 0.97, 0.30, 0.25):
+            _coconut_palm(trunk_pen, crown_pen, rng, u, HORIZON + rng.uniform(0.012, 0.022), rng.uniform(0.050, 0.075), rng.uniform(-0.012, 0.012))
+        # The canoes drawn up in a line on the beach, their beaks to the sea.
+        hulls, hull_pen = a.drawing()
+        beaks, beak_pen = a.drawing()
+        paints = {key: a.drawing() for key in ("canoe_red", "canoe_yellow", "canoe_green", "canoe_blue")}
+        keys = list(paints)
+        spots = [(0.20, 0.046), (0.29, 0.052), (0.40, 0.044), (0.47, 0.056), (0.58, 0.047), (0.66, 0.054), (0.76, 0.045), (0.86, 0.052)]
+        for k, (u, dv) in enumerate(spots):
+            first, second = keys[k % 4], keys[(k + 2) % 4]
+            _fante_canoe(hull_pen, paints[first][1], paints[second][1], beak_pen, u + rng.uniform(-0.01, 0.01), HORIZON + dv, rng.uniform(0.056, 0.066),
+                         rng.uniform(-0.04, 0.04))
+        # The surf: white foam along the coast and on the rocks.
+        surf_line = smoothstep(0.010, 0.0, np.abs(a.u - coast)) * (a.v > HORIZON - 0.002)
+        surf_line = surf_line * smoothstep(0.45, 0.65, a.noise("gold coast surf", cells=40.0, octaves=2)) * (1.0 - rock_mask)
+        rock_surf = a.rim(rock_mask, -0.006, 0.0, 0.6) * (1.0 - rock_mask) * smoothstep(0.40, 0.70, a.noise("gold coast rock surf", cells=50.0, octaves=2))
+        castle = np.maximum.reduce([a.mask_of(walls), a.mask_of(wshade)])
+        town = np.maximum.reduce([a.mask_of(houses), a.mask_of(roofs)])
+        palms = np.maximum(a.mask_of(trunks), a.mask_of(crowns))
+        canoes = np.maximum(a.mask_of(hulls), a.mask_of(beaks))
+        mask = np.maximum.reduce([land, rock_mask, castle, town, palms, canoes])
+        layer = solid(a, mask, mix(p["sand"], p["far"], 0.30), p["sand"], HORIZON, HORIZON + 0.08, "gold coast far", 0.04)
+        # The wet sand at the edge of the sea, and a darker line of weed.
+        a.put(layer, land * smoothstep(0.03, 0.0, a.u - coast), p["sand_wet"], 0.7)
+        a.put(layer, rock_mask, mix(p["rock"], p["far"], 0.15))
+        # Ledges of rock: light on their tops, a dark line under each.
+        ledge = ((a.v - HORIZON) * 260.0 + a.noise("gold coast rock ledges", cells=30.0, octaves=2) * 2.0) % 1.0
+        a.light(layer, rock_mask * smoothstep(0.30, 0.0, ledge), p["rock_light"], 0.40)
+        a.shade(layer, rock_mask * smoothstep(0.75, 1.0, ledge), 0.30)
+        a.light(layer, a.rim(rock_mask, 0.0, 0.004, 0.4) * rock_mask, p["rock_light"], 0.40)
+        # The castle: white walls, a shade on the side away from the light,
+        # the dark windows and embrasures.
+        a.put(layer, castle, mix(p["wall"], p["far"], 0.08))
+        a.put(layer, a.mask_of(wshade), mix(p["wall_shade"], p["far"], 0.15))
+        a.put(layer, a.mask_of(holes) * castle, mix(p["window"], p["far"], 0.25))
+        # A thin grey edge round the castle, so its white stands clear of
+        # the pale sky.
+        a.put(layer, _outline(a, castle, 0.0014) * castle, mix(p["wall_shade"], p["window"], 0.25), 0.8)
+        a.put(layer, town, mix(p["house"], p["far"], 0.25))
+        a.put(layer, a.mask_of(roofs), mix(p["roof"], p["far"], 0.25))
+        a.put(layer, a.mask_of(doors) * a.mask_of(houses), mix(p["window"], p["far"], 0.35))
+        a.put(layer, a.mask_of(trunks), mix(p["trunk"], p["far"], 0.25))
+        a.put(layer, a.mask_of(crowns), mix(p["palm"], p["far"], 0.30))
+        a.light(layer, a.rim(a.mask_of(crowns), 0.002, 0.001, 0.3) * a.mask_of(crowns), p["palm_light"], 0.35)
+        # The canoes: dark hulls, a bright band on each, and pale beaks.
+        a.put(layer, canoes, mix((70, 56, 44), p["far"], 0.15))
+        for key, (img, _) in paints.items():
+            a.put(layer, a.mask_of(img), mix(p[key], p["far"], 0.12))
+        a.put(layer, a.mask_of(beaks), mix(p["canoe_yellow"], p["far"], 0.15))
+        a.put(layer, surf_line, p["surf"], 0.85)
+        a.put(layer, rock_surf, p["surf"], 0.9)
+        mask = np.maximum.reduce([mask, surf_line * 0.85, rock_surf * 0.9])
+        # The haze of the bright day over all of it.
+        a.tint(layer, fog(a, "gold coast far haze", HORIZON + 0.004, 0.016, 3.0), p["low"], 0.35)
+        haze(a, layer, p["low"], 0.10, None)
+        layer[..., 3] = np.minimum(layer[..., 3], mask)
+        return layer
+    if layer_key == "near_background":
+        rng = a.rand("near gold coast")
+        rocks, rock_pen = a.drawing()
+        trunks, trunk_pen = a.drawing()
+        crowns, crown_pen = a.drawing()
+        ground, line = a.ridge("near gold coast", 0.705, 0.004, cells=4.0, octaves=3)
+        # Dark rocks of the shore at the two sides; the middle stays calm.
+        for side_u, spread in ((0.05, 0.26), (0.95, 0.24)):
+            for _ in range(16):
+                u = side_u + rng.uniform(-0.5, 0.5) * spread
+                r = rng.uniform(0.040, 0.090) * (1.0 - abs(u - side_u) / spread)
+                if r <= 0.012:
+                    continue
+                v = _at(line, min(max(u, 0.0), 0.999)) + 0.004
+                lift = rng.uniform(1.2, 1.8)
+                rock_pen.poly([(u - r * 1.2, v), (u - r * 0.9, v - r * 0.8 * lift), (u - r * 0.2, v - r * lift), (u + r * 0.7, v - r * 0.7 * lift), (u + r * 1.2, v)])
+        # A coconut palm at each side.
+        _coconut_palm(trunk_pen, crown_pen, rng, 0.09, 0.70, 0.46, 0.06)
+        _coconut_palm(trunk_pen, crown_pen, rng, 0.90, 0.70, 0.40, -0.07)
+        rock_mask = a.mask_of(rocks)
+        mask = np.maximum.reduce([ground, rock_mask, a.mask_of(trunks), a.mask_of(crowns)])
+        layer = solid(a, mask, mix(p["near"], p["near_light"], 0.40), p["near"], 0.30, 0.74, "gold coast near", 0.08)
+        sand = a.ramp([(0.0, mix(p["sand"], p["near"], 0.45)), (0.70, mix(p["sand"], p["near"], 0.45)), (0.80, mix(p["sand"], p["near"], 0.75)), (1.0, p["near"])])
+        a.put(layer, ground * (1.0 - rock_mask), sand)
+        a.put(layer, rock_mask, mix(p["rock"], p["near"], 0.55))
+        facets = smoothstep(0.45, 0.65, a.noise("gold coast near rock", cells=30.0, octaves=2))
+        a.light(layer, rock_mask * facets, p["rock_light"], 0.12)
+        a.light(layer, a.rim(rock_mask, 0.003, 0.005, 0.4) * rock_mask, p["rock_light"], 0.35)
+        a.put(layer, a.mask_of(trunks), mix(p["trunk"], p["near"], 0.55))
+        a.put(layer, a.mask_of(crowns), mix(p["palm"], p["near"], 0.45))
+        a.light(layer, a.rim(mask, 0.003, 0.003, 0.4) * mask, p["glow"], 0.30)
+        a.shade(layer, a.rim(mask, -0.004, -0.003, 1.0) * mask, 0.20)
+        haze(a, layer, p["low"], 0.08, None)
+        return layer
+    return _air(a, p, "gold coast salt air", p["low"], 0.22, p["near"], 0.14)
+
+
+def gold_coast_foreground(art_: Art, pen: Pen, layer_lights: list) -> None:
+    """Coconut palm fronds that reach into the top of the view from its two
+    upper corners: each a long rib that arches in and down, with dense
+    leaflets along it. They stay at the sides, so the middle is open."""
+    del layer_lights
+    rng = art_.rand("gold coast foreground")
+    for side in (-1.0, 1.0):
+        root = (0.5 + side * 0.52, -0.02)
+        for j in range(3):
+            reach = 0.20 + 0.06 * j + rng.uniform(-0.02, 0.02)
+            end = (root[0] - side * reach, 0.12 + 0.07 * j + rng.uniform(-0.01, 0.01))
+            ctrl = ((root[0] + end[0]) * 0.5, root[1] + 0.01 * j)
+            rib = _arch(root, ctrl, end, 24)
+            pen.line(rib, 0.0028)
+            for i, (x, y) in enumerate(rib[2:], 2):
+                t = i / 24.0
+                leaf = 0.034 * (1.0 - t * 0.6)
+                for lean in (-1.0, 1.0):
+                    tip = (x - side * leaf * 0.35 + lean * leaf * 0.12, y + leaf * (0.75 + 0.15 * lean))
+                    if tip[1] < 0.39:
+                        pen.line([(x, y), tip], 0.0016)

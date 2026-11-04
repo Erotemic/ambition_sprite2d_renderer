@@ -339,6 +339,8 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     # Saint-Domingue: the fronds of royal palms hang over the plain, and
     # long leaves of cane stand from below.
     "history_saint_domingue": (_atlantic.saint_domingue_foreground, scale(_atlantic.SAINT_DOMINGUE["near"], 0.9)),
+    # The Gold Coast: the fronds of coconut palms hang over the beach.
+    "history_gold_coast": (_atlantic.gold_coast_foreground, scale(_atlantic.GOLD_COAST["near"], 0.9)),
 }
 
 

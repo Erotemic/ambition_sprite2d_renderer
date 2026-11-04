@@ -1952,6 +1952,72 @@ def cane_cuttings(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+# The Gold Coast. There `wood` is the tan of rope and net, and `metal` the
+# faded orange of the floats of a net.
+
+
+def fishing_net(tile: Tile, c: dict) -> None:
+    """A fishing net piled on the sand to dry: a low soft heap of mesh, with
+    the line of its floats along the top and a few loose loops at its foot."""
+    _shadow(tile, 9.0)
+    heap = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M - 3.0, G - 2.6, 6.8, ry=3.2), _dot(p, dx, dy, M + 3.4, G - 2.2, 6.0, ry=2.8),
+                                       _box(p, dx, dy, M - 9.4, G - 3.0, M + 9.2, G)))
+    tile.put(heap, _mix(c["wood"], c["dark"], 0.45))
+    mesh = (np.abs(((tile.x + tile.y) % 1.6) - 0.8) < 0.18) | (np.abs(((tile.x - tile.y) % 1.6) - 0.8) < 0.18)
+    tile.put(heap * mesh, _mix(c["wood"], c["stone"], 0.4), 0.8)
+    tile.put(heap * (tile.y > G - 1.8), c["dark"], 0.30)
+    floats = [(M - 7.0, G - 3.6), (M - 3.6, G - 6.0), (M + 0.4, G - 6.2), (M + 4.2, G - 5.2), (M + 7.6, G - 3.0)]
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, floats, 0.3)), c["dark"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.7, ry=0.5) for x, y in floats[1::2]]), _mix(c["metal"], c["dark"], 0.25))
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 8.0, G - 0.4), (M + 10.0, G - 1.6), (M + 11.0, G - 0.3)], 0.2)), c["wood"], 0.8)
+    tile.alpha *= tile.y < G
+
+
+def rope_coil(tile: Tile, c: dict) -> None:
+    """A thick rope laid down in a flat coil, seen from the side and a
+    little above: rings that grow smaller to the top, each with the twist
+    of the rope across it, and the free end that runs out on the sand."""
+    _shadow(tile, 7.0)
+    for k in range(4):
+        y, rx = G - 1.0 - k * 1.5, 6.4 - k * 0.6
+        ring = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, y, rx, ry=1.5))
+        tile.put(ring, c["wood"] if k % 2 == 0 else _mix(c["wood"], c["dark"], 0.12))
+        twist = np.abs(((tile.x * 1.3 + tile.y * 2.0) % 1.3) - 0.65) < 0.14
+        tile.put(ring * twist, c["dark"], 0.30)
+        tile.put(ring * (tile.y < y - 0.6), c["wood_light"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 5.6, 2.6, ry=0.7)), c["dark"], 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 5.6, G - 0.8), (M + 8.0, G - 0.6), (M + 10.6, G - 1.2)], 0.7)), c["wood"])
+    tile.alpha *= tile.y < G
+
+
+def beach_stones(tile: Tile, c: dict) -> None:
+    """A few round stones of the beach, smoothed by the sea: grey, each of
+    its own tone, with a pale light on its top."""
+    _shadow(tile, 8.0)
+    stones = [(-5.0, 2.2, 3.4, 0.0), (0.8, 3.0, 4.2, 0.10), (5.8, 1.6, 2.4, -0.10), (-1.6, 1.0, 1.8, 0.18)]
+    for x, ry, rx, tone in stones:
+        body = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x, G - ry, rx, ry=ry))
+        tile.put(body, _mix(c["stone"], c["stone_light"] if tone > 0 else c["dark"], abs(tone) * 2.0))
+        tile.put(body * (tile.y < G - ry * 1.4), c["stone_light"], 0.45)
+        tile.put(body * (tile.y > G - ry * 0.5), c["dark"], 0.25)
+    tile.alpha *= tile.y < G
+
+
+def sea_shells(tile: Tile, c: dict) -> None:
+    """A few shells on the sand: a ribbed clam shell, a small spiral shell
+    and two cowries."""
+    clam = tile.mask(lambda p, dx, dy: p.pieslice([(M - 7.0) * K + dx, (G - 4.2) * K + dy, (M - 1.0) * K + dx, (G + 2.0) * K + dy], 180, 360, fill=255))
+    tile.put(clam, c["stone_light"])
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M - 4.0, G), (M - 4.0 + k * 1.0, G - 2.8)], 0.25) for k in (-2, -1, 0, 1, 2)]), c["bloom"], 0.7)
+    spiral = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M + 0.4, G), (M + 4.6, G), (M + 3.0, G - 2.4), (M + 1.4, G - 3.4)]))
+    tile.put(spiral, _mix(c["bloom"], c["stone_light"], 0.4))
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M + 1.0 + k, G - 0.4), (M + 1.8 + k * 0.6, G - 2.6)], 0.2) for k in (0.0, 1.2)]), c["dark"], 0.4)
+    for x in (M + 6.4, M + 8.6):
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, G - 1.0, 1.0, ry=0.8)), c["stone_light"])
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x - 0.6, G - 1.0), (x + 0.6, G - 1.0)], 0.15)), c["dark"], 0.6)
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -2045,6 +2111,10 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # cuttings of cane, pots, a gourd and grass.
     "history_saint_domingue": ((joumou, coffee_bush, cane_cuttings, clay_pots, water_gourd, grass_tuft),
                                _palette((40, 26, 18), (150, 120, 96), (236, 226, 204), (176, 110, 64), (226, 128, 44), (88, 128, 56), (196, 40, 36), (255, 214, 150))),
+    # The Gold Coast: a fishing net drying with its floats, a coil of rope,
+    # stones and shells of the beach, and a rock.
+    "history_gold_coast": ((fishing_net, rope_coil, beach_stones, sea_shells, fishing_net, rock),
+                           _palette((52, 50, 48), (150, 148, 140), (226, 222, 210), (176, 150, 104), (204, 128, 76), (110, 124, 96), (210, 166, 148), (255, 244, 220))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),

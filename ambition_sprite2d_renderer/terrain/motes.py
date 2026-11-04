@@ -255,6 +255,19 @@ def _fluff(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(seed * 1.2 + hairs * 0.65 + halo, 0.0, 1.0), colour
 
 
+def _spray(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """Fine spray of the sea that the wind carries in off the surf: a very
+    small round drop with a faint mist round it. The drops are of three
+    sizes; the fourth variant is a loose puff of mist with a few drops in
+    it."""
+    x, y = _cell()
+    if variant == 3:
+        drops = sum(_soft(x - dx, y - dy, 0.05, 1.4) for dx, dy in ((-0.12, 0.04), (0.08, -0.10), (0.14, 0.09)))
+        return np.clip(_soft(x, y, 0.26, 1.8) * 0.35 + drops * 0.9, 0.0, 1.0), colour
+    r = (0.05, 0.07, 0.09)[variant]
+    return np.clip(_soft(x, y, r, 1.3) * 1.1 + _soft(x, y, r * 3.2, 2.2) * 0.30, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -369,6 +382,8 @@ MOTES = {
     # Saint-Domingue: seeds on tufts of fluff drift over the plain in the
     # warm light of the late afternoon.
     "history_saint_domingue": (_fluff, (255, 244, 222)),
+    # The Gold Coast: fine spray of the sea, carried in off the surf.
+    "history_gold_coast": (_spray, (242, 248, 248)),
 }
 
 
@@ -441,6 +456,7 @@ SHADOWS = {
     "history_rapa_nui": (40, 44, 30),
     "history_benin": (60, 26, 16),
     "history_saint_domingue": (56, 28, 18),
+    "history_gold_coast": (44, 46, 48),
 }
 SHADOW_PX = (96, 28)
 
