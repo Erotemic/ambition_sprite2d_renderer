@@ -294,6 +294,30 @@ def _dust(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(_soft(x, y, r, 1.4) * (0.9, 0.8, 0.65)[variant] + _soft(x, y, r * 2.2, 2.4) * 0.18, 0.0, 1.0), colour
 
 
+def _haze(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """The warm wet air of a rainforest under the karst: soft specks of
+    haze that drift, in three sizes. The fourth variant is a firefly: a
+    small bright core of yellow-green in a wide soft light. Its colour is
+    its own, not the colour of the haze."""
+    x, y = _cell()
+    if variant == 3:
+        return np.clip(_soft(x, y, 0.44, 2.6) * 0.5 + _soft(x, y, 0.08, 1.2) * 1.2, 0.0, 1.0), (214, 250, 120)
+    r = (0.12, 0.18, 0.26)[variant]
+    return np.clip(_soft(x, y, r, 1.8) * (0.85, 0.65, 0.45)[variant] + _soft(x, y, r * 1.6, 2.6) * 0.18, 0.0, 1.0), colour
+
+
+def _paddy_mist(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """Mist over the paddies of a river delta, and chaff of rice that the
+    wind lifts at the harvest. The first two variants are soft wisps of
+    mist, wider than tall. The other two are husks of rice: a small golden
+    grain with a fine whisker. A husk has its own colour."""
+    x, y = _cell()
+    if variant < 2:
+        r = (0.20, 0.28)[variant]
+        return np.clip(_soft(x, y, r, 1.6, squash=1.9) * (0.55, 0.42)[variant], 0.0, 1.0), colour
+    return _chaff((236, 204, 120), variant)
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -414,6 +438,12 @@ MOTES = {
     # Andes, and fine dust over the desert of the Supe valley.
     "history_andes": (_frost, (246, 250, 255)),
     "history_supe": (_dust, (240, 220, 186)),
+    # Southeast Asia: specks of humid haze and a few fireflies under the
+    # karst of Wallacea; spray of the sea on the Austronesian shore; mist
+    # and rice chaff over the paddies of the Red River.
+    "history_wallacea": (_haze, (240, 244, 230)),
+    "history_austronesia": (_spray, (240, 250, 250)),
+    "history_red_river": (_paddy_mist, (232, 238, 240)),
 }
 
 
@@ -489,6 +519,9 @@ SHADOWS = {
     "history_gold_coast": (44, 46, 48),
     "history_andes": (40, 36, 34),
     "history_supe": (60, 46, 32),
+    "history_wallacea": (38, 44, 34),
+    "history_austronesia": (36, 30, 28),
+    "history_red_river": (52, 42, 32),
 }
 SHADOW_PX = (96, 28)
 

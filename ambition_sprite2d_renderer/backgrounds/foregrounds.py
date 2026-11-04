@@ -47,6 +47,7 @@ from . import history_americas_pacific as _americas_pacific
 from . import history_atlantic as _atlantic
 from . import history_origins as _origins
 from . import history_south_america as _south_america
+from . import history_southeast_asia as _southeast_asia
 from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
 from .military_tower import TOWER
 from .noodly import NOODLY
@@ -347,6 +348,13 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     # stands from below.
     "history_andes": (_south_america.andes_foreground, scale(_south_america.ANDES["near"], 0.9)),
     "history_supe": (_south_america.supe_foreground, scale(_south_america.SUPE["near"], 0.9)),
+    # Southeast Asia: ferns stand from below and a liana hangs over the
+    # karst of Wallacea; the fronds of a coconut palm hang over the lagoon
+    # and beach grass stands from below; on the Red River, rice heavy with
+    # grain stands from below and a spray of bamboo leaves hangs.
+    "history_wallacea": (_southeast_asia.wallacea_foreground, scale(_southeast_asia.WALLACEA["near"], 0.9)),
+    "history_austronesia": (_southeast_asia.austronesia_foreground, scale(_southeast_asia.AUSTRONESIA["near"], 0.9)),
+    "history_red_river": (_southeast_asia.red_river_foreground, scale(_southeast_asia.RED_RIVER["near"], 0.9)),
 }
 
 

@@ -2168,6 +2168,164 @@ def shicra_bag(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+# Southeast Asia. In Wallacea `metal` is the skin of a ripe fig and
+# `bloom` red ochre; on the Austronesian shore `metal` is a ripe banana and
+# `bloom` the pink of a shell; on the Red River `bloom` is ripe rice and
+# `wood` split bamboo.
+
+
+def fern(tile: Tile, c: dict) -> None:
+    """A fern of the rainforest floor: long fronds that arch up and out
+    from one crown. Each frond has pairs of leaflets that get smaller to
+    its tip."""
+    _shadow(tile, 7.5)
+    stem = _mix(c["plant"], c["dark"], 0.35)
+    for k, (angle, length) in enumerate(((-62.0, 10.5), (-30.0, 14.0), (2.0, 16.0), (32.0, 13.5), (64.0, 10.0))):
+        a = math.radians(angle)
+        tip = (M + math.sin(a) * length, G - 1.0 - math.cos(a) * length * 0.95)
+        bend = (M + math.sin(a) * length * 0.45, G - 1.0 - math.cos(a) * length * 0.75)
+        pts = [(M + (1 - t) ** 2 * 0.0 + 2 * (1 - t) * t * (bend[0] - M) + t * t * (tip[0] - M) * 1.0, (1 - t) ** 2 * (G - 1.0) + 2 * (1 - t) * t * bend[1] + t * t * (tip[1] + length * 0.18)) for t in np.linspace(0.0, 1.0, 9)]
+        colour = c["plant"] if k % 2 == 0 else _mix(c["plant"], c["dark"], 0.18)
+        leaflets = []
+        for j in range(1, 8):
+            x0, y0 = pts[j]
+            x1, y1 = pts[j + 1]
+            size = 2.4 * (1.0 - j / 9.0) + 0.5
+            nx, ny = -(y1 - y0), x1 - x0
+            n = math.hypot(nx, ny) or 1.0
+            nx, ny = nx / n, ny / n
+            for side in (-1.0, 1.0):
+                leaflets.append([(x0, y0), (x1, y1), (x0 + nx * side * size + (x1 - x0) * 0.6, y0 + ny * side * size + (y1 - y0) * 0.6)])
+        tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, q) for q in leaflets]), colour)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, pts, 0.3)), stem, 0.8)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 0.8, 1.8, ry=1.0)), c["dark"], 0.6)
+    tile.alpha *= tile.y < G
+
+
+def fallen_fruit(tile: Tile, c: dict) -> None:
+    """Ripe figs that fell from a fig tree of the forest, on one dead
+    leaf: round fruits with a light on top, and one fruit split open to
+    show its pale flesh full of seeds. Birds, bats and people of the
+    forest eat them."""
+    _shadow(tile, 8.5)
+    leaf = [(M - 9.0, G - 0.4), (M - 4.0, G - 3.0), (M + 3.0, G - 2.6), (M + 8.0, G - 0.6), (M + 2.0, G), (M - 5.0, G)]
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, leaf)), _mix(c["wood"], c["plant"], 0.25))
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 9.0, G - 0.4), (M + 8.0, G - 0.6)], 0.2)), c["dark"], 0.5)
+    for x, r in ((-4.6, 2.6), (0.6, 3.0), (-1.8, 2.2)):
+        up = 1.6 if x == -1.8 else 0.0
+        fruit = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x, G - r * 0.95 - up, r, ry=r * 0.92))
+        tile.put(fruit, c["metal"])
+        tile.put(fruit * (tile.y > G - r * 0.6 - up), c["dark"], 0.30)
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x - r * 0.35, G - r * 1.35 - up, r * 0.35, ry=r * 0.25)), (255, 236, 220), 0.45)
+    # The fruit that is split open: red rind, pale flesh, dark seeds.
+    sx = M + 5.6
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, sx, G - 2.2, 2.8, ry=2.2)), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, sx - 0.2, G - 2.5, 2.1, ry=1.5)), (232, 196, 170))
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, sx - 0.2, G - 2.5, 1.3, ry=0.9)), _mix(c["bloom"], (232, 196, 170), 0.5))
+    seeds = [(sx - 1.0, G - 2.8), (sx + 0.4, G - 2.2), (sx - 0.4, G - 3.0), (sx + 0.8, G - 2.9), (sx - 1.2, G - 2.1)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.22) for x, y in seeds]), c["dark"], 0.8)
+    tile.alpha *= tile.y < G
+
+
+def ochre_lump(tile: Tile, c: dict) -> None:
+    """A lump of red ochre, the paint of the oldest pictures in the caves.
+    One face of it is ground flat and smooth on a stone, so it is lighter
+    and has fine scratches. Red powder lies on the ground round it, and a
+    small chip lies next to it."""
+    _shadow(tile, 7.0)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 0.5, G - 0.3, 8.0, ry=1.1), blur=0.5), c["bloom"], 0.45)
+    lump = [(M - 5.6, G), (M - 6.0, G - 3.0), (M - 3.4, G - 6.6), (M + 0.6, G - 7.8), (M + 4.4, G - 5.6), (M + 5.6, G - 2.0), (M + 4.8, G)]
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, lump))
+    tile.put(body, c["bloom"])
+    face = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 3.4, G - 6.6), (M + 0.6, G - 7.8), (M + 4.4, G - 5.6), (M + 1.0, G - 3.6), (M - 2.4, G - 4.0)]))
+    tile.put(face, _mix(c["bloom"], (255, 210, 180), 0.30))
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M - 2.4 + k * 1.2, G - 4.4 - k * 0.3), (M - 0.6 + k * 1.2, G - 6.8 - k * 0.2)], 0.15) for k in range(4)]) * face, _mix(c["bloom"], c["dark"], 0.3), 0.6)
+    tile.put(body * (tile.y > G - 2.4), _mix(c["bloom"], c["dark"], 0.45), 0.6)
+    chip = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M + 6.6, G), (M + 7.2, G - 1.8), (M + 8.8, G - 1.4), (M + 9.0, G)]))
+    tile.put(chip, _mix(c["bloom"], c["dark"], 0.2))
+    tile.alpha *= tile.y < G
+
+
+def banana_plant(tile: Tile, c: dict) -> None:
+    """A young banana plant of an island garden: a thick soft stem of
+    leaf sheaths, a few long broad leaves that arch out (the wind tears
+    them along their ribs), and a hanging bunch of fruit with a dark red
+    bud at its end. The Austronesians carried bananas, taro and yams from
+    island to island in their canoes."""
+    _shadow(tile, 6.5)
+    stem = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 2.0, G), (M + 2.0, G), (M + 1.3, G - 13.0), (M - 1.3, G - 13.0)]))
+    tile.put(stem, _mix(c["plant"], (190, 190, 120), 0.35))
+    tile.put(stem * (tile.x > M + 0.4), c["dark"], 0.25)
+    for side, lift, length in ((-1.0, 13.0, 10.5), (1.0, 14.5, 10.5), (-1.0, 17.5, 7.0), (1.0, 18.5, 6.0)):
+        base = (M, G - lift)
+        tip = (M + side * length, G - lift + 2.6 - (0.0 if lift < 15 else 2.0))
+        ctrl = (M + side * length * 0.5, G - lift - 3.6)
+        rib = [((1 - t) ** 2 * base[0] + 2 * (1 - t) * t * ctrl[0] + t * t * tip[0], (1 - t) ** 2 * base[1] + 2 * (1 - t) * t * ctrl[1] + t * t * tip[1]) for t in np.linspace(0.0, 1.0, 9)]
+        width = [0.0, 1.6, 2.1, 2.3, 2.3, 2.1, 1.7, 1.1, 0.0]
+        upper = [(x, y - w) for (x, y), w in zip(rib, width)]
+        lower = [(x, y + w * 0.9) for (x, y), w in zip(rib, width)]
+        leaf = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, upper + lower[::-1]))
+        tile.put(leaf, c["plant"])
+        tile.put(leaf * tile.mask(lambda p, dx, dy: _poly(p, dx, dy, rib + lower[::-1])), c["dark"], 0.22)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, rib, 0.25)), _mix(c["plant"], (240, 240, 190), 0.45), 0.8)
+        tears = [(rib[j][0], rib[j][1] + width[j] * 0.9) for j in (3, 5)]
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y - 0.8), (x + side * 0.4, y + 0.1)], 0.3) for x, y in tears]), (0, 0, 0), 0.6)
+    # The bunch: rows of short curved fruits that point up, on a stalk
+    # that hangs down, and the bud at its end.
+    sx, sy = M + 3.0, G - 12.0
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 1.0, G - 14.0), (sx, sy), (sx + 0.4, sy + 7.0)], 0.35)), _mix(c["plant"], c["dark"], 0.4))
+    hands = [(sx + 0.2 + ox, sy + 1.2 + row * 1.6) for row in range(3) for ox in (-1.2, 0.0, 1.2)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.6, ry=0.95) for x, y in hands]), _mix(c["plant"], c["metal"], 0.35))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.2, y - 0.3, 0.25, ry=0.4) for x, y in hands]), (240, 240, 190), 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, sx + 0.4, sy + 7.6, 0.9, ry=1.5)), (130, 40, 56))
+    tile.alpha *= tile.y < G
+
+
+def rice_sheaf(tile: Tile, c: dict) -> None:
+    """A sheaf of rice at the harvest: the stalks are tied with a band of
+    straw, they spread at the foot so the sheaf stands, and the heavy
+    heads of grain hang over at the top in golden arcs."""
+    _shadow(tile, 5.5)
+    straw = _mix(c["bloom"], c["dark"], 0.30)
+    stalks, heads = [], []
+    for k in range(9):
+        t = (k - 4) / 4.0
+        top = (M + t * 3.2, G - 14.5 + abs(t) * 1.6)
+        stalks.append([(M + t * 4.0, G), (M + t * 0.8, G - 7.0), top])
+        side = 1.0 if t >= 0.0 else -1.0
+        if abs(t) < 0.05:
+            side = 1.0 if k % 2 else -1.0
+        heads.append([top, (top[0] + side * 2.2, top[1] - 1.2), (top[0] + side * 3.6, top[1] + 1.4), (top[0] + side * 3.8, top[1] + 4.0)])
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.5) for pts in stalks]), straw)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.35) for pts in heads]), _mix(c["bloom"], c["dark"], 0.15))
+    grains = [(x, y) for pts in heads for x, y in pts[1:]]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.5, ry=0.8) for x, y in grains]), c["bloom"])
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.15, y - 0.25, 0.22, ry=0.35) for x, y in grains]), (255, 244, 200), 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 1.8, G - 8.0, M + 1.8, G - 6.4)), _mix(straw, c["dark"], 0.35))
+    tile.alpha *= tile.y < G
+
+
+def rice_basket(tile: Tile, c: dict) -> None:
+    """A round basket of woven split bamboo, wide at its middle and
+    narrow at its mouth, full of grains of rice, and a flat winnowing tray
+    of the same weave that leans on it."""
+    _shadow(tile, 8.5)
+    tray = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 5.0, G - 6.0, 3.2, ry=6.0))
+    tile.put(tray, _mix(c["wood"], c["dark"], 0.20))
+    tile.put(tray * (np.abs(((tile.x * 0.8 + tile.y) % 1.4) - 0.7) < 0.18), c["dark"], 0.28)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 5.0, G - 6.0, 3.2, ry=6.0)) * (1.0 - tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 5.0, G - 6.0, 2.5, ry=5.3))), c["wood_light"], 0.6)
+    body = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M - 2.0, G - 4.6, 6.0, ry=4.6), _box(p, dx, dy, M - 6.0, G - 4.6, M + 2.0, G - 0.6), _poly(p, dx, dy, [(M - 6.2, G - 6.0), (M + 2.2, G - 6.0), (M + 1.0, G - 10.0), (M - 5.0, G - 10.0)])))
+    tile.put(body, c["wood"])
+    weave = ((np.abs(((tile.x + tile.y) % 1.6) - 0.8) < 0.22) | (np.abs(((tile.x - tile.y) % 1.6) - 0.8) < 0.22)).astype(np.float32)
+    tile.put(body * weave, c["dark"], 0.28)
+    tile.put(body * (tile.x < M - 4.0), c["wood_light"], 0.30)
+    tile.put(body * (tile.x > M + 0.8), c["dark"], 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 5.4, G - 10.6, M + 1.4, G - 9.4)), c["wood_light"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 2.0, G - 10.6, 3.0, ry=1.1)), c["bloom"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 2.6, G - 10.9, 1.4, ry=0.45)), (255, 248, 220), 0.5)
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -2273,6 +2431,16 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
                       _palette((40, 34, 30), (124, 116, 106), (214, 206, 190), (150, 110, 70), (216, 166, 64), (198, 164, 98), (176, 60, 52), (255, 210, 150))),
     "history_supe": ((cotton_plant, squash_vine, shicra_bag, rock, cotton_plant, shicra_bag),
                      _palette((50, 40, 30), (164, 150, 126), (226, 216, 194), (170, 140, 92), (206, 136, 58), (84, 118, 58), (236, 196, 64), (255, 226, 170))),
+    # Southeast Asia. Wallacea: ferns, fallen figs, a lump of red ochre and
+    # stones under the karst. The Austronesian islands: a banana plant,
+    # taro, coconuts and shells. The Red River: sheaves of rice, reeds and
+    # a basket of rice.
+    "history_wallacea": ((fern, fallen_fruit, ochre_lump, rock, fern, beach_stones),
+                         _palette((30, 36, 28), (156, 156, 148), (222, 220, 210), (122, 92, 60), (138, 58, 76), (66, 118, 60), (170, 64, 42), (255, 236, 180))),
+    "history_austronesia": ((banana_plant, taro, coconuts, sea_shells, banana_plant, taro),
+                            _palette((32, 28, 26), (112, 106, 100), (234, 224, 206), (124, 88, 58), (226, 196, 84), (86, 142, 62), (226, 128, 108), (255, 226, 170))),
+    "history_red_river": ((rice_sheaf, reeds, rice_basket, rice_sheaf, reeds, rice_basket),
+                          _palette((46, 38, 30), (134, 124, 106), (220, 212, 190), (184, 160, 100), (92, 92, 80), (104, 146, 68), (230, 192, 96), (240, 206, 120))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),

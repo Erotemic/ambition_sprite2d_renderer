@@ -789,6 +789,218 @@ def caral_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def _hand_stencil(tile: Tile, c: dict, cx: float, cy: float, size: float, turn: float) -> None:
+    """A hand stencil, as the first painters made them on the walls of
+    the caves: a person put a hand on the rock and blew red ochre round
+    it. So the hand is the bare rock, and a soft cloud of red is round it."""
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, cx, cy, size * 1.25, ry=size * 1.45), blur=size * 0.35), c["ochre"], 0.75)
+    ct, st = math.cos(turn), math.sin(turn)
+
+    def at(x: float, y: float) -> tuple[float, float]:
+        return (cx + (x * ct - y * st) * size, cy + (x * st + y * ct) * size)
+
+    fingers = [((-0.42, -0.30), (-0.62, -0.95)), ((-0.16, -0.40), (-0.20, -1.20)), ((0.10, -0.40), (0.16, -1.25)), ((0.34, -0.32), (0.48, -1.05)),
+               ((0.40, 0.10), (0.95, -0.30))]
+    hand = tile.mask(lambda p, dx, dy: (p.ellipse([(cx - size * 0.45) * K + dx, (cy - size * 0.40) * K + dy, (cx + size * 0.45) * K + dx, (cy + size * 0.55) * K + dy], fill=255),
+                                         _poly(p, dx, dy, [at(-0.30, 0.40), at(0.30, 0.40), at(0.24, 1.0), at(-0.24, 1.0)]),
+                                         [_line(p, dx, dy, [at(*a), at(*b)], size * 0.22) for a, b in fingers]))
+    tile.put(hand, c["frame"])
+    tile.put(hand * (tile.noise(14, 24, 2) > 0.55), c["frame_light"], 0.35)
+
+
+def wallacea_door(tile: Tile, c: dict) -> np.ndarray:
+    """The mouth of a cave in the limestone karst of Sulawesi. The rock is
+    pale grey, cut by the rain into flutes and pits, with moss on its top.
+    A hand stencil in red ochre is on the rock beside the mouth, as on the
+    walls of the caves of Maros. A screen of plaited palm leaf hangs in
+    the mouth as its leaf; a gap in the plait shows the light of a fire."""
+    inner = _frame(tile, c)
+    rng = tile.rng
+    floor = H - STEP
+    # The mouth: an uneven arch, wide at its foot.
+    left = [(11.0 + rng.uniform(-1.0, 1.0) + 4.0 * (k / 8.0) ** 2, floor - k * (floor - 46.0) / 8.0) for k in range(9)]
+    right = [(W - 11.0 + rng.uniform(-1.0, 1.0) - 3.0 * (k / 8.0) ** 2, floor - k * (floor - 50.0) / 8.0) for k in range(9)]
+    arch = [(W * 0.5 + 17.0 * math.cos(a) + rng.uniform(-0.8, 0.8), 46.0 - 24.0 * math.sin(a) + rng.uniform(-0.8, 0.8)) for a in np.linspace(math.pi * 0.06, math.pi * 0.94, 11)]
+    mouth_pts = left + arch[::-1] + right[::-1]
+    mouth = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, mouth_pts))
+    rock = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, floor)) * (1.0 - mouth)
+    # The rock: pale limestone, with upright flutes, dark streaks of
+    # water, pits and cracks.
+    tile.put(rock, c["frame"])
+    tile.tone((tile.noise(5, 10, 3) - 0.5) * 0.20 * rock)
+    phase = tile.x * 2.0 * math.pi / 4.2 + (tile.noise(3, 6, 2) - 0.5) * 5.0
+    tile.put(rock * np.clip(-np.cos(phase) - 0.6, 0, 1) * 2.4, c["dark"], 0.30)
+    tile.put(rock * np.clip(np.sin(phase) - 0.7, 0, 1) * 3.0, c["frame_light"], 0.55)
+    tile.put(rock * np.clip((tile.noise(12, 3, 2) - 0.62) * 5.0, 0, 1), _mix(c["frame"], c["dark"], 0.45), 0.5)
+    pits = [(rng.uniform(1.0, W - 1.0), rng.uniform(4.0, floor - 2.0), rng.uniform(0.5, 1.2)) for _ in range(26)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r, ry=r * 0.75) for x, y, r in pits]) * rock, c["dark"], 0.7)
+    # The rock is in shade at the rim of the mouth.
+    rim = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, mouth_pts), blur=1.6)
+    tile.put(rock * np.clip(rim * 2.0, 0, 1), c["dark"], 0.45)
+    # Moss along the top of the rock.
+    moss = [(x, rng.uniform(0.5, 3.0), rng.uniform(2.0, 4.4)) for x in np.linspace(0.0, W, 14)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r, ry=r * 0.6) for x, y, r in moss]), c["moss"])
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - r * 0.2, y - r * 0.3, r * 0.5, ry=r * 0.25) for x, y, r in moss]), _mix(c["moss"], (220, 240, 160), 0.35), 0.8)
+    _hand_stencil(tile, c, 9.5, 24.0, 4.2, -0.25)
+    _hand_stencil(tile, c, W - 8.5, 34.0, 3.4, 0.30)
+    # The screen: strips of palm leaf plaited in a check, hung from a
+    # pole across the mouth, with a border of a darker plait.
+    leaf = inner * mouth
+    tile.put(leaf, c["leaf"])
+    along = (np.floor(tile.x / 2.6) + np.floor(tile.y / 2.6)) % 2 == 0
+    tile.put(leaf * along, c["leaf_light"], 0.35)
+    tile.put(leaf * ~along, c["dark"], 0.16)
+    tile.put(leaf * (np.abs((tile.x % 2.6) - 1.3) > 1.1), c["dark"], 0.30)
+    tile.put(leaf * (np.abs((tile.y % 2.6) - 1.3) > 1.1), c["dark"], 0.30)
+    # The border: the screen less a copy of it a little smaller.
+    edge = leaf * (1.0 - np.clip(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(W * 0.5 + (x - W * 0.5) * 0.86, 46.0 + (y - 46.0) * 0.9 + 1.0) for x, y in mouth_pts])), 0, 1))
+    tile.put(edge * (np.abs(((tile.x + tile.y) % 2.4) - 1.2) < 0.45), c["accent"], 0.45)
+    for y in (58.0, 90.0):
+        tile.put(leaf * (np.abs(tile.y - y) < 0.8), c["dark"], 0.55)
+    tile.put(leaf * np.clip(1.0 - (tile.y - 22.0) / 18.0, 0, 1), c["dark"], 0.45)
+    pole = tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(14.0, 36.0), (W - 14.0, 35.0)], 1.8))
+    tile.put(pole, c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(14.0, 35.4), (W - 14.0, 34.4)], 0.5)), _mix(c["wood"], (255, 240, 210), 0.35), 0.8)
+    _window(tile, {**c, "frame": c["wood"]}, W * 0.5 - 3.5, 46.0, W * 0.5 + 3.5, 53.0, round_=True)
+    return leaf * (1.0 - pole)
+
+
+def _thatch_eave(tile: Tile, c: dict, depth: float, lift: float) -> np.ndarray:
+    """An eave of thatch across the top of the door, with ragged ends of
+    grass and the shade that it throws. `lift` raises its two ends: a
+    saddle roof curves up at each end. Returns its mask."""
+    rng = tile.rng
+    edge = [(x, depth + rng.uniform(-1.4, 1.4) - lift * ((x - W * 0.5) / (W * 0.5)) ** 2) for x in np.linspace(0.0, W, 24)]
+    eave = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(0.0, 0.0), (W, 0.0)] + edge[::-1]))
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(0.0, 0.0), (W, 0.0)] + [(x, y + 3.0) for x, y in edge[::-1]]), blur=1.2) * (1.0 - eave), (0, 0, 0), 0.35)
+    tile.put(eave, c["thatch"])
+    strands = [(rng.uniform(0.0, W), rng.uniform(0.0, depth - 3.0), rng.uniform(-0.8, 0.8)) for _ in range(80)]
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y0), (x + lean, y0 + 5.0)], 0.22) for x, y0, lean in strands]) * eave, _mix(c["thatch"], c["dark"], 0.45), 0.7)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x + 0.4, y0), (x + 0.4 + lean, y0 + 4.0)], 0.18) for x, y0, lean in strands[::2]]) * eave,
+             _mix(c["thatch"], (255, 240, 200), 0.4), 0.6)
+    return eave
+
+
+def _under_house(tile: Tile, c: dict, sill: float, steps: int, rail: RGB, tread: RGB) -> None:
+    """The space under a house on posts, from its sill to the ground: the
+    dark under the floor, the floor beam with the round ends of the floor
+    poles, and a short ladder of `steps` treads up to the door."""
+    floor = H - STEP
+    under = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, sill + 4.0, W - F, floor))
+    tile.put(under, _mix(c["dark"], c["frame"], 0.15))
+    tile.put(under * np.clip((tile.y - sill - 4.0) / (floor - sill - 4.0), 0, 1), _mix(c["frame"], c["dark"], 0.5), 0.5)
+    beam = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, sill, W, sill + 4.0))
+    tile.put(beam, c["frame"])
+    tile.put(beam * (tile.y < sill + 0.8), c["frame_light"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, sill + 2.0, 1.5) for x in np.arange(3.0, W, 4.2)]), _mix(c["frame"], c["dark"], 0.35))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.4, sill + 1.6, 0.7) for x in np.arange(3.0, W, 4.2)]), c["frame_light"], 0.5)
+    x0, x1 = W * 0.5 - 11.0, W * 0.5 + 11.0
+    rails = tile.mask(lambda p, dx, dy: (_line(p, dx, dy, [(x0 + 3.0, sill + 3.0), (x0, floor)], 1.8), _line(p, dx, dy, [(x1 - 3.0, sill + 3.0), (x1, floor)], 1.8)))
+    for k in range(steps):
+        y = sill + 4.0 + (floor - sill - 4.0) * (k + 0.75) / (steps + 0.4)
+        lean = 3.0 * (1.0 - (y - sill) / (floor - sill))
+        step = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + lean - 1.0, y - 1.4, x1 - lean + 1.0, y + 1.4))
+        tile.put(step, tread)
+        tile.put(step * (tile.y < y - 0.6), _mix(tread, (255, 245, 220), 0.35), 0.8)
+        tile.put(step * (tile.y > y + 0.7), c["dark"], 0.45)
+    tile.put(rails, rail)
+
+
+def austronesia_door(tile: Tile, c: dict) -> np.ndarray:
+    """The door of a house on posts on an island of the Austronesians: a
+    leaf of bamboo canes side by side, bound on two battens, in a wall of
+    woven split bamboo, under a deep eave of thatch. The floor of the house
+    is high off the ground, out of the wet and away from the pigs, so a
+    short ladder of bamboo goes up to the door."""
+    inner = _frame(tile, c)
+    sill = 84.0
+    # The wall: split bamboo woven in a twill, pale and shining.
+    wall = inner * (tile.y < sill)
+    tile.put(wall, c["wall"])
+    twill = ((np.floor(tile.x / 1.6) + np.floor(tile.y / 4.8) * 2 + np.floor(tile.y / 1.6)) % 4 < 2)
+    tile.put(wall * twill, _mix(c["wall"], (255, 250, 220), 0.35), 0.6)
+    tile.put(wall * ~twill, c["dark"], 0.12)
+    tile.put(wall * (np.abs((tile.y % 1.6) - 0.8) > 0.68), c["dark"], 0.25)
+    # The leaf: upright canes with nodes, bound on two battens.
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 15.0, 22.0, W - 15.0, sill))
+    tile.put(leaf, c["leaf"])
+    cane = (tile.x - 15.0) % 3.3
+    tile.put(leaf * np.clip(1.0 - np.abs(cane - 1.1) / 0.6, 0, 1), c["leaf_light"], 0.55)
+    tile.put(leaf * (cane > 2.9), c["dark"], 0.65)
+    nodes = np.abs(((tile.y + np.floor((tile.x - 15.0) / 3.3) * 5.3) % 13.0) - 6.5) > 6.1
+    tile.put(leaf * nodes, c["dark"], 0.45)
+    for y in (34.0, 72.0):
+        batten = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 15.0, y, W - 15.0, y + 3.0))
+        tile.put(batten, _mix(c["leaf"], c["dark"], 0.25))
+        tile.put(batten * (tile.y < y + 0.7), c["leaf_light"], 0.5)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y - 0.4), (x + 0.8, y + 3.4)], 0.4) for x in (17.5, W * 0.5, W - 17.5)]), c["cord"])
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, 13.6, 20.6, W - 13.6, 22.0), _box(p, dx, dy, 13.6, 20.6, 15.0, sill), _box(p, dx, dy, W - 15.0, 20.6, W - 13.6, sill))), c["frame"])
+    _window(tile, {**c, "frame": c["frame"]}, W * 0.5 - 4.0, 44.0, W * 0.5 + 4.0, 51.0)
+    _under_house(tile, c, sill, 3, c["leaf"], c["leaf_light"])
+    eave = _thatch_eave(tile, c, 15.0, 0.0)
+    return leaf * (1.0 - eave)
+
+
+def red_river_door(tile: Tile, c: dict) -> np.ndarray:
+    """The door of a house on posts of the Dong Son people of the Red
+    River, as their bronze drums show such houses: a leaf of dark wooden
+    planks in a wall of boards, under a saddle roof of thatch whose ends
+    curve up like the ends of a boat. A long-billed water bird is carved
+    on the lintel, as birds fly round the faces of the drums. Wooden steps
+    go up to the door, because the house stands high over the floods."""
+    inner = _frame(tile, c)
+    sill = 86.0
+    # The wall: boards laid one on another.
+    wall = inner * (tile.y < sill)
+    tile.put(wall, c["wall"])
+    course = tile.y % 6.0
+    tile.put(wall * (course < 0.6), c["frame_light"], 0.35)
+    tile.put(wall * (course > 5.4), c["dark"], 0.45)
+    tile.tone((tile.noise(3, 20, 2) - 0.5) * 0.18 * wall)
+    # The lintel: a wide board with a bird carved in it in low relief.
+    lintel = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F + 2.0, 13.0, W - F - 2.0, 25.0))
+    tile.put(lintel, c["frame"])
+    tile.put(lintel * (tile.y < 13.8), c["frame_light"], 0.6)
+    tile.put(lintel * (tile.y > 24.2), c["dark"], 0.6)
+    body = [(25.0, 20.0), (29.0, 18.4), (36.0, 18.2), (39.0, 19.4), (35.0, 21.0), (28.0, 21.2)]
+    # The wings are raised, as the birds on the drums fly.
+    wing = [(28.0, 19.0), (28.6, 13.8), (30.4, 15.0), (31.6, 13.4), (33.4, 14.8), (35.0, 13.6), (36.4, 18.6)]
+    tail = [(25.0, 19.8), (18.0, 20.4), (25.0, 20.8)]
+    legs = [(25.4, 20.6), (18.8, 22.6), (19.4, 23.0), (25.8, 21.2)]
+    neck = [(38.4, 19.2), (40.6, 16.6), (42.4, 15.6), (43.4, 16.4), (41.6, 17.6), (39.8, 20.2)]
+    bill = [(43.4, 15.6), (51.0, 17.6), (43.4, 16.6)]
+    crest = [(42.0, 15.8), (40.0, 14.2), (42.8, 15.2)]
+    bird = tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, q) for q in (body, wing, tail, legs, neck, bill, crest)])
+    tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(x + 0.4, y + 0.5) for x, y in q]) for q in (body, wing, tail, legs, neck, bill, crest)]) * lintel, c["dark"], 0.65)
+    tile.put(bird, c["carving"])
+    tile.put(bird * (tile.y < 18.4), c["frame_light"], 0.4)
+    tile.put(tile.mask(lambda p, dx, dy: (_line(p, dx, dy, [(29.4, 19.2), (31.4, 16.4)], 0.25), _line(p, dx, dy, [(32.2, 19.2), (33.8, 16.2)], 0.25), _dot(p, dx, dy, 42.4, 16.1, 0.4))), c["dark"], 0.8)
+    for x in (12.0, W - 12.0):
+        tile.put(tile.mask(lambda p, dx, dy: [p.ellipse([(x - r) * K + dx, (20.0 - r) * K + dy, (x + r) * K + dx, (20.0 + r) * K + dy], outline=255, width=max(1, int(0.4 * K))) for r in (1.2, 2.8)]), c["carving"], 0.8)
+    # The leaf: upright planks of dark wood, with a carved band across it
+    # of circles joined by lines, as on the bronze of the drums.
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 14.0, 27.0, W - 14.0, sill))
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 12, 2) - 0.5) * 0.22 * leaf)
+    for k in range(1, 4):
+        x = 14.0 + k * (W - 28.0) / 4.0
+        tile.put(leaf * (np.abs(tile.x - x) < 0.45), c["dark"], 0.8)
+        tile.put(leaf * (np.abs(tile.x - x - 0.9) < 0.3), c["leaf_light"], 0.3)
+    band = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 14.0, 60.0, W - 14.0, 67.0))
+    tile.put(band, _mix(c["leaf"], c["dark"], 0.25))
+    centres = [16.6 + k * (W - 33.2) / 5.0 for k in range(6)]
+    tile.put(tile.mask(lambda p, dx, dy: ([p.ellipse([(x - 2.2) * K + dx, (63.5 - 2.2) * K + dy, (x + 2.2) * K + dx, (63.5 + 2.2) * K + dy], outline=255, width=max(1, int(0.35 * K))) for x in centres],
+                                          [_dot(p, dx, dy, x, 63.5, 0.6) for x in centres],
+                                          [_line(p, dx, dy, [(a + 1.6, 65.0), (b - 1.6, 62.0)], 0.3) for a, b in zip(centres, centres[1:])])), c["carving"], 0.85)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, 14.0, 60.0, W - 14.0, 60.6), _box(p, dx, dy, 14.0, 66.4, W - 14.0, 67.0))), c["dark"], 0.7)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, 12.6, 25.6, W - 12.6, 27.0), _box(p, dx, dy, 12.6, 25.6, 14.0, sill), _box(p, dx, dy, W - 14.0, 25.6, W - 12.6, sill))), c["frame"])
+    _window(tile, c, W * 0.5 - 4.0, 36.0, W * 0.5 + 4.0, 43.0)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, W - 18.0, 74.0, 1.2)), c["accent"])
+    _under_house(tile, c, sill, 3, _mix(c["frame"], c["dark"], 0.2), c["frame"])
+    eave = _thatch_eave(tile, c, 10.0, 7.0)
+    return leaf * (1.0 - eave)
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -820,6 +1032,9 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     gold_coast_door: (SWING, False),
     andes_door: (SWING, False),
     caral_door: (SWING, False),
+    wallacea_door: (SWING, False),
+    austronesia_door: (SWING, False),
+    red_river_door: (SWING, False),
 }
 
 
@@ -934,6 +1149,18 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     # steps.
     "history_andes": (andes_door, {**_colours((128, 118, 106), (190, 158, 96), (40, 32, 26), (150, 64, 48), (255, 200, 130)), "thatch": (196, 166, 102)}),
     "history_supe": (caral_door, {**_colours((168, 152, 126), (232, 226, 210), (60, 48, 38), (178, 84, 58), (255, 222, 170)), "clay": (138, 112, 84), "band": (150, 104, 66)}),
+    # Southeast Asia. Wallacea: a screen of plaited palm leaf in the mouth
+    # of a limestone cave, hand stencils in red ochre beside it. The
+    # Austronesian islands: a door of bamboo canes in a wall of woven
+    # bamboo, under thatch, up a short ladder. The Red River: a door of
+    # dark planks under a saddle roof, a bird carved on its lintel, up
+    # wooden steps.
+    "history_wallacea": (wallacea_door, {**_colours((190, 188, 178), (178, 154, 100), (28, 30, 26), (170, 64, 42), (255, 206, 140)),
+                                         "moss": (56, 94, 50), "ochre": (176, 66, 44), "wood": (110, 80, 54)}),
+    "history_austronesia": (austronesia_door, {**_colours((104, 78, 52), (196, 180, 116), (34, 26, 20), (186, 82, 52), (255, 220, 160)),
+                                               "wall": (214, 196, 140), "thatch": (184, 156, 96), "cord": (120, 84, 50)}),
+    "history_red_river": (red_river_door, {**_colours((122, 88, 56), (88, 58, 38), (34, 24, 18), (196, 150, 70), (255, 214, 150)),
+                                           "wall": (140, 104, 70), "thatch": (170, 144, 92), "carving": (190, 150, 96)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),
