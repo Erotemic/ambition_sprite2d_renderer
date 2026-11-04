@@ -1,15 +1,15 @@
 {
   "schema": "llm-resource-tally/v3",
-  "through": "2026-10-27T16:36:23.178046+00:00",
-  "ledger_rows": 718,
-  "commits_accounted": 515,
-  "turns": 148032,
+  "through": "2026-11-04T01:35:13.358613+00:00",
+  "ledger_rows": 941,
+  "commits_accounted": 699,
+  "turns": 170508,
   "tokens": {
-    "input": 4779617,
-    "cache_write": 468925698,
-    "cache_read": 57194996199,
-    "output": 103048471,
-    "billable_input": 57668701514
+    "input": 22276231,
+    "cache_write": 508656475,
+    "cache_read": 63685161653,
+    "output": 119710852,
+    "billable_input": 64216094359
   },
   "by_model": {
     "claude-opus-5": {
@@ -43,10 +43,10 @@
       "output": 60511
     },
     "claude-opus-5-5": {
-      "input": 112402,
-      "cache_write": 219802741,
-      "cache_read": 19382661690,
-      "output": 46248415
+      "input": 133080,
+      "cache_write": 245046334,
+      "cache_read": 22755715946,
+      "output": 53727883
     },
     "gpt-6-sol": {
       "input": 1386923,
@@ -61,32 +61,38 @@
       "output": 18221
     },
     "gpt-6.1-sol": {
-      "input": 1772114,
+      "input": 19196629,
       "cache_write": 0,
-      "cache_read": 170888576,
-      "output": 611765
+      "cache_read": 2600958976,
+      "output": 7919898
+    },
+    "claude-fable-5-1": {
+      "input": 51421,
+      "cache_write": 14487184,
+      "cache_read": 687040798,
+      "output": 1874780
     }
   },
   "by_activity": {
     "unlabeled": {
-      "input": 4779617,
-      "cache_write": 468925698,
-      "cache_read": 57194996199,
-      "output": 103048471
+      "input": 22276231,
+      "cache_write": 508656475,
+      "cache_read": 63685161653,
+      "output": 119710852
     }
   },
   "by_agent": {
     "claude-code": {
-      "input": 293464,
-      "cache_write": 468925698,
-      "cache_read": 56871423463,
-      "output": 102123582
+      "input": 365563,
+      "cache_write": 508656475,
+      "cache_read": 60931518517,
+      "output": 111477830
     },
     "codex": {
-      "input": 4486153,
+      "input": 21910668,
       "cache_write": 0,
-      "cache_read": 323572736,
-      "output": 924889
+      "cache_read": 2753643136,
+      "output": 8233022
     }
   },
   "server_tool_calls": {
@@ -94,12 +100,12 @@
     "web_fetch": 0
   },
   "time": {
-    "wall_clock_s": 5556357.6
+    "wall_clock_s": 6278230.8
   },
   "compaction_signals": {
-    "events": 189,
-    "peak_context_tokens": 140636808,
-    "summary_chars": 3493859
+    "events": 202,
+    "peak_context_tokens": 150577239,
+    "summary_chars": 3747454
   },
   "modeled_post_hoc": "inference_seconds, energy_kwh, carbon_gco2e, usd — derived from the measurements above by `estimate`; not stored here."
 }
