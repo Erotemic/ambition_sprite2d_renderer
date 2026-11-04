@@ -509,6 +509,43 @@ def mat_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def benin_door(tile: Tile, c: dict) -> np.ndarray:
+    """A door of Benin: one leaf of dark carved wood set in a wall of red
+    earth. The wall has horizontal ridges. The leaf has a carved band of
+    interlace down its middle, a panel on each side of it, rows of brass
+    studs along its edges and a ring of brass to pull it."""
+    leaf = _frame(tile, c)
+    wall = (1.0 - leaf) * (tile.y < H - STEP)
+    course = (tile.y % 7.0) / 7.0
+    tile.put(wall * np.clip(1.0 - np.abs(course - 0.12) / 0.10, 0.0, 1.0), c["frame_light"], 0.45)
+    tile.put(wall * np.clip(1.0 - np.abs(course - 0.92) / 0.08, 0.0, 1.0), c["dark"], 0.40)
+    tile.tone((tile.noise(3, 10, 2) - 0.5) * 0.12 * leaf)
+    # The grain of the wood, and the two panels in low relief.
+    tile.put(leaf * (np.abs(((tile.x + (tile.noise(2, 8, 2) - 0.5) * 3.0) % 2.2) - 1.1) < 0.12), c["dark"], 0.25)
+    for x0, x1 in ((F + 6.0, W * 0.5 - 6.0), (W * 0.5 + 6.0, W - F - 6.0)):
+        panel = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, 34.0, x1, 104.0))
+        tile.put(panel * (1.0 - tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 1.0, 35.0, x1, 104.0))), c["dark"], 0.6)
+        tile.put(panel * (1.0 - tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, 34.0, x1 - 1.0, 103.0))), c["leaf_light"], 0.4)
+    # The band of interlace: two cords that cross over and under, as on
+    # the carved doors and the brass of the court.
+    xs = W * 0.5
+    t = np.linspace(30.0, 110.0, 120)
+    for phase in (0.0, math.pi):
+        pts = [(xs + 3.2 * math.sin(y * 0.42 + phase), y) for y in t]
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, pts, 1.1)) * leaf, c["leaf_light"], 0.75)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x + 0.4, y + 0.4) for x, y in pts], 0.4)) * leaf, c["dark"], 0.55)
+    # The brass studs along the edges, and the ring.
+    studs = [(x, y) for x in (F + 3.0, W - F - 3.0) for y in np.arange(14.0, 114.0, 8.0)] + [(x, y) for x in np.arange(F + 9.0, W - F - 6.0, 8.0) for y in (14.0, 112.0)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x + 0.4, y + 0.4, 1.3) for x, y in studs]) * leaf, c["dark"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 1.2) for x, y in studs]) * leaf, c["accent"])
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.35, y - 0.35, 0.4) for x, y in studs]) * leaf, (255, 250, 220), 0.6)
+    x, y = W * 0.5 + 9.0, 70.0
+    tile.put(tile.mask(lambda p, dx, dy: p.ellipse([(x - 3.0) * K + dx, (y - 3.0) * K + dy, (x + 3.0) * K + dx, (y + 3.0) * K + dy], outline=255, width=int(0.9 * K))), c["accent"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, y - 3.0, 1.3)), c["accent"])
+    _window(tile, c, W * 0.5 - 6.0, 18.0, W * 0.5 + 6.0, 26.0)
+    return leaf
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -535,6 +572,7 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     wattle_door: (SWING, False),
     corbel: (SWING, False),
     mat_door: (SWING, False),
+    benin_door: (SWING, False),
 }
 
 
@@ -633,6 +671,9 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "history_lapita": (mat_door, _colours((110, 80, 56), (196, 166, 108), (40, 30, 24), (176, 92, 56), (255, 200, 130))),
     "history_open_ocean": (mat_door, _colours((96, 74, 54), (170, 146, 98), (16, 20, 30), (60, 120, 160), (255, 180, 110))),
     "history_rapa_nui": (stone, _colours((88, 88, 92), (150, 128, 100), (30, 30, 30), (172, 72, 52), (255, 226, 170))),
+    # The Atlantic world. Benin City: a carved door of dark wood with brass
+    # studs, in a wall of red earth with horizontal ridges.
+    "history_benin": (benin_door, _colours((164, 74, 46), (78, 48, 32), (34, 18, 12), (226, 176, 72), (255, 214, 140))),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

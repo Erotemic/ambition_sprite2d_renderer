@@ -267,6 +267,12 @@ SKINS: tuple[Skin, ...] = (
     # and the marks of the toki, under wind-blown turf; the fitted basalt
     # slabs of an ahu are the platform.
     Skin("history_rapa_nui", "tuff", (138, 120, 96), (58, 50, 42), (196, 178, 144), (214, 150, 60), "turf", (122, 148, 66), "roots", "ahu"),
+    # The History dimension: the Atlantic world (`backgrounds/history_atlantic.py`).
+    # Benin City: red laterite earth laid in courses with horizontal ridges,
+    # as in the walls of the city and the palace, under a darker cap of
+    # earth that was polished smooth; a squared beam of hardwood is the
+    # platform.
+    Skin("history_benin", "ridged_laterite", (164, 74, 46), (70, 30, 20), (212, 120, 78), (226, 176, 72), "polished_earth", (104, 42, 28), "roots", "hardwood_beam"),
     # Great slabs, each with one sign cut in it that gives a little light.
     Skin("eclipse", "monolith", (30, 34, 86), (10, 12, 36), (72, 78, 152), (92, 232, 200), "edge", (44, 50, 112), "lip", "slab"),
 )
@@ -1207,6 +1213,27 @@ def fill(skin: Skin) -> Image.Image:
         tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x0 + 0.4, y0), (x1 + 0.4, y1)], 0.25) for x0, y0, x1, y1 in marks]), skin.light, 0.30)
         lichen = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.5, 1.4)) for _ in range(10)]
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r, ry=r * 0.8) for x, y, r in lichen]), skin.accent, 0.55)
+    elif skin.material == "ridged_laterite":
+        # Red laterite earth laid in courses, as the builders of Benin laid
+        # their walls: each course is a band with a rounded ridge on its top
+        # that catches the light and a dark groove under it. The earth has
+        # small pebbles, nodules of iron rust and the marks of the hands that
+        # smoothed it.
+        tile.put(np.ones_like(tile.alpha), skin.base)
+        tile.tone((tile.noise(6, 6, 3) - 0.5) * 0.18)
+        course = 64.0 / 6.0
+        wave = tile.y + 0.6 * np.sin(tile.x * math.pi / 32.0 + 1.3)
+        u = (wave % course) / course
+        tile.put(np.clip(1.0 - np.abs(u - 0.10) / 0.08, 0.0, 1.0), skin.light, 0.45)
+        tile.put(np.clip(1.0 - np.abs(u - 0.94) / 0.06, 0.0, 1.0), skin.dark, 0.60)
+        tile.put(np.clip((u - 0.55) / 0.40, 0.0, 1.0), skin.dark, 0.16)
+        strokes = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(2.0, 4.0)) for _ in range(14)]
+        tile.put(tile.mask(lambda p, dx, dy: [p.arc([(x - r) * K + dx, (y - r * 0.4) * K + dy, (x + r) * K + dx, (y + r * 0.4) * K + dy], 200, 340, fill=255, width=max(1, int(0.25 * K))) for x, y, r in strokes]), skin.light, 0.22)
+        pebbles = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.4, 1.0)) for _ in range(16)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y + 0.3, r, ry=r * 0.7) for x, y, r in pebbles]), skin.dark, 0.5)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r * 0.8, ry=r * 0.6) for x, y, r in pebbles]), _mix(skin.light, (220, 200, 180), 0.3), 0.7)
+        nodules = [(rng.uniform(0, 64), rng.uniform(0, 64)) for _ in range(26)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.4) for x, y in nodules]), _mix(skin.dark, (120, 40, 20), 0.4), 0.7)
     else:  # earth
         tile.put(np.ones_like(tile.alpha), skin.base)
         tile.tone((tile.noise(6, 6, 4) - 0.5) * 0.5)
@@ -1498,6 +1525,21 @@ def cap(skin: Skin) -> Image.Image:
                 gap = 6.0 / (dots + 1)
                 tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x0 + 1.0 + gap * (j + 1), top - 0.4, 0.38) for j in range(dots)]), ink, 0.9)
         tile.put(np.clip(1.0 - (y - s - thick) / 3.0, 0.0, 1.0) * (y >= s + thick), (0, 0, 0), 0.36)
+        return tile.publish()
+    if skin.cap == "polished_earth":
+        # The top course of a wall of Benin: earth darker than the wall,
+        # rubbed smooth until it shines. Its top is round and lit, a soft
+        # shine runs along it, and its lower edge is a ridge over a groove.
+        thick = 5.6
+        body = ((y >= s - 0.4) & (y < s + thick)).astype(np.float32)
+        tile.put(body, skin.cap_colour)
+        tile.tone(((tile.noise(10, 2, 2) - 0.5) * 0.14) * body)
+        tile.put(np.clip(1.0 - np.abs(y - s - 0.2) / 0.7, 0.0, 1.0) * body, _mix(skin.cap_colour, skin.light, 0.55), 0.8)
+        shine = np.clip(1.0 - np.abs(y - s - 1.6) / 0.5, 0.0, 1.0) * np.clip((tile.noise(6, 1, 2) - 0.35) * 3.0, 0.0, 1.0)
+        tile.put(shine * body, (255, 226, 190), 0.30)
+        tile.put(((y >= s + thick - 1.4) & (y < s + thick - 0.8)).astype(np.float32), _mix(skin.cap_colour, skin.light, 0.30), 0.7)
+        tile.put(((y >= s + thick - 0.8) & (y < s + thick)).astype(np.float32), skin.dark, 0.8)
+        tile.put(np.clip(1.0 - (y - s - thick) / 3.0, 0.0, 1.0) * (y >= s + thick), (0, 0, 0), 0.34)
         return tile.publish()
     if skin.cap == "rope_beam":
         # A beam of tarred timber on the edge of the quay, a rope lashed
@@ -2279,6 +2321,26 @@ def oneway(skin: Skin) -> Image.Image:
         tile.put((y < 0.8).astype(np.float32), (190, 190, 186), 0.6)
         tile.put(((y >= 6.2) & (y < 7.0)).astype(np.float32), basalt_dark, 0.7)
         tile.put(np.clip(1.0 - (y - 7.0) / 3.0, 0, 1) * (y >= 7.0), (0, 0, 0), 0.24)
+    elif skin.oneway == "hardwood_beam":
+        # A squared beam of dark hardwood, as in the roofs and the galleries
+        # of Benin: the flat facets that the adze left on its face, its
+        # grain along it, a joint each thirty-two units with a wooden peg on
+        # each side of it, and a lit top edge.
+        wood, wood_dark, wood_light = (110, 70, 44), (52, 30, 20), (164, 116, 76)
+        body = (y < 6.2).astype(np.float32)
+        tile.put(body, wood)
+        facets = [(rng.uniform(0.0, 64.0), rng.uniform(3.0, 6.0)) for _ in range(9)]
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x, 0.9, x + w, 5.2) for x, w in facets]), wood_light, 0.18)
+        grain = np.clip(1.0 - np.abs(((y + (tile.noise(3, 8, 2) - 0.5) * 2.4) % 1.3) - 0.65) / 0.12, 0.0, 1.0)
+        tile.put(grain * body, wood_dark, 0.22)
+        tile.put((y < 0.8).astype(np.float32), wood_light, 0.85)
+        tile.put(((y >= 5.4) & (y < 6.2)).astype(np.float32), wood_dark, 0.85)
+        for k in range(2):
+            x0 = k * 32.0 + 20.0
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 0.35, 0.0, x0 + 0.35, 6.2)), wood_dark, 0.9)
+            tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x0 + side, 3.1, 0.75) for side in (-2.6, 2.6)]), _mix(wood_light, (220, 190, 140), 0.3))
+            tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x0 + side + 0.25, 3.35, 0.35) for side in (-2.6, 2.6)]), wood_dark, 0.6)
+        tile.put(np.clip(1.0 - (y - 6.2) / 3.0, 0, 1) * (y >= 6.2), (0, 0, 0), 0.24)
     else:  # slab
         stone = _mix(skin.base, skin.light, 0.45)
         tile.put((y < 6.4).astype(np.float32), stone)

@@ -44,6 +44,7 @@ from .art_quarters import stage_foreground as _art_stage
 from .artkit import Art, Pen, polar, scale
 from . import history_eras as _history
 from . import history_americas_pacific as _americas_pacific
+from . import history_atlantic as _atlantic
 from . import history_origins as _origins
 from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
 from .military_tower import TOWER
@@ -332,6 +333,9 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_lapita": (_americas_pacific.lapita_foreground, scale(_americas_pacific.LAPITA["near"], 0.9)),
     "history_open_ocean": (_americas_pacific.open_ocean_foreground, scale(_americas_pacific.OPEN_OCEAN["near"], 0.9)),
     "history_rapa_nui": (_americas_pacific.rapa_nui_foreground, scale(_americas_pacific.RAPA_NUI["near"], 0.9)),
+    # The Atlantic world: the fronds of oil palms hang over Benin City, and
+    # grass stands from below.
+    "history_benin": (_atlantic.benin_foreground, scale(_atlantic.BENIN["near"], 0.9)),
 }
 
 

@@ -221,6 +221,18 @@ def _butterfly(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(np.clip(wings * 3.0, 0.0, 1.0) * 0.9 + body, 0.0, 1.0), colour
 
 
+def _dust_spark(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """Fine warm dust in the air, and now and then a spark from a furnace.
+    Three variants are grains of dust: small and soft. The fourth is a
+    spark: a bright core with a short soft tail."""
+    x, y = _cell()
+    if variant < 3:
+        r = (0.07, 0.10, 0.13)[variant]
+        return _soft(x, y, r, 1.4) * (0.9, 0.75, 0.6)[variant] + _soft(x, y, r * 2.2, 2.4) * 0.15, colour
+    tail = np.clip(1.0 - np.abs(x) / 0.025, 0.0, 1.0) * np.clip((y + 0.02) / 0.24, 0.0, 1.0) * (y < 0.24)
+    return np.clip(_soft(x, y, 0.06, 1.0) * 1.4 + _soft(x, y, 0.20, 2.6) * 0.45 + tail * 0.5, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -329,6 +341,9 @@ MOTES = {
     "history_lapita": (_petal, (255, 236, 196)),
     "history_open_ocean": (_dot, (214, 228, 242)),
     "history_rapa_nui": (_chaff, (226, 214, 150)),
+    # The Atlantic world: warm red dust over Benin City, and the sparks of
+    # the casters' furnaces.
+    "history_benin": (_dust_spark, (255, 196, 128)),
 }
 
 
@@ -399,6 +414,7 @@ SHADOWS = {
     "history_lapita": (40, 30, 26),
     "history_open_ocean": (14, 22, 40),
     "history_rapa_nui": (40, 44, 30),
+    "history_benin": (60, 26, 16),
 }
 SHADOW_PX = (96, 28)
 

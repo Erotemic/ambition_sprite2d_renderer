@@ -1803,6 +1803,85 @@ def paenga(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+# The Atlantic world. In Benin City `wood` is red-brown clay, `metal`
+# brass, `bloom` the red of kola nuts and `stone_light` the white of cowries.
+
+
+def yams(tile: Tile, c: dict) -> None:
+    """Three yams in a heap: long tubers, thick in the middle and narrow at
+    the ends, with rough dark brown skin and fine roots; one is cut across
+    so its white flesh shows."""
+    _shadow(tile, 8.5)
+    skin_colour = _mix(c["wood"], (96, 66, 44), 0.65)
+
+    def tuber(x0: float, y0: float, x1: float, y1: float, thick: float) -> list:
+        mx, my = (x0 + x1) * 0.5, (y0 + y1) * 0.5
+        nx, ny = -(y1 - y0), x1 - x0
+        d = math.hypot(nx, ny) or 1.0
+        nx, ny = nx / d * thick, ny / d * thick
+        return [(x0, y0), (mx * 0.6 + x0 * 0.4 + nx, my * 0.6 + y0 * 0.4 + ny), (mx * 0.6 + x1 * 0.4 + nx * 0.9, my * 0.6 + y1 * 0.4 + ny * 0.9), (x1, y1),
+                (mx * 0.6 + x1 * 0.4 - nx * 0.8, my * 0.6 + y1 * 0.4 - ny * 0.8), (mx * 0.6 + x0 * 0.4 - nx, my * 0.6 + y0 * 0.4 - ny)]
+
+    for x0, y0, x1, y1, thick in ((M - 10.0, G - 1.4, M + 1.0, G - 2.6, 2.4), (M - 1.0, G - 1.2, M + 9.0, G - 3.0, 2.6), (M - 7.0, G - 6.0, M + 6.0, G - 5.0, 2.4)):
+        pts = tuber(x0, y0, x1, y1, thick)
+        body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts))
+        tile.put(body, skin_colour)
+        tile.put(body * (tile.y < (y0 + y1) * 0.5 - thick * 0.4), _mix(skin_colour, (220, 190, 150), 0.30), 0.6)
+        tile.put(body * (np.abs(((tile.x * 1.1 + tile.y * 0.5) % 1.7) - 0.85) < 0.10), c["dark"], 0.35)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x1, y1), (x1 + 1.2, y1 + 0.6)], 0.15), _line(p, dx, dy, [(x0, y0), (x0 - 1.0, y0 + 0.8)], 0.15)]), c["dark"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 9.2, G - 3.0, 1.0, ry=2.0)), (244, 236, 214))
+    tile.alpha *= tile.y < G
+
+
+def cowries(tile: Tile, c: dict) -> None:
+    """A heap of cowrie shells, the money of the coast and of Benin: small
+    white shells, each an egg with a slit and a row of teeth on its face."""
+    _shadow(tile, 8.0)
+    shells = [(-6.0, 1.2), (-3.6, 1.2), (-1.2, 1.2), (1.2, 1.2), (3.6, 1.2), (6.0, 1.2), (-4.8, 3.2), (-2.4, 3.2), (0.0, 3.2), (2.4, 3.2), (4.8, 3.2),
+              (-3.6, 5.2), (-1.2, 5.2), (1.2, 5.2), (3.6, 5.2), (-2.4, 7.2), (0.0, 7.2), (2.4, 7.2), (-1.2, 9.0), (1.2, 9.0), (9.2, 1.0)]
+    for k, (x, y) in enumerate(shells):
+        body = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x, G - y, 1.4, ry=1.0))
+        tile.put(body, c["dark"], 0.45)
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x - 0.1, G - y - 0.15, 1.2, ry=0.85)), c["stone_light"] if k % 3 else _mix(c["stone_light"], (220, 200, 160), 0.35))
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + x - 0.8, G - y), (M + x + 0.8, G - y)], 0.18)), c["dark"], 0.7)
+    tile.alpha *= tile.y < G
+
+
+def kola_nuts(tile: Tile, c: dict) -> None:
+    """Kola nuts in a shallow bowl of carved wood, as they are offered to a
+    guest: red and pale nuts, each in lobes."""
+    _shadow(tile, 7.5)
+    nuts = [(-3.4, 6.0, c["bloom"]), (0.0, 6.6, _mix(c["bloom"], (240, 210, 170), 0.55)), (3.4, 6.0, c["bloom"]), (-1.6, 8.0, _mix(c["bloom"], c["dark"], 0.2)),
+            (1.8, 8.0, c["bloom"])]
+    for x, y, colour in nuts:
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x, G - y, 2.0, ry=1.6)), colour)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + x, G - y - 1.4), (M + x + 0.3, G - y + 1.2)], 0.2)), c["dark"], 0.5)
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x - 0.7, G - y - 0.6, 0.5)), (255, 240, 220), 0.35)
+    bowl = tile.mask(lambda p, dx, dy: p.pieslice([(M - 7.0) * K + dx, (G - 13.0) * K + dy, (M + 7.0) * K + dx, (G - 1.0) * K + dy], 0, 180, fill=255))
+    tile.put(bowl, _mix(c["wood"], c["dark"], 0.35))
+    tile.put(bowl * (tile.x < M - 3.0), c["wood_light"], 0.30)
+    tile.put(bowl * (np.abs(((tile.x + tile.y) % 2.4) - 1.2) < 0.2) * (tile.y > G - 6.0), c["dark"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 2.4, G - 1.2, M + 2.4, G)), _mix(c["wood"], c["dark"], 0.35))
+    tile.alpha *= tile.y < G
+
+
+def brass_bell(tile: Tile, c: dict) -> None:
+    """A small bell of cast brass, of the kind rung at a shrine: a tall
+    square bell that narrows to its top, with a loop to hang it, a pattern
+    cast on its face, and a short striker that leans on it."""
+    _shadow(tile, 5.0)
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 4.6, G - 0.6), (M + 4.6, G - 0.6), (M + 2.6, G - 11.0), (M - 2.6, G - 11.0)]))
+    tile.put(body, c["metal"])
+    tile.put(body * (tile.x < M - 1.4), (255, 236, 170), 0.45)
+    tile.put(body * (tile.x > M + 1.6), c["dark"], 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: p.ellipse([(M - 1.8) * K + dx, (G - 14.6) * K + dy, (M + 1.8) * K + dx, (G - 10.8) * K + dy], outline=255, width=max(1, int(0.7 * K)))), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M - 3.6 + k * 0.3, G - 3.4 - k * 2.4, M + 3.6 - k * 0.3, G - 3.0 - k * 2.4) for k in range(3)]), _mix(c["metal"], c["dark"], 0.45), 0.8)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - 5.8, 0.45) for x in (-1.6, 0.0, 1.6)]), _mix(c["metal"], c["dark"], 0.5), 0.8)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 0.9, 4.4, ry=0.6)), c["dark"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 5.4, G - 0.4), (M + 8.6, G - 7.6)], 0.7)), _mix(c["wood"], c["dark"], 0.3))
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -1889,6 +1968,9 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "history_lapita": ((shells, lapita_sherd, taro, obsidian, coral, grass_tuft), _palette((30, 26, 24), (100, 94, 90), (220, 210, 196), (176, 96, 60), (30, 30, 36), (80, 130, 70), (240, 150, 130), (255, 210, 150))),
     "history_open_ocean": ((rope_coil, coconuts, water_gourd, fish_basket, coconuts, rope_coil), _palette((14, 22, 36), (96, 100, 112), (204, 206, 210), (156, 116, 70), (120, 110, 90), (110, 128, 60), (230, 170, 110), (255, 190, 130))),
     "history_rapa_nui": ((grass_tuft, stone_adze, obsidian, rock, paenga, grass_tuft), _palette((30, 34, 26), (110, 104, 96), (200, 190, 170), (130, 96, 60), (66, 68, 72), (130, 150, 70), (214, 150, 60), (255, 230, 180))),
+    # The Atlantic world. Benin City: clay pots, yams, a heap of cowries,
+    # kola nuts in a bowl, a small brass bell, and grass.
+    "history_benin": ((clay_pots, yams, cowries, kola_nuts, brass_bell, grass_tuft), _palette((44, 24, 16), (150, 90, 64), (246, 240, 224), (170, 92, 58), (226, 176, 72), (110, 140, 64), (176, 54, 44), (255, 214, 150))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),
