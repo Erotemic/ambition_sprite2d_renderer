@@ -1,5 +1,5 @@
 """The props of the East Asian coast (the History dimension): Jomon Japan,
-ancient Taiwan and Silla.
+ancient Taiwan and Silla; Song China, Heian Japan and Joseon Korea.
 
 At Sannai-Maruyama, in the north of Honshu, a Jomon village stood from
 about 3900 to 2200 BCE. Its people lived in pit houses: a round floor dug
@@ -21,6 +21,24 @@ Cheomseongdae, a tower of granite from which the sky was watched. Round the
 city are the great tomb mounds of the kings and queens of Silla. In some of
 them were gold crowns: a band with uprights shaped like trees and antlers,
 hung with gold spangles and curved jade (gogok).
+
+Hangzhou was the capital of the Southern Song (about 1200 CE), and by
+some estimates the largest city in the world. Pleasure boats with small
+cabins crossed West Lake. The Song state printed the first paper money
+from plates of bronze, with printed borders and red seals. Song books
+tell of the south-pointing fish: a thin leaf of magnetized iron, cut like a
+fish, that floats in a bowl of water and turns to the south.
+
+At Heian-kyo (about 1000 CE) the court lived in mansions of wood, with
+folding screens (byobu) painted with hills, water and clouds. Nobles rode
+in tall ox carriages (gissha): a cabin on two big wheels, with blinds of
+bamboo at its front, drawn by one ox.
+
+At Hanyang in the reign of King Sejong, his engineer Jang Yeong-sil made a
+rain gauge of bronze (cheugugi, 1441) that stood on a stone stand, and a
+water clock that struck the hours by itself (Jagyeongnu, 1434). Water ran
+from great vessels on steps into tall vessels; a float rose in them and
+set off wooden figures that struck a bell, a drum and a gong.
 
 These props are drawn in the cel style of the dimension's cast
 (`targets/characters/_history_americas_kit.py`): flat colour, one shade, a
@@ -49,6 +67,31 @@ bold warm outline. They show the skill of the people who made them.
 - ``history_gold_crown``: scenery, a Silla gold crown on a low wooden
   stand: a band, three uprights shaped like trees, two shaped like
   antlers, gold spangles, green curved jades and two long pendants.
+- ``history_lake_boat``: the look of a platform, a West Lake pleasure boat:
+  a long, flat hull of wood with a red band, a cabin of wood with a curved
+  roof of woven matting in its middle, a pole of bamboo at the stern and a
+  red lantern at the bow. Its deck is the platform (`LAKE_BOAT_SPAN` =
+  (24, 360), `LAKE_BOAT_TOP` = 104, in a 384 x 160 frame).
+- ``history_money_press``: scenery, a printer's bench with a bronze plate
+  inked black, an ink stone, brushes, a stack of new paper money and two
+  sheets that hang to dry. The notes carry printed borders, blocks and
+  strokes and red seals, but no real writing.
+- ``history_compass_bowl``: scenery, the south-pointing fish: a shallow
+  celadon bowl of water on a small stand, with a fish of iron leaf that
+  floats on the water.
+- ``history_byobu_screen``: scenery, a folding screen of six panels in a
+  zigzag, painted with hills, pines, a pond and bands of gold cloud. There
+  are no figures on it.
+- ``history_ox_carriage``: scenery, a Heian ox carriage: a tall cabin of
+  woven wood with a curved roof of palm leaf, a bamboo blind and a silk
+  drape at its front, two big lacquered wheels, long shafts and one black
+  ox.
+- ``history_rain_gauge``: scenery, the rain gauge of 1441: a cylinder of
+  bronze in sections, in the socket of a carved granite stand.
+- ``history_water_clock``: scenery, the self-striking water clock as it is
+  rebuilt today: bronze vessels on stone steps on the left, two tall
+  receiving vessels, and a cabinet on the right with three wooden figures
+  on its top, by a bell, a drum and a gong.
 
 The numbers are frame pixels; the game shows each prop at half its frame.
 No drop shadows: the game draws them.
@@ -862,6 +905,1029 @@ def _draw_gold_crown(anim: str, i: int, n: int):
 
 
 # ---------------------------------------------------------------------------
+# Song, Heian and Joseon: the colours.
+# ---------------------------------------------------------------------------
+
+LAKE_BOAT_FRAME = (384, 160)
+#: The deck of the lake boat is the platform: it is level from x0 to x1 at
+#: the height `LAKE_BOAT_TOP` (frame pixels).
+LAKE_BOAT_SPAN = (24.0, 360.0)
+LAKE_BOAT_TOP = 104.0
+MONEY_PRESS_FRAME = (160, 128)
+COMPASS_BOWL_FRAME = (64, 48)
+BYOBU_FRAME = (192, 128)
+OX_CARRIAGE_FRAME = (224, 160)
+RAIN_GAUGE_FRAME = (64, 112)
+WATER_CLOCK_FRAME = (256, 256)
+
+BOAT_WOOD = (156, 108, 64, 255)
+BOAT_WOOD_LIGHT = (192, 146, 94, 255)
+BOAT_WOOD_SHADE = (114, 76, 46, 255)
+BOAT_WOOD_DARK = (80, 54, 34, 255)
+VERMILION = (190, 62, 44, 255)
+VERMILION_LIGHT = (226, 104, 72, 255)
+VERMILION_SHADE = (136, 40, 32, 255)
+MATTING = (204, 176, 118, 255)
+MATTING_LIGHT = (232, 208, 154, 255)
+MATTING_SHADE = (160, 130, 82, 255)
+MATTING_DARK = (118, 92, 58, 255)
+BAMBOO = (176, 166, 96, 255)
+BAMBOO_LIGHT = (212, 202, 132, 255)
+BAMBOO_SHADE = (128, 118, 64, 255)
+PAPER = (236, 224, 194, 255)
+PAPER_SHADE = (204, 188, 154, 255)
+PAPER_DARK = (166, 150, 118, 255)
+PRINT = (58, 48, 46, 255)
+SEAL = (194, 44, 38, 255)
+SEAL_LIGHT = (230, 98, 84, 255)
+INTERIOR = (70, 50, 40, 255)
+
+BRONZE = (160, 116, 64, 255)
+BRONZE_LIGHT = (206, 164, 100, 255)
+BRONZE_SHADE = (116, 80, 46, 255)
+BRONZE_DARK = (80, 56, 34, 255)
+VERDIGRIS = (104, 150, 126, 255)
+PRINTER_INK = (38, 34, 36, 255)
+INK_SHEEN = (98, 96, 104, 255)
+INKSTONE = (74, 72, 78, 255)
+INKSTONE_LIGHT = (120, 118, 126, 255)
+
+CELADON = (150, 186, 162, 255)
+CELADON_LIGHT = (198, 224, 204, 255)
+CELADON_SHADE = (106, 142, 122, 255)
+WATER = (116, 162, 192, 255)
+WATER_LIGHT = (186, 216, 232, 255)
+WATER_SHADE = (78, 120, 156, 255)
+IRON = (92, 94, 104, 255)
+IRON_LIGHT = (156, 158, 170, 255)
+IRON_SHADE = (60, 62, 72, 255)
+
+SILK = (230, 218, 182, 255)
+SILK_SHADE = (196, 184, 148, 255)
+LACQUER = (46, 36, 34, 255)
+LACQUER_LIGHT = (96, 80, 72, 255)
+BROCADE = (142, 64, 52, 255)
+BROCADE_LIGHT = (184, 112, 80, 255)
+HILL_FAR = (124, 154, 168, 255)
+HILL = (106, 148, 104, 255)
+HILL_SHADE = (76, 116, 82, 255)
+PINE = (50, 92, 66, 255)
+TRUNK = (98, 70, 50, 255)
+POND = (104, 150, 180, 255)
+POND_LIGHT = (176, 206, 222, 255)
+
+PALM = (216, 208, 176, 255)
+PALM_LIGHT = (240, 234, 210, 255)
+PALM_SHADE = (172, 162, 130, 255)
+PALM_DARK = (128, 118, 94, 255)
+WICKER = (178, 140, 86, 255)
+WICKER_SHADE = (132, 100, 60, 255)
+BLIND = (196, 172, 100, 255)
+BLIND_SHADE = (150, 126, 68, 255)
+DRAPE = (150, 52, 70, 255)
+DRAPE_LIGHT = (196, 96, 108, 255)
+DRAPE_ALT = (214, 170, 76, 255)
+OX = (54, 46, 46, 255)
+OX_LIGHT = (100, 90, 88, 255)
+OX_SHADE = (34, 28, 30, 255)
+OX_HORN = (214, 200, 166, 255)
+CORD_RED = (176, 48, 42, 255)
+
+CABINET = (150, 98, 58, 255)
+CABINET_LIGHT = (186, 132, 84, 255)
+CABINET_SHADE = (108, 70, 42, 255)
+DANCHEONG = (64, 138, 118, 255)
+DANCHEONG_LIGHT = (116, 184, 160, 255)
+DANCHEONG_SHADE = (40, 98, 84, 255)
+ROOF_TILE = (82, 84, 92, 255)
+ROOF_TILE_LIGHT = (128, 130, 140, 255)
+ROOF_TILE_SHADE = (54, 56, 64, 255)
+FACE_WOOD = (226, 184, 140, 255)
+ROBE_RED = (180, 56, 46, 255)
+ROBE_BLUE = (66, 96, 152, 255)
+ROBE_GREEN = (70, 132, 96, 255)
+HAT = (36, 30, 30, 255)
+OUTLINE_SHADE = (40, 26, 30, 255)
+
+
+def _lerp(a: float, b: float, u: float) -> float:
+    return a + (b - a) * u
+
+
+# ---------------------------------------------------------------------------
+# The lake boat of West Lake (a platform).
+# ---------------------------------------------------------------------------
+
+
+def _lake_deck_y(x: float) -> float:
+    """The top of the hull at `x`: level over the platform span, and swept
+    up a little at the bow and the stern, outside the span."""
+    x0, x1 = LAKE_BOAT_SPAN
+    if x < x0:
+        return LAKE_BOAT_TOP - (x0 - x) * 0.8
+    if x > x1:
+        return LAKE_BOAT_TOP - (x - x1) * 0.8
+    return LAKE_BOAT_TOP
+
+
+def _bamboo_pole(f: K.Frame, a: Point, b: Point, width: float) -> None:
+    """A pole of bamboo from `a` to `b`, with a ring at each node."""
+    f.limb([a, b], width, BAMBOO)
+    f.ink([(a[0] - width * 0.25, a[1]), (b[0] - width * 0.25, b[1])], width * 0.3, BAMBOO_LIGHT)
+    for k in range(1, 9):
+        p = _mix(a, b, k / 9.0)
+        f.ink([(p[0] - width * 0.6, p[1] + 0.4), (p[0] + width * 0.6, p[1] - 0.4)], 0.8, BAMBOO_SHADE)
+
+
+def _lattice_window(f: K.Frame, x0: float, y0: float, x1: float, y1: float) -> None:
+    """A window of paper behind a wooden lattice of squares."""
+    f.poly([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], PAPER)
+    f.poly([(x0, y0), (x1, y0), (x1, y0 + 3.0), (x0, y0 + 3.0)], PAPER_SHADE, body=False)
+    step = (x1 - x0) / 4.0
+    for k in range(1, 4):
+        f.ink([(x0 + k * step, y0), (x0 + k * step, y1)], 0.9, BOAT_WOOD_SHADE)
+    y = y0 + step
+    while y < y1 - 1.0:
+        f.ink([(x0, y), (x1, y)], 0.9, BOAT_WOOD_SHADE)
+        y += step
+    f.ink([(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)], 1.2, BOAT_WOOD_DARK)
+
+
+def _draw_lake_boat(anim: str, i: int, n: int):
+    f = K.Frame(LAKE_BOAT_FRAME)
+    x0, x1 = LAKE_BOAT_SPAN
+    top = LAKE_BOAT_TOP
+    keel = top + 30.0
+    xs = [10.0 + (374.0 - 10.0) * k / 90.0 for k in range(91)]
+    # The pole at the stern: the boatman pushes it on the bed of the lake.
+    # It goes down past the hull, so its foot shows under the stern.
+    _bamboo_pole(f, (82.0, 20.0), (40.0, 150.0), 3.6)
+    # The cabin: a small house of wood on the deck, with a curved roof of
+    # woven matting. Guests sat in it to look at the lake.
+    cx0, cx1 = 138.0, 246.0
+    wall_top = 68.0
+    f.poly([(cx0, wall_top), (cx1, wall_top), (cx1, top), (cx0, top)], BOAT_WOOD)
+    # The open bay in the middle shows the dark inside, a rolled blind of
+    # bamboo over it, and a low table.
+    mx0, mx1 = 168.0, 216.0
+    f.poly([(mx0, wall_top + 2.0), (mx1, wall_top + 2.0), (mx1, top), (mx0, top)], INTERIOR, body=False)
+    f.poly([(mx0, top - 9.0), (mx1, top - 9.0), (mx1, top), (mx0, top)], BOAT_WOOD_SHADE, body=False)
+    f.poly([(mx0 + 14.0, top - 14.0), (mx1 - 14.0, top - 14.0), (mx1 - 14.0, top - 11.0), (mx0 + 14.0, top - 11.0)], VERMILION_SHADE, body=False)
+    for x in (mx0 + 16.0, mx1 - 16.0):
+        f.ink([(x, top - 11.0), (x, top - 5.0)], 1.4, VERMILION_SHADE)
+    f.limb([(mx0 + 1.0, wall_top + 5.0), (mx1 - 1.0, wall_top + 5.0)], 4.6, BLIND)
+    for k in range(1, 12):
+        x = mx0 + 4.0 * k
+        f.ink([(x, wall_top + 3.0), (x, wall_top + 7.0)], 0.6, BLIND_SHADE)
+    for x in (mx0 + 8.0, mx1 - 8.0):
+        f.ink([(x, wall_top + 2.0), (x, wall_top + 9.0)], 0.9, VERMILION)
+    # The two bays at the sides: a window of paper over a low wall of
+    # boards.
+    for wx0, wx1 in ((cx0 + 4.0, mx0 - 4.0), (mx1 + 4.0, cx1 - 4.0)):
+        _lattice_window(f, wx0, wall_top + 4.0, wx1, top - 14.0)
+        for k in range(1, 3):
+            f.ink([(wx0, top - 14.0 + 4.6 * k), (wx1, top - 14.0 + 4.6 * k)], 0.7, BOAT_WOOD_SHADE)
+    # The posts are lacquered red.
+    for x in (cx0 + 1.5, mx0 - 1.5, mx1 + 1.5, cx1 - 1.5):
+        f.limb([(x, wall_top), (x, top)], 3.6, VERMILION)
+        f.ink([(x - 0.8, wall_top + 1.0), (x - 0.8, top - 1.0)], 0.8, VERMILION_LIGHT)
+    # The roof: an arch of woven matting on bent ribs, with ends that turn
+    # up a little, over a fascia board.
+    rx0, rx1 = cx0 - 14.0, cx1 + 14.0
+
+    def roof_y(u: float) -> float:
+        return wall_top - 4.0 - 24.0 * math.sin(math.pi * u) ** 0.6 + 4.0 * (abs(u - 0.5) * 2.0) ** 6
+
+    us = [k / 40.0 for k in range(41)]
+    arch = [(_lerp(rx0, rx1, u), roof_y(u)) for u in us]
+    f.poly(arch + [(rx1 - 3.0, wall_top + 1.0), (rx0 + 3.0, wall_top + 1.0)], MATTING)
+    # The shade on the right of the arch, and light on its left shoulder.
+    f.poly([(_lerp(rx0, rx1, u), roof_y(u)) for u in us if u >= 0.62] + [(rx1 - 3.0, wall_top + 1.0), (_lerp(rx0, rx1, 0.62), wall_top + 1.0)], MATTING_SHADE, body=False)
+    f.ink([(_lerp(rx0, rx1, u), roof_y(u) + 2.0) for u in us[4:24]], 1.6, MATTING_LIGHT)
+    # The weave: the ribs run over the arch, and the strips of matting go
+    # under and over them.
+    for k in range(1, 16):
+        u = k / 16.0
+        x = _lerp(rx0, rx1, u)
+        f.ink([(x, roof_y(u) + 1.0), (x, wall_top - 3.0)], 1.0, MATTING_DARK)
+    for t in (0.33, 0.66):
+        f.ink([(_lerp(rx0, rx1, u), _lerp(roof_y(u), wall_top - 3.0, t)) for u in us[2:-2]], 0.7, MATTING_DARK)
+    for k in range(32):
+        u = (k + 0.5) / 32.0
+        x = _lerp(rx0, rx1, u)
+        for t in (0.17, 0.5, 0.83):
+            f.dot(x, _lerp(roof_y(u), wall_top - 3.0, t), 0.6, MATTING_SHADE if u < 0.62 else MATTING_DARK)
+    f.poly([(rx0 + 3.0, wall_top - 4.0), (rx1 - 3.0, wall_top - 4.0), (rx1 - 3.0, wall_top + 1.0), (rx0 + 3.0, wall_top + 1.0)], BOAT_WOOD_DARK)
+    f.ink([(rx0 + 4.0, wall_top - 3.0), (rx1 - 4.0, wall_top - 3.0)], 0.8, BOAT_WOOD_LIGHT)
+    # The tips of the roof turn up, as a Song roof does.
+    for s, x in ((-1.0, rx0), (1.0, rx1)):
+        f.limb([(x - s * 6.0, roof_y(0.5 + s * 0.5) + 3.0), (x + s * 1.0, roof_y(0.5 + s * 0.5) - 3.0)], 2.6, BOAT_WOOD_DARK)
+    # A red lantern hangs at the bow from a short post.
+    px = x1 - 14.0
+    f.limb([(px, top), (px, 66.0)], 2.6, BOAT_WOOD_DARK)
+    f.limb([(px, 67.0), (px + 9.0, 67.0)], 2.0, BOAT_WOOD_DARK)
+    f.ink([(px + 8.0, 67.0), (px + 8.0, 72.0)], 0.8, PRINT)
+    f.ellipse(px + 8.0, 79.0, 5.4, 7.0, VERMILION)
+    f.ellipse(px + 6.6, 77.6, 2.0, 3.6, VERMILION_LIGHT, body=False)
+    for dy in (-3.0, 0.0, 3.0):
+        f.ink([(px + 3.4, 79.0 + dy), (px + 12.6, 79.0 + dy)], 0.5, VERMILION_SHADE)
+    f.poly([(px + 5.0, 71.4), (px + 11.0, 71.4), (px + 11.0, 73.0), (px + 5.0, 73.0)], BOAT_WOOD_DARK)
+    f.poly([(px + 5.0, 85.4), (px + 11.0, 85.4), (px + 11.0, 87.0), (px + 5.0, 87.0)], BOAT_WOOD_DARK)
+    f.ink([(px + 8.0, 87.0), (px + 8.0, 91.0)], 1.0, GOLD)
+    # The hull: long, low and flat, of planks laid edge to edge. Its top is
+    # the deck, and the deck is the platform.
+    bottom = [(374.0, _lake_deck_y(374.0)), (368.0, top), (356.0, keel - 14.0), (338.0, keel - 3.0), (318.0, keel), (66.0, keel),
+              (44.0, keel - 3.0), (26.0, keel - 14.0), (14.0, top), (10.0, _lake_deck_y(10.0))]
+    hull = [(x, _lake_deck_y(x)) for x in xs] + bottom
+    f.poly(hull, BOAT_WOOD)
+    f.poly([(x, top + 18.0) for x in xs if 34.0 <= x <= 350.0] + [(338.0, keel - 3.0), (318.0, keel), (66.0, keel), (44.0, keel - 3.0)],
+           BOAT_WOOD_SHADE, body=False)
+    for off, lo, hi in ((17.0, 30.0, 354.0), (24.0, 40.0, 344.0)):
+        f.ink([(x, top + off) for x in xs if lo <= x <= hi], 0.9, BOAT_WOOD_DARK)
+    # The gunwale: a thick rail along the deck, and under it a band painted
+    # red with gold studs, for this is a pleasure boat.
+    f.limb([(x, _lake_deck_y(x) + 2.0) for x in xs[1:-1]], 3.6, BOAT_WOOD_LIGHT)
+    band = [(x, _lake_deck_y(x) + 6.0) for x in xs[2:-2]] + [(x, _lake_deck_y(x) + 12.0) for x in xs[-3:1:-1]]
+    f.poly(band, VERMILION, body=False)
+    f.ink([(x, _lake_deck_y(x) + 11.4) for x in xs[2:-2]], 1.0, VERMILION_SHADE)
+    f.ink([(x, _lake_deck_y(x) + 6.6) for x in xs[2:-2]], 0.8, VERMILION_LIGHT)
+    for x in xs[4:-4:3]:
+        f.dot(x, _lake_deck_y(x) + 9.0, 0.9, GOLD)
+    # The stem and the stern board, a little proud of the planks.
+    f.limb([(370.0, _lake_deck_y(370.0) + 2.0), (366.0, top + 1.0), (355.0, keel - 15.0)], 2.2, BOAT_WOOD_LIGHT, body=False)
+    f.limb([(14.0, _lake_deck_y(14.0) + 2.0), (18.0, top + 1.0), (29.0, keel - 15.0)], 2.2, BOAT_WOOD_LIGHT, body=False)
+    return A.finish(f, width=1.4)
+
+
+# ---------------------------------------------------------------------------
+# The press of the paper money.
+# ---------------------------------------------------------------------------
+
+
+def _bank_note(f: K.Frame, x0: float, y0: float, w: float, h: float, body: bool = True) -> None:
+    """A sheet of Song paper money, upright: a thick printed border of
+    small blocks, a top panel, columns of short strokes for the words and
+    a picture panel at the foot. Two red seals are stamped over the print.
+    There is no real writing on it."""
+    x1, y1 = x0 + w, y0 + h
+    f.poly([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], PAPER, body)
+    f.poly([(x0 + 2.0, y0 + 2.0), (x1 - 2.0, y0 + 2.0), (x1 - 2.0, y1 - 2.0), (x0 + 2.0, y1 - 2.0)], PRINT, body=False)
+    f.poly([(x0 + 4.0, y0 + 4.0), (x1 - 4.0, y0 + 4.0), (x1 - 4.0, y1 - 4.0), (x0 + 4.0, y1 - 4.0)], PAPER, body=False)
+    # The border: a chain of small light blocks on the dark band.
+    k = x0 + 3.0
+    while k < x1 - 3.0:
+        f.dot(k, y0 + 3.0, 0.45, PAPER_SHADE)
+        f.dot(k, y1 - 3.0, 0.45, PAPER_SHADE)
+        k += 2.2
+    k = y0 + 3.0
+    while k < y1 - 3.0:
+        f.dot(x0 + 3.0, k, 0.45, PAPER_SHADE)
+        f.dot(x1 - 3.0, k, 0.45, PAPER_SHADE)
+        k += 2.2
+    # The top panel: a dark bar with a row of light blocks.
+    f.poly([(x0 + 6.0, y0 + 6.0), (x1 - 6.0, y0 + 6.0), (x1 - 6.0, y0 + 10.0), (x0 + 6.0, y0 + 10.0)], PRINT, body=False)
+    cols = max(2, int((w - 12.0) / 3.4))
+    for c in range(cols):
+        cx = x0 + 7.6 + c * (w - 15.2) / max(1, cols - 1)
+        f.dot(cx, y0 + 8.0, 0.6, PAPER)
+    # The columns of strokes: the text of the note, as marks only.
+    rng = random.Random(f"bank note {x0:.0f} {y0:.0f}")
+    text_y0, text_y1 = y0 + 13.0, y1 - h * 0.34
+    for c in range(cols):
+        cx = x0 + 7.6 + c * (w - 15.2) / max(1, cols - 1)
+        y = text_y0
+        while y < text_y1:
+            ln = rng.uniform(1.0, 2.2)
+            f.ink([(cx, y), (cx, min(text_y1, y + ln))], 0.8, PRINT)
+            y += ln + 1.2
+    # The picture panel at the foot: a frame with a pattern of stacked
+    # blocks in it (strings of coins, drawn as marks).
+    py0 = y1 - h * 0.3
+    f.ink([(x0 + 6.0, py0), (x1 - 6.0, py0), (x1 - 6.0, y1 - 6.0), (x0 + 6.0, y1 - 6.0), (x0 + 6.0, py0)], 0.8, PRINT)
+    for c in range(3):
+        cx = x0 + w * (0.3 + 0.2 * c)
+        for r in range(int((y1 - 8.0 - py0) / 2.4)):
+            f.dot(cx, py0 + 2.4 + r * 2.4, 0.8, PRINT)
+    # Two red seals: one square, one long.
+    f.poly([(x0 + w * 0.52, y0 + h * 0.22), (x0 + w * 0.52 + 6.0, y0 + h * 0.22), (x0 + w * 0.52 + 6.0, y0 + h * 0.22 + 6.0), (x0 + w * 0.52, y0 + h * 0.22 + 6.0)], K.alpha(SEAL, 0.86), body=False)
+    f.ink([(x0 + w * 0.52 + 1.5, y0 + h * 0.22 + 1.5), (x0 + w * 0.52 + 4.5, y0 + h * 0.22 + 1.5), (x0 + w * 0.52 + 4.5, y0 + h * 0.22 + 4.5)], 0.6, SEAL_LIGHT)
+    f.poly([(x0 + w * 0.18, y0 + h * 0.46), (x0 + w * 0.18 + 4.4, y0 + h * 0.46), (x0 + w * 0.18 + 4.4, y0 + h * 0.46 + 8.0), (x0 + w * 0.18, y0 + h * 0.46 + 8.0)], K.alpha(SEAL, 0.86), body=False)
+
+
+def _draw_money_press(anim: str, i: int, n: int):
+    w, h = MONEY_PRESS_FRAME
+    f = K.Frame(MONEY_PRESS_FRAME)
+    ground = h - 6.0
+    bx0, bx1 = 8.0, 152.0
+    top = 76.0
+    # A cord for drying the new sheets, on two thin posts at the back of
+    # the bench. Two sheets hang on it.
+    for x in (bx0 + 8.0, bx1 - 8.0):
+        f.limb([(x, top - 4.0), (x, 10.0)], 2.6, BENCH_SHADE)
+        f.ellipse(x, 10.0, 2.2, 2.2, BENCH)
+    f.ink([(bx0 + 8.0, 12.0), (80.0, 15.0), (bx1 - 8.0, 12.0)], 0.9, CORD)
+    for sx in (34.0, 96.0):
+        _bank_note(f, sx, 14.0, 28.0, 44.0)
+        for dx in (6.0, 22.0):
+            f.limb([(sx + dx, 12.6), (sx + dx, 17.0)], 2.0, BENCH_LIGHT)
+    # The bench: a thick top seen a little from above, on four legs.
+    for x in (bx0 + 12.0, bx1 - 10.0):
+        f.limb([(x + 3.0, top + 6.0), (x + 3.0, ground - 6.0)], 5.0, BENCH_SHADE)
+    f.poly([(bx0 + 4.0, top - 6.0), (bx1, top - 6.0), (bx1 - 4.0, top), (bx0, top)], BENCH_LIGHT)
+    f.poly([(bx0, top), (bx1 - 4.0, top), (bx1 - 4.0, top + 8.0), (bx0, top + 8.0)], BENCH)
+    f.poly([(bx0, top + 6.0), (bx1 - 4.0, top + 6.0), (bx1 - 4.0, top + 8.0), (bx0, top + 8.0)], BENCH_SHADE, body=False)
+    f.poly([(bx1 - 4.0, top), (bx1, top - 6.0), (bx1, top + 2.0), (bx1 - 4.0, top + 8.0)], BENCH_SHADE)
+    for x in (bx0 + 6.0, bx1 - 14.0):
+        f.limb([(x, top + 7.0), (x, ground - 2.0)], 5.4, BENCH)
+        f.ink([(x - 1.2, top + 9.0), (x - 1.2, ground - 1.0)], 0.8, BENCH_LIGHT)
+    f.limb([(bx0 + 6.0, ground - 18.0), (bx1 - 14.0, ground - 18.0)], 3.0, BENCH_SHADE)
+    # The plate of bronze lies flat. Its face is cut in relief and inked
+    # black; the printer lays a sheet on it and rubs the back with a pad.
+    p0, p1 = 16.0, 60.0
+    f.poly([(p0 + 3.0, top - 10.0), (p1 + 3.0, top - 10.0), (p1, top - 3.0), (p0, top - 3.0)], BRONZE_LIGHT)
+    f.poly([(p0 + 3.8, top - 9.0), (p1 + 1.6, top - 9.0), (p1 - 0.8, top - 4.0), (p0 + 1.6, top - 4.0)], PRINTER_INK, body=False)
+    f.poly([(p0, top - 3.0), (p1, top - 3.0), (p1, top - 1.0), (p0, top - 1.0)], BRONZE)
+    f.poly([(p1, top - 3.0), (p1 + 3.0, top - 10.0), (p1 + 3.0, top - 8.0), (p1, top - 1.0)], BRONZE_SHADE)
+    f.ink([(p0 + 1.0, top - 2.0), (p1 - 1.0, top - 2.0)], 0.6, BRONZE_LIGHT)
+    # The raised lines of the plate shine through the ink.
+    f.ink([(p0 + 5.4, top - 8.0), (p1 + 0.4, top - 8.0), (p1 - 1.4, top - 4.8), (p0 + 3.4, top - 4.8), (p0 + 5.4, top - 8.0)], 0.6, INK_SHEEN)
+    for k in range(7):
+        x = p0 + 10.0 + k * 4.6
+        f.ink([(x + 1.4, top - 8.0), (x, top - 5.0)], 0.6, INK_SHEEN)
+    f.dot(p0 + 7.0, top - 6.4, 0.8, K.alpha(SEAL, 0.7))
+    # A rubbing pad of rolled cloth on the plate's corner.
+    f.ellipse(p0 + 4.0, top - 10.0, 4.2, 2.8, PAPER_SHADE)
+    f.ink([(p0 + 1.0, top - 10.6), (p0 + 7.0, top - 10.6)], 0.7, PAPER)
+    # The ink stone: a slab of dark stone with a well at one end, where
+    # the ink is ground with water.
+    s0, s1 = 68.0, 86.0
+    f.poly([(s0 + 2.0, top - 9.0), (s1 + 2.0, top - 9.0), (s1, top - 4.0), (s0, top - 4.0)], INKSTONE_LIGHT)
+    f.poly([(s0, top - 4.0), (s1, top - 4.0), (s1, top - 1.0), (s0, top - 1.0)], INKSTONE)
+    f.ellipse(s0 + 6.0, top - 6.6, 3.6, 1.4, PRINTER_INK, body=False)
+    f.dot(s0 + 5.0, top - 7.0, 0.5, INK_SHEEN)
+    f.limb([(s1 - 6.0, top - 6.8), (s1 - 1.0, top - 7.4)], 2.0, PRINTER_INK)
+    # The brushes: two in a pot of bamboo, and a broad one for the ink
+    # lying on the bench.
+    bpx = 94.0
+    for dx, lean in ((-1.4, -4.0), (1.6, 3.0)):
+        f.limb([(bpx + dx, top - 10.0), (bpx + dx + lean, top - 28.0)], 1.6, BAMBOO_SHADE)
+        f.ellipse(bpx + dx + lean * 1.08, top - 29.4, 1.2, 2.0, PRINTER_INK)
+    f.poly([(bpx - 4.0, top - 13.0), (bpx + 4.0, top - 13.0), (bpx + 3.6, top - 2.0), (bpx - 3.6, top - 2.0)], BAMBOO)
+    f.ink([(bpx - 2.6, top - 12.0), (bpx - 2.4, top - 3.0)], 0.7, BAMBOO_LIGHT)
+    f.ink([(bpx - 3.8, top - 8.0), (bpx + 3.8, top - 8.0)], 0.6, BAMBOO_SHADE)
+    f.limb([(62.0, top - 1.6), (78.0, top - 3.4)], 1.6, BAMBOO_SHADE)
+    f.poly([(78.0, top - 5.4), (84.0, top - 4.4), (84.0, top - 2.2), (78.0, top - 1.6)], PRINTER_INK)
+    # The stack of new sheets: the top one shows its print, the edges of
+    # the others show as lines.
+    k0, k1 = 104.0, 144.0
+    for j in range(5):
+        y = top - 1.0 - j * 1.6
+        f.poly([(k0, y - 1.6), (k1, y - 1.6), (k1, y), (k0, y)], PAPER if j % 2 else PAPER_SHADE)
+    ty = top - 9.0
+    f.poly([(k0 + 2.0, ty - 9.0), (k1 + 2.0, ty - 9.0), (k1, ty), (k0, ty)], PAPER)
+    f.ink([(k0 + 3.6, ty - 7.6), (k1 + 0.6, ty - 7.6), (k1 - 0.8, ty - 1.4), (k0 + 2.0, ty - 1.4), (k0 + 3.6, ty - 7.6)], 1.2, PRINT)
+    for c in range(8):
+        x = k0 + 9.0 + c * 3.4
+        f.ink([(x + 0.8, ty - 6.0), (x + 0.2, ty - 3.4)], 0.7, PRINT)
+    f.poly([(k1 - 9.0, ty - 6.6), (k1 - 4.6, ty - 6.6), (k1 - 5.4, ty - 3.4), (k1 - 9.8, ty - 3.4)], K.alpha(SEAL, 0.86), body=False)
+    f.poly([(k0 + 4.6, ty - 6.0), (k0 + 7.6, ty - 6.0), (k0 + 7.0, ty - 3.0), (k0 + 4.0, ty - 3.0)], K.alpha(SEAL, 0.86), body=False)
+    return A.finish(f, width=1.2)
+
+
+# ---------------------------------------------------------------------------
+# The south-pointing fish.
+# ---------------------------------------------------------------------------
+
+
+def _draw_compass_bowl(anim: str, i: int, n: int):
+    w, h = COMPASS_BOWL_FRAME
+    f = K.Frame(COMPASS_BOWL_FRAME)
+    cx = w / 2.0
+    ground = h - 4.0
+    # The stand: a low table of dark wood with short curved legs.
+    st = ground - 9.0
+    for x, s in ((cx - 15.0, -1.0), (cx + 15.0, 1.0)):
+        f.limb([(x - s * 2.0, st + 2.0), (x, st + 6.0), (x + s * 1.6, ground - 0.6)], 2.6, STAND)
+    f.poly([(cx - 19.0, st - 1.0), (cx + 19.0, st - 1.0), (cx + 18.0, st + 3.0), (cx - 18.0, st + 3.0)], STAND)
+    f.ink([(cx - 17.0, st), (cx + 8.0, st)], 0.7, STAND_LIGHT)
+    f.poly([(cx + 6.0, st - 1.0), (cx + 19.0, st - 1.0), (cx + 18.0, st + 3.0), (cx + 6.0, st + 3.0)], STAND_SHADE, body=False)
+    # The bowl: shallow and wide, glazed in celadon.
+    rim_y, rx, ry = 17.0, 22.0, 5.0
+    body = _ring(cx, rim_y, rx, ry, 0.0, 180.0, 24)
+    foot = [(cx + 8.0, st - 1.0), (cx - 8.0, st - 1.0)]
+    side = [(cx + rx, rim_y)] + [(cx + rx * math.cos(a) , rim_y + (st - 4.0 - rim_y) * math.sin(a)) for a in [math.radians(10.0 * k) for k in range(1, 9)]]
+    f.poly(side + [(cx + 9.0, st - 2.0)] + foot + [(cx - 9.0, st - 2.0)] + [(2.0 * cx - x, y) for x, y in side[::-1]], CELADON)
+    f.poly([(cx + 9.0, st - 2.0), (cx + 9.0, st - 1.0), (cx - 9.0, st - 1.0), (cx - 9.0, st - 2.0)], CELADON_SHADE)
+    f.poly([p for p in side if p[0] > cx + 6.0] + [(cx + 9.0, st - 2.0), (cx + 6.0, st - 3.0)], CELADON_SHADE, body=False)
+    f.ink([(cx - rx + 3.0, rim_y + 3.0), (cx - rx + 7.0, rim_y + 7.0)], 1.0, CELADON_LIGHT)
+    # The rim and the water in the bowl.
+    f.ellipse(cx, rim_y, rx, ry, CELADON)
+    f.ellipse(cx, rim_y + 0.6, rx - 2.2, ry - 1.4, WATER, body=False)
+    f.ellipse(cx - 2.0, rim_y + 1.2, rx - 6.0, ry - 2.8, WATER_SHADE, body=False)
+    f.limb(_ring(cx, rim_y, rx - 0.6, ry - 0.4, 180.0, 360.0, 18), 1.0, CELADON_LIGHT, body=False)
+    f.ink([(cx - 12.0, rim_y - 1.0), (cx - 6.0, rim_y - 1.6)], 0.6, WATER_LIGHT)
+    # The fish: a thin leaf of iron cut like a fish, heated and cooled in
+    # the line of north and south, so it is a magnet. It floats on the
+    # water, and its head turns to the south.
+    fx, fy = cx + 1.0, rim_y + 0.6
+    fish = [(fx - 8.0, fy), (fx - 5.0, fy - 1.6), (fx + 1.0, fy - 2.0), (fx + 6.0, fy - 1.0), (fx + 8.6, fy), (fx + 6.0, fy + 1.0),
+            (fx + 1.0, fy + 1.8), (fx - 5.0, fy + 1.4)]
+    f.poly(fish, IRON, body=False)
+    f.poly([(fx - 7.0, fy), (fx - 11.0, fy - 2.6), (fx - 10.0, fy), (fx - 11.0, fy + 2.4)], IRON, body=False)
+    f.ink([(fx - 4.0, fy - 0.8), (fx + 5.0, fy - 0.6)], 0.6, IRON_LIGHT)
+    f.ink([(fx - 1.0, fy - 1.6), (fx - 1.6, fy + 1.4)], 0.5, IRON_SHADE)
+    f.dot(fx + 5.4, fy - 0.2, 0.6, IRON_SHADE)
+    return A.finish(f, width=1.0)
+
+
+# ---------------------------------------------------------------------------
+# The folding screen (byobu).
+# ---------------------------------------------------------------------------
+
+BYOBU_PANELS = 6
+
+
+def _clip_band(pts: Sequence[Point], lo: float, hi: float) -> List[Point]:
+    """The part of a polygon between the lines x = lo and x = hi."""
+    def clip(poly: Sequence[Point], keep, cross) -> List[Point]:
+        out: List[Point] = []
+        for k in range(len(poly)):
+            a, b = poly[k - 1], poly[k]
+            if keep(b):
+                if not keep(a):
+                    out.append(cross(a, b))
+                out.append(b)
+            elif keep(a):
+                out.append(cross(a, b))
+        return out
+
+    def at(xv: float):
+        return lambda a, b: (xv, a[1] + (b[1] - a[1]) * (xv - a[0]) / (b[0] - a[0]))
+
+    part = clip(pts, lambda p: p[0] >= lo, at(lo))
+    return clip(part, lambda p: p[0] <= hi, at(hi)) if part else []
+
+
+class _Byobu:
+    """The geometry of the screen. The panels stand in a zigzag. The folds
+    that come toward us stand lower in the picture than the folds that go
+    back, as the screen is seen a little from above. The painting is laid
+    out flat, in units of panels (`u` from 0 to 6) and of height (`v` from
+    0 at the top to 1 at the foot), and is mapped onto each panel."""
+
+    def __init__(self, w: float, h: float) -> None:
+        x0, x1 = 8.0, w - 8.0
+        self.xs = [_lerp(x0, x1, k / BYOBU_PANELS) for k in range(BYOBU_PANELS + 1)]
+        self.tops = [14.0 if k % 2 == 0 else 6.0 for k in range(BYOBU_PANELS + 1)]
+        self.foots = [h - 6.0 if k % 2 == 0 else h - 14.0 for k in range(BYOBU_PANELS + 1)]
+
+    def corner(self, k: int, u: float, v: float) -> Point:
+        """A point on panel `k`: `u` across it from 0 to 1, `v` down it."""
+        xa, xb = self.xs[k], self.xs[k + 1]
+        ta, tb = self.tops[k], self.tops[k + 1]
+        fa, fb = self.foots[k], self.foots[k + 1]
+        x = _lerp(xa, xb, u)
+        return (x, _lerp(_lerp(ta, tb, u), _lerp(fa, fb, u), v))
+
+    def inner(self, k: int, u: float, v: float, margin: float) -> Point:
+        """A point of the painting on panel `k`, inside a border of
+        `margin` pixels."""
+        width = self.xs[k + 1] - self.xs[k]
+        height = self.foots[k] - self.tops[k]
+        mu, mv = margin / width, margin / height
+        return self.corner(k, _lerp(mu, 1.0 - mu, u), _lerp(mv, 1.0 - mv, v))
+
+
+def _byobu_paint(f: K.Frame, s: _Byobu, pts: Sequence[Point], colour: RGBA, margin: float) -> None:
+    """Paint one flat shape of the picture across the panels."""
+    dense: List[Point] = []
+    for k in range(len(pts)):
+        a, b = pts[k], pts[(k + 1) % len(pts)]
+        steps = max(1, int(abs(b[0] - a[0]) * 8))
+        for j in range(steps):
+            dense.append(_mix(a, b, j / float(steps)))
+    for k in range(BYOBU_PANELS):
+        part = _clip_band(dense, float(k), float(k + 1))
+        if len(part) >= 3:
+            f.poly([s.inner(k, u - k, v, margin) for u, v in part], colour, body=False)
+
+
+def _byobu_line(f: K.Frame, s: _Byobu, pts: Sequence[Point], width: float, colour: RGBA, margin: float) -> None:
+    """Paint one line of the picture across the panels; it breaks at each
+    fold."""
+    for k in range(BYOBU_PANELS):
+        run: List[Point] = []
+        for j in range(len(pts) - 1):
+            a, b = pts[j], pts[j + 1]
+            for q in range(6):
+                u, v = _mix(a, b, q / 6.0)
+                if k <= u <= k + 1:
+                    run.append(s.inner(k, u - k, v, margin))
+                elif run:
+                    if len(run) > 1:
+                        f.ink(run, width, colour)
+                    run = []
+        if len(run) > 1:
+            f.ink(run, width, colour)
+
+
+def _draw_byobu_screen(anim: str, i: int, n: int):
+    w, h = BYOBU_FRAME
+    f = K.Frame(BYOBU_FRAME)
+    s = _Byobu(w, h)
+    rng = random.Random("history_byobu_screen")
+    m = 4.6
+    # Each panel: a frame of black lacquer, and a border of brocade round
+    # the painted silk.
+    for k in range(BYOBU_PANELS):
+        quad = [s.corner(k, 0.0, 0.0), s.corner(k, 1.0, 0.0), s.corner(k, 1.0, 1.0), s.corner(k, 0.0, 1.0)]
+        f.poly(quad, LACQUER)
+        f.poly([s.inner(k, 0.0, 0.0, 1.8), s.inner(k, 1.0, 0.0, 1.8), s.inner(k, 1.0, 1.0, 1.8), s.inner(k, 0.0, 1.0, 1.8)], BROCADE, body=False)
+        f.poly([s.inner(k, 0.0, 0.0, m), s.inner(k, 1.0, 0.0, m), s.inner(k, 1.0, 1.0, m), s.inner(k, 0.0, 1.0, m)], SILK, body=False)
+        # A small pattern of light dots on the brocade.
+        for t in range(1, 6):
+            for v in (-0.04, 1.04):
+                p = s.inner(k, t / 6.0, v, m - 0.3)
+                f.dot(p[0], p[1], 0.5, BROCADE_LIGHT)
+    # The picture, in the court style of the time (yamato-e): far blue
+    # hills, near green hills with pines, a garden pond with waves and a
+    # shore of pale sand, and bands of gold cloud that run across the
+    # panels and join the scene.
+    far = [(0.0, 0.76), (0.0, 0.44), (0.5, 0.34), (1.0, 0.40), (1.7, 0.28), (2.4, 0.38), (3.0, 0.31), (3.7, 0.40), (4.4, 0.30), (5.1, 0.37),
+           (5.6, 0.29), (6.0, 0.34), (6.0, 0.76)]
+    _byobu_paint(f, s, far, HILL_FAR, m)
+    _byobu_paint(f, s, [(0.0, 0.76), (0.0, 0.56), (1.2, 0.52), (2.5, 0.58), (3.6, 0.52), (4.8, 0.56), (6.0, 0.52), (6.0, 0.76)], K.shade(HILL_FAR, 0.9), m)
+    left_hill = [(0.0, 0.78), (0.0, 0.46), (0.4, 0.42), (0.9, 0.48), (1.4, 0.44), (2.0, 0.56), (2.6, 0.70), (2.9, 0.78)]
+    right_hill = [(3.3, 0.78), (3.8, 0.60), (4.3, 0.50), (4.8, 0.52), (5.4, 0.40), (6.0, 0.46), (6.0, 0.78)]
+    for hill in (left_hill, right_hill):
+        _byobu_paint(f, s, hill, HILL, m)
+    _byobu_paint(f, s, [(0.0, 0.78), (0.0, 0.62), (0.8, 0.60), (1.8, 0.66), (2.9, 0.78)], HILL_SHADE, m)
+    _byobu_paint(f, s, [(3.3, 0.78), (4.4, 0.64), (5.2, 0.62), (6.0, 0.66), (6.0, 0.78)], HILL_SHADE, m)
+    # The pond, and the shore of pale sand in front of it.
+    _byobu_paint(f, s, [(0.0, 1.0), (0.0, 0.74), (1.4, 0.72), (3.0, 0.70), (4.6, 0.72), (6.0, 0.74), (6.0, 1.0)], POND, m)
+    for y in (0.76, 0.81):
+        for x in [0.25 + 0.5 * j for j in range(12)]:
+            xx = x + rng.uniform(-0.1, 0.1)
+            _byobu_line(f, s, [(xx, y + 0.01), (xx + 0.08, y - 0.012), (xx + 0.16, y + 0.01)], 0.6, POND_LIGHT, m)
+    _byobu_paint(f, s, [(0.0, 1.0), (0.0, 0.88), (1.0, 0.86), (2.2, 0.91), (3.4, 0.88), (4.6, 0.85), (6.0, 0.88), (6.0, 1.0)], SILK_SHADE, m)
+    # Pines on the hills: a short trunk and flat layers of dark needles.
+    for u, v, size in ((0.45, 0.44, 1.0), (1.35, 0.48, 0.8), (2.2, 0.62, 0.7), (4.4, 0.52, 1.0), (5.35, 0.42, 1.0), (4.95, 0.56, 0.7)):
+        _byobu_line(f, s, [(u, v + 0.12 * size), (u + 0.02, v - 0.02)], 1.2, TRUNK, m)
+        for dy, half in ((0.0, 0.14), (0.05, 0.2), (0.10, 0.17)):
+            yy = v - 0.03 + dy * size
+            _byobu_paint(f, s, [(u - half * size, yy + 0.02), (u, yy - 0.025), (u + half * size, yy + 0.02), (u, yy + 0.03)], PINE, m)
+    # The gold clouds: long bands with round ends, over the top of the
+    # scene and through the hills.
+    for u0, u1, v, th in ((-0.3, 2.6, 0.13, 0.12), (3.2, 6.3, 0.10, 0.12), (1.8, 4.3, 0.22, 0.08), (3.9, 6.3, 0.62, 0.06),
+                          (-0.3, 1.5, 0.66, 0.06)):
+        band = [(u0 - 0.06, v)]
+        for j in range(9):
+            band.append((_lerp(u0, u1, j / 8.0), v - th * 0.5 - (0.015 if j % 2 else 0.0)))
+        band.append((u1 + 0.06, v))
+        for j in range(8, -1, -1):
+            band.append((_lerp(u0, u1, j / 8.0), v + th * 0.5 + (0.012 if j % 2 == 0 else 0.0)))
+        _byobu_paint(f, s, band, GOLD, m)
+        _byobu_line(f, s, [(_lerp(u0, u1, t), v - th * 0.2) for t in (0.1, 0.5, 0.9)], 0.7, GOLD_LIGHT, m)
+    # The panels that face away from the light are in shade.
+    for k in range(1, BYOBU_PANELS, 2):
+        quad = [s.corner(k, 0.0, 0.0), s.corner(k, 1.0, 0.0), s.corner(k, 1.0, 1.0), s.corner(k, 0.0, 1.0)]
+        f.poly(quad, K.alpha(OUTLINE_SHADE, 0.34), body=False)
+    # The folds: a thin light edge on each fold that comes toward us.
+    for k in range(0, BYOBU_PANELS + 1, 2):
+        f.ink([(s.xs[k], s.tops[k] + 1.0), (s.xs[k], s.foots[k] - 1.0)], 0.8, LACQUER_LIGHT)
+    # Small hinges of gilt metal on the frame.
+    for k in range(1, BYOBU_PANELS):
+        for v in (0.18, 0.82):
+            x, y = s.xs[k], _lerp(s.tops[k], s.foots[k], v)
+            f.poly([(x - 1.4, y - 2.4), (x + 1.4, y - 2.4), (x + 1.4, y + 2.4), (x - 1.4, y + 2.4)], GOLD_SHADE, body=False)
+    return A.finish(f, width=1.2)
+
+
+
+# ---------------------------------------------------------------------------
+# The ox carriage (gissha) of the Heian court.
+# ---------------------------------------------------------------------------
+
+
+def _spoked_wheel(f: K.Frame, cx: float, cy: float, r: float, rim: RGBA, spoke: RGBA, light: RGBA, n_spokes: int = 16) -> None:
+    """A tall wheel of the court: a thick lacquered rim, many thin spokes
+    and a big hub."""
+    for k in range(n_spokes):
+        a = math.tau * k / n_spokes + 0.12
+        f.limb([(cx + math.cos(a) * 6.0, cy + math.sin(a) * 6.0), (cx + math.cos(a) * (r - 4.0), cy + math.sin(a) * (r - 4.0))], 2.0, spoke)
+    ring = K.ellipse_points(cx, cy, r - 3.0, r - 3.0, 64)
+    f.limb(ring + ring[:2], 6.0, rim)
+    f.ink(K.ellipse_points(cx, cy, r - 1.6, r - 1.6, 64)[34:54], 1.2, light)
+    f.ink(K.ellipse_points(cx, cy, r - 5.6, r - 5.6, 64)[34:54], 0.8, light)
+    f.ellipse(cx, cy, 9.0, 9.0, rim)
+    f.ellipse(cx, cy, 5.0, 5.0, GOLD_SHADE, body=False)
+    f.ellipse(cx - 1.0, cy - 1.0, 2.2, 2.2, GOLD, body=False)
+
+
+def _hatch(f: K.Frame, x0: float, y0: float, x1: float, y1: float, step: float, slope: float, width: float, colour: RGBA) -> None:
+    """Parallel lines x = c + slope * y, `step` apart, cut to a box: the
+    weave of thin strips."""
+    c = min(x0 - slope * y0, x0 - slope * y1)
+    c_end = max(x1 - slope * y0, x1 - slope * y1)
+    while c <= c_end:
+        ya, yb = sorted(((x0 - c) / slope, (x1 - c) / slope))
+        ya, yb = max(y0, ya), min(y1, yb)
+        if yb - ya > 0.5:
+            f.ink([(c + slope * ya, ya), (c + slope * yb, yb)], width, colour)
+        c += step
+
+
+def _black_ox(f: K.Frame, x: float, ground: float) -> Point:
+    """A black ox that walks to the right; `x` is its rump. It gives the
+    point on its neck where the yoke sits. Its coordinates go up from the
+    ground."""
+    def P(pts: Sequence[Point]) -> List[Point]:
+        return [(x + px, ground - py) for px, py in pts]
+
+    def leg(pts: Sequence[Point], width: float, colour: RGBA, light: bool) -> None:
+        f.limb(P(pts), width, colour)
+        if light:
+            f.ink(P([(px - width * 0.3, py) for px, py in pts[:-1]]), 0.8, OX_LIGHT)
+        hx, hy = pts[-1]
+        f.poly(P([(hx - 2.6, 0.0), (hx - 2.0, hy + 2.0), (hx + 2.4, hy + 2.0), (hx + 3.4, 0.0)]), OX_SHADE)
+
+    # The far legs, in shade: a hind leg with its hock bent back, and a
+    # straight foreleg.
+    leg([(16.0, 34.0), (18.0, 18.0), (15.0, 10.0), (15.0, 3.0)], 5.0, OX_SHADE, False)
+    leg([(52.0, 32.0), (54.0, 16.0), (55.0, 3.0)], 4.6, OX_SHADE, False)
+    # The body: a deep chest, a high ridge at the withers, a straight back
+    # and square hips. The belly hangs a little.
+    body = [(0.0, 50.0), (3.0, 57.0), (12.0, 60.0), (30.0, 58.0), (44.0, 60.0), (52.0, 65.0), (60.0, 63.0), (66.0, 56.0), (64.0, 44.0),
+            (59.0, 32.0), (52.0, 27.0), (40.0, 26.0), (26.0, 27.0), (16.0, 30.0), (8.0, 34.0), (2.0, 41.0)]
+    f.poly(P(body), OX)
+    # The thigh shows as a round mass over the hind leg.
+    f.ellipse(x + 11.0, ground - 44.0, 11.0, 13.0, OX)
+    # The head, carried low and forward: a broad brow, a long face and a
+    # pale muzzle.
+    head = [(60.0, 63.0), (68.0, 62.0), (74.0, 56.0), (79.0, 44.0), (79.0, 38.0), (73.0, 36.0), (68.0, 42.0), (62.0, 50.0)]
+    f.poly(P(head), OX)
+    f.poly(P([(73.0, 45.0), (79.0, 44.0), (79.0, 38.0), (73.0, 36.0), (71.0, 40.0)]), OX_LIGHT, body=False)
+    f.dot(x + 76.6, ground - 41.6, 0.8, OX_SHADE)
+    f.dot(x + 69.0, ground - 54.0, 1.3, OX_HORN)
+    f.dot(x + 69.4, ground - 54.0, 0.6, OX_SHADE)
+    f.ink(P([(66.0, 61.0), (74.0, 54.0), (78.0, 46.0)]), 0.9, OX_LIGHT)
+    # The horns curve out and up; the ear stands out under them.
+    f.limb(P([(66.0, 62.0), (70.0, 67.0), (74.0, 68.0)]), 2.4, K.shade(OX_HORN, 0.8))
+    f.limb(P([(64.0, 62.0), (66.0, 68.0), (70.0, 72.0)]), 2.8, OX_HORN)
+    f.poly(P([(63.0, 58.0), (55.0, 59.0), (53.0, 55.0), (61.0, 54.0)]), OX_SHADE)
+    # Light along the back and over the hip; the belly in shade.
+    f.ink(P([(4.0, 56.0), (12.0, 58.6), (30.0, 56.6), (44.0, 58.6), (52.0, 63.0)]), 1.4, OX_LIGHT)
+    f.ink(P([(4.0, 50.0), (6.0, 40.0), (12.0, 33.0)]), 1.0, OX_LIGHT)
+    f.ink(P([(46.0, 56.0), (48.0, 42.0), (52.0, 32.0)]), 0.9, OX_SHADE)
+    f.poly(P([(16.0, 31.0), (26.0, 28.0), (40.0, 27.0), (52.0, 28.0), (46.0, 31.0), (26.0, 31.0)]), OX_SHADE, body=False)
+    # The tail, with a tuft.
+    f.limb(P([(1.0, 54.0), (-3.0, 42.0), (-3.0, 24.0)]), 1.6, OX_SHADE)
+    f.ellipse(x - 3.0, ground - 22.0, 2.0, 3.4, OX_SHADE)
+    # The near legs.
+    leg([(12.0, 36.0), (14.0, 18.0), (10.0, 10.0), (10.0, 3.0)], 5.6, OX, True)
+    leg([(56.0, 34.0), (57.0, 16.0), (58.0, 3.0)], 5.2, OX, True)
+    # A cord of red silk on the head and the hips, as the court's oxen
+    # wore.
+    f.ink(P([(65.0, 61.0), (72.0, 55.0), (75.0, 46.0)]), 1.2, CORD_RED)
+    f.ink(P([(4.0, 52.0), (8.0, 44.0), (16.0, 38.0)]), 1.2, CORD_RED)
+    return (x + 58.0, ground - 61.0)
+
+
+def _draw_ox_carriage(anim: str, i: int, n: int):
+    w, h = OX_CARRIAGE_FRAME
+    f = K.Frame(OX_CARRIAGE_FRAME)
+    ground = h - 6.0
+    wx, wr = 72.0, 44.0
+    wy = ground - wr
+    # The far wheel shows behind the cabin.
+    _spoked_wheel(f, wx + 7.0, wy - 3.0, wr, K.shade(LACQUER, 0.9), LACQUER, LACQUER_LIGHT)
+    # The far shaft, behind the ox.
+    yoke_far = (190.0, 94.0)
+    f.limb([(26.0, 104.0), yoke_far], 3.4, LACQUER)
+    # The ox.
+    yoke = _black_ox(f, 136.0, ground)
+    # The cabin: a tall box. Its sides are of woven strips of thin wood
+    # (ajiro) in a frame of black lacquer, and its front is open behind a
+    # blind of split bamboo.
+    c0, c1 = 26.0, 118.0
+    ct, cb = 38.0, 104.0
+    depth = (16.0, -6.0)
+    f.poly([(c0, ct), (c1, ct), (c1, cb), (c0, cb)], WICKER)
+    _hatch(f, c0, ct, c1, cb, 6.0, 1.0, 0.7, WICKER_SHADE)
+    _hatch(f, c0, ct, c1, cb, 6.0, -1.0, 0.5, K.alpha(WICKER_SHADE, 0.6))
+    # The frame of black lacquer: posts, a sill and a head rail.
+    for x in (c0 + 2.0, c0 + 48.0, c1 - 2.0):
+        f.limb([(x, ct), (x, cb)], 4.0, LACQUER)
+    f.limb([(c0, cb - 2.0), (c1, cb - 2.0)], 5.0, LACQUER)
+    f.limb([(c0, ct + 2.0), (c1, ct + 2.0)], 4.0, LACQUER)
+    f.ink([(c0 + 1.0, cb - 3.6), (c1 - 1.0, cb - 3.6)], 0.8, LACQUER_LIGHT)
+    # The side window (monomi), with a small blind half up.
+    f.poly([(c0 + 60.0, ct + 12.0), (c1 - 12.0, ct + 12.0), (c1 - 12.0, ct + 34.0), (c0 + 60.0, ct + 34.0)], INTERIOR)
+    f.poly([(c0 + 60.0, ct + 12.0), (c1 - 12.0, ct + 12.0), (c1 - 12.0, ct + 22.0), (c0 + 60.0, ct + 22.0)], BLIND, body=False)
+    for k in range(1, 9):
+        y = ct + 12.0 + k * 1.2
+        f.ink([(c0 + 60.0, y), (c1 - 12.0, y)], 0.4, BLIND_SHADE)
+    f.ink([(c0 + 60.0, ct + 12.0), (c1 - 12.0, ct + 12.0), (c1 - 12.0, ct + 34.0), (c0 + 60.0, ct + 34.0), (c0 + 60.0, ct + 12.0)], 1.4, LACQUER)
+    # Gilt fittings at the corners of the frame.
+    for x, y in ((c0 + 2.0, ct + 3.0), (c0 + 2.0, cb - 3.0), (c0 + 48.0, ct + 3.0), (c0 + 48.0, cb - 3.0), (c1 - 2.0, ct + 3.0), (c1 - 2.0, cb - 3.0)):
+        f.ellipse(x, y, 1.8, 1.8, GOLD, body=False)
+    # The front, seen a little from the side: the bamboo blind, and under
+    # it the long drape of silk that hangs out over the front step.
+    fq = [(c1, ct), (c1 + depth[0], ct + depth[1]), (c1 + depth[0], cb + depth[1]), (c1, cb)]
+    f.poly(fq, BLIND)
+    for k in range(1, 22):
+        y = ct + 3.0 * k
+        f.ink([(c1, y), (c1 + depth[0], y + depth[1])], 0.5, BLIND_SHADE)
+    for t in (0.33, 0.66):
+        f.ink([(c1 + depth[0] * t, ct + depth[1] * t), (c1 + depth[0] * t, cb + depth[1] * t - 4.0)], 0.8, BLIND_SHADE)
+    for j, colour in enumerate((DRAPE, DRAPE_ALT, DRAPE_LIGHT)):
+        t0, t1 = j / 3.0, (j + 1) / 3.0
+        top0 = ct + 30.0 + depth[1] * t0
+        top1 = ct + 30.0 + depth[1] * t1
+        f.poly([(c1 + depth[0] * t0, top0), (c1 + depth[0] * t1, top1), (c1 + depth[0] * t1 + 6.0, cb + 12.0 + depth[1] * t1), (c1 + depth[0] * t0 + 6.0, cb + 12.0 + depth[1] * t0)], colour)
+    f.limb([(c1, ct), (c1, cb)], 3.6, LACQUER)
+    f.limb([(c1 + depth[0], ct + depth[1]), (c1 + depth[0], cb + depth[1])], 3.0, LACQUER)
+    f.limb([(c1, ct + 2.0), (c1 + depth[0], ct + 2.0 + depth[1])], 3.0, LACQUER)
+    # The roof: a long shell that curves over the box, and reaches out over
+    # the front and the back. It is thatched with strips of pale palm leaf.
+    r0, r1 = 12.0, 146.0
+    eave = ct + 2.0
+
+    def roof_top(u: float) -> float:
+        return eave - 6.0 - 18.0 * math.sin(math.pi * min(1.0, max(0.0, (u - 0.04) / 0.92))) ** 0.45
+
+    us = [k / 40.0 for k in range(41)]
+    shell = [(_lerp(r0, r1, u), roof_top(u)) for u in us]
+    f.poly(shell + [(r1, eave - 2.0), (r1 - 4.0, eave + 2.0), (r0 + 4.0, eave + 2.0), (r0, eave - 2.0)], PALM)
+    f.poly([(_lerp(r0, r1, u), roof_top(u)) for u in us if u >= 0.66] + [(r1, eave - 2.0), (r1 - 4.0, eave + 2.0), (_lerp(r0, r1, 0.66), eave + 2.0)], PALM_SHADE, body=False)
+    for k in range(1, 22):
+        u = k / 22.0
+        x = _lerp(r0, r1, u)
+        f.ink([(x, roof_top(u) + 1.0), (x + 1.0, eave)], 0.7, PALM_DARK if u >= 0.66 else PALM_SHADE)
+    f.ink([(_lerp(r0, r1, u), roof_top(u) + 2.0) for u in us[3:26]], 1.4, PALM_LIGHT)
+    # The edge of the roof is bound with a black lacquered rim, and the
+    # front eave curves up a little.
+    f.limb([(r0, eave - 1.0), (r1, eave - 1.0)], 3.0, LACQUER)
+    f.limb([(r1 - 4.0, eave - 1.0), (r1 + 2.0, eave - 6.0)], 3.0, LACQUER)
+    f.limb([(r0 + 4.0, eave - 1.0), (r0 - 2.0, eave - 5.0)], 3.0, LACQUER)
+    # The near shaft: it runs under the cabin, out past the front, to the
+    # yoke on the neck of the ox. Its back end is the step.
+    f.limb([(14.0, 108.0), (yoke[0] + 4.0, yoke[1] + 6.0)], 4.0, LACQUER)
+    f.ink([(16.0, 106.6), (yoke[0] + 2.0, yoke[1] + 4.6)], 0.8, LACQUER_LIGHT)
+    # The yoke across the ox's neck.
+    f.limb([(yoke[0] - 1.0, yoke[1] - 4.0), (yoke[0] + 5.0, yoke[1] + 10.0)], 3.6, LACQUER)
+    f.ink([(yoke[0] - 0.4, yoke[1] - 2.4), (yoke[0] + 3.6, yoke[1] + 7.4)], 0.7, LACQUER_LIGHT)
+    # The near wheel, in front of the cabin.
+    _spoked_wheel(f, wx, wy, wr, LACQUER, K.shade(LACQUER, 1.4), LACQUER_LIGHT)
+    return A.finish(f, width=1.2)
+
+
+# ---------------------------------------------------------------------------
+# The rain gauge (cheugugi) of 1441.
+# ---------------------------------------------------------------------------
+
+
+def _draw_rain_gauge(anim: str, i: int, n: int):
+    w, h = RAIN_GAUGE_FRAME
+    f = K.Frame(RAIN_GAUGE_FRAME)
+    cx = w / 2.0
+    ground = h - 5.0
+    # The stand of granite (cheugudae): a long block with a moulded top,
+    # and a round socket in its top that holds the gauge upright.
+    sx0, sx1 = cx - 20.0, cx + 20.0
+    st = 72.0
+    f.poly([(sx0, st + 6.0), (sx1, st + 6.0), (sx1, ground), (sx0, ground)], GRANITE)
+    f.poly([(sx1 - 9.0, st + 6.0), (sx1, st + 6.0), (sx1, ground), (sx1 - 9.0, ground)], GRANITE_SHADE, body=False)
+    f.poly([(sx0 - 3.0, st), (sx1 + 3.0, st), (sx1 + 3.0, st + 6.0), (sx0 - 3.0, st + 6.0)], GRANITE)
+    f.poly([(sx1 - 6.0, st), (sx1 + 3.0, st), (sx1 + 3.0, st + 6.0), (sx1 - 6.0, st + 6.0)], GRANITE_SHADE, body=False)
+    f.ink([(sx0 - 2.0, st + 1.0), (sx1 + 2.0, st + 1.0)], 0.9, GRANITE_LIGHT)
+    f.ink([(sx0 - 3.0, st + 6.0), (sx1 + 3.0, st + 6.0)], 0.9, GRANITE_DARK)
+    # A sunk panel on the front, with a carved border, and a plinth at the
+    # foot.
+    f.poly([(sx0 + 5.0, st + 12.0), (sx1 - 5.0, st + 12.0), (sx1 - 5.0, ground - 8.0), (sx0 + 5.0, ground - 8.0)], GRANITE_SHADE, body=False)
+    f.poly([(sx0 + 6.0, st + 13.0), (sx1 - 6.0, st + 13.0), (sx1 - 6.0, ground - 9.0), (sx0 + 6.0, ground - 9.0)], K.shade(GRANITE, 0.94), body=False)
+    f.ink([(sx0 + 5.0, ground - 8.0), (sx1 - 5.0, ground - 8.0), (sx1 - 5.0, st + 12.0)], 0.8, GRANITE_LIGHT)
+    f.ink([(sx0 + 9.0, (st + ground) / 2.0 + 2.0), (sx1 - 9.0, (st + ground) / 2.0 + 2.0)], 0.6, GRANITE_SHADE)
+    f.poly([(sx0 - 2.0, ground - 4.0), (sx1 + 2.0, ground - 4.0), (sx1 + 2.0, ground), (sx0 - 2.0, ground)], GRANITE)
+    f.ink([(sx0 - 1.0, ground - 3.2), (sx1 + 1.0, ground - 3.2)], 0.8, GRANITE_LIGHT)
+    f.poly([(sx1 - 7.0, ground - 4.0), (sx1 + 2.0, ground - 4.0), (sx1 + 2.0, ground), (sx1 - 7.0, ground)], GRANITE_SHADE, body=False)
+    rng = random.Random("history_rain_gauge")
+    for _ in range(30):
+        f.dot(rng.uniform(sx0 + 1.0, sx1 - 1.0), rng.uniform(st + 2.0, ground - 1.0), 0.45, K.alpha(GRANITE_DARK, 0.5))
+    # The gauge: a cylinder of bronze, open at its top, made in sections.
+    # The rain that falls in it is measured with a ruler.
+    gx0, gx1 = cx - 10.0, cx + 10.0
+    gt = 16.0
+    f.poly([(gx0, gt), (gx1, gt), (gx1, st + 1.0), (gx0, st + 1.0)], BRONZE)
+    f.poly([(cx + 3.0, gt), (gx1, gt), (gx1, st + 1.0), (cx + 3.0, st + 1.0)], BRONZE_SHADE, body=False)
+    f.poly([(gx0 + 2.0, gt + 3.0), (gx0 + 5.0, gt + 3.0), (gx0 + 5.0, st - 1.0), (gx0 + 2.0, st - 1.0)], BRONZE_LIGHT, body=False)
+    # The bands where the sections join.
+    for y in (gt + 3.0, gt + 20.0, gt + 38.0, st - 3.0):
+        f.poly([(gx0 - 1.2, y - 1.8), (gx1 + 1.2, y - 1.8), (gx1 + 1.2, y + 1.8), (gx0 - 1.2, y + 1.8)], BRONZE)
+        f.poly([(cx + 3.0, y - 1.8), (gx1 + 1.2, y - 1.8), (gx1 + 1.2, y + 1.8), (cx + 3.0, y + 1.8)], BRONZE_SHADE, body=False)
+        f.ink([(gx0 - 0.4, y - 0.8), (cx + 2.0, y - 0.8)], 0.6, BRONZE_LIGHT)
+        f.ink([(gx0 - 1.2, y + 1.8), (gx1 + 1.2, y + 1.8)], 0.6, BRONZE_DARK)
+    # A little green of age on the bronze.
+    for x, y in ((gx0 + 7.0, gt + 12.0), (gx1 - 4.0, gt + 30.0), (gx0 + 4.0, gt + 46.0)):
+        f.ellipse(x, y, 1.4, 0.9, K.alpha(VERDIGRIS, 0.6), body=False)
+    # The open top.
+    f.ellipse(cx, gt, 11.0, 2.8, BRONZE)
+    f.ellipse(cx, gt + 0.3, 9.0, 1.8, BRONZE_DARK, body=False)
+    f.ink(_ring(cx, gt, 10.6, 2.6, 180.0, 300.0, 10), 0.7, BRONZE_LIGHT)
+    return A.finish(f, width=1.2)
+
+
+# ---------------------------------------------------------------------------
+# The self-striking water clock (Jagyeongnu).
+# ---------------------------------------------------------------------------
+
+
+def _jar(f: K.Frame, cx: float, foot: float, r: float, height: float) -> Point:
+    """A great water vessel of bronze: a wide round body with a short
+    neck and a flat lip. It gives the point of its spout, low on its right
+    side."""
+    top = foot - height
+    prof = [(foot, r * 0.62), (foot - height * 0.18, r * 0.92), (foot - height * 0.5, r), (foot - height * 0.78, r * 0.86),
+            (top + 4.0, r * 0.56), (top + 2.0, r * 0.62)]
+    left = [(cx - rr, y) for y, rr in prof]
+    right = [(cx + rr, y) for y, rr in prof[::-1]]
+    f.poly(left + right, BRONZE)
+    f.poly([(cx + rr * 0.35, y) for y, rr in prof] + [(cx + rr, y) for y, rr in prof[::-1]], BRONZE_SHADE, body=False)
+    f.poly([(cx - rr * 0.84, y) for y, rr in prof[1:-1]] + [(cx - rr * 0.6, y) for y, rr in prof[-2:0:-1]], BRONZE_LIGHT, body=False)
+    f.ellipse(cx, top + 2.0, r * 0.62, r * 0.12 + 1.2, BRONZE)
+    f.ellipse(cx, top + 2.2, r * 0.48, r * 0.07 + 0.8, BRONZE_DARK, body=False)
+    # Two raised bands round the body.
+    for t in (0.34, 0.66):
+        y = foot - height * t
+        rr = r * (0.96 if t < 0.5 else 0.94)
+        f.ink([(cx - rr + 1.0, y), (cx, y + 1.6), (cx + rr - 1.0, y)], 1.2, BRONZE_DARK)
+    return (cx + r * 0.9, foot - height * 0.2)
+
+
+def _stone_step(f: K.Frame, x0: float, x1: float, top: float, foot: float) -> None:
+    """One step of the stone platform: a block of dressed granite."""
+    f.poly([(x0, top), (x1, top), (x1, foot), (x0, foot)], GRANITE)
+    f.poly([(x1 - 6.0, top), (x1, top), (x1, foot), (x1 - 6.0, foot)], GRANITE_SHADE, body=False)
+    f.ink([(x0 + 1.0, top + 1.2), (x1 - 1.0, top + 1.2)], 1.0, GRANITE_LIGHT)
+    y = top + 14.0
+    row = 0
+    while y < foot - 2.0:
+        f.ink([(x0 + 1.0, y), (x1 - 1.0, y)], 0.7, GRANITE_DARK)
+        for x in range(int(x0 + (10 if row % 2 else 18)), int(x1 - 4), 18):
+            f.ink([(x, y - 13.4), (x, y - 0.6)], 0.6, GRANITE_DARK)
+        y += 14.0
+        row += 1
+
+
+def _clock_figure(f: K.Frame, x: float, foot: float, robe: RGBA, hand: Point) -> None:
+    """A small wooden figure of a court official, as on the clock: a
+    painted robe, a black hat with two short wings, and an arm raised to
+    `hand`, where it holds a mallet. It has a calm face."""
+    f.poly([(x - 5.0, foot), (x - 4.0, foot - 13.0), (x - 2.6, foot - 16.0), (x + 2.6, foot - 16.0), (x + 4.0, foot - 13.0), (x + 5.0, foot)], robe)
+    f.poly([(x + 1.0, foot - 15.0), (x + 2.6, foot - 16.0), (x + 4.0, foot - 13.0), (x + 5.0, foot), (x + 1.6, foot)], K.shade(robe, 0.72), body=False)
+    f.ink([(x - 4.4, foot - 7.0), (x + 4.4, foot - 7.0)], 1.0, GOLD_SHADE)
+    sh = (x + 2.0, foot - 14.0)
+    f.limb([sh, ((sh[0] + hand[0]) / 2.0, (sh[1] + hand[1]) / 2.0 + 1.0), hand], 2.4, robe)
+    f.ellipse(hand[0], hand[1], 1.3, 1.3, FACE_WOOD)
+    f.ellipse(x, foot - 19.0, 3.2, 3.4, FACE_WOOD)
+    f.dot(x + 1.4, foot - 19.4, 0.5, A.OUTLINE)
+    # The hat: a round crown and two short wings at the back.
+    f.poly([(x - 3.2, foot - 21.0), (x - 2.6, foot - 25.0), (x + 2.6, foot - 25.0), (x + 3.2, foot - 21.0)], HAT)
+    f.limb([(x - 3.6, foot - 22.0), (x - 6.4, foot - 23.0)], 1.4, HAT)
+
+
+def _mallet(f: K.Frame, hand: Point, head: Point) -> None:
+    f.ink([hand, head], 1.0, BOAT_WOOD_DARK)
+    f.ellipse(head[0], head[1], 1.6, 1.6, BOAT_WOOD_SHADE)
+
+
+def _draw_water_clock(anim: str, i: int, n: int):
+    w, h = WATER_CLOCK_FRAME
+    f = K.Frame(WATER_CLOCK_FRAME)
+    ground = h - 6.0
+    # The stepped platform of stone on the left. Water runs from the great
+    # vessel on the top step down to the smaller vessels, so it comes into
+    # the tall receiving vessels at a steady rate.
+    steps = ((8.0, 50.0, 104.0), (50.0, 84.0, 142.0), (84.0, 110.0, 178.0))
+    for x0, x1, top in steps[::-1]:
+        _stone_step(f, x0, x1, top, ground)
+    v1 = _jar(f, 29.0, steps[0][2], 19.0, 42.0)
+    v2 = _jar(f, 67.0, steps[1][2], 14.0, 28.0)
+    v3 = _jar(f, 97.0, steps[2][2], 10.0, 20.0)
+    # The pipes from each vessel to the next.
+    for (sx, sy), (tx, ty) in ((v1, (67.0, steps[1][2] - 28.0)), (v2, (97.0, steps[2][2] - 20.0)), (v3, (120.0, 112.0))):
+        f.limb([(sx, sy), (sx + 4.0, sy), (tx, ty - 4.0), (tx, ty)], 2.6, BRONZE_SHADE)
+        f.ink([(sx, sy - 0.8), (sx + 4.0, sy - 0.8), (tx - 0.8, ty - 4.8)], 0.6, BRONZE_LIGHT)
+    # The two tall receiving vessels: a float rises in them with the
+    # water, and a rod on the float works the striking gear.
+    f.poly([(110.0, ground - 12.0), (146.0, ground - 12.0), (146.0, ground), (110.0, ground)], GRANITE)
+    f.ink([(111.0, ground - 10.8), (145.0, ground - 10.8)], 0.9, GRANITE_LIGHT)
+    f.poly([(138.0, ground - 12.0), (146.0, ground - 12.0), (146.0, ground), (138.0, ground)], GRANITE_SHADE, body=False)
+    for cx in (120.0, 136.0):
+        top = 112.0
+        f.limb([(cx, ground - 12.0), (cx, top - 14.0)], 2.0, BRONZE_DARK)
+        f.poly([(cx - 6.5, top), (cx + 6.5, top), (cx + 6.5, ground - 12.0), (cx - 6.5, ground - 12.0)], BRONZE)
+        f.poly([(cx + 2.0, top), (cx + 6.5, top), (cx + 6.5, ground - 12.0), (cx + 2.0, ground - 12.0)], BRONZE_SHADE, body=False)
+        f.ink([(cx - 4.0, top + 3.0), (cx - 4.0, ground - 15.0)], 1.2, BRONZE_LIGHT)
+        for y in (top + 4.0, (top + ground) / 2.0, ground - 16.0):
+            f.limb([(cx - 7.0, y), (cx + 7.0, y)], 2.4, BRONZE_DARK)
+        f.ellipse(cx, top, 6.9, 1.8, BRONZE)
+        f.ellipse(cx, top + 0.2, 5.2, 1.0, BRONZE_DARK, body=False)
+    f.limb([(136.0, 98.0), (156.0, 98.0)], 2.0, BRONZE_DARK)
+    # The cabinet of the striking gear: a tall case of wood painted in
+    # the palace colours, red posts and green panels, under a roof of grey
+    # tiles. On top is an open storey where three wooden figures stand.
+    k0, k1 = 154.0, 238.0
+    kt, kb = 112.0, ground - 6.0
+    f.poly([(k0 - 4.0, kb), (k1 + 4.0, kb), (k1 + 4.0, ground), (k0 - 4.0, ground)], GRANITE)
+    f.ink([(k0 - 3.0, kb + 1.2), (k1 + 3.0, kb + 1.2)], 0.9, GRANITE_LIGHT)
+    f.poly([(k0, kt), (k1, kt), (k1, kb), (k0, kb)], DANCHEONG)
+    f.poly([(k1 - 12.0, kt), (k1, kt), (k1, kb), (k1 - 12.0, kb)], DANCHEONG_SHADE, body=False)
+    # Panels in two tiers. Each upper panel has a small round window,
+    # where a figure of the hour comes out.
+    posts = [_lerp(k0 + 2.0, k1 - 2.0, j / 3.0) for j in range(4)]
+    for r0, r1 in ((kt + 8.0, kt + 62.0), (kt + 68.0, kb - 6.0)):
+        for a, b in zip(posts[:-1], posts[1:]):
+            f.poly([(a + 5.0, r0), (b - 5.0, r0), (b - 5.0, r1), (a + 5.0, r1)], K.shade(DANCHEONG, 0.88), body=False)
+            f.ink([(a + 5.0, r1), (a + 5.0, r0), (b - 5.0, r0)], 0.8, DANCHEONG_LIGHT)
+            if r0 < kt + 20.0:
+                f.ellipse((a + b) / 2.0, r0 + 14.0, 5.0, 5.0, INTERIOR, body=False)
+                f.limb(_ring((a + b) / 2.0, r0 + 14.0, 5.6, 5.6, 0.0, 360.0, 24), 1.4, GOLD_SHADE, body=False)
+    for x in posts:
+        f.limb([(x, kt), (x, kb)], 4.0, VERMILION)
+        f.ink([(x - 0.9, kt + 1.0), (x - 0.9, kb - 1.0)], 0.8, VERMILION_LIGHT)
+    for y in (kt + 2.0, kt + 65.0, kb - 2.0):
+        f.limb([(k0, y), (k1, y)], 4.0, VERMILION)
+        f.ink([(k0 + 1.0, y - 1.0), (k1 - 1.0, y - 1.0)], 0.7, VERMILION_LIGHT)
+    # The open storey on top: a floor, two red posts, and a lintel.
+    g0, g1 = k0 - 2.0, k1 + 2.0
+    gt, gf = 62.0, kt - 2.0
+    f.poly([(g0 + 2.0, gt), (g1 - 2.0, gt), (g1 - 2.0, gf), (g0 + 2.0, gf)], INTERIOR)
+    f.poly([(g0 + 2.0, gt), (g1 - 2.0, gt), (g1 - 2.0, gt + 6.0), (g0 + 2.0, gt + 6.0)], K.shade(INTERIOR, 0.8), body=False)
+    f.poly([(g0, gf - 4.0), (g1, gf - 4.0), (g1, gf + 2.0), (g0, gf + 2.0)], CABINET)
+    f.ink([(g0 + 1.0, gf - 3.0), (g1 - 1.0, gf - 3.0)], 0.9, CABINET_LIGHT)
+    for x in (g0 + 2.0, g1 - 2.0):
+        f.limb([(x, gt), (x, gf - 4.0)], 3.6, VERMILION)
+    f.limb([(g0, gt + 2.0), (g1, gt + 2.0)], 4.6, DANCHEONG)
+    for x in range(int(g0 + 4), int(g1 - 2), 6):
+        f.ink([(x, gt + 0.6), (x + 3.0, gt + 0.6)], 0.9, VERMILION_LIGHT)
+    floor = gf - 4.0
+    # Each figure stands to the left of its instrument and strikes it with
+    # a mallet. The bell hangs from the lintel; it rings the hours.
+    bx = g0 + 21.0
+    f.ink([(bx, gt + 4.0), (bx, gt + 12.0)], 1.0, BRONZE_DARK)
+    f.poly([(bx - 3.4, gt + 12.0), (bx + 3.4, gt + 12.0), (bx + 5.4, gt + 24.0), (bx - 5.4, gt + 24.0)], BRONZE)
+    f.ellipse(bx, gt + 12.0, 3.4, 1.4, BRONZE)
+    f.poly([(bx + 1.0, gt + 12.0), (bx + 3.4, gt + 12.0), (bx + 5.4, gt + 24.0), (bx + 1.6, gt + 24.0)], BRONZE_SHADE, body=False)
+    f.ink([(bx - 5.0, gt + 21.0), (bx + 5.0, gt + 21.0)], 0.8, BRONZE_DARK)
+    hand = (bx - 9.0, floor - 18.0)
+    _clock_figure(f, bx - 13.0, floor, ROBE_RED, hand)
+    _mallet(f, hand, (bx - 5.4, gt + 19.0))
+    # The drum on a low frame: its figure beats the watches of the night.
+    dx = g0 + 50.0
+    f.limb([(dx - 5.0, floor), (dx - 3.0, floor - 8.0)], 1.6, CABINET_SHADE)
+    f.limb([(dx + 5.0, floor), (dx + 3.0, floor - 8.0)], 1.6, CABINET_SHADE)
+    f.ellipse(dx, floor - 15.0, 6.4, 8.0, CABINET_LIGHT)
+    f.poly([(dx + 1.0, floor - 23.0), (dx + 6.4, floor - 15.0), (dx + 1.0, floor - 7.0)], CABINET, body=False)
+    f.ellipse(dx - 5.4, floor - 15.0, 2.0, 7.6, PAPER)
+    for dy in (-5.0, 0.0, 5.0):
+        f.dot(dx - 3.0, floor - 15.0 + dy, 0.6, GOLD)
+    hand2 = (dx - 10.0, floor - 18.0)
+    _clock_figure(f, dx - 14.0, floor, ROBE_BLUE, hand2)
+    _mallet(f, hand2, (dx - 6.6, floor - 16.0))
+    # The gong hangs in a small frame: its figure marks the parts of each
+    # watch.
+    jx = g1 - 13.0
+    f.limb([(jx - 5.0, floor), (jx - 5.0, gt + 10.0), (jx + 5.0, gt + 10.0), (jx + 5.0, floor)], 1.6, CABINET_SHADE)
+    f.ink([(jx - 2.0, gt + 10.0), (jx - 1.0, gt + 15.0)], 0.7, BRONZE_DARK)
+    f.ink([(jx + 2.0, gt + 10.0), (jx + 1.0, gt + 15.0)], 0.7, BRONZE_DARK)
+    f.ellipse(jx, gt + 21.0, 4.8, 5.4, BRONZE)
+    f.ellipse(jx + 0.4, gt + 21.4, 2.2, 2.4, BRONZE_LIGHT, body=False)
+    f.limb(_ring(jx, gt + 21.0, 4.4, 5.0, -60.0, 100.0, 10), 1.0, BRONZE_SHADE, body=False)
+    hand3 = (jx - 10.0, floor - 18.0)
+    _clock_figure(f, jx - 14.0, floor, ROBE_GREEN, hand3)
+    _mallet(f, hand3, (jx - 5.0, gt + 22.0))
+    # The roof of grey tiles, with eaves that curve up at the corners.
+    r0, r1 = g0 - 5.0, g1 + 5.0
+    ry = gt - 2.0
+    f.poly([(r0 - 2.0, ry - 8.0), (r0 + 6.0, ry - 5.0), (r1 - 6.0, ry - 5.0), (r1 + 2.0, ry - 8.0), (r1 - 2.0, ry + 1.0), (r0 + 2.0, ry + 1.0)], ROOF_TILE)
+    f.poly([(r0 + 10.0, ry - 5.0), (r1 - 10.0, ry - 5.0), (r1 - 18.0, ry - 22.0), (r0 + 18.0, ry - 22.0)], ROOF_TILE)
+    f.poly([(r1 - 30.0, ry - 5.0), (r1 - 10.0, ry - 5.0), (r1 - 18.0, ry - 22.0), (r1 - 34.0, ry - 22.0)], ROOF_TILE_SHADE, body=False)
+    for k in range(1, 14):
+        x = _lerp(r0 + 12.0, r1 - 12.0, k / 14.0)
+        xt = _lerp(r0 + 19.0, r1 - 19.0, k / 14.0)
+        f.ink([(x, ry - 5.6), (xt, ry - 21.0)], 0.8, ROOF_TILE_SHADE)
+    f.limb([(r0 + 16.0, ry - 23.0), (r1 - 16.0, ry - 23.0)], 4.0, ROOF_TILE_SHADE)
+    for x in (r0 + 15.0, r1 - 15.0):
+        f.limb([(x, ry - 23.0), (x + (2.0 if x < (r0 + r1) / 2.0 else -2.0), ry - 28.0)], 3.0, ROOF_TILE_SHADE)
+    f.ink([(r0 + 2.0, ry - 1.0), (r1 - 2.0, ry - 1.0)], 0.9, ROOF_TILE_LIGHT)
+    f.limb([(r0 + 2.0, ry + 1.0), (r1 - 2.0, ry + 1.0)], 2.4, DANCHEONG_SHADE)
+    for x in range(int(r0 + 6), int(r1 - 4), 5):
+        f.dot(x, ry - 3.0, 0.9, ROOF_TILE_LIGHT)
+    return A.finish(f, width=1.4)
+
+
+# ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
 
@@ -873,6 +1939,13 @@ FRAMES: Dict[str, Tuple[int, int]] = {
     "history_cheomseongdae": CHEOMSEONGDAE_FRAME,
     "history_royal_tumulus": TUMULUS_FRAME,
     "history_gold_crown": GOLD_CROWN_FRAME,
+    "history_lake_boat": LAKE_BOAT_FRAME,
+    "history_money_press": MONEY_PRESS_FRAME,
+    "history_compass_bowl": COMPASS_BOWL_FRAME,
+    "history_byobu_screen": BYOBU_FRAME,
+    "history_ox_carriage": OX_CARRIAGE_FRAME,
+    "history_rain_gauge": RAIN_GAUGE_FRAME,
+    "history_water_clock": WATER_CLOCK_FRAME,
 }
 DRAW: Dict[str, Callable] = {
     "history_pit_dwelling": _draw_pit_dwelling,
@@ -882,6 +1955,13 @@ DRAW: Dict[str, Callable] = {
     "history_cheomseongdae": _draw_cheomseongdae,
     "history_royal_tumulus": _draw_royal_tumulus,
     "history_gold_crown": _draw_gold_crown,
+    "history_lake_boat": _draw_lake_boat,
+    "history_money_press": _draw_money_press,
+    "history_compass_bowl": _draw_compass_bowl,
+    "history_byobu_screen": _draw_byobu_screen,
+    "history_ox_carriage": _draw_ox_carriage,
+    "history_rain_gauge": _draw_rain_gauge,
+    "history_water_clock": _draw_water_clock,
 }
 DISPLAY = {
     "history_pit_dwelling": "Pit Dwelling",
@@ -891,6 +1971,13 @@ DISPLAY = {
     "history_cheomseongdae": "Cheomseongdae",
     "history_royal_tumulus": "Royal Tumulus",
     "history_gold_crown": "Gold Crown",
+    "history_lake_boat": "Lake Boat",
+    "history_money_press": "Money Press",
+    "history_compass_bowl": "Compass Bowl",
+    "history_byobu_screen": "Byobu Screen",
+    "history_ox_carriage": "Ox Carriage",
+    "history_rain_gauge": "Rain Gauge",
+    "history_water_clock": "Water Clock",
 }
 #: The room of each prop: its last tag.
 ROOMS = {
@@ -901,6 +1988,13 @@ ROOMS = {
     "history_cheomseongdae": "silla",
     "history_royal_tumulus": "silla",
     "history_gold_crown": "silla",
+    "history_lake_boat": "song",
+    "history_money_press": "song",
+    "history_compass_bowl": "song",
+    "history_byobu_screen": "heian",
+    "history_ox_carriage": "heian",
+    "history_rain_gauge": "joseon",
+    "history_water_clock": "joseon",
 }
 ROWS: Dict[str, List[Tuple[str, int, int]]] = {}
 
@@ -910,9 +2004,12 @@ def _foot(name: str) -> Dict[str, Tuple[float, float]]:
     return {"foot": (w / 2.0, float(h))}
 
 
-#: The anchors of each prop: all are scenery, with a "foot".
+#: The anchors of each prop. A platform has a "top" anchor at the middle of
+#: the surface that a player stands on; the other props have a "foot".
 ANCHORS: Dict[str, Dict[str, Tuple[float, float]]] = {name: _foot(name) for name in DISPLAY}
+ANCHORS["history_lake_boat"] = {"top": ((LAKE_BOAT_SPAN[0] + LAKE_BOAT_SPAN[1]) / 2.0, LAKE_BOAT_TOP)}
 TAGS: Dict[str, List[str]] = {name: ["prop", "scenery", "history", ROOMS[name]] for name in DISPLAY}
+TAGS["history_lake_boat"] = ["prop", "platform", "history", ROOMS["history_lake_boat"]]
 
 TARGETS: Dict[str, dict] = {
     name: _publisher(name, DISPLAY[name], ROWS.get(name, STILL), FRAMES[name], DRAW[name], ANCHORS[name], "Scenery", TAGS[name]) for name in DISPLAY

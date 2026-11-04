@@ -1385,6 +1385,275 @@ def gyeongju_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf * (1.0 - sill)
 
 
+def _tiled_roof(tile: Tile, c: dict, x0: float, x1: float, ridge: float, eave: float, lift: float, colour: RGB, lane: float = 3.6) -> np.ndarray:
+    """A roof of clay tiles seen from the front, from `x0` to `x1`: a ridge
+    at `ridge`, lanes of round tiles that run down to the eave, and a row
+    of round tile ends along the eave. The eave is at `eave` in the middle
+    and turns up by `lift` at the two ends. Returns the mask of the roof."""
+    mid, half = (x0 + x1) * 0.5, (x1 - x0) * 0.5
+    curve = [(x, eave - lift * ((x - mid) / half) ** 4) for x in np.linspace(x0, x1, 32)]
+    pts = [(x0 + 3.0, ridge), (x1 - 3.0, ridge)] + curve[::-1]
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x, y + 3.0) for x, y in pts]), blur=1.2), (0, 0, 0), 0.40)
+    roof = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts))
+    tile.put(roof, colour)
+    lanes = np.abs(((tile.x - mid) % lane) - lane * 0.5)
+    tile.put(roof * np.clip(1.0 - lanes / (lane * 0.22), 0, 1), _mix(colour, (255, 255, 255), 0.28), 0.55)
+    tile.put(roof * (lanes > lane * 0.40), c["dark"], 0.55)
+    ridge_band = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 2.0, ridge - 1.2, x1 - 2.0, ridge + 3.0))
+    tile.put(ridge_band, _mix(colour, c["dark"], 0.35))
+    tile.put(ridge_band * (tile.y < ridge - 0.2), _mix(colour, (255, 255, 255), 0.30), 0.6)
+    ends = [(x, eave - lift * ((x - mid) / half) ** 4 - 1.0) for x in np.arange(mid - np.floor(half / lane) * lane, x1, lane)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, lane * 0.42) for x, y in ends]), _mix(colour, c["dark"], 0.10))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.2, y - 0.2, lane * 0.26) for x, y in ends]), _mix(colour, (255, 255, 255), 0.22))
+    return roof
+
+
+def hangzhou_door(tile: Tile, c: dict) -> np.ndarray:
+    """A moon gate of a garden by West Lake: a round opening, framed by a
+    ring of grey brick, in a wall of white plaster under a coping of grey
+    tiles. Two leaves of dark wood close the round opening, each with a
+    small lattice window in its upper part, where the light of the garden
+    shows. Over the gate a window of grey tile lattice in the wall shows
+    the green of the garden. A branch of willow hangs over the wall, and a
+    low sill of stone is at the foot of the gate."""
+    _frame(tile, c)
+    floor = H - STEP
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, floor))
+    tile.put(wall, c["wall"])
+    tile.tone((tile.noise(6, 12, 3) - 0.5) * 0.08 * wall)
+    # Damp at the foot of the wall, and its two ends a little in shade.
+    tile.put(wall * np.clip((tile.y - (floor - 12.0)) / 12.0, 0, 1), _mix(c["wall"], (120, 128, 110), 0.6), 0.45)
+    tile.put(wall * np.clip(1.0 - tile.x / 3.0, 0, 1), c["dark"], 0.25)
+    tile.put(wall * np.clip((tile.x - W + 3.0) / 3.0, 0, 1), c["dark"], 0.25)
+    # The coping of grey tiles along the top of the wall.
+    _tiled_roof(tile, c, -1.0, W + 1.0, 4.0, 15.0, 0.0, c["tile"], lane=3.5)
+    # A window in the wall: a hexagon framed in grey, with a lattice of
+    # grey tiles set in rings, and the leaves of the garden behind it.
+    hx, hy, hr = W * 0.5, 40.0, 13.0
+    hexagon = [(hx + math.cos(a) * hr, hy + math.sin(a) * hr * 0.92) for a in np.linspace(0.0, 2.0 * math.pi, 6, endpoint=False)]
+    inner_hex = [(hx + math.cos(a) * (hr - 1.8), hy + math.sin(a) * (hr - 1.8) * 0.92) for a in np.linspace(0.0, 2.0 * math.pi, 6, endpoint=False)]
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x + 0.8, y + 0.8) for x, y in hexagon]), blur=0.6), (0, 0, 0), 0.25)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, hexagon)), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, hexagon)) * (tile.y < hy - 4.0), c["frame_light"], 0.35)
+    view = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, inner_hex))
+    tile.put(view, _mix(c["willow"], (40, 70, 50), 0.5))
+    tile.put(view * np.clip((tile.noise(10, 20, 2) - 0.45) * 4.0, 0, 1), c["willow"], 0.8)
+    tile.put(view * np.clip(1.0 - (tile.y - (hy - 9.0)) / 6.0, 0, 1), (230, 240, 230), 0.35)
+    rings = []
+    for row in range(-4, 5):
+        for col in range(-4, 5):
+            rings.append((hx + col * 3.2 + (row % 2) * 1.6, hy + row * 2.8))
+    lattice = tile.mask(lambda p, dx, dy: [p.ellipse([(x - 1.9) * K + dx, (y - 1.9) * K + dy, (x + 1.9) * K + dx, (y + 1.9) * K + dy], outline=255, width=max(1, int(0.55 * K))) for x, y in rings]) * view
+    tile.put(lattice, c["tile"])
+    tile.put(lattice * (tile.y < hy), _mix(c["tile"], (255, 255, 255), 0.25), 0.4)
+    # The ring of the gate and the opening in it.
+    cx, cy, r = W * 0.5, floor - 21.0, 26.0
+    ring = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, cx, cy, r + 3.0)) * (tile.y < floor)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, cx + 0.8, cy + 0.8, r + 3.6), blur=0.8) * wall * (1.0 - ring), (0, 0, 0), 0.25)
+    tile.put(ring, c["frame"])
+    angle = np.arctan2(tile.y - cy, tile.x - cx)
+    tile.put(ring * (np.abs(((angle / (2.0 * math.pi) * 36.0) % 1.0) - 0.5) > 0.44), c["dark"], 0.55)
+    tile.put(ring * (np.abs(np.sqrt((tile.x - cx) ** 2 + (tile.y - cy) ** 2) - (r + 1.5)) < 0.25), c["dark"], 0.35)
+    tile.put(ring * (angle < -0.3) * (angle > -2.6) * (np.sqrt((tile.x - cx) ** 2 + (tile.y - cy) ** 2) > r + 2.2), c["frame_light"], 0.45)
+    opening = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, cx, cy, r)) * (tile.y < floor)
+    # The two leaves: planks of dark wood, the seam between them, a band
+    # of iron, and a ring on each leaf.
+    leaf = opening
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 14, 2) - 0.5) * 0.18 * leaf)
+    plank = (tile.x - cx) % 5.0
+    tile.put(leaf * (plank < 0.4), c["dark"], 0.5)
+    tile.put(leaf * (plank > 0.4) * (plank < 1.1), c["leaf_light"], 0.18)
+    tile.put(leaf * (np.abs(tile.x - cx) < 0.6), c["dark"], 0.9)
+    tile.put(leaf * np.clip(1.0 - (np.sqrt((tile.x - cx) ** 2 + (tile.y - cy) ** 2) - (r - 2.0)) * -0.5, 0, 1), c["dark"], 0.35)
+    for y in (cy - 4.0, cy + 12.0):
+        tile.put(leaf * (np.abs(tile.y - y) < 1.2), _mix(c["leaf"], c["dark"], 0.4))
+        tile.put(leaf * (np.abs(tile.y - y + 1.0) < 0.25), c["leaf_light"], 0.3)
+    # A lattice window in the upper part of each leaf.
+    for x0, x1 in ((cx - 13.0, cx - 3.0), (cx + 3.0, cx + 13.0)):
+        win = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, cy - 19.0, x1, cy - 10.0)) * opening
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 1.0, cy - 20.0, x1 + 1.0, cy - 9.0)) * opening, _mix(c["leaf"], c["dark"], 0.3))
+        tile.put(win, c["glow"])
+        tile.put(win * (tile.y < cy - 16.0), (255, 255, 255), 0.25)
+        bars = (np.abs(((tile.x - x0) % 2.5) - 1.25) > 0.95) | (np.abs(((tile.y - (cy - 19.0)) % 3.0) - 1.5) > 1.15)
+        tile.put(win * bars, _mix(c["leaf"], c["dark"], 0.2))
+    for x in (cx - 3.2, cx + 3.2):
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, cy + 4.0, 1.0)), c["accent"])
+        tile.put(tile.mask(lambda p, dx, dy: p.ellipse([(x - 1.9) * K + dx, (cy + 4.0) * K + dy, (x + 1.9) * K + dx, (cy + 7.8) * K + dy], outline=255, width=max(1, int(0.5 * K)))), c["accent"])
+    # The sill of stone in the opening.
+    sill = tile.mask(lambda p, dx, dy: _box(p, dx, dy, cx - r + 2.0, floor - 2.4, cx + r - 2.0, floor)) * opening
+    tile.put(sill, c["accent"])
+    tile.put(sill * (tile.y < floor - 1.8), _mix(c["accent"], (255, 255, 255), 0.4), 0.7)
+    # A branch of willow that hangs over the wall from the left.
+    rng = tile.rng
+    branch = [(-1.0, 14.0), (4.0, 15.6), (9.0, 16.0), (14.0, 15.0)]
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, branch, 0.7)), (90, 70, 50))
+    strands = []
+    for bx, by in ((2.0, 15.2), (5.0, 15.8), (8.0, 16.0), (11.0, 15.6), (13.4, 15.2)):
+        length = rng.uniform(14.0, 26.0)
+        strands.append([(bx + 0.6 * math.sin(t * 2.0), by + t * length) for t in np.linspace(0.0, 1.0, 12)])
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.25) for pts in strands]), _mix(c["willow"], (90, 70, 50), 0.4))
+    leaves = [(x + (0.4 if j % 2 else -0.4), y) for pts in strands for j, (x, y) in enumerate(pts[1:])]
+    tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(x, y - 1.2), (x + 0.35, y), (x, y + 0.8), (x - 0.35, y)]) for x, y in leaves]), c["willow"])
+    tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(x, y - 1.2), (x + 0.35, y), (x, y + 0.8), (x - 0.35, y)]) for x, y in leaves[::3]]), _mix(c["willow"], (255, 255, 210), 0.35))
+    return leaf * (1.0 - sill)
+
+
+def heian_door(tile: Tile, c: dict) -> np.ndarray:
+    """A gate in the wall of a mansion of Heian-kyo: two round posts
+    painted vermilion with a vermilion beam across them, under a roof of
+    black tiles that curves up a little at its ends. Between the beam and
+    the head of the leaves is a panel of white plaster with a window of
+    upright bars. The two leaves are of plain cypress planks with black
+    iron straps. The posts stand on round stones."""
+    _frame(tile, c)
+    floor = H - STEP
+    back = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, floor))
+    tile.put(back, c["dark"])
+    # The rafters: their pale ends in a row under the eave.
+    rafter_y = 22.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 1.0, rafter_y - 3.0, W - 1.0, rafter_y + 3.0)), _mix(c["dark"], c["frame"], 0.25))
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 1.0, rafter_y, x + 1.0, rafter_y + 2.6) for x in np.arange(3.0, W - 1.0, 3.6)]), c["rafter"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 1.0, rafter_y + 2.0, x + 1.0, rafter_y + 2.6) for x in np.arange(3.0, W - 1.0, 3.6)]), c["dark"], 0.35)
+    # The roof of black tiles.
+    _tiled_roof(tile, c, -1.0, W + 1.0, 4.0, 20.0, 4.0, c["tile"], lane=3.6)
+    # The beam under the rafters, the plaster panel with its window, and
+    # the lower beam over the leaves.
+    beam0, beam1 = 25.4, 30.0
+    panel0, panel1 = beam1, 42.0
+    nuki0, nuki1 = panel1, 46.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, panel0, W - F, panel1)), c["plaster"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, panel0, W - F, panel0 + 1.2)), c["dark"], 0.25)
+    wx0, wx1 = W * 0.5 - 9.0, W * 0.5 + 9.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, wx0 - 1.2, panel0 + 2.2, wx1 + 1.2, panel1 - 2.2)), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, wx0, panel0 + 3.2, wx1, panel1 - 3.2)), c["glow"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, wx0, panel0 + 3.2, wx1, panel0 + 5.0)), (255, 255, 255), 0.25)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.55, panel0 + 3.2, x + 0.55, panel1 - 3.2) for x in np.arange(wx0 + 2.0, wx1 - 0.5, 2.6)]), c["frame"])
+    for y0, y1 in ((beam0, beam1), (nuki0, nuki1)):
+        beam = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, y0, W, y1))
+        tile.put(beam, c["frame"])
+        tile.put(beam * (tile.y < y0 + 0.8), c["frame_light"], 0.55)
+        tile.put(beam * (tile.y > y1 - 0.8), c["dark"], 0.40)
+    # The two leaves of cypress.
+    top = nuki1
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F + 1.6, top, W - F - 1.6, floor))
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 14, 2) - 0.5) * 0.14 * leaf)
+    plank = (tile.x - F - 1.6) % 6.6
+    tile.put(leaf * (plank < 0.45), c["dark"], 0.45)
+    tile.put(leaf * (plank > 0.45) * (plank < 1.2), c["leaf_light"], 0.25)
+    grain = np.clip(1.0 - np.abs(((tile.x + (tile.noise(8, 3, 2) - 0.5) * 3.0) % 1.4) - 0.7) / 0.12, 0, 1)
+    tile.put(leaf * grain, _mix(c["leaf"], c["dark"], 0.3), 0.18)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.6), c["dark"], 0.9)
+    tile.put(leaf * (tile.y < top + 1.6), c["dark"], 0.4)
+    for y in (top + 9.0, floor - 12.0):
+        strap = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, F + 1.6, y, W * 0.5 - 2.0, y + 2.4), _box(p, dx, dy, W * 0.5 + 2.0, y, W - F - 1.6, y + 2.4)))
+        tile.put(strap, c["iron"])
+        tile.put(strap * (tile.y < y + 0.6), _mix(c["iron"], (255, 255, 255), 0.25), 0.6)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y + 1.2, 0.5) for x in (F + 4.0, W * 0.5 - 4.0, W * 0.5 + 4.0, W - F - 4.0)]), _mix(c["iron"], (255, 255, 255), 0.35))
+    for x in (W * 0.5 - 3.0, W * 0.5 + 3.0):
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, 80.0, 1.6)), c["iron"])
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x - 0.4, 79.6, 0.6)), _mix(c["iron"], (255, 255, 255), 0.4))
+    # The posts: round and vermilion, lit on the left, on round stones.
+    for x0 in (0.0, W - F - 1.6):
+        post = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, rafter_y + 3.0, x0 + F + 1.6, floor - 3.0))
+        tile.put(post, c["frame"])
+        tile.put(post * np.clip(1.0 - np.abs(tile.x - x0 - 2.0) / 1.0, 0, 1), c["frame_light"], 0.6)
+        tile.put(post * np.clip((tile.x - x0 - F + 0.4) / 2.0, 0, 1), c["dark"], 0.45)
+        base = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0 - 0.6, floor), (x0 + 0.2, floor - 3.4), (x0 + F + 1.4, floor - 3.4), (x0 + F + 2.2, floor)]))
+        tile.put(base, c["accent"])
+        tile.put(base * (tile.y < floor - 2.6), _mix(c["accent"], (255, 255, 255), 0.35), 0.7)
+    return leaf
+
+
+def _dancheong(tile: Tile, c: dict, x0: float, x1: float, y0: float, y1: float) -> None:
+    """A beam painted in dancheong, the colours of the palaces of Korea: a
+    ground of green, and on it at each end and at even steps bands of red,
+    white and blue, with a row of small round flowers in white and red."""
+    beam = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0, x1, y1))
+    tile.put(beam, c["green"])
+    step = 7.0
+    u = (tile.x - x0) % step
+    tile.put(beam * (u < 1.4), c["red"])
+    tile.put(beam * (u >= 1.4) * (u < 1.9), c["white"])
+    tile.put(beam * (u >= 1.9) * (u < 2.8), c["blue"])
+    tile.put(beam * (u >= 2.8) * (u < 3.2), c["white"])
+    mid = (y0 + y1) * 0.5
+    flowers = [(x, mid) for x in np.arange(x0 + 5.0, x1 - 1.0, step)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, (y1 - y0) * 0.30) for x, y in flowers]), c["white"])
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, (y1 - y0) * 0.15) for x, y in flowers]), c["red"])
+    tile.put(beam * (tile.y < y0 + 0.5), c["white"], 0.5)
+    tile.put(beam * (tile.y > y1 - 0.5), c["dark"], 0.6)
+
+
+def hanyang_door(tile: Tile, c: dict) -> np.ndarray:
+    """The main gate of Gyeongbokgung: a base of dressed granite with an
+    arched passage in it, closed by two red leaves with iron studs and
+    rings, and over the base a gatehouse of wood with two roofs of grey
+    tiles, one over the other, whose eaves sweep up at their corners.
+    Under each eave the beams and brackets are painted in dancheong, green
+    with red, blue and white. A lattice window in the upper floor shows a
+    light."""
+    _frame(tile, c)
+    floor = H - STEP
+    back = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, floor))
+    tile.put(back, c["dark"])
+    # The upper floor: red posts, a lattice window with its light, and a
+    # painted beam, under the upper roof.
+    up0, up1 = 14.0, 23.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 10.0, up0, W - 10.0, up1)), _mix(c["red"], c["dark"], 0.35))
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, W * 0.5 - 12.0, up0 + 3.0, W * 0.5 + 12.0, up1 - 0.6)), c["glow"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.4, up0 + 3.0, x + 0.4, up1) for x in np.arange(W * 0.5 - 10.0, W * 0.5 + 11.0, 2.0)]), _mix(c["red"], c["dark"], 0.2))
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 1.0, up0, x + 1.0, up1) for x in (11.0, W * 0.5, W - 11.0)]), c["red"])
+    _dancheong(tile, c, 10.0, W - 10.0, up0, up0 + 3.0)
+    _tiled_roof(tile, c, 4.0, W - 4.0, 3.0, 14.0, 5.0, c["tile"], lane=3.4)
+    # The lower roof, wider, with the painted beam and the brackets under
+    # it.
+    br0, br1 = 35.0, 41.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 3.0, 30.0, W - 3.0, br1)), _mix(c["green"], c["dark"], 0.5))
+    brackets = [x for x in np.arange(5.0, W - 3.0, 5.6)]
+    tile.put(tile.mask(lambda p, dx, dy: [(_box(p, dx, dy, x - 1.6, br0, x + 1.6, br0 + 2.0), _box(p, dx, dy, x - 0.8, br0 + 2.0, x + 0.8, br1)) for x in brackets]), c["green"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 1.6, br0, x + 1.6, br0 + 0.6) for x in brackets]), c["red"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.8, br0 + 2.0, x + 0.8, br0 + 2.5) for x in brackets]), c["white"])
+    _tiled_roof(tile, c, -1.0, W + 1.0, 21.0, 34.0, 6.0, c["tile"], lane=3.4)
+    _dancheong(tile, c, 1.0, W - 1.0, br1 - 0.2, br1 + 3.6)
+    # The parapet of granite on top of the base, with its low merlons.
+    par0 = br1 + 3.6
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x, par0, x + 4.6, par0 + 3.0) for x in np.arange(0.6, W - 3.0, 6.4)]), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x, par0, x + 4.6, par0 + 0.6) for x in np.arange(0.6, W - 3.0, 6.4)]), c["frame_light"], 0.6)
+    # The granite base with the arched passage.
+    base0 = par0 + 3.0
+    base = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, base0, W, floor))
+    ax0, ax1 = 14.0, W - 14.0
+    arch_r = (ax1 - ax0) * 0.5
+    spring = base0 + 4.0 + arch_r
+    passage = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, ax0, spring, ax1, floor), _dot(p, dx, dy, W * 0.5, spring, arch_r)))
+    stone = base * (1.0 - passage)
+    _courses_of(tile, c, stone, (6.0, 6.6), (11.0, 14.0, 9.0), c["frame"], c["frame_light"])
+    voussoir = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, W * 0.5, spring, arch_r + 3.0)) * (tile.y < spring) * (1.0 - passage)
+    tile.put(voussoir, _mix(c["frame"], c["frame_light"], 0.25))
+    angle = np.arctan2(tile.y - spring, tile.x - W * 0.5)
+    tile.put(voussoir * (np.abs(((angle / math.pi * 9.0) % 1.0) - 0.5) > 0.44), c["dark"], 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, W * 0.5, spring, arch_r + 3.4)) * (tile.y < spring) * (1.0 - voussoir) * (1.0 - passage) * base, c["dark"], 0.35)
+    # The two red leaves in the passage.
+    leaf = passage
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 12, 2) - 0.5) * 0.14 * leaf)
+    plank = (tile.x - ax0) % 5.6
+    tile.put(leaf * (plank < 0.45), c["dark"], 0.5)
+    tile.put(leaf * (plank > 0.45) * (plank < 1.2), c["leaf_light"], 0.22)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.6), c["dark"], 0.9)
+    tile.put(leaf * np.clip(1.0 - (np.minimum(tile.x - ax0, ax1 - tile.x)) / 1.6, 0, 1), c["dark"], 0.45)
+    for y in (spring + 4.0, floor - 22.0, floor - 8.0):
+        studs = [(x, y) for x in np.arange(ax0 + 3.0, ax1 - 1.0, 4.4) if abs(x - W * 0.5) > 1.6]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, 0.9) for x, yy in studs]), c["iron"])
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.25, yy - 0.25, 0.35) for x, yy in studs]), (200, 196, 190), 0.6)
+    for x in (W * 0.5 - 3.6, W * 0.5 + 3.6):
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, 86.0, 1.2)), c["iron"])
+        tile.put(tile.mask(lambda p, dx, dy: p.ellipse([(x - 2.2) * K + dx, 86.0 * K + dy, (x + 2.2) * K + dx, 90.6 * K + dy], outline=255, width=max(1, int(0.6 * K)))), c["iron"])
+    return leaf
+
+
 MOTIONS: dict[Draw, tuple[str, bool]] = {
     bulkhead: (SLIDE, True),
     iron: (SWING, False),
@@ -1420,6 +1689,9 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     jomon_door: (SWING, False),
     taiwan_door: (SWING, False),
     gyeongju_door: (SWING, True),
+    hangzhou_door: (SWING, True),
+    heian_door: (SWING, True),
+    hanyang_door: (SWING, True),
 }
 
 
@@ -1568,6 +1840,16 @@ DOORS: dict[str, tuple[Draw, dict]] = {
                                      "wall": (168, 128, 84), "thatch": (180, 154, 96), "cord": (120, 84, 50), "paint_red": (176, 52, 40), "paint_black": (40, 32, 28)}),
     "history_gyeongju": (gyeongju_door, {**_colours((178, 58, 40), (156, 50, 36), (36, 26, 24), (176, 170, 160), (255, 214, 150)),
                                          "tile": (82, 84, 90), "bracket": (56, 118, 98), "bronze": (196, 156, 82)}),
+    # West Lake: a moon gate in a white wall under grey tiles. Heian-kyo: a
+    # gate of vermilion posts and beams under black tiles, with leaves of
+    # cypress. Hanyang: the gate of Gyeongbokgung, red leaves in a granite
+    # arch under two roofs with painted eaves.
+    "history_hangzhou": (hangzhou_door, {**_colours((112, 114, 118), (82, 56, 40), (30, 28, 30), (150, 148, 140), (255, 214, 150)),
+                                         "wall": (228, 224, 212), "tile": (84, 88, 94), "willow": (130, 166, 74)}),
+    "history_heian": (heian_door, {**_colours((186, 58, 38), (190, 154, 106), (32, 26, 24), (140, 136, 128), (255, 220, 160)),
+                                   "tile": (56, 56, 62), "plaster": (234, 228, 214), "rafter": (226, 210, 170), "iron": (46, 44, 44)}),
+    "history_hanyang": (hanyang_door, {**_colours((170, 166, 156), (168, 46, 36), (34, 28, 26), (150, 146, 138), (255, 222, 160)),
+                                       "tile": (80, 82, 88), "green": (52, 124, 100), "red": (176, 52, 40), "blue": (56, 92, 150), "white": (236, 232, 220), "iron": (56, 52, 50)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

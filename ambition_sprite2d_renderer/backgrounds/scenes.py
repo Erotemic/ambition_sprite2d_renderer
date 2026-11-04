@@ -137,6 +137,9 @@ SCENES: dict[str, Scene] = {
     "history_jomon": history_east_asia_coast.history_jomon,
     "history_taiwan": history_east_asia_coast.history_taiwan,
     "history_gyeongju": history_east_asia_coast.history_gyeongju,
+    "history_hangzhou": history_east_asia_coast.history_hangzhou,
+    "history_heian": history_east_asia_coast.history_heian,
+    "history_hanyang": history_east_asia_coast.history_hanyang,
 }
 
 

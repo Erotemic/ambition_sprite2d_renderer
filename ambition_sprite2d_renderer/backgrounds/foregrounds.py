@@ -366,6 +366,9 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_jomon": (_east_asia_coast.jomon_foreground, scale(_east_asia_coast.JOMON["near"], 0.9)),
     "history_taiwan": (_east_asia_coast.taiwan_foreground, scale(_east_asia_coast.TAIWAN["near"], 0.9)),
     "history_gyeongju": (_east_asia_coast.gyeongju_foreground, scale(_east_asia_coast.GYEONGJU["near"], 0.9)),
+    "history_hangzhou": (_east_asia_coast.hangzhou_foreground, scale(_east_asia_coast.HANGZHOU["near"], 0.9)),
+    "history_heian": (_east_asia_coast.heian_foreground, scale(_east_asia_coast.HEIAN["near"], 0.9)),
+    "history_hanyang": (_east_asia_coast.hanyang_foreground, scale(_east_asia_coast.HANYANG["near"], 0.9)),
 }
 
 

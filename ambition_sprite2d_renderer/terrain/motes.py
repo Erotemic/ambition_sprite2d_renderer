@@ -422,6 +422,72 @@ def _maple_leaf(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(blade * 0.95 - veins * blade * 0.30 + stem * 0.9, 0.0, 1.0), tone
 
 
+def _catkin(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """The fluff of a willow catkin, which drifts by West Lake in spring:
+    a soft, loose tuft of white cotton round a small seed, of no clear
+    shape, with two or three fine wisps that trail out of it. Each variant
+    has its own size and turn, and the fourth is a thin wisp with no
+    seed."""
+    x, y = _cell()
+    rx, ry = _turned(x, y, (0.3, -0.8, 1.4, 2.2)[variant])
+    size = (0.15, 0.18, 0.12, 0.15)[variant]
+    lumps = ((-0.45, 0.10, 0.70), (0.35, -0.15, 0.80), (0.10, 0.35, 0.60), (-0.10, -0.40, 0.55), (0.55, 0.30, 0.45))
+    tuft = np.zeros_like(x)
+    for ox, oy, k in lumps[: 5 if variant != 3 else 3]:
+        tuft = tuft + _soft(rx - ox * size, ry - oy * size * (0.6 if variant == 3 else 1.0), size * k * 1.35, 2.2)
+    # The wisps: thin soft lines that bend a little as they leave the tuft.
+    wisps = np.zeros_like(x)
+    for angle, length, bend in ((0.4, 2.2, 0.5), (2.6, 1.8, -0.6), (4.4, 1.6, 0.4))[: 2 + (variant % 2)]:
+        ux, uy = _turned(rx, ry, -angle)
+        along = ux / (size * length)
+        off = uy - bend * size * along * along
+        wisps = np.maximum(wisps, np.clip(1.0 - np.abs(off) / 0.012, 0.0, 1.0) * np.clip(along, 0.0, 1.0) * (along < 1.0) * (1.0 - along))
+    seed = _soft(rx, ry, 0.028, 1.0) * (variant != 3)
+    halo = _soft(rx, ry, size * 2.0, 2.0) * 0.22
+    # Fine hairs in the cotton: soft streaks that go out from the seed.
+    streaks = 0.72 + 0.28 * np.cos(np.arctan2(ry, rx) * 13.0 + variant) ** 2
+    alpha = np.clip(tuft * 1.1, 0.0, 1.0) ** 0.9 * streaks * (0.6 if variant == 3 else 0.85) + wisps * 0.6 + halo
+    return np.clip(alpha + seed * 0.2, 0.0, 1.0), colour
+
+
+def _momiji(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A leaf of the Japanese maple, which falls in the autumn of
+    Heian-kyo: seven lobes, long and pointed and cut deep, that spread from
+    a small palm like the fingers of a hand; the two lowest lobes are
+    short. A thin stem comes from the gap at its foot. Each variant has
+    its own turn and its own red, scarlet or orange."""
+    x, y = _cell()
+    rx, ry = _turned(x, y, (0.1, -0.9, 1.2, 2.8)[variant])
+    size = (0.32, 0.28, 0.30, 0.25)[variant]
+    blade = _soft(rx, ry + size * 0.05, size * 0.22, 0.3)
+    veins = np.zeros_like(x)
+    for angle, length in ((0.0, 1.0), (0.72, 0.92), (-0.72, 0.92), (1.42, 0.74), (-1.42, 0.74), (2.08, 0.46), (-2.08, 0.46)):
+        # u runs out along the lobe from the palm, v across it.
+        u = rx * math.sin(angle) - ry * math.cos(angle)
+        v = rx * math.cos(angle) + ry * math.sin(angle)
+        t = np.clip(u / (size * length), 0.0, 1.0)
+        half = size * 0.17 * np.sqrt(t) * (1.0 - t) ** 0.9 * 1.9 + size * 0.05 * (1.0 - t)
+        lobe = np.clip((half - np.abs(v)) / 0.012, 0.0, 1.0) * (u > -size * 0.05) * (u < size * length)
+        blade = np.maximum(blade, lobe)
+        veins = np.maximum(veins, np.clip(1.0 - np.abs(v) / 0.008, 0.0, 1.0) * (u > 0.0) * (t < 0.85))
+    stem = np.clip(1.0 - np.abs(rx) / 0.011, 0.0, 1.0) * (ry > 0.0) * (ry < size * 0.8)
+    tone = ((186, 34, 30), (220, 70, 34), (150, 24, 34), colour)[variant]
+    return np.clip(blade * 0.95 - veins * blade * 0.30 + stem * 0.85, 0.0, 1.0), tone
+
+
+def _pine_pollen(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """The pollen of the pines on Bugaksan, which drifts over the palace
+    in early summer: fine yellow grains in a soft haze. The first three
+    variants are single grains of each size. The fourth is a small puff
+    of a few grains together."""
+    x, y = _cell()
+    if variant < 3:
+        r = (0.05, 0.07, 0.09)[variant]
+        return np.clip(_soft(x, y, r, 1.3) * 1.1 + _soft(x, y, r * 2.8, 2.4) * 0.28, 0.0, 1.0), colour
+    grains = sum(_soft(x - ox, y - oy, 0.04, 1.2) for ox, oy in ((-0.08, 0.02), (0.06, -0.06), (0.03, 0.08), (0.12, 0.05), (-0.03, -0.09)))
+    return np.clip(grains * 1.1 + _soft(x, y, 0.26, 2.0) * 0.35, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -560,6 +626,12 @@ MOTES = {
     "history_jomon": (_autumn_leaf, (206, 120, 50)),
     "history_taiwan": (_spray_glint, (246, 252, 252)),
     "history_gyeongju": (_maple_leaf, (232, 168, 56)),
+    # Willow catkins that drift by West Lake in spring; red leaves of the
+    # Japanese maple that fall in the gardens of Heian-kyo; yellow pine
+    # pollen over Gyeongbokgung in early summer.
+    "history_hangzhou": (_catkin, (250, 248, 238)),
+    "history_heian": (_momiji, (232, 120, 40)),
+    "history_hanyang": (_pine_pollen, (246, 222, 110)),
 }
 
 
@@ -644,6 +716,9 @@ SHADOWS = {
     "history_jomon": (40, 30, 22),
     "history_taiwan": (34, 42, 36),
     "history_gyeongju": (50, 44, 34),
+    "history_hangzhou": (36, 42, 40),
+    "history_heian": (46, 36, 30),
+    "history_hanyang": (44, 42, 38),
 }
 SHADOW_PX = (96, 28)
 
