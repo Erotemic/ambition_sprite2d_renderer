@@ -336,6 +336,9 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     # The Atlantic world: the fronds of oil palms hang over Benin City, and
     # grass stands from below.
     "history_benin": (_atlantic.benin_foreground, scale(_atlantic.BENIN["near"], 0.9)),
+    # Saint-Domingue: the fronds of royal palms hang over the plain, and
+    # long leaves of cane stand from below.
+    "history_saint_domingue": (_atlantic.saint_domingue_foreground, scale(_atlantic.SAINT_DOMINGUE["near"], 0.9)),
 }
 
 

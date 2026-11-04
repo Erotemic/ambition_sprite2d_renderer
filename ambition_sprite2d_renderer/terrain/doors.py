@@ -546,6 +546,60 @@ def benin_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def saint_domingue_door(tile: Tile, c: dict) -> np.ndarray:
+    """A door of the north plain of Saint-Domingue: a leaf of upright
+    planks in a wall of stone washed white with lime, under an eave of
+    thatch. Two battens and a brace hold the planks together, two iron strap
+    hinges hold the leaf, and a small square opening lets in the light. The
+    lime has worn off the wall in places, so the stone shows. The eave
+    stays in front of the door when it opens, so it is not part of the
+    leaf."""
+    leaf = _frame(tile, c)
+    wall = (1.0 - leaf) * (tile.y < H - STEP)
+    worn = np.clip((tile.noise(4, 8, 3) - 0.62) * 6.0, 0.0, 1.0)
+    tile.put(wall * worn, _mix(c["frame"], (150, 130, 104), 0.55), 0.8)
+    tile.tone((tile.noise(8, 16, 2) - 0.5) * 0.10 * wall)
+    # The planks: upright boards with dark gaps between them and the grain
+    # along them.
+    tile.tone((tile.noise(2, 14, 2) - 0.5) * 0.24 * leaf)
+    for k in range(1, 5):
+        x = F + k * (W - 2 * F) / 5.0
+        tile.put(leaf * (np.abs(tile.x - x) < 0.5), c["dark"], 0.85)
+        tile.put(leaf * (np.abs(tile.x - x - 1.0) < 0.35), c["leaf_light"], 0.30)
+    grain = np.abs(((tile.x + (tile.noise(3, 10, 2) - 0.5) * 2.6) % 2.6) - 1.3) < 0.12
+    tile.put(leaf * grain, c["dark"], 0.22)
+    # The two battens and the brace between them.
+    battens = tile.mask(lambda p, dx, dy: [_box(p, dx, dy, F + 2.0, y, W - F - 2.0, y + 5.0) for y in (36.0, 92.0)])
+    brace = tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(F + 6.0, 90.0), (W - F - 6.0, 43.0)], 2.2))
+    for part in (brace * (1.0 - battens), battens):
+        tile.put(part * leaf, c["leaf"])
+        tile.put(part * leaf * np.clip((tile.noise(2, 10, 2) - 0.5) * 2.0 + 0.5, 0.0, 1.0), c["leaf_light"], 0.20)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, F + 2.0, y + 4.2, W - F - 2.0, y + 5.0) for y in (36.0, 92.0)]) * leaf, c["dark"], 0.65)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, F + 2.0, y, W - F - 2.0, y + 0.7) for y in (36.0, 92.0)]) * leaf, c["leaf_light"], 0.55)
+    # The strap hinges of black iron on the left, with their nails, and a
+    # latch on the right.
+    iron = (46, 42, 44)
+    tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(F, y + 0.6), (F + 26.0, y + 1.6), (F + 26.0, y + 3.4), (F, y + 4.4)]) for y in (36.0, 92.0)]), iron)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, F + 6.0 + k * 6.5, y + 2.5, 0.6) for k in range(4) for y in (36.0, 92.0)]), (120, 116, 118), 0.8)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, W - F - 12.0, 66.0, W - F - 3.0, 67.4), _dot(p, dx, dy, W - F - 4.0, 70.0, 1.4))), iron)
+    _window(tile, c, W * 0.5 - 5.5, 22.0, W * 0.5 + 5.5, 31.0)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, W * 0.5 - 0.5, 22.0, W * 0.5 + 0.5, 31.0)), c["leaf"], 0.9)
+    # The eave of thatch over the door: a thick band of grass laid in bundles
+    # whose ends hang in a ragged line, with the shade it casts on the wall.
+    rng = tile.rng
+    edge = [(x, 13.0 + rng.uniform(-1.4, 1.4)) for x in np.linspace(0.0, W, 22)]
+    eave = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(0.0, 0.0), (W, 0.0)] + edge[::-1]))
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(0.0, 0.0), (W, 0.0)] + [(x, y + 3.0) for x, y in edge[::-1]]), blur=1.2) * (1.0 - eave), (0, 0, 0), 0.35)
+    tile.put(eave, c["thatch"])
+    strands = [(rng.uniform(0.0, W), rng.uniform(1.0, 9.0), rng.uniform(-0.8, 0.8)) for _ in range(70)]
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y0), (x + lean, y0 + 5.0)], 0.22) for x, y0, lean in strands]) * eave, _mix(c["thatch"], c["dark"], 0.45), 0.7)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x + 0.4, y0), (x + 0.4 + lean, y0 + 4.0)], 0.18) for x, y0, lean in strands[::2]]) * eave,
+             _mix(c["thatch"], (255, 240, 200), 0.4), 0.6)
+    tile.put(eave * (tile.y < 1.2), _mix(c["thatch"], (255, 240, 200), 0.3), 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(0.0, 5.0), (W, 4.4)], 0.6)) * eave, _mix(c["thatch"], c["dark"], 0.6), 0.6)
+    return leaf * (1.0 - eave)
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -573,6 +627,7 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     corbel: (SWING, False),
     mat_door: (SWING, False),
     benin_door: (SWING, False),
+    saint_domingue_door: (SWING, False),
 }
 
 
@@ -674,6 +729,9 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     # The Atlantic world. Benin City: a carved door of dark wood with brass
     # studs, in a wall of red earth with horizontal ridges.
     "history_benin": (benin_door, _colours((164, 74, 46), (78, 48, 32), (34, 18, 12), (226, 176, 72), (255, 214, 140))),
+    # Saint-Domingue: a door of planks in a whitewashed wall of stone, under
+    # an eave of thatch, on a step of red earth.
+    "history_saint_domingue": (saint_domingue_door, {**_colours((232, 226, 206), (124, 92, 62), (40, 28, 20), (164, 80, 50), (255, 214, 150)), "thatch": (178, 148, 92)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

@@ -121,6 +121,7 @@ SCENES: dict[str, Scene] = {
     "history_rapa_nui": history_americas_pacific.history_rapa_nui,
     # The History dimension: the Atlantic world (`history_atlantic.py`).
     "history_benin": history_atlantic.history_benin,
+    "history_saint_domingue": history_atlantic.history_saint_domingue,
 }
 
 

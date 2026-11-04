@@ -1882,6 +1882,76 @@ def brass_bell(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+# Saint-Domingue. There `metal` is the orange of a squash, `bloom` the red of
+# ripe coffee cherries, and `wood` the clay of the pots and the tan of the
+# gourds.
+
+
+def joumou(tile: Tile, c: dict) -> None:
+    """A joumou: a big squash of the island, wide and flat, with deep ribs
+    from its stem to its foot, orange with a mottle of green, and a short
+    thick stem. Its soup is the soup of 1 January."""
+    _shadow(tile, 9.0)
+    lobes = [(-6.2, 3.4), (-3.4, 4.2), (0.0, 4.6), (3.4, 4.2), (6.2, 3.4)]
+    for k, (x, rx) in enumerate(lobes):
+        body = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x, G - 5.6, rx, ry=5.4))
+        colour = c["metal"] if k % 2 == 0 else _mix(c["metal"], c["dark"], 0.12)
+        tile.put(body, colour)
+        tile.put(body * (tile.x < M + x - rx * 0.3), _mix(c["metal"], (255, 236, 190), 0.35), 0.5)
+    whole = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 5.6, 9.6, ry=5.4))
+    tile.put(whole * (tile.y > G - 2.6), c["dark"], 0.30)
+    mottle = np.clip((tile.noise(5, 5, 2) - 0.55) * 5.0, 0.0, 1.0)
+    tile.put(whole * mottle, _mix(c["plant"], c["metal"], 0.35), 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M + x * 1.18, G - 10.2), (M + x * 1.30, G - 5.6), (M + x * 1.18, G - 1.2)], 0.25) for x in (-4.8, -1.7, 1.7, 4.8)]),
+             c["dark"], 0.40)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 1.0, G - 10.4), (M + 0.6, G - 10.4), (M + 1.8, G - 13.6), (M + 0.6, G - 13.8)])), _mix(c["plant"], c["wood"], 0.4))
+    tile.alpha *= tile.y < G
+
+
+def coffee_bush(tile: Tile, c: dict) -> None:
+    """A young coffee bush: thin branches that reach out from a stem and
+    bend down a little, pairs of long dark glossy leaves along them, and
+    small tight clusters of ripe red cherries where the leaves meet the
+    branch."""
+    _shadow(tile, 7.0)
+    bark = _mix(c["wood"], c["dark"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M, G), (M - 0.2, G - 8.0), (M + 0.3, G - 16.0)], 0.5)), bark)
+    rng = tile.rng
+    for y, half in ((4.4, 7.2), (8.0, 6.6), (11.4, 5.2), (14.4, 3.4)):
+        for side in (-1.0, 1.0):
+            tip = (M + side * half, G - y + 1.4)
+            tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M, G - y), (M + side * half * 0.6, G - y - 0.4), tip], 0.28)), bark)
+            for t in (0.35, 0.65, 0.95):
+                x, yy = M + side * half * t, G - y - 0.4 + 1.8 * max(0.0, t - 0.6)
+                for up in (-1.0, 1.0):
+                    lx, ly = x + side * 1.4, yy + up * 1.3
+                    leaf = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x, yy), (lx - side * 0.2, ly - 0.7), (lx + side * 1.4, ly + up * 0.3), (lx, ly + 0.7)]))
+                    tile.put(leaf, c["plant"] if up < 0 else _mix(c["plant"], c["dark"], 0.35))
+                    tile.put(leaf * (tile.y < ly - 0.2), (220, 240, 200), 0.18)
+                if t < 0.9 and rng.random() < 0.8:
+                    berries = [(x + rng.uniform(-0.5, 0.5), yy + 0.5 + rng.uniform(-0.2, 0.4)) for _ in range(3)]
+                    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, bx, by, 0.5) for bx, by in berries]), c["bloom"])
+                    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, bx - 0.15, by - 0.15, 0.15) for bx, by in berries]), (255, 210, 190), 0.6)
+    tile.alpha *= tile.y < G
+
+
+def cane_cuttings(tile: Tile, c: dict) -> None:
+    """Cuttings of sugar cane for planting: short lengths of stalk, each
+    with two or three joints, laid in a heap with a few dry leaves. A new
+    plant grows from each joint."""
+    _shadow(tile, 9.0)
+    stalk = _mix(c["plant"], (220, 200, 120), 0.35)
+    for x0, y0, x1, y1 in ((M - 9.0, G - 1.2, M + 5.0, G - 2.0), (M - 6.0, G - 3.4, M + 9.0, G - 2.6), (M - 8.0, G - 5.4, M + 6.0, G - 6.2), (M - 3.0, G - 7.6, M + 8.0, G - 6.8)):
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x0, y0), (x1, y1)], 1.0)), stalk)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x0, y0 - 0.5), (x1, y1 - 0.5)], 0.35)), (255, 240, 190), 0.35)
+        for t in (0.0, 0.35, 0.7, 1.0):
+            jx, jy = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+            tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(jx, jy - 1.0), (jx + 0.1, jy + 1.0)], 0.3)), c["dark"], 0.55)
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x1, y1, 0.9)), _mix(stalk, (250, 240, 210), 0.5))
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M + x, G - 1.0), (M + x + 3.0, G - 6.0), (M + x + 7.0, G - 7.5)], 0.25) for x in (-8.0, -5.0)]), _mix(c["wood"], (220, 190, 120), 0.5), 0.8)
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -1971,6 +2041,10 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # The Atlantic world. Benin City: clay pots, yams, a heap of cowries,
     # kola nuts in a bowl, a small brass bell, and grass.
     "history_benin": ((clay_pots, yams, cowries, kola_nuts, brass_bell, grass_tuft), _palette((44, 24, 16), (150, 90, 64), (246, 240, 224), (170, 92, 58), (226, 176, 72), (110, 140, 64), (176, 54, 44), (255, 214, 150))),
+    # Saint-Domingue: a joumou squash, a coffee bush with red cherries,
+    # cuttings of cane, pots, a gourd and grass.
+    "history_saint_domingue": ((joumou, coffee_bush, cane_cuttings, clay_pots, water_gourd, grass_tuft),
+                               _palette((40, 26, 18), (150, 120, 96), (236, 226, 204), (176, 110, 64), (226, 128, 44), (88, 128, 56), (196, 40, 36), (255, 214, 150))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),

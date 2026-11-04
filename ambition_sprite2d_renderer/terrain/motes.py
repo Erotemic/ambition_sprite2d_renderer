@@ -233,6 +233,28 @@ def _dust_spark(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(_soft(x, y, 0.06, 1.0) * 1.4 + _soft(x, y, 0.20, 2.6) * 0.45 + tail * 0.5, 0.0, 1.0), colour
 
 
+def _fluff(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A seed that the wind carries on a tuft of fine hairs, as the seeds
+    of grasses and of the silk-cotton tree drift over the plain. A small
+    seed, and a soft fan of hairs that opens up from it. The fourth variant
+    is a loose puff of fluff with no seed."""
+    x, y = _cell()
+    if variant == 3:
+        return np.clip(_soft(x, y, 0.20, 1.6) * 0.55 + _soft(x + 0.05, y - 0.03, 0.12, 1.4) * 0.4, 0.0, 1.0), colour
+    turn = (0.2, -0.5, 0.9)[variant]
+    rx = x * math.cos(turn) - y * math.sin(turn)
+    ry = x * math.sin(turn) + y * math.cos(turn)
+    seed = _soft(rx, ry - 0.10, 0.045, 1.2, squash=0.6)
+    # The hairs: thin rays from the seed up and out, in a fan.
+    angle = np.arctan2(ry - 0.10, rx)
+    reach = np.sqrt(rx**2 + (ry - 0.10) ** 2)
+    fan = np.clip(1.0 - np.abs(angle + math.pi / 2.0) / 1.0, 0.0, 1.0)
+    rays = np.clip(np.cos(angle * 18.0) * 0.5 + 0.5, 0.0, 1.0) ** 3
+    hairs = fan * rays * np.clip(1.0 - reach / 0.30, 0.0, 1.0) * (reach > 0.03)
+    halo = _soft(rx, ry + 0.04, 0.24, 2.0) * 0.30
+    return np.clip(seed * 1.2 + hairs * 0.65 + halo, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -344,6 +366,9 @@ MOTES = {
     # The Atlantic world: warm red dust over Benin City, and the sparks of
     # the casters' furnaces.
     "history_benin": (_dust_spark, (255, 196, 128)),
+    # Saint-Domingue: seeds on tufts of fluff drift over the plain in the
+    # warm light of the late afternoon.
+    "history_saint_domingue": (_fluff, (255, 244, 222)),
 }
 
 
@@ -415,6 +440,7 @@ SHADOWS = {
     "history_open_ocean": (14, 22, 40),
     "history_rapa_nui": (40, 44, 30),
     "history_benin": (60, 26, 16),
+    "history_saint_domingue": (56, 28, 18),
 }
 SHADOW_PX = (96, 28)
 

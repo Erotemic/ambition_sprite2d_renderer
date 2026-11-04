@@ -273,6 +273,10 @@ SKINS: tuple[Skin, ...] = (
     # earth that was polished smooth; a squared beam of hardwood is the
     # platform.
     Skin("history_benin", "ridged_laterite", (164, 74, 46), (70, 30, 20), (212, 120, 78), (226, 176, 72), "polished_earth", (104, 42, 28), "roots", "hardwood_beam"),
+    # Saint-Domingue: the red-brown earth of the north plain, baked hard in
+    # beds, under a cap of grass with small yellow flowers; a rough plank,
+    # sawn by hand and nailed on two cleats, is the platform.
+    Skin("history_saint_domingue", "laterite", (150, 72, 44), (64, 28, 18), (198, 116, 72), (238, 196, 84), "grass", (112, 150, 58), "roots", "rough_plank"),
     # Great slabs, each with one sign cut in it that gives a little light.
     Skin("eclipse", "monolith", (30, 34, 86), (10, 12, 36), (72, 78, 152), (92, 232, 200), "edge", (44, 50, 112), "lip", "slab"),
 )
@@ -2341,6 +2345,35 @@ def oneway(skin: Skin) -> Image.Image:
             tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x0 + side, 3.1, 0.75) for side in (-2.6, 2.6)]), _mix(wood_light, (220, 190, 140), 0.3))
             tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x0 + side + 0.25, 3.35, 0.35) for side in (-2.6, 2.6)]), wood_dark, 0.6)
         tile.put(np.clip(1.0 - (y - 6.2) / 3.0, 0, 1) * (y >= 6.2), (0, 0, 0), 0.24)
+    elif skin.oneway == "rough_plank":
+        # A rough plank, sawn by hand: its edges are not quite straight, the
+        # saw left slanted marks across its face, the grain runs along it
+        # with a knot here and there, and one end has a split. It lies on a
+        # cleat each thirty-two units, held by square iron nails.
+        wood, wood_dark, wood_light = (128, 92, 60), (58, 38, 26), (182, 142, 96)
+        wobble = 0.35 * np.sin(tile.x * math.pi / 32.0 + 0.8) + 0.25 * np.sin(tile.x * math.pi / 8.0 + 2.1)
+        body = (y < 5.4 + wobble).astype(np.float32)
+        tile.put(body, wood)
+        tile.tone((tile.noise(2, 12, 2) - 0.5) * 0.28 * body)
+        grain = np.clip(1.0 - np.abs(((y + (tile.noise(4, 6, 2) - 0.5) * 2.0) % 1.4) - 0.7) / 0.10, 0.0, 1.0)
+        tile.put(grain * body, wood_dark, 0.22)
+        saw = np.clip(1.0 - np.abs(((tile.x + y * 0.55) % 2.3) - 1.15) / 0.12, 0.0, 1.0) * (tile.noise(3, 3, 2) > 0.5)
+        tile.put(saw * body, wood_light, 0.18)
+        tile.put((y < 0.8).astype(np.float32) * body, wood_light, 0.85)
+        tile.put(((y >= 4.6 + wobble) & (y < 5.4 + wobble)).astype(np.float32), wood_dark, 0.85)
+        knots = [(rng.uniform(4.0, 28.0) + k * 32.0, rng.uniform(1.8, 3.6)) for k in range(2)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, 1.1, ry=0.7) for x, yy in knots]), wood_dark, 0.75)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x - 3.0, yy - 0.5), (x - 0.8, yy - 0.2)], 0.15) for x, yy in knots]), wood_dark, 0.5)
+        # The joint between two planks, and the split at its end.
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 40.0 - 0.35, 0.0, 40.0 + 0.35, 5.6)), wood_dark, 0.9)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(40.4, 2.6), (44.0, 2.9), (47.5, 2.5)], 0.18)), wood_dark, 0.8)
+        cleats = tile.mask(lambda p, dx, dy: [_box(p, dx, dy, k * 32.0 + 12.0, 5.0, k * 32.0 + 17.0, 11.5) for k in range(2)])
+        tile.put(cleats, _mix(wood_dark, wood, 0.35))
+        tile.put(cleats * tile.mask(lambda p, dx, dy: [_box(p, dx, dy, k * 32.0 + 12.0, 5.0, k * 32.0 + 13.0, 11.5) for k in range(2)]), wood_light, 0.35)
+        nails = [(k * 32.0 + 14.5 + side, 2.6) for k in range(2) for side in (-1.2, 1.2)]
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.45, yy - 0.45, x + 0.45, yy + 0.45) for x, yy in nails]), (52, 50, 54))
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.45, yy - 0.45, x, yy) for x, yy in nails]), (140, 136, 140), 0.6)
+        tile.put(np.clip(1.0 - (y - 5.4 - wobble) / 3.0, 0, 1) * (y >= 5.4 + wobble) * (1.0 - cleats), (0, 0, 0), 0.24)
     else:  # slab
         stone = _mix(skin.base, skin.light, 0.45)
         tile.put((y < 6.4).astype(np.float32), stone)
