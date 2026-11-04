@@ -142,7 +142,7 @@ class Store:
                 defects.append({"code": "changed-output", "path": logical})
         return defects
 
-    def publish(self, replacements: dict[str, str], base, *, replace: bool = False, hashes=None, only_missing=False) -> dict:
+    def publish(self, replacements: dict[str, str], base, *, replace: bool = False, hashes=None, only_missing=False, refresh_units=()) -> dict:
         """Select ``replacements`` and return the new selection.
 
         ``base`` is the selection the caller planned against: the selection
@@ -156,6 +156,7 @@ class Store:
 
         ``only_missing`` keeps accepted units and paths under the publication
         lock. A concurrent publisher's products are kept too.
+        ``refresh_units`` can replace derived indexes when new units are added.
 
         A bundle whose recorded parent is not the selected one is still
         selected. It is listed in ``stale`` with its reason, so a status query
@@ -167,9 +168,9 @@ class Store:
             previous = self.selected()
             if only_missing:
                 replacements = {unit: key for unit, key in replacements.items()
-                                if unit not in previous['bundles'] and not any(
+                                if unit in refresh_units or (unit not in previous['bundles'] and not any(
                                     item['role'] == 'runtime' and logical in previous['files']
-                                    for logical, item in self.bundle(key)['files'].items())}
+                                    for logical, item in self.bundle(key)['files'].items()))}
                 replace = False
             planned = base.get("generation") if isinstance(base, dict) else base
             if previous["generation"] != planned:
