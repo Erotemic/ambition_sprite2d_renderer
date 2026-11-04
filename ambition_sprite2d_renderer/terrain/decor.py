@@ -2018,6 +2018,156 @@ def sea_shells(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+# South America. In the high Andes `bloom` is the red of quinoa and `metal`
+# its gold; at Caral `metal` is the tan-orange of a squash, `bloom` the
+# yellow of its flower, and `wood` the straw of twisted reed.
+
+
+def potatoes(tile: Tile, c: dict) -> None:
+    """A small heap of potatoes, as the first farmers of the Andes grew
+    them: of many kinds, each of its own colour and shape. Purple, red,
+    yellow and white ones, round, long or knobbly, with small dark eyes."""
+    _shadow(tile, 8.5)
+    heap = [(-5.6, 2.2, 2.8, (104, 58, 112)), (-1.2, 2.4, 3.2, (214, 180, 96)), (3.6, 2.0, 2.6, (168, 56, 52)), (7.2, 1.7, 2.0, (226, 214, 186)),
+            (-3.4, 5.6, 2.4, (176, 64, 60)), (1.2, 5.8, 2.8, (88, 50, 96)), (4.6, 5.0, 2.0, (222, 190, 104)), (-0.8, 8.8, 2.2, (232, 220, 196))]
+    rng = tile.rng
+    for x, up, r, colour in heap:
+        ry = r * rng.uniform(0.70, 0.85)
+        pts = [(M + x + math.cos(t) * r * (1.0 + rng.uniform(-0.10, 0.10)), G - up + math.sin(t) * ry * (1.0 + rng.uniform(-0.10, 0.10))) for t in np.linspace(0.0, 2.0 * math.pi, 11)[:-1]]
+        body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts))
+        tile.put(body, colour)
+        tile.put(body * (tile.y < G - up - ry * 0.25) * (tile.x < M + x + r * 0.3), _mix(colour, (255, 248, 230), 0.35), 0.7)
+        tile.put(body * (tile.y > G - up + ry * 0.35), c["dark"], 0.35)
+        eyes = [(M + x + rng.uniform(-0.6, 0.6) * r, G - up + rng.uniform(-0.5, 0.4) * ry) for _ in range(2)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, ex, ey, 0.3) for ex, ey in eyes]) * body, c["dark"], 0.65)
+    tile.alpha *= tile.y < G
+
+
+def ichu_tussock(tile: Tile, c: dict) -> None:
+    """A tussock of ichu, the bunch grass of the high plain: a dense clump
+    of thin, stiff, tawny blades that fan up and out from one base, with
+    dry pale tips and a dark heart."""
+    _shadow(tile, 8.0)
+    rng = tile.rng
+    blades = []
+    for k in range(30):
+        t = k / 29.0 - 0.5
+        h = rng.uniform(13.0, 17.5) * (1.0 - abs(t) * 0.55)
+        tip = (M + t * 18.0 + rng.uniform(-0.5, 0.5), G - h)
+        mid = (M + t * 8.0, G - h * 0.55)
+        blades.append(([(M + t * 3.0, G), mid, tip], k % 3))
+    for shade in (2, 1, 0):
+        colour = (_mix(c["plant"], c["dark"], 0.40), _mix(c["plant"], c["dark"], 0.12), c["plant"])[shade]
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.45) for pts, kind in blades if kind == shade]), colour)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [pts[1], pts[2]], 0.3) for pts, kind in blades if kind == 0]) * (tile.y < G - 9.0), c["stone_light"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 1.4, 3.6, ry=1.6)), c["dark"], 0.5)
+    tile.alpha *= tile.y < G
+
+
+def quinoa_plant(tile: Tile, c: dict) -> None:
+    """Quinoa, a grain that the people of the Andes made a crop: tall
+    stalks with leaves shaped like a goose's foot, each topped by a long,
+    dense head of small seeds. One head is red and one is gold."""
+    _shadow(tile, 6.0)
+    green = (104, 132, 70)
+    stem = _mix(green, c["dark"], 0.30)
+    for x, h, head in ((-3.0, 19.0, c["bloom"]), (3.2, 16.0, c["metal"]), (0.2, 12.0, _mix(c["bloom"], c["metal"], 0.5))):
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + x * 0.3, G), (M + x, G - h * 0.6), (M + x + 0.3, G - h + 4.0)], 0.5)), stem)
+        for k, y in enumerate((h * 0.20, h * 0.38, h * 0.55)):
+            side = 1.0 if (k % 2) else -1.0
+            bx, by = M + x * (0.3 + 0.7 * y / h), G - y
+            leaf = [(bx, by), (bx + side * 1.6, by - 1.8), (bx + side * 3.4, by - 1.0), (bx + side * 2.6, by + 0.4)]
+            tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, leaf)), green)
+            tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(bx, by), (bx + side * 2.8, by - 0.8)], 0.15)), c["dark"], 0.4)
+        # The head: a dense column of small clusters of seed, narrow at its
+        # tip.
+        lumps = [(M + x + 0.3 + math.sin(j * 2.3) * 0.7, G - h + 4.5 - j * 0.55, 1.5 - j * 0.07) for j in range(15)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, lx, ly, r) for lx, ly, r in lumps]), _mix(head, c["dark"], 0.30))
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, lx - 0.3, ly - 0.3, r * 0.75) for lx, ly, r in lumps]), head)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, lx - 0.6, ly - 0.5, r * 0.30) for lx, ly, r in lumps]), _mix(head, (255, 240, 200), 0.5), 0.6)
+    tile.alpha *= tile.y < G
+
+
+def cotton_plant(tile: Tile, c: dict) -> None:
+    """A cotton plant of the Supe valley: a low bush with broad dark leaves
+    of three to five lobes, and open bolls: white tufts of fibre in a cup
+    of brown, dry husk. The people of Caral grew it to make nets and
+    cloth."""
+    _shadow(tile, 7.5)
+    stem = _mix(c["wood"], c["dark"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M, G), (M + x * 0.4, G - h * 0.5), (M + x, G - h)], 0.45) for x, h in ((-6.0, 12.0), (0.0, 16.0), (6.0, 11.0), (-2.6, 9.0), (3.4, 14.0))]),
+             stem)
+    for x, y, side in ((-5.0, 7.0, -1.0), (4.6, 6.4, 1.0), (-1.6, 11.0, -1.0), (2.4, 10.0, 1.0), (0.0, 5.0, 1.0)):
+        lobes = [(M + x + side * dx_, G - y + dy_, r) for dx_, dy_, r in ((0.0, 0.0, 1.9), (1.4, -1.2, 1.4), (-1.2, -1.3, 1.4), (1.8, 0.7, 1.1), (-1.6, 0.8, 1.1))]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, lx, ly, r) for lx, ly, r in lobes]), _mix(c["plant"], c["dark"], 0.25))
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, lx - 0.3, ly - 0.4, r * 0.6) for lx, ly, r in lobes[:3]]), c["plant"], 0.8)
+    for x, h in ((-6.0, 12.0), (0.0, 16.0), (6.0, 11.0), (3.4, 14.0), (-2.6, 9.0)):
+        bx, by = M + x, G - h
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(bx - 2.0, by), (bx + 2.0, by), (bx + 1.2, by + 1.6), (bx - 1.2, by + 1.6)])), _mix(c["wood"], c["dark"], 0.30))
+        puffs = [(bx - 1.1, by - 0.6, 1.3), (bx + 1.1, by - 0.6, 1.3), (bx, by - 1.6, 1.4), (bx, by - 0.2, 1.2)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, px, py, r) for px, py, r in puffs]), _mix(c["stone_light"], c["dark"], 0.10))
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, px - 0.3, py - 0.4, r * 0.6) for px, py, r in puffs]), (252, 250, 242), 0.85)
+    tile.alpha *= tile.y < G
+
+
+def squash_vine(tile: Tile, c: dict) -> None:
+    """A squash of the valley on its vine: a long, ribbed fruit, tan-orange
+    with a few green streaks, lying on the ground, with a big lobed leaf, a
+    curl of tendril, and one yellow flower."""
+    _shadow(tile, 9.0)
+    vine = _mix(c["plant"], c["dark"], 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 11.0, G - 1.0), (M - 6.0, G - 2.6), (M - 1.0, G - 2.0), (M + 4.0, G - 3.6), (M + 10.0, G - 2.6)], 0.5)), vine)
+    # The leaf, behind the fruit.
+    lx, ly = M - 4.0, G - 9.0
+    lobes = [(lx, ly, 3.4), (lx - 2.6, ly + 1.4, 2.4), (lx + 2.8, ly + 1.0, 2.4), (lx - 1.4, ly - 2.2, 2.2), (lx + 1.6, ly - 2.0, 2.2)]
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 6.0, G - 2.6), (lx, ly + 2.0)], 0.4)), vine)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r) for x, y, r in lobes]), c["plant"])
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(lx, ly + 2.0), (x, y)], 0.15) for x, y, _ in lobes[1:]]), c["dark"], 0.4)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.6, y - 0.6, r * 0.45) for x, y, r in lobes]), (220, 240, 190), 0.25)
+    # The fruit: long, a little wider at its far end, with ribs.
+    body = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M + 2.4, G - 3.4, 3.4, ry=3.2), _dot(p, dx, dy, M + 7.6, G - 3.2, 2.6, ry=2.6),
+                                         _box(p, dx, dy, M + 2.4, G - 6.0, M + 7.6, G - 0.6)))
+    tile.put(body, c["metal"])
+    tile.put(body * (tile.y < G - 4.6), _mix(c["metal"], (255, 236, 190), 0.35), 0.6)
+    tile.put(body * (tile.y > G - 1.8), c["dark"], 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M + 0.0, G - 3.4 + d), (M + 10.0, G - 3.2 + d * 0.8)], 0.22) for d in (-1.8, 0.0, 1.6)]) * body, _mix(c["plant"], c["metal"], 0.4), 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 1.4, G - 3.0), (M - 0.6, G - 4.6), (M - 2.6, G - 5.4), (M - 2.8, G - 4.4)])), vine)
+    # A tendril and a flower.
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 4.0, G - 3.6), (M + 5.0, G - 7.0), (M + 6.4, G - 7.6), (M + 6.6, G - 6.4), (M + 5.8, G - 6.2)], 0.2)), vine)
+    fx, fy = M - 9.0, G - 5.0
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 9.5, G - 1.4), (fx, fy)], 0.35)), vine)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, fx + math.cos(a) * 1.3, fy - 0.6 + math.sin(a) * 1.0, 0.9) for a in np.linspace(0.0, 2.0 * math.pi, 6)[:-1]]), c["bloom"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, fx, fy - 0.6, 0.6)), _mix(c["bloom"], c["dark"], 0.3))
+    tile.alpha *= tile.y < G
+
+
+def shicra_bag(tile: Tile, c: dict) -> None:
+    """A shicra: an open bag of twisted reed fibre, knotted in a wide mesh
+    and full of stones. The builders of Caral filled the platforms of their
+    pyramids with many thousands of them, each the load of one person. The
+    stones show through the mesh, and the ends of the bag are tied in a
+    knot at its top."""
+    _shadow(tile, 8.0)
+    bag = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M, G - 5.6, 8.0, ry=5.6), _poly(p, dx, dy, [(M - 3.0, G - 10.0), (M + 3.0, G - 10.0), (M + 1.0, G - 13.0), (M - 1.0, G - 13.0)])))
+    rng = tile.rng
+    stones = [(M + rng.uniform(-6.4, 6.4), G - rng.uniform(1.6, 9.4), rng.uniform(1.3, 2.4), rng.uniform(-0.18, 0.16)) for _ in range(16)]
+    tile.put(bag, c["dark"], 0.85)
+    for x, y, r, tone in stones:
+        stone = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x - r, y), (x - r * 0.4, y - r * 0.8), (x + r * 0.6, y - r * 0.7), (x + r, y + r * 0.1), (x + r * 0.3, y + r * 0.8), (x - r * 0.7, y + r * 0.6)]))
+        tile.put(stone * bag, _mix(c["stone"], c["stone_light"] if tone > 0 else c["dark"], abs(tone) * 2.0))
+        tile.put(stone * bag * (tile.y < y - r * 0.3), c["stone_light"], 0.40)
+    # The mesh: two sets of twisted cords that cross in diamonds.
+    mesh = (np.abs(((tile.x + tile.y) % 3.2) - 1.6) < 0.22) | (np.abs(((tile.x - tile.y) % 3.2) - 1.6) < 0.22)
+    tile.put(bag * mesh, c["wood"], 0.95)
+    tile.put(bag * mesh * (np.abs(((tile.x * 2.0) % 1.0) - 0.5) < 0.18), _mix(c["wood"], c["dark"], 0.4), 0.6)
+    tile.put(bag * (tile.x < M - 2.0) * (tile.y < G - 6.0), (255, 240, 210), 0.10)
+    tile.put(bag * (tile.y > G - 2.0), c["dark"], 0.35)
+    # The knot at the top and its loose ends.
+    tile.put(tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M, G - 12.6, 1.4), _line(p, dx, dy, [(M, G - 13.4), (M - 2.0, G - 15.6)], 0.4), _line(p, dx, dy, [(M + 0.4, G - 13.4), (M + 2.6, G - 15.0)], 0.4))),
+             c["wood"])
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -2115,6 +2265,14 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # stones and shells of the beach, and a rock.
     "history_gold_coast": ((fishing_net, rope_coil, beach_stones, sea_shells, fishing_net, rock),
                            _palette((52, 50, 48), (150, 148, 140), (226, 222, 210), (176, 150, 104), (204, 128, 76), (110, 124, 96), (210, 166, 148), (255, 244, 220))),
+    # South America. The high Andes: a heap of potatoes of many kinds, a
+    # tussock of ichu, a quinoa plant with red and gold heads, and stones.
+    # Caral: a cotton plant with open bolls, a squash on its vine, a bag of
+    # stones (a shicra) and a stone.
+    "history_andes": ((potatoes, ichu_tussock, quinoa_plant, rock, potatoes, ichu_tussock),
+                      _palette((40, 34, 30), (124, 116, 106), (214, 206, 190), (150, 110, 70), (216, 166, 64), (198, 164, 98), (176, 60, 52), (255, 210, 150))),
+    "history_supe": ((cotton_plant, squash_vine, shicra_bag, rock, cotton_plant, shicra_bag),
+                     _palette((50, 40, 30), (164, 150, 126), (226, 216, 194), (170, 140, 92), (206, 136, 58), (84, 118, 58), (236, 196, 64), (255, 226, 170))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),

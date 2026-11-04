@@ -581,11 +581,13 @@ def _draw_gate(anim: str, i: int, n: int):
     f.limb([(34.0, 212.0), (26.0, 240.0), (20.0, 264.0)], 6.0, rel, body=False)
     f.ellipse(58.0, 232.0, 4.4, 4.4, (196, 176, 140, 255), body=False)
     f.ink([(16.0, 266.0), (78.0, 266.0)], 1.2, ink)
-    # The ball, in the air beside his hip, and the line of its flight.
-    f.ellipse(66.0, 206.0, 8.0, 8.0, RUBBER, body=False)
-    f.ellipse(64.0, 203.0, 2.6, 2.0, RUBBER_LIGHT, body=False)
-    for k in range(3):
-        f.ink([(56.0 - k * 4.0, 214.0 + k * 3.0), (60.0 - k * 4.0, 212.0 + k * 3.0)], 0.9, ink)
+    # The ball just off the front of the yoke, at the height of the hip,
+    # because the hip, not the hand, sends it. Two short marks between
+    # yoke and ball show the hit.
+    f.ellipse(64.0, 195.0, 7.5, 7.5, RUBBER, body=False)
+    f.ellipse(62.0, 192.0, 2.4, 1.9, RUBBER_LIGHT, body=False)
+    for k in range(2):
+        f.ink([(54.5 + k * 1.5, 199.0 + k * 5.0), (57.5 + k * 1.5, 197.5 + k * 5.0)], 0.9, ink)
     # Outline of the figure, cut into the stone.
     f.ink([(36.0, 147.0), (44.0, 146.0), (52.0, 152.0), (53.0, 162.0), (46.0, 166.0)], 1.0, ink)
     # A band of glyph blocks under the scene.

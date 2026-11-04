@@ -46,6 +46,7 @@ from . import history_eras as _history
 from . import history_americas_pacific as _americas_pacific
 from . import history_atlantic as _atlantic
 from . import history_origins as _origins
+from . import history_south_america as _south_america
 from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
 from .military_tower import TOWER
 from .noodly import NOODLY
@@ -341,6 +342,11 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_saint_domingue": (_atlantic.saint_domingue_foreground, scale(_atlantic.SAINT_DOMINGUE["near"], 0.9)),
     # The Gold Coast: the fronds of coconut palms hang over the beach.
     "history_gold_coast": (_atlantic.gold_coast_foreground, scale(_atlantic.GOLD_COAST["near"], 0.9)),
+    # South America: tussocks of ichu grass stand from below in the high
+    # Andes; a branch of a huarango hangs over the Supe valley, and dry scrub
+    # stands from below.
+    "history_andes": (_south_america.andes_foreground, scale(_south_america.ANDES["near"], 0.9)),
+    "history_supe": (_south_america.supe_foreground, scale(_south_america.SUPE["near"], 0.9)),
 }
 
 

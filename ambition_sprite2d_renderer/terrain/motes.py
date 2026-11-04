@@ -268,6 +268,32 @@ def _spray(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(_soft(x, y, r, 1.3) * 1.1 + _soft(x, y, r * 3.2, 2.2) * 0.30, 0.0, 1.0), colour
 
 
+def _frost(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """Grains of snow and frost that the cold wind of the high plain lifts
+    and carries: a very small hard grain with a little soft light round it,
+    in three sizes. The fourth variant is a glint: a grain that catches the
+    low sun, with four short thin rays."""
+    x, y = _cell()
+    if variant == 3:
+        rays = np.maximum(np.clip(1.0 - np.abs(y) / 0.018, 0, 1) * np.clip(1.0 - np.abs(x) / 0.26, 0, 1) ** 2,
+                          np.clip(1.0 - np.abs(x) / 0.018, 0, 1) * np.clip(1.0 - np.abs(y) / 0.26, 0, 1) ** 2)
+        return np.clip(rays * 0.9 + _soft(x, y, 0.07, 1.2) * 1.2 + _soft(x, y, 0.24, 2.4) * 0.25, 0.0, 1.0), colour
+    r = (0.05, 0.07, 0.09)[variant]
+    return np.clip(_soft(x, y, r, 1.2, squash=0.8) * 1.2 + _soft(x, y, r * 2.6, 2.4) * 0.22, 0.0, 1.0), colour
+
+
+def _dust(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """Fine dust of the desert that the wind lifts off the dry ground: a
+    small soft grain in three sizes. The fourth variant is a loose puff of
+    dust with a few grains in it."""
+    x, y = _cell()
+    if variant == 3:
+        grains = sum(_soft(x - dx, y - dy, 0.05, 1.4) for dx, dy in ((-0.10, 0.05), (0.09, -0.08), (0.12, 0.10)))
+        return np.clip(_soft(x, y, 0.28, 1.8) * 0.30 + grains * 0.7, 0.0, 1.0), colour
+    r = (0.06, 0.08, 0.11)[variant]
+    return np.clip(_soft(x, y, r, 1.4) * (0.9, 0.8, 0.65)[variant] + _soft(x, y, r * 2.2, 2.4) * 0.18, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -384,6 +410,10 @@ MOTES = {
     "history_saint_domingue": (_fluff, (255, 244, 222)),
     # The Gold Coast: fine spray of the sea, carried in off the surf.
     "history_gold_coast": (_spray, (242, 248, 248)),
+    # South America: grains of snow and frost in the cold air of the high
+    # Andes, and fine dust over the desert of the Supe valley.
+    "history_andes": (_frost, (246, 250, 255)),
+    "history_supe": (_dust, (240, 220, 186)),
 }
 
 
@@ -457,6 +487,8 @@ SHADOWS = {
     "history_benin": (60, 26, 16),
     "history_saint_domingue": (56, 28, 18),
     "history_gold_coast": (44, 46, 48),
+    "history_andes": (40, 36, 34),
+    "history_supe": (60, 46, 32),
 }
 SHADOW_PX = (96, 28)
 

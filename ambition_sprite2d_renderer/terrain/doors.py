@@ -649,6 +649,146 @@ def gold_coast_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def _fieldstones(tile: Tile, c: dict, mask: np.ndarray, count: int, light: float) -> None:
+    """Stones laid dry, of each size and tone, over `mask`: dark gaps
+    between them and a lit top on each one. The stones are in the colours
+    `frame` and `frame_light`."""
+    rng = tile.rng
+    d1 = np.full(tile.alpha.shape, 1e9, dtype=np.float32)
+    d2 = np.full(tile.alpha.shape, 1e9, dtype=np.float32)
+    tone = np.zeros_like(d1)
+    for _ in range(count):
+        px, py, t = rng.uniform(0, W), rng.uniform(0, H), rng.uniform(-0.18, 0.16)
+        d = np.sqrt((tile.x - px) ** 2 + ((tile.y - py) * 1.5) ** 2)
+        closer = d < d1
+        d2 = np.where(closer, d1, np.minimum(d2, d))
+        tone = np.where(closer, t, tone)
+        d1 = np.where(closer, d, d1)
+    tile.put(mask, c["frame"])
+    tile.rgb = np.clip(tile.rgb * (1.0 + (tone * mask)[:, :, None]), 0.0, 255.0)
+    tile.put(mask * np.clip(1.0 - (d2 - d1 - 0.3) / 1.0, 0.0, 1.0), c["dark"], 0.85)
+    tile.put(mask * np.clip(1.0 - np.abs((d2 - d1) - 1.8) / 0.6, 0.0, 1.0) * (tile.noise(12, 24, 1) > 0.45), c["frame_light"], light)
+
+
+def andes_door(tile: Tile, c: dict) -> np.ndarray:
+    """A door of a round house of the high Andes: a low doorway in a wall of
+    fieldstones laid dry, under a heavy lintel of one long flat stone and
+    an eave of thick ichu thatch. A mat of ichu grass, twined in bundles
+    with cord, hangs in the doorway as its leaf; a small gap in the mat
+    shows the light of the hearth. The doorway is low, so a person bends
+    to go in, and the cold stays out."""
+    _frame(tile, c)
+    rng = tile.rng
+    lintel_top, lintel_bottom = 30.0, 38.0
+    inner = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, F, W - F, H - STEP))
+    jambs = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, F, F, F + 5.0, H - STEP), _box(p, dx, dy, W - F - 5.0, F, W - F, H - STEP)))
+    wall = np.clip(inner * (tile.y < lintel_top) + jambs, 0.0, 1.0)
+    outer = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, H - STEP))
+    _fieldstones(tile, c, np.clip(wall + outer * (1.0 - inner), 0.0, 1.0), 46, 0.5)
+    # The lintel: one long flat stone over the doorway.
+    lintel = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(F - 1.0, lintel_top + 0.6), (W - F + 1.0, lintel_top), (W - F + 1.4, lintel_bottom), (F - 1.4, lintel_bottom + 0.4)]))
+    tile.put(lintel, _mix(c["frame"], c["frame_light"], 0.3))
+    tile.tone((tile.noise(10, 3, 2) - 0.5) * 0.18 * lintel)
+    tile.put(lintel * (tile.y < lintel_top + 1.4), c["frame_light"], 0.6)
+    tile.put(lintel * (tile.y > lintel_bottom - 1.2), c["dark"], 0.5)
+    # The mat: horizontal bundles of grass, each twined with a cord, and
+    # the ends of the grass that hang at its two sides.
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F + 5.0, lintel_bottom, W - F - 5.0, H - STEP))
+    tile.put(leaf, c["leaf"])
+    # Each bundle is round, so its middle is lit, and the line between two
+    # bundles waves a little. Fine straws run along each bundle.
+    row = (tile.y - lintel_bottom + (tile.noise(6, 3, 2) - 0.5) * 2.0) % 5.0
+    tile.put(leaf * np.clip(1.0 - np.abs(row - 2.3) / 2.5, 0.0, 1.0) ** 1.5, c["leaf_light"], 0.40)
+    tile.put(leaf * np.clip((row - 4.2) / 0.8, 0.0, 1.0), c["dark"], 0.45)
+    straws = np.abs(((tile.y + (tile.noise(20, 4, 2) - 0.5) * 1.6) % 0.9) - 0.45) < 0.08
+    tile.put(leaf * straws, c["dark"], 0.18)
+    cord = _mix(c["leaf"], c["dark"], 0.55)
+    tile.tone((tile.noise(5, 24, 2) - 0.5) * 0.25 * leaf)
+    for x in (F + 12.0, W * 0.5, W - F - 12.0):
+        tile.put(leaf * tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x - 0.8, lintel_bottom + k * 5.0 + 1.0), (x + 0.8, lintel_bottom + k * 5.0 + 4.0)], 0.5)
+                                                     for k in range(16)]), cord, 0.9)
+    tile.put(leaf * tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, lintel_bottom), (x, H - STEP)], 0.4) for x in (F + 12.0, W * 0.5, W - F - 12.0)]), cord, 0.6)
+    # The loose ends of the grass at the two sides of the mat.
+    ends = [(x0 + rng.uniform(-0.6, 0.6), lintel_bottom + k * 2.5 + rng.uniform(0.0, 1.5)) for k in range(30) for x0 in (F + 5.5, W - F - 5.5)]
+    tile.put(leaf * tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y), (x + (1.2 if x < W * 0.5 else -1.2), y + 1.4)], 0.25) for x, y in ends]), c["leaf_light"], 0.6)
+    # The gap in the mat, and the light of the hearth in it.
+    _window(tile, {**c, "frame": c["leaf"]}, W * 0.5 - 4.0, 46.0, W * 0.5 + 4.0, 52.0)
+    # The eave of thatch over the wall: thick bundles of ichu with ragged
+    # ends, and the shade it casts.
+    edge = [(x, 15.0 + rng.uniform(-1.6, 1.6)) for x in np.linspace(0.0, W, 26)]
+    eave = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(0.0, 0.0), (W, 0.0)] + edge[::-1]))
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(0.0, 0.0), (W, 0.0)] + [(x, y + 3.0) for x, y in edge[::-1]]), blur=1.2) * (1.0 - eave), (0, 0, 0), 0.35)
+    tile.put(eave, c["thatch"])
+    strands = [(rng.uniform(0.0, W), rng.uniform(0.0, 10.0), rng.uniform(-0.8, 0.8)) for _ in range(90)]
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y0), (x + lean, y0 + 6.0)], 0.22) for x, y0, lean in strands]) * eave, _mix(c["thatch"], c["dark"], 0.45), 0.7)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x + 0.4, y0), (x + 0.4 + lean, y0 + 5.0)], 0.18) for x, y0, lean in strands[::2]]) * eave,
+             _mix(c["thatch"], (255, 244, 210), 0.45), 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(0.0, 6.0), (W, 5.4)], 0.6)) * eave, _mix(c["thatch"], c["dark"], 0.6), 0.6)
+    return leaf
+
+
+def caral_door(tile: Tile, c: dict) -> np.ndarray:
+    """A doorway of Caral, at the top of a stair of a platform: a wide
+    opening in a wall of grey-tan stones laid in clay, with jambs and a
+    lintel of big dressed stones. A plain cloth of cotton hangs in it as
+    its leaf, white with two bands of natural brown cotton woven in. Three
+    steps of stone go up to the doorway, and the cloth hangs over the top
+    one. A small square gap at the top of the cloth lets out the light."""
+    _frame(tile, c)
+    inner = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, F, W - F, H - STEP))
+    # The wall round the doorway: courses of stones in clay.
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, H - STEP)) * (1.0 - inner)
+    rng = tile.rng
+    tile.put(wall, c["clay"])
+    y0 = 0.0
+    while y0 < H - STEP:
+        row_h = rng.choice((5.0, 7.0, 4.0))
+        x = -rng.uniform(0.0, 6.0)
+        while x < W:
+            w = rng.uniform(4.0, 9.0)
+            tone = rng.uniform(-0.14, 0.12)
+            colour = _mix(c["frame"], c["frame_light"] if tone > 0 else c["dark"], abs(tone) * 1.4)
+            stone = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x + 0.5, y0 + 0.5, x + w - 0.5, y0 + row_h - 0.5)) * wall
+            tile.put(stone, colour)
+            tile.put(stone * (tile.y < y0 + 1.2), c["frame_light"], 0.35)
+            x += w
+        y0 += row_h
+    # The jambs and the lintel: big stones, dressed flat.
+    big = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, F, F, F + 7.0, H - STEP), _box(p, dx, dy, W - F - 7.0, F, W - F, H - STEP), _box(p, dx, dy, F, F, W - F, F + 9.0)))
+    tile.put(big, _mix(c["frame"], c["frame_light"], 0.25))
+    tile.tone((tile.noise(6, 14, 2) - 0.5) * 0.16 * big)
+    for y in (36.0, 70.0):
+        tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, F, y, F + 7.0, y + 0.6), _box(p, dx, dy, W - F - 7.0, y, W - F, y + 0.6))), c["dark"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, F + 8.4, W - F, F + 9.0)), c["dark"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, F + 6.4, F + 9.0, F + 7.0, H - STEP), _box(p, dx, dy, F, F, W - F, F + 0.7))), c["frame_light"], 0.5)
+    # The three steps up to the doorway: a lit tread and a riser in shade
+    # on each one.
+    x0, x1 = F + 7.0, W - F - 7.0
+    for k in range(3):
+        top = H - STEP - (k + 1) * 4.0
+        step = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + k * 1.2, top, x1 - k * 1.2, top + 4.0))
+        tile.put(step, _mix(c["frame"], c["dark"], 0.30))
+        tile.put(step * (tile.y < top + 1.4), _mix(c["frame_light"], (255, 250, 236), 0.3), 0.9)
+        tile.put(step * (tile.y > top + 3.4), c["dark"], 0.55)
+    # The cloth: plain weave of white cotton, soft folds, and two bands of
+    # brown cotton across it.
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, F + 9.0, x1, H - STEP - 12.0))
+    tile.put(leaf, c["leaf"])
+    folds = 0.5 + 0.5 * np.sin((tile.x - x0) * np.pi / 4.2)
+    tile.put(leaf * folds, c["dark"], 0.16)
+    tile.put(leaf * (1.0 - folds) * (tile.noise(3, 10, 2) > 0.4), c["leaf_light"], 0.35)
+    weave = (np.abs((tile.x % 1.2) - 0.6) < 0.12) | (np.abs((tile.y % 1.2) - 0.6) < 0.12)
+    tile.put(leaf * weave, c["dark"], 0.08)
+    for y in (58.0, 90.0):
+        band = leaf * (np.abs(tile.y - y) < 2.4)
+        tile.put(band, c["band"])
+        tile.put(band * (np.abs(((tile.x + tile.y) % 3.0) - 1.5) < 0.4), c["leaf"], 0.35)
+        tile.put(band * folds, c["dark"], 0.20)
+    tile.put(leaf * (tile.y > H - STEP - 13.0), c["dark"], 0.4)
+    _window(tile, {**c, "frame": c["band"]}, W * 0.5 - 4.0, 22.0, W * 0.5 + 4.0, 29.0)
+    return leaf
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -678,6 +818,8 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     benin_door: (SWING, False),
     saint_domingue_door: (SWING, False),
     gold_coast_door: (SWING, False),
+    andes_door: (SWING, False),
+    caral_door: (SWING, False),
 }
 
 
@@ -786,6 +928,12 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     # thick wall washed white; dark inside, with the sea light far beyond.
     "history_gold_coast": (gold_coast_door, {**_colours((232, 230, 222), (40, 38, 38), (14, 14, 16), (150, 146, 138), (226, 236, 230)),
                                              "stone": (150, 148, 142), "sky": (236, 240, 236), "sea": (128, 164, 156)}),
+    # South America. The high Andes: a mat of ichu in a low doorway of
+    # fieldstones, under a lintel of flat stone and an eave of thatch. Caral:
+    # a cloth of cotton in a doorway of dressed stone, at the top of three
+    # steps.
+    "history_andes": (andes_door, {**_colours((128, 118, 106), (190, 158, 96), (40, 32, 26), (150, 64, 48), (255, 200, 130)), "thatch": (196, 166, 102)}),
+    "history_supe": (caral_door, {**_colours((168, 152, 126), (232, 226, 210), (60, 48, 38), (178, 84, 58), (255, 222, 170)), "clay": (138, 112, 84), "band": (150, 104, 66)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),
