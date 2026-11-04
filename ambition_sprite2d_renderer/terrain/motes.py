@@ -488,6 +488,68 @@ def _pine_pollen(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(grains * 1.1 + _soft(x, y, 0.26, 2.0) * 0.35, 0.0, 1.0), colour
 
 
+def _cotton_fluff(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A puff of cotton lint, which drifts from the fields and the spinners
+    of Dhaka: a round soft cloud of white fibres, denser in its middle,
+    with fine hairs at its edge. Each variant has its own size; the fourth
+    is two small puffs with a thread of fibre between them."""
+    x, y = _cell()
+    if variant == 3:
+        puffs = _soft(x + 0.13, y + 0.04, 0.12, 1.3) + _soft(x - 0.12, y - 0.05, 0.10, 1.3)
+        thread = np.clip(1.0 - np.abs(y - x * 0.35) / 0.012, 0.0, 1.0) * (np.abs(x) < 0.12)
+        return np.clip(puffs * 1.2 + thread * 0.5, 0.0, 1.0), colour
+    size = (0.15, 0.19, 0.12)[variant]
+    rx, ry = _turned(x, y, (0.4, 1.3, -0.6)[variant])
+    lumps = sum(_soft(rx - ox * size, ry - oy * size, size * k, 2.2) for ox, oy, k in ((0.0, 0.0, 1.2), (-0.60, 0.25, 0.80), (0.55, -0.20, 0.85), (0.15, 0.60, 0.70), (-0.25, -0.55, 0.65), (0.60, 0.45, 0.55)))
+    angle = np.arctan2(ry, rx)
+    reach = np.sqrt(rx * rx + ry * ry)
+    hairs = np.clip(np.cos(angle * 23.0 + variant) * 0.5 + 0.5, 0.0, 1.0) ** 4 * np.clip(1.0 - reach / (size * 2.1), 0.0, 1.0) * (reach > size * 0.6)
+    return np.clip(lumps * 1.6 + hairs * 0.16 + _soft(rx, ry, size * 1.7, 2.0) * 0.15, 0.0, 1.0), colour
+
+
+def _rain_streak(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A drop of the light monsoon rain over the Hooghly: a long thin
+    streak that leans a little with the wind, faint at its top and
+    brighter at its foot, where the drop is. The fourth variant is two
+    short streaks side by side."""
+    if variant == 3:
+        lines = [[(-0.06 + 0.04, -0.12), (-0.06 - 0.02, 0.10)], [(0.08 + 0.04, -0.16), (0.08 - 0.02, 0.06)]]
+        return _strokes(lines, 0.008, 0.15), colour
+    length = (0.36, 0.42, 0.30)[variant]
+    lean = 0.18
+    x, y = _cell()
+    t = np.clip((y + length * 0.5) / length, 0.0, 1.0)
+    centre = lean * (length * 0.5 - (y + length * 0.5)) * 0.5
+    line = np.clip(1.0 - np.abs(x - centre) / 0.010, 0.0, 1.0) * (np.abs(y) < length * 0.5)
+    head = _soft(x - centre, y - length * 0.45, 0.030, 1.2)
+    return np.clip(line * (0.25 + 0.6 * t) + head * 0.9, 0.0, 1.0), colour
+
+
+def _shimul_petal(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A petal of the shimul, the red silk-cotton tree, which falls over
+    the campus in February: thick and fleshy, a broad oval that is narrow
+    at its foot, cupped, so its middle is darker than its rim. Each
+    variant has its own turn and its own red; the fourth is a small whole
+    flower seen from above, five petals round a gold heart."""
+    x, y = _cell()
+    if variant == 3:
+        petals = np.zeros_like(x)
+        for k in range(5):
+            a = 0.3 + k * 2.0 * math.pi / 5.0
+            px, py = _turned(x - math.cos(a) * 0.12, y - math.sin(a) * 0.12, -a)
+            petals = np.maximum(petals, _soft(px, py, 0.12, 0.6, squash=1.4))
+        heart = _soft(x, y, 0.06, 0.8)
+        return np.clip(petals * 0.95 - heart * 0.35, 0.0, 1.0), (206, 40, 32)
+    rx, ry = _turned(x, y, (0.5, -1.0, 2.0)[variant])
+    half = (0.30, 0.26, 0.34)[variant]
+    t = np.clip((rx / half + 1.0) * 0.5, 0.0, 1.0)
+    width = 0.17 * np.sqrt(np.clip(t, 0.0, 1.0)) * np.clip(1.0 - (rx / half) ** 2, 0.0, 1.0) ** 0.35
+    blade = np.clip((width - np.abs(ry)) / 0.03, 0.0, 1.0) * (np.abs(rx) < half)
+    cupped = np.clip(1.0 - np.abs(ry) / np.maximum(width, 1e-3), 0.0, 1.0)
+    tone = ((214, 42, 34), (190, 30, 30), (232, 74, 44))[variant]
+    return np.clip(blade * (0.75 + 0.25 * cupped), 0.0, 1.0), tone
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -632,6 +694,11 @@ MOTES = {
     "history_hangzhou": (_catkin, (250, 248, 238)),
     "history_heian": (_momiji, (232, 120, 40)),
     "history_hanyang": (_pine_pollen, (246, 222, 110)),
+    # Cotton lint that drifts over the Buriganga; light monsoon rain over
+    # the Hooghly; red petals of the shimul over the Dhaka campus.
+    "history_dhaka_river": (_cotton_fluff, (248, 246, 238)),
+    "history_calcutta": (_rain_streak, (206, 218, 226)),
+    "history_dhaka_spring": (_shimul_petal, (214, 42, 34)),
 }
 
 
@@ -719,6 +786,9 @@ SHADOWS = {
     "history_hangzhou": (36, 42, 40),
     "history_heian": (46, 36, 30),
     "history_hanyang": (44, 42, 38),
+    "history_dhaka_river": (40, 36, 26),
+    "history_calcutta": (40, 34, 30),
+    "history_dhaka_spring": (52, 36, 30),
 }
 SHADOW_PX = (96, 28)
 

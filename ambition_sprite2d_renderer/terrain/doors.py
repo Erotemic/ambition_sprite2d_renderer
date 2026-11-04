@@ -1654,6 +1654,261 @@ def hanyang_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def _qcurve(a, ctrl, b, n: int = 12) -> list[tuple[float, float]]:
+    """Points along a quadratic curve from `a` to `b` that bends to `ctrl`."""
+    return [((1 - t) ** 2 * a[0] + 2 * (1 - t) * t * ctrl[0] + t * t * b[0], (1 - t) ** 2 * a[1] + 2 * (1 - t) * t * ctrl[1] + t * t * b[1]) for t in np.linspace(0.0, 1.0, n)]
+
+
+def _pointed(cx: float, foot: float, half: float, spring: float, rise: float, pinch: float = 0.0) -> list[tuple[float, float]]:
+    """The outline of a pointed arch: straight sides from `foot` up to
+    `spring`, and two curves that meet in a point `rise` over the spring.
+    `pinch` more than 0 makes a horseshoe arch, narrower at its foot."""
+    left = _qcurve((cx - half, spring), (cx - half, spring - rise * 0.75), (cx, spring - rise))
+    right = _qcurve((cx, spring - rise), (cx + half, spring - rise * 0.75), (cx + half, spring))
+    low = half * (1.0 - pinch)
+    shoulder = spring + (foot - spring) * 0.15 if pinch > 0.0 else spring
+    return [(cx - low, foot), (cx - half, shoulder)] + left + right[1:] + [(cx + half, shoulder), (cx + low, foot)]
+
+
+def _brickwork(tile: Tile, c: dict, mask: np.ndarray, colour: RGB, course: float = 2.6, length: float = 7.0) -> None:
+    """Thin bricks laid in courses over `mask`, each half a brick along from
+    the course under it, each brick of its own tone, in pale lime mortar."""
+    row = np.floor(tile.y / course)
+    xs = tile.x + (row % 2) * length * 0.5
+    col = np.floor(xs / length)
+    hashed = np.sin(row * 12.9898 + col * 78.233) * 43758.5453
+    tone = (hashed - np.floor(hashed)) - 0.5
+    tile.put(mask, colour)
+    tile.tone(tone * 0.22 * mask)
+    joints = ((tile.y % course) < 0.42) | ((xs % length) < 0.42)
+    tile.put(mask * joints, c["mortar"], 0.65)
+
+
+def _studded_leaves(tile: Tile, c: dict, leaf: np.ndarray, x0: float, x1: float, top: float, floor: float) -> None:
+    """Two leaves of dark teak planks over `leaf`: the seams, the seam in
+    the middle, and rows of round iron studs."""
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 14, 2) - 0.5) * 0.16 * leaf)
+    plank = (tile.x - x0) % 5.2
+    tile.put(leaf * (plank < 0.45), c["dark"], 0.5)
+    tile.put(leaf * (plank > 0.45) * (plank < 1.2), c["leaf_light"], 0.20)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.6), c["dark"], 0.9)
+    for y in np.arange(top + 6.0, floor - 2.0, 9.0):
+        studs = [(x, y) for x in np.arange(x0 + 2.6, x1 - 1.0, 4.2) if abs(x - W * 0.5) > 1.6]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, 0.8) for x, yy in studs]) * leaf, c["iron"])
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.25, yy - 0.25, 0.3) for x, yy in studs]) * leaf, (210, 200, 186), 0.6)
+
+
+def _jali(tile: Tile, c: dict, cx: float, foot: float, half: float, spring: float, rise: float) -> None:
+    """A small pointed window with a screen of lattice in it, and the light
+    of the room behind showing through the holes."""
+    outline = _pointed(cx, foot, half, spring, rise)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x, y) for x, y in _pointed(cx, foot + 1.2, half + 1.2, spring, rise + 1.2)])), c["frame"])
+    win = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, outline))
+    tile.put(win, c["glow"])
+    tile.put(win * (tile.y < spring), (255, 255, 255), 0.25)
+    holes = (np.abs(((tile.x - cx + tile.y) % 2.2) - 1.1) > 0.75) | (np.abs(((tile.x - cx - tile.y) % 2.2) - 1.1) > 0.75)
+    tile.put(win * holes, _mix(c["leaf"], c["dark"], 0.2))
+
+
+def lalbagh_door(tile: Tile, c: dict) -> np.ndarray:
+    """The gate of the Lalbagh fort of Dhaka (1678): a wall of thin red
+    brick, and in it a tall frame of plaster round a great pointed arch.
+    Over the frame runs a parapet of rounded merlons, and a slender turret
+    with a small domed top stands at each side. Two leaves of teak with
+    iron studs close the arch, and a small pointed window with a lattice
+    screen is in their upper part. No sign is on the gate."""
+    _frame(tile, c)
+    floor = H - STEP
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 10.0, W, floor))
+    _brickwork(tile, c, wall, c["frame"])
+    # The parapet: a cornice and a row of rounded merlons over it.
+    cornice = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 12.0, W, 15.0))
+    tile.put(cornice, c["plaster"])
+    tile.put(cornice * (tile.y > 14.0), c["dark"], 0.35)
+    merlons = [x for x in np.arange(10.0, W - 8.0, 5.4)]
+    tile.put(tile.mask(lambda p, dx, dy: [(_box(p, dx, dy, x - 1.7, 7.2, x + 1.7, 12.0), _dot(p, dx, dy, x, 7.2, 1.7)) for x in merlons]), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 1.7, 6.6, x - 0.9, 12.0) for x in merlons]), c["frame_light"], 0.45)
+    # The frame of plaster round the arch, with a band of small panels.
+    fx0, fx1, fy0 = 8.0, W - 8.0, 19.0
+    frame = tile.mask(lambda p, dx, dy: _box(p, dx, dy, fx0, fy0, fx1, floor))
+    tile.put(frame, c["plaster"])
+    inner = tile.mask(lambda p, dx, dy: _box(p, dx, dy, fx0 + 2.0, fy0 + 2.0, fx1 - 2.0, floor))
+    tile.put(inner, _mix(c["plaster"], c["frame"], 0.45))
+    tile.put(frame * (1.0 - inner) * ((tile.y < fy0 + 0.6) | (tile.x < fx0 + 0.6)), (255, 255, 255), 0.35)
+    tile.put(inner * ((tile.y < fy0 + 2.8) | (tile.x < fx0 + 2.8)), c["dark"], 0.30)
+    for x in np.arange(fx0 + 6.0, fx1 - 3.0, 7.6):
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, _pointed(x, fy0 + 9.0, 2.0, fy0 + 6.0, 2.0))), _mix(c["frame"], c["dark"], 0.35))
+    # The arch: a band of plaster round it, and the leaves in it.
+    cx, half, spring, rise = W * 0.5, 15.0, 52.0, 18.0
+    band = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, _pointed(cx, floor, half + 2.6, spring, rise + 2.8)))
+    tile.put(band, c["plaster"])
+    angle = np.arctan2(tile.y - spring, tile.x - cx)
+    tile.put(band * (tile.y < spring) * (np.abs(((angle / math.pi * 14.0) % 1.0) - 0.5) > 0.44), c["dark"], 0.30)
+    tile.put(band * (tile.x < cx - half), (255, 255, 255), 0.20)
+    for x in (cx - half - 6.0, cx + half + 6.0):
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, spring - rise * 0.55, 2.4)), c["plaster"])
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, spring - rise * 0.55, 1.2)), c["frame"])
+    leaf = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, _pointed(cx, floor, half, spring, rise)))
+    _studded_leaves(tile, c, leaf, cx - half, cx + half, spring - rise, floor)
+    tile.put(leaf * np.clip(1.0 - (tile.y - (spring - rise)) / 3.0, 0, 1), c["dark"], 0.5)
+    _jali(tile, c, cx, spring + 8.0, 5.0, spring - 2.0, 6.0)
+    for x in (cx - 3.6, cx + 3.6):
+        tile.put(tile.mask(lambda p, dx, dy: p.ellipse([(x - 1.9) * K + dx, 84.0 * K + dy, (x + 1.9) * K + dx, 88.0 * K + dy], outline=255, width=max(1, int(0.6 * K)))), c["iron"])
+    # The turrets at the two sides, each with a small dome and a knob.
+    for x in (4.0, W - 4.0):
+        shaft = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x - 2.6, 9.0, x + 2.6, floor))
+        tile.put(shaft, c["frame"])
+        tile.put(shaft * (tile.x < x - 1.2), c["frame_light"], 0.40)
+        tile.put(shaft * (tile.x > x + 1.4), c["dark"], 0.30)
+        tile.put(shaft * (np.abs(((tile.y - 9.0) % 14.0) - 7.0) > 6.2), c["plaster"], 0.8)
+        dome = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, x, 8.0, 3.2, ry=3.0), _box(p, dx, dy, x - 3.4, 8.0, x + 3.4, 9.6), _box(p, dx, dy, x - 0.35, 2.4, x + 0.35, 5.6), _dot(p, dx, dy, x, 2.4, 0.8)))
+        tile.put(dome, c["plaster"])
+        tile.put(dome * (tile.x > x + 0.8), c["dark"], 0.25)
+    return leaf
+
+
+def company_gate_door(tile: Tile, c: dict) -> np.ndarray:
+    """A gateway of a house of the Company in Calcutta, of white lime
+    plaster: two pilasters with plain capitals, an entablature and a low
+    pediment over them, and between them a round arch with a keystone. A
+    fanlight of glass with bars like the rays of the sun fills the round
+    of the arch, and under it are two leaves of green louvred shutters,
+    as the houses of Calcutta had against the sun and the rain. The rains
+    have left a damp stain at the foot of the wall."""
+    _frame(tile, c)
+    floor = H - STEP
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 16.0, W, floor))
+    tile.put(wall, c["plaster"])
+    tile.tone((tile.noise(6, 12, 3) - 0.5) * 0.08 * wall)
+    tile.put(wall * np.clip((tile.y - (floor - 16.0)) / 16.0, 0, 1) * (0.6 + 0.4 * tile.noise(8, 2, 2)), c["damp"], 0.55)
+    # The pediment and the entablature, on a plain parapet wall.
+    parapet = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, 16.0))
+    tile.put(parapet, _mix(c["plaster"], c["dark"], 0.18))
+    tile.put(parapet * (tile.y < 1.0), _mix(c["plaster"], (255, 255, 255), 0.3))
+    ped = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(1.0, 16.0), (W * 0.5, 4.0), (W - 1.0, 16.0)]))
+    tile.put(ped, c["plaster"])
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(6.0, 14.6), (W * 0.5, 6.8), (W - 6.0, 14.6)])), _mix(c["plaster"], c["dark"], 0.12))
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(0.0, 16.4), (W * 0.5, 3.4), (W, 16.4)], 1.2)), (255, 255, 255), 0.6)
+    for y0, y1, tone in ((16.0, 19.0, 0.0), (19.0, 24.0, -0.08), (24.0, 26.0, 0.0)):
+        band = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, y0, W, y1))
+        tile.put(band, _mix(c["plaster"], c["dark"], -tone) if tone < 0 else c["plaster"])
+        tile.put(band * (tile.y > y1 - 0.6), c["dark"], 0.30)
+    # The pilasters, with a capital and a base.
+    for x0 in (1.0, W - 10.0):
+        pil = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, 26.0, x0 + 9.0, floor))
+        tile.put(pil, _mix(c["plaster"], (255, 255, 255), 0.25))
+        tile.put(pil * (tile.x > x0 + 7.4), c["dark"], 0.18)
+        tile.put(pil * (tile.x < x0 + 1.2), (255, 255, 255), 0.35)
+        for y0, y1 in ((26.0, 29.0), (floor - 4.0, floor)):
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 0.8, y0, x0 + 9.8, y1)), c["plaster"])
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 0.8, y1 - 0.6, x0 + 9.8, y1)), c["dark"], 0.30)
+    # The arch: its moulding, its keystone, and the fanlight in its round.
+    cx, r, spring = W * 0.5, 19.0, 54.0
+    x0, x1 = cx - r, cx + r
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, cx, spring, r + 3.0)) * (tile.y < spring), _mix(c["plaster"], (255, 255, 255), 0.3))
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, cx, spring, r + 0.8)) * (tile.y < spring), c["dark"], 0.35)
+    fan = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, cx, spring, r)) * (tile.y < spring)
+    tile.put(fan, c["glow"])
+    tile.put(fan * (tile.y < spring - r * 0.6), (255, 255, 255), 0.25)
+    angle = np.arctan2(tile.y - spring, tile.x - cx)
+    dist = np.sqrt((tile.x - cx) ** 2 + (tile.y - spring) ** 2)
+    rays = np.abs(((angle / math.pi * 8.0) % 1.0) - 0.5) > 0.40
+    tile.put(fan * (rays | (np.abs(dist - r * 0.45) < 0.5) | (dist < r * 0.18) | (dist > r - 0.9)), c["leaf"])
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(cx - 2.6, spring - r - 3.4), (cx + 2.6, spring - r - 3.4), (cx + 1.8, spring - r + 1.6), (cx - 1.8, spring - r + 1.6)])), _mix(c["plaster"], (255, 255, 255), 0.4))
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, cx - 2.6, spring - r - 3.4, cx + 2.6, spring - r - 2.8)), c["dark"], 0.25)
+    # The impost: a band at the spring of the arch.
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 2.4, spring - 0.2, x1 + 2.4, spring + 2.0)), c["plaster"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 2.4, spring + 1.4, x1 + 2.4, spring + 2.0)), c["dark"], 0.35)
+    # The two leaves: green shutters with louvres in two panels each.
+    top = spring + 2.0
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, top, x1, floor))
+    tile.put(leaf, c["leaf"])
+    stile = (np.abs(tile.x - x0 - 1.0) < 1.0) | (np.abs(tile.x - x1 + 1.0) < 1.0) | (np.abs(tile.x - cx) < 1.4)
+    rail = (np.abs(tile.y - top - 1.0) < 1.0) | (np.abs(tile.y - (top + floor) * 0.5) < 1.0) | (np.abs(tile.y - floor + 1.0) < 1.0)
+    slat = (tile.y - top) % 2.0
+    tile.put(leaf * (~stile) * (~rail) * (slat < 0.8), c["leaf_light"], 0.45)
+    tile.put(leaf * (~stile) * (~rail) * (slat > 1.4), c["dark"], 0.45)
+    tile.put(leaf * stile, _mix(c["leaf"], c["dark"], 0.10))
+    tile.put(leaf * (np.abs(tile.x - cx) < 0.3), c["dark"], 0.9)
+    tile.put(leaf * np.clip(1.0 - (tile.y - top) / 2.0, 0, 1), c["dark"], 0.45)
+    for x in (cx - 3.0, cx + 3.0):
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x - 0.5, 84.0, x + 0.5, 90.0)), c["brass"])
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x - 0.5, 84.0, x - 0.1, 90.0)), (255, 240, 190), 0.6)
+    return leaf
+
+
+def curzon_door(tile: Tile, c: dict) -> np.ndarray:
+    """A door of Curzon Hall of Dhaka (1904): a wall of red brick with
+    bands of pale stone, a frame of pale stone, and in it a pointed arch of
+    the horseshoe kind whose voussoirs are red brick and pale stone in
+    turn. Over the frame runs a row of small blind arches under a parapet,
+    and a small domed kiosk with a plain knob stands at each corner. Two
+    leaves of dark wood with panels close the arch, with a small pointed
+    window of coloured glass in their upper part."""
+    _frame(tile, c)
+    floor = H - STEP
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, floor))
+    _brickwork(tile, c, wall, c["frame"], 2.4, 6.4)
+    for y0 in (24.0, 36.0):
+        band = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, y0, W, y0 + 2.2))
+        tile.put(band, c["stone"])
+        tile.put(band * (tile.y > y0 + 1.6), c["dark"], 0.30)
+    # The parapet and the row of small blind arches under it.
+    par = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 14.0, W, 16.4))
+    tile.put(par, c["stone"])
+    tile.put(par * (tile.y > 15.8), c["dark"], 0.3)
+    merlons = [x for x in np.arange(11.0, W - 9.0, 4.4)]
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 1.2, 10.8, x + 1.2, 14.0) for x in merlons]), c["frame"])
+    for x in np.arange(10.0, W - 6.0, 6.2):
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, _pointed(x, 23.0, 1.8, 19.6, 2.4))), _mix(c["frame"], c["dark"], 0.45))
+    # The frame of pale stone round the arch.
+    fx0, fx1, fy0 = 9.0, W - 9.0, 40.0
+    frame = tile.mask(lambda p, dx, dy: _box(p, dx, dy, fx0, fy0, fx1, floor))
+    inner = tile.mask(lambda p, dx, dy: _box(p, dx, dy, fx0 + 2.0, fy0 + 2.0, fx1 - 2.0, floor))
+    tile.put(frame * (1.0 - inner), c["stone"])
+    tile.put(frame * (1.0 - inner) * (tile.x < fx0 + 0.6), (255, 255, 255), 0.35)
+    tile.put(inner, _mix(c["frame"], c["dark"], 0.10))
+    # The arch: voussoirs of brick and stone in turn, and the leaves.
+    cx, half, spring, rise = W * 0.5, 15.0, 64.0, 15.0
+    ring = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, _pointed(cx, floor, half + 3.4, spring, rise + 3.6, 0.10)))
+    angle = np.arctan2(tile.y - spring, tile.x - cx)
+    stripes = np.abs(((angle / math.pi * 13.0) % 1.0) - 0.5) < 0.25
+    tile.put(ring, c["stone"])
+    tile.put(ring * stripes * (tile.y < spring), c["frame"])
+    tile.put(ring * (tile.y >= spring) * (np.abs(((tile.y - spring) % 6.0) - 3.0) < 1.5), c["frame"])
+    tile.put(ring * (tile.x < cx - half - 1.8), (255, 255, 255), 0.18)
+    leaf = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, _pointed(cx, floor, half, spring, rise, 0.10)))
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 12, 2) - 0.5) * 0.14 * leaf)
+    tile.put(leaf * (np.abs(tile.x - cx) < 0.6), c["dark"], 0.9)
+    for py0, py1 in ((spring + 12.0, spring + 27.0), (spring + 31.0, floor - 4.0)):
+        for px0, px1 in ((cx - half + 3.0, cx - 2.4), (cx + 2.4, cx + half - 3.0)):
+            panel = tile.mask(lambda p, dx, dy: _box(p, dx, dy, px0, py0, px1, py1))
+            tile.put(panel * (1.0 - tile.mask(lambda p, dx, dy: _box(p, dx, dy, px0 + 0.7, py0 + 0.7, px1 - 0.7, py1 - 0.7))), c["dark"], 0.45)
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, px0 + 0.7, py0 + 0.7, px1 - 0.7, py0 + 1.2)), c["leaf_light"], 0.30)
+    tile.put(leaf * np.clip(1.0 - (tile.y - (spring - rise)) / 3.0, 0, 1), c["dark"], 0.5)
+    win = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, _pointed(cx, spring + 8.0, 4.4, spring - 1.0, 5.6)))
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, _pointed(cx, spring + 9.0, 5.6, spring - 1.0, 7.0))), c["stone"])
+    tile.put(win, c["glow"])
+    tile.put(win * (tile.y < spring + 1.0), (255, 255, 255), 0.25)
+    tile.put(win * (np.abs(tile.x - cx) < 0.35), c["dark"], 0.8)
+    tile.put(win * (np.abs(tile.y - (spring + 3.0)) < 0.35), c["dark"], 0.8)
+    tile.put(win * (tile.x < cx) * (tile.y > spring + 3.0), c["glass"], 0.35)
+    for x in (cx - 3.0, cx + 3.0):
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, 92.0, 0.9)), c["brass"])
+    # The kiosks at the two corners.
+    for x in (5.0, W - 5.0):
+        post = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x - 3.6, 9.8, x + 3.6, 11.0), _box(p, dx, dy, x - 3.0, 6.0, x - 1.8, 10.0), _box(p, dx, dy, x + 1.8, 6.0, x + 3.0, 10.0)))
+        tile.put(post, c["stone"])
+        dome = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, x, 5.4, 3.4, ry=3.0), _box(p, dx, dy, x - 3.8, 5.2, x + 3.8, 6.2), _box(p, dx, dy, x - 0.3, 1.4, x + 0.3, 3.0), _dot(p, dx, dy, x, 1.4, 0.7)))
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x - 1.8, 6.2, x + 1.8, 9.8)), c["dark"], 0.8)
+        tile.put(dome, c["stone"])
+        tile.put(dome * (tile.x > x + 0.8), c["dark"], 0.25)
+        tile.put(dome * (np.abs(tile.x - x) < 0.3) * (tile.y > 2.6), c["frame"], 0.6)
+    return leaf
+
+
 MOTIONS: dict[Draw, tuple[str, bool]] = {
     bulkhead: (SLIDE, True),
     iron: (SWING, False),
@@ -1692,6 +1947,9 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     hangzhou_door: (SWING, True),
     heian_door: (SWING, True),
     hanyang_door: (SWING, True),
+    lalbagh_door: (SWING, True),
+    company_gate_door: (SWING, True),
+    curzon_door: (SWING, True),
 }
 
 
@@ -1850,6 +2108,16 @@ DOORS: dict[str, tuple[Draw, dict]] = {
                                    "tile": (56, 56, 62), "plaster": (234, 228, 214), "rafter": (226, 210, 170), "iron": (46, 44, 44)}),
     "history_hanyang": (hanyang_door, {**_colours((170, 166, 156), (168, 46, 36), (34, 28, 26), (150, 146, 138), (255, 222, 160)),
                                        "tile": (80, 82, 88), "green": (52, 124, 100), "red": (176, 52, 40), "blue": (56, 92, 150), "white": (236, 232, 220), "iron": (56, 52, 50)}),
+    # Dhaka on the Buriganga: the gate of the Lalbagh fort, a pointed arch
+    # in red brick and plaster. Calcutta: a white gateway of the Company
+    # with a fanlight and green shutters. Dhaka in spring: a horseshoe arch
+    # of Curzon Hall, its voussoirs brick and stone in turn.
+    "history_dhaka_river": (lalbagh_door, {**_colours((172, 76, 54), (92, 60, 40), (40, 26, 22), (196, 176, 150), (255, 214, 150)),
+                                           "plaster": (226, 210, 184), "mortar": (214, 196, 170), "iron": (52, 46, 44)}),
+    "history_calcutta": (company_gate_door, {**_colours((216, 210, 196), (66, 112, 84), (40, 40, 38), (196, 184, 160), (255, 226, 170)),
+                                             "plaster": (236, 230, 216), "damp": (150, 150, 128), "brass": (206, 168, 80)}),
+    "history_dhaka_spring": (curzon_door, {**_colours((178, 72, 52), (86, 54, 38), (40, 24, 20), (204, 196, 182), (255, 216, 140)),
+                                           "stone": (232, 222, 200), "mortar": (210, 186, 160), "glass": (70, 140, 170), "brass": (206, 168, 80)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

@@ -45,6 +45,7 @@ from .artkit import Art, Pen, polar, scale
 from . import history_eras as _history
 from . import history_americas_pacific as _americas_pacific
 from . import history_atlantic as _atlantic
+from . import history_bengal as _bengal
 from . import history_east_asia_coast as _east_asia_coast
 from . import history_origins as _origins
 from . import history_south_america as _south_america
@@ -369,6 +370,12 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_hangzhou": (_east_asia_coast.hangzhou_foreground, scale(_east_asia_coast.HANGZHOU["near"], 0.9)),
     "history_heian": (_east_asia_coast.heian_foreground, scale(_east_asia_coast.HEIAN["near"], 0.9)),
     "history_hanyang": (_east_asia_coast.hanyang_foreground, scale(_east_asia_coast.HANYANG["near"], 0.9)),
+    # Bengal: river grass stands from below and a torn banana leaf hangs on
+    # the Buriganga; banyan roots hang and indigo stands at Calcutta; shimul
+    # twigs in red flower hang and marigolds stand in the Dhaka spring.
+    "history_dhaka_river": (_bengal.dhaka_river_foreground, scale(_bengal.DHAKA_RIVER["near"], 0.9)),
+    "history_calcutta": (_bengal.calcutta_foreground, scale(_bengal.CALCUTTA["near"], 0.9)),
+    "history_dhaka_spring": (_bengal.dhaka_spring_foreground, scale(_bengal.DHAKA_SPRING["near"], 0.9)),
 }
 
 
