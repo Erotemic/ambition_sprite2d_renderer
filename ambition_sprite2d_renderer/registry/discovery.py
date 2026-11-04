@@ -772,10 +772,14 @@ def discover_module_targets() -> DiscoveryReport:
                                 f"{existing.module_path!r} owns that target name"
                             )
                             continue
+                        # Two modules that draw one id is a failure, not a
+                        # choice: the later module silently replaces the art of
+                        # every room that uses the earlier one.
                         warnings.append(
                             f"{category}/{stem}: TARGETS entry {tgt.name!r} shadows "
                             f"an earlier target of the same name"
                         )
+                        failures.append(warnings[-1])
                     targets[tgt.name] = tgt
                 continue
             render = getattr(mod, "render", None)
@@ -790,6 +794,7 @@ def discover_module_targets() -> DiscoveryReport:
                 warnings.append(
                     f"{category}/{stem}: shadows an earlier target of the same name"
                 )
+                failures.append(warnings[-1])
             targets[stem] = _build_module_target(mod, stem, category, dotted, render)
     return DiscoveryReport(targets=targets, warnings=warnings, failures=tuple(failures))
 

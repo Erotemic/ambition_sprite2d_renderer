@@ -50,10 +50,13 @@ def test_module_targets_expose_callable_renderers():
     assert missing == []
 
 
-def test_target_names_are_unique_after_discovery():
-    report = discover_all_targets()
-    names = list(report.targets)
-    assert len(names) == len(set(names))
+def test_no_module_target_shadows_another():
+    # Discovery keeps one target per name, so its keys are always unique. The
+    # defect is two modules that draw one id: the later one replaces the art
+    # of every room that uses the earlier one. Discovery reports that.
+    report = discover_module_targets()
+    shadows = [f for f in report.failures if "shadows" in f]
+    assert shadows == []
 
 
 def test_noether_dedicated_module_outranks_legacy_loose_rig():
