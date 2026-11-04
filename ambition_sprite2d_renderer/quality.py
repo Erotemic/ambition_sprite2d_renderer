@@ -1502,7 +1502,7 @@ def _accept_variant(destination: Path, evidence: dict) -> None:
 def generate_sprite_variants(
     asset_root: Path, *, tiers: tuple[Variant, ...] = VARIANTS,
     selectors: tuple[str, ...] = (), force: bool = False, clean: bool = False,
-    clock: PhaseClock | None = None, jobs: int = 1,
+    clock: PhaseClock | None = None, jobs: int = 1, missing_only: bool = False,
 ) -> None:
     """Publish complete selected bundles, including every quality representation."""
     import os
@@ -1513,7 +1513,7 @@ def generate_sprite_variants(
              or any(selects(Path(path).stem, selectors) or selects(path, selectors) for path in unit["required"])]
     if selectors and not names:
         raise SystemExit(f"No registered product matches {list(selectors)}")
-    publication.build(None, names if selectors else (), force=force or clean, jobs=jobs)
+    publication.build(None, names if selectors else (), force=force or clean, jobs=jobs, missing_only=missing_only)
 
 
 _PAGE_FIELDS = frozenset(("pages", "images", "image"))
@@ -1550,6 +1550,7 @@ def generate_parallax_variants(
     selectors: tuple[str, ...] = (),
     force: bool = False,
     clean: bool = False,
+    missing_only: bool = False,
     clock: PhaseClock | None = None,
 ) -> None:
     """Parallax layers are standalone images, so these ARE whole-image resizes.
@@ -1559,6 +1560,11 @@ def generate_parallax_variants(
     same reason: one image's three tiers are its own business.
     """
     from ambition_sprite2d_renderer.products import conversion_current
+    published = {}
+    if tier_roots:
+        from .publication import store_root
+        from .publication_store import Store
+        published = Store(store_root()).selected()["files"]
     clock = clock or PhaseClock()
     def output_root(variant):
         root = (tier_roots or {}).get(variant.suffix, asset_root)
@@ -1587,6 +1593,13 @@ def generate_parallax_variants(
         rel = png.relative_to(src)
         for variant in tiers:
             dst = output_root(variant) / rel
+            logical = f"backgrounds/parallax_layers_{variant.suffix}/{rel.as_posix()}"
+            source_owner = published.get(f"backgrounds/parallax_layers/{rel.as_posix()}", {}).get("unit")
+            # A source bundle owns its tiers. Its producer replaces them together.
+            if source_owner and published.get(logical, {}).get("unit") == source_owner:
+                continue
+            if missing_only and (dst.is_file() or logical in published):
+                continue
             evidence = _conversion((png,), dst, variant, "parallax")
             if force or not conversion_current(dst.parent, dst.stem, evidence):
                 with clock.phase("parallax png", unit=rel.as_posix()):
@@ -1661,9 +1674,13 @@ def main() -> None:
         action="store_true",
         help="rebuild sprite bundles and clear selected background tiers",
     )
+    parser.add_argument("--only-missing", "--missing-only", dest="missing_only", action="store_true",
+                        help="keep every published product, including stale products")
     parser.add_argument("--jobs", type=int, default=min(6, max(1, (os.cpu_count() or 2)//2)), help="build on N processes")
     args = parser.parse_args()
 
+    if args.missing_only and (args.force or args.clean):
+        parser.error("--only-missing cannot be combined with --force or --clean")
     if args.sprites_only and args.backgrounds_only:
         raise SystemExit("--sprites-only and --backgrounds-only are exclusive")
     if args.clean and args.target:
@@ -1698,6 +1715,7 @@ def main() -> None:
             clean=args.clean,
             clock=clock,
             jobs=args.jobs,
+            missing_only=args.missing_only,
         )
     if not args.sprites_only:
         generate_parallax_variants(
@@ -1707,6 +1725,7 @@ def main() -> None:
             selectors=selectors,
             force=args.force,
             clean=args.clean,
+            missing_only=args.missing_only,
             clock=clock,
         )
 

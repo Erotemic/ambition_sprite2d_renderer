@@ -703,13 +703,15 @@ def main(argv=None):
     parser.add_argument("--deep", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--force", action="store_true")
-    parser.add_argument("--missing-only", action="store_true", help="keep every selected target, including stale and partial products")
+    parser.add_argument("--only-missing", "--missing-only", dest="missing_only", action="store_true", help="keep every selected target, including stale and partial products")
     parser.add_argument("--loose", action="store_true",
                         help="rebuild only targets whose own inputs changed; keep those that only shared renderer code made stale")
     parser.add_argument("--resolve-layout", action="store_true")
     parser.add_argument("--adopt-existing", type=Path)
     parser.add_argument("--jobs", type=int, default=min(6, max(1, (os.cpu_count() or 2)//2)))
     args = parser.parse_args(argv)
+    if args.missing_only and args.force:
+        parser.error("--only-missing cannot be combined with --force")
     if args.library:
         os.environ["AMBITION_CONTENT_LIBRARY"] = (repo_root() / args.library).resolve().relative_to(repo_root()).as_posix()
     if args.worker:

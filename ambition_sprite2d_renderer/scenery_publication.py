@@ -139,7 +139,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--theme', action='append', default=[])
     parser.add_argument('--skin', action='append', default=[])
-    parser.add_argument('--missing-only', action='store_true',
+    parser.add_argument('--only-missing', '--missing-only', dest='missing_only', action='store_true',
                         help='keep every published product, stale and partial ones too; with no --theme or --skin, '
                              'select every scene, skin and sky part')
     parser.add_argument('--jobs', type=int, default=min(6, max(1, (os.cpu_count() or 2) // 2)),
