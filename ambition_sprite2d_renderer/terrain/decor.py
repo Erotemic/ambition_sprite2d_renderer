@@ -1593,6 +1593,216 @@ def ochre_palette(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+# The History dimension, third pass. In the Olmec heartland `metal` is
+# jade, `wood` the clay and `bloom` a ripe pod of cacao; in the Maya city
+# `wood` is red paint and `metal` jade; on the Taino islands `bloom` is the
+# pink of a conch; on the Lapita shore `wood` is red-slipped clay and `metal`
+# obsidian; on the open ocean `wood` is a gourd; on Rapa Nui `metal` is
+# basalt and `bloom` lichen.
+
+
+def cacao_pod(tile: Tile, c: dict) -> None:
+    """A pod of cacao on the ground, ridged and pointed, and a half pod
+    that is open with its pale beans in a row."""
+    _shadow(tile, 7.0)
+    pod = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 8.0, G - 3.0), (M - 6.0, G - 6.6), (M - 2.0, G - 7.4), (M + 1.4, G - 5.4), (M + 1.0, G - 1.4), (M - 3.0, G), (M - 6.6, G - 0.4)]))
+    tile.put(pod, c["bloom"])
+    tile.put(pod * (tile.y < G - 5.0), _mix(c["bloom"], (255, 230, 150), 0.35), 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M - 7.0, G - 3.0 + k * 0.4), (M - 3.0, G - 4.4 + k * 1.3), (M + 0.6, G - 3.0 + k * 0.8)], 0.25) for k in range(-1, 3)]) * pod, c["dark"], 0.40)
+    half = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 6.0, G - 2.2, 4.4, ry=2.2))
+    tile.put(half, _mix(c["bloom"], c["dark"], 0.25))
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 6.0, G - 2.8, 3.6, ry=1.4)), (236, 226, 204))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + 3.6 + k * 1.2, G - 2.9, 0.55, ry=0.75) for k in range(5)]), (150, 96, 80), 0.9)
+    tile.alpha *= tile.y < G
+
+
+def rubber_ball(tile: Tile, c: dict) -> None:
+    """A ball of rubber, black and a little shiny, by a bowl of white
+    latex: the people of the Gulf coast made rubber first, of latex and the
+    juice of a vine."""
+    _shadow(tile, 8.0)
+    bowl = tile.mask(lambda p, dx, dy: p.pieslice([(M + 1.0) * K + dx, (G - 9.0) * K + dy, (M + 10.0) * K + dx, (G + 0.0) * K + dy], 0, 180, fill=255))
+    tile.put(bowl, c["wood"])
+    tile.put(bowl * (tile.x < M + 4.0), c["wood_light"], 0.4)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 5.5, G - 4.5, 4.4, ry=0.9)), (238, 234, 222))
+    ball = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 3.6, G - 5.2, 5.2))
+    tile.put(ball, (40, 36, 34))
+    tile.put(ball * np.clip(1.0 - ((tile.x - (M - 5.4)) ** 2 + (tile.y - (G - 7.2)) ** 2) / 6.0, 0.0, 1.0), (170, 170, 160), 0.6)
+    tile.alpha *= tile.y < G
+
+
+def jade_celts(tile: Tile, c: dict) -> None:
+    """Celts of polished jade, the blades of axes made to be given, that
+    stand on their ends in a row as an offering is laid out."""
+    _shadow(tile, 8.0)
+    for k, (x, h, lean) in enumerate(((-5.4, 10.0, -1.0), (-1.8, 13.0, -0.3), (1.8, 12.0, 0.3), (5.4, 9.0, 1.0))):
+        body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M + x - 1.3, G), (M + x + 1.3, G), (M + x + 0.9 + lean, G - h), (M + x - 0.9 + lean, G - h)]))
+        tone = (0.0, 0.18, -0.10, 0.08)[k]
+        tile.put(body, _mix(c["metal"], (230, 250, 230) if tone > 0 else c["dark"], abs(tone)))
+        tile.put(body * (tile.x < M + x - 0.2 + lean * (G - tile.y) / h), (240, 255, 240), 0.25)
+    tile.alpha *= tile.y < G
+
+
+def glyph_block(tile: Tile, c: dict) -> None:
+    """A block of a fallen inscription: a square of limestone with a glyph
+    in it, a face in profile in a round cartouche, and a number in bars and
+    dots on its side."""
+    _shadow(tile, 7.5)
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 7.0, G), (M + 7.0, G), (M + 7.4, G - 11.0), (M + 6.0, G - 12.0), (M - 6.4, G - 12.0), (M - 7.2, G - 10.6)]))
+    tile.put(body, c["stone"])
+    tile.put(body * (tile.y < G - 11.2), c["stone_light"], 0.5)
+    tile.put(body * (tile.x > M + 6.0), c["dark"], 0.25)
+    tile.put(tile.mask(lambda p, dx, dy: p.ellipse([(M - 4.6) * K + dx, (G - 10.0) * K + dy, (M + 3.0) * K + dx, (G - 2.4) * K + dy], outline=255, width=max(1, int(0.5 * K)))), c["dark"], 0.45)
+    face = [(M - 2.6, G - 8.6), (M - 0.6, G - 8.8), (M + 0.4, G - 7.0), (M + 1.2, G - 6.4), (M + 0.2, G - 5.6), (M + 0.6, G - 4.6), (M - 1.0, G - 4.0), (M - 2.8, G - 4.6)]
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, face)), c["dark"], 0.40)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 0.8, G - 7.4, 0.4)), c["stone_light"], 0.8)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M + 4.2, G - 10.0 + j * 1.4, M + 6.0, G - 9.4 + j * 1.4) for j in range(2)] + [_dot(p, dx, dy, M + 5.1, G - 4.0 + j * 1.2, 0.35) for j in range(2)]), c["dark"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(M + x - 0.5, G), (M + x + 0.5, G), (M + x + lean, G - h)]) for x, h, lean in ((-8.0, 3.0, -0.6), (-7.4, 4.2, 0.2), (7.8, 3.6, 0.6))]), c["plant"])
+    tile.alpha *= tile.y < G
+
+
+def cylinder_vase(tile: Tile, c: dict) -> None:
+    """A tall painted vase of the kind that held a drink of cacao: a
+    cylinder of cream clay with red bands and a row of glyphs round its
+    rim."""
+    _shadow(tile, 5.5)
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 4.0, G), (M + 4.0, G), (M + 4.6, G - 14.0), (M - 4.6, G - 14.0)]))
+    tile.put(body, c["stone_light"])
+    tile.put(body * (tile.x < M - 2.4), (255, 252, 240), 0.35)
+    tile.put(body * (tile.x > M + 2.6), c["dark"], 0.25)
+    for y0, y1 in ((13.6, 12.4), (2.0, 0.8)):
+        tile.put(body * (tile.y > G - y0) * (tile.y < G - y1), c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M + x - 0.7, G - 11.4, M + x + 0.7, G - 10.0) for x in (-3.0, -1.0, 1.0, 3.0)]), c["dark"], 0.55)
+    figure = [(M - 1.6, G - 3.0), (M - 1.0, G - 7.6), (M + 0.2, G - 8.4), (M + 1.2, G - 7.6), (M + 1.6, G - 3.0)]
+    tile.put(tile.mask(lambda p, dx, dy: (_poly(p, dx, dy, figure), _dot(p, dx, dy, M + 0.2, G - 9.0, 0.9))) * body, c["wood"], 0.75)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 14.0, 4.6, ry=0.8)), c["dark"], 0.6)
+    tile.alpha *= tile.y < G
+
+
+def copal_burner(tile: Tile, c: dict) -> None:
+    """A burner of incense: a bowl of clay on three feet with a small fire
+    of copal resin in it, and its white smoke."""
+    _shadow(tile, 5.5)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 8.0, 6.0), blur=1.6), c["glow"], 0.36)
+    smoke = tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + math.sin(k * 0.9) * 1.4, G - 10.0 - k * 1.6, 0.9 + k * 0.25) for k in range(7)], blur=0.6)
+    tile.put(smoke, (236, 236, 228), 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M + x - 0.6, G - 2.4, M + x + 0.6, G) for x in (-3.4, 0.0, 3.4)]), c["wood"])
+    bowl = tile.mask(lambda p, dx, dy: p.pieslice([(M - 5.0) * K + dx, (G - 11.0) * K + dy, (M + 5.0) * K + dx, (G - 1.6) * K + dy], 0, 180, fill=255))
+    tile.put(bowl, c["wood"])
+    tile.put(bowl * (tile.x < M - 2.0), c["wood_light"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - 4.4, 0.45) for x in (-3.0, -1.0, 1.0, 3.0)]), c["dark"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 2.0, G - 6.4), (M - 0.6, G - 9.0), (M, G - 7.8), (M + 0.8, G - 10.2), (M + 2.0, G - 6.4)])), c["glow"])
+    tile.alpha *= tile.y < G
+
+
+def conch(tile: Tile, c: dict) -> None:
+    """A queen conch on the sand: a heavy shell with knobs on its spire and
+    the wide pink lip that the Taino made trumpets of."""
+    _shadow(tile, 8.0)
+    shell = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 8.0, G - 1.0), (M - 4.0, G - 6.4), (M + 1.0, G - 8.4), (M + 6.6, G - 7.0), (M + 8.4, G - 3.0), (M + 6.0, G), (M - 6.0, G)]))
+    tile.put(shell, c["stone_light"])
+    tile.put(shell * (tile.y > G - 3.0), _mix(c["stone_light"], c["dark"], 0.25))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - y, 0.9) for x, y in ((-4.6, 6.4), (-2.0, 7.8), (1.0, 8.6), (4.0, 8.2))]), c["stone_light"])
+    lip = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M + 1.0, G - 1.0), (M + 4.0, G - 6.0), (M + 8.6, G - 6.4), (M + 9.0, G - 2.0), (M + 6.0, G - 0.4)]))
+    tile.put(lip, c["bloom"])
+    tile.put(lip * (tile.x > M + 6.0), (255, 236, 220), 0.4)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 7.0, G - 1.2), (M - 9.2, G - 0.6)], 0.8)), c["stone_light"])
+    tile.alpha *= tile.y < G
+
+
+def cassava_plant(tile: Tile, c: dict) -> None:
+    """A cassava (yuca) plant of a Taino garden mound: thin knotted stems
+    and leaves split like a hand into long lobes."""
+    _shadow(tile, 6.0)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G, 7.0, ry=2.0)), c["wood"])
+    tips = []
+    for k, (x, h) in enumerate(((-2.0, 15.0), (1.0, 18.0), (3.4, 13.0))):
+        top = (M + x + (k - 1) * 1.2, G - h)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + x * 0.5, G - 1.0), top], 0.45)), _mix(c["wood"], c["plant"], 0.4))
+        tips.append(top)
+    for x0, y0 in tips:
+        for j in range(7):
+            ang = math.radians(-160.0 + j * 23.0)
+            length = 3.6 if j in (2, 3, 4) else 2.6
+            tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0, y0), (x0 + math.cos(ang + 0.18) * length * 0.5, y0 + math.sin(ang + 0.18) * length * 0.5), (x0 + math.cos(ang) * length, y0 + math.sin(ang) * length), (x0 + math.cos(ang - 0.18) * length * 0.5, y0 + math.sin(ang - 0.18) * length * 0.5)])), c["plant"] if j % 2 else _mix(c["plant"], (230, 240, 190), 0.2))
+    tile.alpha *= tile.y < G
+
+
+def lapita_sherd(tile: Tile, c: dict) -> None:
+    """The broken half of a Lapita pot that leans on a stone: red clay with
+    bands of fine stamped teeth in white lime, in faces and in zigzags."""
+    _shadow(tile, 7.5)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 5.0, G - 2.0, 3.4, ry=2.2)), c["stone"])
+    pot = tile.mask(lambda p, dx, dy: p.pieslice([(M - 8.0) * K + dx, (G - 13.0) * K + dy, (M + 6.0) * K + dx, (G + 1.0) * K + dy], 200, 360, fill=255))
+    tile.put(pot, c["wood"])
+    tile.put(pot * (tile.y > G - 3.0), c["dark"], 0.25)
+    rows = []
+    for row, yy in enumerate((G - 9.0, G - 7.4, G - 5.2)):
+        for k in range(14):
+            x = M - 6.4 + k * 0.85
+            zig = (0.6 if (k + row) % 2 else 0.0) if row == 2 else 0.0
+            rows.append((x, yy - zig))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.22) for x, y in rows]) * pot, (244, 236, 220), 0.9)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M - 1.0 + x, G - 7.4, 0.45) for x in (-0.9, 0.9)]) * pot, (244, 236, 220), 0.8)
+    tile.alpha *= tile.y < G
+
+
+def obsidian(tile: Tile, c: dict) -> None:
+    """A core of obsidian and the flakes knocked off it: black volcanic
+    glass, sharp, with a shine on each face."""
+    _shadow(tile, 7.0)
+    core = [(M - 6.4, G), (M - 6.0, G - 4.6), (M - 3.4, G - 7.4), (M - 0.4, G - 6.6), (M + 0.8, G - 3.0), (M + 0.2, G)]
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, core)), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 5.6, G - 4.2), (M - 3.4, G - 6.8), (M - 2.6, G - 4.0)])), (180, 190, 200), 0.45)
+    flakes = [((M + 3.0, G), (M + 4.4, G - 3.0), (M + 5.4, G)), ((M + 6.0, G), (M + 7.0, G - 2.0), (M + 8.4, G - 0.4), (M + 7.6, G)), ((M + 1.6, G), (M + 2.4, G - 1.4), (M + 3.0, G))]
+    tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, list(pts)) for pts in flakes]), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [pts[0], pts[1]], 0.25) for pts in flakes]), (200, 210, 220), 0.55)
+    tile.alpha *= tile.y < G
+
+
+def coconuts(tile: Tile, c: dict) -> None:
+    """Coconuts for the voyage: two in their green husks and one husked,
+    brown and hairy, with its three eyes."""
+    _shadow(tile, 8.0)
+    for x, r, colour in ((-4.6, 4.2, c["plant"]), (3.0, 4.6, _mix(c["plant"], c["dark"], 0.2))):
+        nut = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x, G - r * 0.9, r, ry=r * 0.9))
+        tile.put(nut, colour)
+        tile.put(nut * (tile.x < M + x - r * 0.3) * (tile.y < G - r), (220, 230, 160), 0.30)
+    brown = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 0.4, G - 2.6, 2.8, ry=2.6))
+    tile.put(brown, c["wood"])
+    tile.put(brown * (np.abs(((tile.x + tile.y * 0.7) % 0.9) - 0.45) < 0.12), c["dark"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M - 0.4 + x, G - 3.6 + y, 0.35) for x, y in ((-0.7, 0.0), (0.7, 0.0), (0.0, 0.9))]), c["dark"], 0.8)
+    tile.alpha *= tile.y < G
+
+
+def water_gourd(tile: Tile, c: dict) -> None:
+    """A gourd that holds water for the voyage, in a net of cord, with a
+    stopper of rolled leaf."""
+    _shadow(tile, 6.0)
+    body = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M, G - 5.6, 5.6, ry=5.4), _dot(p, dx, dy, M + 0.4, G - 12.4, 2.6, ry=2.8), _box(p, dx, dy, M - 1.0, G - 12.0, M + 1.6, G - 9.0)))
+    tile.put(body, c["wood"])
+    tile.put(body * (tile.x < M - 1.6), c["wood_light"], 0.40)
+    tile.put(body * (tile.x > M + 2.6), c["dark"], 0.30)
+    net = (np.abs(((tile.x + tile.y) % 2.4) - 1.2) < 0.14) | (np.abs(((tile.x - tile.y) % 2.4) - 1.2) < 0.14)
+    tile.put(body * net * (tile.y > G - 9.0), c["stone_light"], 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 0.4, G - 16.4, M + 1.2, G - 14.6)), c["plant"])
+    tile.alpha *= tile.y < G
+
+
+def paenga(tile: Tile, c: dict) -> None:
+    """A kerbstone of a boat-shaped house: a long dressed block of basalt,
+    curved, with holes in its top where the poles of the frame stood."""
+    _shadow(tile, 9.5)
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 9.6, G), (M - 9.0, G - 4.0), (M - 4.0, G - 5.0), (M + 4.0, G - 5.0), (M + 9.0, G - 4.0), (M + 9.6, G)]))
+    tile.put(body, c["metal"])
+    tile.put(body * (tile.y < G - 4.2), c["stone_light"], 0.30)
+    tile.put(body * (tile.y > G - 1.4), c["dark"], 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - 4.5, 0.9, ry=0.35) for x in (-6.0, -2.0, 2.0, 6.0)]), c["dark"], 0.8)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - y, r) for x, y, r in ((-5.0, 2.6, 0.7), (3.4, 2.2, 0.9))]) * body, c["bloom"], 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(M + x - 0.5, G), (M + x + 0.5, G), (M + x + lean, G - h)]) for x, h, lean in ((-10.4, 2.6, -0.4), (10.2, 3.2, 0.6))]), c["plant"])
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -1666,6 +1876,19 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "history_sahul": ((grass_tuft, hearth, shells, quern, rock, termite_mound), _palette((50, 24, 18), (150, 100, 80), (230, 210, 190), (176, 86, 50), (110, 100, 96), (160, 160, 100), (200, 90, 50), (255, 170, 80))),
     "history_highlands": ((taro, stone_adze, bush, flowers, taro, grass_tuft), _palette((20, 34, 24), (96, 104, 96), (190, 196, 180), (110, 80, 56), (60, 110, 90), (80, 140, 70), (200, 80, 80), (255, 210, 150))),
     "history_painted_cave": ((stone_lamp, ochre_palette, bones, rock, hearth, stone_lamp), _palette((30, 18, 14), (120, 92, 70), (210, 180, 150), (110, 76, 50), (90, 80, 70), (90, 90, 60), (170, 60, 36), (255, 180, 90))),
+    # The History dimension, third pass. The Olmec heartland: cattails,
+    # cacao, a rubber ball by its latex, jade celts and a grinding stone; the
+    # Maya city: glyph blocks, a painted vase and a burner of copal; the
+    # Taino islands: conchs, cassava, shells and pots; the Lapita shore:
+    # stamped sherds, obsidian, taro, shells and coral; the open ocean (on a
+    # canoe deck): coconuts, a water gourd, rope and the catch; Rapa Nui: a
+    # toki, obsidian, a stone of a house and the grass.
+    "history_olmec": ((reeds, cacao_pod, rubber_ball, jade_celts, quern, grass_tuft), _palette((34, 40, 26), (84, 84, 86), (176, 176, 166), (180, 124, 84), (70, 150, 110), (90, 130, 70), (200, 110, 50), (255, 220, 160))),
+    "history_maya": ((bush, glyph_block, cylinder_vase, copal_burner, flowers, glyph_block), _palette((24, 36, 28), (196, 186, 166), (236, 230, 214), (176, 64, 46), (60, 140, 120), (60, 120, 70), (220, 80, 60), (255, 210, 150))),
+    "history_caribbean": ((conch, cassava_plant, shells, clay_pots, grass_tuft, conch), _palette((30, 40, 36), (200, 190, 170), (244, 236, 214), (170, 110, 70), (210, 170, 60), (70, 140, 80), (236, 140, 140), (255, 236, 190))),
+    "history_lapita": ((shells, lapita_sherd, taro, obsidian, coral, grass_tuft), _palette((30, 26, 24), (100, 94, 90), (220, 210, 196), (176, 96, 60), (30, 30, 36), (80, 130, 70), (240, 150, 130), (255, 210, 150))),
+    "history_open_ocean": ((rope_coil, coconuts, water_gourd, fish_basket, coconuts, rope_coil), _palette((14, 22, 36), (96, 100, 112), (204, 206, 210), (156, 116, 70), (120, 110, 90), (110, 128, 60), (230, 170, 110), (255, 190, 130))),
+    "history_rapa_nui": ((grass_tuft, stone_adze, obsidian, rock, paenga, grass_tuft), _palette((30, 34, 26), (110, 104, 96), (200, 190, 170), (130, 96, 60), (66, 68, 72), (130, 150, 70), (214, 150, 60), (255, 230, 180))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),
@@ -1725,6 +1948,7 @@ LIGHTS: dict[Draw, tuple[float, float, float]] = {
     gold_bowl: (M, 6.0, 0.16),
     hearth: (M, 5.0, 0.38),
     stone_lamp: (M - 1.0, 6.0, 0.32),
+    copal_burner: (M, 8.0, 0.30),
 }
 #: A pool of light is drawn this many times the side of a decor square, with
 #: its middle on the middle of the square.

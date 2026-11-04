@@ -204,6 +204,23 @@ def _raindrop(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return _strokes([[top, (-top[0], -top[1])]], 0.010, 0.25), colour
 
 
+def _butterfly(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A small butterfly of the rainforest, its wings open, or half shut
+    as it beats them: two round upper wings and two smaller lower ones on
+    a thin body."""
+    x, y = _cell()
+    turn = (0.2, -0.3, 0.5, -0.1)[variant]
+    open_ = (1.0, 0.55, 0.8, 0.3)[variant]
+    rx = x * math.cos(turn) - y * math.sin(turn)
+    ry = x * math.sin(turn) + y * math.cos(turn)
+    wings = np.zeros_like(rx)
+    for side in (-1.0, 1.0):
+        wings = np.maximum(wings, _soft(rx - side * 0.13 * open_, ry + 0.06, 0.14, 0.6, squash=open_ * 0.9 + 0.1))
+        wings = np.maximum(wings, _soft(rx - side * 0.09 * open_, ry - 0.10, 0.10, 0.6, squash=open_ * 0.9 + 0.1))
+    body = np.clip(1.0 - np.abs(rx) / 0.018, 0.0, 1.0) * (np.abs(ry) < 0.14)
+    return np.clip(np.clip(wings * 3.0, 0.0, 1.0) * 0.9 + body, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -302,6 +319,16 @@ MOTES = {
     "history_sahul": (_glow, (255, 170, 80)),
     "history_highlands": (_glow, (210, 250, 160)),
     "history_painted_cave": (_glow, (255, 176, 96)),
+    # The History dimension, third pass: the damp haze of the Gulf swamps;
+    # blue butterflies over the Maya forest; salt spray on the Taino shore;
+    # petals on the lagoon; spray of the open sea; seeds of grass on the
+    # wind of Rapa Nui.
+    "history_olmec": (_dot, (236, 232, 196)),
+    "history_maya": (_butterfly, (96, 170, 250)),
+    "history_caribbean": (_dot, (248, 252, 250)),
+    "history_lapita": (_petal, (255, 236, 196)),
+    "history_open_ocean": (_dot, (214, 228, 242)),
+    "history_rapa_nui": (_chaff, (226, 214, 150)),
 }
 
 
@@ -366,6 +393,12 @@ SHADOWS = {
     "history_sahul": (80, 30, 20),
     "history_highlands": (20, 36, 24),
     "history_painted_cave": (24, 14, 10),
+    "history_olmec": (40, 46, 28),
+    "history_maya": (20, 36, 26),
+    "history_caribbean": (60, 70, 66),
+    "history_lapita": (40, 30, 26),
+    "history_open_ocean": (14, 22, 40),
+    "history_rapa_nui": (40, 44, 30),
 }
 SHADOW_PX = (96, 28)
 

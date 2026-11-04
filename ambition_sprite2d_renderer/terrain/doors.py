@@ -449,6 +449,66 @@ def reed_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def wattle_door(tile: Tile, c: dict) -> np.ndarray:
+    """A door of wattle and daub: upright stakes with withies woven through
+    them, and clay pressed over the weave, that has fallen off in places so
+    the weave shows."""
+    leaf = _frame(tile, c, arch=8.0)
+    for k in range(9):
+        x = F + 2.0 + k * (W - 2 * F - 4.0) / 8.0
+        tile.put(leaf * (np.abs(tile.x - x) < 0.9), c["dark"], 0.55)
+    weave = np.abs(((tile.y + 2.0 * np.sin(tile.x * math.pi / 3.3)) % 3.6) - 1.8) < 0.7
+    tile.put(leaf * weave, c["leaf_light"], 0.45)
+    daub = np.clip((tile.noise(3, 6, 2) - 0.40) * 8.0, 0.0, 1.0)
+    tile.put(leaf * daub, c["frame"], 0.85)
+    tile.put(leaf * daub * np.clip((tile.noise(10, 18, 2) - 0.5) * 3.0, 0.0, 1.0), c["frame_light"], 0.35)
+    _window(tile, c, W * 0.5 - 5.0, 22.0, W * 0.5 + 5.0, 32.0)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, W * 0.5 + x, 27.0, 0.7) for x in (-2.4, 0.0, 2.4)]), c["accent"], 0.9)
+    return leaf
+
+
+def corbel(tile: Tile, c: dict) -> np.ndarray:
+    """A Maya doorway: a frame of limestone whose top closes in steps, a
+    corbel arch, over a hanging of woven cloth painted red, with a band of
+    glyph blocks across its top and a small lamp in the cloth."""
+    leaf = _frame(tile, c)
+    # The steps of the corbel arch: each course of stone reaches a little
+    # further in than the one under it.
+    steps = tile.mask(lambda p, dx, dy: [(_box(p, dx, dy, F, F + k * 4.0, F + (5 - k) * 3.6, F + k * 4.0 + 4.0), _box(p, dx, dy, W - F - (5 - k) * 3.6, F + k * 4.0, W - F, F + k * 4.0 + 4.0)) for k in range(5)])
+    tile.put(steps, c["frame"])
+    tile.put(steps * tile.mask(lambda p, dx, dy: [_box(p, dx, dy, 0.0, F + k * 4.0 + 3.4, W, F + k * 4.0 + 4.0) for k in range(5)]), c["dark"], 0.45)
+    cloth = leaf * (1.0 - steps)
+    tile.put(cloth * (np.abs(((tile.x + tile.y * 0.0) % 2.0) - 1.0) < 0.25), c["dark"], 0.18)
+    tile.put(cloth * (np.abs((tile.y % 2.4) - 1.2) < 0.2), c["leaf_light"], 0.18)
+    for y0 in (44.0, 98.0):
+        band = cloth * (tile.y > y0) * (tile.y < y0 + 6.0)
+        tile.put(band, c["frame"], 0.9)
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, F + 3.0 + k * 9.0, y0 + 1.2, F + 7.4 + k * 9.0, y0 + 4.8) for k in range(6)]) * band, c["accent"], 0.85)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, F + 4.0 + k * 9.0, H - STEP - 3.0, 1.2) for k in range(6)]) * leaf, c["frame_light"], 0.8)
+    _window(tile, c, W * 0.5 - 4.0, 30.0, W * 0.5 + 4.0, 38.0, round_=True)
+    return leaf
+
+
+def mat_door(tile: Tile, c: dict) -> np.ndarray:
+    """A door of plaited pandanus leaf hung in a frame of poles: strips that
+    cross over and under in a check, a border of a darker plait, and a
+    small round opening."""
+    leaf = _frame(tile, c, arch=6.0)
+    along = (np.floor(tile.x / 3.0) + np.floor(tile.y / 3.0)) % 2 == 0
+    tile.put(leaf * along, c["leaf_light"], 0.35)
+    tile.put(leaf * ~along, c["dark"], 0.18)
+    tile.put(leaf * (np.abs((tile.x % 3.0) - 1.5) > 1.3), c["dark"], 0.30)
+    tile.put(leaf * (np.abs((tile.y % 3.0) - 1.5) > 1.3), c["dark"], 0.30)
+    inner = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F + 4.0, F + 10.0, W - F - 4.0, H - STEP - 4.0))
+    border = leaf * (1.0 - inner)
+    tile.put(border * (np.abs(((tile.x + tile.y) % 2.6) - 1.3) < 0.45), c["accent"], 0.55)
+    for y in (40.0, 80.0):
+        tile.put(leaf * (np.abs(tile.y - y) < 1.0), c["frame"])
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y - 1.6), (x + 1.4, y + 1.6)], 0.5) for x in (F + 2.0, W - F - 3.4)]), c["frame_light"], 0.8)
+    _window(tile, c, W * 0.5 - 4.5, 22.0, W * 0.5 + 4.5, 31.0, round_=True)
+    return leaf
+
+
 #: A style draws the door on a tile and returns the mask of its leaf.
 Draw = Callable[[Tile, dict], np.ndarray]
 
@@ -472,6 +532,9 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     ger_door: (SWING, False),
     hide_door: (SWING, False),
     reed_door: (SWING, False),
+    wattle_door: (SWING, False),
+    corbel: (SWING, False),
+    mat_door: (SWING, False),
 }
 
 
@@ -560,6 +623,16 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "history_sahul": (hide_door, _colours((150, 110, 80), (160, 96, 60), (50, 24, 16), (200, 90, 50), (255, 170, 80))),
     "history_highlands": (reed_door, _colours((90, 70, 48), (170, 150, 100), (30, 30, 20), (84, 138, 58), (255, 220, 160))),
     "history_painted_cave": (hide_door, _colours((122, 92, 70), (150, 108, 72), (30, 18, 14), (170, 60, 36), (255, 180, 90))),
+    # The History dimension, third pass. Wattle and daub on the Gulf coast;
+    # a corbel arch and a red hanging in the Maya city; cane on the Taino
+    # islands; plaited pandanus on the Lapita shore and in the shelter on a
+    # voyaging canoe; a frame of basalt with a leaf of tuff on Rapa Nui.
+    "history_olmec": (wattle_door, _colours((168, 126, 86), (110, 88, 60), (40, 30, 22), (70, 150, 110), (255, 214, 150))),
+    "history_maya": (corbel, _colours((214, 204, 182), (170, 62, 46), (40, 30, 26), (60, 140, 120), (255, 214, 150))),
+    "history_caribbean": (reed_door, _colours((150, 120, 80), (206, 186, 128), (50, 40, 28), (40, 170, 180), (255, 230, 170))),
+    "history_lapita": (mat_door, _colours((110, 80, 56), (196, 166, 108), (40, 30, 24), (176, 92, 56), (255, 200, 130))),
+    "history_open_ocean": (mat_door, _colours((96, 74, 54), (170, 146, 98), (16, 20, 30), (60, 120, 160), (255, 180, 110))),
+    "history_rapa_nui": (stone, _colours((88, 88, 92), (150, 128, 100), (30, 30, 30), (172, 72, 52), (255, 226, 170))),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

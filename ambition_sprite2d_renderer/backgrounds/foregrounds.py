@@ -43,6 +43,7 @@ from .art_quarters import stacks_foreground as _art_stacks
 from .art_quarters import stage_foreground as _art_stage
 from .artkit import Art, Pen, polar, scale
 from . import history_eras as _history
+from . import history_americas_pacific as _americas_pacific
 from . import history_origins as _origins
 from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
 from .military_tower import TOWER
@@ -321,6 +322,16 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_sahul": (_origins.sahul_foreground, scale(_origins.SAHUL["near"], 0.9)),
     "history_highlands": (_origins.highlands_foreground, scale(_origins.HIGHLANDS["near"], 0.9)),
     "history_painted_cave": (_origins.painted_cave_foreground, scale(_origins.PAINTED_CAVE["near"], 0.9)),
+    # The History dimension, third pass: cattails of the Gulf swamps, the
+    # leaves of a pandanus, wave crests and grass in the wind stand from
+    # below; lianas over the Maya forest and the fronds of a palm on the
+    # Taino shore hang.
+    "history_olmec": (_americas_pacific.olmec_foreground, scale(_americas_pacific.OLMEC["near"], 0.9)),
+    "history_maya": (_americas_pacific.maya_foreground, scale(_americas_pacific.MAYA["near"], 0.9)),
+    "history_caribbean": (_americas_pacific.caribbean_foreground, scale(_americas_pacific.CARIBBEAN["near"], 0.9)),
+    "history_lapita": (_americas_pacific.lapita_foreground, scale(_americas_pacific.LAPITA["near"], 0.9)),
+    "history_open_ocean": (_americas_pacific.open_ocean_foreground, scale(_americas_pacific.OPEN_OCEAN["near"], 0.9)),
+    "history_rapa_nui": (_americas_pacific.rapa_nui_foreground, scale(_americas_pacific.RAPA_NUI["near"], 0.9)),
 }
 
 
