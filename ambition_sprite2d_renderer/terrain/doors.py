@@ -1207,6 +1207,184 @@ Draw = Callable[[Tile, dict], np.ndarray]
 
 #: How the leaf of each style opens: one leaf that swings on the left jamb, or
 #: two leaves (one on each jamb) that swing or slide.
+def _thatch_roof(tile: Tile, c: dict, mask: np.ndarray, apex: tuple[float, float], row: float) -> None:
+    """Thatch over `mask`, laid in rows of bundles as on a steep roof: the
+    straws point down and out from the `apex`, each row has a ragged dark
+    lower edge, and the straws catch the light in fine lines."""
+    ax, ay = apex
+    tile.put(mask, c["thatch"])
+    fan = (tile.x - ax) / np.maximum(tile.y - ay, 1.0)
+    straw = np.abs(((fan * 40.0 + tile.noise(10, 4, 2) * 2.0) % 1.0) - 0.5)
+    tile.put(mask * (straw < 0.12), _mix(c["thatch"], c["dark"], 0.40), 0.55)
+    tile.put(mask * (straw > 0.40), _mix(c["thatch"], (255, 240, 200), 0.35), 0.50)
+    edge = ((tile.y + (tile.noise(16, 2, 2) - 0.5) * 2.0) % row) / row
+    tile.put(mask * np.clip((edge - 0.78) / 0.22, 0.0, 1.0), c["dark"], 0.55)
+    tile.put(mask * np.clip(1.0 - edge / 0.18, 0.0, 1.0), _mix(c["thatch"], (255, 240, 200), 0.2), 0.40)
+
+
+def jomon_door(tile: Tile, c: dict) -> np.ndarray:
+    """The low entrance of a pit house of Sannai-Maruyama. The house is
+    dug into the ground, and its steep roof of grass thatch comes down
+    almost to the earth, so the roof fills the frame. A small porch of
+    thatch on two forked chestnut posts shelters the low doorway, and a
+    mat of woven bark hangs in it. The light of the fire shows through
+    the smoke hole high in the roof."""
+    inner = _frame(tile, c)
+    floor = H - STEP
+    _thatch_roof(tile, c, inner, (W * 0.5, -30.0), 5.5)
+    # The earth bank of the pit, low at each side of the door.
+    bank = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, F + 2.0, floor, 9.0, ry=7.0), _dot(p, dx, dy, W - F - 2.0, floor, 9.0, ry=7.0))) * inner
+    tile.put(bank, c["earth"])
+    tile.put(bank * (tile.y < floor - 4.0), _mix(c["earth"], (140, 160, 80), 0.45), 0.7)
+    # The doorway and its posts.
+    x0, x1, top = 16.0, W - 16.0, 66.0
+    opening = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, top, x1, floor))
+    tile.put(opening, c["dark"])
+    for px in (x0 - 3.0, x1):
+        post = tile.mask(lambda p, dx, dy: _box(p, dx, dy, px, top - 6.0, px + 3.0, floor))
+        tile.put(post, c["frame"])
+        tile.put(post * (tile.x < px + 1.0), c["frame_light"], 0.5)
+        tile.put(post * np.clip((tile.noise(2, 16, 2) - 0.5) * 3.0, 0, 1), c["dark"], 0.35)
+    # The mat: strips of bark woven over and under, with a heavy pole at
+    # its foot. It is the leaf.
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 1.0, top + 3.0, x1 - 1.0, floor - 0.6))
+    tile.put(leaf, c["leaf"])
+    weave = ((np.floor((tile.x - x0) / 2.4) + np.floor((tile.y - top) / 2.4)) % 2 == 0)
+    tile.put(leaf * weave, c["leaf_light"], 0.35)
+    tile.put(leaf * ~weave, c["dark"], 0.15)
+    tile.put(leaf * (np.abs(((tile.x - x0) % 2.4) - 2.4) < 0.25), c["dark"], 0.35)
+    tile.put(leaf * (np.abs(((tile.y - top) % 2.4)) < 0.2), c["dark"], 0.30)
+    pole = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.4, floor - 3.6, x1 - 0.4, floor - 1.6))
+    tile.put(pole, c["frame"])
+    tile.put(pole * (tile.y < floor - 3.0), c["frame_light"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 1.0, top + 1.0, x1 - 1.0, top + 3.0)), c["frame"])
+    # The porch: a small gable of thatch over the door, and the crossed
+    # ends of its two rafters over the ridge.
+    ridge = 44.0
+    porch_pts = [(x0 - 9.0, top + 1.0), (W * 0.5, ridge), (x1 + 9.0, top + 1.0), (x1 + 7.0, top + 3.6), (W * 0.5, ridge + 4.0), (x0 - 7.0, top + 3.6)]
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x, y + 2.6) for x, y in porch_pts]), blur=1.0) * inner, (0, 0, 0), 0.35)
+    porch = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, porch_pts))
+    _thatch_roof(tile, {**c, "thatch": _mix(c["thatch"], (255, 240, 200), 0.12)}, porch, (W * 0.5, ridge - 20.0), 4.0)
+    tile.put(tile.mask(lambda p, dx, dy: (_line(p, dx, dy, [(W * 0.5 + 6.0, ridge - 5.0), (W * 0.5 - 1.0, ridge + 2.0)], 1.4),
+                                           _line(p, dx, dy, [(W * 0.5 - 6.0, ridge - 5.0), (W * 0.5 + 1.0, ridge + 2.0)], 1.4))), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(W * 0.5 - 2.0, ridge - 1.0), (W * 0.5 + 2.0, ridge + 1.6)], 0.6)), c["cord"], 0.9)
+    # The smoke hole high in the roof, lit by the fire inside.
+    _window(tile, c, W * 0.5 - 5.0, 16.0, W * 0.5 + 5.0, 22.0)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(W * 0.5 - 8.0, 16.0), (W * 0.5, 9.0), (W * 0.5 + 8.0, 16.0), (W * 0.5 + 6.0, 16.6), (W * 0.5 - 6.0, 16.6)])), _mix(c["thatch"], c["dark"], 0.2))
+    return leaf
+
+
+def taiwan_door(tile: Tile, c: dict) -> np.ndarray:
+    """The door of a house on posts on the coast of eastern Taiwan: a
+    leaf of three broad planks, shaped with stone adzes, held by two
+    battens lashed with rattan. A lintel over it is painted in bands of
+    red and black, as the people of the island wove their cloth. The
+    house stands on posts, so a short ladder goes up to the door, and a
+    deep eave of thatch is over it."""
+    inner = _frame(tile, c)
+    sill = 82.0
+    wall = inner * (tile.y < sill)
+    tile.put(wall, c["wall"])
+    board = (tile.x - F) % 7.0
+    tile.put(wall * (board < 0.6), c["dark"], 0.55)
+    tile.put(wall * (board > 0.6) * (board < 1.6), c["frame_light"], 0.25)
+    tile.tone((tile.noise(3, 20, 2) - 0.5) * 0.18 * wall)
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 15.0, 30.0, W - 15.0, sill))
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 14, 2) - 0.5) * 0.22 * leaf)
+    adze = np.abs(((tile.y + np.floor((tile.x - 15.0) / 11.0) * 2.3) % 4.6) - 2.3) < 0.35
+    tile.put(leaf * adze, c["leaf_light"], 0.18)
+    for k in (1, 2):
+        x = 15.0 + k * (W - 30.0) / 3.0
+        tile.put(leaf * (np.abs(tile.x - x) < 0.45), c["dark"], 0.80)
+        tile.put(leaf * (np.abs(tile.x - x - 0.9) < 0.3), c["leaf_light"], 0.35)
+    for y in (40.0, 72.0):
+        batten = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 15.0, y, W - 15.0, y + 3.0))
+        tile.put(batten, _mix(c["leaf"], c["dark"], 0.25))
+        tile.put(batten * (tile.y < y + 0.7), c["leaf_light"], 0.5)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x - 1.0 + j * 0.8, y - 0.6), (x - 0.2 + j * 0.8, y + 3.6)], 0.4) for x in (18.0, W * 0.5, W - 18.0) for j in range(3)]), c["cord"])
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, 13.6, 28.6, 15.0, sill), _box(p, dx, dy, W - 15.0, 28.6, W - 13.6, sill))), c["frame"])
+    # The lintel: bands of red and black, with a row of small diamonds.
+    lintel = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, 21.0, W - F, 29.0))
+    tile.put(lintel, c["frame"])
+    tile.put(lintel * ((tile.y < 23.0) | (tile.y > 27.0)), c["paint_black"], 0.85)
+    tile.put(lintel * (tile.y >= 23.0) * (tile.y <= 27.0), c["paint_red"])
+    diamonds = [(x, 25.0) for x in np.arange(F + 3.0, W - F, 5.0)]
+    tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(x - 1.6, y), (x, y - 1.6), (x + 1.6, y), (x, y + 1.6)]) for x, y in diamonds]), c["paint_black"], 0.9)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.5) for x, y in diamonds]), (232, 214, 170), 0.9)
+    _window(tile, c, W * 0.5 - 4.0, 50.0, W * 0.5 + 4.0, 57.0)
+    _under_house(tile, c, sill, 3, c["leaf"], c["leaf_light"])
+    eave = _thatch_eave(tile, c, 17.0, 0.0)
+    return leaf * (1.0 - eave)
+
+
+def gyeongju_door(tile: Tile, c: dict) -> np.ndarray:
+    """A gate of Silla at Gyeongju: two leaves of thick planks painted
+    red, with rows of iron studs and a ring of bronze on each, between red
+    posts. A lattice of upright bars over the leaves lets in the light. A
+    roof of grey clay tiles is over the gate: rows of round tile ends
+    along its eave, and its two ends turn up. The gate stands on a sill of
+    granite."""
+    inner = _frame(tile, c)
+    floor = H - STEP
+    # The roof: a band of tiles from the top, its eave curved up at the ends.
+    eave_y = 24.0
+    curve = [(x, eave_y - 7.0 * ((x - W * 0.5) / (W * 0.5)) ** 4) for x in np.linspace(0.0, W, 28)]
+    roof = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(0.0, 0.0), (W, 0.0)] + curve[::-1]))
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(0.0, 0.0), (W, 0.0)] + [(x, y + 4.0) for x, y in curve[::-1]]), blur=1.4) * (1.0 - roof), (0, 0, 0), 0.45)
+    tile.put(roof, c["tile"])
+    lanes = np.abs(((tile.x - W * 0.5) % 4.0) - 2.0)
+    tile.put(roof * np.clip(1.0 - lanes / 0.9, 0, 1), _mix(c["tile"], (255, 255, 255), 0.30), 0.55)
+    tile.put(roof * (lanes > 1.6), c["dark"], 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, 5.0)), _mix(c["tile"], c["dark"], 0.30))
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, 1.2)), _mix(c["tile"], (255, 255, 255), 0.25), 0.6)
+    ends = [(x, eave_y - 7.0 * ((x - W * 0.5) / (W * 0.5)) ** 4 - 1.4) for x in np.arange(2.0, W - 1.0, 4.0)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 1.8) for x, y in ends]), _mix(c["tile"], c["dark"], 0.15))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 1.1) for x, y in ends]), _mix(c["tile"], (255, 255, 255), 0.22))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.45) for x, y in ends]), c["dark"], 0.6)
+    # Under the eave: a beam painted green with a red band, on the posts.
+    beam = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, eave_y, W - F, eave_y + 6.0)) * (1.0 - roof)
+    tile.put(beam, c["bracket"])
+    tile.put(beam * (tile.y > eave_y + 4.0), c["frame"])
+    tile.put(beam * (np.abs(((tile.x - F) % 9.0) - 4.5) < 0.4) * (tile.y < eave_y + 4.0), (232, 214, 170), 0.7)
+    # The lattice over the leaves, with the light behind its bars.
+    lat0, lat1 = eave_y + 8.0, eave_y + 20.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, F + 1.0, lat0 - 1.4, W - F - 1.0, lat1 + 1.4)), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, F + 2.4, lat0, W - F - 2.4, lat1)), c["glow"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.6, lat0, x + 0.6, lat1) for x in np.arange(F + 5.0, W - F - 3.0, 3.6)]), c["frame"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, F + 2.4, lat0, W - F - 2.4, lat0 + 4.0)), (255, 255, 255), 0.25)
+    # The two leaves: planks, bands, studs and the rings.
+    top = lat1 + 1.4
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F + 1.0, top, W - F - 1.0, floor))
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 12, 2) - 0.5) * 0.16 * leaf)
+    plank = (tile.x - F - 1.0) % 6.4
+    tile.put(leaf * (plank < 0.5), c["dark"], 0.55)
+    tile.put(leaf * (plank > 0.5) * (plank < 1.3), c["leaf_light"], 0.25)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.6), c["dark"], 0.9)
+    for y in (top + 8.0, floor - 12.0):
+        band = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F + 1.0, y, W - F - 1.0, y + 3.4))
+        tile.put(band, _mix(c["leaf"], c["dark"], 0.25))
+        tile.put(band * (tile.y < y + 0.7), c["leaf_light"], 0.45)
+        studs = [(x, y + 1.7) for x in np.arange(F + 4.0, W - F - 2.0, 4.6) if abs(x - W * 0.5) > 1.6]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, 0.9) for x, yy in studs]), (60, 54, 52))
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.25, yy - 0.25, 0.35) for x, yy in studs]), (200, 196, 190), 0.6)
+    for x in (W * 0.5 - 4.6, W * 0.5 + 4.6):
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, 72.0, 1.4)), c["bronze"])
+        tile.put(tile.mask(lambda p, dx, dy: p.ellipse([(x - 2.6) * K + dx, (72.0) * K + dy, (x + 2.6) * K + dx, (77.4) * K + dy], outline=255, width=max(1, int(0.7 * K)))), c["bronze"])
+        tile.put(tile.mask(lambda p, dx, dy: p.arc([(x - 2.6) * K + dx, (72.0) * K + dy, (x + 2.6) * K + dx, (77.4) * K + dy], 120, 200, fill=255, width=max(1, int(0.35 * K)))), (255, 236, 180), 0.7)
+    # The posts each side, and the sill of granite.
+    for x0 in (0.0, W - F - 1.0):
+        post = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, eave_y, x0 + F + 1.0, floor))
+        tile.put(post, c["frame"])
+        tile.put(post * (tile.x < x0 + 1.4), c["frame_light"], 0.45)
+        tile.put(post * (tile.x > x0 + F - 0.4), c["dark"], 0.35)
+    sill = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, floor - 2.6, W, floor))
+    tile.put(sill, c["accent"])
+    tile.put(sill * (tile.y < floor - 2.0), _mix(c["accent"], (255, 255, 255), 0.4), 0.7)
+    return leaf * (1.0 - sill)
+
+
 MOTIONS: dict[Draw, tuple[str, bool]] = {
     bulkhead: (SLIDE, True),
     iron: (SWING, False),
@@ -1239,6 +1417,9 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     strait_door: (SWING, False),
     borobudur_door: (SWING, False),
     angkor_door: (SWING, False),
+    jomon_door: (SWING, False),
+    taiwan_door: (SWING, False),
+    gyeongju_door: (SWING, True),
 }
 
 
@@ -1376,6 +1557,17 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "history_borobudur": (borobudur_door, {**_colours((132, 132, 128), (88, 58, 38), (36, 36, 38), (184, 146, 70), (255, 220, 160))}),
     "history_angkor": (angkor_door, {**_colours((182, 158, 150), (92, 56, 38), (44, 30, 26), (200, 160, 80), (255, 212, 140)),
                                      "laterite": (150, 76, 52)}),
+    # Sannai-Maruyama: the low door of a pit house, under a roof of
+    # thatch that comes down to the earth, with a mat of woven bark.
+    # Taiwan: a door of adzed planks in a house on posts, a lintel painted
+    # red and black, an eave of thatch. Gyeongju: a gate of red-painted
+    # planks with studs and bronze rings, under a roof of grey tiles.
+    "history_jomon": (jomon_door, {**_colours((104, 76, 50), (150, 118, 76), (34, 24, 18), (150, 96, 56), (255, 186, 104)),
+                                   "thatch": (176, 146, 92), "earth": (100, 74, 48), "cord": (196, 168, 120)}),
+    "history_taiwan": (taiwan_door, {**_colours((110, 80, 52), (150, 108, 66), (34, 26, 20), (176, 60, 44), (255, 220, 160)),
+                                     "wall": (168, 128, 84), "thatch": (180, 154, 96), "cord": (120, 84, 50), "paint_red": (176, 52, 40), "paint_black": (40, 32, 28)}),
+    "history_gyeongju": (gyeongju_door, {**_colours((178, 58, 40), (156, 50, 36), (36, 26, 24), (176, 170, 160), (255, 214, 150)),
+                                         "tile": (82, 84, 90), "bracket": (56, 118, 98), "bronze": (196, 156, 82)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

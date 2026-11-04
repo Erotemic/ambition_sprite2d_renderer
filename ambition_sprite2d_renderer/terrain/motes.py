@@ -369,6 +369,59 @@ def _dragonfly_pollen(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(_soft(x, y, r, 1.3) * 1.1 + _soft(x, y, r * 2.6, 2.4) * 0.25, 0.0, 1.0), colour
 
 
+def _turned(x: np.ndarray, y: np.ndarray, turn: float) -> tuple[np.ndarray, np.ndarray]:
+    return x * math.cos(turn) - y * math.sin(turn), x * math.sin(turn) + y * math.cos(turn)
+
+
+def _autumn_leaf(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A leaf of chestnut or beech that falls in an autumn of north Japan:
+    long, with a point at each end, and a paler rib down its middle. Each
+    variant has its own turn and its own colour: rust, gold, brown, and the
+    colour of the theme."""
+    x, y = _cell()
+    rx, ry = _turned(x, y, (0.5, -0.9, 1.9, -0.2)[variant])
+    half = (0.36, 0.30, 0.33, 0.27)[variant]
+    width = (0.12, 0.13, 0.10, 0.12)[variant] * np.clip(1.0 - (rx / half) ** 2, 0.0, 1.0) ** 0.8
+    blade = np.clip((width - np.abs(ry)) / 0.025, 0.0, 1.0) * (np.abs(rx) < half)
+    rib = np.clip(1.0 - np.abs(ry) / 0.012, 0.0, 1.0) * (np.abs(rx) < half * 0.9)
+    stem = np.clip(1.0 - np.abs(ry) / 0.012, 0.0, 1.0) * (rx < -half + 0.01) * (rx > -half - 0.07)
+    tone = ((196, 96, 40), (222, 170, 64), (150, 92, 48), colour)[variant]
+    return np.clip(blade * 0.95 - rib * 0.35 + stem * 0.9, 0.0, 1.0), tone
+
+
+def _spray_glint(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """The air over the surf of the Pacific on a clear morning. The first
+    two variants are drops of spray that the wind carries: a small round
+    drop in a faint mist. The other two are glints of the low sun on the
+    drops: a bright point with four short rays."""
+    x, y = _cell()
+    if variant < 2:
+        r = (0.06, 0.08)[variant]
+        return np.clip(_soft(x, y, r, 1.3) * 1.1 + _soft(x, y, r * 3.2, 2.2) * 0.30, 0.0, 1.0), colour
+    reach = (0.26, 0.34)[variant - 2]
+    rx, ry = _turned(x, y, (0.0, math.pi / 4.0)[variant - 2])
+    rays = np.maximum(np.clip(1.0 - np.abs(ry) / 0.018, 0, 1) * np.clip(1.0 - np.abs(rx) / reach, 0, 1) ** 2,
+                      np.clip(1.0 - np.abs(rx) / 0.018, 0, 1) * np.clip(1.0 - np.abs(ry) / reach, 0, 1) ** 2)
+    return np.clip(rays + _soft(x, y, 0.07, 1.2) * 1.3 + _soft(x, y, 0.24, 2.4) * 0.25, 0.0, 1.0), colour
+
+
+def _maple_leaf(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A leaf of a Korean maple that falls in autumn: five pointed lobes
+    that spread from one point, and a thin stem in the gap between the two
+    lower lobes. Each variant has its own turn and its own red or gold."""
+    x, y = _cell()
+    rx, ry = _turned(x, y, (0.2, -0.7, 1.4, 2.6)[variant])
+    r = np.sqrt(rx * rx + ry * ry)
+    theta = np.arctan2(ry, rx) + math.pi / 2.0
+    size = (0.34, 0.30, 0.32, 0.27)[variant]
+    edge = size * (0.36 + 0.64 * np.abs(np.cos(theta * 2.5)) ** 2.4)
+    blade = np.clip((edge - r) / 0.025, 0.0, 1.0)
+    veins = sum(np.clip(1.0 - np.abs(rx * math.sin(a) - ry * math.cos(a)) / 0.010, 0.0, 1.0) * ((rx * math.cos(a) + ry * math.sin(a)) > 0) for a in (-math.pi / 2.0 + k * 2.0 * math.pi / 5.0 for k in range(5)))
+    stem = np.clip(1.0 - np.abs(rx) / 0.014, 0.0, 1.0) * (ry > 0.0) * (ry < size * 0.95)
+    tone = ((200, 48, 36), (226, 110, 40), (170, 36, 40), colour)[variant]
+    return np.clip(blade * 0.95 - veins * blade * 0.30 + stem * 0.9, 0.0, 1.0), tone
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -501,6 +554,12 @@ MOTES = {
     "history_strait": (_midge_glint, (255, 250, 228)),
     "history_borobudur": (_morning_mist, (244, 236, 228)),
     "history_angkor": (_dragonfly_pollen, (255, 226, 150)),
+    # Leaves of chestnut and beech that fall at Sannai-Maruyama; spray
+    # and glints of the sun over the surf of eastern Taiwan; red leaves of
+    # maple that fall among the tombs of Gyeongju.
+    "history_jomon": (_autumn_leaf, (206, 120, 50)),
+    "history_taiwan": (_spray_glint, (246, 252, 252)),
+    "history_gyeongju": (_maple_leaf, (232, 168, 56)),
 }
 
 
@@ -582,6 +641,9 @@ SHADOWS = {
     "history_strait": (44, 34, 24),
     "history_borobudur": (40, 46, 38),
     "history_angkor": (58, 40, 28),
+    "history_jomon": (40, 30, 22),
+    "history_taiwan": (34, 42, 36),
+    "history_gyeongju": (50, 44, 34),
 }
 SHADOW_PX = (96, 28)
 

@@ -45,6 +45,7 @@ from .artkit import Art, Pen, polar, scale
 from . import history_eras as _history
 from . import history_americas_pacific as _americas_pacific
 from . import history_atlantic as _atlantic
+from . import history_east_asia_coast as _east_asia_coast
 from . import history_origins as _origins
 from . import history_south_america as _south_america
 from . import history_southeast_asia as _southeast_asia
@@ -358,6 +359,13 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_strait": (_southeast_asia.strait_foreground, scale(_southeast_asia.STRAIT["near"], 0.9)),
     "history_borobudur": (_southeast_asia.borobudur_foreground, scale(_southeast_asia.BOROBUDUR["near"], 0.9)),
     "history_angkor": (_southeast_asia.angkor_foreground, scale(_southeast_asia.ANGKOR["near"], 0.9)),
+    # The coasts of East Asia: bracken stands from below and a chestnut twig
+    # with burrs hangs at Sannai-Maruyama; silvergrass stands from below and
+    # pandanus leaves hang in Taiwan; grass stands from below and a pine
+    # bough and a maple twig hang at Gyeongju.
+    "history_jomon": (_east_asia_coast.jomon_foreground, scale(_east_asia_coast.JOMON["near"], 0.9)),
+    "history_taiwan": (_east_asia_coast.taiwan_foreground, scale(_east_asia_coast.TAIWAN["near"], 0.9)),
+    "history_gyeongju": (_east_asia_coast.gyeongju_foreground, scale(_east_asia_coast.GYEONGJU["near"], 0.9)),
 }
 
 

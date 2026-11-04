@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, art_dimension, art_quarters, eureka, evil, foregrounds, history_americas_pacific, history_atlantic, history_eras, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
+from . import arenas, art_dimension, art_quarters, eureka, evil, foregrounds, history_americas_pacific, history_atlantic, history_east_asia_coast, history_eras, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from .artkit import Art
 from .parts import LAYER_BLUR, LAYER_SIZE
 
@@ -133,6 +133,10 @@ SCENES: dict[str, Scene] = {
     "history_strait": history_southeast_asia.history_strait,
     "history_borobudur": history_southeast_asia.history_borobudur,
     "history_angkor": history_southeast_asia.history_angkor,
+    # The History dimension: the coasts of East Asia (`history_east_asia_coast.py`).
+    "history_jomon": history_east_asia_coast.history_jomon,
+    "history_taiwan": history_east_asia_coast.history_taiwan,
+    "history_gyeongju": history_east_asia_coast.history_gyeongju,
 }
 
 
