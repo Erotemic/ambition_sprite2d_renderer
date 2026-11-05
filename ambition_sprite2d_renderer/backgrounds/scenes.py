@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, art_dimension, art_quarters, eureka, evil, foregrounds, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_east_asia_coast, history_eras, history_japan, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
+from . import arenas, art_dimension, art_quarters, eureka, evil, foregrounds, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from .artkit import Art
 from .parts import LAYER_BLUR, LAYER_SIZE
 
@@ -151,6 +151,11 @@ SCENES: dict[str, Scene] = {
     # The History dimension: Japan after Heian (`history_japan.py`).
     "history_kamakura": history_japan.history_kamakura,
     "history_meiji": history_japan.history_meiji,
+    # The History dimension: Central Africa (`history_central_africa.py`).
+    "history_ishango": history_central_africa.history_ishango,
+    "history_mbanza_kongo": history_central_africa.history_mbanza_kongo,
+    "history_matamba": history_central_africa.history_matamba,
+    "history_congo_river_1900": history_central_africa.history_congo_river_1900,
 }
 
 

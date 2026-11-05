@@ -47,6 +47,7 @@ from . import history_americas_pacific as _americas_pacific
 from . import history_atlantic as _atlantic
 from . import history_bengal as _bengal
 from . import history_brazil as _brazil
+from . import history_central_africa as _central_africa
 from . import history_east_asia_coast as _east_asia_coast
 from . import history_japan as _japan
 from . import history_origins as _origins
@@ -388,6 +389,14 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     # Bay; willow strands hang and grass stands in Tokyo.
     "history_kamakura": (_japan.kamakura_foreground, scale(_japan.KAMAKURA["near"], 0.9)),
     "history_meiji": (_japan.meiji_foreground, scale(_japan.MEIJI["near"], 0.9)),
+    # Central Africa: papyrus heads and reeds stand from below at Ishango;
+    # oil-palm fronds hang in Mbanza Kongo; a bare baobab branch hangs and
+    # dry grass stands in Matamba; leaves of the rainforest and a vine hang
+    # on the Congo.
+    "history_ishango": (_central_africa.ishango_foreground, scale(_central_africa.ISHANGO["near"], 0.9)),
+    "history_mbanza_kongo": (_central_africa.mbanza_kongo_foreground, scale(_central_africa.MBANZA_KONGO["near"], 0.9)),
+    "history_matamba": (_central_africa.matamba_foreground, scale(_central_africa.MATAMBA["near"], 0.9)),
+    "history_congo_river_1900": (_central_africa.congo_river_1900_foreground, scale(_central_africa.CONGO_RIVER["near"], 0.9)),
 }
 
 

@@ -2280,6 +2280,118 @@ def bricktown_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def kongo_gate_door(tile: Tile, c: dict) -> np.ndarray:
+    """The gate of the king's enclosure at Mbanza Kongo, about 1520. Tall
+    panels of palm mat, woven in bands on the two diagonals so they make a
+    chevron, fill the frame between posts. Over the gate is a lintel of
+    palm ribs bound with cord. The gate is two leaves of palm ribs set side
+    by side and lashed to cross bars, with a small opening of open lattice
+    high in it."""
+    _frame(tile, c)
+    floor = H - STEP
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, F, W - F, floor))
+    tile.put(wall, c["mat"])
+    d1 = (tile.x + tile.y) / 3.0
+    d2 = (tile.x - tile.y) / 3.0
+    cell = (np.floor(d1) + np.floor(d2)) % 2
+    strand = np.where(cell > 0.5, np.abs((d1 % 1.0) - 0.5) < 0.32, np.abs((d2 % 1.0) - 0.5) < 0.32)
+    tile.put(wall * strand, c["mat_light"], 0.65)
+    tile.put(wall * ~strand, c["mat_dark"], 0.55)
+    tile.put(wall * (np.abs(((tile.y - F) % 30.0) - 15.0) > 14.2), c["mat_dark"], 0.8)
+    # The posts that hold the panels, at the sides of the frame.
+    for px in (F + 1.0, W - F - 3.4):
+        post = tile.mask(lambda p, dx, dy: _box(p, dx, dy, px, F, px + 2.4, floor))
+        tile.put(post, c["frame"])
+        tile.put(post * (tile.x < px + 0.8), c["frame_light"], 0.5)
+    # The gateway: dark between two posts, under the lintel of ribs.
+    gx0, gx1, top = 14.0, W - 14.0, 44.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, gx0, top, gx1, floor)), c["dark"])
+    for px in (gx0 - 3.6, gx1):
+        post = tile.mask(lambda p, dx, dy: _box(p, dx, dy, px, top - 9.0, px + 3.6, floor))
+        tile.put(post, _mix(c["frame"], c["dark"], 0.15))
+        tile.put(post * (tile.x < px + 1.2), c["frame_light"], 0.45)
+        tile.put(post * (tile.x > px + 2.8), c["dark"], 0.45)
+    lintel_y = top - 9.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, gx0 - 7.0, top - 1.0, gx1 + 7.0, top + 1.6), blur=0.8), (0, 0, 0), 0.40)
+    for k in range(5):
+        y0 = lintel_y + k * 1.8
+        rib = tile.mask(lambda p, dx, dy: _box(p, dx, dy, gx0 - 7.0, y0, gx1 + 7.0, y0 + 1.6))
+        tile.put(rib, _mix(c["leaf"], c["dark"], 0.10 * (k % 2)))
+        tile.put(rib * (tile.y < y0 + 0.5), c["leaf_light"], 0.6)
+        tile.put(rib * (tile.y > y0 + 1.2), c["dark"], 0.35)
+    for px in (gx0 - 4.5, W * 0.5, gx1 + 4.5):
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(px - 1.4 + j * 0.9, lintel_y - 0.2), (px - 0.8 + j * 0.9, top + 0.2)], 0.30) for j in range(3)]), c["cord"])
+    # The leaves: palm ribs side by side, with two cross bars lashed on.
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, gx0 + 0.6, top + 0.6, gx1 - 0.6, floor - 0.4))
+    tile.put(leaf, c["leaf"])
+    lane = (tile.x - gx0) % 2.4
+    tile.put(leaf * (lane < 0.35), c["dark"], 0.55)
+    tile.put(leaf * (lane > 0.5) * (lane < 1.0), c["leaf_light"], 0.45)
+    tile.put(leaf * np.clip(1.0 - np.abs(((tile.y - top) % 23.0) - 11.5) / 0.4, 0, 1) * (np.floor((tile.x - gx0) / 2.4) % 3 == 0), c["dark"], 0.35)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.45), c["dark"], 0.8)
+    for yy in (top + 18.0, floor - 14.0):
+        bar = tile.mask(lambda p, dx, dy: _box(p, dx, dy, gx0 + 1.0, yy, gx1 - 1.0, yy + 2.4)) * leaf
+        tile.put(bar, _mix(c["frame"], c["dark"], 0.10))
+        tile.put(bar * (tile.y < yy + 0.7), c["frame_light"], 0.45)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(xx - 0.7, yy - 0.4), (xx + 0.7, yy + 2.8)], 0.28) for xx in np.arange(gx0 + 3.0, gx1 - 2.0, 4.8)]) * leaf, c["cord"])
+    _window(tile, c, W * 0.5 - 4.0, top + 6.0, W * 0.5 + 4.0, top + 11.0)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(W * 0.5 - 4.0 + k * 2.0, top + 6.0), (W * 0.5 - 4.0 + k * 2.0 + 3.0, top + 11.0)], 0.3) for k in range(-1, 4)] + [_line(p, dx, dy, [(W * 0.5 - 4.0 + k * 2.0 + 3.0, top + 6.0), (W * 0.5 - 4.0 + k * 2.0, top + 11.0)], 0.3) for k in range(-1, 4)]) * tile.mask(lambda p, dx, dy: _box(p, dx, dy, W * 0.5 - 4.0, top + 6.0, W * 0.5 + 4.0, top + 11.0)), c["leaf"])
+    return leaf
+
+
+def trading_post_door(tile: Tile, c: dict) -> np.ndarray:
+    """The door of a trading post on the Congo, about 1900. The wall is of
+    weatherboards, grey with the damp, under the low roof of a verandah of
+    corrugated iron on thin posts, so the top of the wall is in shade. The
+    door is of plain planks with two ledges and a brace, in a plain casing,
+    with a small pane of glass over it. Muted and plain."""
+    _frame(tile, c)
+    floor = H - STEP
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, F, W - F, floor))
+    tile.put(wall, c["board"])
+    board = (tile.y - F) % 5.0
+    tile.put(wall * (board < 0.6), c["dark"], 0.45)
+    tile.put(wall * (board > 0.6) * (board < 1.3), _mix(c["board"], (255, 255, 255), 0.25), 0.45)
+    tile.tone((tile.noise(3, 12, 2) - 0.5) * 0.14 * wall)
+    # The verandah: its roof of corrugated iron, seen from under its edge,
+    # the shade it throws on the wall, and its two thin posts.
+    roof_low = 20.0
+    tile.put(wall * np.clip(1.0 - (tile.y - roof_low) / 16.0, 0, 1) * (tile.y > roof_low - 1.0), (0, 0, 0), 0.40)
+    roof = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(0.0, F), (W, F), (W, roof_low), (0.0, roof_low)]))
+    tile.put(roof, c["tin"])
+    tile.put(roof * (np.abs((tile.x % 3.0) - 1.5) < 0.5), _mix(c["tin"], (255, 255, 255), 0.30), 0.7)
+    tile.put(roof * (np.abs((tile.x % 3.0) - 1.5) > 1.2), c["dark"], 0.35)
+    tile.put(roof * np.clip((tile.noise(8, 3, 2) - 0.6) * 4.0, 0, 1), c["rust"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, roof_low - 1.4, W, roof_low)), _mix(c["tin"], c["dark"], 0.45))
+    for px in (F + 1.4, W - F - 3.4):
+        post = tile.mask(lambda p, dx, dy: _box(p, dx, dy, px, roof_low, px + 2.0, floor))
+        tile.put(post, c["post"])
+        tile.put(post * (tile.x < px + 0.6), _mix(c["post"], (255, 255, 255), 0.30), 0.6)
+    # The casing and the door.
+    x0, x1, top = 16.0, W - 16.0, 40.0
+    casing = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 2.4, top - 12.0, x1 + 2.4, floor))
+    tile.put(casing, c["frame"])
+    tile.put(casing * (tile.x < x0 - 1.6), c["frame_light"], 0.45)
+    _window(tile, c, x0 + 1.0, top - 10.0, x1 - 1.0, top - 3.0)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, W * 0.5 - 0.3, top - 10.0, W * 0.5 + 0.3, top - 3.0)), c["frame"])
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, top - 1.0, x1, floor - 0.4))
+    tile.put(leaf, c["leaf"])
+    plank = (tile.x - x0) % 5.2
+    tile.put(leaf * (plank < 0.4), c["dark"], 0.65)
+    tile.put(leaf * (plank > 0.5) * (plank < 1.1), c["leaf_light"], 0.30)
+    tile.tone((tile.noise(4, 14, 2) - 0.5) * 0.16 * leaf)
+    for yy in (top + 8.0, floor - 12.0):
+        ledge = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.8, yy, x1 - 0.8, yy + 3.0)) * leaf
+        tile.put(ledge, _mix(c["leaf"], c["dark"], 0.15))
+        tile.put(ledge * (tile.y < yy + 0.7), c["leaf_light"], 0.40)
+        tile.put(ledge * (tile.y > yy + 2.4), c["dark"], 0.45)
+    brace = tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x0 + 2.0, floor - 12.0), (x1 - 2.0, top + 11.0)], 1.4)) * leaf
+    tile.put(brace, _mix(c["leaf"], c["dark"], 0.15))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy + 1.5, 0.5) for x in np.arange(x0 + 2.6, x1 - 1.0, 5.2) for yy in (top + 8.0, floor - 12.0)]), c["iron"])
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x1 - 5.0, 76.0, x1 - 3.4, 81.0), _dot(p, dx, dy, x1 - 4.2, 78.5, 1.0))), c["iron"])
+    return leaf
+
+
 MOTIONS: dict[Draw, tuple[str, bool]] = {
     bulkhead: (SLIDE, True),
     iron: (SWING, False),
@@ -2326,6 +2438,8 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     azulejo_door: (SWING, True),
     kamakura_gate_door: (SWING, True),
     bricktown_door: (SWING, True),
+    kongo_gate_door: (SWING, True),
+    trading_post_door: (SWING, False),
 }
 
 
@@ -2511,6 +2625,20 @@ DOORS: dict[str, tuple[Draw, dict]] = {
                                               "shingle": (128, 108, 86), "fence": (112, 100, 86)}),
     "history_meiji": (bricktown_door, {**_colours((236, 228, 210), (84, 54, 38), (34, 24, 22), (150, 146, 138), (255, 222, 150)),
                                        "brick": (160, 74, 54), "mortar": (214, 204, 184), "stucco": (236, 228, 210), "iron": (44, 44, 50), "brass": (214, 174, 80)}),
+    # Central Africa. Ishango: the hide door of a shelter of bent poles,
+    # with the light of the fire in its smoke hole (the door of the first
+    # people of the savanna). Mbanza Kongo: the gate of the king's
+    # enclosure, leaves of palm rib in a wall of woven palm mat. Matamba:
+    # the gate of a kilombo, logs cut to a point (the gate of Palmares,
+    # whose quilombo took its name from the kilombo of Angola). The Congo:
+    # a plank door in a wall of weatherboards under a verandah of
+    # corrugated iron.
+    "history_ishango": (hide_door, _colours((118, 92, 62), (166, 132, 92), (44, 32, 22), (150, 126, 90), (255, 190, 110))),
+    "history_mbanza_kongo": (kongo_gate_door, {**_colours((116, 84, 56), (204, 178, 120), (40, 28, 20), (168, 78, 48), (255, 212, 140)),
+                                               "mat": (196, 166, 112), "mat_dark": (128, 98, 62), "mat_light": (232, 212, 160), "cord": (110, 80, 48)}),
+    "history_matamba": (palisade_gate_door, {**_colours((132, 98, 66), (144, 110, 74), (44, 30, 20), (170, 98, 60), (255, 204, 120)), "cord": (198, 164, 104)}),
+    "history_congo_river_1900": (trading_post_door, {**_colours((168, 164, 150), (110, 100, 84), (32, 32, 30), (120, 118, 110), (220, 206, 160)),
+                                                     "board": (124, 120, 106), "tin": (130, 132, 130), "rust": (130, 84, 58), "post": (150, 146, 134), "iron": (40, 40, 42)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

@@ -649,6 +649,76 @@ def _soot_leaf(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(blade * 0.95 - rib * 0.30, 0.0, 1.0), (170, 196, 96)
 
 
+def _papyrus_midge(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """What drifts over the shore of Lake Edward in the morning. The first
+    two variants are fine threads from the heads of papyrus: a few thin
+    curved strands from one point, each with its own turn. The third is a
+    small midge: a dark speck of a body with two pale wings; it has its own
+    dark colour. The fourth is a dragonfly far off: a long thin body and
+    four narrow wings, in its own blue-green."""
+    x, y = _cell()
+    if variant < 2:
+        turn = (0.4, -1.2)[variant]
+        lines = []
+        for k in range(4):
+            a = turn + (k - 1.5) * 0.35
+            bend = 0.05 * (1 if k % 2 else -1)
+            lines.append([(0.0, 0.0), (math.cos(a) * 0.15 - math.sin(a) * bend, math.sin(a) * 0.15 + math.cos(a) * bend), (math.cos(a) * 0.30, math.sin(a) * 0.30)])
+        return _strokes(lines, 0.008, 0.12) * 0.75, colour
+    if variant == 2:
+        rx, ry = _turned(x, y, 0.4)
+        body = _soft(rx, ry, 0.07, 1.0, squash=1.8)
+        wings = _soft(rx - 0.02, ry + 0.08, 0.10, 1.2, squash=0.6) + _soft(rx + 0.04, ry + 0.07, 0.09, 1.2, squash=0.6)
+        return np.clip(body * 1.4 + wings * 0.45, 0.0, 1.0), (60, 52, 42)
+    rx, ry = _turned(x, y, -0.2)
+    body = np.clip(1.0 - np.abs(ry) / 0.022, 0.0, 1.0) * (rx > -0.30) * (rx < 0.22)
+    head = _soft(rx - 0.24, ry, 0.045, 1.0)
+    wings = np.zeros_like(rx)
+    for ox in (0.10, 0.02):
+        for side in (-1.0, 1.0):
+            wings = np.maximum(wings, _soft(rx - ox, ry - side * 0.15, 0.16, 1.0, squash=0.28))
+    return np.clip(body + head + wings * 0.45, 0.0, 1.0), (60, 120, 120)
+
+
+def _dry_leaf_dust(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """What the hot wind of the dry season lifts in the Kwanza valley. The
+    first two variants are leaflets of the miombo trees: a small oval leaf
+    with a pale rib, one dry brown and one red with new growth, each with
+    its own turn. The other two are grains of red dust: a soft grain, and
+    a loose puff of dust with a few grains in it."""
+    x, y = _cell()
+    if variant < 2:
+        rx, ry = _turned(x, y, (0.6, -1.0)[variant])
+        half = (0.28, 0.24)[variant]
+        width = 0.12 * np.clip(1.0 - (rx / half) ** 2, 0.0, 1.0) ** 0.6
+        blade = np.clip((width - np.abs(ry)) / 0.025, 0.0, 1.0) * (np.abs(rx) < half)
+        rib = np.clip(1.0 - np.abs(ry) / 0.012, 0.0, 1.0) * (np.abs(rx) < half * 0.9)
+        stem = np.clip(1.0 - np.abs(ry) / 0.012, 0.0, 1.0) * (rx < -half + 0.01) * (rx > -half - 0.06)
+        tone = ((168, 120, 68), (176, 78, 50))[variant]
+        return np.clip(blade * 0.95 - rib * 0.35 + stem * 0.9, 0.0, 1.0), tone
+    if variant == 3:
+        grains = sum(_soft(x - dx, y - dy, 0.05, 1.4) for dx, dy in ((-0.10, 0.05), (0.09, -0.08), (0.12, 0.10)))
+        return np.clip(_soft(x, y, 0.28, 1.8) * 0.30 + grains * 0.7, 0.0, 1.0), colour
+    return np.clip(_soft(x, y, 0.09, 1.4) * 0.9 + _soft(x, y, 0.20, 2.4) * 0.18, 0.0, 1.0), colour
+
+
+def _drizzle_mist(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """The still grey air over the Congo: fine drizzle and wisps of mist.
+    The first two variants are drops of drizzle: a short thin streak that
+    falls almost straight, faint at its top. The other two are soft wisps
+    of mist, wider than tall, of two sizes."""
+    x, y = _cell()
+    if variant < 2:
+        length = (0.22, 0.30)[variant]
+        t = np.clip((y + length * 0.5) / length, 0.0, 1.0)
+        centre = 0.05 * (length * 0.5 - (y + length * 0.5)) * 0.5
+        line = np.clip(1.0 - np.abs(x - centre) / 0.012, 0.0, 1.0) * (np.abs(y) < length * 0.5)
+        head = _soft(x - centre, y - length * 0.45, 0.035, 1.2)
+        return np.clip(line * (0.35 + 0.6 * t) + head * 1.0 + _soft(x, y, 0.20, 2.4) * 0.12, 0.0, 1.0), colour
+    r = (0.20, 0.27)[variant - 2]
+    return np.clip(_soft(x, y, r, 1.6, squash=1.8) * (0.50, 0.40)[variant - 2], 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -808,6 +878,13 @@ MOTES = {
     # soot of the locomotives and a few willow leaves over Tokyo.
     "history_kamakura": (_needle_spray, (238, 244, 242)),
     "history_meiji": (_soot_leaf, (64, 60, 60)),
+    # Papyrus threads, midges and a dragonfly over the shore at Ishango;
+    # palm fibre and red dust over Mbanza Kongo; dry leaves and red dust in
+    # the Kwanza valley; drizzle and mist on the Congo.
+    "history_ishango": (_papyrus_midge, (238, 230, 200)),
+    "history_mbanza_kongo": (_palm_fibre, (226, 204, 150)),
+    "history_matamba": (_dry_leaf_dust, (214, 150, 100)),
+    "history_congo_river_1900": (_drizzle_mist, (214, 218, 210)),
 }
 
 
@@ -903,6 +980,10 @@ SHADOWS = {
     "history_rio_1888": (40, 40, 44),
     "history_kamakura": (46, 40, 32),
     "history_meiji": (44, 38, 36),
+    "history_ishango": (40, 36, 26),
+    "history_mbanza_kongo": (60, 28, 20),
+    "history_matamba": (62, 36, 24),
+    "history_congo_river_1900": (30, 32, 28),
 }
 SHADOW_PX = (96, 28)
 
