@@ -136,4 +136,5 @@ def test_beanie_crown_is_a_literal_half_ellipse() -> None:
 
     # The final two points close the fill along the flat diameter; no lower
     # half of an ellipse is authored or hidden beneath the band.
-    assert points[-2:] == pytest.approx([(x2, base_y), (x1, base_y)])
+    # pytest.approx compares flat sequences only, so the two points are flattened.
+    assert [c for p in points[-2:] for c in p] == pytest.approx([x2, base_y, x1, base_y])
