@@ -1909,6 +1909,183 @@ def curzon_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def _marajoara_band(tile: Tile, c: dict, mask: np.ndarray, x0: float, x1: float, y0: float, y1: float) -> None:
+    """A band painted in the manner of Marajoara pottery over `mask`: a
+    white slip with a red border at the top and the foot, and between them
+    a black meander of steps and a row of small red dots."""
+    band = mask * tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0, x1, y1))
+    tile.put(band, c["slip"])
+    tile.put(band * ((tile.y < y0 + 1.0) | (tile.y > y1 - 1.0)), c["paint_red"])
+    mid = (y0 + y1) * 0.5
+    step = (y1 - y0) * 0.30
+    pts = []
+    x = x0
+    k = 0
+    while x < x1:
+        pts += [(x, mid + step if k % 2 else mid - step), (x + 2.4, mid + step if k % 2 else mid - step)]
+        x += 2.4
+        k += 1
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, pts, 0.55)) * band, c["paint_black"])
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, xx, mid, 0.35) for xx in np.arange(x0 + 3.6, x1 - 1.0, 4.8)]) * band, c["paint_red"])
+
+
+def longhouse_door(tile: Tile, c: dict) -> np.ndarray:
+    """The doorway of a big house of thatch on a mound of Marajó, about
+    1000 CE. The roof of palm thatch comes down almost to the ground, so
+    it fills the frame. The doorway is cut into it and framed by posts of
+    palm wood, with a lintel painted in the manner of Marajoara pottery. A
+    mat woven of palm leaf hangs in it. The light of the fire shows through
+    a gap high in the roof."""
+    inner = _frame(tile, c)
+    floor = H - STEP
+    _thatch_roof(tile, c, inner, (W * 0.5, -36.0), 5.0)
+    # The low wall of palm stems at each side, where the roof meets the
+    # ground.
+    for x0, x1 in ((F, 14.0), (W - 14.0, W - F)):
+        wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, floor - 18.0, x1, floor)) * inner
+        tile.put(wall, c["wall"])
+        tile.put(wall * (np.abs(((tile.x - x0) % 2.2) - 1.1) < 0.25), c["dark"], 0.45)
+        tile.put(wall * (tile.y < floor - 16.6), c["dark"], 0.5)
+    # The doorway: dark, between two posts, under a painted lintel.
+    x0, x1, top = 17.0, W - 17.0, 58.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 3.0, top - 7.0, x1 + 3.0, top - 2.0), blur=1.0), (0, 0, 0), 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, top, x1, floor)), c["dark"])
+    for px in (x0 - 3.0, x1):
+        post = tile.mask(lambda p, dx, dy: _box(p, dx, dy, px, top - 4.0, px + 3.0, floor))
+        tile.put(post, c["frame"])
+        tile.put(post * (tile.x < px + 1.0), c["frame_light"], 0.5)
+        tile.put(post * np.clip((tile.noise(2, 16, 2) - 0.5) * 3.0, 0, 1), c["dark"], 0.35)
+    lintel = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 5.0, top - 7.0, x1 + 5.0, top))
+    tile.put(lintel, c["frame"])
+    _marajoara_band(tile, c, lintel, x0 - 4.0, x1 + 4.0, top - 6.2, top - 0.8)
+    # The mat: strips of palm leaf woven in a twill, so the weave makes
+    # small steps, with a pole at its foot. It is the leaf.
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 1.0, top + 1.0, x1 - 1.0, floor - 0.6))
+    tile.put(leaf, c["leaf"])
+    twill = ((np.floor((tile.x - x0) / 1.8) + np.floor((tile.y - top) / 1.8) * 2) % 4 < 2)
+    tile.put(leaf * twill, c["leaf_light"], 0.40)
+    tile.put(leaf * ~twill, c["dark"], 0.18)
+    tile.put(leaf * (np.abs(((tile.y - top) % 9.0)) < 0.35), c["dark"], 0.30)
+    pole = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.4, floor - 3.4, x1 - 0.4, floor - 1.4))
+    tile.put(pole, c["frame"])
+    tile.put(pole * (tile.y < floor - 2.8), c["frame_light"], 0.5)
+    # The gap high in the roof, lit by the fire inside.
+    _window(tile, c, W * 0.5 - 5.0, 20.0, W * 0.5 + 5.0, 26.0)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(W * 0.5 - 8.0, 20.0), (W * 0.5, 13.0), (W * 0.5 + 8.0, 20.0), (W * 0.5 + 6.0, 20.6), (W * 0.5 - 6.0, 20.6)])), _mix(c["thatch"], c["dark"], 0.2))
+    return leaf
+
+
+def palisade_gate_door(tile: Tile, c: dict) -> np.ndarray:
+    """A gate in the palisade of a village of Palmares, about 1680. Logs
+    cut to a point stand side by side and fill the frame. A heavy beam
+    lies over the gate on two thick posts. The gate is two leaves of
+    logs lashed to cross bars with cord of palm fibre, and a small hole
+    in it, high up, shows the light of the village behind."""
+    _frame(tile, c)
+    floor = H - STEP
+    # The palisade: logs side by side, each with its own height and tone.
+    x = F - 1.0
+    k = 0
+    while x < W - F:
+        w = 4.6 + (k % 3) * 0.5
+        tip = 12.0 + (k * 7 % 5) * 1.4
+        log = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x, floor), (x, tip + 3.0), (x + w * 0.5, tip), (x + w, tip + 3.0), (x + w, floor)]))
+        tile.put(log, _mix(c["frame"], c["dark"], 0.10 * (k % 3)))
+        tile.put(log * (tile.x < x + 1.2), c["frame_light"], 0.40)
+        tile.put(log * (tile.x > x + w - 0.8), c["dark"], 0.45)
+        tile.put(log * np.clip((tile.noise(3, 24, 2) - 0.5) * 3.0, 0, 1), c["dark"], 0.30)
+        x += w
+        k += 1
+    # A band of cord lashed round the logs.
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, 26.0, W - F, 28.0)), c["cord"])
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(xx, 26.0), (xx + 0.8, 28.0)], 0.25) for xx in np.arange(F, W - F, 1.2)]), c["dark"], 0.35)
+    # The posts and the beam over the gate.
+    gx0, gx1, top = 13.0, W - 13.0, 44.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, gx0, top, gx1, floor)), c["dark"])
+    for px in (gx0 - 5.0, gx1):
+        post = tile.mask(lambda p, dx, dy: _box(p, dx, dy, px, top - 8.0, px + 5.0, floor))
+        tile.put(post, _mix(c["frame"], c["dark"], 0.25))
+        tile.put(post * (tile.x < px + 1.6), c["frame_light"], 0.45)
+        tile.put(post * (tile.x > px + 4.0), c["dark"], 0.45)
+    beam = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, gx0 - 8.0, top - 8.0, gx1 + 8.0, top - 3.0), _dot(p, dx, dy, gx0 - 8.0, top - 5.5, 2.5), _dot(p, dx, dy, gx1 + 8.0, top - 5.5, 2.5)))
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, gx0 - 8.0, top - 3.0, gx1 + 8.0, top - 0.6), blur=0.8), (0, 0, 0), 0.40)
+    tile.put(beam, c["frame"])
+    tile.put(beam * (tile.y < top - 6.8), c["frame_light"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, xx, top - 5.5, 1.5) for xx in (gx0 - 8.0, gx1 + 8.0)]), _mix(c["frame_light"], (240, 220, 180), 0.4))
+    for px in (gx0 - 2.5, gx1 + 2.5):
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(px - 3.0, top - 7.6 + j * 0.9), (px + 3.0, top - 3.6 + j * 0.9)], 0.35) for j in range(3)]), c["cord"])
+    # The leaves: logs side by side, with two cross bars lashed on.
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, gx0 + 0.6, top + 0.6, gx1 - 0.6, floor - 0.4))
+    tile.put(leaf, c["leaf"])
+    lane = (tile.x - gx0) % 4.3
+    tile.put(leaf * (lane < 0.5), c["dark"], 0.6)
+    tile.put(leaf * (lane > 0.5) * (lane < 1.4), c["leaf_light"], 0.35)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.45), c["dark"], 0.8)
+    for yy in (top + 14.0, floor - 16.0):
+        bar = tile.mask(lambda p, dx, dy: _box(p, dx, dy, gx0 + 1.0, yy, gx1 - 1.0, yy + 3.2)) * leaf
+        tile.put(bar, _mix(c["leaf"], c["dark"], 0.30))
+        tile.put(bar * (tile.y < yy + 0.9), c["leaf_light"], 0.45)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(xx - 0.8, yy - 0.4), (xx + 0.8, yy + 3.6)], 0.30) for xx in np.arange(gx0 + 3.0, gx1 - 2.0, 4.3)]) * leaf, c["cord"])
+    _window(tile, c, W * 0.5 - 3.0, top + 5.0, W * 0.5 + 3.0, top + 9.0)
+    return leaf
+
+
+def azulejo_door(tile: Tile, c: dict) -> np.ndarray:
+    """The door of a town house of Rio de Janeiro in 1888. The front of the
+    house is faced with glazed tiles, blue on white, in a small pattern of
+    four-petalled stars. A frame of grey granite with a cornice goes round
+    the doorway. The door is of wood painted green, two leaves with
+    raised panels, and over it a fanlight with bars of iron like the rays
+    of the sun."""
+    _frame(tile, c)
+    floor = H - STEP
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, floor))
+    tile.put(wall, c["tile_white"])
+    # The tiles: a grid of squares of four units, each with a blue star
+    # of four petals at its middle and a quarter flower at each corner.
+    gx = (tile.x % 4.0) - 2.0
+    gy = (tile.y % 4.0) - 2.0
+    star = (np.abs(gx) * np.abs(gy) < 0.30) & (np.abs(gx) + np.abs(gy) < 1.7)
+    corner = (np.abs(gx) > 1.45) & (np.abs(gy) > 1.45)
+    tile.put(wall * (star | corner), c["tile_blue"])
+    tile.put(wall * ((np.abs(gx) > 1.86) | (np.abs(gy) > 1.86)), _mix(c["tile_white"], c["dark"], 0.25), 0.6)
+    tile.tone((tile.noise(10, 10, 2) - 0.5) * 0.06 * wall)
+    # The granite frame, with a cornice that juts out, and its shade.
+    fx0, fx1, ftop = 8.0, W - 8.0, 22.0
+    frame = tile.mask(lambda p, dx, dy: _box(p, dx, dy, fx0, ftop, fx1, floor))
+    tile.put(frame, c["stone"])
+    tile.put(frame * np.clip((tile.noise(14, 14, 2) - 0.5) * 2.5, 0, 1), c["dark"], 0.18)
+    cornice = tile.mask(lambda p, dx, dy: _box(p, dx, dy, fx0 - 4.0, ftop - 5.0, fx1 + 4.0, ftop))
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, fx0 - 4.0, ftop, fx1 + 4.0, ftop + 2.2), blur=0.8), (0, 0, 0), 0.35)
+    tile.put(cornice, c["stone"])
+    tile.put(cornice * (tile.y < ftop - 4.2), (255, 255, 255), 0.45)
+    tile.put(cornice * (tile.y > ftop - 1.2), c["dark"], 0.30)
+    tile.put(frame * (tile.x < fx0 + 0.8), (255, 255, 255), 0.30)
+    # The opening: a fanlight at the top and the green leaves under it.
+    ox0, ox1, otop = fx0 + 4.0, fx1 - 4.0, ftop + 4.0
+    fan_foot = otop + 14.0
+    fan = tile.mask(lambda p, dx, dy: _box(p, dx, dy, ox0, otop, ox1, fan_foot))
+    tile.put(fan, c["glow"])
+    tile.put(fan * (tile.y < otop + 4.0), (255, 255, 255), 0.25)
+    cx = W * 0.5
+    rays = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(cx, fan_foot), (cx + math.cos(a) * 30.0, fan_foot - math.sin(a) * 30.0)], 0.45) for a in np.linspace(0.15, math.pi - 0.15, 7)])
+    tile.put(rays * fan, c["iron"])
+    tile.put(tile.mask(lambda p, dx, dy: p.ellipse([(cx - 6.0) * K + dx, (fan_foot - 6.0) * K + dy, (cx + 6.0) * K + dx, (fan_foot + 6.0) * K + dy], outline=255, width=max(1, int(0.5 * K)))) * fan, c["iron"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, ox0, fan_foot, ox1, fan_foot + 1.6)), c["stone"])
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, ox0, fan_foot + 1.6, ox1, floor))
+    tile.put(leaf, c["leaf"])
+    tile.put(leaf * (np.abs(tile.x - cx) < 0.45), c["dark"], 0.8)
+    for side in (-1.0, 1.0):
+        for y0, y1 in ((fan_foot + 5.0, fan_foot + 30.0), (fan_foot + 34.0, floor - 5.0)):
+            xa, xb = (ox0 + 3.0, cx - 3.0) if side < 0 else (cx + 3.0, ox1 - 3.0)
+            panel = tile.mask(lambda p, dx, dy: _box(p, dx, dy, xa, y0, xb, y1))
+            tile.put(panel, c["leaf_light"], 0.35)
+            tile.put(panel * ((tile.x < xa + 0.8) | (tile.y < y0 + 0.8)), c["dark"], 0.35)
+            tile.put(panel * ((tile.x > xb - 0.8) | (tile.y > y1 - 0.8)), (255, 255, 255), 0.25)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, cx + side * 2.0, fan_foot + 32.0, 0.8) for side in (-1.0, 1.0)]), c["brass"])
+    return leaf
+
+
 MOTIONS: dict[Draw, tuple[str, bool]] = {
     bulkhead: (SLIDE, True),
     iron: (SWING, False),
@@ -1950,6 +2127,9 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     lalbagh_door: (SWING, True),
     company_gate_door: (SWING, True),
     curzon_door: (SWING, True),
+    longhouse_door: (SWING, False),
+    palisade_gate_door: (SWING, True),
+    azulejo_door: (SWING, True),
 }
 
 
@@ -2118,6 +2298,15 @@ DOORS: dict[str, tuple[Draw, dict]] = {
                                              "plaster": (236, 230, 216), "damp": (150, 150, 128), "brass": (206, 168, 80)}),
     "history_dhaka_spring": (curzon_door, {**_colours((178, 72, 52), (86, 54, 38), (40, 24, 20), (204, 196, 182), (255, 216, 140)),
                                            "stone": (232, 222, 200), "mortar": (210, 186, 160), "glass": (70, 140, 170), "brass": (206, 168, 80)}),
+    # Brazil. Marajó: the doorway of a big house of thatch, a mat of palm
+    # leaf in it and a lintel painted like Marajoara pots. Palmares: a gate
+    # of lashed logs in a palisade. Rio: a green door with a fanlight in a
+    # frame of granite, in a front of blue and white tiles.
+    "history_marajo": (longhouse_door, {**_colours((120, 90, 60), (176, 150, 96), (34, 26, 20), (196, 84, 48), (255, 190, 110)),
+                                        "thatch": (186, 154, 98), "wall": (140, 106, 70), "slip": (232, 220, 196), "paint_red": (176, 62, 40), "paint_black": (40, 30, 26)}),
+    "history_palmares": (palisade_gate_door, {**_colours((126, 94, 64), (138, 104, 70), (38, 26, 18), (176, 86, 50), (255, 206, 130)), "cord": (204, 172, 110)}),
+    "history_rio_1888": (azulejo_door, {**_colours((172, 168, 160), (46, 104, 70), (34, 34, 38), (176, 172, 164), (255, 230, 170)),
+                                        "tile_white": (238, 236, 228), "tile_blue": (46, 86, 166), "stone": (176, 172, 164), "iron": (44, 44, 50), "brass": (214, 174, 80)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

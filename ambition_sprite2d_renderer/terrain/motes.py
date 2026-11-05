@@ -550,6 +550,64 @@ def _shimul_petal(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(blade * (0.75 + 0.25 * cupped), 0.0, 1.0), tone
 
 
+def _kapok_seed(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A seed of the samaúma, the kapok tree, that drifts over the flood: a
+    small dark seed in a soft tuft of silky white floss. Each of the first
+    three variants has its own size and turn. The fourth is a firefly of
+    the dawn: a small bright core in a wide soft light of yellow-green."""
+    x, y = _cell()
+    if variant == 3:
+        return np.clip(_soft(x, y, 0.44, 2.6) * 0.55 + _soft(x, y, 0.13, 1.2, 1.3), 0.0, 1.0), (214, 240, 120)
+    size = (0.16, 0.20, 0.13)[variant]
+    rx, ry = _turned(x, y, (0.6, -0.9, 1.8)[variant])
+    floss = _soft(rx, ry, size * 1.4, 1.4, squash=1.4) * 0.75
+    angle = np.arctan2(ry, rx)
+    reach = np.sqrt(rx * rx + ry * ry)
+    hairs = np.clip(np.cos(angle * 19.0 + variant) * 0.5 + 0.5, 0.0, 1.0) ** 3 * np.clip(1.0 - reach / (size * 2.2), 0.0, 1.0)
+    seed = _soft(rx + size * 0.15, ry, size * 0.30, 0.6, squash=1.5)
+    alpha = np.clip(floss + hairs * 0.35 + seed, 0.0, 1.0)
+    # The seed is dark in the middle of the white floss: the colour of a
+    # mote is one colour, so the seed shows as a denser core.
+    return alpha, colour
+
+
+def _palm_fibre(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """Dust and fibre that drift over a village of Palmares in the dry
+    afternoon. The first two variants are soft grains of warm red dust, of
+    two sizes. The third and the fourth are thin curved strands of palm
+    fibre, pale straw, from the thatch and the cord."""
+    x, y = _cell()
+    if variant < 2:
+        r = (0.10, 0.15)[variant]
+        return np.clip(_soft(x, y, r, 1.6) * 0.9 + _soft(x + 0.12, y - 0.08, r * 0.5, 1.6) * 0.6, 0.0, 1.0), (206, 150, 104)
+    bend = (0.10, -0.14)[variant - 2]
+    pts = [(-0.30 + 0.6 * t, (t - 0.5) * 0.25 * (1.0 if variant == 2 else -1.0) + bend * math.sin(math.pi * t)) for t in np.linspace(0.0, 1.0, 9)]
+    return _strokes([pts], 0.010, 0.18), colour
+
+
+def _blossom_petal(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """A petal that falls over the streets of Rio in May. The first two
+    variants are papery bracts of bougainvillea, pink and magenta: a broad
+    heart shape with fine veins, each with its own turn. The third is a
+    yellow petal of a flowering tree, a long oval. The fourth is a small
+    white petal."""
+    x, y = _cell()
+    turn = (0.4, -1.1, 1.9, -0.3)[variant]
+    rx, ry = _turned(x, y, turn)
+    if variant < 2:
+        lobes = _soft(rx - 0.07, ry + 0.06, 0.15, 0.5) + _soft(rx + 0.07, ry + 0.06, 0.15, 0.5)
+        point = np.clip(1.0 - np.abs(rx) / np.maximum(0.001, 0.20 * np.clip(0.26 - ry, 0.0, 1.0) / 0.26), 0.0, 1.0) * (ry < 0.10) * (ry > -0.24)
+        body = np.clip(np.maximum(lobes * 3.0, point), 0.0, 1.0)
+        veins = np.clip(1.0 - np.abs(rx) / 0.012, 0.0, 1.0) * 0.25
+        tone = ((226, 90, 156), (196, 52, 118))[variant]
+        return np.clip(body * (0.85 - veins), 0.0, 1.0), tone
+    half = (0.26, 0.20)[variant - 2]
+    width = 0.11 * np.clip(1.0 - (rx / half) ** 2, 0.0, 1.0) ** 0.5
+    blade = np.clip((width - np.abs(ry)) / 0.03, 0.0, 1.0) * (np.abs(rx) < half)
+    tone = ((246, 206, 80), (250, 244, 232))[variant - 2]
+    return blade * 0.9, tone
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -699,6 +757,12 @@ MOTES = {
     "history_dhaka_river": (_cotton_fluff, (248, 246, 238)),
     "history_calcutta": (_rain_streak, (206, 218, 226)),
     "history_dhaka_spring": (_shimul_petal, (214, 42, 34)),
+    # Kapok seeds and a few fireflies over the flood on Marajó; red dust and
+    # palm fibre at Palmares; petals of bougainvillea and of flowering
+    # trees over Rio.
+    "history_marajo": (_kapok_seed, (246, 242, 230)),
+    "history_palmares": (_palm_fibre, (226, 204, 150)),
+    "history_rio_1888": (_blossom_petal, (226, 90, 156)),
 }
 
 
@@ -789,6 +853,9 @@ SHADOWS = {
     "history_dhaka_river": (40, 36, 26),
     "history_calcutta": (40, 34, 30),
     "history_dhaka_spring": (52, 36, 30),
+    "history_marajo": (28, 24, 20),
+    "history_palmares": (56, 30, 22),
+    "history_rio_1888": (40, 40, 44),
 }
 SHADOW_PX = (96, 28)
 

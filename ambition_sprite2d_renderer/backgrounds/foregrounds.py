@@ -46,6 +46,7 @@ from . import history_eras as _history
 from . import history_americas_pacific as _americas_pacific
 from . import history_atlantic as _atlantic
 from . import history_bengal as _bengal
+from . import history_brazil as _brazil
 from . import history_east_asia_coast as _east_asia_coast
 from . import history_origins as _origins
 from . import history_south_america as _south_america
@@ -376,6 +377,12 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_dhaka_river": (_bengal.dhaka_river_foreground, scale(_bengal.DHAKA_RIVER["near"], 0.9)),
     "history_calcutta": (_bengal.calcutta_foreground, scale(_bengal.CALCUTTA["near"], 0.9)),
     "history_dhaka_spring": (_bengal.dhaka_spring_foreground, scale(_bengal.DHAKA_SPRING["near"], 0.9)),
+    # Brazil: palm fronds hang and a heliconia stands on Marajó; palm
+    # fronds hang and a stalk of maize stands at Palmares; royal palm
+    # fronds hang and a flowering bush stands in Rio.
+    "history_marajo": (_brazil.marajo_foreground, scale(_brazil.MARAJO["near"], 0.9)),
+    "history_palmares": (_brazil.palmares_foreground, scale(_brazil.PALMARES["near"], 0.9)),
+    "history_rio_1888": (_brazil.rio_foreground, scale(_brazil.RIO["near"], 0.9)),
 }
 
 
