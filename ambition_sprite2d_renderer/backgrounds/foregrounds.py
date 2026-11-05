@@ -47,6 +47,7 @@ from . import history_americas_pacific as _americas_pacific
 from . import history_atlantic as _atlantic
 from . import history_bengal as _bengal
 from . import history_brazil as _brazil
+from . import history_budj_bim as _budj_bim
 from . import history_central_africa as _central_africa
 from . import history_east_asia_coast as _east_asia_coast
 from . import history_japan as _japan
@@ -405,6 +406,8 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_tonga": (_oceania.tonga_foreground, scale(_oceania.TONGA["near"], 0.9)),
     "history_waitangi": (_oceania.waitangi_foreground, scale(_oceania.WAITANGI["near"], 0.9)),
     "history_sydney_cove": (_oceania.sydney_cove_foreground, scale(_oceania.SYDNEY_COVE["near"], 0.9)),
+    # Budj Bim: sedges and reeds stand from below.
+    "history_budj_bim": (_budj_bim.budj_bim_foreground, scale(_budj_bim.BUDJ_BIM["near"], 0.9)),
 }
 
 

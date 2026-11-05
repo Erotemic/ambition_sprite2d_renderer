@@ -4363,6 +4363,70 @@ def banksia(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+# Budj Bim: `stone` is the grey of basalt, `wood` the straw of dry sedge,
+# `metal` the grey-green of lichen and `bloom` the red-brown of the heads
+# of the reeds.
+
+
+def eel_trap(tile: Tile, c: dict) -> None:
+    """A Gunditjmara eel trap that lies on the ground: a long basket of
+    plaited sedge that tapers from a round open mouth to a narrow closed
+    end, with bands of plaiting round it and a cord at its tail."""
+    _shadow(tile, 10.0)
+    sedge = c["wood"]
+    head, tail = (M - 8.2, G - 4.0), (M + 8.4, G - 1.4)
+    length = tail[0] - head[0]
+
+    def half(t: float) -> float:
+        return 3.4 * (1.0 - t) ** 0.8 + 0.5
+
+    axis = [(head[0] + length * t, head[1] + (tail[1] - head[1]) * t) for t in np.linspace(0.0, 1.0, 14)]
+    top = [(x, y - half(t)) for (x, y), t in zip(axis, np.linspace(0.0, 1.0, 14))]
+    low = [(x, y + half(t) * 0.9) for (x, y), t in zip(axis, np.linspace(0.0, 1.0, 14))]
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, top + low[::-1]))
+    tile.put(body, sedge)
+    weave = (np.floor((tile.x - tile.y * 0.6) / 0.9) + np.floor((tile.x + tile.y * 0.6) / 0.9)) % 2 == 0
+    tile.put(body * weave, c["dark"], 0.20)
+    tile.put(body * (tile.y > G - 3.2), c["dark"], 0.25)
+    tile.put(body * (tile.y < G - 5.4), (255, 244, 210), 0.20)
+    for t in (0.18, 0.40, 0.62, 0.82):
+        x, y = axis[int(t * 13)]
+        h = half(t)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x - 0.3, y - h), (x + 0.3, y + h * 0.9)], 0.35)), _mix(sedge, c["dark"], 0.45))
+    mouth = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, head[0], head[1], 1.5, ry=3.4))
+    tile.put(mouth, _mix(sedge, c["dark"], 0.3))
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, head[0] + 0.3, head[1], 0.9, ry=2.6)), c["dark"], 0.85)
+    cord = [(tail[0] - 0.4, tail[1]), (tail[0] + 0.8, tail[1] + 0.6), (tail[0] + 1.2, G - 0.3)]
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, cord, 0.22)), _mix(sedge, c["dark"], 0.5))
+    tile.alpha *= tile.y < G
+
+
+def basalt_stack(tile: Tile, c: dict) -> None:
+    """A few rough blocks of basalt stacked dry, as the Gunditjmara built
+    the walls of their weirs: dark, each of its own tone, lit on its top,
+    with small holes of gas and pale patches of lichen, and moss in a
+    joint."""
+    _shadow(tile, 9.5)
+    rng = tile.rng
+    blocks = [(-5.0, 2.4, 4.4, 2.6, 0.0), (3.6, 2.6, 5.0, 2.8, 0.10), (-1.0, 7.2, 4.6, 2.4, -0.08), (6.0, 7.0, 2.6, 2.0, 0.14), (1.6, 11.0, 3.4, 1.8, 0.04)]
+    for x, y, w, h, tone in blocks:
+        pts = []
+        for k in range(8):
+            a = math.tau * (k + rng.uniform(-0.2, 0.2)) / 8.0
+            r = rng.uniform(0.85, 1.05)
+            yy = math.sin(a) * h * r
+            pts.append((M + x + math.cos(a) * w * r, G - y + (min(yy, h * 0.75) if yy > 0 else yy)))
+        body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts))
+        tile.put(body, _mix(c["stone"], c["stone_light"] if tone > 0 else c["dark"], abs(tone) * 2.0))
+        tile.put(body * (tile.y < G - y - h * 0.35), c["stone_light"], 0.40)
+        tile.put(body * (tile.y > G - y + h * 0.35), c["dark"], 0.35)
+        holes = [(M + x + rng.uniform(-w, w) * 0.7, G - y + rng.uniform(-h, h) * 0.6, rng.uniform(0.18, 0.35)) for _ in range(5)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, hx, hy, r) for hx, hy, r in holes]) * body, c["dark"], 0.8)
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x + rng.uniform(-w, w) * 0.4, G - y - h * 0.1, w * 0.35, ry=h * 0.3)) * body, c["metal"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - y - h * 0.9, w * 0.45, ry=0.7) for x, y, w, h, _ in blocks[:2]]), c["plant"], 0.85)
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -4571,6 +4635,10 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # Eora left on the shore, a cask and a crate of the camp. Muted.
     "history_sydney_cove": ((grass_tree, banksia, clam_heap, barrel, crate, grass_tree),
                             _palette((34, 32, 28), (140, 134, 122), (200, 194, 180), (120, 98, 74), (40, 36, 32), (108, 118, 92), (184, 156, 92), (236, 206, 160))),
+    # Budj Bim: reeds of the wetland, a block of basalt under moss, a woven
+    # eel trap, a dry stack of basalt from a weir, and bracken.
+    "history_budj_bim": ((reeds, moss_stone, eel_trap, basalt_stack, fern, reeds),
+                         _palette((26, 26, 26), (82, 80, 78), (140, 138, 130), (196, 172, 116), (176, 184, 150), (92, 116, 62), (138, 96, 66), (255, 200, 130))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),

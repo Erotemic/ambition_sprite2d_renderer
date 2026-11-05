@@ -410,6 +410,12 @@ SKINS: tuple[Skin, ...] = (
     # ironstone and honeycomb hollows; a cap of sandy soil, gum leaves and
     # grass; a rough plank landing stage is the platform. Muted.
     Skin("history_sydney_cove", "hawkesbury_sandstone", (160, 120, 78), (76, 54, 36), (206, 172, 122), (128, 74, 44), "scrub_litter", (112, 116, 86), "roots", "rough_plank"),
+    # Budj Bim: the dark basalt of the lava flow, in rough blocks fitted
+    # close as the Gunditjmara stacked them in their weirs and walls, with
+    # the small holes of gas in the rock and patches of lichen; a cushion of
+    # moss with sedge and small stones on top; a slab of basalt on small
+    # stones is the platform.
+    Skin("history_budj_bim", "stony_rise", (78, 76, 74), (24, 24, 26), (132, 130, 124), (178, 184, 152), "basalt_moss", (92, 116, 62), "roots", "flagstone"),
     # Great slabs, each with one sign cut in it that gives a little light.
     Skin("eclipse", "monolith", (30, 34, 86), (10, 12, 36), (72, 78, 152), (92, 232, 200), "edge", (44, 50, 112), "lip", "slab"),
 )
@@ -2183,6 +2189,40 @@ def fill(skin: Skin) -> Image.Image:
                 holes.append((cx + rng.uniform(-5.0, 5.0), cy + rng.uniform(-3.5, 3.5), rng.uniform(0.8, 1.8)))
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y + r * 0.35, r * 1.05, ry=r * 0.8) for x, y, r in holes]), skin.light, 0.35)
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r, ry=r * 0.75) for x, y, r in holes]), skin.dark, 0.65)
+    elif skin.material == "stony_rise":
+        # The basalt of the lava flow of Budj Bim, as the Gunditjmara stacked
+        # it in their weirs and the walls of their houses: rough dark
+        # blocks, each of its own tone, fitted close with dark gaps, lit on
+        # the upper left. The rock is full of the small round holes that
+        # gas left in the lava, each dark with a lit lower lip. Patches of
+        # pale grey-green lichen and a few of orange lichen grow on it.
+        points = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(-0.20, 0.16)) for _ in range(12)]
+        d1 = np.full(tile.alpha.shape, 1e9, dtype=np.float32)
+        d2 = np.full(tile.alpha.shape, 1e9, dtype=np.float32)
+        tone = np.zeros_like(d1)
+        lit = np.zeros_like(d1)
+        warp = (tile.noise(6, 6, 3) - 0.5) * 3.0
+        for px, py, t in points:
+            ddx = (tile.x + warp - px + 32.0) % 64.0 - 32.0
+            ddy = (tile.y - warp - py + 32.0) % 64.0 - 32.0
+            d = np.sqrt(ddx * ddx * 0.8 + (ddy * 1.3) ** 2)
+            closer = d < d1
+            d2 = np.where(closer, d1, np.minimum(d2, d))
+            tone = np.where(closer, t, tone)
+            lit = np.where(closer, -(ddx * 0.5 + ddy) * 0.018, lit)
+            d1 = np.where(closer, d, d1)
+        tile.put(np.ones_like(tile.alpha), skin.base)
+        tile.tone(tone + np.clip(lit, -0.28, 0.24) + (tile.noise(10, 10, 3) - 0.5) * 0.24)
+        tile.put(np.clip(1.0 - (d2 - d1 - 0.5) / 1.4, 0.0, 1.0), skin.dark, 0.95)
+        tile.put(np.clip(1.0 - np.abs((d2 - d1) - 2.4) / 0.9, 0.0, 1.0) * (lit > 0), skin.light, 0.30)
+        inside = (d2 - d1) > 1.6
+        holes = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.35, 0.9)) for _ in range(46)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y + r * 0.35, r * 1.05) for x, y, r in holes]) * inside, skin.light, 0.35)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r) for x, y, r in holes]) * inside, skin.dark, 0.85)
+        patches = np.clip((tile.noise(5, 5, 3) - 0.60) * 6.0, 0.0, 1.0) * inside
+        tile.put(patches * np.clip((tile.noise(24, 24, 2) - 0.35) * 3.0, 0.0, 1.0), skin.accent, 0.55)
+        orange = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.6, 1.3)) for _ in range(5)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r, ry=r * 0.7) for x, y, r in orange]) * inside, (196, 138, 70), 0.55)
     elif skin.material == "ridged_laterite":
         # Red laterite earth laid in courses, as the builders of Benin laid
         # their walls: each course is a band with a rounded ridge on its top
@@ -2898,6 +2938,33 @@ def cap(skin: Skin) -> Image.Image:
 
         for grey, colour in ((True, (132, 142, 118)), (False, (146, 112, 78))):
             tile.put(tile.mask(lambda p, dx, dy: [leaf(p, dx, dy, x, yy, a, h, b) for x, yy, a, h, b, g in litter if g == grey]), colour)
+        return tile.publish()
+    if skin.cap == "basalt_moss":
+        # The top of the stony rises of Budj Bim: thin dark soil on the
+        # basalt, with a few small grey stones in it, under round cushions
+        # of moss with lighter tips; tufts of sedge and grass stand from it
+        # here and there.
+        lower = s + 4.0 + tile.profile(8, 3)[None, :] * 3.0
+        body = np.clip((lower - y) * K * 0.5 + 0.5, 0, 1) * (y >= s - 0.3)
+        tile.put(np.clip((lower + 2.5 - y) / 2.5, 0, 1) * (y >= s), (0, 0, 0), 0.32)
+        tile.put(body, _mix(skin.base, skin.dark, 0.55))
+        tile.tone((tile.noise(16, 4, 2) - 0.5) * 0.20 * body)
+        pebbles = [(rng.uniform(0, 64), s + rng.uniform(1.2, 4.0), rng.uniform(0.4, 0.9)) for _ in range(12)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, r, ry=r * 0.75) for x, yy, r in pebbles]) * body, skin.light, 0.65)
+        moss_dark = _mix(skin.cap_colour, skin.dark, 0.35)
+        lumps = [(rng.uniform(0, 64), s + rng.uniform(-0.2, 1.4), rng.uniform(1.4, 3.0)) for _ in range(26)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy + 0.4, r, ry=r * 0.62) for x, yy, r in lumps]), moss_dark)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, r * 0.9, ry=r * 0.52) for x, yy, r in lumps]), skin.cap_colour)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - r * 0.25, yy - r * 0.22, r * 0.45, ry=r * 0.25) for x, yy, r in lumps]), _mix(skin.cap_colour, (214, 230, 150), 0.40), 0.75)
+        specks = [(rng.uniform(0, 64), s + rng.uniform(-1.4, 0.8)) for _ in range(40)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, 0.22) for x, yy in specks]), _mix(skin.cap_colour, (226, 236, 170), 0.5), 0.7)
+        blades = []
+        for _ in range(5):
+            x = rng.uniform(0, 64)
+            for k in range(6):
+                lean = (k - 2.5) * 0.55 + rng.uniform(-0.2, 0.2)
+                blades.append([(x + k * 0.2 - 0.5, s + 0.4), (x + lean * 0.5, s - 2.0), (x + lean * 1.3, s - rng.uniform(2.8, 4.2))])
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.20) for pts in blades]), (150, 150, 96))
         return tile.publish()
     if skin.cap == "granite_kerb":
         # A thin kerb of grey granite at the edge of the pavement: long

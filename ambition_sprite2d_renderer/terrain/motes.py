@@ -984,6 +984,9 @@ MOTES = {
     "history_tonga": (_spray_coir, (240, 248, 246)),
     "history_waitangi": (_fluff, (240, 236, 222)),
     "history_sydney_cove": (_gum_leaf_ash, (206, 202, 194)),
+    # Leaves of the manna gums and pale ash from the smoking trees drift
+    # over Budj Bim.
+    "history_budj_bim": (_gum_leaf_ash, (214, 212, 204)),
 }
 
 
@@ -1088,6 +1091,7 @@ SHADOWS = {
     "history_tonga": (46, 52, 42),
     "history_waitangi": (32, 40, 30),
     "history_sydney_cove": (36, 34, 30),
+    "history_budj_bim": (30, 32, 30),
 }
 SHADOW_PX = (96, 28)
 

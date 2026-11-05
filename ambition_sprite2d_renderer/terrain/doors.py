@@ -2748,6 +2748,10 @@ DOORS: dict[str, tuple[Draw, dict]] = {
                                              "board": (232, 230, 220), "roof": (122, 116, 110), "post": (238, 236, 228), "brass": (200, 170, 90)}),
     "history_sydney_cove": (tent_flap_door, {**_colours((118, 100, 80), (188, 180, 160), (40, 36, 32), (172, 130, 84), (236, 196, 130)),
                                              "stain": (150, 132, 104), "tape": (150, 132, 104)}),
+    # Budj Bim: a door of sewn possum skins, as at Sahul and the Willandra,
+    # in a frame the grey of basalt: the low doorway of a house of stacked
+    # stone, with the light of the fire in its smoke hole.
+    "history_budj_bim": (hide_door, _colours((96, 92, 88), (128, 108, 90), (30, 28, 26), (160, 120, 80), (255, 190, 110))),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),
