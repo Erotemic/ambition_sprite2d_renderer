@@ -3738,6 +3738,161 @@ def palm_tub(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+# Japan: Hakata Bay in 1281 and Tokyo in 1872. At Hakata Bay `metal` is
+# the dark of the floats of a net and `bloom` the red of a banner; in Tokyo
+# `metal` is the dark iron of a lamp and `bloom` the pale canvas of the
+# mail sacks.
+
+
+def kobo_grass(tile: Tile, c: dict) -> None:
+    """Beach grass of the dunes of Hakata Bay (kobo-shiba): low tufts of
+    narrow stiff blades that fan out and bend over, along a runner that
+    creeps on the sand from one tuft to the next."""
+    _shadow(tile, 8.0)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 8.0, G - 0.4), (M - 3.0, G - 0.7), (M + 3.6, G - 0.5), (M + 8.4, G - 0.6)], 0.35)), _mix(c["wood"], c["plant"], 0.4))
+    leaf = _mix(c["plant"], c["dark"], 0.10)
+    for k, (x, h) in enumerate(((M - 5.8, 6.4), (M - 0.2, 8.6), (M + 5.8, 5.6))):
+        blades = []
+        for j in range(9):
+            lean = (j - 4) * 0.50
+            top = (x + lean * 1.1, G - h * (1.0 - abs(j - 4) * 0.07))
+            tip = (top[0] + lean * 0.9, top[1] + abs(lean) * 0.7)
+            blades.append(_curve((x + (j - 4) * 0.12, G), tip, (x + lean * 0.3, top[1] - 0.6), 8))
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.42) for pts in blades[::2]]), leaf)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.42) for pts in blades[1::2]]), _mix(leaf, (226, 230, 160), 0.22))
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts[:4], 0.16) for pts in blades[::3]]), (236, 230, 180), 0.35)
+    tile.alpha *= tile.y < G
+
+
+def pine_seedling(tile: Tile, c: dict) -> None:
+    """A young black pine that has seeded itself in the sand behind the
+    beach: a short trunk that leans and bends, and three flat tiers of
+    dark needles in tufts, the widest at the bottom."""
+    _shadow(tile, 6.0)
+    trunk = _curve((M - 0.6, G), (M + 1.6, G - 16.0), (M - 1.4, G - 8.0), 10)
+    bark = _mix(c["wood"], c["dark"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, trunk, 1.0)), bark)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x - 0.3, y) for x, y in trunk], 0.3)), _mix(c["wood"], (230, 210, 170), 0.3), 0.5)
+    needle = _mix(c["plant"], c["dark"], 0.30)
+    for k, (t, half, side) in enumerate(((0.45, 7.0, -1.0), (0.70, 5.6, 1.0), (0.95, 3.8, 0.0))):
+        x, y = trunk[int(round(t * 9))]
+        cx = x + side * 1.8
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x, y), (cx, y - 0.6)], 0.45)), bark)
+        tufts = [(cx + (j - 2) * half * 0.40, y - 0.8 - (1.0 - abs(j - 2) / 2.0) * 1.2) for j in range(5)]
+        body = tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, tx, ty, half * 0.32, ry=1.4) for tx, ty in tufts])
+        tile.put(body, needle)
+        tile.put(body * tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(tx, ty), (tx + math.cos(a) * 1.6, ty - math.sin(a) * 1.2)], 0.18) for tx, ty in tufts for a in (0.6, 1.2, 1.9, 2.5)]), _mix(c["plant"], (220, 230, 170), 0.35), 0.6)
+        tile.put(body * (tile.y > y + 0.2), c["dark"], 0.30)
+    tile.alpha *= tile.y < G
+
+
+def borui_stones(tile: Tile, c: dict) -> None:
+    """A heap of stones carried up from the beach for the wall: round
+    stones of the shore and split blocks of granite and sandstone, piled
+    by hand, the big ones at the foot."""
+    _shadow(tile, 9.0)
+    stones = [(-6.4, 2.0, 2.8, 0.00, False), (-1.6, 2.4, 3.2, -0.10, True), (3.6, 2.0, 2.8, 0.12, False), (7.8, 1.4, 2.0, -0.06, False),
+              (-4.0, 5.6, 2.6, 0.10, True), (1.0, 6.0, 2.8, 0.04, False), (5.4, 5.0, 2.2, -0.12, True), (-1.4, 9.2, 2.4, 0.14, False), (2.8, 9.0, 1.8, -0.04, True)]
+    for x, y, r, tone, split in stones:
+        hue = _mix(c["stone"], (186, 156, 116), 0.5) if tone > 0.08 else c["stone"]
+        colour = _mix(hue, c["stone_light"] if tone > 0 else c["dark"], abs(tone) * 1.8)
+        if split:
+            pts = [(M + x - r, G - y + r * 0.8), (M + x - r * 0.8, G - y - r * 0.7), (M + x + r * 0.6, G - y - r * 0.85), (M + x + r, G - y + r * 0.1), (M + x + r * 0.7, G - y + r * 0.8)]
+            body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts))
+            tile.put(body, colour)
+            tile.put(body * tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts[1:3] + [(M + x, G - y)])), c["stone_light"], 0.40)
+        else:
+            body = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x, G - y, r, ry=r * 0.82))
+            tile.put(body, colour)
+            tile.put(body * tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x - r * 0.3, G - y - r * 0.35, r * 0.5, ry=r * 0.35)), c["stone_light"], 0.40)
+        tile.put(body * (tile.y > G - y + r * 0.35), c["dark"], 0.30)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x + r * dxx, G - y + r * dyy, 0.18) for dxx, dyy in ((-0.3, 0.1), (0.2, -0.2), (0.4, 0.3))]) * body, c["dark"], 0.5)
+    tile.alpha *= tile.y < G
+
+
+def tate_shields(tile: Tile, c: dict) -> None:
+    """Two standing shields (tate) of the warriors of Kamakura, set up in a
+    row on the wall: tall plain boards of planks joined by two battens,
+    each held upright by a prop of wood behind it. They bear no crest."""
+    _shadow(tile, 9.0)
+    for x0, top, tone in ((M - 8.4, G - 15.0, 0.0), (M + 0.6, G - 16.4, -0.08)):
+        x1 = x0 + 7.6
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x1 - 1.6, top + 3.0), (x1 + 2.4, G)], 0.55)), _mix(c["wood"], c["dark"], 0.45))
+        board = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0, G), (x0 + 0.3, top), (x1 - 0.3, top), (x1, G)]))
+        colour = _mix(c["wood"], c["dark"], -tone * 2.0) if tone < 0 else c["wood"]
+        tile.put(board, colour)
+        tile.put(board * (np.abs(((tile.x - x0) % 2.53) - 1.26) > 1.08), c["dark"], 0.40)
+        tile.put(board * (tile.x < x0 + 0.9), c["wood_light"], 0.45)
+        tile.put(board * np.clip((tile.noise(3, 14, 2) - 0.5) * 2.0, 0, 1), c["dark"], 0.18)
+        for y in (top + 2.4, G - 4.0):
+            batten = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.3, y, x1 - 0.3, y + 1.3)) * board
+            tile.put(batten, _mix(c["wood"], c["dark"], 0.25))
+            tile.put(batten * (tile.y < y + 0.4), c["wood_light"], 0.45)
+        tile.put(board * (tile.y > G - 1.2), c["dark"], 0.25)
+    tile.alpha *= tile.y < G
+
+
+def telegraph_pole(tile: Tile, c: dict) -> None:
+    """A telegraph pole of 1872 by the railway: a tall plain post of wood,
+    two short cross arms near its top, each with two white insulators of
+    porcelain, and the wires that sag away from them each way."""
+    _shadow(tile, 2.4)
+    post = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 0.75, G), (M + 0.75, G), (M + 0.5, G - 21.6), (M - 0.5, G - 21.6)]))
+    tile.put(post, c["wood"])
+    tile.put(post * (tile.x < M - 0.1), c["wood_light"], 0.45)
+    tile.put(post * np.clip((tile.noise(2, 16, 2) - 0.5) * 2.0, 0, 1), c["dark"], 0.25)
+    for y in (G - 20.4, G - 17.6):
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 3.8, y, M + 3.8, y + 0.8)), _mix(c["wood"], c["dark"], 0.25))
+        for x in (M - 3.0, M + 3.0):
+            tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, _curve((x, y - 0.6), (x + (6.6 if x > M else -6.6), y + 0.4), (x + (3.0 if x > M else -3.0), y + 1.4), 8), 0.14)), c["dark"], 0.7)
+            tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, y - 0.5, 0.5, ry=0.65)), c["stone_light"])
+    tile.alpha *= tile.y < G
+
+
+def mail_sacks(tile: Tile, c: dict) -> None:
+    """Sacks of the new post (1871) by the station, ready for the train:
+    three plump sacks of pale canvas, tied at the neck with cord, two on
+    the ground and one laid over them, each with a dark band of paint on
+    it and no writing."""
+    _shadow(tile, 9.0)
+    canvas = c["bloom"]
+    for x, y, rx, ry, tilt in ((M - 4.2, G - 3.8, 4.6, 3.8, -0.2), (M + 4.4, G - 3.6, 4.4, 3.6, 0.15), (M + 0.2, G - 9.0, 5.2, 3.0, 0.0)):
+        body = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, y, rx, ry=ry))
+        neck = (x + rx * 0.95, y - ry * 0.3 + tilt * 2.0)
+        ear = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(neck[0] - 0.8, neck[1] - 1.0), (neck[0] + 2.2, neck[1] - 1.8), (neck[0] + 2.0, neck[1] + 0.9), (neck[0] - 0.8, neck[1] + 1.0)]))
+        tile.put(np.maximum(body, ear), canvas)
+        tile.put(body * (tile.y > y + ry * 0.35), c["dark"], 0.25)
+        tile.put(body * tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x - rx * 0.3, y - ry * 0.35, rx * 0.45, ry=ry * 0.35)), (255, 252, 240), 0.35)
+        tile.put(body * (np.abs(tile.x - (x - rx * 0.15)) < 0.9), _mix(c["dark"], (60, 70, 110), 0.5), 0.6)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(neck[0] + 0.2, neck[1] - 1.2), (neck[0] + 0.4, neck[1] + 1.1)], 0.35)), c["wood"])
+        tile.put(body * tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x - rx * 0.5, y + ry * 0.1), (x - rx * 0.2, y + ry * 0.4)], 0.14), _line(p, dx, dy, [(x + rx * 0.2, y - ry * 0.4), (x + rx * 0.5, y - ry * 0.1)], 0.14)]), c["dark"], 0.35)
+    tile.alpha *= tile.y < G
+
+
+def parked_rickshaw(tile: Tile, c: dict) -> None:
+    """A rickshaw (jinrikisha) of the streets of Tokyo, new in 1870, that
+    waits with its shafts down on the ground: a big wheel with thin spokes,
+    a seat with a back on springs over it, its hood folded back, and two
+    long shafts that rest on the street in front."""
+    _shadow(tile, 9.0)
+    wx, wy, r = M - 0.6, G - 6.0, 5.8
+    lacquer = _mix(c["dark"], (60, 30, 28), 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(wx + 2.4, wy - 2.6), (M + 10.4, G - 0.4)], 0.5), _line(p, dx, dy, [(wx + 2.0, wy - 1.8), (M + 10.2, G - 0.2)], 0.3)]), c["wood"])
+    seat = tile.mask(lambda p, dx, dy: (_poly(p, dx, dy, [(wx - 4.6, wy - 4.0), (wx + 3.2, wy - 4.0), (wx + 2.6, wy - 1.8), (wx - 4.0, wy - 1.8)]),
+                                       _poly(p, dx, dy, [(wx - 4.6, wy - 4.0), (wx - 3.4, wy - 4.0), (wx - 4.2, wy - 9.6), (wx - 5.6, wy - 9.4)])))
+    tile.put(seat, lacquer)
+    tile.put(seat * (tile.y < wy - 3.4), c["stone_light"], 0.25)
+    hood = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(wx - 5.4, wy - 10.2)] + [(wx - 5.4 - 3.4 * math.sin(t), wy - 10.2 + 5.4 * (1.0 - math.cos(t))) for t in np.linspace(0.0, math.pi * 0.5, 7)] + [(wx - 4.6, wy - 4.4)]))
+    tile.put(hood, _mix(c["dark"], c["wood"], 0.30))
+    tile.put(hood * (np.abs(((tile.y - wy) % 1.6) - 0.8) < 0.18), c["dark"], 0.5)
+    rim = tile.mask(lambda p, dx, dy: p.ellipse([(wx - r) * K + dx, (wy - r) * K + dy, (wx + r) * K + dx, (wy + r) * K + dy], outline=255, width=max(1, int(0.7 * K))))
+    spokes = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(wx, wy), (wx + math.cos(a) * r, wy + math.sin(a) * r)], 0.18) for a in np.linspace(0.0, math.tau, 13)[:-1]])
+    tile.put(spokes, c["wood"], 0.9)
+    tile.put(rim, c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, wx, wy, 0.9)), c["metal"])
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -3902,6 +4057,13 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
                          _palette((40, 28, 22), (170, 150, 126), (226, 210, 180), (128, 90, 58), (178, 90, 54), (90, 136, 60), (230, 196, 96), (255, 214, 150))),
     "history_rio_1888": ((bunting_line, petal_scatter, gas_lamp, palm_tub, petal_scatter, bunting_line),
                          _palette((36, 36, 38), (196, 192, 184), (240, 236, 228), (120, 84, 56), (40, 70, 52), (78, 130, 66), (214, 70, 140), (255, 226, 160))),
+    # Hakata Bay: beach grass, a heap of stones for the wall, standing
+    # shields, a pine seedling, a net and a coil of rope. Tokyo: a young
+    # willow, a gas lamp, mail sacks, a telegraph pole and a rickshaw.
+    "history_kamakura": ((kobo_grass, borui_stones, tate_shields, pine_seedling, fishing_net, rope_coil),
+                         _palette((36, 30, 26), (150, 142, 128), (214, 204, 186), (128, 102, 74), (64, 58, 54), (86, 122, 70), (176, 64, 48), (255, 214, 150))),
+    "history_meiji": ((willow_sapling, gas_lamp, mail_sacks, telegraph_pole, parked_rickshaw, willow_sapling),
+                      _palette((36, 32, 32), (176, 170, 160), (232, 226, 214), (112, 84, 60), (40, 44, 42), (100, 138, 74), (222, 210, 184), (255, 224, 160))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),

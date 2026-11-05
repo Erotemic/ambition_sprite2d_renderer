@@ -608,6 +608,47 @@ def _blossom_petal(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return blade * 0.9, tone
 
 
+def _needle_spray(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """What the wind off the sea carries over Hakata Bay as the storm comes.
+    The first two variants are pairs of long needles of the black pine,
+    joined at their base, one pair fresh green and one dry brown, each with
+    its own turn. The other two are fine spray of the sea: a small drop in
+    a faint mist, and a puff of mist with a few drops in it."""
+    x, y = _cell()
+    if variant < 2:
+        turn = (0.5, -1.0)[variant]
+        base = (-0.26, 0.0)
+        lines = []
+        for spread in (-0.16, 0.16):
+            a = turn + spread
+            lines.append([(base[0] * math.cos(turn), base[0] * math.sin(turn)), (base[0] * math.cos(turn) + math.cos(a) * 0.52, base[0] * math.sin(turn) + math.sin(a) * 0.52)])
+        tone = ((150, 170, 110), (186, 140, 92))[variant]
+        return _strokes(lines, 0.012, 0.15), tone
+    if variant == 2:
+        return np.clip(_soft(x, y, 0.07, 1.3) * 1.1 + _soft(x, y, 0.22, 2.2) * 0.30, 0.0, 1.0), colour
+    drops = sum(_soft(x - dx, y - dy, 0.05, 1.4) for dx, dy in ((-0.12, 0.04), (0.08, -0.10), (0.14, 0.09)))
+    return np.clip(_soft(x, y, 0.26, 1.8) * 0.35 + drops * 0.9, 0.0, 1.0), colour
+
+
+def _soot_leaf(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """What drifts over Shimbashi and Ginza in 1872. The first three
+    variants are flakes of soot from the locomotives: soft dark flakes of
+    no clear shape, each of its own size and turn. The fourth is a small
+    narrow leaf of willow, yellow-green, with a paler rib."""
+    x, y = _cell()
+    if variant < 3:
+        rx, ry = _turned(x, y, (0.3, -0.8, 1.4)[variant])
+        size = (0.10, 0.14, 0.08)[variant]
+        lumps = _soft(rx, ry, size, 1.2, squash=1.6) + _soft(rx - size * 0.8, ry + size * 0.3, size * 0.6, 1.2) * 0.8 + _soft(rx + size * 0.7, ry - size * 0.4, size * 0.5, 1.2) * 0.7
+        return np.clip(lumps * 1.2 + _soft(x, y, size * 2.6, 2.4) * 0.15, 0.0, 1.0), colour
+    rx, ry = _turned(x, y, 0.7)
+    half = 0.30
+    width = 0.06 * np.clip(1.0 - (rx / half) ** 2, 0.0, 1.0) ** 0.7
+    blade = np.clip((width - np.abs(ry)) / 0.02, 0.0, 1.0) * (np.abs(rx) < half)
+    rib = np.clip(1.0 - np.abs(ry) / 0.010, 0.0, 1.0) * (np.abs(rx) < half * 0.9)
+    return np.clip(blade * 0.95 - rib * 0.30, 0.0, 1.0), (170, 196, 96)
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -763,6 +804,10 @@ MOTES = {
     "history_marajo": (_kapok_seed, (246, 242, 230)),
     "history_palmares": (_palm_fibre, (226, 204, 150)),
     "history_rio_1888": (_blossom_petal, (226, 90, 156)),
+    # Pine needles and sea spray on the wind of the storm at Hakata Bay;
+    # soot of the locomotives and a few willow leaves over Tokyo.
+    "history_kamakura": (_needle_spray, (238, 244, 242)),
+    "history_meiji": (_soot_leaf, (64, 60, 60)),
 }
 
 
@@ -856,6 +901,8 @@ SHADOWS = {
     "history_marajo": (28, 24, 20),
     "history_palmares": (56, 30, 22),
     "history_rio_1888": (40, 40, 44),
+    "history_kamakura": (46, 40, 32),
+    "history_meiji": (44, 38, 36),
 }
 SHADOW_PX = (96, 28)
 

@@ -48,6 +48,7 @@ from . import history_atlantic as _atlantic
 from . import history_bengal as _bengal
 from . import history_brazil as _brazil
 from . import history_east_asia_coast as _east_asia_coast
+from . import history_japan as _japan
 from . import history_origins as _origins
 from . import history_south_america as _south_america
 from . import history_southeast_asia as _southeast_asia
@@ -383,6 +384,10 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_marajo": (_brazil.marajo_foreground, scale(_brazil.MARAJO["near"], 0.9)),
     "history_palmares": (_brazil.palmares_foreground, scale(_brazil.PALMARES["near"], 0.9)),
     "history_rio_1888": (_brazil.rio_foreground, scale(_brazil.RIO["near"], 0.9)),
+    # Japan: boughs of black pine hang and beach grass stands at Hakata
+    # Bay; willow strands hang and grass stands in Tokyo.
+    "history_kamakura": (_japan.kamakura_foreground, scale(_japan.KAMAKURA["near"], 0.9)),
+    "history_meiji": (_japan.meiji_foreground, scale(_japan.MEIJI["near"], 0.9)),
 }
 
 

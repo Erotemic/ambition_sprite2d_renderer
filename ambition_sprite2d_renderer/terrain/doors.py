@@ -2086,6 +2086,200 @@ def azulejo_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def _shingles(tile: Tile, c: dict, x0: float, x1: float, ridge: float, eave: float) -> np.ndarray:
+    """A small gable roof of wooden shingles seen from the front, from `x0`
+    to `x1`: a straight eave at `eave`, rows of thin shingles that overlap
+    down the slope, each row a half shingle along from the one over it,
+    and a ridge board along the top at `ridge`. Returns the mask of the
+    roof."""
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, ridge + 2.0, x1, eave + 3.0), blur=1.0), (0, 0, 0), 0.40)
+    roof = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0 + 2.5, ridge), (x1 - 2.5, ridge), (x1, eave), (x0, eave)]))
+    tile.put(roof, c["shingle"])
+    row = np.floor((tile.y - ridge) / 1.8)
+    xs = tile.x + (row % 2) * 1.4
+    hashed = np.sin(row * 12.9898 + np.floor(xs / 2.8) * 78.233) * 43758.5453
+    tile.tone(((hashed - np.floor(hashed)) - 0.5) * 0.20 * roof)
+    tile.put(roof * (((tile.y - ridge) % 1.8) > 1.45), c["dark"], 0.45)
+    tile.put(roof * ((xs % 2.8) < 0.35), c["dark"], 0.30)
+    tile.put(roof * (((tile.y - ridge) % 1.8) < 0.35), _mix(c["shingle"], (255, 244, 220), 0.35), 0.45)
+    # The edge of the eave is a thick board, and the ridge has a board on
+    # its top with a small cap at each end.
+    fascia = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 0.6, eave - 1.6, x1 + 0.6, eave + 0.6))
+    tile.put(fascia, c["frame"])
+    tile.put(fascia * (tile.y < eave - 1.0), c["frame_light"], 0.5)
+    cap = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0 + 1.5, ridge - 2.6, x1 - 1.5, ridge + 0.6), _box(p, dx, dy, x0 + 0.8, ridge - 3.4, x0 + 3.0, ridge + 0.6),
+                                       _box(p, dx, dy, x1 - 3.0, ridge - 3.4, x1 - 0.8, ridge + 0.6)))
+    tile.put(cap, _mix(c["shingle"], c["dark"], 0.40))
+    tile.put(cap * (tile.y < ridge - 1.8), c["frame_light"], 0.35)
+    return roof
+
+
+def kamakura_gate_door(tile: Tile, c: dict) -> np.ndarray:
+    """The gate of the house of a warrior of Kyushu in the Kamakura
+    period. Two square posts of plain wood stand on round stones, with a
+    tie beam across them, and over them a small gable roof of wooden
+    shingles. Between the tie beam and the head of the gate is a window of
+    upright bars, with the light of the house behind it. The two leaves
+    are of plain planks with two battens each. A fence of upright boards
+    with a top rail goes off at each side."""
+    _frame(tile, c)
+    floor = H - STEP
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, floor)), c["dark"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, floor)) * np.clip(1.0 - tile.y / 60.0, 0, 1), c["frame"], 0.25)
+    # The fence: upright boards, each of its own tone, under a top rail.
+    px0, px1 = 11.0, W - 11.0
+    for x0, x1 in ((0.0, px0), (px1, W)):
+        fence = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, 46.0, x1, floor))
+        lane = np.floor(tile.x / 2.6)
+        hashed = np.sin(lane * 12.9898) * 43758.5453
+        tile.put(fence, c["fence"])
+        tile.tone(((hashed - np.floor(hashed)) - 0.5) * 0.22 * fence)
+        tile.put(fence * ((tile.x % 2.6) < 0.35), c["dark"], 0.6)
+        tile.put(fence * np.clip((tile.noise(3, 20, 2) - 0.5) * 2.0, 0, 1), c["dark"], 0.18)
+        rail = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, 43.0, x1, 46.4))
+        tile.put(rail, c["frame"])
+        tile.put(rail * (tile.y < 43.8), c["frame_light"], 0.5)
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, 46.4, x1, 47.6), blur=0.4) * fence, (0, 0, 0), 0.35)
+    # The window of upright bars between the tie beam and the head.
+    gx0, gx1 = px0 + 4.5, px1 - 4.5
+    win = tile.mask(lambda p, dx, dy: _box(p, dx, dy, gx0, 33.0, gx1, 41.0))
+    tile.put(win, c["glow"])
+    tile.put(win * (tile.y < 35.0), (255, 255, 255), 0.25)
+    tile.put(win * ((np.abs(((tile.x - gx0) % 2.8) - 1.4)) > 0.85), c["frame"])
+    # The tie beam and the head beam across the posts.
+    for y0, y1, x0, x1 in ((28.0, 33.0, px0 - 2.0, px1 + 2.0), (41.0, 44.6, gx0, gx1)):
+        beam = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0, x1, y1))
+        tile.put(beam, c["frame"])
+        tile.put(beam * (tile.y < y0 + 0.8), c["frame_light"], 0.55)
+        tile.put(beam * (tile.y > y1 - 0.8), c["dark"], 0.40)
+    # The roof of shingles over the posts.
+    _shingles(tile, c, px0 - 9.0, px1 + 9.0, 6.0, 24.0)
+    # The leaves: plain planks, the seam in the middle, two battens.
+    top = 44.6
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, gx0, top, gx1, floor))
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 14, 2) - 0.5) * 0.16 * leaf)
+    plank = (tile.x - gx0) % 4.0
+    tile.put(leaf * (plank < 0.40), c["dark"], 0.50)
+    tile.put(leaf * (plank > 0.40) * (plank < 1.1), c["leaf_light"], 0.25)
+    grain = np.clip(1.0 - np.abs(((tile.x + (tile.noise(8, 3, 2) - 0.5) * 3.0) % 1.3) - 0.65) / 0.12, 0, 1)
+    tile.put(leaf * grain, _mix(c["leaf"], c["dark"], 0.3), 0.15)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.6), c["dark"], 0.9)
+    tile.put(leaf * (tile.y < top + 1.4), c["dark"], 0.4)
+    for y in (top + 10.0, floor - 14.0):
+        for x0, x1 in ((gx0 + 1.0, W * 0.5 - 1.6), (W * 0.5 + 1.6, gx1 - 1.0)):
+            batten = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y, x1, y + 3.0))
+            tile.put(batten, _mix(c["leaf"], c["dark"], 0.25))
+            tile.put(batten * (tile.y < y + 0.7), c["leaf_light"], 0.45)
+            tile.put(batten * (tile.y > y + 2.4), c["dark"], 0.35)
+            tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y + 1.5, 0.45) for x in np.arange(x0 + 2.0, x1 - 1.0, 4.0)]), c["dark"], 0.75)
+    for x in (W * 0.5 - 3.0, W * 0.5 + 3.0):
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x - 0.6, 74.0, x + 0.6, 82.0)), c["frame"])
+    # The posts, square and plain, on round stones.
+    for x0 in (px0, px1 - 4.5):
+        post = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, 24.0, x0 + 4.5, floor - 2.6))
+        tile.put(post, c["frame"])
+        tile.put(post * (tile.x < x0 + 1.2), c["frame_light"], 0.5)
+        tile.put(post * (tile.x > x0 + 3.4), c["dark"], 0.45)
+        tile.put(post * np.clip((tile.noise(2, 18, 2) - 0.5) * 2.0, 0, 1), c["dark"], 0.20)
+        stone = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x0 + 2.25, floor - 1.0, 4.0, ry=2.4)) * (tile.y < floor)
+        tile.put(stone, c["accent"])
+        tile.put(stone * (tile.y < floor - 2.4), _mix(c["accent"], (255, 255, 255), 0.35), 0.7)
+    return leaf
+
+
+def _flemish(tile: Tile, c: dict, mask: np.ndarray, course: float = 2.4) -> None:
+    """Red brick over `mask` in Flemish bond: in each course a long brick
+    and a short end in turn, each end over the middle of a long brick of the
+    course under it. The ends are a little darker. Pale lime mortar."""
+    row = np.floor(tile.y / course)
+    period = course * 3.0
+    xs = tile.x + (row % 2) * period * 0.5
+    phase = xs % period
+    header = phase > course * 2.0
+    col = np.floor(xs / period) * 2 + header
+    hashed = np.sin(row * 12.9898 + col * 78.233) * 43758.5453
+    tile.put(mask, c["brick"])
+    tile.tone((((hashed - np.floor(hashed)) - 0.5) * 0.24 - header * 0.14) * mask)
+    joints = ((tile.y % course) < 0.38) | (phase < 0.38) | (np.abs(phase - course * 2.0) < 0.19)
+    tile.put(mask * joints, c["mortar"], 0.75)
+
+
+def bricktown_door(tile: Tile, c: dict) -> np.ndarray:
+    """The door of a shop of the Ginza Bricktown in Tokyo, 1872. It is under
+    the colonnade on the street: a white column at each side, and over them
+    the beam of the verandah in white stucco with its cornice. The wall is
+    of red brick in Flemish bond. A surround of white stucco frames the
+    doorway, with a fanlight of small panes over it. The door is two leaves
+    of varnished wood, each glazed with small panes in its upper part, with
+    a panel under the glass, and a brass knob."""
+    _frame(tile, c)
+    floor = H - STEP
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, floor))
+    _flemish(tile, c, wall)
+    # The shade of the verandah on the top of the wall.
+    tile.put(wall * np.clip(1.0 - (tile.y - 16.0) / 18.0, 0, 1), (0, 0, 0), 0.35)
+    # The surround of the doorway, the fanlight, and the opening.
+    ox0, ox1, otop = 15.0, W - 15.0, 26.0
+    surround = tile.mask(lambda p, dx, dy: _box(p, dx, dy, ox0 - 3.0, otop - 4.0, ox1 + 3.0, floor))
+    tile.put(surround, c["stucco"])
+    tile.put(surround * (tile.x < ox0 - 2.2), (255, 255, 255), 0.35)
+    tile.put(surround * (tile.x > ox1 + 2.2), c["dark"], 0.25)
+    key = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(W * 0.5 - 2.4, otop - 4.6), (W * 0.5 + 2.4, otop - 4.6), (W * 0.5 + 1.6, otop + 0.6), (W * 0.5 - 1.6, otop + 0.6)]))
+    tile.put(key, _mix(c["stucco"], c["dark"], 0.12))
+    fan_foot = otop + 9.0
+    fan = tile.mask(lambda p, dx, dy: _box(p, dx, dy, ox0, otop, ox1, fan_foot))
+    tile.put(fan, c["glow"])
+    tile.put(fan * (tile.y < otop + 3.0), (255, 255, 255), 0.25)
+    tile.put(fan * ((np.abs(((tile.x - ox0) % ((ox1 - ox0) / 5.0)) - (ox1 - ox0) / 10.0) > (ox1 - ox0) / 10.0 - 0.5) | (np.abs(tile.y - (otop + 4.5)) < 0.35)), c["leaf"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, ox0, fan_foot, ox1, fan_foot + 1.6)), c["leaf"])
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, ox0, fan_foot + 1.6, ox1, floor))
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(2, 14, 2) - 0.5) * 0.12 * leaf)
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.5), c["dark"], 0.9)
+    gy0, gy1 = fan_foot + 5.0, fan_foot + 44.0
+    for xa, xb in ((ox0 + 2.6, W * 0.5 - 2.2), (W * 0.5 + 2.2, ox1 - 2.6)):
+        glass = tile.mask(lambda p, dx, dy: _box(p, dx, dy, xa, gy0, xb, gy1))
+        tile.put(glass, c["glow"])
+        tile.put(glass * np.clip(1.0 - (tile.y - gy0) / 30.0, 0, 1), (255, 255, 255), 0.20)
+        bars = (np.abs(((tile.x - xa) % ((xb - xa) / 3.0)) - (xb - xa) / 6.0) > (xb - xa) / 6.0 - 0.45) | (np.abs(((tile.y - gy0) % ((gy1 - gy0) / 5.0)) - (gy1 - gy0) / 10.0) > (gy1 - gy0) / 10.0 - 0.45)
+        tile.put(glass * bars, c["leaf"])
+        tile.put(glass * (tile.x < xa + 1.0), c["dark"], 0.25)
+        panel = tile.mask(lambda p, dx, dy: _box(p, dx, dy, xa, gy1 + 4.0, xb, floor - 5.0))
+        tile.put(panel, c["leaf_light"], 0.25)
+        tile.put(panel * ((tile.x < xa + 0.8) | (tile.y < gy1 + 4.8)), c["dark"], 0.40)
+        tile.put(panel * ((tile.x > xb - 0.8) | (tile.y > floor - 5.8)), (255, 255, 255), 0.20)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, W * 0.5 + side * 2.0, gy1 + 1.6, 0.9) for side in (-1.0, 1.0)]), c["brass"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, ox0 - 3.0, floor - 1.6, ox1 + 3.0, floor)), c["accent"])
+    # The white columns of the colonnade, round, with a base and a capital.
+    for cx in (4.4, W - 4.4):
+        shaft = tile.mask(lambda p, dx, dy: _box(p, dx, dy, cx - 2.8, 16.0, cx + 2.8, floor - 3.0))
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, cx - 2.0, 16.0, cx + 4.6, floor - 3.0), blur=0.8) * wall * (1.0 - shaft), (0, 0, 0), 0.30)
+        tile.put(shaft, c["stucco"])
+        tile.put(shaft * np.clip(1.0 - np.abs(tile.x - (cx - 1.0)) / 1.0, 0, 1), (255, 255, 255), 0.45)
+        tile.put(shaft * np.clip((tile.x - cx - 0.6) / 2.2, 0, 1), c["dark"], 0.35)
+        for y0, y1, half in ((floor - 3.0, floor, 3.8), (16.0, 18.4, 3.6)):
+            ring = tile.mask(lambda p, dx, dy: _box(p, dx, dy, cx - half, y0, cx + half, y1))
+            tile.put(ring, c["stucco"])
+            tile.put(ring * (tile.y < y0 + 0.7), (255, 255, 255), 0.45)
+            tile.put(ring * (tile.y > y1 - 0.6), c["dark"], 0.30)
+    # The beam of the verandah over the street, with its cornice, and the
+    # iron rail of the balcony over it.
+    beam = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 8.0, W, 16.0))
+    tile.put(beam, c["stucco"])
+    tile.put(beam * (np.abs(tile.y - 12.0) < 0.4), c["dark"], 0.25)
+    tile.put(beam * (tile.y > 15.2), c["dark"], 0.35)
+    cornice = tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 5.6, W, 8.4))
+    tile.put(cornice, c["stucco"])
+    tile.put(cornice * (tile.y < 6.4), (255, 255, 255), 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 8.4, W, 9.4), blur=0.4), (0, 0, 0), 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, 0.0, W, 5.6)), (0, 0, 0), 0.45)
+    rail = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, 0.0, 0.4, W, 1.6), _box(p, dx, dy, 0.0, 4.2, W, 5.6), [_box(p, dx, dy, x - 0.45, 0.4, x + 0.45, 5.6) for x in np.arange(1.5, W, 3.0)]))
+    tile.put(rail, c["iron"])
+    tile.put(rail * (tile.y < 1.0), (150, 150, 156), 0.5)
+    return leaf
+
+
 MOTIONS: dict[Draw, tuple[str, bool]] = {
     bulkhead: (SLIDE, True),
     iron: (SWING, False),
@@ -2130,6 +2324,8 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     longhouse_door: (SWING, False),
     palisade_gate_door: (SWING, True),
     azulejo_door: (SWING, True),
+    kamakura_gate_door: (SWING, True),
+    bricktown_door: (SWING, True),
 }
 
 
@@ -2307,6 +2503,14 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "history_palmares": (palisade_gate_door, {**_colours((126, 94, 64), (138, 104, 70), (38, 26, 18), (176, 86, 50), (255, 206, 130)), "cord": (204, 172, 110)}),
     "history_rio_1888": (azulejo_door, {**_colours((172, 168, 160), (46, 104, 70), (34, 34, 38), (176, 172, 164), (255, 230, 170)),
                                         "tile_white": (238, 236, 228), "tile_blue": (46, 86, 166), "stone": (176, 172, 164), "iron": (44, 44, 50), "brass": (214, 174, 80)}),
+    # Japan. Hakata Bay: the gate of a warrior's house of the Kamakura
+    # period, plain plank leaves under a small roof of wooden shingles, a
+    # fence of boards at the sides. Tokyo: a glazed shop door between white
+    # columns, in a wall of red brick in Flemish bond.
+    "history_kamakura": (kamakura_gate_door, {**_colours((104, 80, 58), (152, 120, 84), (30, 24, 22), (138, 132, 122), (255, 212, 150)),
+                                              "shingle": (128, 108, 86), "fence": (112, 100, 86)}),
+    "history_meiji": (bricktown_door, {**_colours((236, 228, 210), (84, 54, 38), (34, 24, 22), (150, 146, 138), (255, 222, 150)),
+                                       "brick": (160, 74, 54), "mortar": (214, 204, 184), "stucco": (236, 228, 210), "iron": (44, 44, 50), "brass": (214, 174, 80)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),
