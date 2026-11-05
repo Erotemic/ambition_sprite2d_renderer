@@ -50,6 +50,7 @@ from . import history_brazil as _brazil
 from . import history_central_africa as _central_africa
 from . import history_east_asia_coast as _east_asia_coast
 from . import history_japan as _japan
+from . import history_oceania as _oceania
 from . import history_origins as _origins
 from . import history_south_america as _south_america
 from . import history_southeast_asia as _southeast_asia
@@ -397,6 +398,13 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_mbanza_kongo": (_central_africa.mbanza_kongo_foreground, scale(_central_africa.MBANZA_KONGO["near"], 0.9)),
     "history_matamba": (_central_africa.matamba_foreground, scale(_central_africa.MATAMBA["near"], 0.9)),
     "history_congo_river_1900": (_central_africa.congo_river_1900_foreground, scale(_central_africa.CONGO_RIVER["near"], 0.9)),
+    # Australia and Aotearoa: saltbush and dry grass stand from below at
+    # Lake Mungo.
+    "history_willandra": (_oceania.willandra_foreground, scale(_oceania.WILLANDRA["near"], 0.9)),
+    "history_aotearoa": (_oceania.aotearoa_foreground, scale(_oceania.AOTEAROA["near"], 0.9)),
+    "history_tonga": (_oceania.tonga_foreground, scale(_oceania.TONGA["near"], 0.9)),
+    "history_waitangi": (_oceania.waitangi_foreground, scale(_oceania.WAITANGI["near"], 0.9)),
+    "history_sydney_cove": (_oceania.sydney_cove_foreground, scale(_oceania.SYDNEY_COVE["near"], 0.9)),
 }
 
 

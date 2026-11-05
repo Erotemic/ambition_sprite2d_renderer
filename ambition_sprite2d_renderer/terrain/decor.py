@@ -4164,6 +4164,205 @@ def canoe_paddles(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+# Australia and Aotearoa: Lake Mungo, the North Island, Tonga, Waitangi and
+# Sydney Cove. At Lake Mungo `plant` is the grey-green of saltbush and
+# `metal` the blue-grey of bluebush; in Aotearoa `wood` is the yellow of
+# dried flax and `bloom` the red-purple skin of kūmara; in Tonga `wood` is
+# the brown of dry palm leaf; at Sydney Cove `metal` is the black of the
+# trunk of a grass tree and `bloom` the dull gold of banksia.
+
+
+def _grey_shrub(tile: Tile, c: dict, leaf: RGB, w: float, h: float, size: float) -> None:
+    """A low round shrub of the dry country: short crooked twigs from one
+    foot, and on them a mound of small round leaves, lit on its top."""
+    rng = tile.rng
+    twigs = [[(M + j * 0.4, G), (M + j * w * 0.18, G - h * 0.45), (M + j * w * 0.30 + rng.uniform(-0.6, 0.6), G - h * rng.uniform(0.6, 0.9))] for j in range(-3, 4)]
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.32) for pts in twigs]), _mix(c["wood"], c["dark"], 0.3))
+    leaves = []
+    for _ in range(160):
+        x, y = M + rng.uniform(-w, w), G - rng.uniform(0.6, h)
+        if ((x - M) / w) ** 2 + ((y - G + 0.4) / h) ** 2 < 1.0:
+            leaves.append((x, y, size * rng.uniform(0.75, 1.15)))
+    leaves.sort(key=lambda q: q[1])
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y + 0.25, r) for x, y, r in leaves]), _mix(leaf, c["dark"], 0.45))
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r * 0.85) for x, y, r in leaves]), leaf)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - r * 0.25, y - r * 0.3, r * 0.4) for x, y, r in leaves if y < G - h * 0.45]), _mix(leaf, (240, 244, 230), 0.45), 0.6)
+
+
+def saltbush(tile: Tile, c: dict) -> None:
+    """Old man saltbush of the dry bed of Lake Mungo: a low wide mound of
+    twigs thick with small round grey-green leaves."""
+    _shadow(tile, 8.5)
+    _grey_shrub(tile, c, c["plant"], 8.6, 9.0, 0.95)
+    tile.alpha *= tile.y < G
+
+
+def bluebush(tile: Tile, c: dict) -> None:
+    """A bluebush: a small round shrub, denser and bluer than saltbush, with
+    a few small pale fruits like papery wings among its leaves."""
+    _shadow(tile, 7.0)
+    _grey_shrub(tile, c, c["metal"], 6.6, 10.0, 0.75)
+    rng = tile.rng
+    fruits = [(M + rng.uniform(-4.0, 4.0), G - rng.uniform(3.0, 8.0)) for _ in range(6)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.6, ry=0.4) for x, y in fruits]), _mix(c["stone_light"], c["bloom"], 0.3), 0.85)
+    tile.alpha *= tile.y < G
+
+
+def harakeke(tile: Tile, c: dict) -> None:
+    """A clump of harakeke, the flax of Aotearoa: long stiff blades like
+    swords that fan up from one base, each folded along its middle, some
+    tips bent over, and a tall dark stalk of flowers over them."""
+    _shadow(tile, 7.5)
+    stalk = [(M + 0.6, G - 3.0), (M + 1.4, G - 14.0), (M + 1.8, G - 21.4)]
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, stalk, 0.35)), _mix(c["wood"], c["dark"], 0.55))
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M + 1.5 + t * 0.4, G - 15.0 - t * 6.0), (M + 1.5 + t * 0.4 + side * 1.6, G - 16.4 - t * 6.0)], 0.22) for t in (0.0, 0.35, 0.7, 1.0) for side in (-1.0, 1.0)]), _mix(c["bloom"], c["dark"], 0.4))
+    for k, (angle, length, bend) in enumerate(((-60.0, 9.0, 3.0), (-38.0, 13.0, 1.8), (-18.0, 16.0, 0.0), (-4.0, 18.0, -2.4), (12.0, 15.0, 0.4), (30.0, 13.0, 2.2), (54.0, 9.5, 3.2), (-28.0, 11.0, 0.0), (22.0, 10.5, 0.0))):
+        a = math.radians(angle)
+        tip = (M + math.sin(a) * length, G - 1.0 - math.cos(a) * length + max(0.0, bend))
+        ctrl = (M + math.sin(a) * length * 0.5, G - 1.0 - math.cos(a) * length * 0.75)
+        pts = _curve((M + angle * 0.03, G - 0.4), tip, ctrl, 10)
+        width = [0.9 * (1.0 - t * 0.85) for t in np.linspace(0.0, 1.0, 10)]
+        left = [(x - wd, y) for (x, y), wd in zip(pts, width)]
+        right = [(x + wd, y) for (x, y), wd in zip(pts, width)]
+        colour = c["plant"] if k % 2 == 0 else _mix(c["plant"], c["dark"], 0.22)
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, left + right[::-1])), colour)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, pts[:-2], 0.15)), _mix(c["plant"], (230, 240, 200), 0.35), 0.6)
+    tile.alpha *= tile.y < G
+
+
+def kumara_mound(tile: Tile, c: dict) -> None:
+    """A mound of a kūmara garden: a low round heap of soil, with sand and
+    gravel worked into it to keep it warm, and on it the trailing vines of
+    the kūmara with their leaves like hearts. Two tubers show at its foot."""
+    _shadow(tile, 9.5)
+    earth = _mix(c["stone"], c["dark"], 0.35)
+    mound = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G, 9.6, ry=6.0))
+    tile.put(mound, earth)
+    tile.put(mound * (tile.y < G - 4.0), _mix(earth, c["stone_light"], 0.25), 0.6)
+    rng = tile.rng
+    gravel = [(M + rng.uniform(-8.0, 8.0), G - rng.uniform(0.4, 4.6)) for _ in range(30)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.3) for x, y in gravel]) * mound, c["stone_light"], 0.6)
+    for x, turn in ((M - 7.4, 0.3), (M + 6.8, -0.4)):
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, G - 1.0, 1.8, ry=1.0)), c["bloom"])
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x - 0.5, G - 1.5, 0.8, ry=0.35)), (240, 200, 210), 0.4)
+    vines = [_curve((M + x0, G - 5.4), (M + x1, G - y1), (M + (x0 + x1) * 0.5, G - y1 - 2.0), 8) for x0, x1, y1 in ((0.0, -8.0, 2.4), (0.0, 7.6, 2.0), (-0.6, -3.6, 6.4), (0.6, 3.0, 6.8))]
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.22) for pts in vines]), _mix(c["plant"], c["bloom"], 0.3))
+    leaves = [(x + rng.uniform(-0.4, 0.4), y - 0.6) for pts in vines for x, y in pts[1::2]]
+    for x, y in leaves:
+        heart = [(x, y + 1.2), (x - 1.3, y - 0.2), (x - 0.7, y - 1.0), (x, y - 0.5), (x + 0.7, y - 1.0), (x + 1.3, y - 0.2)]
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, heart)), c["plant"])
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x, y + 1.0), (x, y - 0.4)], 0.12)), _mix(c["plant"], (230, 240, 200), 0.3), 0.6)
+    tile.alpha *= tile.y < G
+
+
+def kete(tile: Tile, c: dict) -> None:
+    """A kete, a basket woven of strips of flax, that stands on the ground:
+    its sides a check of strips over and under, a little wider at its
+    mouth, with two handles of plaited flax."""
+    _shadow(tile, 6.5)
+    flax = c["wood"]
+    body_pts = [(M - 6.0, G - 10.0), (M + 6.0, G - 10.0), (M + 5.0, G - 0.6), (M + 4.2, G), (M - 4.2, G), (M - 5.0, G - 0.6)]
+    for side in (-1.0, 1.0):
+        handle = _curve((M + side * 4.6, G - 9.6), (M + side * 1.2, G - 9.6), (M + side * 3.0, G - 16.0), 10)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, handle, 0.55)), _mix(flax, c["dark"], 0.25))
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, handle, 0.2)), _mix(flax, (255, 240, 200), 0.3), 0.5)
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, body_pts))
+    tile.put(body, flax)
+    check = (np.floor((tile.x - tile.y * 0.5) / 1.2) + np.floor((tile.x + tile.y * 0.5) / 1.2)) % 2 == 0
+    tile.put(body * check, c["dark"], 0.18)
+    tile.put(body * ~check, (255, 244, 210), 0.12)
+    tile.put(body * (tile.y < G - 9.0), c["dark"], 0.25)
+    tile.put(body * (tile.x > M + 2.8), c["dark"], 0.20)
+    tile.alpha *= tile.y < G
+
+
+def palm_frond(tile: Tile, c: dict) -> None:
+    """A dead frond of a coconut palm fallen on the sand: its long rib on
+    the ground, rising a little to its thick base, and its narrow leaflets,
+    dry and brown, that fall to each side."""
+    _shadow(tile, 10.0)
+    rib = _curve((M - 8.0, G - 2.0), (M + 9.0, G - 6.4), (M - 0.6, G - 6.0), 16)
+    for k, (x, y) in enumerate(rib[:-2]):
+        for side in (-1.0, 1.0):
+            length = 6.0 - k * 0.22
+            tip = (max(1.6, x - 1.6 - side * 1.2), min(G - 0.3, y + length * (0.9 if side > 0 else 0.45)))
+            ctrl = (x - 0.4, y - 0.8 * side)
+            tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, _curve((x, y), tip, ctrl, 6), 0.32)), _mix(c["wood"], c["dark"], 0.25) if side > 0 else c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, rib, 0.70)), _mix(c["wood"], c["stone_light"], 0.25))
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M + 7.0, G - 5.6), (M + 9.6, G - 7.8), (M + 10.0, G - 5.8), (M + 8.4, G - 4.6)])), _mix(c["wood"], c["dark"], 0.3))
+    tile.alpha *= tile.y < G
+
+
+def rolled_mat(tile: Tile, c: dict) -> None:
+    """A mat of plaited pandanus leaf, rolled up and tied with cord, that
+    lies on the ground, and a second mat folded flat under it: a check of
+    strips on each, and the spiral of the roll at its end."""
+    _shadow(tile, 9.0)
+    leaf = _mix(c["wood"], c["stone_light"], 0.45)
+    flat = tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 9.6, G - 1.6, M + 9.0, G))
+    tile.put(flat, _mix(leaf, c["dark"], 0.15))
+    tile.put(flat * (np.abs((tile.x % 1.6) - 0.8) < 0.15), c["dark"], 0.3)
+    roll = tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 8.4, G - 7.6, M + 6.4, G - 1.6))
+    tile.put(roll, leaf)
+    check = (np.floor(tile.x / 1.2) + np.floor(tile.y / 1.2)) % 2 == 0
+    tile.put(roll * check, c["dark"], 0.15)
+    tile.put(roll * (tile.y < G - 6.4), (255, 248, 220), 0.25)
+    tile.put(roll * (tile.y > G - 3.0), c["dark"], 0.30)
+    end = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 6.4, G - 4.6, 1.8, ry=3.0))
+    tile.put(end, _mix(leaf, c["dark"], 0.2))
+    tile.put(tile.mask(lambda p, dx, dy: [p.ellipse([(M + 6.4 - r * 0.6) * K + dx, (G - 4.6 - r) * K + dy, (M + 6.4 + r * 0.6) * K + dx, (G - 4.6 + r) * K + dy], outline=255, width=max(1, int(0.2 * K))) for r in (0.8, 1.6, 2.4)]), c["dark"], 0.5)
+    for x in (M - 4.6, M + 2.4):
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x - 0.4, G - 7.8, x + 0.4, G - 1.4)), _mix(c["wood"], c["dark"], 0.35))
+    tile.alpha *= tile.y < G
+
+
+def grass_tree(tile: Tile, c: dict) -> None:
+    """A young grass tree of the sandstone country of Warrane: a short
+    black trunk, a round skirt of long thin leaves that burst from its top
+    and droop to every side, and one tall straight flower spike."""
+    _shadow(tile, 7.0)
+    top = (M, G - 6.4)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 1.8, G), (M + 1.8, G), (M + 1.5, top[1]), (M - 1.5, top[1])])), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M - 1.6, G - y), (M + 1.6, G - y - 0.4)], 0.18) for y in (1.4, 3.0, 4.6)]), _mix(c["metal"], c["stone"], 0.3), 0.6)
+    spike = [(M + 0.2, top[1]), (M + 0.6, G - 23.0)]
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, spike, 0.3)), _mix(c["wood"], c["dark"], 0.2))
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 0.35, G - 15.0), (M + 0.6, G - 22.6)], 0.62)), _mix(c["bloom"], c["wood"], 0.5))
+    rng = tile.rng
+    leaves = []
+    for k in range(34):
+        ang = math.radians(-180.0 + k * 180.0 / 33.0 + rng.uniform(-3.0, 3.0))
+        length = rng.uniform(7.0, 9.0)
+        droop = length * 0.6 * abs(math.cos(ang)) ** 1.5
+        leaves.append(_curve(top, (top[0] + math.cos(ang) * length, top[1] + math.sin(ang) * length + droop), (top[0] + math.cos(ang) * length * 0.55, top[1] + math.sin(ang) * length * 0.55), 7))
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.18) for pts in leaves[0::2]]), c["plant"])
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.18) for pts in leaves[1::2]]), _mix(c["plant"], (220, 226, 190), 0.25))
+    tile.alpha *= tile.y < G
+
+
+def banksia(tile: Tile, c: dict) -> None:
+    """A small banksia shrub: a few crooked stems, clumps of long stiff
+    leaves with toothed edges, and the upright cones of its flowers, dull
+    gold, one old cone grey and open."""
+    _shadow(tile, 8.0)
+    rng = tile.rng
+    ends = [(M - 5.6, G - 11.0), (M - 1.4, G - 15.4), (M + 3.4, G - 13.6), (M + 6.6, G - 9.2)]
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, _curve((M + (x - M) * 0.1, G), (x, y), (M + (x - M) * 0.6, G - 4.0), 8), 0.45) for x, y in ends]), _mix(c["wood"], c["dark"], 0.35))
+    for k, (x, y) in enumerate(ends):
+        for j in range(9):
+            a = math.radians(-180.0 + j * 22.5 + rng.uniform(-6.0, 6.0))
+            tip = (x + math.cos(a) * 4.2, y + 1.6 + math.sin(a) * 3.0)
+            base = (x, y + 1.6)
+            nx, ny = -(tip[1] - base[1]) * 0.13, (tip[0] - base[0]) * 0.13
+            teeth = [base] + [(base[0] + (tip[0] - base[0]) * t + nx * (1.0 if i % 2 else 0.6), base[1] + (tip[1] - base[1]) * t + ny * (1.0 if i % 2 else 0.6)) for i, t in enumerate(np.linspace(0.15, 0.9, 6))] + [tip] + [(base[0] + (tip[0] - base[0]) * t - nx * 0.8, base[1] + (tip[1] - base[1]) * t - ny * 0.8) for t in np.linspace(0.9, 0.15, 4)]
+            tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, teeth)), c["plant"] if j % 2 else _mix(c["plant"], c["dark"], 0.2))
+        colour = c["bloom"] if k != 2 else _mix(c["stone"], c["dark"], 0.3)
+        cone = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x, y - 1.0, 1.3, ry=2.6))
+        tile.put(cone, colour)
+        tile.put(cone * (np.abs((tile.y % 0.8) - 0.4) < 0.12), c["dark"], 0.30)
+        tile.put(cone * (tile.x < x - 0.4), (255, 240, 200), 0.20)
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -4352,6 +4551,26 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # Muted and still.
     "history_congo_river_1900": ((firewood_cord, crate, lamp_post, tin_trunk, rope_coil, canoe_paddles),
                                  _palette((30, 30, 28), (130, 128, 120), (190, 188, 178), (112, 100, 82), (76, 80, 74), (92, 106, 72), (132, 92, 66), (230, 210, 150))),
+    # Lake Mungo: saltbush and bluebush, a heap of the shells of the
+    # freshwater mussels of the full lake, a hearth and a grinding stone.
+    "history_willandra": ((saltbush, bluebush, mussel_midden, hearth, quern, saltbush),
+                          _palette((44, 36, 28), (176, 160, 134), (226, 214, 190), (128, 100, 72), (122, 146, 150), (130, 144, 116), (214, 170, 140), (255, 190, 110))),
+    # Aotearoa: flax, a fern, a mound of the kūmara garden, a kete of
+    # woven flax, and a stone adze.
+    "history_aotearoa": ((harakeke, fern, kumara_mound, kete, stone_adze, harakeke),
+                         _palette((28, 36, 26), (124, 104, 76), (196, 180, 150), (190, 162, 100), (74, 92, 84), (76, 112, 60), (150, 62, 82), (255, 214, 150))),
+    # Tonga: pandanus, coconuts, a fallen palm frond, sea shells and a
+    # rolled mat of plaited pandanus.
+    "history_tonga": ((pandanus, coconuts, palm_frond, sea_shells, rolled_mat, pandanus),
+                      _palette((40, 36, 30), (176, 168, 150), (240, 232, 212), (160, 124, 80), (90, 96, 90), (86, 130, 66), (224, 150, 120), (255, 222, 160))),
+    # Waitangi, 1840: flax, a water cask, a kete, two paddles of a waka and
+    # a coil of rope.
+    "history_waitangi": ((harakeke, barrel, kete, canoe_paddles, rope_coil, harakeke),
+                         _palette((34, 34, 30), (150, 144, 132), (214, 208, 194), (176, 148, 98), (70, 74, 76), (78, 112, 60), (150, 64, 52), (255, 226, 170))),
+    # Sydney Cove, 1788: grass trees, a banksia, a heap of the shells the
+    # Eora left on the shore, a cask and a crate of the camp. Muted.
+    "history_sydney_cove": ((grass_tree, banksia, clam_heap, barrel, crate, grass_tree),
+                            _palette((34, 32, 28), (140, 134, 122), (200, 194, 180), (120, 98, 74), (40, 36, 32), (108, 118, 92), (184, 156, 92), (236, 206, 160))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),

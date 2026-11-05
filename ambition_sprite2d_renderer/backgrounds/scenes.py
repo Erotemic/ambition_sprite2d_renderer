@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, art_dimension, art_quarters, eureka, evil, foregrounds, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
+from . import arenas, art_dimension, art_quarters, eureka, evil, foregrounds, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_oceania, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from .artkit import Art
 from .parts import LAYER_BLUR, LAYER_SIZE
 
@@ -156,6 +156,12 @@ SCENES: dict[str, Scene] = {
     "history_mbanza_kongo": history_central_africa.history_mbanza_kongo,
     "history_matamba": history_central_africa.history_matamba,
     "history_congo_river_1900": history_central_africa.history_congo_river_1900,
+    # The History dimension: Australia and Aotearoa (`history_oceania.py`).
+    "history_willandra": history_oceania.history_willandra,
+    "history_aotearoa": history_oceania.history_aotearoa,
+    "history_tonga": history_oceania.history_tonga,
+    "history_waitangi": history_oceania.history_waitangi,
+    "history_sydney_cove": history_oceania.history_sydney_cove,
 }
 
 

@@ -719,6 +719,96 @@ def _drizzle_mist(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(_soft(x, y, r, 1.6, squash=1.8) * (0.50, 0.40)[variant - 2], 0.0, 1.0), colour
 
 
+def _sand_fly(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """What the hot wind lifts off the dry bed of Lake Mungo. The first two
+    variants are grains of pale sand: a small soft grain, and a loose puff
+    of sand with a few grains in it. The third is a bush fly: a dark speck
+    of a body with two pale wings; it has its own dark colour. The fourth
+    is a dry seed head of grass: a small grain with fine whiskers."""
+    x, y = _cell()
+    if variant == 0:
+        return np.clip(_soft(x, y, 0.08, 1.4) * 0.9 + _soft(x, y, 0.18, 2.4) * 0.18, 0.0, 1.0), colour
+    if variant == 1:
+        grains = sum(_soft(x - dx, y - dy, 0.05, 1.4) for dx, dy in ((-0.10, 0.05), (0.09, -0.08), (0.12, 0.10)))
+        return np.clip(_soft(x, y, 0.28, 1.8) * 0.28 + grains * 0.7, 0.0, 1.0), colour
+    if variant == 2:
+        rx, ry = _turned(x, y, -0.3)
+        body = _soft(rx, ry, 0.07, 1.0, squash=1.6)
+        wings = _soft(rx - 0.03, ry - 0.07, 0.10, 1.2, squash=0.6) + _soft(rx + 0.04, ry - 0.06, 0.09, 1.2, squash=0.6)
+        return np.clip(body * 1.4 + wings * 0.40, 0.0, 1.0), (50, 46, 40)
+    rx, ry = _turned(x, y, 0.8)
+    grain = np.clip(1.0 - (np.sqrt((rx / 0.10) ** 2 + (ry / 0.04) ** 2) - 1.0) / 0.35, 0.0, 1.0)
+    lines = [[(0.08, 0.0), (0.30, s * 0.10)] for s in (-1.0, 0.0, 1.0)]
+    return np.clip(grain + _strokes([[(px * math.cos(0.8) - py * math.sin(0.8), px * math.sin(0.8) + py * math.cos(0.8)) for px, py in pts] for pts in lines], 0.006, 0.0) * 0.7, 0.0, 1.0), (214, 190, 140)
+
+
+def _stamen_spore(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """What drifts on the coast of Aotearoa in summer. The first two
+    variants are stamens of the pōhutukawa flower that fall: a thin red
+    thread with a small gold tip, each with its own bend; they have their
+    own crimson. The third is a soft puff of the spores of ferns. The
+    fourth is a small fly of the bush, a dark speck with pale wings."""
+    x, y = _cell()
+    if variant < 2:
+        bend = (0.08, -0.10)[variant]
+        turn = (0.5, -0.9)[variant]
+        pts = [(-0.26 + 0.52 * t, bend * math.sin(math.pi * t)) for t in np.linspace(0.0, 1.0, 8)]
+        pts = [(px * math.cos(turn) - py * math.sin(turn), px * math.sin(turn) + py * math.cos(turn)) for px, py in pts]
+        tip = _soft(x - pts[-1][0], y - pts[-1][1], 0.05, 1.0)
+        return np.clip(_strokes([pts], 0.007, 0.12) + tip, 0.0, 1.0), (196, 44, 52)
+    if variant == 2:
+        specks = sum(_soft(x - dx, y - dy, 0.04, 1.4) for dx, dy in ((-0.09, 0.04), (0.06, -0.08), (0.10, 0.08), (-0.02, -0.02)))
+        return np.clip(_soft(x, y, 0.24, 1.8) * 0.25 + specks * 0.6, 0.0, 1.0), colour
+    rx, ry = _turned(x, y, 0.4)
+    body = _soft(rx, ry, 0.06, 1.0, squash=1.8)
+    wings = _soft(rx - 0.02, ry - 0.07, 0.09, 1.2, squash=0.6) + _soft(rx + 0.04, ry - 0.06, 0.08, 1.2, squash=0.6)
+    return np.clip(body * 1.4 + wings * 0.40, 0.0, 1.0), (52, 56, 46)
+
+
+def _spray_coir(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """What the trade wind carries over the lagoon of Tongatapu. The first
+    two variants are fine spray of the sea: a small drop in a faint mist,
+    and a puff of mist with a few drops in it. The other two are wisps of
+    the fibre of coconut husk, brown, each a few thin curved strands; they
+    have their own colour."""
+    x, y = _cell()
+    if variant == 0:
+        return np.clip(_soft(x, y, 0.07, 1.3) * 1.1 + _soft(x, y, 0.22, 2.2) * 0.30, 0.0, 1.0), colour
+    if variant == 1:
+        drops = sum(_soft(x - dx, y - dy, 0.05, 1.4) for dx, dy in ((-0.12, 0.04), (0.08, -0.10), (0.14, 0.09)))
+        return np.clip(_soft(x, y, 0.26, 1.8) * 0.35 + drops * 0.9, 0.0, 1.0), colour
+    turn = (0.3, -0.7)[variant - 2]
+    lines = []
+    for k in range(3):
+        off = (k - 1) * 0.04
+        bend = 0.06 * (1 if k % 2 else -1)
+        pts = [(-0.28 + 0.56 * t, off + bend * math.sin(math.pi * t * 1.5)) for t in np.linspace(0.0, 1.0, 8)]
+        lines.append([(px * math.cos(turn) - py * math.sin(turn), px * math.sin(turn) + py * math.cos(turn)) for px, py in pts])
+    return _strokes(lines, 0.007, 0.10) * 0.85, (150, 112, 72)
+
+
+def _gum_leaf_ash(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """What drifts over Warrane in the evening. The first two variants are
+    leaves of the gums: long and narrow, curved like a sickle, one grey-
+    green and one dull brown, each with its own turn; they have their own
+    colours. The other two are flakes of pale ash from the fires on the
+    shore, soft, of two sizes."""
+    x, y = _cell()
+    if variant < 2:
+        rx, ry = _turned(x, y, (0.7, -0.5)[variant])
+        half = (0.32, 0.28)[variant]
+        ry = ry - 0.10 * (1.0 - (rx / half) ** 2)
+        width = 0.055 * np.clip(1.0 - (rx / half) ** 2, 0.0, 1.0) ** 0.6
+        blade = np.clip((width - np.abs(ry)) / 0.02, 0.0, 1.0) * (np.abs(rx) < half)
+        rib = np.clip(1.0 - np.abs(ry) / 0.010, 0.0, 1.0) * (np.abs(rx) < half * 0.9)
+        tone = ((132, 146, 120), (150, 116, 84))[variant]
+        return np.clip(blade * 0.95 - rib * 0.25, 0.0, 1.0), tone
+    size = (0.08, 0.12)[variant - 2]
+    rx, ry = _turned(x, y, (0.4, -1.0)[variant - 2])
+    lumps = _soft(rx, ry, size, 1.2, squash=1.6) + _soft(rx - size * 0.8, ry + size * 0.3, size * 0.6, 1.2) * 0.8
+    return np.clip(lumps * 1.0 + _soft(x, y, size * 2.6, 2.4) * 0.12, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -885,6 +975,15 @@ MOTES = {
     "history_mbanza_kongo": (_palm_fibre, (226, 204, 150)),
     "history_matamba": (_dry_leaf_dust, (214, 150, 100)),
     "history_congo_river_1900": (_drizzle_mist, (214, 218, 210)),
+    # Sand, a bush fly and grass seed over Lake Mungo; stamens of the
+    # pōhutukawa and fern spores in Aotearoa; spray and coconut fibre over
+    # the lagoon of Tonga; thistle-down on the lawn at Waitangi; gum leaves
+    # and ash at Sydney Cove.
+    "history_willandra": (_sand_fly, (238, 226, 200)),
+    "history_aotearoa": (_stamen_spore, (226, 230, 200)),
+    "history_tonga": (_spray_coir, (240, 248, 246)),
+    "history_waitangi": (_fluff, (240, 236, 222)),
+    "history_sydney_cove": (_gum_leaf_ash, (206, 202, 194)),
 }
 
 
@@ -984,6 +1083,11 @@ SHADOWS = {
     "history_mbanza_kongo": (60, 28, 20),
     "history_matamba": (62, 36, 24),
     "history_congo_river_1900": (30, 32, 28),
+    "history_willandra": (60, 46, 34),
+    "history_aotearoa": (28, 36, 26),
+    "history_tonga": (46, 52, 42),
+    "history_waitangi": (32, 40, 30),
+    "history_sydney_cove": (36, 34, 30),
 }
 SHADOW_PX = (96, 28)
 

@@ -2392,6 +2392,99 @@ def trading_post_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def treaty_house_door(tile: Tile, c: dict) -> np.ndarray:
+    """The front door of James Busby's house at Waitangi, 1840. The wall is
+    of white weatherboards under the roof of the verandah, which throws a
+    shade on its top; two thin white posts of the verandah stand at the
+    sides. The door is of six panels in a plain white casing, with a light
+    of glass over it and a small knob of brass."""
+    _frame(tile, c)
+    floor = H - STEP
+    wall = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, F, W - F, floor))
+    tile.put(wall, c["board"])
+    board = (tile.y - F) % 4.6
+    tile.put(wall * (board < 0.5), c["dark"], 0.30)
+    tile.put(wall * (board > 0.5) * (board < 1.2), (255, 255, 255), 0.35)
+    tile.tone((tile.noise(3, 12, 2) - 0.5) * 0.06 * wall)
+    # The verandah: the edge of its roof of boards at the top, its shade
+    # on the wall, and its two posts.
+    roof_low = 18.0
+    tile.put(wall * np.clip(1.0 - (tile.y - roof_low) / 18.0, 0, 1) * (tile.y > roof_low - 1.0), (0, 0, 0), 0.30)
+    roof = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(0.0, F), (W, F), (W, roof_low), (0.0, roof_low)]))
+    tile.put(roof, c["roof"])
+    tile.put(roof * (np.abs(((tile.y - F) % 3.2) - 1.6) < 0.3), c["dark"], 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, roof_low - 2.2, W, roof_low)), c["post"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, 0.0, roof_low - 0.6, W, roof_low)), c["dark"], 0.35)
+    for px in (F + 1.2, W - F - 3.2):
+        post = tile.mask(lambda p, dx, dy: _box(p, dx, dy, px, roof_low, px + 2.0, floor))
+        tile.put(post, c["post"])
+        tile.put(post * (tile.x > px + 1.4), c["dark"], 0.25)
+    # The casing, the light over the door, and the door of six panels.
+    x0, x1, top = 16.0, W - 16.0, 42.0
+    casing = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 2.6, top - 13.0, x1 + 2.6, floor))
+    tile.put(casing, c["frame"])
+    tile.put(casing * (tile.x < x0 - 1.8), c["frame_light"], 0.5)
+    tile.put(casing * (tile.x > x1 + 1.8), c["dark"], 0.25)
+    _window(tile, c, x0 + 1.0, top - 11.0, x1 - 1.0, top - 3.0)
+    for k in range(1, 4):
+        xx = x0 + 1.0 + k * (x1 - x0 - 2.0) / 4.0
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, xx - 0.3, top - 11.0, xx + 0.3, top - 3.0)), c["frame"])
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, top - 1.0, x1, floor - 0.4))
+    tile.put(leaf, c["leaf"])
+    rows = ((top + 2.0, top + 15.0), (top + 18.0, top + 40.0), (top + 43.0, floor - 3.0))
+    for y0, y1 in rows:
+        for xa, xb in ((x0 + 2.4, W * 0.5 - 1.2), (W * 0.5 + 1.2, x1 - 2.4)):
+            panel = tile.mask(lambda p, dx, dy: _box(p, dx, dy, xa, y0, xb, y1)) * leaf
+            tile.put(panel, _mix(c["leaf"], c["dark"], 0.10))
+            tile.put(panel * ((tile.x < xa + 0.8) | (tile.y < y0 + 0.8)), c["dark"], 0.45)
+            tile.put(panel * ((tile.x > xb - 0.8) | (tile.y > y1 - 0.8)), c["leaf_light"], 0.45)
+            inner = tile.mask(lambda p, dx, dy: _box(p, dx, dy, xa + 1.8, y0 + 1.8, xb - 1.8, y1 - 1.8)) * panel
+            tile.put(inner, c["leaf"])
+            tile.put(inner * (tile.x < xa + 2.4), c["leaf_light"], 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x1 - 3.4, 82.0, 1.1)), c["brass"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x1 - 3.7, 81.7, 0.45)), (255, 240, 200), 0.6)
+    return leaf
+
+
+def tent_flap_door(tile: Tile, c: dict) -> np.ndarray:
+    """The door of a tent of the camp at Sydney Cove, 1788: plain canvas,
+    worn and a little stained, held on its poles by the frame. Two flaps
+    meet at the middle and close with three pairs of tapes; the seams of
+    the cloth run down each flap; a hem and a lacing of rope are at the
+    foot. Where the flaps part a little at the top, the light of a lamp
+    inside shows. Muted and plain."""
+    leaf = _frame(tile, c)
+    floor = H - STEP
+    tile.put(leaf, c["leaf"])
+    tile.tone((tile.noise(4, 10, 3) - 0.5) * 0.16 * leaf)
+    tile.put(leaf * np.clip((tile.noise(3, 6, 2) - 0.62) * 4.0, 0, 1), c["stain"], 0.30)
+    # The folds of each flap: soft shades that run down from the top, and
+    # the seams of the cloth.
+    fold = np.sin((tile.x - F) / (W - 2 * F) * math.pi * 5.0 + tile.y * 0.02)
+    tile.put(leaf * np.clip(fold, 0, 1), c["dark"], 0.10)
+    tile.put(leaf * np.clip(-fold, 0, 1), c["leaf_light"], 0.12)
+    for sx in (F + 9.0, W - F - 9.0):
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, sx - 0.25, F, sx + 0.25, floor)) * leaf, c["dark"], 0.35)
+    # The two flaps meet at the middle: the right flap laps over the left,
+    # with its edge a little dark below it.
+    tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.5), c["dark"], 0.55)
+    tile.put(leaf * (tile.x > W * 0.5 + 0.5) * (tile.x < W * 0.5 + 1.6), c["leaf_light"], 0.35)
+    # The gap at the top where the flaps part, with the lamp light in it.
+    gap = [(W * 0.5 - 3.6, F + 1.0), (W * 0.5 + 3.6, F + 1.0), (W * 0.5 + 0.4, F + 16.0), (W * 0.5 - 0.4, F + 16.0)]
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, gap)), c["glow"])
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, gap), blur=2.0) * leaf, c["glow"], 0.25)
+    # The tapes that tie the flaps.
+    for y in (42.0, 66.0, 90.0):
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(W * 0.5 - 3.0, y - 1.0), (W * 0.5, y), (W * 0.5 + 3.0, y - 1.0)], 0.45), _line(p, dx, dy, [(W * 0.5, y), (W * 0.5 - 1.4, y + 4.0)], 0.40), _line(p, dx, dy, [(W * 0.5, y), (W * 0.5 + 1.6, y + 3.6)], 0.40)]), c["tape"])
+    # The hem at the foot and the rope that laces it.
+    hem = leaf * (tile.y > floor - 5.0)
+    tile.put(hem, _mix(c["leaf"], c["dark"], 0.15))
+    tile.put(leaf * (np.abs(tile.y - (floor - 5.0)) < 0.35), c["dark"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, floor - 2.5, 0.6) for x in np.arange(F + 3.0, W - F, 5.0)]), c["dark"], 0.7)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, floor - 2.5), (x + 2.5, floor + 0.2)], 0.3) for x in np.arange(F + 3.0, W - F, 5.0)]), c["tape"], 0.8)
+    return leaf
+
+
 MOTIONS: dict[Draw, tuple[str, bool]] = {
     bulkhead: (SLIDE, True),
     iron: (SWING, False),
@@ -2440,6 +2533,8 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     bricktown_door: (SWING, True),
     kongo_gate_door: (SWING, True),
     trading_post_door: (SWING, False),
+    treaty_house_door: (SWING, False),
+    tent_flap_door: (SLIDE, True),
 }
 
 
@@ -2639,6 +2734,20 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "history_matamba": (palisade_gate_door, {**_colours((132, 98, 66), (144, 110, 74), (44, 30, 20), (170, 98, 60), (255, 204, 120)), "cord": (198, 164, 104)}),
     "history_congo_river_1900": (trading_post_door, {**_colours((168, 164, 150), (110, 100, 84), (32, 32, 30), (120, 118, 110), (220, 206, 160)),
                                                      "board": (124, 120, 106), "tin": (130, 132, 130), "rust": (130, 84, 58), "post": (150, 146, 134), "iron": (40, 40, 42)}),
+    # Australia and Aotearoa. Lake Mungo: the hide door of a shelter of
+    # bent poles, as at Sahul, with the light of the fire in its smoke
+    # hole. Aotearoa: a door of bundled raupō reeds in a frame of poles, the
+    # door of a whare; no carving. Tonga: a mat of plaited pandanus hung in
+    # the doorway of a fale, the door of the Lapita. Waitangi: the door of
+    # six panels of James Busby's house under its verandah. Sydney Cove:
+    # the two flaps of a plain canvas tent of the camp.
+    "history_willandra": (hide_door, _colours((124, 102, 80), (172, 140, 104), (46, 34, 26), (200, 140, 98), (255, 190, 110))),
+    "history_aotearoa": (reed_door, _colours((98, 76, 54), (176, 150, 100), (34, 28, 22), (168, 64, 52), (255, 214, 150))),
+    "history_tonga": (mat_door, _colours((112, 84, 58), (206, 178, 122), (40, 32, 24), (122, 74, 48), (255, 214, 150))),
+    "history_waitangi": (treaty_house_door, {**_colours((226, 222, 212), (86, 98, 88), (36, 34, 32), (176, 170, 160), (255, 226, 170)),
+                                             "board": (232, 230, 220), "roof": (122, 116, 110), "post": (238, 236, 228), "brass": (200, 170, 90)}),
+    "history_sydney_cove": (tent_flap_door, {**_colours((118, 100, 80), (188, 180, 160), (40, 36, 32), (172, 130, 84), (236, 196, 130)),
+                                             "stain": (150, 132, 104), "tape": (150, 132, 104)}),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),
