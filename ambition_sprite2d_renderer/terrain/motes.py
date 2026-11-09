@@ -809,6 +809,66 @@ def _gum_leaf_ash(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
     return np.clip(lumps * 1.0 + _soft(x, y, size * 2.6, 2.4) * 0.12, 0.0, 1.0), colour
 
 
+def _spray_leaf(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """What the trade wind carries over the coast of Guåhan. The first two
+    variants are fine spray of the sea: a small drop in a faint mist, and a
+    puff of mist with a few drops in it. The other two are small leaves
+    torn from the trees, oval and pointed, with a pale rib: one fresh green
+    and one dry brown; they have their own colours."""
+    x, y = _cell()
+    if variant == 0:
+        return np.clip(_soft(x, y, 0.07, 1.3) * 1.1 + _soft(x, y, 0.22, 2.2) * 0.30, 0.0, 1.0), colour
+    if variant == 1:
+        drops = sum(_soft(x - dx, y - dy, 0.05, 1.4) for dx, dy in ((-0.12, 0.04), (0.08, -0.10), (0.14, 0.09)))
+        return np.clip(_soft(x, y, 0.26, 1.8) * 0.35 + drops * 0.9, 0.0, 1.0), colour
+    rx, ry = _turned(x, y, (0.6, -0.9)[variant - 2])
+    half = (0.28, 0.24)[variant - 2]
+    width = 0.11 * np.clip(1.0 - (rx / half) ** 2, 0.0, 1.0) ** 0.7
+    blade = np.clip((width - np.abs(ry)) / 0.025, 0.0, 1.0) * (np.abs(rx) < half)
+    rib = np.clip(1.0 - np.abs(ry) / 0.012, 0.0, 1.0) * (np.abs(rx) < half * 0.9)
+    tone = ((92, 140, 70), (156, 118, 72))[variant - 2]
+    return np.clip(blade * 0.95 - rib * 0.30, 0.0, 1.0), tone
+
+
+def _dusk_mist(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """The still air over the canals of Nan Madol at dusk. The first two
+    variants are soft wisps of mist, wider than tall, of two sizes. The
+    third is a small midge: a dark speck of a body with two pale wings; it
+    has its own dark colour. The fourth is two wisps that drift
+    together."""
+    x, y = _cell()
+    if variant < 2:
+        r = (0.20, 0.27)[variant]
+        return np.clip(_soft(x, y, r, 1.6, squash=1.9) * (0.50, 0.40)[variant], 0.0, 1.0), colour
+    if variant == 2:
+        rx, ry = _turned(x, y, 0.3)
+        body = _soft(rx, ry, 0.07, 1.0, squash=1.8)
+        wings = _soft(rx - 0.02, ry + 0.08, 0.10, 1.2, squash=0.6) + _soft(rx + 0.04, ry + 0.07, 0.09, 1.2, squash=0.6)
+        return np.clip(body * 1.4 + wings * 0.45, 0.0, 1.0), (52, 46, 46)
+    return np.clip(_soft(x + 0.09, y + 0.04, 0.22, 1.6, squash=1.5) * 0.40 + _soft(x - 0.12, y - 0.06, 0.17, 1.6, squash=1.6) * 0.34, 0.0, 1.0), colour
+
+
+def _betel_bits(colour: RGB, variant: int) -> tuple[np.ndarray, RGB]:
+    """What drifts along a path of Yap under the betel palms. The first two
+    variants are small leaves: a narrow green leaflet of a palm frond and a
+    dry brown one, each with its own turn; they have their own colours. The
+    other two are bits of the flowers of the betel palm: a few small cream
+    specks on a thin stalk, and one soft cream speck."""
+    x, y = _cell()
+    if variant < 2:
+        rx, ry = _turned(x, y, (0.4, -1.1)[variant])
+        half = (0.32, 0.27)[variant]
+        width = 0.055 * np.clip(1.0 - (rx / half) ** 2, 0.0, 1.0) ** 0.6
+        blade = np.clip((width - np.abs(ry)) / 0.02, 0.0, 1.0) * (np.abs(rx) < half)
+        tone = ((96, 146, 74), (160, 126, 80))[variant]
+        return np.clip(blade * 0.95, 0.0, 1.0), tone
+    if variant == 2:
+        stalk = _strokes([[(-0.22, 0.10), (0.0, 0.0), (0.22, -0.08)]], 0.006, 0.05)
+        specks = sum(_soft(x - dx, y - dy, 0.045, 1.2) for dx, dy in ((-0.14, 0.02), (-0.04, -0.05), (0.08, -0.01), (0.17, -0.12), (0.02, 0.07)))
+        return np.clip(stalk * 0.6 + specks * 1.1, 0.0, 1.0), colour
+    return np.clip(_soft(x, y, 0.07, 1.2) * 1.1 + _soft(x, y, 0.18, 2.4) * 0.20, 0.0, 1.0), colour
+
+
 #: The mote of each theme: how it is drawn, and its colour.
 MOTES = {
     "hub": (_dot, (206, 214, 255)),
@@ -987,6 +1047,17 @@ MOTES = {
     # Leaves of the manna gums and pale ash from the smoking trees drift
     # over Budj Bim.
     "history_budj_bim": (_gum_leaf_ash, (214, 212, 204)),
+    # Spray and torn leaves over the coast of Guåhan; spray and coconut
+    # fibre over the atoll of the Marshalls; mist and midges over the canals
+    # of Nan Madol at dusk; leaves and bits of betel flowers on Yap; pale
+    # phosphate dust on Nauru; only a little sea spray over Bikini, no ash
+    # and no flakes.
+    "history_marianas": (_spray_leaf, (240, 248, 246)),
+    "history_marshalls": (_spray_coir, (240, 248, 246)),
+    "history_nan_madol": (_dusk_mist, (226, 200, 184)),
+    "history_yap": (_betel_bits, (240, 232, 200)),
+    "history_nauru": (_dust, (226, 220, 206)),
+    "history_bikini": (_spray, (196, 208, 212)),
 }
 
 
@@ -1092,6 +1163,12 @@ SHADOWS = {
     "history_waitangi": (32, 40, 30),
     "history_sydney_cove": (36, 34, 30),
     "history_budj_bim": (30, 32, 30),
+    "history_marianas": (40, 44, 32),
+    "history_marshalls": (46, 52, 42),
+    "history_nan_madol": (20, 20, 24),
+    "history_yap": (30, 36, 28),
+    "history_nauru": (54, 50, 44),
+    "history_bikini": (44, 46, 44),
 }
 SHADOW_PX = (96, 28)
 

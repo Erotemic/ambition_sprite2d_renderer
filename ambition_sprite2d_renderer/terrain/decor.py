@@ -4427,6 +4427,191 @@ def basalt_stack(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+# Micronesia. In each palette `stone` is the room's stone (limestone,
+# basalt or coral rock), `wood` the brown of husk, dry leaf or phosphate,
+# `metal` the grey of iron, `plant` the green of leaves and `bloom` the
+# bright colour of a leaf or a fruit.
+
+
+def breadfruit_fall(tile: Tile, c: dict) -> None:
+    """A breadfruit fallen under its tree: a round green fruit with the
+    small six-sided bumps of its skin and a short stalk, and beside it a big
+    fallen leaf with deep lobes, its edge curled up a little."""
+    _shadow(tile, 9.0)
+    leaf = _mix(c["plant"], c["wood"], 0.35)
+    rib = [(M - 9.0, G - 1.0), (M - 4.0, G - 2.2), (M + 1.0, G - 2.6)]
+    lobes = []
+    for t, (x, y) in zip((0.2, 0.5, 0.8), _curve(rib[0], rib[2], rib[1], 4)[1:]):
+        lobes.append([(x - 1.2, y + 0.2), (x - 0.4, y - 3.4 + t), (x + 0.9, y + 0.1)])
+    body = tile.mask(lambda p, dx, dy: (_poly(p, dx, dy, [(M - 9.4, G - 0.6), (M - 4.0, G - 3.4), (M + 1.4, G - 3.0), (M + 1.0, G - 0.2), (M - 8.6, G)]), [_poly(p, dx, dy, q) for q in lobes]))
+    tile.put(body, leaf)
+    tile.put(body * (tile.y > G - 1.4), c["dark"], 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, rib, 0.25)), _mix(leaf, c["stone_light"], 0.4), 0.7)
+    fruit = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 4.6, G - 4.8, 4.9, ry=4.6))
+    tile.put(fruit, _mix(c["plant"], c["bloom"], 0.45))
+    bumps = (np.abs(((tile.x * 1.1) % 1.6) - 0.8) < 0.14) | (np.abs(((tile.y * 1.1 + np.floor(tile.x * 1.1 / 1.6) * 0.8) % 1.6) - 0.8) < 0.14)
+    tile.put(fruit * bumps, _mix(c["plant"], c["dark"], 0.4), 0.35)
+    tile.put(fruit * (tile.x < M + 3.0) * (tile.y < G - 6.0), (236, 240, 190), 0.35)
+    tile.put(fruit * (tile.y > G - 2.4), c["dark"], 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 4.4, G - 9.2), (M + 5.0, G - 11.0), (M + 6.2, G - 11.8)], 0.5)), c["wood"])
+    tile.alpha *= tile.y < G
+
+
+def tasa_stone(tile: Tile, c: dict) -> None:
+    """A tasa, the capstone of a latte, that has fallen and lies on its
+    side: a half ball of pale limestone, its round side to the left and
+    its flat face tipped toward the eye at the right, rough with pits, with
+    a little moss and grass at its foot."""
+    _shadow(tile, 9.5)
+    turn = math.radians(-62.0)
+    pts = []
+    for t in np.linspace(0.0, math.pi, 18):
+        x, y = 8.0 * math.cos(t), 5.6 * math.sin(t)
+        pts.append((M - 1.0 + x * math.cos(turn) - y * math.sin(turn), G - 7.2 + x * math.sin(turn) + y * math.cos(turn)))
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts))
+    tile.put(body, c["stone"])
+    face = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(pts[0][0] + (pts[-1][0] - pts[0][0]) * t + math.sin(math.pi * t) * 1.6, pts[0][1] + (pts[-1][1] - pts[0][1]) * t) for t in np.linspace(0.0, 1.0, 10)]
+                                                + [(pts[-1][0] - 0.2, pts[-1][1]), (pts[0][0] - 0.2, pts[0][1])]))
+    tile.put(face, c["stone_light"])
+    tile.put(body * (tile.x < M - 4.0), c["stone_light"], 0.25)
+    tile.put(body * (tile.y > G - 3.4), c["dark"], 0.30)
+    pits = [(M - 5.0 + (k * 3.7) % 7.0, G - 3.0 - (k * 2.3) % 7.5, 0.35 + 0.1 * (k % 3)) for k in range(9)]
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r) for x, y, r in pits]) * body * (1.0 - face), c["dark"], 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M - 6.0, G - 1.2, 3.2, ry=1.4), _dot(p, dx, dy, M + 5.0, G - 0.8, 2.4, ry=1.0))), c["plant"], 0.85)
+    blades = [[(M + x, G), (M + x + lean, G - h)] for x, lean, h in ((-8.0, -0.6, 3.6), (-7.0, 0.4, 4.4), (6.0, 0.6, 3.4), (7.4, -0.3, 2.8))]
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, b, 0.3) for b in blades]), _mix(c["plant"], c["dark"], 0.2))
+    tile.alpha *= tile.y < G
+
+
+def basalt_columns(tile: Tile, c: dict) -> None:
+    """Loose columns of black basalt, as they lie by a wall of Nan Madol:
+    two side by side on the ground and one on them, each long and of six
+    faces, with its end of six sides toward the eye at the right."""
+    _shadow(tile, 10.0)
+    for x0, x1, cy, r, tone in ((M - 9.0, M + 4.0, G - 2.6, 2.6, 0.0), (M - 6.0, M + 7.6, G - 2.4, 2.4, 0.12), (M - 7.6, M + 5.6, G - 6.8, 2.5, -0.08)):
+        body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0, cy - r * 0.85), (x1, cy - r * 0.85), (x1 + r * 0.5, cy), (x1, cy + r * 0.95), (x0, cy + r * 0.95), (x0 - r * 0.4, cy)]))
+        colour = _mix(c["stone"], c["stone_light"] if tone > 0 else c["dark"], abs(tone) * 2.0)
+        tile.put(body, colour)
+        tile.put(body * (tile.y < cy - r * 0.35), c["stone_light"], 0.35)
+        tile.put(body * (tile.y > cy + r * 0.40), c["dark"], 0.45)
+        tile.put(body * (np.abs(tile.y - (cy - r * 0.35)) < 0.12), c["dark"], 0.35)
+        hexa = [(x1 + r * 0.9 * math.cos(math.radians(30.0 + 60.0 * i)) * 0.55, cy + r * 0.95 * math.sin(math.radians(30.0 + 60.0 * i))) for i in range(6)]
+        end = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, hexa))
+        tile.put(end, _mix(colour, c["stone_light"], 0.25))
+        tile.put(end * (tile.x > x1 + 0.4), c["dark"], 0.25)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - y, 0.9, ry=0.5) for x, y in ((-3.0, 9.2), (0.6, 9.0), (-1.4, 4.6))]), c["plant"], 0.75)
+    tile.alpha *= tile.y < G
+
+
+def mangrove_roots(tile: Tile, c: dict) -> None:
+    """A young mangrove at the edge of the water: prop roots that arch out
+    from a short trunk down into the mud, a few on each side, and a small
+    crown of thick oval leaves on its top."""
+    _shadow(tile, 9.5)
+    root = _mix(c["wood"], c["dark"], 0.30)
+    top = (M + 0.4, G - 10.0)
+    arches = [_curve((M + 0.3 * k, G - 7.0 - 0.6 * abs(k)), (M + k * 2.4, G), (M + k * 1.9, G - 7.6 + abs(k) * 0.4), 8) for k in (-3, -2, -1, 1, 2, 3)]
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, a, 0.6) for a in arches]), root)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M, G - 6.0), (M + 0.2, G - 8.0), top], 1.2)), root)
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 0.4, G - 6.0), (M - 0.2, G - 9.0)], 0.4)), _mix(root, c["stone_light"], 0.35), 0.6)
+    leaves = [(top[0] + x, top[1] + y, a) for x, y, a in ((-4.0, -1.2, -0.5), (-2.0, -3.4, -0.2), (0.6, -4.2, 0.1), (3.0, -3.0, 0.4), (4.4, -0.8, 0.7), (-3.0, 0.8, -0.8), (2.6, 0.6, 0.9), (0.0, -1.6, 0.0))]
+    for k, (x, y, a) in enumerate(leaves):
+        pts = [(x + 2.0 * math.cos(t) * math.cos(a) - 1.0 * math.sin(t) * math.sin(a), y + 2.0 * math.cos(t) * math.sin(a) + 1.0 * math.sin(t) * math.cos(a)) for t in np.linspace(0.0, math.tau, 12)]
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts)), c["plant"] if k % 2 else _mix(c["plant"], c["dark"], 0.25))
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 0.3, 6.0, ry=0.6)), c["dark"], 0.35)
+    tile.alpha *= tile.y < G
+
+
+def rai_stone(tile: Tile, c: dict) -> None:
+    """A small rai, a disc of stone money, that stands on edge on the path
+    and leans a little on a stone: pale grey-white limestone, rough, with
+    the round hole in its middle, lit on the left and in shade on the
+    right."""
+    _shadow(tile, 8.0)
+    cx, cy, r = M + 0.4, G - 7.6, 7.4
+    disc = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(cx + r * 0.88 * math.cos(t) + (cy - (cy + r * math.sin(t))) * 0.10, cy + r * math.sin(t)) for t in np.linspace(0.0, math.tau, 30)]))
+    hole = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, cx + 0.4, cy, 1.5, ry=1.6))
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 7.4, G - 1.4, 2.0, ry=1.4)), _mix(c["stone"], c["dark"], 0.35))
+    tile.put(disc, c["stone_light"])
+    tile.put(disc * np.clip((tile.noise(8, 8, 2) - 0.55) * 4.0, 0.0, 1.0), c["stone"], 0.6)
+    tile.put(disc * (tile.x > cx + 3.0), c["stone"], 0.45)
+    tile.put(disc * (tile.x > cx + 5.6), c["dark"], 0.25)
+    tile.put(disc * (tile.x < cx - 4.4) * (tile.y < cy), (255, 252, 240), 0.25)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, cx + 0.6, cy + 0.4, 1.9, ry=2.0)) * disc, c["dark"], 0.35)
+    tile.alpha *= (1.0 - hole) * (tile.y < G)
+
+
+def croton_bush(tile: Tile, c: dict) -> None:
+    """A croton bush of a village garden: broad, stiff leaves that point up
+    and out from a few stems, some green with gold veins and some red and
+    orange."""
+    _shadow(tile, 8.0)
+    gold = _mix(c["bloom"], (236, 206, 90), 0.6)
+    leaves = []
+    for k in range(15):
+        a = math.radians(-160.0 + k * 140.0 / 14.0 + ((k * 37) % 11 - 5))
+        length = 6.0 + (k * 13 % 5)
+        base = (M + math.cos(a) * 1.0, G - 1.0 - (k % 3) * 1.6)
+        tip = (base[0] + math.cos(a) * length, max(2.0, base[1] + math.sin(a) * length * 0.9))
+        leaves.append((base, tip, k % 3))
+    for base, tip, kind in leaves:
+        mid = ((base[0] + tip[0]) * 0.5, (base[1] + tip[1]) * 0.5)
+        nx, ny = -(tip[1] - base[1]), tip[0] - base[0]
+        n = math.hypot(nx, ny) or 1.0
+        w = 1.3
+        pts = [base, (mid[0] + nx / n * w, mid[1] + ny / n * w), tip, (mid[0] - nx / n * w, mid[1] - ny / n * w)]
+        colour = (c["plant"], c["bloom"], gold)[kind]
+        tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts)), colour)
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [base, tip], 0.18)), gold if kind == 0 else _mix(colour, c["dark"], 0.35), 0.7)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 0.8, 2.4, ry=1.0)), c["dark"], 0.55)
+    tile.alpha *= tile.y < G
+
+
+def pinnacle_stub(tile: Tile, c: dict) -> None:
+    """A pinnacle of coral limestone of the topside of Nauru, left when the
+    phosphate round it was dug out: a sharp, pale grey-white spire with
+    jagged sides and upright grooves, lit on the left, and the brown
+    phosphate earth heaped low at its foot."""
+    _shadow(tile, 9.0)
+    pts = [(M - 7.0, G), (M - 5.6, G - 6.0), (M - 4.0, G - 9.0), (M - 3.2, G - 13.0), (M - 1.2, G - 15.4), (M - 0.2, G - 19.0), (M + 1.0, G - 15.8),
+           (M + 2.4, G - 12.6), (M + 3.0, G - 10.8), (M + 5.0, G - 7.2), (M + 5.6, G - 4.0), (M + 7.0, G)]
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts))
+    tile.put(body, c["stone_light"])
+    tile.put(body * (tile.x > M + 0.2), c["stone"], 0.55)
+    grooves = np.abs(((tile.x + (G - tile.y) * 0.05) % 1.8) - 0.9) < 0.18
+    tile.put(body * grooves, c["dark"], 0.18)
+    tile.put(body * (1.0 - tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x + 0.7, y) for x, y in pts]))), (255, 252, 240), 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - y, 0.4, ry=0.6) for x, y in ((-2.0, 6.0), (1.6, 9.0), (-3.4, 3.0), (2.8, 4.6))]), c["dark"], 0.5)
+    heap = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M - 7.6, G - 0.2, 3.6, ry=2.2), _dot(p, dx, dy, M + 7.4, G - 0.2, 3.2, ry=1.8)))
+    tile.put(heap, c["wood"])
+    tile.put(heap * (tile.y < G - 1.4), _mix(c["wood"], c["stone_light"], 0.25), 0.6)
+    tile.alpha *= tile.y < G
+
+
+def ore_cart(tile: Tile, c: dict) -> None:
+    """A small tip cart of the phosphate works on its short length of
+    narrow rail: a box of steel plate that tips, on a frame with two small
+    iron wheels, heaped with brown phosphate."""
+    _shadow(tile, 10.0)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 10.4, G - 1.0, M + 10.4, G - 0.2)), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M + x - 1.0, G - 0.4, M + x + 1.0, G) for x in (-8.0, -2.6, 2.8, 8.2)]), c["wood"], 0.8)
+    for x in (-4.6, 4.6):
+        wheel = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x, G - 2.6, 1.9))
+        tile.put(wheel, _mix(c["metal"], c["dark"], 0.45))
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x, G - 2.6, 0.6)), c["stone_light"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 7.6, G - 5.0, M + 7.6, G - 3.8)), _mix(c["metal"], c["dark"], 0.3))
+    heap = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 11.4, 6.8, ry=2.8))
+    box = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 8.6, G - 11.4), (M + 8.6, G - 11.4), (M + 6.6, G - 5.0), (M - 6.6, G - 5.0)]))
+    tile.put(heap * (tile.y < G - 11.0), c["wood"])
+    tile.put(heap * (tile.y < G - 12.6) * (tile.x < M), _mix(c["wood"], c["stone_light"], 0.30), 0.6)
+    tile.put(box, c["metal"])
+    tile.put(box * (tile.y < G - 10.4), _mix(c["metal"], c["stone_light"], 0.40), 0.6)
+    tile.put(box * (tile.x > M + 4.0), c["dark"], 0.30)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - 10.2, 0.3) for x in np.arange(-7.0, 7.5, 2.0)]), c["dark"], 0.7)
+    tile.put(box * np.clip((tile.noise(10, 10, 2) - 0.62) * 4.0, 0.0, 1.0), (138, 92, 64), 0.45)
+    tile.alpha *= tile.y < G
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -4639,6 +4824,26 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # eel trap, a dry stack of basalt from a weir, and bracken.
     "history_budj_bim": ((reeds, moss_stone, eel_trap, basalt_stack, fern, reeds),
                          _palette((26, 26, 26), (82, 80, 78), (140, 138, 130), (196, 172, 116), (176, 184, 150), (92, 116, 62), (138, 96, 66), (255, 200, 130))),
+    # Micronesia. The Marianas: ferns, a fallen breadfruit and its leaf, a
+    # fallen tasa of a latte, coconuts and shells. The Marshalls: pandanus,
+    # coconuts, a dead palm frond, shells, a rolled mat and a coil of coir
+    # rope. Nan Madol: ferns, loose basalt columns, a young mangrove, a
+    # mossy stone and reeds. Yap: crotons, small rai on edge, a fern and
+    # coconuts. Nauru: limestone pinnacles, dry scrub, a tip cart of
+    # phosphate and coconuts. Bikini, muted: pandanus, coconuts, a rolled
+    # mat, shells, a crate and a palm frond, left behind.
+    "history_marianas": ((fern, breadfruit_fall, tasa_stone, coconuts, sea_shells, fern),
+                         _palette((34, 36, 28), (184, 176, 156), (228, 222, 204), (150, 112, 72), (80, 80, 80), (78, 124, 60), (186, 206, 96), (255, 220, 160))),
+    "history_marshalls": ((pandanus, coconuts, palm_frond, sea_shells, rolled_mat, rope_coil),
+                          _palette((40, 36, 30), (176, 168, 150), (240, 232, 212), (160, 124, 80), (90, 96, 90), (86, 130, 66), (224, 150, 120), (255, 222, 160))),
+    "history_nan_madol": ((fern, basalt_columns, mangrove_roots, moss_stone, reeds, basalt_columns),
+                          _palette((22, 22, 26), (58, 56, 60), (120, 112, 110), (96, 76, 58), (60, 60, 64), (74, 100, 60), (150, 110, 90), (255, 186, 110))),
+    "history_yap": ((croton_bush, rai_stone, fern, coconuts, rai_stone, croton_bush),
+                    _palette((30, 28, 24), (170, 166, 154), (222, 218, 206), (130, 96, 64), (80, 80, 80), (70, 120, 60), (200, 80, 46), (255, 220, 160))),
+    "history_nauru": ((pinnacle_stub, saltbush, ore_cart, coconuts, pinnacle_stub, grass_tuft),
+                      _palette((44, 40, 36), (176, 172, 160), (226, 224, 214), (128, 96, 68), (96, 98, 100), (128, 136, 92), (200, 170, 110), (255, 230, 180))),
+    "history_bikini": ((pandanus, coconuts, rolled_mat, sea_shells, crate, palm_frond),
+                       _palette((44, 46, 44), (150, 150, 144), (200, 200, 192), (140, 130, 112), (96, 98, 100), (108, 122, 104), (170, 160, 140), (210, 212, 206))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),

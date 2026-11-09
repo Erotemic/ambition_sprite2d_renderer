@@ -48,6 +48,7 @@ from . import history_atlantic as _atlantic
 from . import history_bengal as _bengal
 from . import history_brazil as _brazil
 from . import history_budj_bim as _budj_bim
+from . import history_micronesia as _micronesia
 from . import history_central_africa as _central_africa
 from . import history_east_asia_coast as _east_asia_coast
 from . import history_japan as _japan
@@ -408,6 +409,17 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "history_sydney_cove": (_oceania.sydney_cove_foreground, scale(_oceania.SYDNEY_COVE["near"], 0.9)),
     # Budj Bim: sedges and reeds stand from below.
     "history_budj_bim": (_budj_bim.budj_bim_foreground, scale(_budj_bim.BUDJ_BIM["near"], 0.9)),
+    # Micronesia: breadfruit leaves and a coconut frond hang in the
+    # Marianas; pandanus leaves and coconut fronds in the Marshalls; a
+    # mangrove branch hangs and tree-fern fronds stand at Nan Madol; betel
+    # fronds hang and croton leaves stand on Yap; dry scrub stands and a
+    # frond hangs on Nauru; still grey-green fronds hang at Bikini.
+    "history_marianas": (_micronesia.marianas_foreground, scale(_micronesia.MARIANAS["near"], 0.9)),
+    "history_marshalls": (_micronesia.marshalls_foreground, scale(_micronesia.MARSHALLS["near"], 0.9)),
+    "history_nan_madol": (_micronesia.nan_madol_foreground, scale(_micronesia.NAN_MADOL["near"], 0.9)),
+    "history_yap": (_micronesia.yap_foreground, scale(_micronesia.YAP["near"], 0.9)),
+    "history_nauru": (_micronesia.nauru_foreground, scale(_micronesia.NAURU["near"], 0.9)),
+    "history_bikini": (_micronesia.bikini_foreground, scale(_micronesia.BIKINI["near"], 0.9)),
 }
 
 

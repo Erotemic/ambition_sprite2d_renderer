@@ -38,6 +38,7 @@ from PIL import Image
 
 from . import arenas, art_dimension, art_quarters, eureka, evil, foregrounds, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_oceania, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from . import history_budj_bim
+from . import history_micronesia
 from .artkit import Art
 from .parts import LAYER_BLUR, LAYER_SIZE
 
@@ -165,6 +166,13 @@ SCENES: dict[str, Scene] = {
     "history_sydney_cove": history_oceania.history_sydney_cove,
     # Budj Bim, in Gunditjmara country (`history_budj_bim.py`).
     "history_budj_bim": history_budj_bim.history_budj_bim,
+    # The History dimension: Micronesia (`history_micronesia.py`).
+    "history_marianas": history_micronesia.history_marianas,
+    "history_marshalls": history_micronesia.history_marshalls,
+    "history_nan_madol": history_micronesia.history_nan_madol,
+    "history_yap": history_micronesia.history_yap,
+    "history_nauru": history_micronesia.history_nauru,
+    "history_bikini": history_micronesia.history_bikini,
 }
 
 

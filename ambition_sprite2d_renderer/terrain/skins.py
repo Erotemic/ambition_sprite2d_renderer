@@ -416,6 +416,30 @@ SKINS: tuple[Skin, ...] = (
     # moss with sedge and small stones on top; a slab of basalt on small
     # stones is the platform.
     Skin("history_budj_bim", "stony_rise", (78, 76, 74), (24, 24, 26), (132, 130, 124), (178, 184, 152), "basalt_moss", (92, 116, 62), "roots", "flagstone"),
+    # Micronesia. Guåhan: pale limestone with pits, small holes and red
+    # clay in its hollows; ferns and grass on red clay; the floor beam of a
+    # house on its latte stones is the platform.
+    Skin("history_marianas", "latte_limestone", (190, 182, 160), (84, 66, 54), (228, 222, 204), (150, 80, 54), "fern_clay", (86, 132, 62), "roots", "latte_deck"),
+    # An atoll of the Marshalls: coral sand and broken coral set hard, with
+    # heads of brain coral and bits of shell; pale sand under round shrubs
+    # of naupaka; a walk of lashed logs is the platform.
+    Skin("history_marshalls", "coral_rubble", (190, 182, 160), (102, 94, 80), (236, 230, 212), (214, 164, 150), "naupaka", (78, 130, 66), "lip", "lashed_logs"),
+    # Nan Madol: black basalt columns laid crosswise like a log cabin, with
+    # coral rubble in the joints; moss and fern on the basalt; one column of
+    # basalt laid along is the platform.
+    Skin("history_nan_madol", "basalt_crib", (60, 58, 62), (20, 20, 24), (118, 112, 112), (150, 142, 128), "basalt_moss", (82, 108, 62), "roots", "basalt_column"),
+    # Yap: dark earth with the rounded stones of old footings; the flat
+    # paving stones of a path with grass in the joints; a slab of stone on
+    # small stones, the edge of a platform, is the platform.
+    Skin("history_yap", "yap_rubble", (70, 58, 46), (28, 24, 20), (146, 142, 132), (150, 82, 56), "stone_path", (132, 128, 116), "roots", "flagstone"),
+    # Nauru: rows of pinnacles of grey-white limestone with the brown
+    # phosphate earth between them; pale crushed coral with a little dry
+    # scrub; a riveted girder of steel lattice is the platform.
+    Skin("history_nauru", "phosphate_pinnacle", (196, 192, 180), (96, 90, 82), (234, 232, 224), (128, 96, 68), "crushed_coral", (214, 210, 198), "lip", "lattice_girder"),
+    # Bikini, 1946: the coral rock of the atoll in muted greys; pale sand
+    # under low grey-green beach shrubs; a walk of weathered grey planks
+    # on piles is the platform.
+    Skin("history_bikini", "coral_rubble", (168, 166, 156), (90, 90, 86), (206, 204, 196), (170, 166, 156), "naupaka", (112, 126, 108), "lip", "jetty_planks"),
     # Great slabs, each with one sign cut in it that gives a little light.
     Skin("eclipse", "monolith", (30, 34, 86), (10, 12, 36), (72, 78, 152), (92, 232, 200), "edge", (44, 50, 112), "lip", "slab"),
 )
@@ -2223,6 +2247,180 @@ def fill(skin: Skin) -> Image.Image:
         tile.put(patches * np.clip((tile.noise(24, 24, 2) - 0.35) * 3.0, 0.0, 1.0), skin.accent, 0.55)
         orange = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.6, 1.3)) for _ in range(5)]
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r, ry=r * 0.7) for x, y, r in orange]) * inside, (196, 138, 70), 0.55)
+    elif skin.material == "latte_limestone":
+        # The limestone of Guåhan, of which the latte stones were cut: pale
+        # grey-cream rock, rough like a sponge, with round pits and small
+        # dark holes that the rain dissolved, each dark in its top and lit
+        # on its lower lip. Red-brown clay fills the hollows and the cracks
+        # of the rock, as the red soil of the island lies in its karst.
+        tile.put(np.ones_like(tile.alpha), skin.base)
+        tile.tone((tile.noise(4, 4, 4) - 0.5) * 0.16)
+        hollow = tile.noise(5, 5, 3)
+        tile.put(np.clip((hollow - 0.60) * 8.0, 0.0, 1.0), skin.dark, 0.22)
+        tile.put(np.clip((hollow - 0.66) * 7.0, 0.0, 1.0), skin.accent, 0.85)
+        tile.put(np.clip((hollow - 0.72) * 6.0, 0.0, 1.0), _mix(skin.accent, skin.dark, 0.35), 0.5)
+        tile.put(np.clip((tile.noise(24, 24, 2) - 0.62) * 5.0, 0.0, 1.0) * (hollow < 0.62), skin.dark, 0.16)
+        cracks = []
+        for _ in range(5):
+            x, y = rng.uniform(0, 64), rng.uniform(0, 64)
+            pts = [(x, y)]
+            for _ in range(4):
+                x, y = x + rng.uniform(-2.0, 2.0), y + rng.uniform(2.0, 4.5)
+                pts.append((x, y))
+            cracks.append(pts)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.55) for pts in cracks]), _mix(skin.accent, skin.dark, 0.25), 0.8)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x - 0.4, y) for x, y in pts], 0.2) for pts in cracks]), skin.light, 0.45)
+        pits = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.5, 1.6)) for _ in range(22)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y + r * 0.35, r * 1.05, ry=r * 0.85) for x, y, r in pits]), skin.light, 0.45)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r, ry=r * 0.8) for x, y, r in pits]), skin.dark, 0.60)
+        holes = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.25, 0.5)) for _ in range(30)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r) for x, y, r in holes]), skin.dark, 0.8)
+    elif skin.material == "coral_rubble":
+        # The rock of a low coral atoll: coral sand and broken coral set hard
+        # together. Round heads of brain coral, each with its winding
+        # ridges, lie in it; short broken branches of coral, white bits of
+        # shell, and darker patches where the sand is set hard.
+        def wave(v: np.ndarray, n: int) -> np.ndarray:
+            return v * 2.0 * math.pi * n / 64.0
+
+        tile.put(np.ones_like(tile.alpha), skin.base)
+        tile.tone((tile.noise(5, 5, 4) - 0.5) * 0.18)
+        tile.put(np.clip((tile.noise(4, 4, 3) - 0.56) * 4.0, 0.0, 1.0), skin.dark, 0.20)
+        tile.put(np.clip((tile.noise(18, 18, 2) - 0.6) * 4.0, 0.0, 1.0), skin.light, 0.20)
+        heads = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(2.6, 5.0)) for _ in range(7)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x + 0.3, y + 0.7, r * 1.05, ry=r * 0.9) for x, y, r in heads]), skin.dark, 0.45)
+        head = tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r, ry=r * 0.85) for x, y, r in heads])
+        tile.put(head, _mix(skin.light, skin.accent, 0.40))
+        ridges = np.abs(np.sin(wave(tile.x, 22) + 1.6 * np.sin(wave(tile.y, 9)) + 1.2 * np.sin(wave(tile.x + tile.y, 5)))) < 0.32
+        tile.put(head * ridges, _mix(skin.accent, skin.dark, 0.45), 0.45)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - r * 0.3, y - r * 0.3, r * 0.45, ry=r * 0.35) for x, y, r in heads]), skin.light, 0.30)
+        branches = []
+        for _ in range(9):
+            x, y = rng.uniform(0, 64), rng.uniform(0, 64)
+            a = rng.uniform(0.0, math.tau)
+            mid = (x + math.cos(a) * 2.0, y + math.sin(a) * 2.0)
+            branches.append([(x, y), mid, (mid[0] + math.cos(a + 0.6) * 1.6, mid[1] + math.sin(a + 0.6) * 1.6)])
+            branches.append([mid, (mid[0] + math.cos(a - 0.6) * 1.8, mid[1] + math.sin(a - 0.6) * 1.8)])
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(px + 0.3, py + 0.4) for px, py in pts], 0.6) for pts in branches]), skin.dark, 0.4)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.55) for pts in branches]), _mix(skin.light, skin.accent, 0.20), 0.9)
+        shells = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.5, 1.0)) for _ in range(16)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r, ry=r * 0.6) for x, y, r in shells]), _mix(skin.light, (255, 255, 255), 0.4), 0.7)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x - r * 0.7, y + r * 0.3), (x + r * 0.7, y + r * 0.3)], 0.15) for x, y, r in shells]), skin.dark, 0.4)
+    elif skin.material == "basalt_crib":
+        # A wall of Nan Madol: columns of black basalt laid crosswise like a
+        # log cabin. In one course the columns lie along the wall, long and
+        # of five or six faces, so a lit upper face and a dark lower face
+        # show on each; in the next course they lie across it, so only their
+        # ends show, each of five or six sides with the cracks of its
+        # cooling. Coral rubble shows in the dark joints between them.
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        rubble = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.25, 0.55)) for _ in range(80)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r) for x, y, r in rubble]), skin.accent, 0.40)
+        for k in range(8):
+            y0, y1 = k * 8.0 + 0.6, k * 8.0 + 7.4
+            if k % 2 == 0:
+                x = rng.uniform(0.0, 16.0)
+                stop = x + 64.0
+                while x < stop - 0.1:
+                    length = rng.uniform(13.0, 24.0)
+                    if stop - x - length < 7.0:
+                        length = stop - x
+                    x0, x1 = x + 0.35, x + length - 0.35
+                    tone = rng.uniform(-0.14, 0.12)
+                    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0 + 0.7, y0), (x1 - 0.7, y0), (x1, y0 + 1.2), (x1, y1 - 1.0), (x1 - 0.7, y1), (x0 + 0.7, y1), (x0, y1 - 1.0), (x0, y0 + 1.2)]))
+                    tile.put(body, _mix(skin.base, skin.light if tone > 0 else skin.dark, abs(tone) * 2.0))
+                    tile.put(body * (tile.y < y0 + 2.4), skin.light, 0.32)
+                    tile.put(body * (np.abs(tile.y - y0 - 2.4) < 0.18), skin.dark, 0.30)
+                    tile.put(body * (tile.y > y1 - 2.0), skin.dark, 0.40)
+                    tile.put(body * (tile.x < x0 + 1.0), skin.light, 0.15)
+                    x += length
+            else:
+                off = rng.uniform(0.0, 8.0)
+                for j in range(8):
+                    cx, cy = off + j * 8.0 + rng.uniform(-0.5, 0.5), (y0 + y1) * 0.5 + rng.uniform(-0.2, 0.2)
+                    r = rng.uniform(3.2, 3.7)
+                    turn = rng.uniform(0.0, 60.0)
+                    sides = 6 if rng.random() < 0.7 else 5
+                    pts = [(cx + r * math.cos(math.radians(turn + 360.0 * i / sides)), cy + r * 0.95 * math.sin(math.radians(turn + 360.0 * i / sides))) for i in range(sides)]
+                    tone = rng.uniform(-0.12, 0.14)
+                    end = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts))
+                    lit = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(px + 0.7, py + 0.7) for px, py in pts]))
+                    tile.put(end, _mix(skin.base, skin.light if tone > 0 else skin.dark, abs(tone) * 2.0))
+                    tile.put(end * (1.0 - lit), skin.light, 0.40)
+                    tile.put(end * (1.0 - tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(px - 0.6, py - 0.6) for px, py in pts]))), skin.dark, 0.45)
+                    spokes = [[(cx, cy), (px * 0.55 + cx * 0.45, py * 0.55 + cy * 0.45)] for px, py in pts[::2]]
+                    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, s_, 0.16) for s_ in spokes]) * end, skin.dark, 0.35)
+        tile.tone((tile.noise(8, 8, 3) - 0.5) * 0.14)
+    elif skin.material == "yap_rubble":
+        # The ground under the paths and house platforms of Yap: dark earth,
+        # and in it the rounded stones of the old footings, grey and of many
+        # sizes, each lit on its top and in shade at its foot, with fine
+        # roots and specks of red soil between them.
+        tile.put(np.ones_like(tile.alpha), skin.base)
+        tile.tone((tile.noise(6, 6, 4) - 0.5) * 0.30)
+        stones = []
+        for _ in range(16):
+            x, y, r = rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(2.2, 5.4)
+            pts = []
+            for i in range(9):
+                a = math.tau * (i + rng.uniform(-0.2, 0.2)) / 9.0
+                rr = r * rng.uniform(0.82, 1.05)
+                pts.append((x + math.cos(a) * rr, y + math.sin(a) * rr * 0.78))
+            stones.append((pts, rng.uniform(-0.15, 0.15), x, y, r))
+        tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(px + 0.3, py + 0.8) for px, py in pts]) for pts, *_ in stones]), skin.dark, 0.70)
+        for pts, tone, x, y, r in stones:
+            body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts))
+            tile.put(body, _mix(skin.light, skin.dark if tone < 0 else (230, 228, 220), abs(tone) * 2.0))
+            tile.put(body * tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x - r * 0.25, y - r * 0.35, r * 0.6, ry=r * 0.35), blur=0.6), (236, 232, 220), 0.25)
+            tile.put(body * (tile.y > y + r * 0.35), skin.dark, 0.30)
+        roots = []
+        for _ in range(4):
+            x, y = rng.uniform(0, 64), rng.uniform(0, 64)
+            pts = [(x, y)]
+            for _ in range(5):
+                x, y = x + rng.uniform(2, 5), y + rng.uniform(-2.5, 2.5)
+                pts.append((x, y))
+            roots.append(pts)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.35) for pts in roots]), _mix(skin.base, skin.light, 0.45), 0.45)
+        specks = [(rng.uniform(0, 64), rng.uniform(0, 64)) for _ in range(30)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.35) for x, y in specks]), skin.accent, 0.55)
+    elif skin.material == "phosphate_pinnacle":
+        # The topside of Nauru after the phosphate was dug out: rows of
+        # pinnacles of grey-white coral limestone, sharp and close
+        # together, with upright flutes that the rain cut in them, lit on
+        # the left; between them pockets of the brown phosphate earth that
+        # the digging left, with darker grains.
+        tile.put(np.ones_like(tile.alpha), skin.accent)
+        tile.tone((tile.noise(8, 8, 3) - 0.5) * 0.24)
+        grains = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.25, 0.5)) for _ in range(60)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r) for x, y, r in grains]), _mix(skin.accent, skin.dark, 0.5), 0.6)
+        spires = []
+        for row in range(2):
+            foot = row * 32.0 + 34.0
+            x = rng.uniform(0.0, 6.0)
+            stop = x + 64.0
+            while x < stop - 0.1:
+                w = min(rng.uniform(9.0, 14.0), stop - x)
+                if stop - x - w < 6.0:
+                    w = stop - x
+                top = foot - rng.uniform(22.0, 32.0)
+                apex = x + w * rng.uniform(0.35, 0.65)
+                left = [(x + (apex - x) * t + rng.uniform(-0.8, 0.8), foot + (top - foot) * t) for t in (0.0, 0.35, 0.65, 0.88)]
+                right = [(x + w + (apex - x - w) * t + rng.uniform(-0.8, 0.8), foot + (top - foot) * t) for t in (0.88, 0.65, 0.35, 0.0)]
+                spires.append((left + [(apex, top)] + right, apex, top, foot))
+                x += w
+        rock = np.zeros_like(tile.alpha)
+        for pts, apex, top, foot in spires:
+            body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts))
+            rock = np.maximum(rock, body)
+            tile.put(body, skin.base)
+            tile.put(body * (1.0 - tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(px - 1.2, py) for px, py in pts]))), skin.dark, 0.45)
+            tile.put(body * (1.0 - tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(px + 1.0, py) for px, py in pts]))), skin.light, 0.55)
+        tile.put(rock * (tile.noise(4, 12, 2) > 0.5), skin.light, 0.15)
+        flutes = np.abs(np.sin(tile.x * 2.0 * math.pi * 16.0 / 64.0 + (tile.noise(4, 2, 2) - 0.5) * 3.0))
+        tile.put(np.clip((0.25 - flutes) * 4.0, 0.0, 1.0) * rock, skin.dark, 0.18)
+        pits = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.3, 0.7)) for _ in range(18)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r, ry=r * 1.3) for x, y, r in pits]), skin.dark, 0.35)
     elif skin.material == "ridged_laterite":
         # Red laterite earth laid in courses, as the builders of Benin laid
         # their walls: each course is a band with a rounded ridge on its top
@@ -2965,6 +3163,155 @@ def cap(skin: Skin) -> Image.Image:
                 lean = (k - 2.5) * 0.55 + rng.uniform(-0.2, 0.2)
                 blades.append([(x + k * 0.2 - 0.5, s + 0.4), (x + lean * 0.5, s - 2.0), (x + lean * 1.3, s - rng.uniform(2.8, 4.2))])
         tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.20) for pts in blades]), (150, 150, 96))
+        return tile.publish()
+    if skin.cap == "fern_clay":
+        # The edge of the ground on Guåhan: red-brown clay over the
+        # limestone, with small pale bits of the rock in it, and on it low
+        # ferns, each a few fronds that arch up and out with their pairs of
+        # leaflets, and blades of grass between them.
+        clay = _mix(skin.accent, skin.dark, 0.20)
+        lower = s + 4.0 + tile.profile(8, 3)[None, :] * 3.0
+        body = np.clip((lower - y) * K * 0.5 + 0.5, 0, 1) * (y >= s - 0.3)
+        tile.put(np.clip((lower + 2.5 - y) / 2.5, 0, 1) * (y >= s), (0, 0, 0), 0.32)
+        tile.put(body, clay)
+        tile.tone((tile.noise(16, 4, 2) - 0.5) * 0.20 * body)
+        tile.put(body * np.clip((y - (lower - 2.0)) / 2.0, 0, 1), skin.dark, 0.40)
+        bits = [(rng.uniform(0, 64), s + rng.uniform(1.2, 3.6), rng.uniform(0.3, 0.7)) for _ in range(14)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, r, ry=r * 0.7) for x, yy, r in bits]) * body, skin.light, 0.75)
+        blades = []
+        for _ in range(60):
+            x = rng.uniform(0, 64)
+            h = rng.uniform(1.0, 2.6)
+            lean = rng.uniform(-0.9, 0.9)
+            blades.append([(x - 0.35, s + 0.8), (x + 0.35, s + 0.8), (x + lean, s - h)])
+        tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, pts) for pts in blades]), _mix(skin.cap_colour, skin.dark, 0.20))
+        fronds = []
+        for k in range(6):
+            x0 = k * 64.0 / 6.0 + rng.uniform(0.0, 6.0)
+            for ang, length in ((-150.0, 3.6), (-118.0, 4.4), (-90.0, 4.8), (-62.0, 4.2), (-30.0, 3.4)):
+                a = math.radians(ang + rng.uniform(-8.0, 8.0))
+                fronds.append([(x0 + math.cos(a) * length * t, s + 0.6 + math.sin(a) * length * t + 1.7 * t * t) for t in np.linspace(0.0, 1.0, 7)])
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.16) for pts in fronds]), _mix(skin.cap_colour, skin.dark, 0.3))
+        leaflets = []
+        for pts in fronds:
+            for i in range(1, len(pts) - 1):
+                (x0, y0), (x1, y1) = pts[i], pts[i + 1]
+                size = 0.9 * (1.0 - i / len(pts)) + 0.3
+                leaflets.append([(x0, y0), (x1, y1), (x0 - (y1 - y0) * size, y0 + (x1 - x0) * size)])
+                leaflets.append([(x0, y0), (x1, y1), (x0 + (y1 - y0) * size, y0 - (x1 - x0) * size)])
+        tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, q) for q in leaflets[0::2]]), skin.cap_colour)
+        tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, q) for q in leaflets[1::2]]), _mix(skin.cap_colour, (220, 236, 170), 0.25))
+        return tile.publish()
+    if skin.cap == "naupaka":
+        # The top of the beach of an atoll: pale coral sand with fine
+        # ripples and white bits of shell, and on it low round shrubs of
+        # naupaka, each a mound of rosettes of fleshy leaves like spoons,
+        # with a few small pale flowers. A few runners of beach vine
+        # creep between them.
+        sand = _mix(skin.light, skin.base, 0.25)
+        lower = s + 3.8 + tile.profile(8, 3)[None, :] * 2.6
+        top = s - (tile.profile(16, 2)[None, :] - 0.5) * 0.6
+        body = np.clip((lower - y) * K * 0.5 + 0.5, 0, 1) * np.clip((y - top) * K * 0.5 + 0.5, 0, 1)
+        tile.put(np.clip((lower + 2.5 - y) / 2.5, 0, 1) * (y >= top), (0, 0, 0), 0.30)
+        tile.put(body, sand)
+        tile.tone((tile.noise(16, 5, 2) - 0.5) * 0.16 * (tile.alpha > 0))
+        tile.put(body * np.clip((y - (lower - 2.0)) / 2.0, 0, 1), skin.dark, 0.40)
+        tile.put(body * np.clip(1.0 - (y - top) / 1.0, 0, 1), _mix(skin.light, (255, 255, 255), 0.4), 0.6)
+        bits = [(rng.uniform(0, 64), s + rng.uniform(0.8, 3.2), rng.uniform(0.25, 0.55)) for _ in range(16)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, r, ry=r * 0.7) for x, yy, r in bits]), _mix(skin.light, (255, 255, 255), 0.5), 0.8)
+        leaf, leaf_dark = skin.cap_colour, _mix(skin.cap_colour, skin.dark, 0.45)
+        leaf_light = _mix(skin.cap_colour, (230, 240, 200), 0.35)
+        flower = _mix(skin.light, (255, 255, 255), 0.55)
+        runners = []
+        for _ in range(3):
+            x = rng.uniform(0, 64)
+            runners.append([(x + k * 2.0, s + 0.3 + rng.uniform(-0.3, 0.3)) for k in range(6)])
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.18) for pts in runners]), leaf_dark, 0.8)
+        for k in range(3):
+            cx = k * 64.0 / 3.0 + rng.uniform(3.0, 15.0)
+            w = rng.uniform(3.2, 4.6)
+            h = rng.uniform(2.6, 3.6)
+            leaves = []
+            for _ in range(34):
+                t = rng.uniform(-1.0, 1.0)
+                lx = cx + t * w
+                ly = s + 0.6 - (h * (1.0 - t * t) ** 0.6) * rng.uniform(0.3, 1.0)
+                leaves.append((lx, ly, rng.uniform(0.5, 0.85), rng.uniform(-0.6, 0.6)))
+            tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy + 0.35, r * 1.05, ry=r * 0.6) for x, yy, r, _ in leaves]), leaf_dark)
+            tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, r, ry=r * 0.55) for x, yy, r, _ in leaves]), leaf)
+            tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - r * 0.3, yy - r * 0.2, r * 0.45, ry=r * 0.22) for x, yy, r, _ in leaves[::2]]), leaf_light, 0.6)
+            flowers = [(x, yy - 0.4) for x, yy, _, _ in leaves[::7]]
+            tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, 0.38, ry=0.3) for x, yy in flowers]), flower, 0.85)
+        return tile.publish()
+    if skin.cap == "stone_path":
+        # A paved path of Yap seen from its edge: flat stones fitted close,
+        # laid on the dark earth, each a thick slab with a lit, worn top and
+        # a dark joint to the next; grass grows in tufts at the edge and in
+        # the joints.
+        slab_top, slab_low = s - 0.3, s + 2.8
+        lower = slab_low + 1.8 + tile.profile(8, 3)[None, :] * 2.0
+        earth = np.clip((lower - y) * K * 0.5 + 0.5, 0, 1) * (y >= s + 0.6)
+        tile.put(np.clip((lower + 2.5 - y) / 2.5, 0, 1) * (y >= s), (0, 0, 0), 0.30)
+        tile.put(earth, _mix(skin.base, skin.dark, 0.25))
+        joints = []
+        x = rng.uniform(0.0, 4.0)
+        stop = x + 64.0
+        while x < stop - 0.1:
+            w = rng.uniform(7.0, 13.0)
+            if stop - x - w < 5.0:
+                w = stop - x
+            joints.append((x, w, rng.uniform(-0.12, 0.12), rng.uniform(-0.4, 0.5)))
+            x += w
+        for x0, w, tone, sink in joints:
+            slab = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0 + 0.15, slab_top + sink + 0.3), (x0 + 0.7, slab_top + sink), (x0 + w - 0.7, slab_top + sink), (x0 + w - 0.15, slab_top + sink + 0.3),
+                                                                (x0 + w - 0.25, slab_low + sink * 0.5 + 0.6), (x0 + 0.25, slab_low + sink * 0.5 + 0.8)]))
+            colour = _mix(skin.cap_colour, skin.light if tone > 0 else skin.dark, abs(tone) * 2.0)
+            tile.put(slab, colour)
+            tile.put(slab * (y < slab_top + sink + 0.8), _mix(skin.light, (255, 250, 236), 0.25), 0.75)
+            tile.put(slab * (y > slab_low + sink * 0.5 - 0.6), skin.dark, 0.35)
+        tile.tone((tile.noise(14, 3, 2) - 0.5) * 0.16 * (tile.alpha > 0))
+        blades = []
+        for x0, w, _, _ in joints:
+            for _ in range(rng.randint(2, 5)):
+                x = x0 + rng.uniform(-0.6, 0.6)
+                lean = rng.uniform(-1.0, 1.0)
+                blades.append([(x, s + 0.5), (x + lean * 0.5, s - 1.2), (x + lean, s - rng.uniform(1.6, 2.6))])
+        for _ in range(3):
+            x = rng.uniform(0, 64)
+            for k in range(6):
+                lean = (k - 2.5) * 0.5 + rng.uniform(-0.2, 0.2)
+                blades.append([(x + k * 0.2 - 0.5, s + 0.4), (x + lean * 0.5, s - 1.6), (x + lean * 1.1, s - rng.uniform(2.2, 3.2))])
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.20) for pts in blades]), skin.accent)
+        return tile.publish()
+    if skin.cap == "crushed_coral":
+        # The ground of the works on Nauru: a thin layer of pale crushed
+        # coral stone, in sharp small bits of white and grey, dry and bare,
+        # with a few low tufts of dry scrub; the brown of the phosphate earth
+        # shows under it.
+        lower = s + 3.6 + tile.profile(8, 3)[None, :] * 2.6
+        top = s - (tile.profile(16, 2)[None, :] - 0.5) * 0.5
+        body = np.clip((lower - y) * K * 0.5 + 0.5, 0, 1) * np.clip((y - top) * K * 0.5 + 0.5, 0, 1)
+        tile.put(np.clip((lower + 2.5 - y) / 2.5, 0, 1) * (y >= top), (0, 0, 0), 0.30)
+        tile.put(body, skin.cap_colour)
+        tile.tone((tile.noise(20, 5, 2) - 0.5) * 0.18 * (tile.alpha > 0))
+        tile.put(body * np.clip((y - (lower - 2.2)) / 2.2, 0, 1), skin.accent, 0.55)
+        tile.put(body * np.clip(1.0 - (y - top) / 0.9, 0, 1), (250, 250, 244), 0.55)
+        chips = [(rng.uniform(0, 64), s + rng.uniform(0.4, 3.2), rng.uniform(0.25, 0.6), rng.uniform(0.0, math.tau)) for _ in range(46)]
+
+        def tri(x: float, yy: float, r: float, a: float) -> list[tuple[float, float]]:
+            return [(x + r * math.cos(a + i * 2.1), yy + r * 0.7 * math.sin(a + i * 2.1)) for i in range(3)]
+
+        tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, tri(*c)) for c in chips[::2]]) * body, (250, 250, 246), 0.8)
+        tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, tri(*c)) for c in chips[1::2]]) * body, skin.dark, 0.45)
+        twigs = []
+        for _ in range(3):
+            x = rng.uniform(0, 64)
+            for k in range(7):
+                lean = (k - 3) * 0.55 + rng.uniform(-0.2, 0.2)
+                twigs.append([(x + k * 0.15 - 0.5, s + 0.5), (x + lean * 0.6, s - 1.4), (x + lean * 1.1, s - rng.uniform(2.0, 3.0))])
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.16) for pts in twigs]), (126, 120, 92), 0.9)
+        tips = [pts[-1] for pts in twigs[::2]]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, 0.45, ry=0.3) for x, yy in tips]), (140, 148, 100), 0.8)
         return tile.publish()
     if skin.cap == "granite_kerb":
         # A thin kerb of grey granite at the edge of the pavement: long
@@ -4520,6 +4867,71 @@ def oneway(skin: Skin) -> Image.Image:
         tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.18, 0.0, x + 0.18, 1.1) for x in ends]), paint_dark, 0.55)
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 16.0 + 8.0, 2.5, 0.35) for k in range(4)]), (60, 58, 56), 0.7)
         tile.put(np.clip(1.0 - (y - 5.2) / 3.0, 0, 1) * (y >= 5.2) * (1.0 - post_mask), (0, 0, 0), 0.22)
+    elif skin.oneway == "latte_deck":
+        # The floor of a house of the Chamorro on its latte: a beam and the
+        # boards of the floor, of brown wood, laid on the tasa, the capstone
+        # of each latte, a pale half ball of limestone with its flat face
+        # up; under each one the haligi, the pillar, which gets narrower to
+        # its top and goes down into the dark. A latte is each thirty-two
+        # units.
+        wood, wood_dark, wood_light = (122, 88, 58), (58, 40, 28), (176, 136, 90)
+        stone, stone_dark, stone_light = _mix(skin.base, skin.light, 0.30), _mix(skin.base, skin.dark, 0.45), _mix(skin.light, (255, 250, 236), 0.30)
+        latte = [k * 32.0 + 16.0 for k in range(2)]
+        pillars = tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(x - 2.0, 8.2), (x + 2.0, 8.2), (x + 2.9, 16.0), (x - 2.9, 16.0)]) for x in latte])
+        tile.put(pillars, stone)
+        tile.put(pillars * tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x + 0.8, 8.0, x + 3.0, 16.0) for x in latte]), stone_dark, 0.55)
+        tile.put(pillars * tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 3.0, 8.0, x - 1.4, 16.0) for x in latte]), stone_light, 0.30)
+        tile.alpha *= np.clip((15.6 - y) / 6.0, 0.0, 1.0)
+        caps = tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(x + 6.0 * math.cos(t), 4.4 + 4.2 * math.sin(t)) for t in np.linspace(0.0, math.pi, 14)]) for x in latte])
+        tile.put(caps, stone)
+        tile.put(caps * (y > 6.4), stone_dark, 0.45)
+        tile.put(caps * (y < 5.2), stone_light, 0.55)
+        pits = [(x + rng.uniform(-3.0, 3.0), 5.6 + rng.uniform(0.0, 1.6)) for x in latte for _ in range(4)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, 0.35) for x, yy in pits]) * caps, stone_dark, 0.6)
+        tile.put(np.clip(1.0 - (y - 8.6) / 2.0, 0, 1) * (y >= 8.6) * pillars, (0, 0, 0), 0.30)
+        beam = (y < 4.4).astype(np.float32)
+        tile.put(beam, wood)
+        tile.tone((tile.noise(4, 2, 2) - 0.5) * 0.16 * beam)
+        tile.put((y < 1.6).astype(np.float32), _mix(wood, wood_light, 0.35))
+        tile.put((y < 0.5).astype(np.float32), wood_light, 0.85)
+        tile.put(((y >= 1.5) & (y < 1.9)).astype(np.float32), wood_dark, 0.65)
+        ends = [k * 5.33 + 2.0 for k in range(12)]
+        tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.2, 0.0, x + 0.2, 1.5) for x in ends]), wood_dark, 0.6)
+        tile.put(((y >= 3.8) & (y < 4.4)).astype(np.float32), wood_dark, 0.55)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, 1.9), (x + 0.6, 4.0)], 0.35) for x in (8.0, 40.0)]), (164, 132, 86), 0.8)
+        tile.put(np.clip(1.0 - (y - 4.4) / 2.0, 0, 1) * (y >= 4.4) * (1.0 - caps), (0, 0, 0), 0.22)
+    elif skin.oneway == "lattice_girder":
+        # A walkway of the phosphate works on Nauru: a girder of riveted
+        # steel lattice. A top chord of angle iron with a lit edge and a row
+        # of rivets, a bottom chord under it, and flat bars between them in
+        # a zigzag; a little rust and the white dust of the phosphate on its
+        # top.
+        steel, steel_dark, steel_light = (84, 86, 88), (36, 36, 38), (150, 152, 152)
+        rust = (138, 92, 64)
+        web = []
+        for k in range(8):
+            x = k * 8.0
+            web.append([(x, 2.6), (x + 4.0, 8.0)])
+            web.append([(x + 4.0, 8.0), (x + 8.0, 2.6)])
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x0 + 0.3, y0 + 0.3), (x1 + 0.3, y1 + 0.3)], 0.9) for (x0, y0), (x1, y1) in web]), steel_dark, 0.8)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.8) for pts in web]), steel)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x0 - 0.25, y0), (x1 - 0.25, y1)], 0.2) for (x0, y0), (x1, y1) in web]), steel_light, 0.45)
+        low = ((y >= 7.6) & (y < 9.4)).astype(np.float32)
+        tile.put(low, _mix(steel, steel_dark, 0.25))
+        tile.put(low * (y < 8.0), steel_light, 0.4)
+        tile.put(low * (y > 9.0), steel_dark, 0.6)
+        top = (y < 2.8).astype(np.float32)
+        tile.put(top, steel)
+        tile.put(top * (y < 0.6), (226, 224, 214), 0.75)
+        tile.put(top * (y >= 0.6) * (y < 1.0), steel_light, 0.6)
+        tile.put(((y >= 2.3) & (y < 2.8)).astype(np.float32), steel_dark, 0.7)
+        tile.tone((tile.noise(12, 2, 2) - 0.5) * 0.16 * (tile.alpha > 0))
+        rivets = [k * 4.0 + 2.0 for k in range(16)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, 1.7, 0.38) for x in rivets]), steel_dark, 0.8)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x - 0.12, 1.58, 0.16) for x in rivets]), steel_light, 0.7)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, k * 8.0 + 4.0, 8.5, 0.38) for k in range(8)]), steel_dark, 0.8)
+        tile.put(np.clip((tile.noise(10, 3, 2) - 0.62) * 4.0, 0, 1) * (tile.alpha > 0.5), rust, 0.45)
+        tile.put(np.clip(1.0 - (y - 9.4) / 3.0, 0, 1) * (y >= 9.4), (0, 0, 0), 0.20)
     elif skin.oneway == "limestone_shelf":
         # A shelf of limestone that stands out of the rock. Its top is flat
         # and lit, with a few tufts of moss on it. Its lower side is

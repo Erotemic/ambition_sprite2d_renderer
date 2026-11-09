@@ -2485,6 +2485,74 @@ def tent_flap_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def nan_madol_door(tile: Tile, c: dict) -> np.ndarray:
+    """A doorway in a wall of Nan Madol at dusk. Black basalt columns laid
+    crosswise fill the frame: a course of long columns that lie along the
+    wall, then a course of the ends of columns that lie across it, each end
+    of five or six sides. In the middle is a low dark doorway under a lintel
+    of two long columns, and in it hangs a mat of plaited coconut leaf. The
+    light of a fire inside shows through a gap at the top of the mat."""
+    inner = _frame(tile, c)
+    floor = H - STEP
+    rng = tile.rng
+    tile.put(inner, c["dark"])
+    y = floor
+    k = 0
+    while y > F + 0.5:
+        y0 = max(F, y - 6.0)
+        if k % 2 == 0:
+            x = F - rng.uniform(0.0, 8.0)
+            while x < W - F:
+                length = rng.uniform(10.0, 18.0)
+                x0, x1 = x + 0.3, x + length - 0.3
+                tone = rng.uniform(-0.12, 0.12)
+                body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0 + 0.6, y0 + 0.4), (x1 - 0.6, y0 + 0.4), (x1, y0 + 1.2), (x1, y - 1.0), (x1 - 0.6, y - 0.4), (x0 + 0.6, y - 0.4), (x0, y - 1.0), (x0, y0 + 1.2)])) * inner
+                tile.put(body, _mix(c["frame"], c["frame_light"] if tone > 0 else c["dark"], abs(tone) * 2.0))
+                tile.put(body * (tile.y < y0 + 2.0), c["frame_light"], 0.35)
+                tile.put(body * (tile.y > y - 1.6), c["dark"], 0.40)
+                x += length
+        else:
+            x = F + rng.uniform(0.0, 3.0)
+            while x < W - F + 3.0:
+                r = rng.uniform(2.6, 2.95)
+                cy = (y0 + y) * 0.5
+                turn = rng.uniform(0.0, 60.0)
+                pts = [(x + r * math.cos(math.radians(turn + 60.0 * i)), cy + r * math.sin(math.radians(turn + 60.0 * i))) for i in range(6)]
+                end = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, pts)) * inner
+                tone = rng.uniform(-0.12, 0.12)
+                tile.put(end, _mix(c["frame"], c["frame_light"] if tone > 0 else c["dark"], abs(tone) * 2.0))
+                tile.put(end * (1.0 - tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(px + 0.6, py + 0.6) for px, py in pts]))), c["frame_light"], 0.45)
+                tile.put(end * (1.0 - tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(px - 0.5, py - 0.5) for px, py in pts]))), c["dark"], 0.45)
+                x += r * 2.05
+        y = y0
+        k += 1
+    tile.tone((tile.noise(4, 8, 2) - 0.5) * 0.14 * inner)
+    # The doorway, the shade under its lintel, and the lintel of two long
+    # columns that reach past its sides.
+    x0, x1, top = 18.0, W - 18.0, 52.0
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, top, x1, floor)), c["dark"])
+    for y0, y1 in ((top - 10.0, top - 5.2), (top - 5.2, top - 0.4)):
+        beam = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x0 - 7.0, y0 + 0.4), (x1 + 7.0, y0 + 0.4), (x1 + 7.6, y0 + 1.2), (x1 + 7.6, y1 - 0.8), (x1 + 7.0, y1), (x0 - 7.0, y1), (x0 - 7.6, y1 - 0.8), (x0 - 7.6, y0 + 1.2)]))
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 - 8.0, y0, x1 + 8.0, y1)), c["dark"])
+        tile.put(beam, c["frame"])
+        tile.put(beam * (tile.y < y0 + 1.8), c["frame_light"], 0.45)
+        tile.put(beam * (tile.y > y1 - 1.4), c["dark"], 0.45)
+    # The mat: strips of coconut leaf plaited on the slant, with a pole
+    # at its top and its foot. It is the leaf.
+    leaf = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 1.0, top + 1.0, x1 - 1.0, floor - 0.6))
+    tile.put(leaf, c["leaf"])
+    plait = (np.floor((tile.x + tile.y) / 2.2) + np.floor((tile.x - tile.y) / 2.2)) % 2 == 0
+    tile.put(leaf * plait, c["leaf_light"], 0.30)
+    tile.put(leaf * ~plait, c["dark"], 0.20)
+    tile.put(leaf * np.clip((tile.y - top) / (floor - top), 0, 1), c["dark"], 0.25)
+    for yy in (top + 1.0, floor - 3.0):
+        pole = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.4, yy, x1 - 0.4, yy + 2.0))
+        tile.put(pole, c["frame"])
+        tile.put(pole * (tile.y < yy + 0.6), c["frame_light"], 0.5)
+    _window(tile, c, W * 0.5 - 4.0, top + 5.0, W * 0.5 + 4.0, top + 10.0)
+    return leaf
+
+
 MOTIONS: dict[Draw, tuple[str, bool]] = {
     bulkhead: (SLIDE, True),
     iron: (SWING, False),
@@ -2535,6 +2603,7 @@ MOTIONS: dict[Draw, tuple[str, bool]] = {
     trading_post_door: (SWING, False),
     treaty_house_door: (SWING, False),
     tent_flap_door: (SLIDE, True),
+    nan_madol_door: (SWING, False),
 }
 
 
@@ -2752,6 +2821,22 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     # in a frame the grey of basalt: the low doorway of a house of stacked
     # stone, with the light of the fire in its smoke hole.
     "history_budj_bim": (hide_door, _colours((96, 92, 88), (128, 108, 90), (30, 28, 26), (160, 120, 80), (255, 190, 110))),
+    # Micronesia. The Marianas: the door of a house on latte, high off the
+    # ground, with a short ladder up to it under a deep eave of thatch. The
+    # Marshalls: a mat of plaited pandanus in the doorway of a house of
+    # thatch, as at Tonga. Nan Madol: a low doorway in a wall of basalt
+    # columns under a lintel of two columns, with a mat in it. Yap: a door
+    # of bundled reeds in a frame of poles. Nauru: the plank door of a shed
+    # of the works, under a verandah of corrugated iron. Bikini: a mat door
+    # of an empty house, muted, with grey daylight in its opening.
+    "history_marianas": (austronesia_door, {**_colours((118, 90, 62), (196, 176, 122), (36, 28, 22), (186, 180, 160), (255, 220, 160)),
+                                            "wall": (206, 186, 132), "thatch": (178, 146, 94), "cord": (122, 86, 54)}),
+    "history_marshalls": (mat_door, _colours((116, 88, 60), (212, 188, 132), (40, 32, 24), (110, 160, 160), (255, 218, 160))),
+    "history_nan_madol": (nan_madol_door, _colours((70, 66, 72), (150, 128, 90), (18, 18, 22), (140, 132, 118), (255, 186, 110))),
+    "history_yap": (reed_door, _colours((96, 80, 58), (178, 160, 108), (34, 30, 22), (132, 128, 116), (255, 220, 160))),
+    "history_nauru": (trading_post_door, {**_colours((176, 172, 160), (120, 108, 90), (34, 34, 34), (196, 192, 180), (226, 214, 176)),
+                                          "board": (190, 186, 172), "tin": (150, 152, 152), "rust": (138, 92, 64), "post": (176, 172, 160), "iron": (44, 44, 46)}),
+    "history_bikini": (mat_door, _colours((120, 114, 104), (168, 160, 140), (44, 44, 42), (150, 150, 144), (200, 206, 204))),
     "noodly": (plank, _colours((196, 150, 86), (132, 78, 46), (48, 24, 16), (172, 44, 32), (255, 226, 150))),
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600mm" height="600mm" viewBox="0 0 1600 600" data-overlay-ref="height:170 head:25.33 trunk:59.311 leg:75.582">
+<!-- Hand-drawn overlay art for Hammer DeRoburt (chargen/overlay.py): a plain card folder of papers in his near hand, with no writing on it. Each group draws one rig part of one view, in SVG units with its anchor joint at (0, 0); its transform only places it over the chargen SVG for an editor. -->
+<g data-view="front">
+  <g data-overlay-part="near_hand" data-overlay-mode="over" data-overlay-anchor="near_grip" data-overlay-scale="height height" transform="translate(160,213.73)">
+    <path d="M-15.58,-10.4 L16.82,-10.4 L13.5,72.4 L-18.9,72.4 Z" fill="#f4f0e2" stroke="#1d1714" stroke-width="1.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-14.65,-8.8 L15.75,-8.8" fill="none" stroke="#cfc8b4" stroke-width="0.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-17.68,-8 L18.32,-8 L15.04,74 L-20.96,74 Z" fill="#d8c08a" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-16.91,-7.2 L-13.71,-7.2 L-16.93,73.2 L-20.13,73.2 Z" fill="#a08a58" opacity="0.7"/>
+    <path d="M7.49,-7.2 L17.49,-7.2 L14.27,73.2 L4.27,73.2 Z" fill="#a08a58" opacity="0.25"/>
+    <path d="M-11.8,-5 L15.2,-5" fill="none" stroke="#ecdcb0" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</g>
+<g data-view="front_3q">
+  <g data-overlay-part="near_hand" data-overlay-mode="over" data-overlay-anchor="near_grip" data-overlay-scale="height height" transform="translate(474.63,213.96)">
+    <path d="M-21.58,-10.4 L22.82,-10.4 L19.5,72.4 L-24.9,72.4 Z" fill="#f4f0e2" stroke="#1d1714" stroke-width="1.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-20.65,-8.8 L21.75,-8.8" fill="none" stroke="#cfc8b4" stroke-width="0.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-23.68,-8 L24.32,-8 L21.04,74 L-26.96,74 Z" fill="#d8c08a" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-22.91,-7.2 L-19.71,-7.2 L-22.93,73.2 L-26.13,73.2 Z" fill="#a08a58" opacity="0.7"/>
+    <path d="M9.89,-7.2 L23.49,-7.2 L20.27,73.2 L6.67,73.2 Z" fill="#a08a58" opacity="0.25"/>
+    <path d="M-17.8,-5 L21.2,-5" fill="none" stroke="#ecdcb0" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</g>
+<g data-view="side">
+  <g data-overlay-part="near_hand" data-overlay-mode="over" data-overlay-anchor="near_grip" data-overlay-scale="height height" transform="translate(792.4,214.53)">
+    <path d="M-27.58,-10.4 L28.82,-10.4 L25.5,72.4 L-30.9,72.4 Z" fill="#f4f0e2" stroke="#1d1714" stroke-width="1.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-26.65,-8.8 L27.75,-8.8" fill="none" stroke="#cfc8b4" stroke-width="0.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-29.68,-8 L30.32,-8 L27.04,74 L-32.96,74 Z" fill="#d8c08a" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-28.91,-7.2 L-25.71,-7.2 L-28.93,73.2 L-32.13,73.2 Z" fill="#a08a58" opacity="0.7"/>
+    <path d="M12.29,-7.2 L29.49,-7.2 L26.27,73.2 L9.07,73.2 Z" fill="#a08a58" opacity="0.25"/>
+    <path d="M-23.8,-5 L27.2,-5" fill="none" stroke="#ecdcb0" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</g>
+<g data-view="back_3q">
+  <g data-overlay-part="near_hand" data-overlay-mode="over" data-overlay-anchor="near_grip" data-overlay-scale="height height" transform="translate(1114.63,215.09)">
+    <path d="M-21.58,-10.4 L22.82,-10.4 L19.5,72.4 L-24.9,72.4 Z" fill="#f4f0e2" stroke="#1d1714" stroke-width="1.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-20.65,-8.8 L21.75,-8.8" fill="none" stroke="#cfc8b4" stroke-width="0.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-23.68,-8 L24.32,-8 L21.04,74 L-26.96,74 Z" fill="#d8c08a" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-22.91,-7.2 L-19.71,-7.2 L-22.93,73.2 L-26.13,73.2 Z" fill="#a08a58" opacity="0.7"/>
+    <path d="M9.89,-7.2 L23.49,-7.2 L20.27,73.2 L6.67,73.2 Z" fill="#a08a58" opacity="0.25"/>
+    <path d="M-17.8,-5 L21.2,-5" fill="none" stroke="#ecdcb0" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</g>
+<g data-view="back">
+  <g data-overlay-part="near_hand" data-overlay-mode="over" data-overlay-anchor="near_grip" data-overlay-scale="height height" transform="translate(1440,215.32)">
+    <path d="M-15.58,-10.4 L16.82,-10.4 L13.5,72.4 L-18.9,72.4 Z" fill="#f4f0e2" stroke="#1d1714" stroke-width="1.0" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-14.65,-8.8 L15.75,-8.8" fill="none" stroke="#cfc8b4" stroke-width="0.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-17.68,-8 L18.32,-8 L15.04,74 L-20.96,74 Z" fill="#d8c08a" stroke="#1d1714" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M-16.91,-7.2 L-13.71,-7.2 L-16.93,73.2 L-20.13,73.2 Z" fill="#a08a58" opacity="0.7"/>
+    <path d="M7.49,-7.2 L17.49,-7.2 L14.27,73.2 L4.27,73.2 Z" fill="#a08a58" opacity="0.25"/>
+    <path d="M-11.8,-5 L15.2,-5" fill="none" stroke="#ecdcb0" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</g>
+</svg>
