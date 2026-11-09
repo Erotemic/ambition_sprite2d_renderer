@@ -563,6 +563,12 @@ MAIN_ROWS: List[Tuple[str, int, int]] = [
 ]
 
 
+#: The rows every person has, whatever else a character names: anyone in this
+#: game can be hurt and can die, and a sheet without them freezes the body in
+#: its last pose when it does (Neil onGras Turfson, 2026-11-09).
+MORTAL_ROWS: List[Tuple[str, int, int]] = [row for row in MAIN_ROWS if row[0] in ("hit", "death")]
+
+
 # ---- The person seen from the front -------------------------------------------
 
 #: Standing, facing the viewer. Left and right are the VIEWER's: ``la`` is the
@@ -1484,7 +1490,7 @@ class Person:
         #: round the shoulders. A character opts in.
         self.polar: Tuple[str, ...] = ()
         self.poses: Dict[str, Callable[[int, int], Pose]] = dict(LIBRARY)
-        self.rows: List[Tuple[str, int, int]] = list(MAIN_ROWS)
+        self.rows = list(MAIN_ROWS)
         self.torso: Callable[[int, int], object] = lambda hb, hf: None
         self.head_layers: Callable[[Pose], List[Tuple[object, str]]] = lambda pose: []
         self.upper_arm: Callable[[bool], List[Seg]] = lambda near: []
@@ -1808,6 +1814,18 @@ class Person:
         return img if self._big else K.downsample(img)
 
     # -- publishing ------------------------------------------------------------
+
+    @property
+    def rows(self) -> List[Tuple[str, int, int]]:
+        """The rows of the sheet, in order: the character's own, then each of
+        :data:`MORTAL_ROWS` it did not name."""
+        return self._rows
+
+    @rows.setter
+    def rows(self, rows) -> None:
+        rows = list(rows)
+        named = {name for name, _f, _ms in rows}
+        self._rows = rows + [row for row in MORTAL_ROWS if row[0] not in named]
 
     @property
     def body_box(self) -> Tuple[float, float, float, float]:
