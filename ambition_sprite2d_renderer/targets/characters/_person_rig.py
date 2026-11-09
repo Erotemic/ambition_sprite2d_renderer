@@ -567,6 +567,11 @@ MAIN_ROWS: List[Tuple[str, int, int]] = [
 #: game can be hurt and can die, and a sheet without them freezes the body in
 #: its last pose when it does (Neil onGras Turfson, 2026-11-09).
 MORTAL_ROWS: List[Tuple[str, int, int]] = [row for row in MAIN_ROWS if row[0] in ("hit", "death")]
+#: And anyone can swing back: a provoked person fights with their fists (the
+#: catalog's `bare_hands`), and a swing with no row to draw it (the game reads
+#: `attack_side`, then `slash`) is drawn standing idle. A person with neither
+#: gets the rig's own.
+SWING_ROW: Tuple[str, int, int] = next(row for row in MAIN_ROWS if row[0] == "attack_side")
 
 
 # ---- The person seen from the front -------------------------------------------
@@ -1818,7 +1823,8 @@ class Person:
     @property
     def rows(self) -> List[Tuple[str, int, int]]:
         """The rows of the sheet, in order: the character's own, then each of
-        :data:`MORTAL_ROWS` it did not name."""
+        :data:`MORTAL_ROWS` it did not name, and :data:`SWING_ROW` if it named
+        no swing."""
         return self._rows
 
     @rows.setter
@@ -1826,6 +1832,8 @@ class Person:
         rows = list(rows)
         named = {name for name, _f, _ms in rows}
         self._rows = rows + [row for row in MORTAL_ROWS if row[0] not in named]
+        if not named & {"attack_side", "slash"}:
+            self._rows.append(SWING_ROW)
 
     @property
     def body_box(self) -> Tuple[float, float, float, float]:
