@@ -25,6 +25,19 @@ def digest(path: Path) -> str:
         return value.hexdigest()
 
 
+def copy_digest(source: Path, target: Path) -> tuple[str, int]:
+    """Copy `source` to `target` and return the digest and size of the bytes
+    copied: one read of the source, and the digest is of exactly what was
+    written."""
+    value, size = hashlib.sha256(), 0
+    with source.open("rb") as reader, target.open("wb") as writer:
+        for block in iter(lambda: reader.read(1024 * 1024), b""):
+            value.update(block)
+            writer.write(block)
+            size += len(block)
+    return value.hexdigest(), size
+
+
 def identity(value) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
@@ -91,40 +104,44 @@ class Store:
         """Accept only the exact members supplied by a completed producer."""
         if not files:
             raise ValueError(f"Empty bundle: {unit}")
-        rows = {}
+        destinations = {}
         for logical, (source, role, tier) in sorted(files.items()):
             relative(logical)
             if not source.is_file():
                 raise ValueError(f"Missing bundle member: {unit}: {source}")
-            physical = f"{role}/{tier}/{logical.removeprefix('review/') if role == 'review' else logical}"
-            rows[logical] = {"path": relative(physical), "sha256": digest(source), "bytes": source.stat().st_size,
-                             "role": role, "tier": tier}
-        manifest = {"schema": BUNDLE_SCHEMA, "unit": unit, "recipe": recipe, "parents": parents or {}, "files": rows}
-        if roots is not None:
-            manifest["roots"] = sorted({relative(root) for root in roots})
-        key = identity(manifest)
-        destination = self.root / "bundles" / key
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        if destination.exists():
-            if self.integrity(key):
-                raise ValueError(f"Corrupt immutable bundle: {key}")
-            return key
-        with tempfile.TemporaryDirectory(dir=destination.parent, prefix=".bundle-") as temporary:
+            destinations[logical] = relative(f"{role}/{tier}/{logical.removeprefix('review/') if role == 'review' else logical}")
+        bundles = self.root / "bundles"
+        bundles.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=bundles, prefix=".bundle-") as temporary:
             staging = Path(temporary)
-            for logical, (source, _role, _tier) in files.items():
-                target = staging / rows[logical]["path"]
+            # One pass: each member is read once, and its recorded digest is of
+            # the bytes this bundle holds.
+            rows = {}
+            for logical, (source, role, tier) in sorted(files.items()):
+                target = staging / destinations[logical]
                 target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(source, target)
-                if digest(target) != rows[logical]["sha256"]:
-                    raise ValueError(f"Artifact changed during acceptance: {logical}")
+                sha256, size = copy_digest(source, target)
+                rows[logical] = {"path": destinations[logical], "sha256": sha256, "bytes": size, "role": role, "tier": tier}
+            manifest = {"schema": BUNDLE_SCHEMA, "unit": unit, "recipe": recipe, "parents": parents or {}, "files": rows}
+            if roots is not None:
+                manifest["roots"] = sorted({relative(root) for root in roots})
+            key = identity(manifest)
+            destination = bundles / key
+            # The key names the members' digests, so an accepted bundle with
+            # this key holds these bytes; its members only have to be there.
+            # Reading them again is `audit`'s work.
+            if destination.exists():
+                if self.integrity(key, deep=False):
+                    raise ValueError(f"Incomplete immutable bundle: {key}")
+                return key
             write_json(staging / "manifest.json", manifest)
             try:
                 staging.rename(destination)
             except OSError as error:
                 if error.errno not in (errno.EEXIST, errno.ENOTEMPTY):
                     raise
-                if self.integrity(key):
-                    raise ValueError(f"Corrupt immutable bundle: {key}")
+                if self.integrity(key, deep=False):
+                    raise ValueError(f"Incomplete immutable bundle: {key}")
         return key
 
     def integrity(self, key: str, *, deep: bool = True, hashes=None) -> list[dict]:
@@ -145,7 +162,14 @@ class Store:
                 defects.append({"code": "changed-output", "path": logical})
         return defects
 
-    def publish(self, replacements: dict[str, str], base, *, replace: bool = False, hashes=None, only_missing=False, refresh_units=()) -> dict:
+    def audit(self, *, hashes=None) -> dict[str, list[dict]]:
+        """Read every member of every selected bundle against its recorded
+        digest: the deep check that selection does not make. For a release or
+        a doubt, not for each publication."""
+        return {unit: defects for unit, key in sorted(self.selected()["bundles"].items())
+                if (defects := self.integrity(key, hashes=hashes))}
+
+    def publish(self, replacements: dict[str, str], base, *, replace: bool = False, only_missing=False, refresh_units=()) -> dict:
         """Select ``replacements`` and return the new selection.
 
         ``base`` is the selection the caller planned against: the selection
@@ -160,6 +184,10 @@ class Store:
         ``only_missing`` keeps accepted units and paths under the publication
         lock. A concurrent publisher's products are kept too.
         ``refresh_units`` can replace derived indexes when new units are added.
+
+        Selection reads accepted manifests: a bundle that this publication
+        newly selects must have its members present, and one already selected
+        is not looked at again. Payload digests are `audit`'s.
 
         A bundle whose recorded parent is not the selected one is still
         selected. It is listed in ``stale`` with its reason, so a status query
@@ -192,7 +220,7 @@ class Store:
                 manifest = self.bundle(key)
                 if manifest["unit"] != unit:
                     raise ValueError(f"Bundle owner mismatch: {unit}")
-                if self.integrity(key, hashes=hashes):
+                if previous["bundles"].get(unit) != key and self.integrity(key, deep=False):
                     raise ValueError(f"Incomplete bundle: {unit}")
                 for parent, expected in manifest["parents"].items():
                     if bundles.get(parent) != expected:

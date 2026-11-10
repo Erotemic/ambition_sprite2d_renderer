@@ -130,7 +130,7 @@ def build(units, *, missing_only=False, jobs=1):
                 for future in drawn.values():
                     if not future.cancelled() and future.exception() is None:
                         shutil.rmtree(future.result()[0], ignore_errors=True)
-    published = store.publish(replacements, selected, only_missing=missing_only, hashes=hashes)
+    published = store.publish(replacements, selected, only_missing=missing_only)
     hashes.save()
     return published
 

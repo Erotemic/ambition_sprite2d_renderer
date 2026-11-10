@@ -38,7 +38,7 @@ def publish_sprites(store: Store, replacements: dict, selected: dict, *, replace
     bundles = {unit: key for unit, key in selected["bundles"].items()
                if not replace or not unit.startswith(("target:", "atlas:"))}
     bundles.update(replacements)
-    published = store.publish(bundles, selected, replace=True, only_missing=only_missing, hashes=hashes)
+    published = store.publish(bundles, selected, replace=True, only_missing=only_missing)
     if hashes is not None:
         hashes.save()
     return published

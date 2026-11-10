@@ -52,6 +52,45 @@ def test_every_member_is_checked_and_old_bundles_keep_their_bytes(tmp_path):
     assert store.integrity(second) == [{"code": "changed-output", "path": "sprites/one.png"}]
 
 
+def test_a_focused_publication_does_not_read_old_payloads_and_audit_does(tmp_path, monkeypatch):
+    """Selecting one new unit reads accepted manifests, not the selected bytes:
+    a damaged member of an old bundle does not stop it, and the explicit
+    audit is what finds the damage."""
+    import ambition_sprite2d_renderer.publication_store as module
+    store = Store(tmp_path / "store")
+    selected = store.publish({"one": bundle(store, tmp_path, "one", b"old bytes")}, None)
+    store.paths()["sprites/one.png"].write_bytes(b"damaged!!")
+    two = bundle(store, tmp_path, "two")
+    read = []
+    real = module.digest
+    monkeypatch.setattr(module, "digest", lambda path: read.append(path) or real(path))
+    after = Store(store.root).publish({"two": two}, selected)
+    assert set(after["bundles"]) == {"one", "two"}
+    assert read == [], f"a focused publication read payloads: {read}"
+    assert Store(store.root).audit() == {"one": [{"code": "changed-output", "path": "sprites/one.png"}]}
+
+
+def test_a_newly_selected_bundle_must_have_its_members(tmp_path):
+    store = Store(tmp_path / "store")
+    selected = store.publish({"one": bundle(store, tmp_path, "one")}, None)
+    two = bundle(store, tmp_path, "two")
+    next(iter((store.root / "bundles" / two).rglob("*.png"))).unlink()
+    with pytest.raises(ValueError, match="Incomplete bundle: two"):
+        store.publish({"two": two}, selected)
+    assert store.selected() == selected, "the previous selection stays usable"
+
+
+def test_accept_records_the_digest_of_the_bytes_it_copied(tmp_path):
+    import hashlib
+    store = Store(tmp_path / "store")
+    key = bundle(store, tmp_path, "one", b"exact bytes")
+    row = store.bundle(key)["files"]["sprites/one.png"]
+    held = (store.root / "bundles" / key / row["path"]).read_bytes()
+    assert held == b"exact bytes"
+    assert (row["sha256"], row["bytes"]) == (hashlib.sha256(held).hexdigest(), len(held))
+    assert bundle(store, tmp_path, "one", b"exact bytes") == key, "the same bytes are the same bundle"
+
+
 def test_a_changed_parent_leaves_its_derived_bundle_selected_and_stale(tmp_path):
     store = Store(tmp_path / "store")
     parent = bundle(store, tmp_path, "one")
