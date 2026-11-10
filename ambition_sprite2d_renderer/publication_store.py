@@ -57,14 +57,17 @@ class Store:
         #: Verified manifests by key. A bundle is immutable: its key is its manifest's digest.
         self._bundles: dict[str, str] = {}
 
-    def selected(self) -> dict:
+    def selected(self, *, verify_identity: bool = True) -> dict:
+        """The selection. A reader that only resolves files passes
+        `verify_identity=False`: a stale recorded identity is a freshness
+        question, while unsafe member paths refuse either way."""
         path = self.root / "published.json"
         if not path.exists():
             return {"schema": SCHEMA, "generation": None, "bundles": {}, "files": {}}
         value = json.loads(path.read_text())
         if value.get("schema") != SCHEMA:
             raise ValueError(f"Unsupported publication: {path}")
-        if value.get("generation") != identity({name: item for name, item in value.items() if name != "generation"}):
+        if verify_identity and value.get("generation") != identity({name: item for name, item in value.items() if name != "generation"}):
             raise ValueError(f"Invalid publication identity: {path}")
         for logical, item in value["files"].items():
             relative(logical)
