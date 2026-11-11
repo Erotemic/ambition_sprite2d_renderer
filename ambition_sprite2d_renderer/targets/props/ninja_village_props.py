@@ -407,39 +407,106 @@ def branch_at(i):
     return i * BRANCH_STEP + (16 if i == 0 else 0), 448 + 64 * i
 
 
+def needle_cluster(c, rng, cx, cy, w, h):
+    """A clump of cedar foliage about `w` by `h` round (cx, cy): many small
+    sprays in three layers, dark beneath and lit on top, its ends drooping,
+    and a feathered fringe of needles along its lower edge. No two clumps
+    are the same shape."""
+    lean = rng.uniform(-0.25, 0.25)
+    for colour, lift, spread in ((scale(FOLIAGE, 0.72), 2.2, 1.0), (FOLIAGE, 0.0, 0.86), (FOLIAGE_LIGHT, -2.6, 0.58)):
+        sprays = []
+        for _ in range(max(6, int(w * h / 34))):
+            u = rng.uniform(-1.0, 1.0)
+            sprays.append((
+                cx + u * w * 0.5 * spread,
+                cy + lift + rng.uniform(-0.32, 0.32) * h * spread + (u * u) * h * 0.38 + u * lean * h,
+                rng.uniform(3.5, 7.5),
+                rng.uniform(1.5, 3.0),
+            ))
+        c.put(c.mask(lambda p: [p.ellipse(x, y, rx, ry) for x, y, rx, ry in sprays]), colour)
+    fringe = []
+    for _ in range(int(w / 2.0)):
+        u = rng.uniform(-1.0, 1.0)
+        x = cx + u * w * 0.48
+        y = cy + h * 0.30 + u * u * h * 0.38 + u * lean * h + rng.uniform(-1.5, 1.5)
+        fringe.append([(x, y), (x + rng.uniform(-1.5, 1.0), y + rng.uniform(2.0, 4.0))])
+    c.put(c.mask(lambda p: [p.line(stroke, 1.0) for stroke in fringe]), scale(FOLIAGE, 0.8))
+
+
 def cedar(i):
     """Cedar `i`: its trunk at the east end of the room's branch `i`, the
-    bough the branch (its top the walk line), foliage in tiers above."""
+    bough the branch (its top the walk line), foliage in tiers above.
+
+    The bough is a limb, not a plank: thick where it leaves the trunk and
+    tapering west to a twig, knobbed, forking under itself into side twigs.
+    Its foliage hangs in a few clumps of needles with gaps between them,
+    each its own shape, and grey moss trails from it here and there. The
+    walk line is the top of the bough, straight, and nothing is drawn over
+    it."""
 
     def draw(c, k):
         x, y = branch_at(i)
         tx = x + BRANCH_W - 24
         top = y - 250
+        rng = c.rand("cedar", i)
         trunk = c.mask(lambda p: p.poly([(tx - 13, FOREST_FLOOR), (tx + 13, FOREST_FLOOR), (tx + 6, top), (tx - 6, top)]))
         c.put(trunk, BARK)
         c.put(c.mask(lambda p: [p.line([(tx + dx, FOREST_FLOOR), (tx + dx * 0.4, top)], 0.8) for dx in (-9, -4, 2, 7)]) * trunk, scale(BARK, 0.7))
         c.tone(trunk * np.clip((c.x - tx) / 12, -1, 1), -0.25)
         # Roots over the floor.
         c.put(c.mask(lambda p: [p.poly([(tx + s * 10, FOREST_FLOOR - 16), (tx + s * 36, FOREST_FLOOR), (tx + s * 8, FOREST_FLOOR)]) for s in (-1, 1)]), BARK)
-        # Foliage tiers over the bough (behind the play over it).
-        rng = c.rand("cedar", i)
+        # The crown: clumps in tiers over the bough (behind the play over
+        # it), wide below and narrow at the top, each tier off-centre.
         for tier in range(4):
-            ty = y - 40 - tier * 54
-            half = 110 - tier * 22
-            for _ in range(26):
-                fx = tx + rng.uniform(-half, half * 0.6)
-                fy = ty + rng.uniform(-18, 10)
-                c.put(c.mask(lambda p: p.ellipse(fx, fy, rng.uniform(14, 24), rng.uniform(6, 10))), mix(FOLIAGE, FOLIAGE_LIGHT, rng.uniform(0, 0.7)))
-        # The bough: the room's branch, from the trunk west.
-        bough = c.mask(lambda p: p.poly([(x - 4, y), (tx, y), (tx + 6, y + 34), (tx - 40, y + 22), (x + 60, y + 14), (x - 6, y + 9)]))
+            ty = y - 48 - tier * 54
+            half = 112 - tier * 24
+            shift = rng.uniform(-0.2, 0.1) * half
+            for _ in range(5 - tier // 2):
+                w = rng.uniform(0.6, 0.95) * half
+                needle_cluster(c, rng, tx + shift + rng.uniform(-half * 0.7, half * 0.4), ty + rng.uniform(-10, 8), w, rng.uniform(18, 28))
+        # The bough: from the trunk west, tapering, its top the walk line.
+        under = []
+        for step in range(17):
+            t = step / 16.0
+            bx = x - 3 + t * (tx + 6 - x)
+            knob = 1.6 * math.sin(t * 9.0 + i * 1.7) * t
+            under.append((bx, y + 8.0 + 22.0 * t ** 1.6 + knob))
+        bough = c.mask(lambda p: p.poly([(x - 3, y), (tx + 6, y), (tx + 10, y + 40)] + under[::-1]))
+        # Side twigs forking down and west from its underside, each with a
+        # clump at its end.
+        twigs = []
+        for t in sorted(rng.uniform(0.2, 0.8) for _ in range(2 + i % 2)):
+            sx = x + t * (tx - x)
+            sy = y + 8.0 + 22.0 * t ** 1.6 - 2.0
+            ex, ey = sx - rng.uniform(26, 56), sy + rng.uniform(14, 30)
+            twigs.append(((sx, sy), ((sx + ex) / 2, (sy + ey) / 2 - 3), (ex, ey)))
+        c.put(c.mask(lambda p: [p.line([a, b], 3.2) for a, b, _ in twigs] + [p.line([b, e], 1.8) for _, b, e in twigs]), BARK)
         c.put(bough, BARK)
         c.tone(bough * np.clip((c.y - y) / 20, 0, 1), -0.3)
+        c.put(c.mask(lambda p: [p.line([(x + 30 + j * 46 + rng.uniform(-8, 8), y + 7), (x + 52 + j * 46, y + 9)], 0.7) for j in range(5)]) * bough, scale(BARK, 0.7))
+        # The foliage of the bough: a few clumps, irregularly spaced, hung
+        # under it and from its twigs, and a tuft past its tip.
+        clumps = [(x + 2, y + 16, rng.uniform(40, 54), 17)]
+        t = rng.uniform(0.18, 0.3)
+        while t < 0.86:
+            w = rng.uniform(60, 112)
+            clumps.append((x + t * (tx - x), y + 22 + 22.0 * t ** 1.6 * 0.6 + rng.uniform(0, 8), w, rng.uniform(19, 28)))
+            t += (w / (tx - x)) * rng.uniform(0.9, 1.6)
+        clumps += [(e[0], e[1] + 6, rng.uniform(38, 60), rng.uniform(16, 22)) for _, _, e in twigs]
+        for cx, cy, w, h in clumps:
+            # A clump stays inside the room: the first cedar's branch starts
+            # at its west wall.
+            needle_cluster(c, rng, max(cx, w * 0.52 + 2), cy, w, h)
+        # Moss trailing from the underside.
+        strands = []
+        for _ in range(3 + i % 3):
+            t = rng.uniform(0.1, 0.9)
+            sx = x + t * (tx - x)
+            sy = y + 8.0 + 22.0 * t ** 1.6
+            length = rng.uniform(10, 30)
+            strands.append([(sx + math.sin(j * 1.3) * 1.2, sy + j * length / 5) for j in range(6)])
+        c.put(c.mask(lambda p: [p.line(strand, 0.9) for strand in strands]), mix(MOSS, (196, 196, 168), 0.4), 0.85)
         walk_edge(c, x, x + BRANCH_W, y, mix(BARK, (190, 150, 110), 0.35))
-        for _ in range(26):
-            fx = rng.uniform(x + 6, x + BRANCH_W - 20)
-            c.put(c.mask(lambda p: p.ellipse(fx, y + 18 + rng.uniform(0, 12), rng.uniform(14, 24), rng.uniform(6, 10))), mix(FOLIAGE, FOLIAGE_LIGHT, rng.uniform(0.1, 0.6)))
-        for end in (x + 16, x + 44):
-            c.put(c.mask(lambda p: p.ellipse(end, y + 10, 18, 9)), mix(FOLIAGE, FOLIAGE_LIGHT, 0.4))
         # Ferns and a stone at the foot.
         for _ in range(8):
             fx = tx + rng.uniform(-80, 60)
