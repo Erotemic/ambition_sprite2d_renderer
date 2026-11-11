@@ -1,21 +1,22 @@
-"""The ornaments of the two-state hub: what its architecture has once for each
-block, and not in a pattern that repeats.
+"""The two-state hub's art for the structural roles: what its architecture
+has once for each block, and not in a pattern that repeats.
 
 The skin of a block (`two_state.py`) repeats each 64 units, so it has no
-place for a thing that is one for each block: the arcade below a platform and
-its banners, the ivy on a corner, the emblem on a large wall, a fluted
-pillar. Each of those is a picture here, in each state, and the game places
-it by the shape of the block (`lay_block_skin` in the terrain skin of the
-renderer):
+place for a thing that is one for each block. The game names those by their
+role, not by what a theme draws there (`RoomDressingPart::ROLES` in
+`ambition_sprite_sheet`), and lays each at the size of its picture by the
+shape of the block (`lay_block_skin` in the terrain skin of the renderer).
+Another theme can publish its own picture for any role at its own size; the
+proportions below are the ones the game reads.
 
-| part | size (units) | where the game lays it |
-| --- | --- | --- |
-| `pillar` | 48 x 224 | the fill of a block 48 wide or less and over 96 high; it repeats down from the top of the block, and its right `PILLAR_EDGE` stays at the right of a narrower block |
-| `arch` | 150 x 48 | one bay below a platform (a block 40 high or less and 96 wide or more): the platform is cut in bays near 150 wide; the brackets (`ARCH_BRACKET` at each end) keep their size and the span between them is stretched |
-| `banner` | 28 x 80 | in the middle of some bays, from the bottom of the platform |
-| `ivy` | 3 x 64 x 52 | a clump on a top corner of a block; the corner is at (`IVY_CORNER`) of the square, and the square is mirrored for a right corner |
-| `ivy_strands` | 3 x 40 x 120 | what hangs below the end of a platform whose corner has ivy; x goes into the platform from its end |
-| `emblem` | 76 x 108 | a gold sigil in the middle of a large wall face (150 x 150 or more), one each 320 units |
+| role | the hub draws | its size (units) | where the game lays it |
+| --- | --- | --- | --- |
+| `pillar` | a fluted pillar | 48 x 224 | the fill of a block 48 wide or less and over 96 high; it repeats down from the top of the block, and its right sixth (`PILLAR_EDGE`) stays at the right of a narrower block |
+| `underhang` | an arcade bay | 150 x 48 | one bay below a platform (a block 40 high or less and 96 wide or more): the platform is cut in bays near the picture's width; the ends (0.12 of the width each, `ARCH_BRACKET`) keep their size and the span between them is stretched |
+| `pendant` | a banner | 28 x 80 | in the middle of some bays at least 110/150 of the underhang's width, from the bottom of the platform |
+| `ledge_end` | a clump of ivy | 3 x 64 x 52 | a top corner of a block; the corner is at (11/64, 8/52) of the square (`IVY_CORNER`), and the square is mirrored for a right corner |
+| `trailing` | strands of ivy | 3 x 40 x 120 | what trails below the end of a platform whose corner has a ledge end; x goes into the platform from its end |
+| `motif` | a gold sigil | 76 x 108 | in the middle of a large wall face (150 x 150 or more), one each 320 units; at half size as a medallion in a bay with no pendant |
 
 The corrupted state of each one is the clean one in voxels, as in the skin:
 the same silhouette, the gold lines lit as cyan and magenta, and what is not a
@@ -376,27 +377,27 @@ def corrupt_emblem() -> Picture:
 PAINTERS = {
     ("hub_clean", "pillar"): lambda: clean_pillar().publish(),
     ("hub_corrupt", "pillar"): lambda: corrupt_pillar().publish(),
-    ("hub_clean", "arch"): lambda: clean_arch().publish(),
-    ("hub_corrupt", "arch"): lambda: corrupt_arch().publish(),
-    ("hub_clean", "banner"): lambda: clean_banner().publish(),
-    ("hub_corrupt", "banner"): lambda: corrupt_banner().publish(),
-    ("hub_clean", "ivy"): lambda: strip([ivy_square(v, False) for v in range(IVY_VARIANTS)]),
-    ("hub_corrupt", "ivy"): lambda: strip([ivy_square(v, True) for v in range(IVY_VARIANTS)]),
-    ("hub_clean", "ivy_strands"): lambda: strip([strand_square(v, False) for v in range(IVY_VARIANTS)]),
-    ("hub_corrupt", "ivy_strands"): lambda: strip([strand_square(v, True) for v in range(IVY_VARIANTS)]),
-    ("hub_clean", "emblem"): lambda: clean_emblem().publish(),
-    ("hub_corrupt", "emblem"): lambda: corrupt_emblem().publish(),
+    ("hub_clean", "underhang"): lambda: clean_arch().publish(),
+    ("hub_corrupt", "underhang"): lambda: corrupt_arch().publish(),
+    ("hub_clean", "pendant"): lambda: clean_banner().publish(),
+    ("hub_corrupt", "pendant"): lambda: corrupt_banner().publish(),
+    ("hub_clean", "ledge_end"): lambda: strip([ivy_square(v, False) for v in range(IVY_VARIANTS)]),
+    ("hub_corrupt", "ledge_end"): lambda: strip([ivy_square(v, True) for v in range(IVY_VARIANTS)]),
+    ("hub_clean", "trailing"): lambda: strip([strand_square(v, False) for v in range(IVY_VARIANTS)]),
+    ("hub_corrupt", "trailing"): lambda: strip([strand_square(v, True) for v in range(IVY_VARIANTS)]),
+    ("hub_clean", "motif"): lambda: clean_emblem().publish(),
+    ("hub_corrupt", "motif"): lambda: corrupt_emblem().publish(),
 }
 
-#: The size each part is laid at, in world units: a strip is its squares side
-#: by side.
+#: The size the hub draws each role at, in world units: a strip is its
+#: squares side by side. The game lays each at the size of its picture.
 SIZES = {
     "pillar": PILLAR,
-    "arch": ARCH,
-    "banner": BANNER,
-    "ivy": (IVY[0] * IVY_VARIANTS, IVY[1]),
-    "ivy_strands": (STRANDS[0] * IVY_VARIANTS, STRANDS[1]),
-    "emblem": EMBLEM,
+    "underhang": ARCH,
+    "pendant": BANNER,
+    "ledge_end": (IVY[0] * IVY_VARIANTS, IVY[1]),
+    "trailing": (STRANDS[0] * IVY_VARIANTS, STRANDS[1]),
+    "motif": EMBLEM,
 }
 
 

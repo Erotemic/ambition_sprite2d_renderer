@@ -173,9 +173,10 @@ def test_a_pool_of_light_is_clear_at_each_edge_of_its_square(theme: str) -> None
 
 
 @pytest.mark.parametrize("key", ornaments.KEYS)
-def test_each_ornament_has_the_size_the_game_lays_it_at(key: str) -> None:
-    # The game places each ornament by its size in world units
-    # (`terrain_skin.rs`): a picture of another size is laid stretched.
+def test_each_hub_role_has_the_size_it_is_drawn_for(key: str) -> None:
+    # The game lays each role at its picture's size (`terrain_skin.rs`); the
+    # hub's art draws its proportions (the ends of a bay, the corner of a
+    # ledge end) for these sizes.
     parts = ornaments.parts(key)
     assert sorted(parts) == sorted(ornaments.SIZES)
     for part, image in parts.items():
