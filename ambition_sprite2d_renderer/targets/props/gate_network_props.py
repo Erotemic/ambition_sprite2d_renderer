@@ -6,8 +6,15 @@ keeps a ring running.
   is: the fifteen glyphs (``glyphs.legally_distinct``) lit cyan over the
   arch, Δ at the top, and in the bottom slice, where the gate has its base,
   a big solid Δ: the press that engages a dial. Seen at the slant. A small screen stands behind it. The game draws the terminal's
-  press button over the brass plate on the front. Every dialed ring has one
-  beside it.
+  press button over the brass plate on the front. Every dialed round ring
+  has one beside it.
+- ``gate_dialer_triangle``: the same console for the triangle gate
+  (``triangle_gate``), to stand in place of ``gate_dialer`` beside it. Its
+  dial is an upright triangle laid out as the gate's sides: ΛΕΓΑΛΛΥ up the
+  left side, the Δ at the apex, ΙΣΤΙΝΧΤ down the right side, each foot
+  toward the opening, and the press in the base, where the gate has its
+  pedestal. The frame, the pedestal, the plate and the floor line are the
+  round dialer's.
 - ``gate_power_cabinet``: the ring's power: a grey cabinet with a meter, a
   lever, warning stripes and the conduit that runs out of its side to the
   ring. Rings are expensive to run, and every gate hall shows it.
@@ -37,6 +44,7 @@ from PIL import Image
 
 from ...authoring.sheet_build import build_sheet
 from ...glyphs.legally_distinct import ARCH_GAP_DEG, GLYPHS, Placement, arch_angle, glyphs_mask, spell
+from . import triangle_gate as tri_gate
 from ._town_kit import Canvas, box
 from .castle_godwin import lettering
 
@@ -64,22 +72,124 @@ CYAN_GLOW = (57, 212, 255)
 SCREEN = (16, 42, 52)
 
 
-def _dial_glyphs(c: Canvas, cx: float, cy: float, radius: float, cap: float, slant: float) -> np.ndarray:
-    """The coverage of the fifteen glyphs round a dial centred at (cx, cy)
-    (units), laid out as the gate's ring (``arch_angle``), each foot toward
-    the centre, seen at a slant that shortens the dial to ``slant`` of its
-    height."""
+def _dial_glyphs(c: Canvas, cx: float, cy: float, cap: float, slant: float, pose: Callable[[int], Tuple[float, float, float]]) -> np.ndarray:
+    """The coverage of the fifteen glyphs on a dial centred at (cx, cy)
+    (units), seen at a slant that shortens the dial to ``slant`` of its
+    height. ``pose(index)`` gives where glyph ``index`` stands in the dial's
+    plane (units from the centre) and the way its head points (degrees), as
+    the gate's ring or the triangle gate's sides set it."""
     px, py, k = (cx - c.o[0]) * c.k, (cy - c.o[1]) * c.k, c.k
     placements = []
     for glyph in GLYPHS:
-        ang = arch_angle(glyph.index)
-        rad = math.radians(ang)
-        placements.append(Placement(glyph, (px + radius * k * math.cos(rad), py + radius * k * math.sin(rad)), cap * k, ang + 90.0))
+        dx, dy, out = pose(glyph.index)
+        placements.append(Placement(glyph, (px + dx * k, py + dy * k), cap * k, out + 90.0))
     squash = f"translate({px:.3f} {py:.3f}) scale(1 {slant}) translate({-px:.3f} {-py:.3f})"
     return glyphs_mask(placements, (c.W, c.H), transform=squash)
 
 
-def _dialer(c: Canvas) -> None:
+def _dial_press(c: Canvas, cx: float, top: float, foot: float, half: float) -> None:
+    """The accept press: a solid Δ from ``top`` to ``foot``, ``half`` of its
+    foot wide, raised on a bronze bezel."""
+    press = [(cx, top), (cx + half, foot), (cx - half, foot)]
+    bezel = [(cx, top - 1.6), (cx + half + 1.9, foot + 1.0), (cx - half - 1.9, foot + 1.0)]
+    c.put(c.mask(lambda p: p.poly([(x, y + 0.8) for x, y in bezel])), WOOD_DARK)
+    c.put(c.mask(lambda p: p.poly(bezel)), BRASS)
+    c.put(c.mask(lambda p: p.poly(press), blur=0.9), CYAN_GLOW, 0.6)
+    c.put(c.mask(lambda p: p.poly(press)), CYAN)
+    c.put(c.mask(lambda p: p.poly([(cx, top + 1.2), (cx + half * 0.45, foot - 2.2), (cx - half * 0.45, foot - 2.2)]), blur=0.3), (225, 255, 255), 0.7)
+
+
+def _round_dial(c: Canvas, cx: float) -> None:
+    """The round gate's dial, seen at the slant: a bronze rim, the glyph
+    band laid out as the ring (``arch_angle``), a bronze hub and its dark
+    centre, and the press in the slice the glyphs leave open."""
+    cy, slant = 22.5, 0.5
+    c.put(c.mask(lambda p: p.ellipse(cx, cy + 0.8, 18, 18 * slant)), WOOD_DARK)
+    c.put(c.mask(lambda p: p.ellipse(cx, cy, 17.5, 17.5 * slant)), BRASS)
+    c.put(c.mask(lambda p: p.ellipse(cx, cy, 16, 16 * slant)), WOOD_DARK)
+    c.put(c.mask(lambda p: p.ellipse(cx, cy, 9.5, 9.5 * slant)), BRASS_DARK)
+    c.put(c.mask(lambda p: p.ellipse(cx, cy - 0.3, 8, 8 * slant)), (34, 30, 30))
+    c.put(c.mask(lambda p: p.ellipse(cx - 2, cy - 1.2, 3, 3 * slant), blur=0.6), CYAN_GLOW, 0.25)
+
+    def ring(index: int) -> Tuple[float, float, float]:
+        ang = arch_angle(index)
+        rad = math.radians(ang)
+        return 12.6 * math.cos(rad), 12.6 * math.sin(rad), ang
+
+    glyphs = _dial_glyphs(c, cx, cy, 3.6, slant, ring)
+    c.put(c.soften(glyphs, 0.5), CYAN_GLOW, 0.55)
+    c.put(glyphs, CYAN)
+    # The press bites into the band and the hub.
+    half = 12.6 * math.sin(math.radians(ARCH_GAP_DEG / 2.0)) * 0.62
+    _dial_press(c, cx, cy + 3.2 * slant * 2.0 - 4.4, cy + 15.2 * slant, half)
+
+
+#: The triangle dial (``gate_dialer_triangle``), in its own plane: the
+#: inradius of its bronze rim, of its glyph band's outer and inner edges, and
+#: of its opening (the triangle gate's).
+TRI_DIAL_RIM = 12.0
+TRI_DIAL_BAND_OUT = 11.0
+TRI_DIAL_BAND_IN = 5.6
+TRI_DIAL_OPEN = 4.6
+#: The glyphs on its sides: their size, the gap from the band's apex corner
+#: to the first, and the distance between neighbours.
+TRI_DIAL_CAP = 3.1
+TRI_DIAL_FIRST = 5.0
+TRI_DIAL_PITCH = 3.7
+
+
+def _triangle(cx: float, cy: float, in_r: float, slant: float) -> List[Tuple[float, float]]:
+    """An upright triangle about (cx, cy), inradius ``in_r`` in the dial's
+    plane, seen at ``slant``: apex, lower right, lower left (the triangle
+    gate's ``_triangle``)."""
+    return [(cx + 2.0 * in_r * math.cos(math.radians(a)), cy + 2.0 * in_r * math.sin(math.radians(a)) * slant) for a in tri_gate.CORNER_DEGS]
+
+
+def _triangle_side(index: int) -> Tuple[float, float, float]:
+    """Where glyph ``index`` stands on the triangle dial, as on the triangle
+    gate (``triangle_gate._chevron_pose``): ΛΕΓΑΛΛΥ up the left side, the Δ
+    at the apex, ΙΣΤΙΝΧΤ down the right side, each foot toward the
+    opening."""
+    mid = (TRI_DIAL_BAND_OUT + TRI_DIAL_BAND_IN) / 2.0
+    if index == tri_gate.APEX_INDEX:
+        rad = math.radians(tri_gate.APEX_DEG)
+        out = 2.0 * mid - 1.0
+        return out * math.cos(rad), out * math.sin(rad), tri_gate.APEX_DEG
+    left = index < tri_gate.APEX_INDEX
+    from_apex = tri_gate.PER_SIDE - 1 - index if left else index - tri_gate.APEX_INDEX - 1
+    # From the side's middle toward the apex corner.
+    up = math.sqrt(3.0) * mid - TRI_DIAL_FIRST - from_apex * TRI_DIAL_PITCH
+    normal = tri_gate.LEFT_NORMAL_DEG if left else tri_gate.RIGHT_NORMAL_DEG
+    n, t = math.radians(normal), math.radians(normal + 90.0)
+    # The left side's clockwise way is up, the right side's down.
+    along = up if left else -up
+    return mid * math.cos(n) + along * math.cos(t), mid * math.sin(n) + along * math.sin(t), normal
+
+
+def _triangle_dial(c: Canvas, cx: float) -> None:
+    """The triangle gate's dial, seen at the slant: the round dial's parts
+    on an upright triangle. The glyphs along the sides, the Δ at the apex,
+    and the press in the base, where the gate has its pedestal."""
+    cy, slant = 25.4, 0.5
+    tri = lambda r: _triangle(cx, cy, r, slant)  # noqa: E731
+    c.put(c.mask(lambda p: p.poly([(x, y + 0.8) for x, y in _triangle(cx, cy, TRI_DIAL_RIM + 0.4, slant)])), WOOD_DARK)
+    c.put(c.mask(lambda p: p.poly(tri(TRI_DIAL_RIM))), BRASS)
+    c.put(c.mask(lambda p: p.poly(tri(TRI_DIAL_BAND_OUT))), WOOD_DARK)
+    c.put(c.mask(lambda p: p.poly(tri(TRI_DIAL_BAND_IN))), BRASS_DARK)
+    c.put(c.mask(lambda p: p.poly([(x, y - 0.3) for x, y in tri(TRI_DIAL_OPEN)])), (34, 30, 30))
+    c.put(c.mask(lambda p: p.ellipse(cx - 1.5, cy - 2.0, 2.5, 2.5 * slant), blur=0.6), CYAN_GLOW, 0.25)
+    glyphs = _dial_glyphs(c, cx, cy, TRI_DIAL_CAP, slant, _triangle_side)
+    c.put(c.soften(glyphs, 0.5), CYAN_GLOW, 0.55)
+    c.put(glyphs, CYAN)
+    # The press stands on the base and rises into the opening.
+    foot = cy + TRI_DIAL_BAND_OUT * slant
+    _dial_press(c, cx, cy - 2.0 * TRI_DIAL_OPEN * slant + 0.6, foot, 5.2)
+
+
+def _dialer_console(c: Canvas, dial: Callable[[Canvas, float], None]) -> None:
+    """A dialer: the pedestal, the screen behind and the desk, with
+    ``dial`` on the desk; the brass plate on the front holds the press
+    button the game draws."""
     w, h = DIALER_W, DIALER_H
     # The plinth on the floor.
     c.put(c.mask(box(5, h - 6, w - 5, h)), WOOD_DARK)
@@ -101,32 +211,18 @@ def _dialer(c: Canvas) -> None:
     c.paint(c.mask(lambda p: p.poly(desk)), c.ramp([(14, WOOD_LIGHT), (31, WOOD)]))
     c.put(c.mask(lambda p: p.poly([(7, 31), (w - 7, 31), (w - 8, 34), (8, 34)])), WOOD_DARK)
     c.put(c.mask(lambda p: p.line(desk[:2], 0.8)), WOOD_LIGHT, 0.9)
-    # The dial, seen at the slant: a bronze rim, the glyph band, a bronze
-    # hub and its dark centre.
-    cx, cy, slant = w * 0.5, 22.5, 0.5
-    c.put(c.mask(lambda p: p.ellipse(cx, cy + 0.8, 18, 18 * slant)), WOOD_DARK)
-    c.put(c.mask(lambda p: p.ellipse(cx, cy, 17.5, 17.5 * slant)), BRASS)
-    c.put(c.mask(lambda p: p.ellipse(cx, cy, 16, 16 * slant)), WOOD_DARK)
-    c.put(c.mask(lambda p: p.ellipse(cx, cy, 9.5, 9.5 * slant)), BRASS_DARK)
-    c.put(c.mask(lambda p: p.ellipse(cx, cy - 0.3, 8, 8 * slant)), (34, 30, 30))
-    c.put(c.mask(lambda p: p.ellipse(cx - 2, cy - 1.2, 3, 3 * slant), blur=0.6), CYAN_GLOW, 0.25)
-    glyphs = _dial_glyphs(c, cx, cy, 12.6, 3.6, slant)
-    c.put(c.soften(glyphs, 0.5), CYAN_GLOW, 0.55)
-    c.put(glyphs, CYAN)
-    # The accept press, in the slice the glyphs leave open: a solid Δ that
-    # bites into the band and the hub, raised on a bronze bezel.
-    half = 12.6 * math.sin(math.radians(ARCH_GAP_DEG / 2.0)) * 0.62
-    top, foot = cy + 3.2 * slant * 2.0 - 4.4, cy + 15.2 * slant
-    press = [(cx, top), (cx + half, foot), (cx - half, foot)]
-    bezel = [(cx, top - 1.6), (cx + half + 1.9, foot + 1.0), (cx - half - 1.9, foot + 1.0)]
-    c.put(c.mask(lambda p: p.poly([(x, y + 0.8) for x, y in bezel])), WOOD_DARK)
-    c.put(c.mask(lambda p: p.poly(bezel)), BRASS)
-    c.put(c.mask(lambda p: p.poly(press), blur=0.9), CYAN_GLOW, 0.6)
-    c.put(c.mask(lambda p: p.poly(press)), CYAN)
-    c.put(c.mask(lambda p: p.poly([(cx, top + 1.2), (cx + half * 0.45, foot - 2.2), (cx - half * 0.45, foot - 2.2)]), blur=0.3), (225, 255, 255), 0.7)
+    dial(c, w * 0.5)
     # A brass plate on the front, where the press button sits.
     c.put(c.mask(box(w * 0.5 - 9, 37, w * 0.5 + 9, h - 9)), BRASS_DARK)
     c.put(c.mask(box(w * 0.5 - 8, 38, w * 0.5 + 8, h - 10)), BRASS, 0.55)
+
+
+def _dialer(c: Canvas) -> None:
+    _dialer_console(c, _round_dial)
+
+
+def _dialer_triangle(c: Canvas) -> None:
+    _dialer_console(c, _triangle_dial)
 
 
 DIALER_W, DIALER_H = 64, 56
@@ -219,6 +315,7 @@ BAGS_W, BAGS_H = 32, 48
 PROPS: Dict[str, Tuple[float, float, Callable[[Canvas], None], List[str]]] = {
     # name: (width, height, draw, tags)
     "gate_dialer": (DIALER_W, DIALER_H, _dialer, ["prop", "gate", "terminal"]),
+    "gate_dialer_triangle": (DIALER_W, DIALER_H, _dialer_triangle, ["prop", "gate", "terminal"]),
     "gate_power_cabinet": (CABINET_W, CABINET_H, _power_cabinet, ["prop", "gate", "machinery"]),
     "gate_traffic_board": (BOARD_W, BOARD_H, _traffic_board, ["prop", "gate", "sign"]),
     "gate_transit_bags": (BAGS_W, BAGS_H, _transit_bags, ["prop", "gate"]),
