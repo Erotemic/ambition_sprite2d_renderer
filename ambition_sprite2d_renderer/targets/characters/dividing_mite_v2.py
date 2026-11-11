@@ -6,8 +6,9 @@ was chosen. A peanut of two teal lobes, each with its own nucleus, feeler and
 four legs, cinched at the waist by a bright cleavage ring; one dark visor eye
 and a pair of hooked mandibles at the front (its swipe).
 
-It has four hit points and on death splits into two Puppy Slugs, one each
-side of the corpse (``divides_into`` in the catalog). Its ``death`` row shows
+It has four hit points and on death splits into its two halves
+(``dividing_mite_half_v2``), one each side of the corpse (``divides_into`` in
+the catalog). Its ``death`` row shows
 that: it strains, the ring goes hot, and the lobes pull apart left and right.
 The first Dividing Mite (a robot-toon config, ``configs/dividing_mite.yaml``)
 stays renderable.
@@ -26,7 +27,7 @@ ACTOR_METADATA = _mite_v2.actor_metadata(
     live=(0.32, 0.56), head=(292.0, 248.0), chest=(200.0, 268.0), jaws=(306.0, 306.0),
     notes=["The SVG owns the part shapes; each lobe, leg segment, feeler and mandible turns about its own joint.",
            "Each leg is a thigh and a shin solved to a foot target, so the feet stay planted while the body moves.",
-           "death: the cleavage ring goes hot, then the two lobes pull apart; the game spawns the two Puppy Slugs."],
+           "death: the cleavage ring goes hot, then the two lobes pull apart; the game spawns the two halves."],
 )
 
 #: The body: both lobes and the reach of the legs, in SVG units (x0, y0, x1, y1).

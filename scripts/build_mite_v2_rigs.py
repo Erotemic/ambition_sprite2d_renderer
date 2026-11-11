@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Build the rig documents of the two mites, v2 (``dividing_mite_v2``, ``exploding_mite_v2``).
+"""Build the rig documents of the mites, v2 (``dividing_mite_v2``, ``exploding_mite_v2``, and
+``dividing_mite_half_v2``, what a dividing mite splits into).
 
     uv run python scripts/svg_art/mites_art.py --cast   # the drawings, once
     uv run python scripts/build_mite_v2_rigs.py
@@ -24,7 +25,9 @@ legs, mandibles gaping, held for the snap). Both loop on the game's clock, so
 every frame is the whole pose with a shiver.
 
 - ``death`` of the dividing mite: it strains, the ring goes hot, and the two
-  lobes pull apart left and right (the game puts a Puppy Slug where each goes).
+  lobes pull apart left and right (the game puts a half, ``dividing_mite_half_v2``,
+  where each goes).
+- ``death`` of a half: it cannot split again; it sags onto its belly.
 - ``death`` of the exploding mite: the fuse burns down to the cap and the
   shell swells and glows white hot (the blast is the game's effect).
 """
@@ -251,6 +254,33 @@ def dividing_clips(m: Mite) -> Dict[str, dict]:
     return clips
 
 
+def half_clips(m: Mite) -> Dict[str, dict]:
+    """A half of a split Dividing Mite: the parent's rows on one lobe, its one
+    feeler swaying with them. It cannot split again, so its ``death`` is a
+    collapse: it shudders, sags onto its belly with its legs splayed, the
+    feeler droops and the mandibles fall open."""
+    clips = common_clips(m, (0.32, 0.56))
+    for row, amp in (("idle", 6.0), ("walk", 9.0), ("run", 12.0), ("dash", 7.0)):
+        clips[row]["channels"]["feeler"] = expr(f"{amp}*sin(tau*t+0.2)")
+    clips["hit"]["channels"]["feeler"] = expr(f"22*{JOLT}")
+    clips["slash"]["channels"]["feeler"] = expr("-12*sin(pi*t)")
+    clips["notice"]["channels"]["feeler"] = held(-22.0, -25.0, -20.0)
+    clips["windup"]["channels"]["feeler"] = held(18.0, 20.0, 16.0)
+    n = 8
+    sag = [smooth((i / (n - 1) - 0.25) / 0.75) for i in range(n)]
+    clips["death"] = {"loop": False, "frames": n, "duration_ms": 95, "channels": {
+        "root_x": keys([(1.4 if i % 2 else -1.4) * (1 - sag[i]) * (i > 0) for i in range(n)]),
+        "root_y": keys([7.0 * e for e in sag]),
+        "body": keys([-5.0 * e for e in sag]),
+        "feeler": keys([30.0 * e for e in sag]),
+        "mandible_near": keys([24.0 * min(1.0, i / 3) for i in range(n)]),
+        "mandible_far": keys([-18.0 * min(1.0, i / 3) for i in range(n)]),
+        # the legs give way outward
+        **m.per_frame_feet(n, lambda leg, i: (8.0 if leg.endswith(("front", "fmid")) else -8.0) * sag[i]),
+    }}
+    return clips
+
+
 SPARK_FLICKER = "1 if floor(t*8+0.01) % 2 == 0 else 0"
 
 
@@ -338,7 +368,7 @@ def build(name: str) -> dict:
         rx, ry = m.rest[leg]
         ik_chains.append({"upper": f"{leg}_thigh", "lower": f"{leg}_shin", "channel_prefix": f"{leg}_foot",
                           "rest_x": round(rx, 5), "rest_y": round(ry, 5), "bend": 1 if side < 0 else -1})
-    clips = dividing_clips(m) if name.startswith("dividing") else exploding_clips(m)
+    clips = {"dividing_mite_v2": dividing_clips, "dividing_mite_half_v2": half_clips}.get(name, exploding_clips)(m)
     return {
         "name": name,
         "frame": FRAME,

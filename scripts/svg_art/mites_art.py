@@ -13,22 +13,24 @@ nothing in either drawing says what the mite DOES.
 WHAT THEY DO (the code, not the barks):
 
 * ``npc_dividing_mite``: four hit points, slow (run 130), and on death it
-  splits into TWO Puppy Slugs, one spawned 30 px to each side of the corpse
-  (``divides_into: "npc_puppy_slug"``, ``spawn_split_offspring`` in
-  ``damage_drops.rs``). So the drawing shows a body that is visibly two of
-  something, held together, that will come apart left and right.
-* ``npc_exploding_mite``: two hit points, fast (run 245), and its corpse
-  detonates (``explodes_on_death``): a 128 px box, 3 damage, so a point-blank
-  kill is punished. So the drawing shows pressure, a fuse, warning colour:
-  "don't hit me up close".
+  splits into its own two halves, one to each side of the corpse
+  (``divides_into: "npc_dividing_mite_half"``, ``spawn_split_offspring`` in
+  ``death_effects.rs``; Jon 2026-11-11: "the 2 parts of itself, not 2 puppy
+  slugs"). So the drawing shows a body that is visibly two of something, held
+  together, that will come apart left and right; ``cast_dividing_half`` is one
+  of the two.
+* ``npc_exploding_mite``: two hit points, fast (run 245); in reach of its foe
+  it plants, swells and goes off (``exploding_mite_fuse``), and its corpse
+  detonates too (``explodes_on_death``): a 128 px box, 3 damage, so a
+  point-blank kill is punished. So the drawing shows pressure, a fuse, warning
+  colour: "don't let me reach you, don't hit me up close".
 
 THE FAMILY. Both are small robot mites on one chassis: a round body slung low
 on eight short jointed legs (high knees, pointed feet, so it reads as a bug and
 not as a dog), one dark visor eye with a lit pupil, and a pair of hooked
-mandibles at the front -- the mandibles are the swipe both of them attack with
-(``dividing_mite_swipe`` / ``exploding_mite_swipe``). The body on that chassis
-is what tells them apart: a body that is two (cool teal, the colour of the
-Puppy Slugs it releases) or a body under pressure (dark steel, hazard yellow,
+mandibles at the front -- the dividing mite's swipe (``dividing_mite_swipe``);
+the exploding mite does not swing, it goes off (``exploding_mite_fuse``). The body on that chassis
+is what tells them apart: a body that is two (cool teal) or a body under pressure (dark steel, hazard yellow,
 a hot core).
 
 THREE LOOKS EACH, ``LOOKS`` below; each is a side view facing right, a front
@@ -906,8 +908,9 @@ def write_all(out: Path) -> List[Path]:
 # turn, its place, or which of two drawings of it shows (an opacity channel).
 
 ROOT = Path(__file__).resolve().parents[2]
-CAST_NAMES = ("dividing_mite_v2", "exploding_mite_v2")
-CAST_VIEW = {"dividing_mite_v2": "Dividing Mite v2 - Side Right", "exploding_mite_v2": "Exploding Mite v2 - Side Right"}
+CAST_NAMES = ("dividing_mite_v2", "dividing_mite_half_v2", "exploding_mite_v2")
+CAST_VIEW = {"dividing_mite_v2": "Dividing Mite v2 - Side Right", "dividing_mite_half_v2": "Dividing Mite Half v2 - Side Right",
+             "exploding_mite_v2": "Exploding Mite v2 - Side Right"}
 #: The rig frame's middle, in design units.
 CAST_CX = 200.0
 LEG_SPEC = {
@@ -1032,6 +1035,39 @@ def cast_dividing() -> CastRig:
     return rig
 
 
+def cast_dividing_half() -> CastRig:
+    """One half of a Dividing Mite after the split: a single lobe of the same
+    cell, so each half is the size of one of the parent's lobes. It keeps its
+    own nucleus and feeler and grows what it needs to live alone (an eye,
+    mandibles, eight short legs under the one lobe). Its back is the torn
+    face of the split, a pale scar where the cleavage ring was."""
+    pal = DIV
+    rig = CastRig()
+    cx, cy, by = CAST_CX, 268.0, 318.0
+    rig.joint("body", "", (cx, by))
+    rig.add_legs("body", leg_points(cx, by, 44, ("rear", "rmid", "fmid", "front")), pal)
+    root = (cx + 18, cy - 52)
+    feel_pts = [root, (cx + 30, cy - 84), (cx + 50, cy - 98)]
+    rig.joint("feeler", "body", root)
+    rig.part("feeler", "Feeler", "feeler", 26,
+             [ln(feel_pts, INK, 10), ln(feel_pts, pal["leg_sh"], 4.5), disc(feel_pts[-1][0], feel_pts[-1][1], 7, pal["pupil"], sw=IN)])
+    speck = [disc(cx - 26, cy - 24, 4, pal["mem_lt"], sw=0), disc(cx - 10, cy + 30, 3, pal["mem_sh"], sw=0)]
+    # the torn face: the ring's pale membrane along the back of the lobe
+    scar = [(cx - 66 * math.cos(math.radians(a)) + 10, cy - 58 * math.sin(math.radians(a)) * 0.92) for a in range(-48, 49, 12)]
+    under = cel(poly([(cx - 52, by - 18), (cx + 52, by - 18), (cx + 40, by + 4), (cx - 40, by + 4)]), pal["slate"], pal["slate_sh"], None, s=4, sw=IN)
+    body = cel(E(cx, cy, 66.0, 58), pal["mem"], pal["mem_sh"], pal["mem_lt"], s=13, l=7,
+               items=speck + nucleus(cx - 8, cy + 14, 21, pal, 3) + [ln(scar, INK, 12), ln(scar, pal["ring"], 8)])
+    rig.part("lobe", "Lobe", "body", 44, under + body)
+    rig.part("eye", "Eye", "body", 46, eye(cx + 38, cy - 20, 16, 13, pal, look=(5, 1), rot=-8))
+    base = (cx + 54, by - 12)
+    mfar, mnear = mandibles_side(base, pal, scale=1.1)
+    rig.joint("mandible_far", "body", (base[0] - 2, base[1] - 8))
+    rig.joint("mandible_near", "body", base)
+    rig.part("mandible_far", "Mandible - Far", "mandible_far", 8, mfar)
+    rig.part("mandible_near", "Mandible - Near", "mandible_near", 48, mnear)
+    return rig
+
+
 def _bomb_shell(pal: Dict, t: int, cx: float, cy: float, by: float, r: float) -> Items:
     """The shell of look A at wind-up stage ``t`` (0 rest, 1 hot, 2 white hot):
     valve, shell, belt, cap, eye and brow, swollen about the underside."""
@@ -1098,7 +1134,7 @@ def cast_exploding() -> CastRig:
     return rig
 
 
-CAST = {"dividing_mite_v2": cast_dividing, "exploding_mite_v2": cast_exploding}
+CAST = {"dividing_mite_v2": cast_dividing, "dividing_mite_half_v2": cast_dividing_half, "exploding_mite_v2": cast_exploding}
 
 
 def cast_svg_path(name: str) -> Path:
@@ -1114,10 +1150,11 @@ def cast_svg_text(name: str) -> str:
         if channel:
             extra = f' data-rig-opacity="{channel}"' + (' data-rig-default="1"' if on else "")
         svg.part(group, label, part, bone, z, [s for s in items if s], extra)
-    look = "twin-core cell" if name.startswith("dividing") else "bomb"
+    look = {"dividing_mite_v2": "twin-core cell", "dividing_mite_half_v2": "one lobe of the cell"}.get(name, "bomb")
+    cast_on = "2026-11-11" if name == "dividing_mite_half_v2" else "2026-10-23"
     return svg.document(
         size=(W, H), design=f"{name.replace('_', '-')}-a", layer_id=name.replace("_", "-"), label=CAST_VIEW[name],
-        comment=[f"  <!-- {name}: look A ({look}), cast 2026-10-23; side view facing right, the ground at y={GROUND:g}.",
+        comment=[f"  <!-- {name}: look A ({look}), cast {cast_on}; side view facing right, the ground at y={GROUND:g}.",
                  "       Drawn by scripts/svg_art/mites_art.py (the cast mode); each part turns about its bone's joint. -->"],
         joints=svg.joints_layer({k: (v[1], v[2]) for k, v in rig.joints.items()}),
     )

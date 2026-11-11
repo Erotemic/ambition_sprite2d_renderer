@@ -4,10 +4,12 @@ Look A of the 2026-10-22 candidates (``scripts/svg_art/mites_art.py``), cast
 2026-10-23: Jon asked to see the redesign in the game and did not pick, so A
 was chosen. A gunmetal pressure shell with a hazard-striped belt, a brass cap
 and a lit fuse, a pressure valve at its back, one red visor eye under a brow
-plate, and a pair of hooked mandibles at the front (its swipe).
+plate, and a pair of hooked mandibles at the front.
 
-It has two hit points and its corpse detonates (``explodes_on_death`` in the
-catalog). Its ``death`` row is the wind-up: the fuse burns down to the cap
+It has two hit points. It does not swing: in reach of its foe it plants and
+goes off (``exploding_mite_fuse``), its ``windup`` row (the shell cracked and
+glowing) held over the fuse; and its corpse detonates (``explodes_on_death``
+in the catalog). Its ``death`` row is the wind-up: the fuse burns down to the cap
 while the shell swells, its seams glow and then go white hot. The blast is
 the game's effect, not the sheet's. The first Exploding Mite (a robot-toon
 config, ``configs/exploding_mite.yaml``) stays renderable.
