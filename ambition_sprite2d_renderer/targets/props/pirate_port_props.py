@@ -186,14 +186,50 @@ def harbour_house(c, k):
     k.balcony(1232, x1, BALCONY, PLANK, rail=TIMBER)
     for x in np.arange(1250, x1, 48):
         c.put(c.mask(lambda p: p.poly([(x, BALCONY + 4), (x + 3, BALCONY + 4), (x + 18, BALCONY + 22), (x + 15, BALCONY + 22)])), TIMBER)
-    # The stone stair: three treads, each a block of masonry to the floor.
-    for i, (sx, top) in enumerate(((1000, 640), (1080, 576), (1160, 512))):
-        m = c.mask(box(sx, top, sx + 96, g))
-        c.put(m, PAL["stone"])
-        rows = c.mask(lambda p: [p.rect(sx, y, sx + 96, y + 0.8) for y in np.arange(top + 12, g, 12)])
-        c.put(rows * m, scale(PAL["stone"], 0.72), 0.8)
-        c.tone(m * (c.noise(("stair", i), 4, 6, 3) - 0.5), 0.18)
-        c.put(c.mask(box(sx, top, sx + 96, top + 3)), PAL["stone_light"])
+    # The stone stair: one flight of dressed stone built against the house,
+    # its treads (640, 576, 512) and a pier that carries it up to the
+    # balcony's end. Its ashlar runs through it in courses, so it is one
+    # piece of building, not three blocks; each tread is a slab whose nosing
+    # stands proud of the riser, a string course climbs its flank with the
+    # treads, and an iron handrail follows them up. It stays in the frame
+    # the three blocks had (x 1000..1256).
+    treads = ((1000, 640, 1080), (1080, 576, 1160), (1160, 512, 1232))
+    stone, light = PAL["stone"], PAL["stone_light"]
+    joint = scale(stone, 0.7)
+    outline = [(1000, g), (1000, 640), (1080, 640), (1080, 576), (1160, 576), (1160, 512), (1232, 512), (1232, BALCONY + 4),
+               (1256, BALCONY + 4), (1256, g)]
+    flight = c.mask(lambda p: p.poly(outline))
+    c.put(flight, stone)
+    c.tone(flight * (c.noise("stair_flight", 8, 10, 3) - 0.5), 0.12)
+    courses = c.mask(lambda p: [p.rect(1000, y, 1256, y + 0.9) for y in np.arange(BALCONY + 4 + 16, g, 16)])
+    c.put(courses * flight, joint, 0.8)
+    heads = c.mask(lambda p: [p.rect(x, y, x + 0.9, y + 16) for k, y in enumerate(np.arange(BALCONY + 4, g, 16))
+                              for x in np.arange(1000 + (12 if k % 2 else 28), 1256, 32)])
+    c.put(heads * flight, joint, 0.65)
+    # Weather: the foot damp and dark, moss in its lowest joints.
+    c.tone(flight * np.clip((c.y - (g - 56)) / 56, 0, 1), -0.16)
+    rng = c.rand("stair_moss")
+    tufts = [(rng.uniform(1004, 1252), g - 16 * rng.randint(0, 1) - 0.6, rng.uniform(2.0, 4.0)) for _ in range(6)]
+    c.put(c.mask(lambda p: [p.ellipse(x, y, r, r * 0.3) for x, y, r in tufts]) * flight, (92, 118, 70), 0.55)
+    # The string course: a band that climbs the flank under the nosings.
+    band = c.mask(lambda p: p.line([(1000, 692), (1256, 487)], 4.0)) * flight
+    c.put(band, mix(stone, light, 0.3))
+    c.put(c.mask(lambda p: p.line([(1000, 694.5), (1256, 489.5)], 1.2)) * flight, joint, 0.8)
+    # The treads: a slab each, the walk line its top, its nosing proud of the
+    # riser with a shadow under it.
+    for sx, top, end in treads:
+        c.put(c.mask(box(sx, top, end, top + 6)), mix(stone, light, 0.4))
+        c.put(c.mask(lambda p: p.ellipse(sx + 3.0, top + 3, 3.0, 3.0)), mix(stone, light, 0.4))
+        c.put(c.mask(box(sx, top, end, top + 1.4)), light)
+        c.put(c.mask(box(sx, top + 6, end, top + 8)), scale(stone, 0.6), 0.5)
+    # The balcony's end sits on a carved bracket on top of the pier.
+    c.put(c.mask(lambda p: p.poly([(1232, BALCONY + 4), (1256, BALCONY + 4), (1256, BALCONY + 20), (1244, BALCONY + 12)])), mix(stone, light, 0.25))
+    # The handrail: iron, a post on each tread, the rail along the pitch.
+    iron = (52, 50, 54)
+    posts = [(1008, 640), (1048, 640), (1088, 576), (1128, 576), (1168, 512), (1208, 512)]
+    c.put(c.mask(lambda p: [p.rect(x - 0.7, top - 30, x + 0.7, top) for x, top in posts]), iron, 0.9)
+    c.put(c.mask(lambda p: p.line([(1008, 610), (1088, 546), (1168, 482), (1220, 470), (1232, BALCONY - 13)], 1.4)), iron, 0.9)
+    c.put(c.mask(lambda p: p.ellipse(1008, 609, 2.0, 2.0)), iron)
     # Flags on the balcony rail: the port's bunting.
     pts = sag((1240, BALCONY - 40), (1590, BALCONY - 40), 14)
     rope_line(c, pts, 0.6, (60, 50, 40))
