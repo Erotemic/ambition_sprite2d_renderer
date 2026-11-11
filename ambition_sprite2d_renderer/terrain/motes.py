@@ -1082,6 +1082,7 @@ SHADOWS = {
     "math_town": (70, 80, 100),
     "math_undercroft": (20, 22, 32),
     "math_interior": (60, 44, 36),
+    "math_haunted": (14, 6, 20),
     "starlight": (88, 64, 120),
     "stardune": (124, 78, 70),
     "starless": (5, 2, 14),

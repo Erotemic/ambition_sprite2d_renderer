@@ -2649,6 +2649,9 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "math_undercroft": (plank, _colours((196, 178, 148), (70, 112, 170), (34, 38, 54), (214, 170, 84), (255, 204, 128))),
     # A house door from inside: green plank in a plaster arch.
     "math_interior": (plank, _colours((236, 222, 198), (60, 90, 80), (40, 52, 70), (90, 130, 90), (255, 214, 150))),
+    # A guest room of the haunted floors: dark plank in a brass frame, the
+    # teal of the ghosts under it.
+    "math_haunted": (plank, _colours((204, 156, 72), (70, 40, 34), (22, 14, 30), (92, 238, 214), (92, 238, 214))),
     # The Art dimension: a door of painted planks in a frame of gold, like a
     # picture; a door of the pages in pale wood; a stone door in the caves.
     "art": (plank, _colours((226, 176, 64), (118, 64, 196), (38, 26, 66), (232, 54, 172), (255, 236, 190))),

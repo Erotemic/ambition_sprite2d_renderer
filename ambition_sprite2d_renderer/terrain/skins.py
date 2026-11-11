@@ -129,6 +129,10 @@ SKINS: tuple[Skin, ...] = (
     # The gate hall under the Math town: the same limestone, in lamplight.
     # Inside the town's houses: a floor of terracotta tiles with a blue line.
     Skin("math_interior", "tile", (176, 108, 78), (110, 64, 46), (214, 150, 110), (78, 124, 186), "edge", (226, 200, 170), "lip", "slab"),
+    # The haunted floors of Hylbert's Hotel: plum marble in courses, its
+    # ledges marble balconies faced with the hotel's checker (their corbels,
+    # volutes and drips are `hotel_roles.py`).
+    Skin("math_haunted", "marble", (70, 58, 86), (30, 22, 40), (128, 112, 148), (92, 238, 214), "edge", (196, 188, 204), "lip", "hotel_ledge"),
     Skin("math_undercroft", "block", (150, 134, 110), (74, 66, 58), (196, 178, 148), (214, 170, 84), "edge", (206, 194, 170), "lip", "slab"),
     Skin("noodly", "noodle", (160, 116, 58), (64, 34, 20), (226, 184, 106), (255, 222, 140), "sauce", (172, 44, 32), "noodles", "lasagne"),
     # The forest of the Evil dimension: black earth with dead grass on it,
@@ -4434,6 +4438,39 @@ def oneway(skin: Skin) -> Image.Image:
         bed = [(rng.uniform(0, 64), thick + rng.uniform(0.3, 0.9), rng.uniform(0.5, 1.0)) for _ in range(26)]
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, r, ry=r * 0.6) for x, yy, r in bed]), _mix(skin.dark, skin.base, 0.35))
         tile.put(np.clip(1.0 - (y - thick - 1.2) / 3.0, 0, 1) * (y >= thick + 1.2), (0, 0, 0), 0.22)
+    elif skin.oneway == "hotel_ledge":
+        # A marble ledge of the haunted floors of Hylbert's Hotel: the face of
+        # its slab is the checker of the hotel's floors, pale over dark,
+        # under a polished lip; a brass inlay runs under it, and under that a
+        # moulding of dark marble rolls back into shadow. A crack here and
+        # there glows with the teal of the ghosts.
+        pale, deep = _mix(skin.cap_colour, skin.light, 0.25), _mix(skin.dark, skin.base, 0.55)
+        brass, brass_dark = (204, 156, 72), (134, 96, 44)
+        face = 5.6
+        slab = (y < face).astype(np.float32)
+        checker = ((np.floor(tile.x / 8.0) + np.floor((y + 0.4) / 2.8)) % 2.0 < 1.0).astype(np.float32)
+        tile.put(slab, deep)
+        tile.put(slab * checker * (y >= 1.2), pale, 0.9)
+        tile.tone((tile.noise(6, 2, 3) - 0.5) * 0.10 * slab)
+        tile.put(slab * (y < 1.2), _mix(skin.cap_colour, (255, 255, 255), 0.35))
+        tile.put(slab * ((y >= 1.2) & (y < 1.7)), skin.dark, 0.35)
+        inlay = ((y >= face) & (y < face + 0.9)).astype(np.float32)
+        tile.put(inlay, brass)
+        tile.put(inlay * (y < face + 0.35), _mix(brass, (255, 236, 180), 0.5), 0.8)
+        lip, foot = face + 0.9, 11.0
+        ogee = np.clip((y - lip) / (foot - lip), 0.0, 1.0)
+        # The moulding steps back as it goes down: full width at the inlay,
+        # a round at its middle, a cove under it.
+        moulding = ((y >= lip) & (y < foot)).astype(np.float32)
+        tone = 0.75 + 0.45 * np.sin(ogee * np.pi) - 0.35 * ogee
+        tile.put(moulding, _mix(skin.dark, skin.base, 0.4))
+        tile.tone(moulding * (tone - 0.75) * 0.6)
+        tile.put(moulding * ((y >= lip + 1.4) & (y < lip + 1.9)), skin.light, 0.35)
+        tile.put(((y >= foot) & (y < foot + 0.6)).astype(np.float32), brass_dark, 0.7)
+        cracks = [(rng.uniform(4, 60), rng.uniform(-3.0, 3.0)) for _ in range(2)]
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(cx, 1.2), (cx + lean * 0.4, 3.0), (cx + lean, face)], 0.35) for cx, lean in cracks]), skin.accent, 0.75)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(cx, 1.2), (cx + lean * 0.4, 3.0), (cx + lean, face)], 1.4) for cx, lean in cracks], blur=0.6), skin.accent, 0.18)
+        tile.put(np.clip(1.0 - (y - foot - 0.6) / 3.0, 0, 1) * (y >= foot + 0.6), (0, 0, 0), 0.25)
     elif skin.oneway == "balustrade_walk":
         # A wooden walk by West Lake: a deck of planks with its edge beam,
         # and under the deck a balustrade of the Song kind, a low rail on

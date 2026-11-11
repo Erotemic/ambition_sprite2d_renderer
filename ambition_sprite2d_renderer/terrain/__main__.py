@@ -3,8 +3,9 @@
     python -m ambition_sprite2d_renderer.terrain draw --out-dir DIR [SKIN ...]
     python -m ambition_sprite2d_renderer.terrain preview OUT.png [SKIN ...]
 
-`draw` publishes `<skin>_<part>.png` for each part of each skin (and the
-ornaments of a skin that has them, `ornaments.py`), and the mote
+`draw` publishes `<skin>_<part>.png` for each part of each skin (and its
+art for the structural roles when it has some: `ornaments.py` for the hub,
+`hotel_roles.py` for the haunted hotel), and the mote
 picture, the decor picture and the door of each biome (`<biome>_motes.png`,
 `<biome>_decor.png`, `<biome>_decor_glow.png`, `<biome>_door.png`, and its
 opening `<biome>_door_opening.png`), and the
@@ -27,7 +28,10 @@ from .. import provenance
 if __name__ == "__main__":
     from .. import read_record
     read_record.start(provenance.repo_root(), [provenance.asset_root(), Path(__file__).resolve().parents[2] / ".cache"])
-from . import decor, doors, fixtures, motes, ornaments, shimmer, skins, two_state, water_backdrops
+from . import decor, doors, fixtures, hotel_roles, motes, ornaments, shimmer, skins, two_state, water_backdrops
+
+#: Each skin's art for the structural roles, by (skin, role).
+ROLE_PAINTERS = {**ornaments.PAINTERS, **hotel_roles.PAINTERS}
 
 #: One published file: its skin or biome, its name, the callable that draws
 #: it (for the provenance record) and the call that draws it.
@@ -49,7 +53,7 @@ def jobs(names: list[str]) -> list[Job]:
     out: list[Job] = []
     for skin in chosen:
         out += [_skin_part(skin, part) for part in skins.PARTS]
-        out += [(skin.key, part, paint, paint) for (owner, part), paint in ornaments.PAINTERS.items() if owner == skin.key]
+        out += [(skin.key, part, paint, paint) for (owner, part), paint in ROLE_PAINTERS.items() if owner == skin.key]
     wanted = [key for key in names] if names else None
 
     def keyed(table) -> list[str]:
