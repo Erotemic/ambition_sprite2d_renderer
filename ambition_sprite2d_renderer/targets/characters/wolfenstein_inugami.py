@@ -388,9 +388,11 @@ TURN_OVER = P(at=(-3.0, -3.0), rot=-12.0, sq=1.03, mouth="grit", eyes="pin", ear
 def _pose(anim: str, i: int, n: int) -> Pose:
     u = R.shot(i, n)
     _ph, s, c = R.loop(i, n)
-    if anim in RING_ROWS:
-        # The ward's own rows draw only its spirits, about the head at rest.
+    if anim in RING_ROWS or anim in SSJ_ROWS:
+        # The layer rows draw only what is round the head, about it at rest.
         return FLOAT
+    if anim == "hellfire_death":
+        return _hellfire_pose(u, i)
     if anim == "turn":
         return keys(u, [(0.0, TURN_FROM), (0.45, TURN_OVER, "out"), (1.0, FLOAT, "io")])
     if anim == "storm_tell":
@@ -512,6 +514,16 @@ ROWS: List[Tuple[str, int, int]] = [
     ("ward_ring_kindle", 26, 35), ("ward_ring", 32, 35), ("ward_ring_dispel", 26, 35),
     # Nothing: it is still his head on his body (before it tears off).
     ("unseen", 1, 100),
+    # Its last stand (Jon, 2026-11-11): its lightning, a layer over whatever
+    # row it is drawn in, on a loop (blue and green when it bursts unhurtable
+    # at its last hit point; green in the chase); and its end in hell's fire.
+    ("ssj2_full", 12, 40), ("ssj2_green", 12, 40),
+    ("hellfire_death", 28, 70),
+    # The chase's ward with its green lightning in it: ``ward_ring``'s
+    # spirits, frame for frame (one turn, on the ward's clock), and the bolts
+    # and aura of ``ssj2_green`` over them. The chase draws it in place of
+    # ``ward_ring``: the game draws one layer over a row at a time.
+    ("ward_ring_green", 32, 35),
 ]
 
 # ---- The frame -----------------------------------------------------------------
@@ -528,7 +540,7 @@ SPIRIT_TILT = -12.0
 #: How long the ward's spirits take to go round once, s.
 SPIRIT_TURN_S = 1.12
 #: The ward's rows: its spirits only, drawn over the head's row.
-RING_ROWS = ("ward_ring_kindle", "ward_ring", "ward_ring_dispel")
+RING_ROWS = ("ward_ring_kindle", "ward_ring", "ward_ring_dispel", "ward_ring_green")
 #: Each row's frames and milliseconds, by name.
 ROW_MS = {name: (frames, ms) for name, frames, ms in ROWS}
 #: Where the leash goes in its rows: the chain from its neck (frame pixels
@@ -653,11 +665,382 @@ def _effects_over(img: Image.Image, anim: str, pose: Pose, i: int, n: int) -> No
         K.place(img, R.burst(K, 26.0, FIRE_CORE, FIRE_OUT, 10), _head_point(pose, NECK), "kindle")
 
 
+# ---- Its last stand (Jon, 2026-11-11) -------------------------------------------
+#
+# Brought to its last hit point, it bursts into its unhurtable state again:
+# "full blue AND green SSJ2 lightning" (a flame-shaped aura round it, and
+# jagged bolts that crackle over it and round it, new each frame). In the
+# chase it has "SSJ2 style green lightning around him again". Each is a layer
+# on its own clock, as the ward's spirits are: drawn about the head at rest
+# and carried with the skull. Its parts on tracks named ``behind`` go under
+# the head, the rest over it.
+#
+# Then Kagero's great seal holds it, the next blow strikes it, and it burns:
+# ``hellfire_death``. Hell's fire takes it from below, the head chars and
+# burns away from its chin up, and what is left goes up as embers and wisps.
+# The last frame is empty.
+
+#: The layers of its lightning, and the colours of each: the aura's (outside,
+#: middle, inside) and its bolts' (glow, core), by name.
+SSJ_ROWS = ("ssj2_full", "ssj2_green")
+AURA_BLUE = ((70, 140, 255), (150, 210, 255), (232, 246, 255))
+AURA_GREEN = ((50, 200, 70), (150, 250, 130), (228, 255, 214))
+BOLT_COLOURS = {"blue": ((110, 170, 255), (240, 248, 255)), "green": ((80, 235, 80), (232, 255, 210))}
+#: Where its lightning is about: the middle of the head at rest, and the
+#: ellipse of the aura (frame pixels).
+SSJ_RING = (60.0, 70.0)
+#: The aura flickers through this many shapes, over and over: each is a
+#: large part, so every layer row shares the same few (its bolts are new
+#: each frame).
+AURA_SHAPES = 6
+
+
+def _hash(*v: float) -> float:
+    """A number in [0, 1) that the same arguments always give."""
+    x = math.sin(sum(a * b for a, b in zip(v, (12.9898, 78.233, 37.719, 4.1414))) ) * 43758.5453
+    return x - math.floor(x)
+
+
+def _aura(i: int, n: int, colours: Tuple[Tuple[int, int, int], ...]):
+    """The aura round it, about ``home``: a flame in the shape of the head,
+    its tongues rising, longest on top. On a loop of ``n`` frames: the
+    tongues grow and shrink and are where they were at frame 0 at frame n."""
+    phase = math.tau * (i % n) / n
+    spikes = 18
+
+    def outline(scale: float) -> List[Point]:
+        rx, ry = SSJ_RING[0] * scale, SSJ_RING[1] * scale
+        pts: List[Point] = []
+        for k in range(spikes):
+            a = math.tau * k / spikes - math.pi / 2.0 + 0.12 * math.sin(phase + k)
+            up = max(0.0, -math.sin(a))
+            reach = (8.0 + 46.0 * up ** 1.3) * scale * (0.7 + 0.4 * math.sin(2.0 * phase + k * 1.9) + 0.18 * math.sin(3.0 * phase - k * 2.3))
+            half = math.pi / spikes
+            # The valley before the tongue, inside the ellipse.
+            pts.append((rx * 0.86 * math.cos(a - half), ry * 0.86 * math.sin(a - half)))
+            # The tongue's tip: out from the head and pulled up, so the
+            # flame rises.
+            ox, oy = math.cos(a), math.sin(a)
+            tip = (rx * ox + reach * 0.45 * ox, ry * oy + reach * (0.45 * oy - 0.9))
+            pts.append(tip)
+        return pts
+
+    def paint(d) -> None:
+        outside, middle, inside = colours
+        for scale, colour, alpha in ((1.0, outside, 72), (0.86, middle, 72), (0.7, inside, 56)):
+            pts = [K.at(x, y) for x, y in outline(scale)]
+            K.poly(d, pts, colour + (alpha,))
+            # A bright edge on each flame, as the light of it.
+            K.line(d, pts + [pts[0]], middle + (min(255, alpha * 2),), 1.2)
+
+    return K.piece(("ssj_aura", colours, i % n, n), paint)
+
+
+def _ssj_bolt(length: float, seed: int, colour: str):
+    """A crackling bolt of his lightning from ``home`` along +x, ``length``
+    long: a zigzag with a fork, in a glow."""
+    length, seed = _r(length, 4.0), seed % 24
+    glow, core = BOLT_COLOURS[colour]
+
+    def path() -> Tuple[List[Point], List[Point]]:
+        steps = 6
+        main = [(0.0, 0.0)]
+        for k in range(1, steps):
+            main.append((length * k / steps, (2.0 * _hash(seed, k) - 1.0) * length * 0.22))
+        main.append((length, (2.0 * _hash(seed, 9) - 1.0) * length * 0.08))
+        at = main[2 + seed % 3]
+        side = 1.0 if _hash(seed, 11) > 0.5 else -1.0
+        fork = [at, (at[0] + length * 0.2, at[1] + side * length * 0.18), (at[0] + length * 0.34, at[1] + side * length * 0.3)]
+        return main, fork
+
+    def paint(d) -> None:
+        main, fork = path()
+        for pts, scale in ((main, 1.0), (fork, 0.7)):
+            q = [K.at(*p) for p in pts]
+            K.line(d, q, glow + (90,), 7.0 * scale)
+            K.line(d, q, glow + (255,), 3.0 * scale)
+            K.line(d, q, core + (255,), 1.3 * scale)
+
+    return K.piece(("ssj_bolt", length, seed, colour), paint)
+
+
+def _spark(size: float, colour: str):
+    glow, core = BOLT_COLOURS[colour]
+    size = _r(size, 1.0)
+
+    def paint(d) -> None:
+        K.oval(d, K.at(0.0, 0.0), size * 1.6, size * 1.6, glow + (90,))
+        K.star4(d, K.at(0.0, 0.0), size, core + (255,), None)
+
+    return K.piece(("ssj_spark", size, colour), paint)
+
+
+def _ssj(img: Image.Image, anim: str, i: int, n: int) -> None:
+    """Its lightning about the head at rest, frame ``i`` of ``n``."""
+    full = anim == "ssj2_full"
+    centre = _head_point(FLOAT, (2.0, -10.0))
+    K.place(img, _aura(i, AURA_SHAPES, AURA_BLUE if full else AURA_GREEN), centre, "ssj_aura_behind")
+    if full:
+        # The blue aura, and the green in it: two flames.
+        K.place(img, _aura(i + AURA_SHAPES // 2, AURA_SHAPES, AURA_GREEN), (centre[0], centre[1] + 10.0), "ssj_aura_inner_behind", 0.0, 0.8)
+    bolts = 7 if full else 5
+    rx, ry = SSJ_RING
+    for k in range(bolts):
+        colour = ("blue" if k % 2 == 0 else "green") if full else "green"
+        front = k % 3 != 0
+        a = math.tau * _hash(i, k, 1.0)
+        r = (0.62 + 0.3 * _hash(i, k, 2.0)) if front else (0.9 + 0.2 * _hash(i, k, 2.0))
+        at = (centre[0] + rx * r * math.cos(a), centre[1] + ry * r * math.sin(a))
+        # Round the head, more or less: along the ring, give or take.
+        heading = math.degrees(a) + 90.0 + (70.0 * _hash(i, k, 3.0) - 35.0) + (180.0 if _hash(i, k, 4.0) > 0.5 else 0.0)
+        length = 26.0 + 30.0 * _hash(i, k, 5.0)
+        K.place(img, _ssj_bolt(length, int(_hash(i, k, 6.0) * 24), colour), at, f"ssj_bolt_{k}" if front else f"ssj_bolt_{k}_behind", heading)
+    for k in range(3):
+        a = math.tau * _hash(i, k, 7.0)
+        at = (centre[0] + rx * 1.05 * math.cos(a), centre[1] + ry * 1.05 * math.sin(a) - 10.0 * _hash(i, k, 8.0))
+        K.place(img, _spark(3.0 + 2.0 * _hash(i, k, 9.0), "green" if (not full or k == 1) else "blue"), at, f"ssj_spark_{k}")
+
+
+#: Hell's fire: black-red outside, red, orange, a yellow-white core.
+HELL = ((40, 4, 10, 235), (176, 22, 18, 245), (255, 112, 28, 250), (255, 226, 150, 255))
+#: The edge of what burns: white-hot at the line, orange behind it, and the
+#: char above it.
+EMBER_HOT = (255, 236, 176)
+EMBER = (255, 122, 30)
+CHAR = (46, 8, 12)
+#: The spirit as it goes up: pale smoke-pink wisps.
+ETHER_OUT: RGBA = (255, 180, 186, 150)
+ETHER_CORE: RGBA = (255, 240, 240, 210)
+
+
+def _hell_tongue(length: float, width: float, bend: float):
+    """A tongue of hell's fire from ``home`` along +x: as ``_tongue_of_fire``,
+    in four layers of its own colours."""
+    length, width, bend = _r(length, 4.0), _r(width, 2.0), _r(bend, 4.0)
+
+    def side(scale: float, sign: float) -> List[Point]:
+        out = []
+        for k in range(9):
+            t = k / 8.0
+            w = width * scale * (1.0 - t) ** 0.8 * (0.8 + 0.5 * math.sin(math.pi * min(1.0, t * 1.5)))
+            out.append(K.at(t * length * (0.55 + 0.45 * scale), bend * t * t + sign * w * 0.5))
+        return out
+
+    def paint(d) -> None:
+        for scale, colour in zip((1.0, 0.74, 0.48, 0.24), HELL):
+            K.poly(d, side(scale, 1.0) + side(scale, -1.0)[::-1], colour)
+
+    return K.piece(("hell", length, width, bend), paint)
+
+
+def _ember(size: float, heat: int):
+    """A spark of what burned: a hot dot in its glow. ``heat`` 0-2."""
+    size = _r(size, 0.5)
+    core = (EMBER_HOT, (255, 190, 90), EMBER)[heat % 3]
+
+    def paint(d) -> None:
+        K.oval(d, K.at(0.0, 0.0), size * 2.2, size * 2.2, EMBER + (70,))
+        K.oval(d, K.at(0.0, 0.0), size, size, core + (255,))
+
+    return K.piece(("ember", size, heat % 3), paint)
+
+
+def _ether(size: float, flick: int):
+    """A wisp of the spirit going up: a pale flame with no edge, that waves
+    as it thins (along -y from ``home``, its root)."""
+    size = _r(size, 2.0)
+    flick = flick % 4
+
+    def paint(d) -> None:
+        wave = (0.0, 0.8, 0.0, -0.8)[flick]
+        for scale, colour in ((1.0, ETHER_OUT), (0.5, ETHER_CORE)):
+            left, right = [], []
+            for k in range(9):
+                t = k / 8.0
+                x = size * 0.7 * math.sin(t * 4.0 + wave) * t
+                w = size * scale * (1.0 - t) ** 0.9 * (0.6 + 0.6 * math.sin(math.pi * min(1.0, t * 2.0)))
+                y = -size * 4.0 * t * (0.6 + 0.4 * scale)
+                left.append(K.at(x - w * 0.5, y))
+                right.append(K.at(x + w * 0.5, y))
+            K.poly(d, left + right[::-1], colour)
+
+    return K.piece(("ether", size, flick), paint)
+
+
+def _smooth(t: float) -> float:
+    t = max(0.0, min(1.0, t))
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _hellfire_pose(u: float, i: int) -> Pose:
+    """Struck, then it howls in the fire, its head thrown back further as it
+    burns, its own fire guttering."""
+    agony = dict(HOWL, eyes="roll", flame=1.2)
+    pose = keys(u, [(0.0, STRUCK), (0.06, dict(STRUCK, rot=-26.0, at=(-12.0, -6.0)), "snap"), (0.2, agony, "out"),
+                    (0.7, dict(agony, rot=-44.0, at=(-4.0, -4.0), flame=0.5), "io"), (1.0, dict(agony, rot=-48.0, at=(-4.0, -6.0), flame=0.2))])
+    if 0.06 <= u < 0.85:
+        pose = dict(pose, rot=float(pose["rot"]) + _jitter(i, 3.0), at=(pose["at"][0] + _jitter(i, 1.5, 1.0), pose["at"][1]))  # type: ignore[arg-type,index]
+    return pose
+
+
+#: How far the burn has gone up the head (0-1) through the row.
+def _burnt(u: float) -> float:
+    return _smooth((u - 0.18) / 0.56)
+
+
+def _ragged(xs, i: int):
+    """The burn line's raggedness at frame columns ``xs`` (frame pixels)."""
+    import numpy as np
+
+    return 6.0 * (0.6 * np.sin(xs / 16.0 + i * 0.9) + 0.4 * np.sin(xs / 6.0 - i * 1.7))
+
+
+def _burn_away(head: Image.Image, line: float, i: int, heat: float) -> Image.Image:
+    """``head`` (a canvas) burnt from its bottom up to ``line`` (frame
+    pixels, ragged): below it, it is gone; on it, it glows white-hot, then
+    orange; above it, the char climbs into it. All of it reddens by
+    ``heat`` (0-1)."""
+    import numpy as np
+
+    a = np.asarray(head, dtype=np.float32) / 255.0
+    alpha = a[..., 3]
+    s = K.scale
+    h, w = alpha.shape
+    xs = np.arange(w, dtype=np.float32) / s
+    edge = (line + _ragged(xs, i)) * s
+    ys = np.arange(h, dtype=np.float32)[:, None]
+    above = edge[None, :] - ys
+    hot_band, char_band = 2.5 * s, 22.0 * s
+    rgb = a[..., :3]
+    rgb = (rgb * (1.0 - 0.5 * heat) + rgb * np.array([1.0, 0.3, 0.25], np.float32) * 0.5 * heat) * (1.0 - 0.4 * heat)
+    char = np.clip(1.0 - (above - hot_band) / (char_band - hot_band), 0.0, 1.0)[..., None] ** 1.5
+    rgb = rgb * (1.0 - 0.9 * char) + np.array(CHAR, np.float32) / 255.0 * 0.9 * char
+    hot = np.clip(1.0 - above / (hot_band * 1.8), 0.0, 1.0)[..., None]
+    glow = np.array(EMBER, np.float32) / 255.0 * (1.0 - hot) + np.array(EMBER_HOT, np.float32) / 255.0 * hot
+    in_band = ((above >= 0.0) & (above < hot_band * 1.8))[..., None]
+    rgb = np.where(in_band, glow, rgb)
+    alpha = np.where(above < 0.0, 0.0, alpha)
+    out = np.dstack([rgb, alpha])
+    return Image.fromarray(np.clip(out * 255.0 + 0.5, 0, 255).astype(np.uint8), "RGBA")
+
+
+def _extent(head: Image.Image, y0: float, y1: float) -> Optional[Tuple[float, float]]:
+    """The leftmost and rightmost x (frame pixels) of ``head`` between rows
+    ``y0`` and ``y1`` (frame pixels), or None where nothing is."""
+    s = K.scale
+    band = head.getchannel("A").crop((0, max(0, int(y0 * s)), head.width, max(1, min(head.height, int(y1 * s)))))
+    box = band.getbbox()
+    return None if box is None else (box[0] / s, box[2] / s)
+
+
+def _hellfire(frame_idx: int, nframes: int) -> Image.Image:
+    """A frame of ``hellfire_death``: struck, hell's fire comes up from below
+    it, takes it from its chin up, and it goes up in embers and wisps."""
+    u = R.shot(frame_idx, nframes)
+    img = K.new_frame()
+    if frame_idx == nframes - 1:
+        # Gone into the ether: nothing is left.
+        return K.downsample(img)
+    i = frame_idx
+    pose = _hellfire_pose(u, i)
+    burnt = _burnt(u)
+    centre = _head_point(pose, (2.0, -10.0))
+    ignite = _smooth((u - 0.06) / 0.16)
+    # The head and its own fire, painted apart, to be burnt from below.
+    head = K.new_frame()
+    _fire(head, pose, i)
+    turn, sq = float(pose["rot"]), float(pose["sq"])  # type: ignore[arg-type]
+    at = _head_point(pose, (0.0, 0.0))
+    for part, name in SPIRIT_HEAD.layers(pose):
+        K.place(head, part, at, name, turn, sq)
+    K.place(head, _torn_threads(-float(pose["trail"]) + 180.0 - turn), at, "torn", turn, sq)  # type: ignore[arg-type]
+    # Where the burn is: from under its chin (not its own fire) to over its
+    # ears. Its own fire burns first.
+    top, bottom = centre[1] - 70.0, centre[1] + 46.0
+    line = bottom + 6.0 - burnt * (bottom - top + 16.0)
+    span = _extent(head, line - 26.0, line + 4.0) if burnt > 0.0 else None
+    left, right = span if span is not None else (centre[0] - 52.0, centre[0] + 52.0)
+    left, right = min(left, centre[0] - 18.0), max(right, centre[0] + 18.0)
+    mid, half = (left + right) / 2.0, (right - left) / 2.0
+    # Its red glow, going out as it burns.
+    if burnt < 0.8:
+        K.place(img, _glow(66.0 * (1.0 - 0.6 * burnt)), centre, "glow")
+    # The fire dies as there is less of it to burn.
+    flames = ignite * (1.0 - _smooth((u - 0.56) / 0.16))
+    # Tall fire behind it.
+    if flames > 0.0:
+        for k in range(5):
+            x = mid + half * 0.9 * (k / 2.0 - 1.0)
+            f = _flicker(i, k + 11)
+            length = (52.0 + 30.0 * (1.0 - abs(k / 2.0 - 1.0)) + 12.0 * f) * flames * (1.0 - 0.45 * burnt)
+            if length < 8.0:
+                continue
+            K.place(img, _hell_tongue(length, 34.0 + 4.0 * f, 12.0 * f), (x, line + 8.0), f"hellfire_behind_{k}", 270.0 + 14.0 * (k / 2.0 - 1.0) + 6.0 * f)
+    if burnt <= 0.0:
+        rigdoc.composite_canvas(img, head)
+    else:
+        rigdoc.composite_layer(img, _burn_away(head, line, i, burnt), (0, 0), name="burning_head")
+    # Over its front: a bed of fire along the burn and its tongues licking
+    # up out of it.
+    if flames > 0.0:
+        n = 8
+        for k in range(n):
+            t = k / (n - 1.0) * 2.0 - 1.0
+            x = mid + half * t * (0.95 + 0.08 * math.sin(i * 1.3 + k))
+            f = _flicker(i, k + 3)
+            length = (10.0 + 14.0 * (1.0 - abs(t)) + 8.0 * f + 14.0 * _hash(i, k)) * flames
+            if length < 6.0:
+                continue
+            K.place(img, _hell_tongue(length, 16.0 + 8.0 * _hash(i, k, 2.0) + 3.0 * f, 10.0 * f), (x, line + 10.0 + 6.0 * abs(t) + 4.0 * _hash(i, k, 3.0)),
+                    f"hellfire_{k}", 270.0 + 22.0 * t + 12.0 * f)
+    # What burns goes up: embers, and the spirit itself in pale wisps.
+    for k in range(18):
+        born = 0.16 + 0.72 * _hash(k, 1.0)
+        age = u - born
+        if age <= 0.0 or age > 0.36:
+            continue
+        b_line = max(top, bottom + 6.0 - _burnt(born) * (bottom - top + 16.0))
+        x0 = centre[0] + 56.0 * (2.0 * _hash(k, 2.0) - 1.0)
+        at_ = (x0 + 12.0 * math.sin(age * 9.0 + k), b_line - 10.0 - 220.0 * age)
+        if at_[1] < 16.0:
+            continue
+        size = (1.5 + 1.8 * _hash(k, 3.0)) * (1.0 - age / 0.36 * 0.6)
+        K.place(img, _ember(size, k), at_, f"ember_{k}", opacity=1.0 - _smooth(age / 0.36))
+    # The spirit goes up out of the fire: pale wisps, and its last and
+    # biggest as the fire goes out.
+    for k in range(5):
+        born = 0.34 + 0.1 * k
+        age = u - born
+        if age <= 0.0 or age > 0.42:
+            continue
+        b_line = max(top, bottom + 6.0 - _burnt(born) * (bottom - top + 16.0))
+        x0 = centre[0] + 34.0 * math.sin(k * 2.4)
+        size = 22.0 * (1.0 - age)
+        # It rises, and fades where the frame ends.
+        at_ = (x0 + 6.0 * math.sin(age * 7.0 + k), max(b_line - 4.0 - 100.0 * age, 18.0 + 3.6 * size))
+        K.place(img, _ether(size, i + k), at_, f"ether_{k}", opacity=1.0 - _smooth(age / 0.42))
+    if u < 0.12:
+        # The blow that ends it.
+        K.place(img, R.burst(K, 50.0 + 80.0 * u, (255, 240, 220, 255), (255, 90, 40, 255), 12), centre, "struck")
+    fade = 1.0 - _smooth((u - 0.88) / 0.1)
+    img = rigdoc.faded_canvas(img, max(0.0, fade) * SPIRIT_OPACITY)
+    return K.downsample(img)
+
+
 def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if anim == "unseen":
         return K.downsample(K.new_frame())
+    if anim == "hellfire_death":
+        return _hellfire(frame_idx, nframes)
+    if anim in SSJ_ROWS:
+        img = K.new_frame()
+        _ssj(img, anim, frame_idx, nframes)
+        return K.downsample(img)
     if anim in RING_ROWS:
         img = K.new_frame()
+        if anim == "ward_ring_green":
+            # Its lightning on its own loop of the ring's frames.
+            _ssj(img, "ssj2_green", frame_idx, nframes)
         _spirits(img, anim, frame_idx, behind=True)
         _spirits(img, anim, frame_idx, behind=False)
         return K.downsample(rigdoc.faded_canvas(img, SPIRIT_OPACITY))

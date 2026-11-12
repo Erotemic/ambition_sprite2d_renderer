@@ -36,7 +36,7 @@ from __future__ import annotations
 import math
 from typing import List
 
-from ._ai_era_kit import OUTLINE, WHITE, RGBA, pin
+from ._ai_era_kit import OUTLINE, WHITE, RGBA, Point, pin
 from . import _person_rig as R
 from ._person_rig import Build, Person, Stamp, loop, shot
 
@@ -526,6 +526,27 @@ def cast(i: int, n: int):
     return dict(pose, hip=(pose["hip"][0], pose["hip"][1] + 0.4 * s))
 
 
+#: Her great seal (Jon, 2026-11-11: she "should come and cast a bigger
+#: talisman spell" on the Inugami at its last stand): the blade held up
+#: before her face and the sign at it, her eyes shut; her seal opens round
+#: her with its talismans; her arms go up; and she throws them all.
+GREAT_GATHER = P(hip=(0.0, 4.0), lean=0.0, head=(0.0, 0.4, 6.0), na=(8.0, 10.0), nh="fist", fa=(6.0, -4.0), fh="point", nf=(-11.0, 0.0, 0.0),
+                 ff=(10.0, 0.0, 0.0), blade=-90.0, eyes="closed", hem=(1.0, 1.0))
+GREAT_RAISE = P(hip=(0.0, 1.0), lean=-8.0, head=(0.0, 0.0, -14.0), na=(10.0, -8.0), nh="fist", fa=(4.0, -27.0), fh="flat", nf=(-11.0, 0.0, 0.0),
+                ff=(10.0, 0.0, 0.0), blade=-100.0, eyes="wide", hem=(2.0, 3.0))
+GREAT_THRUST = P(hip=(4.0, 4.0), lean=18.0, head=(1.0, 0.2, -6.0), na=(-6.0, 14.0), nh="fist", fa=(26.0, -6.0), fh="flat", nf=(-14.0, 0.0, 0.0),
+                 ff=(12.0, 0.0, 0.0), blade=160.0, eyes="wide", hem=(4.0, 1.0))
+
+
+@X.row
+def great_seal(i: int, n: int):
+    _, s, _c = loop(i, n)
+    pose = X.keys(shot(i, n), [(0.0, X.full(P())), (0.16, GREAT_GATHER), (0.42, dict(GREAT_GATHER, head=(0.0, 0.6, 9.0))), (0.54, GREAT_RAISE),
+                               (0.64, dict(GREAT_RAISE, lean=-10.0)), (0.72, GREAT_THRUST), (0.88, GREAT_THRUST),
+                               (1.0, dict(GREAT_THRUST, lean=10.0, fa=(20.0, 0.0), eyes="open"))])
+    return dict(pose, hip=(pose["hip"][0], pose["hip"][1] + 0.4 * s))
+
+
 @X.row
 def blink_out(i: int, n: int):
     ready = X.full(P())
@@ -538,7 +559,7 @@ def blink_in(i: int, n: int):
 
 
 X.rows = [("idle", 8, 120), ("jump", 6, 95), ("fall", 6, 95), ("dash", 4, 60), ("slash", 8, 40), ("slash_up", 8, 40), ("cleave", 9, 46), ("hang", 8, 90),
-          ("hit", 5, 90), ("death", 8, 110), ("blink_out", 6, 62), ("blink_in", 6, 62), ("cast", 16, 75)]
+          ("hit", 5, 90), ("death", 8, 110), ("blink_out", 6, 62), ("blink_in", 6, 62), ("cast", 16, 75), ("great_seal", 16, 80)]
 
 # ---- What the blade does, and her smoke --------------------------------------
 
@@ -603,6 +624,22 @@ def _slip(glow: int):
     return K.piece(("kagero_slip", glow), shape)
 
 
+def _great_slip(glow: int):
+    """One talisman of her great seal: as ``_slip``, larger, in its white
+    light. Along +y."""
+
+    def shape(d) -> None:
+        edge = SEAL if glow > 128 else OUTLINE
+        K.oval(d, K.at(0.0, 6.5), 5.0, 9.0, PAPER[:3] + (glow // 4,))
+        K.poly(d, [K.at(-2.6, 0.0), K.at(2.6, 0.0), K.at(2.6, 13.0), K.at(-2.6, 13.0)], PAPER, edge, 0.7)
+        K.poly(d, [K.at(-2.0, 0.6), K.at(2.0, 0.6), K.at(2.0, 2.6), K.at(-2.0, 2.6)], SEAL)
+        K.line(d, [K.at(0.0, 3.8), K.at(0.0, 8.4)], OUTLINE, 0.8)
+        K.line(d, [K.at(-1.2, 5.2), K.at(1.2, 5.0)], OUTLINE, 0.6)
+        K.oval(d, K.at(0.0, 10.4), 1.2, 1.2, SEAL)
+
+    return K.piece(("kagero_great_slip", glow), shape)
+
+
 #: Her talismans in the seal: a fan over her far hand. Five of them.
 SPELL_SLIPS = 5
 
@@ -630,10 +667,110 @@ def _spell(ctx) -> List[Stamp]:
     return out
 
 
+#: Her great seal: how many talismans it holds, and how far round her its
+#: ring is at its full size (frame pixels).
+GREAT_SLIPS = 10
+GREAT_RING = 50.0
+
+
+def _smooth(t: float) -> float:
+    t = max(0.0, min(1.0, t))
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _great_ring(radius: float, spin: float, alpha: int):
+    """Her seal, about ``home``: a ring of vermilion with a ring in it, the
+    brushed strokes of the seal between them, and the white light of it."""
+    radius, spin, alpha = round(radius / 2.0) * 2.0, round(spin / 6.0) * 6.0, int(round(alpha / 16.0) * 16)
+
+    def ring(d, r: float, colour: RGBA, width: float) -> None:
+        pts = [K.at(r * math.cos(math.tau * k / 48), r * math.sin(math.tau * k / 48)) for k in range(49)]
+        K.line(d, pts, colour, width)
+
+    def paint(d) -> None:
+        for k, grow in enumerate((1.14, 1.06, 1.0)):
+            K.oval(d, K.at(0.0, 0.0), radius * grow, radius * grow, (255, 250, 236) + (alpha // (8 - 2 * k),))
+        ring(d, radius, SEAL[:3] + (alpha,), 2.4)
+        ring(d, radius * 0.8, CORD_DARK[:3] + (alpha,), 1.0)
+        for k in range(12):
+            a = math.radians(spin) + math.tau * k / 12
+            r0, r1 = radius * 0.84, radius * 0.96
+            K.line(d, [K.at(r0 * math.cos(a), r0 * math.sin(a)), K.at(r1 * math.cos(a + 0.1), r1 * math.sin(a + 0.1))], OUTLINE[:3] + (alpha,), 1.1)
+        # The seal's mark in the middle of it: a square turned on its corner
+        # in a circle.
+        q = radius * 0.34
+        a = math.radians(-spin * 0.5)
+        K.line(d, [K.at(q * math.cos(a + math.tau * k / 4), q * math.sin(a + math.tau * k / 4)) for k in range(5)], SEAL[:3] + (alpha // 2,), 1.0)
+        ring(d, q * 0.7, SEAL[:3] + (alpha // 2,), 0.8)
+
+    return K.piece(("kagero_great_ring", radius, spin, alpha), paint)
+
+
+def _great_centre(ctx) -> Point:
+    return ctx.trunk(0.0, -20.0)
+
+
+def _great_back(ctx) -> List[Stamp]:
+    """Behind her, while she casts her great seal: the seal opens round her
+    and its talismans catch on it one by one and go round with it, until she
+    throws them."""
+    if ctx.anim != "great_seal":
+        return []
+    u = ctx.u
+    grow = _smooth((u - 0.06) / 0.3)
+    gone = _smooth((u - 0.7) / 0.16)
+    if grow <= 0.0 or gone >= 1.0:
+        return []
+    centre = _great_centre(ctx)
+    spin = 400.0 * u
+    radius = GREAT_RING * grow * (1.0 + 0.12 * _smooth((u - 0.5) / 0.14))
+    out: List[Stamp] = [(_great_ring(radius, spin, int(255 * (1.0 - gone))), centre, "great_ring", 0.0)]
+    if u < 0.66:
+        for k in range(GREAT_SLIPS):
+            if u < 0.1 + 0.025 * k:
+                continue
+            a = math.radians(spin * 0.6) + math.tau * k / GREAT_SLIPS
+            r = radius + 6.0
+            at = (centre[0] + r * math.cos(a), centre[1] + r * math.sin(a))
+            # Each points out from her, its seal end out; charged, red-edged.
+            out.append((_great_slip(220 if u > 0.4 else 100), pin(at), f"great_slip_{k}", math.degrees(a) - 90.0))
+    return out
+
+
+def _great_throw(ctx) -> List[Stamp]:
+    """Her talismans go: from the ring, all of them, out ahead of her (the
+    game carries them on to the head)."""
+    u = ctx.u
+    if not 0.66 <= u < 0.9:
+        return []
+    t = (u - 0.66) / 0.24
+    centre = _great_centre(ctx)
+    out: List[Stamp] = []
+    if t < 0.3:
+        out.append((R.burst(K, 30.0 + 40.0 * t, PAPER, SEAL, 12), centre, "great_flash", 0.0))
+    for k in range(GREAT_SLIPS):
+        a = math.tau * k / GREAT_SLIPS
+        start = (centre[0] + (GREAT_RING + 9.0) * math.cos(a), centre[1] + (GREAT_RING + 9.0) * math.sin(a))
+        lag = 0.05 * (k % 4)
+        f = _smooth((t - lag) / (1.0 - lag))
+        end = (X.frame[0] + 30.0, centre[1] - 6.0 + 4.0 * (k - GREAT_SLIPS / 2.0))
+        at = (lerp_(start[0], end[0], f), lerp_(start[1], end[1], f) - 18.0 * math.sin(math.pi * f) * math.sin(a))
+        if at[0] > X.frame[0] - 4.0:
+            continue
+        out.append((_great_slip(220), pin(at), f"great_throw_{k}", lerp_(math.degrees(a) - 90.0, -90.0, f)))
+    return out
+
+
+# The seal is the furthest back of all.
+X.layers["back"].insert(0, _great_back)
+
+
 def _effects(ctx) -> List[Stamp]:
     out: List[Stamp] = []
     if ctx.anim == "cast":
         out += _spell(ctx)
+    if ctx.anim == "great_seal":
+        out += _great_throw(ctx)
     if ctx.anim in CUTS and ctx.i > 0:
         trail = _trail(ctx)
         if trail is not None:

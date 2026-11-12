@@ -4,7 +4,8 @@ Jon (2026-10-15): "the Nazi banners are fine for a room, but we need more
 than that." Each room gets things of its own: a guard post, posters, a
 searchlight, the barracks (a bunk bed, lockers, a mess table), the rally
 hall (a podium), the lab (a tesla coil, a specimen vat, an operating table)
-and the throne room (Wolfenstein's iron throne).
+and the throne room (Wolfenstein's iron throne). Wolfenstein's bench is the
+slab he sleeps on under a sheet before he wakes.
 
 Every one is scenery (an LDtk `Prop`, no collision), drawn as
 ``castle_godwin`` draws: world units at `PX` pixels to the unit, the bottom
@@ -680,6 +681,57 @@ def _operating_table(c: Canvas) -> None:
 
 
 # ---------------------------------------------------------------------------
+# 11b. Wolfenstein's bench
+# ---------------------------------------------------------------------------
+#
+# Jon (2026-11-11): Wolfenstein "should likely be on a bench with a sheet
+# covering him to start". The slab of the lab he was made on: a long top of
+# riveted iron on two heavy iron trestles, a gutter along its edge, leather
+# straps with brass buckles hanging off it. Its top is `BENCH_TOP` units over
+# the floor: his rows `bench_sleep` and `bench_wake` (`wolfenstein`) draw him
+# lying on it, and sitting on its edge, when its middle is under his feet
+# anchor. It stays when he gets up.
+
+BENCH_W, BENCH_H = 176, 40
+#: The top of the slab, units over the floor (his rows' ``BENCH_UP``).
+BENCH_TOP = 37.6
+
+
+def _wolfenstein_bench(c: Canvas) -> None:
+    w, h = BENCH_W, BENCH_H
+    g = h
+    top = g - BENCH_TOP
+    # The trestles: two splayed iron legs at each end, a riveted bar between.
+    for x in (22, w - 22):
+        for dx in (-7, 7):
+            solid(c, lambda p, x=x, dx=dx: p.poly([(x + dx * 0.4 - 2.4, top + 8), (x + dx * 0.4 + 2.4, top + 8), (x + dx + 2.4, g - 1.5),
+                                                   (x + dx - 2.4, g - 1.5)]), IRON, IRON_DARK, top + 8, g, w=0.8)
+            solid(c, box(x + dx - 4, g - 2.5, x + dx + 4, g), IRON_DARK, w=0.6)
+    bar = solid(c, box(22, g - 15, w - 22, g - 11), IRON, IRON_DARK, g - 15, g - 11, w=0.8)
+    edge(c, bar, "top", IRON_LIGHT, 1.0, 0.5)
+    rivets(c, [(x, g - 13) for x in (30, 60, 88, 116, w - 30)], 0.9)
+    # The slab: the top face, a little of it seen, and its thick front edge.
+    face = solid(c, lambda p: p.poly([(3, top + 1.5), (6, top), (w - 6, top), (w - 3, top + 1.5)]), IRON_LIGHT, IRON, top, top + 1.5, w=0.6)
+    del face
+    slab = solid(c, box(2, top + 1.5, w - 2, top + 9), IRON, IRON_DARK, top + 1.5, top + 9, w=0.9)
+    edge(c, slab, "top", IRON_LIGHT, 1.2, 0.6)
+    # The gutter along its front, and its drain spout at the foot end.
+    c.put(slab * c.mask(lambda p: p.line([(6, top + 4.2), (w - 6, top + 4.2)], 1.0)), IRON_DARK, 0.9)
+    solid(c, lambda p: p.poly([(w - 10, top + 8), (w - 4, top + 8), (w - 6, top + 13), (w - 9, top + 13)]), IRON_DARK, w=0.6)
+    rivets(c, [(x, top + 6.6) for x in range(10, w - 6, 18)], 0.9)
+    # Old stains on it, and the marks of claws.
+    c.put(slab * c.mask(lambda p: p.ellipse(70, top + 6, 9, 2.2), blur=1.2), RED_DARK, 0.35)
+    c.put(slab * c.mask(lambda p: p.ellipse(126, top + 5, 6, 1.6), blur=1.0), RED_DARK, 0.3)
+    _claw_marks(c, 96, top + 2.5, 5.0)
+    # The straps: hanging off its edge, each with a brass buckle.
+    for x, drop in ((40, 14), (84, 11), (128, 15)):
+        solid(c, lambda p, x=x, drop=drop: p.poly([(x, top + 8), (x + 5, top + 8), (x + 5.5, top + 8 + drop), (x + 0.5, top + 8 + drop)]),
+              LEATHER, LEATHER_DARK, top + 8, top + 8 + drop, w=0.6)
+        solid(c, box(x - 0.5, top + 11, x + 6, top + 14), BRASS, BRASS_DARK, top + 11, top + 14, w=0.4)
+    del w
+
+
+# ---------------------------------------------------------------------------
 # 12. The iron throne
 # ---------------------------------------------------------------------------
 
@@ -956,6 +1008,9 @@ PROPS: Dict[str, Tuple[float, float, Callable, int, int, List[str]]] = {
     "castle_specimen_vat": (80, 144, None, 6, 140, ["prop", "scenery", "castle", "lab", "animated"]),
     "castle_operating_table": (176, 72, lambda c, f: _operating_table(c), 1, 400, ["prop", "scenery", "castle", "lab", "furniture"]),
     "castle_iron_throne": (160, 192, lambda c, f: _iron_throne(c), 1, 400, ["prop", "scenery", "castle", "throne_room", "furniture"]),
+    # Wolfenstein lies on it under his sheet until he wakes (`wolfenstein`'s
+    # `bench_sleep` and `bench_wake`).
+    "wolfenstein_bench": (BENCH_W, BENCH_H, lambda c, f: _wolfenstein_bench(c), 1, 400, ["prop", "scenery", "castle", "lab", "furniture"]),
     # The old drain: a `LockWall` look of each way it is shut, and what is
     # left when it is broken through.
     "castle_cracked_wall": (64, 160, lambda c, f: _cracked_wall(c), 1, 400, ["prop", "door", "castle", "secret"]),
@@ -1028,4 +1083,4 @@ def _actor(name: str) -> dict:
 
 TARGETS = {name: {"render": _renderer(name), "actor_metadata": _actor(name)} for name in PROPS}
 
-__all__ = ["PROPS", "PX", "BUNK_LOWER_TOP", "BUNK_UPPER_TOP", "TARGETS", "draw"]
+__all__ = ["PROPS", "PX", "BENCH_TOP", "BUNK_LOWER_TOP", "BUNK_UPPER_TOP", "TARGETS", "draw"]

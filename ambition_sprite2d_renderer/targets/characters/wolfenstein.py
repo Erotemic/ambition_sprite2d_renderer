@@ -2274,6 +2274,248 @@ def headless(i: int, n: int):
     return on_the_floor(dict(PRONE, headless=1.0), 0, 1)
 
 
+# ---- On the bench (Jon, 2026-11-11) ---------------------------------------------
+#
+# "He should likely be on a bench with a sheet covering him to start,
+# (sleeping so no tongue and dead droopy eyes), waiting, and then he powers
+# up." He lies on his back on the slab of the lab (``wolfenstein_bench``, a
+# prop of the room: it stays when he gets up), his head at its west end, a
+# white sheet over him to his neck, his jaws shut, his eyes dull under lids
+# half down (``bench_sleep``). The coils find his bolts: he jolts, throws the
+# sheet off, sits up, swings his legs over the edge, drops off it onto his
+# feet and the charge goes through all of him, and he stands as he stands in
+# ``idle`` (``bench_wake``). The sheet is drawn with him; the bench is not.
+
+#: The top of the bench, this many frame pixels over his ground line (36
+#: world units of his 140-unit body): his soles hang just over the floor
+#: when he sits on its edge. The bench (``wolfenstein_bench``) is drawn with
+#: its middle under his feet anchor.
+BENCH_UP = 42.0
+#: How far (frame pixels) he sinks into the bench as he lies on it.
+BENCH_SLACK = 1.5
+SHEET: RGBA = (238, 238, 230, 255)
+SHEET_SHADE: RGBA = (198, 202, 208, 255)
+SHEET_DEEP: RGBA = (150, 156, 170, 255)
+
+#: Asleep on his back, his arms by his sides under the sheet, his toes up.
+#: His near hand is on his belly, his far arm by his side, his jaws are shut (no tongue) and his eyes
+#: are dull under half-shut lids.
+SLEEP = P(rot=-90.0, hip=(-2.0, 25.5), off=(22.0, 0.0), lean=0.0, sq=1.0, shrug=(0.0, 0.0), head=(0.0, 0.0, 0.0), na=(8.0, 20.0), nab=-1.0,
+          fa=(-8.0, 26.0), fab=1.0, nh="limp", fh="limp", nf=(-16.0, 24.0, 0.0), ff=(-13.0, 24.5, -8.0), mouth="grit", eyes="glazed", ears=-30.0, brows=1.0, hem=(0.0, 0.0),
+          charge=0.0)
+
+
+def _body_alone(pose) -> Image.Image:
+    """``pose`` drawn with none of a row's sheet or effects."""
+    X.poses["_bench_body"] = lambda _i, _n: pose
+    try:
+        return X.render_frame("_bench_body", 0, 1)
+    finally:
+        del X.poses["_bench_body"]
+
+
+#: How far over the bench's top his hip joint is when he lies on his back
+#: on it (half the depth of his trunk) and when he sits on it (as on his
+#: throne, ``SEAT_HIP``), frame pixels.
+HIP_LYING = 14.0
+HIP_SITTING = 15.0
+
+
+def on_the_bench(pose, up: float = HIP_LYING):
+    """``pose`` moved up or down (its ``off``) so that his hip joint is
+    ``up`` over the bench's top: he lies (or sits) ON it. His arms may hang
+    past its edge."""
+    pose = X.full(pose)
+    hip = _hip_of(pose)
+    ox, oy = pose["off"]
+    want = X.ground - BENCH_UP - up
+    return dict(pose, off=(ox, oy + (want - hip[1]) / X.U))
+
+
+def _hip_of(pose) -> Point:
+    X.poses["_bench_body"] = lambda _i, _n: pose
+    try:
+        return X.frame_context("_bench_body", 0, 1).hip
+    finally:
+        del X.poses["_bench_body"]
+
+
+#: The top of each lying pose's sheet, measured once.
+_SHEET_TOPS: dict = {}
+
+
+def _sheet_top(pose, neck_x: float) -> Tuple[float, List[float]]:
+    """Where the sheet over ``pose`` lies: the first frame column it covers
+    (from his neck) and its top over each column from there, one a frame
+    pixel. It goes over the highest of him near each column, as cloth over a
+    body does, and is as thick as it is."""
+    import numpy as np
+
+    key = (repr(sorted(pose.items())), round(neck_x, 1))
+    if key not in _SHEET_TOPS:
+        img = _body_alone(pose)
+        a = np.asarray(img.getchannel("A")) > 96
+        s = img.width / X.frame[0]
+        top_y = X.ground - BENCH_UP
+        cols = []
+        x0 = neck_x - 2.0
+        xs = np.nonzero(a.any(axis=0))[0]
+        x1 = (xs.max() / s + 4.0) if len(xs) else x0 + 100.0
+        x = x0
+        while x <= x1:
+            band = a[:, int(x * s):int((x + 1) * s) + 1]
+            rows = np.nonzero(band.any(axis=1))[0]
+            cols.append(min(top_y, rows.min() / s) if len(rows) else top_y)
+            x += 1.0
+        # Cloth over the high points: a running top over 9 px, then smoothed.
+        n = len(cols)
+        tented = [min(cols[max(0, k - 4):k + 5]) for k in range(n)]
+        smooth = [sum(tented[max(0, k - 2):k + 3]) / len(tented[max(0, k - 2):k + 3]) - 2.5 for k in range(n)]
+        _SHEET_TOPS[key] = (x0, smooth)
+    return _SHEET_TOPS[key]
+
+
+def _sheet(x0: float, tops: List[float], breath: float):
+    """The sheet over him, about ``home`` at the middle of the bench's top:
+    its top over him from ``x0`` (frame x), the turned-down hem at his neck,
+    the cloth hanging over the bench's near edge, and its folds. ``breath``
+    (0-1) lifts it over his chest."""
+    top_y = X.ground - BENCH_UP
+    ax = X.cx
+    n = len(tops)
+    pts = []
+    for k, y in enumerate(tops):
+        chest = max(0.0, 1.0 - abs(k - 22.0) / 22.0)
+        pts.append((x0 + k, y - 3.0 * breath * chest * chest))
+    pts = [(round(x, 1), round(y, 1)) for x, y in pts[::2]] + [(round(x0 + n - 1, 1), round(pts[-1][1], 1))]
+    drape = 16.0
+
+    def at(x: float, y: float) -> Point:
+        return K.at(x - ax, y - top_y)
+
+    def paint(d) -> None:
+        xa, xb = pts[0][0], pts[-1][0]
+        hem = [(x, top_y + drape + 2.4 * math.sin(x / 7.0) + 1.4 * math.sin(x / 3.1)) for x in range(int(xb + 9), int(xa - 3), -3)]
+        body = pts + [(xb + 8.0, top_y + 4.0), (xb + 10.0, top_y + drape + 3.0)] + hem + [(xa - 3.0, top_y + drape), (xa - 2.0, pts[0][1] + 6.0)]
+        K.poly(d, [at(*p) for p in body], SHEET, OUTLINE, 1.0)
+        # The side that hangs over the bench's edge is in shade.
+        side = [(x, top_y + 2.0) for x in range(int(xa - 2), int(xb + 7), 3)] + hem
+        K.poly(d, [at(*p) for p in side], SHEET_SHADE)
+        K.line(d, [at(*p) for p in hem], OUTLINE, 1.0)
+        # Its folds: from his high points (toes, knees, chest) down over the
+        # edge.
+        peaks = sorted(range(2, len(pts) - 2), key=lambda k: pts[k][1])[:12]
+        chosen: List[int] = []
+        for k in peaks:
+            if all(abs(k - c) > 6 for c in chosen):
+                chosen.append(k)
+            if len(chosen) == 3:
+                break
+        for k in chosen:
+            x, y = pts[k]
+            K.line(d, [at(x, y + 3.0), at(x + 3.0, top_y + 2.0), at(x + 4.0, top_y + drape - 2.0)], SHEET_DEEP, 0.8)
+        # The hem turned down at his neck.
+        K.poly(d, [at(xa - 2.0, pts[0][1] + 1.0), at(xa + 6.0, pts[3][1] + 1.0), at(xa + 7.0, top_y + drape - 1.0), at(xa - 3.0, top_y + drape)],
+               SHEET_SHADE, OUTLINE, 0.8)
+
+    return K.piece(("bench_sheet", tuple(pts)), paint), (ax, top_y)
+
+
+def _thrown_sheet(t: float):
+    """The sheet thrown off him, ``t`` (0-1) of its flight: a sheet that
+    billows as it goes, about ``home`` at its middle."""
+    t = round(t, 2)
+
+    def paint(d) -> None:
+        w, h = 104.0 * (1.0 - 0.25 * t), 26.0 + 22.0 * math.sin(math.pi * min(1.0, t * 1.4))
+        top = [(x, -h / 2.0 + 5.0 * math.sin(x / 13.0 + t * 6.0)) for x in [(-w / 2.0) + w * k / 8.0 for k in range(9)]]
+        bottom = [(x, h / 2.0 + 6.0 * math.sin(x / 9.0 - t * 5.0)) for x in [(-w / 2.0) + w * k / 8.0 for k in range(8, -1, -1)]]
+        K.poly(d, [K.at(*p) for p in top + bottom], SHEET, OUTLINE, 1.0)
+        K.poly(d, [K.at(*p) for p in bottom[:5] + [(bottom[4][0], 0.0), (bottom[0][0], 2.0)]], SHEET_SHADE)
+        for k in (2, 4, 6):
+            K.line(d, [K.at(top[k][0], top[k][1] + 3.0), K.at(top[k][0] + 6.0, h / 2.0 - 3.0)], SHEET_DEEP, 0.8)
+
+    return K.piece(("thrown_sheet", t), paint)
+
+
+@X.row
+def bench_sleep(i: int, n: int):
+    # Asleep: a slow breath, and nothing else. His ears twitch once.
+    pose = dict(SLEEP)
+    if i == n - 2:
+        pose = dict(pose, ears=-26.0)
+    return on_the_bench(pose)
+
+
+#: The first jolt: still on his back under the sheet, his head thrown
+#: back, his jaws open, his eyes snapped open and lit.
+BENCH_JOLT = dict(SLEEP, head=(0.0, 0.0, -16.0), mouth="big", eyes="lit", ears=10.0, brows=-1.0, charge=2.0)
+#: Bolt upright, legs straight out along the bench, arms flung back, the
+#: sheet gone off him.
+SIT_UP = P(hip=(-4.0, 4.0), leg="over", lean=-6.0, sq=1.04, shrug=(-1.0, -3.0), head=(1.0, -0.6, -16.0), na=(-14.0, 18.0), nab=-1.0,
+           fa=(-6.0, 20.0), fab=-1.0, nh="splay", fh="splay", nf=(36.0, -22.0, -70.0), ff=(40.0, -23.0, -76.0), mouth="open", eyes="lit", ears=4.0,
+           brows=-1.0, hem=(0.0, 0.0), charge=2.0)
+#: Sat on the near edge, his legs over it, his fists on the bench by his
+#: hips, his head down: he looks at his hands.
+EDGE = P(hip=(-4.0, 4.0), leg="over", lean=16.0, sq=0.98, shrug=(1.0, 1.0), head=(2.0, 1.0, 14.0), na=(-4.0, 22.0), fa=(4.0, 22.0), nh="fist", fh="fist",
+         nf=(12.0, -2.0, 24.0), ff=(17.0, -2.0, 18.0), mouth="grit", eyes="pin", ears=-20.0, brows=-1.0, hem=(1.0, 0.0), charge=1.0)
+#: Down off it: his weight on his feet, his knees deep.
+LANDED_BENCH = P(hip=(2.0, 12.0), lean=26.0, sq=0.94, shrug=(1.0, 2.0), head=(3.0, 2.0, -6.0), na=(14.0, 26.0), fa=(18.0, 24.0), nh="claw", fh="claw",
+                 nf=(-6.0, 0.0, 0.0), ff=(9.0, 0.0, 0.0), mouth="grit", eyes="pin", ears=-24.0, brows=-1.0, hem=(1.0, 2.0), charge=1.0)
+#: Powering up: up tall, his fists clenched at his sides, his chest out,
+#: his head thrown back, the current all through him.
+POWER = P(hip=(0.0, 0.0), lean=-4.0, sq=1.08, shrug=(-1.0, -4.0), head=(-1.0, -1.0, -36.0), na=(-6.0, 26.0), fa=(14.0, 25.0), nh="fist", fh="fist",
+          nf=(-10.0, 0.0, 0.0), ff=(10.0, 0.0, 0.0), mouth="gape", eyes="lit", ears=12.0, brows=1.0, hem=(2.0, 4.0), charge=2.0)
+
+#: When in ``bench_wake`` the sheet goes (its flight) and he is off the
+#: bench.
+SHEET_THROWN = (0.12, 0.34)
+
+
+@X.row
+def bench_wake(i: int, n: int):
+    u = shot(i, n)
+    end = X.full(X.poses["idle"](0, 16))
+    if u < SHEET_THROWN[0]:
+        # The jolt, on his back, under the sheet.
+        k = _smooth(u / SHEET_THROWN[0])
+        pose = X.blend(SLEEP, BENCH_JOLT, k)
+        x, y, turn = pose["head"]
+        pose = dict(pose, head=(x, y, turn + jitter(i, 6.0)), ears=float(pose["ears"]) + jitter(i, 10.0, 2.0),
+                    eyes="lit" if k > 0.4 else "glazed", mouth="big" if k > 0.4 else "grit")
+        return on_the_bench(pose)
+    pose = keyed(i, n, [(SHEET_THROWN[0], SIT_UP), (0.26, dict(SIT_UP, lean=2.0), "out"), (0.4, EDGE, "io"), (0.48, EDGE, "hold"),
+                        (0.56, LANDED_BENCH, "in"), (0.62, LANDED_BENCH, "hold"), (0.72, POWER, "snap"), (0.84, POWER, "hold"),
+                        (1.0, end, "io")], drag=HEAVY)
+    if 0.72 <= u < 0.86:
+        pose = dict(pose, rot=jitter(i, 2.4), hip=(pose["hip"][0] + jitter(i, 0.8, 1.0), pose["hip"][1]), ears=float(pose["ears"]) + jitter(i, 8.0, 2.0))
+    if i == n - 1:
+        pose = end
+    return pose
+
+
+def _smooth(t: float) -> float:
+    t = max(0.0, min(1.0, t))
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _bench_sheet(ctx) -> List[Stamp]:
+    """The sheet over him on the bench, and the sheet as he throws it off."""
+    if ctx.anim == "bench_sleep" or (ctx.anim == "bench_wake" and ctx.u < SHEET_THROWN[0]):
+        x0, tops = _sheet_top(ctx.pose, ctx.neck[0])
+        breath = 0.5 - 0.5 * math.cos(math.tau * ctx.i / ctx.n) if ctx.anim == "bench_sleep" else 1.0
+        piece, at = _sheet(x0, tops, breath)
+        return [(piece, at, "sheet", 0.0)]
+    if ctx.anim == "bench_wake" and ctx.u < SHEET_THROWN[1]:
+        t = (ctx.u - SHEET_THROWN[0]) / (SHEET_THROWN[1] - SHEET_THROWN[0])
+        at = (lerp(X.cx + 10.0, -60.0, t), lerp(X.ground - BENCH_UP - 26.0, X.ground - BENCH_UP - 150.0, math.sin(t * math.pi * 0.6)))
+        return [(_thrown_sheet(t), at, "sheet", lerp(0.0, -50.0, t))]
+    return []
+
+
+X.layers["front"].append(_bench_sheet)
+
+
 # Each row as long as before, many in more frames (Jon, 2026-10-24:
 # "Animations are not smooth enough"): his fight times his moves by them.
 X.rows = [("idle", 16, 90), ("walk", 16, 75), ("prowl", 16, 52), ("run", 16, 43), ("jump", 10, 60), ("fall", 10, 60),
@@ -2283,7 +2525,10 @@ X.rows = [("idle", 16, 90), ("walk", 16, 75), ("prowl", 16, 52), ("run", 16, 43)
           ("howl", 12, 70), ("taunt", 12, 100), ("galvanize_tell", 10, 60), ("galvanize", 12, 40), ("lash_tell", 12, 53), ("lash", 9, 40),
           ("flatline", 16, 110), ("recharge", 12, 33), ("awaken", 14, 70), ("shock", 12, 33), ("hit", 9, 40), ("death", 28, 90),
           ("throne_dead", 12, 120), ("throne_wake", 20, 85), ("serum_tell", 10, 80), ("serum_inject", 10, 80), ("serum_surge", 20, 80), ("stab_tell", 12, 53),
-          ("stab", 9, 40), ("stab_recover", 12, 55), ("unsewn", 14, 80), ("headless", 8, 120), ("turn", 8, 30)]
+          ("stab", 9, 40), ("stab_recover", 12, 55), ("unsewn", 14, 80), ("headless", 8, 120), ("turn", 8, 30),
+          # On the bench (Jon, 2026-11-11): asleep under the sheet (a slow
+          # breath, on a loop), and his waking off it.
+          ("bench_sleep", 6, 300), ("bench_wake", 20, 80)]
 
 # ---- What his blows do -------------------------------------------------------
 
@@ -2524,6 +2769,8 @@ def _story_effects(ctx, bolt: Point) -> List[Stamp]:
                 out.append((_arc("wake_body", bolt, (hip[0] + 4.0, hip[1] - 4.0), i + 5, kinks=5, width=1.6), R.pin(bolt), "arc_body", 0.0))
         elif 0.5 < u <= 0.62:
             out.append((R.burst(K, 6.0, ARC_CORE, ARC_GLOW, 6), bolt, "bolt_spark", 0.0))
+    elif anim == "bench_wake":
+        out.extend(_bench_wake_effects(ctx, bolt))
     elif anim == "serum_inject":
         if 0.15 <= u < 0.75 and i % 2 == 0:
             out.append((R.burst(K, 7.0, SERUM_CORE, SERUM_DARK, 7), bolt, "serum_spark", 0.0))
@@ -2571,6 +2818,41 @@ def _story_effects(ctx, bolt: Point) -> List[Stamp]:
                 r = 10.0 + 8.0 * k
                 out.append((R.swoosh(K, r, int(ctx.turn - 30 + 12 * k), int(ctx.turn - 4 + 12 * k), 2.0, DUST, DUST_DARK), (mouth[0] - 4.0, mouth[1]),
                             f"howl_{k}", 0.0))
+    return out
+
+
+def _bench_wake_effects(ctx, bolt: Point) -> List[Stamp]:
+    """His waking on the bench: the charge comes back into his bolts and
+    crawls over the sheet, crackles at his neck as he sits up, and at the
+    power-up goes through all of him and out of his fists and his bolts."""
+    out: List[Stamp] = []
+    u, i = ctx.u, ctx.i
+    if u < SHEET_THROWN[0]:
+        # The charge finds his bolts: it crawls out over the sheet.
+        out.append((R.burst(K, 9.0 + 3.0 * (i % 2), ARC_CORE, ARC_GLOW, 9), bolt, "bolt_spark", 0.0))
+        for k in range(2):
+            to = (bolt[0] + 40.0 + 30.0 * k + 6.0 * math.sin(i * 1.9 + k), bolt[1] - 6.0 + 8.0 * math.cos(i * 2.3 + k))
+            out.append((_arc(f"wake_sheet_{k}", bolt, to, i * 3 + k, kinks=6, width=1.6), R.pin(bolt), f"arc_sheet_{k}", 0.0))
+    elif u < 0.5:
+        # It crackles at his neck as he sits up.
+        if i % 2 == 0:
+            out.append((R.burst(K, 7.0, ARC_CORE, ARC_GLOW, 7), bolt, "bolt_spark", 0.0))
+            to = (bolt[0] - 16.0 + 4.0 * math.sin(i), bolt[1] - 14.0)
+            out.append((_arc("wake_neck", bolt, to, i, kinks=4, width=1.4), R.pin(bolt), "arc_neck", 0.0))
+    elif 0.66 <= u < 0.88:
+        # The power-up: out of his fists, over his body, and up off his bolts.
+        for k, (hand, seed) in enumerate(((ctx.hand, i), (ctx.far_hand, i + 31))):
+            to = (hand[0] + 22.0 * math.cos(seed), hand[1] + 16.0 + 6.0 * math.sin(seed * 1.7))
+            out.append((_arc(f"power_hand_{k}", hand, to, seed, kinks=5), R.pin(hand), f"arc_hand_{k}", 0.0))
+        hip = ctx.hip
+        out.append((_arc("power_body", bolt, (hip[0] + 6.0, hip[1] + 6.0), i + 13, kinks=6, width=1.8), R.pin(bolt), "arc_body", 0.0))
+        out.append((_arc("power_arm", bolt, ctx.elbow, i + 7, kinks=4, width=1.4), R.pin(bolt), "arc_arm", 0.0))
+        out.append((R.burst(K, 12.0 + 2.0 * (i % 2), ARC_CORE, ARC_GLOW, 10), bolt, "bolt_spark", 0.0))
+        for k, side in enumerate((-1.0, 1.0)):
+            up = (bolt[0] + side * (18.0 + 6.0 * math.sin(i * 2.3 + k)), bolt[1] - 50.0 - 8.0 * math.cos(i * 1.3 + k))
+            out.append((_arc(f"power_up_{k}", bolt, up, i + 21 + k, kinks=6, width=2.2), R.pin(bolt), f"arc_up_{k}", 0.0))
+    elif u >= 0.88 and i % 2 == 0:
+        out.append((R.burst(K, 6.0, SPARK, SPARK_DARK, 6), bolt, "sputter", 0.0))
     return out
 
 
