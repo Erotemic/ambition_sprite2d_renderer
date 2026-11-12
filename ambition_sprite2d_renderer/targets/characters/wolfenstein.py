@@ -2508,7 +2508,10 @@ def _bench_sheet(ctx) -> List[Stamp]:
         return [(piece, at, "sheet", 0.0)]
     if ctx.anim == "bench_wake" and ctx.u < SHEET_THROWN[1]:
         t = (ctx.u - SHEET_THROWN[0]) / (SHEET_THROWN[1] - SHEET_THROWN[0])
-        at = (lerp(X.cx + 10.0, -60.0, t), lerp(X.ground - BENCH_UP - 26.0, X.ground - BENCH_UP - 150.0, math.sin(t * math.pi * 0.6)))
+        # It lands at the frame's edge, not past it: art that reaches out of
+        # the frame widens his impostor cell past the largest there is, and
+        # his hit flash then has no image (`impostor_margin`).
+        at = (lerp(X.cx + 10.0, 44.0, t), lerp(X.ground - BENCH_UP - 26.0, X.ground - BENCH_UP - 150.0, math.sin(t * math.pi * 0.6)))
         return [(_thrown_sheet(t), at, "sheet", lerp(0.0, -50.0, t))]
     return []
 
