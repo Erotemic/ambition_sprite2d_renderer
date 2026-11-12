@@ -159,12 +159,17 @@ def _throat(ctx: Ctx, pt, y0: float, y1: float) -> None:
         # A pigeon's neck: green all round, over purple lower down.
         from .headdraw import sheen_colors, sheen_patch
 
-        green, purple = sheen_colors(ctx.skin)
+        green, purple = sheen_colors(ctx.skin, fig.model.sheen_strength)
         nk = fig.neck
         y_p = nk.top + (nk.bottom - nk.top) * 0.45
         pt.flat(loft_region(ctx.view, nk.shell(0.02), y0, min(y1, y_p + 0.6), sheen_patch(45.0)), green)
         if y1 > y_p:
             pt.flat(loft_region(ctx.view, nk.shell(0.03), y_p, y1, sheen_patch(40.0)), purple)
+    if fig.species == "dog" and fig.spec.head.marking == "saddle":
+        # The saddle runs on down the back of the neck.
+        from .headdraw import marking_color
+
+        pt.flat(loft_region(ctx.view, fig.neck.shell(0.02), y0, y1, lambda a, y: (abs(wrap180(a)) - 105.0) * 0.02), marking_color(ctx))
     if not (paint or fig.model.throat):
         return
     col = PAINT if paint else coat_colors(ctx)[1]

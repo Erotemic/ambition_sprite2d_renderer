@@ -56,3 +56,11 @@ def test_a_species_measure_keeps_one_value_of_each_picture_and_a_field_nobody_dr
     assert table["alligator"]["values"]["hair.style"] == ["bald", "nihongami"]
     assert table["human"]["values"]["hair.style"] == list(S.HAIR_STYLES)
     assert table["alligator"]["fields"]["outfit.accent_color"] is True
+
+
+@pytest.mark.parametrize("species, key", [(sp, f"head.{name}") for sp, names in sorted(S.SPECIES_KNOBS.items()) for name in names])
+def test_a_species_knob_draws_on_its_own_head_and_nothing_on_another(species, key):
+    lo, hi = _VALUES[key][0], _VALUES[key][-1]
+    assert A.fingerprint(A.variant(species, key, lo)) != A.fingerprint(A.variant(species, key, hi)), f"{key} draws nothing on a {species}"
+    other = "human"
+    assert A.fingerprint(A.variant(other, key, lo)) == A.fingerprint(A.variant(other, key, hi)), f"{key} draws on a {other}"

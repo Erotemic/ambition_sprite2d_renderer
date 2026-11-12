@@ -9,6 +9,11 @@ body:
 head:
   species: pigeon
   muzzle: 1.4
+  # The pigeon knobs at their defaults: the head as it was first published.
+  beak_curve: 1.0
+  cere: 1.0
+  sheen: 1.0
+  eye_ring: 0.0
 face:
   brow: heavy
   mouth: frown

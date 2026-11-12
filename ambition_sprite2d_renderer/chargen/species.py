@@ -72,6 +72,8 @@ class HeadModel:
     #: The neck is iridescent (a pigeon's): green over purple at its sides
     #: and front, from this ``f`` of the head down; 0 for none.
     sheen: float = 0.0
+    #: How strong the sheen's green and purple are on the coat.
+    sheen_strength: float = 1.0
     #: Where the neck enters the head (a fraction ``f``): the neck's top ring
     #: is fitted inside the head's ring there, and the head turns about its
     #: centre. ``None``: the human neck, which meets the head under the jaw.
@@ -238,25 +240,39 @@ def _dog(fig) -> HeadModel:
     flaps that hang past the cheeks, or pointed and upright). No hair: a
     human haircut on a dog reads as a toupee."""
     hh = fig.hh
-    m = fig.spec.head.muzzle
+    h = fig.spec.head
+    m = h.muzzle
     mz = 0.36 * m
+    # The stop: below 1 the forehead fills forward toward the muzzle's top,
+    # above 1 the forehead domes and the step under the brow deepens.
+    shallow = max(0.0, 1.0 - h.stop)
+    deep = max(0.0, h.stop - 1.0)
+    fill = 0.46 + mz - 0.5
+    # The flews: the upper lip hangs down over the set-back jaw, filling the
+    # step under the lip line and widening the muzzle's lower sides.
+    fl = h.flews
     rows = [
         (0.00, 0.0, 0.0, 0.0, -0.06, 2.0),
-        (0.08, 0.3, 0.3, 0.34, -0.06, 2.0),
-        (0.18, 0.4, 0.39, 0.43, -0.05, 2.0),
-        (0.3, 0.44, 0.43, 0.46, -0.04, 2.1),
-        (0.4, 0.43, 0.46, 0.45, -0.03, 2.1),
+        (0.08, 0.3, 0.3 + 0.04 * deep, 0.34, -0.06, 2.0),
+        (0.18, 0.4, 0.39 + 0.1 * deep + 0.03 * shallow, 0.43, -0.05, 2.0),
+        (0.3, 0.44, 0.43 + 0.14 * deep + 0.15 * shallow * fill, 0.46, -0.04, 2.1),
+        (0.4, 0.43, 0.46 + 0.1 * deep + 0.45 * shallow * fill, 0.45, -0.03, 2.1),
         # The stop: the muzzle steps out from under the brow.
-        (0.45, 0.39, 0.5, 0.43, -0.03, 2.2),
+        (0.45, 0.39, 0.5 - 0.06 * deep + 0.75 * shallow * fill, 0.43, -0.03, 2.2),
         (0.5, 0.34, 0.46 + mz, 0.41, -0.02, 2.6),
         (0.6, 0.33, 0.48 + mz, 0.38, -0.02, 2.7),
-        (0.69, 0.33, 0.48 + mz, 0.35, -0.02, 2.7),
+        (0.69, 0.33 + 0.02 * fl, 0.48 + mz, 0.35, -0.02, 2.7),
         # Under the lip line the lower jaw is set back.
-        (0.74, 0.29, 0.4 + 0.8 * mz, 0.32, -0.02, 2.6),
-        (0.86, 0.25, 0.32 + 0.6 * mz, 0.28, -0.02, 2.3),
+        (0.74, 0.29 + 0.06 * fl, 0.4 + 0.8 * mz + fl * (0.06 + 0.18 * mz), 0.32, -0.02, 2.6 + 0.1 * fl),
+        (0.86, 0.25 + 0.06 * fl, 0.32 + 0.6 * mz + fl * (0.08 + 0.3 * mz), 0.28, -0.02, 2.3 + 0.2 * fl),
         (0.95, 0.2, 0.26 + 0.3 * mz, 0.24, -0.02, 2.1),
         (1.00, 0.1, 0.18, 0.18, -0.02, 2.0),
     ]
+    # The skull's breadth: all of it across the cranium, less down the
+    # muzzle, little at the jaw (where the neck goes in).
+    sk = h.skull - 1.0
+    rows = [(f, rx * (1.0 + sk * (1.0 - 0.75 * smoothstep(0.42, 0.74, f))), rzf, rzb * (1.0 + 0.4 * sk * (1.0 - smoothstep(0.4, 0.7, f))),
+             cz, sq) for f, rx, rzf, rzb, cz, sq in rows]
     layout = {
         "eye_f": 0.395, "brow_f": 0.315, "eye_alpha": 31.0, "eye_w": 0.13, "iris": 0.78, "nose_tip_f": 0.535, "mouth_f": 0.705,
         "mouth_alpha": 62.0, "nose": "dog", "pupil": "round",
@@ -266,10 +282,10 @@ def _dog(fig) -> HeadModel:
         f = (y - fig.crown) / hh
         al = wrap180(alpha)
         # The brows over the stop, and the furrow between them.
-        v = 0.03 * gauss(f, 0.36, 0.035) * (gauss(al, 24.0, 12.0) + gauss(al, -24.0, 12.0))
+        v = 0.03 * (1.0 + 1.2 * deep - 0.6 * shallow) * gauss(f, 0.36, 0.035) * (gauss(al, 24.0, 12.0) + gauss(al, -24.0, 12.0))
         # Full cheeks behind the muzzle, and the upper lip (the flews) hanging at its sides.
         v += 0.03 * gauss(f, 0.62, 0.08) * (gauss(al, 62.0, 16.0) + gauss(al, -62.0, 16.0))
-        v += 0.02 * gauss(f, 0.69, 0.025) * (gauss(al, 50.0, 18.0) + gauss(al, -50.0, 18.0))
+        v += (0.02 + 0.03 * fl) * gauss(f, 0.69 + 0.04 * fl, 0.025 + 0.025 * fl) * (gauss(al, 50.0, 18.0) + gauss(al, -50.0, 18.0))
         return hh * v
 
     ears = "dog_floppy" if fig.spec.head.ears in ("default", "floppy") else "dog_pointed"
@@ -342,6 +358,7 @@ def _pigeon(fig) -> HeadModel:
     white cere puffed over its base; round orange eyes set on the sides; no
     crest, no ears; the neck iridescent green over purple."""
     hh = fig.hh
+    h = fig.spec.head
     rows = [
         (0.00, 0.0, 0.0, 0.0, 0.0, 2.0),
         (0.08, 0.28, 0.3, 0.32, 0.0, 2.0),
@@ -355,10 +372,11 @@ def _pigeon(fig) -> HeadModel:
     ]
     layout = {
         "eye_f": 0.36, "brow_f": 0.28, "eye_alpha": 50.0, "eye_w": 0.135, "iris": 0.95, "nose_tip_f": 0.46, "mouth_f": 0.48,
-        "mouth_alpha": 0.0, "nose": "pigeon", "pupil": "round", "beak": 0.23 * fig.spec.head.muzzle, "beak_w": 0.6, "beak_h": 0.85,
-        "beak_col": "#3e3a3e", "cere": 1.0, "beak_droop": 0.035,
+        "mouth_alpha": 0.0, "nose": "pigeon", "pupil": "round", "beak": 0.23 * h.muzzle, "beak_w": 0.6, "beak_h": 0.85,
+        "beak_col": "#3e3a3e", "cere": h.cere, "beak_droop": 0.035 * h.beak_curve, "eye_ring": h.eye_ring,
     }
-    return HeadModel("pigeon", _rows(fig.fy, hh, rows), [], layout, ears="none", hair="none", neck_f=0.7, sheen=0.6)
+    return HeadModel("pigeon", _rows(fig.fy, hh, rows), [], layout, ears="none", hair="none", neck_f=0.7, sheen=0.6 if h.sheen > 0.0 else 0.0,
+                     sheen_strength=h.sheen)
 
 
 # ---- sea lion -------------------------------------------------------------------------------

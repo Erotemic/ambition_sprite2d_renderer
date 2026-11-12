@@ -71,6 +71,11 @@ HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", 
 ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders", "webbing", "dog_tags", "obi", "bow_tie")
 SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator")
 EAR_STYLES = ("default", "floppy", "pointed")
+#: A dog's coat marking, in its second colour (the hair colour): a dark
+#: ``mask`` over the muzzle and round the eyes, a white ``blaze`` up the middle
+#: of the face, a ``saddle`` over the crown and down the back of the neck.
+#: Each is the same on both sides, so a left view may be a mirror.
+MARKINGS = ("none", "mask", "blaze", "saddle")
 #: Face paint: ``geisha`` is white face paint (oshiroi) with red lips; on an
 #: animal, a pale painted face and red on the jaw line.
 MAKEUPS = ("none", "geisha")
@@ -170,6 +175,32 @@ class Head:
     muzzle: float = 1.0
     #: A dog's ears: floppy or pointed (``default`` is the species' own).
     ears: str = "default"
+    # The species' own knobs (``SPECIES_KNOBS``). Each default draws the
+    # head as it was before the knob existed.
+    #: Dog: the step from the brow down to the muzzle, 1 as drawn; less runs
+    #: the forehead into the muzzle (a hound), more domes it (a boxer).
+    stop: float = 1.0
+    #: Dog: the breadth of the skull.
+    skull: float = 1.0
+    #: Dog: how far the upper lip (the flews) hangs over the jaw, 0 tight.
+    flews: float = 0.0
+    #: Dog: the ear's length.
+    ear_length: float = 1.0
+    #: Dog: a floppy ear folded forward (a button ear), a pointed ear's tip
+    #: tipped over; 0 is the plain ear.
+    ear_fold: float = 0.0
+    #: Dog: where the ears are set, 0 high on the crown .. 1 low at the sides.
+    ear_set: float = 0.5
+    #: Dog: the coat marking (``MARKINGS``).
+    marking: str = "none"
+    #: Pigeon: how far the beak's tip turns down, 1 as drawn.
+    beak_curve: float = 1.0
+    #: Pigeon: the size of the white cere over the beak's base; 0 for none.
+    cere: float = 1.0
+    #: Pigeon: the strength of the neck's green and purple; 0 for none.
+    sheen: float = 1.0
+    #: Pigeon: the ring of bare skin round each eye; 0 for none.
+    eye_ring: float = 0.0
 
 
 @dataclass
@@ -244,6 +275,10 @@ class CharacterSpec:
         for (section, name), default in OPTIONAL_DEFAULTS.items():
             if d[section][name] == default:
                 del d[section][name]
+        owned = SPECIES_KNOBS.get(self.head.species, ())
+        for name, default in HEAD_KNOB_DEFAULTS.items():
+            if name not in owned and d["head"][name] == default:
+                del d["head"][name]
         return d
 
     def to_json(self) -> str:
@@ -300,6 +335,15 @@ class CharacterSpec:
 
 
 _SECTIONS = {"body": Body, "face": Face, "hair": Hair, "palette": Palette, "outfit": Outfit, "head": Head}
+#: The head fields each species draws. On another head such a field keeps its
+#: default (generation resets it) and a record does not write it, so the
+#: records and SVGs of every other species stay as they were. A species' own
+#: knobs are always written, so a value an author sets is never redrawn.
+SPECIES_KNOBS: Dict[str, Tuple[str, ...]] = {
+    "dog": ("stop", "skull", "flews", "ear_length", "ear_fold", "ear_set", "marking"),
+    "pigeon": ("beak_curve", "cere", "sheen", "eye_ring"),
+}
+HEAD_KNOB_DEFAULTS: Dict[str, Any] = {f.name: f.default for f in fields(Head) if f.name not in ("species", "muzzle", "ears")}
 #: Fields added after the first records: a record writes one only when it is
 #: not at its default, so an older record (and its SVG) stays as it was.
 OPTIONAL_DEFAULTS: Dict[Tuple[str, str], Any] = {
@@ -353,6 +397,16 @@ BOUNDS: Dict[str, Tuple[float, float]] = {
     "hair.volume": (0.0, 1.0),
     "hair.length": (0.0, 1.0),
     "head.muzzle": (0.6, 1.4),
+    "head.stop": (0.3, 1.6),
+    "head.skull": (0.85, 1.2),
+    "head.flews": (0.0, 1.0),
+    "head.ear_length": (0.7, 1.35),
+    "head.ear_fold": (0.0, 1.0),
+    "head.ear_set": (0.0, 1.0),
+    "head.beak_curve": (0.0, 3.0),
+    "head.cere": (0.0, 2.0),
+    "head.sheen": (0.0, 2.0),
+    "head.eye_ring": (0.0, 1.0),
     "outfit.geta_height": (3.0, 16.0),
 }
 
@@ -374,6 +428,7 @@ CHOICES: Dict[str, Sequence[str]] = {
     "outfit.hat": HATS,
     "head.species": SPECIES,
     "head.ears": EAR_STYLES,
+    "head.marking": MARKINGS,
     "face.makeup": MAKEUPS,
     "outfit.motif": MOTIFS,
     "outfit.obi_knot": OBI_KNOTS,
@@ -600,13 +655,31 @@ def _draw(base: Base, seed: int) -> CharacterSpec:
     coat_pick = rng.random()
     muzzle = _uniform(rng, 0.85, 1.2)
     ears = _pick(rng, {"floppy": 1, "pointed": 1})
+    # The species knobs, drawn after every older field (so an older seed keeps
+    # them) and for every head (the species is an override, applied later).
+    head = Head("human", muzzle, ears)
+    head.stop = _uniform(rng, 0.35, 1.5)
+    head.skull = _uniform(rng, 0.9, 1.15)
+    head.flews = round(max(0.0, _uniform(rng, -0.4, 1.0)), 3)
+    head.ear_length = _uniform(rng, 0.8, 1.3)
+    folded = rng.random() < 0.6
+    fold = _uniform(rng, 0.3, 1.0)
+    head.ear_fold = fold if folded else 0.0
+    head.ear_set = _uniform(rng, 0.1, 0.9)
+    head.marking = _pick(rng, {"none": 3, "mask": 2, "blaze": 2, "saddle": 2})
+    head.beak_curve = _uniform(rng, 0.3, 2.2)
+    head.cere = _uniform(rng, 0.4, 1.6)
+    head.sheen = _uniform(rng, 0.5, 1.7)
+    ringed = rng.random() < 0.5
+    ring = _uniform(rng, 0.35, 1.0)
+    head.eye_ring = ring if ringed else 0.0
     if outfit.outer == "robe":
         outfit.outer_length = "ankle"
         outfit.outer_open = False
     if outfit.outer == "apron":
         outfit.outer_length = "knee" if outfit.outer_length == "hip" else outfit.outer_length
     spec = CharacterSpec(name=f"{base.display_name} #{seed}", base=base.key, seed=int(seed), body=body, face=face, hair=hair,
-                         palette=palette, outfit=outfit, head=Head("human", muzzle, ears))
+                         palette=palette, outfit=outfit, head=head)
     spec._coat_pick = coat_pick  # type: ignore[attr-defined]
     return spec
 
@@ -639,6 +712,10 @@ def generate(base: Optional[str] = None, seed: int = 0, overrides: Optional[Mapp
         over.pop("seed", None)
         _merge(drawn, over)
     species = drawn["head"]["species"]
+    owned = SPECIES_KNOBS.get(species, ())
+    for name, default in HEAD_KNOB_DEFAULTS.items():
+        if name not in owned:
+            drawn["head"][name] = default
     if species != "human" and "skin" not in over.get("palette", {}):
         # An animal's skin is its coat, drawn from the species' coats.
         from .species import COATS, COATS_BY_SEX
@@ -698,6 +775,6 @@ def spec_distance(a: CharacterSpec, b: CharacterSpec) -> float:
 
 
 __all__ = [
-    "BASES", "BOUNDS", "Base", "Body", "CHOICES", "CharacterSpec", "Face", "Hair", "Outfit", "Palette", "SCHEMA", "check", "complete",
-    "crowd", "generate", "spec_distance", "spec_vector", "validate",
+    "BASES", "BOUNDS", "Base", "Body", "CHOICES", "CharacterSpec", "Face", "HEAD_KNOB_DEFAULTS", "Hair", "Outfit", "Palette", "SCHEMA",
+    "SPECIES_KNOBS", "check", "complete", "crowd", "generate", "spec_distance", "spec_vector", "validate",
 ]

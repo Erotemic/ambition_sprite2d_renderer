@@ -8,6 +8,11 @@ body:
   age: 0.7
 head:
   species: pigeon
+  # The pigeon knobs at their defaults: the head as it was first published.
+  beak_curve: 1.0
+  cere: 1.0
+  sheen: 1.0
+  eye_ring: 0.0
 hair:
   style: bald
   facial: none
