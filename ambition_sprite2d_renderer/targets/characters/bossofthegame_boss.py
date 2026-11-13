@@ -7,7 +7,7 @@ added, a mechanical keyboard slung across his waist (``director_boss``,
 derived by ``scripts/svg_art/director_boss_art.py``). It names his clips by
 the boss slots the game's ``boss_sheets.ron`` reads (``rest``,
 ``floor_slam``, ``side_sweep``, ``spike_halo``, ``hit``, ``death``, in that
-order, then ``talk``).
+order, then ``talk`` and his four microphone rows).
 
 The game's design: ``docs/planning/game/final-boss.md``. He stands on the
 shoulders of Full Stack (``full_stack_giant``).
@@ -60,6 +60,14 @@ BOSS_ROWS = (
     ("hit", "hit"),
     ("death", "knockdown"),
     ("talk", "talk"),
+    # The band's vocals are his alone: the microphone in his far hand
+    # (`director_boss_art.py`). He sings the riff, points the mic out at
+    # the feedback, holds it up to call Geppetto in, and throws both arms up
+    # for the encore.
+    ("mic_sing", "mic_sing"),
+    ("mic_point", "mic_point"),
+    ("mic_call", "mic_call"),
+    ("mic_encore", "mic_encore"),
 )
 _CLIP_OF = dict(BOSS_ROWS)
 

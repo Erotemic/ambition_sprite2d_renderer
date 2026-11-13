@@ -2,8 +2,9 @@
 """Derive the final boss's drawing from the Director's.
 
 The final boss (`bossofthegame_boss`) is the Director: the same SVG, rig and
-pen, with one prop added, a mechanical keyboard slung across his waist on a
-strap. He plays it in his second phase ("Manual Override": he types). This
+pen, with two props added: a mechanical keyboard slung across his waist on
+a strap, which he plays in his second phase ("Manual Override": he types),
+and a microphone in his far hand (the band's vocals are his alone). This
 script writes ``data/characters/director_boss/director_boss.svg`` from
 ``data/characters/director/director.svg``; rerun it after the Director's
 drawing changes.
@@ -50,6 +51,37 @@ def keyboard() -> str:
     return "".join(parts)
 
 
+# The microphone, in his far hand (the pen is in the near one): its handle
+# in the fist along the hand and out past the fingertips, its grille at its
+# end, so a clip that brings that hand up to his face brings the grille to
+# his mouth. The hand hangs from (72, 159) at the wrist to its fingertips
+# near (71, 174).
+MIC_HANDLE = "M 70.0,163.0 L 72.8,163.2 L 72.3,181.6 L 69.7,181.4 Z"
+MIC_GRILLE = (71.0, 184.9, 3.6)
+
+
+def microphone() -> str:
+    cx, cy, r = MIC_GRILLE
+    parts = [
+        f'<path d="{MIC_HANDLE}" fill="#1c1d22" stroke="#000" stroke-width="0.35" stroke-linejoin="round"/>',
+        # The band where the handle meets the grille.
+        '<path d="M 69.4,180.6 L 72.6,180.8 L 72.5,182.0 L 69.3,181.8 Z" fill="#8f939e" stroke="#000" stroke-width="0.25"/>',
+        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="#b9bcc6" stroke="#000" stroke-width="0.35"/>',
+    ]
+    # The grille's mesh.
+    for k in (-1.8, 0.0, 1.8):
+        parts.append(
+            f'<path d="M {cx - r * 0.85:.2f},{cy + k:.2f} L {cx + r * 0.85:.2f},{cy + k:.2f}" '
+            'stroke="#6d717c" stroke-width="0.25"/>'
+        )
+        parts.append(
+            f'<path d="M {cx + k:.2f},{cy - r * 0.85:.2f} L {cx + k:.2f},{cy + r * 0.85:.2f}" '
+            'stroke="#6d717c" stroke-width="0.25"/>'
+        )
+    parts.append(f'<circle cx="{cx - 0.9}" cy="{cy - 1.0}" r="0.7" fill="#eef0f5"/>')
+    return "".join(parts)
+
+
 def derive(svg: str) -> str:
     torso_end = svg.index("</g>", svg.index('<g id="part-torso" '))
     insert_at = torso_end + len("</g>")
@@ -73,6 +105,25 @@ def derive(svg: str) -> str:
         'data-rig-bind-angle="0" data-rig-elements="part-keyboard"/>'
     )
     svg = svg[:def_end] + defs + svg[def_end:]
+    # The microphone, under the far hand's fingers.
+    hand = svg.index('<g id="part-far-hand" ')
+    mic = (
+        '<g id="part-microphone" data-rig-bone="far_arm_hand" data-rig-part="microphone" '
+        'data-rig-z="10" inkscape:label="Microphone" inkscape:groupmode="layer">'
+        f"{microphone()}</g>\n      "
+    )
+    svg = svg[:hand] + mic + svg[hand:]
+    hand_def = svg.index('<g id="ambition-rig-side-part-far_hand" ')
+    hand_def_end = svg.index("/>", hand_def) + 2
+    pivot = svg[hand_def:hand_def_end].split('data-rig-pivot="')[1].split('"')[0]
+    angle = svg[hand_def:hand_def_end].split('data-rig-bind-angle="')[1].split('"')[0]
+    svg = (
+        svg[:hand_def_end]
+        + f'\n    <g id="ambition-rig-side-part-microphone" data-rig-part-def="microphone" '
+        f'data-rig-bone="far_arm_hand" data-rig-z="10" data-rig-pivot="{pivot}" '
+        f'data-rig-bind-angle="{angle}" data-rig-elements="part-microphone"/>'
+        + svg[hand_def_end:]
+    )
     return svg.replace('data-character="director"', 'data-character="director_boss"')
 
 
