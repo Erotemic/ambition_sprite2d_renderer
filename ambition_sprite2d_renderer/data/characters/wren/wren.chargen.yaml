@@ -1,0 +1,34 @@
+# Wren, the Generalist: the Qwen parody among the bossofthegame's named
+# agents, after Jon's concept sheet "Wren - The Generalist"
+# (assets/concept_art/misc/agent-concepts/ in the game repo): the sheet's
+# Field Agent hood and Engineer wrench (Jon, 2026-11-13: the wide hat and
+# the fan were too much). The generator draws her body, her open cream robe,
+# her purple scarf and belt; targets/characters/_band_agents_gear.py draws
+# her visor and eyes, her hood and her wrench. Her skin is the dark of her
+# chassis.
+schema: ambition-chargen-v1
+name: Wren
+base: slim_female
+seed: 11
+family: cast
+body: {height_cm: 168, head: 0.165, shoulders: 0.95, waist: 0.9, legs: 1.05, limbs: 0.9, age: 0.2}
+face: {eye_shape: round, nose: button, nose_size: 0.75, jaw: pointed, ears: 0.8}
+hair: {style: bald, facial: none}
+palette: {skin: '#2d2838', hair: '#2d2838', eyes: '#ffc65a'}
+outfit:
+  top: tunic
+  sleeves: long
+  neckline: crew
+  top_color: '#3a2f55'
+  tucked: false
+  outer: robe
+  outer_length: knee
+  outer_color: '#f2e8d4'
+  outer_open: true
+  bottom: trousers
+  bottom_color: '#3b3256'
+  shoes: boots
+  shoe_color: '#8a78b8'
+  hat: none
+  accessories: [scarf, belt]
+  accent_color: '#7a52c0'

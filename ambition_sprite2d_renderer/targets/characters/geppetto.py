@@ -1,23 +1,24 @@
-"""Geppetto, one of the bossofthegame's named agents (`_boss_agent_kit.py`).
+"""Geppetto, one of the bossofthegame's named agents (the Orchestrator: hat, coat, mantle, baton).
 
-Drawn from Jon's concept sheets by `scripts/svg_art/boss_agents_art.py` on
-the Director's rig (`data/characters/geppetto/geppetto.svg`).
+Drawn by the character generator in every view (``_band_agent_sheet.py``):
+the spec ``data/characters/geppetto/geppetto.chargen.yaml``, the agent's own parts
+in ``_band_agents_gear.py`` and the band's instruments in
+``_band_instruments.py``.
 """
 
 from __future__ import annotations
 
-from ._boss_agent_kit import ROWS, actor_metadata, make_render
+from ._band_agent_sheet import ROWS, actor_metadata, make_render
+from ._band_agents_gear import geppetto_parts
 
 TARGET_NAME = "geppetto"
 ACTOR_METADATA = actor_metadata(
     TARGET_NAME,
     "npc_geppetto",
     "Geppetto",
-    "The GPT parody among the bossofthegame's agents, in his Emissary form: a cream mask with cyan eyes, a top hat wound with magenta thread, a thread halo, a plum tailcoat and a cane with a spool for a knob. Polite, persuasive and endlessly adaptable; he pulls strings.",
-    ["puppeteer", "gpt_parody"],
+    "Geppetto, the Orchestrator: the GPT parody among the bossofthegame's named agents, after Jon's concept sheet. A dark visor for a face with two warm glowing eyes and earpieces, a wide-brimmed plum hat with a magenta band and a gold gear, a long open cream coat with magenta gears on its skirts over a plum shirt, a magenta scarf, a plum mantle down his back, and a conductor's baton: he orchestrates. In the Boss's band he plays the bass.",
+    ['orchestrator', 'gpt_parody', 'band_bass'],
 )
-#: The colour of the light its swings throw.
-TRAIL_TINT = {"body_rgb": [67, 220, 255], "core_rgb": [230, 252, 255]}
-render = make_render(TARGET_NAME, ACTOR_METADATA, TRAIL_TINT)
+render = make_render(TARGET_NAME, geppetto_parts, ACTOR_METADATA, grip="blade", own_props={"prop.baton": 1.0})
 
 __all__ = ["ACTOR_METADATA", "ROWS", "render"]

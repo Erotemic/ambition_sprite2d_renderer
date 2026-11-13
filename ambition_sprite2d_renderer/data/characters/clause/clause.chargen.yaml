@@ -1,0 +1,30 @@
+# Clause, the Analyst: the Claude parody among the bossofthegame's named
+# agents, after Jon's concept sheet "Clause - The Analyst"
+# (assets/concept_art/misc/agent-concepts/ in the game repo). The generator
+# draws his dark chassis (a close top and trousers) and his boots;
+# targets/characters/_band_agents_gear.py draws his visor and eyes, his
+# crown of petal fins and his poncho with the starburst. His skin is the dark
+# of his chassis.
+schema: ambition-chargen-v1
+name: Clause
+base: average_male
+seed: 3
+family: cast
+body: {height_cm: 176, head: 0.155, shoulders: 1.0, waist: 0.9, legs: 1.05, limbs: 0.9, age: 0.2}
+face: {eye_shape: round, nose: button, nose_size: 0.75, jaw: round, ears: 0.8}
+hair: {style: bald, facial: none}
+palette: {skin: '#2a2630', hair: '#2a2630', eyes: '#ffb057'}
+outfit:
+  top: sweater
+  sleeves: long
+  neckline: crew
+  top_color: '#41394a'
+  tucked: true
+  outer: none
+  bottom: trousers
+  bottom_color: '#3a3342'
+  shoes: boots
+  shoe_color: '#efe4d2'
+  hat: none
+  accessories: [belt]
+  accent_color: '#e2763c'
