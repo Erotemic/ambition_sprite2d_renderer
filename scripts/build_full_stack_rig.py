@@ -21,6 +21,10 @@ head play, the body keeps the beat.
 - ``strum``: the power chord: the arm high, then down across the strings.
 - ``riff``: the fretting hand runs up and down the neck.
 - ``feedback``: the meters pin in the red and the cones glow.
+- ``solo``: between the Boss's phases, while he holds his beat: the arm
+  windmills over the strings, both heads bang, the cones flash.
+- ``outro``: he has gone down; it plays him off: a slow strum, the robot's
+  head bowed (the amp head, where he stands, barely moves).
 """
 
 from __future__ import annotations
@@ -96,6 +100,31 @@ CLIPS = {
             "near_arm_l": expr("10*sin(4*tau*t)"),
             "far_arm_u": expr("-10*sin(tau*t)"),
             "far_arm_l": expr("12*sin(tau*t)"),
+            "glow": expr("0"),
+        },
+    },
+    "solo": {
+        "loop": True, "frames": 8, "duration_ms": 70,
+        "channels": {
+            "root_y": expr(f"2*{BEAT}"),
+            "head": expr("3*sin(2*tau*t)"),
+            "robot_head": expr("16*sin(2*tau*t)"),
+            "near_arm_u": expr("-34 + 30*sin(tau*t)"),
+            "near_arm_l": expr("-20 + 40*sin(tau*t)"),
+            "far_arm_u": expr("-6*sin(2*tau*t)"),
+            "far_arm_l": expr("10*sin(2*tau*t)"),
+            "glow": expr("1 if sin(2*tau*t) > 0 else 0"),
+        },
+    },
+    "outro": {
+        "loop": True, "frames": 8, "duration_ms": 160,
+        "channels": {
+            "root_y": expr("0.6*sin(tau*t)"),
+            "head": expr("1.5 + 0.8*sin(tau*t)"),
+            "robot_head": expr("9 + 2*sin(tau*t)"),
+            "near_arm_u": expr("-3*sin(tau*t)"),
+            "near_arm_l": expr("9*sin(tau*t)"),
+            "far_arm_l": expr("-2*sin(tau*t)"),
             "glow": expr("0"),
         },
     },

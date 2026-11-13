@@ -397,6 +397,65 @@
         }
       }
     },
+    "solo": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 70,
+      "channels": {
+        "root_y": {
+          "expr": "2*abs(sin(2*pi*t))"
+        },
+        "head": {
+          "expr": "3*sin(2*tau*t)"
+        },
+        "robot_head": {
+          "expr": "16*sin(2*tau*t)"
+        },
+        "near_arm_u": {
+          "expr": "-34 + 30*sin(tau*t)"
+        },
+        "near_arm_l": {
+          "expr": "-20 + 40*sin(tau*t)"
+        },
+        "far_arm_u": {
+          "expr": "-6*sin(2*tau*t)"
+        },
+        "far_arm_l": {
+          "expr": "10*sin(2*tau*t)"
+        },
+        "glow": {
+          "expr": "1 if sin(2*tau*t) > 0 else 0"
+        }
+      }
+    },
+    "outro": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 160,
+      "channels": {
+        "root_y": {
+          "expr": "0.6*sin(tau*t)"
+        },
+        "head": {
+          "expr": "1.5 + 0.8*sin(tau*t)"
+        },
+        "robot_head": {
+          "expr": "9 + 2*sin(tau*t)"
+        },
+        "near_arm_u": {
+          "expr": "-3*sin(tau*t)"
+        },
+        "near_arm_l": {
+          "expr": "9*sin(tau*t)"
+        },
+        "far_arm_l": {
+          "expr": "-2*sin(tau*t)"
+        },
+        "glow": {
+          "expr": "0"
+        }
+      }
+    },
     "feedback": {
       "loop": true,
       "frames": 6,
