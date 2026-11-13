@@ -13,10 +13,17 @@ Each prop is its own target (``TARGETS``), drawn on its own canvas, feet
   dead level while everything else sways: it is what steadies the room.
   ``idle`` 8 frames (the bands breathe, the gimbal's light circles).
 - ``hylbert_wallpaper_panel``: a background wall section, plum damask of
-  ellipses and their axes over a wainscot, the paper peeling.
+  ellipses and their axes over a wainscot, the paper peeling. Panels laid
+  side by side meet with no seam.
 - ``hylbert_room_door``: a guest room door, its brass plate an infinity
   (there is always one more room), teal light under it; ``idle`` 4 (the light
   flickers).
+- ``hylbert_lift_gate``: the service lift's brass scissor gate, shut, chained
+  and padlocked, an OUT OF ORDER tag on the chain; ``idle`` 4 (the tag
+  swings, light leaks round the lock). The barrier in front of the lift.
+- ``hylbert_treasury_seal``: the treasury's iron grille with a ring of
+  spectral light locked across it; ``idle`` 8 (the ring pulses and turns).
+  The barrier the Gram Reaper's fall takes away.
 - ``hylbert_wall_sconce``: a brass sconce with a teal ghost flame, ``idle`` 6.
 - ``hylbert_chandelier``: a cobwebbed brass chandelier with teal flames,
   hanging from its top edge, ``idle`` 6.
@@ -100,16 +107,25 @@ class _Canvas:
 # --- the haunt: what makes any prop spooky ----------------------------------------
 
 
-def _shade_and_grime(c: _Canvas, top: float = 0.55, bottom: float = 0.75, seed: int = 0) -> None:
+def _shade_and_grime(c: _Canvas, top: float = 0.55, bottom: float = 0.75, seed: int = 0, wrap_x: bool = False) -> None:
     """SHADING and GRIME over everything drawn so far: darker toward the top
     and the foot (lit from a ghost light at the middle), a mottle of grime,
-    and a cold teal cast in the shadows. Alpha is kept."""
+    and a cold teal cast in the shadows. Alpha is kept.
+
+    ``wrap_x``: the grime wraps round from the right edge to the left, so a
+    prop laid end to end (a wall, a floor) shows no seam where two meet."""
     px = np.asarray(c.img, np.float32)
     h, w = px.shape[:2]
     y = np.linspace(0.0, 1.0, h)[:, None]
     light = 1.0 - (1.0 - top) * np.clip(1.0 - y / 0.5, 0, 1) ** 1.5 - (1.0 - bottom) * np.clip((y - 0.5) / 0.5, 0, 1) ** 1.5
     rng = np.random.default_rng(seed)
-    grime = Image.fromarray((rng.random((max(1, h // 24), max(1, w // 24))) * 255).astype(np.uint8)).resize((w, h), Image.Resampling.BICUBIC)
+    cells = (rng.random((max(1, h // 24), max(1, w // 24))) * 255).astype(np.uint8)
+    if wrap_x:
+        # Three copies side by side, scaled together: the middle one meets
+        # its own edges on both sides.
+        grime = Image.fromarray(np.tile(cells, (1, 3))).resize((w * 3, h), Image.Resampling.BICUBIC).crop((w, 0, w * 2, h))
+    else:
+        grime = Image.fromarray(cells).resize((w, h), Image.Resampling.BICUBIC)
     grime = 0.82 + 0.18 * np.asarray(grime, np.float32)[..., None] / 255.0
     rgb = px[..., :3] * light[..., None] * grime
     # The shadows go cold: a teal cast where it is dark.
@@ -120,29 +136,41 @@ def _shade_and_grime(c: _Canvas, top: float = 0.55, bottom: float = 0.75, seed: 
     c.d = blending_draw(c.img)
 
 
-def _fog(c: _Canvas, y: float, t: float, strength: float = 0.5) -> None:
-    """Teal FOG pooling along a floor at ``y``: drifting, soft lobes."""
+def _fog(c: _Canvas, y: float, t: float, strength: float = 0.5, wrap_x: bool = False) -> None:
+    """Teal FOG pooling along a floor at ``y``: drifting, soft lobes.
+
+    ``wrap_x``: the lobes repeat with the width (a multiple of 24), so a prop
+    laid end to end has one bank of fog."""
     W = c.size[0]
+    n = max(1, round(W / 24))
 
     def lobes(d):
-        for k in range(int(W / 24) + 2):
-            x = k * 24.0 + 10.0 * math.sin(t * math.tau + k * 1.3)
-            r = 14.0 + 5.0 * math.sin(k * 2.1 + t * math.tau)
+        for k in range(-2 if wrap_x else 0, n + 2):
+            phase = k % n if wrap_x else k
+            x = k * 24.0 + 10.0 * math.sin(t * math.tau + phase * 1.3)
+            r = 14.0 + 5.0 * math.sin(phase * 2.1 + t * math.tau)
             d.ellipse(c.p(x - r * 1.6, y - r * 0.55, x + r * 1.6, y + r * 0.35), fill=_a(TEAL, 0.22 * strength))
 
     c.glow(lobes, 4.0)
 
 
-def _motes(c: _Canvas, t: float, n: int = 10, seed: int = 1) -> None:
-    """Spectral MOTES drifting up, each twinkling on its own clock."""
+def _motes(c: _Canvas, t: float, n: int = 10, seed: int = 1, rise: float = 30.0) -> None:
+    """Spectral MOTES drifting up, each twinkling on its own clock.
+
+    Each mote rises ``rise`` px over one loop of the row, from its own phase,
+    and fades in at the foot of its path and out at the top. So the row loops
+    with no jump: a mote that goes back to the foot is not drawn there."""
     rng = np.random.default_rng(seed)
     W, H = c.size
-    pts = [(rng.random() * W, rng.random() * H, rng.random()) for _ in range(n)]
+    rise = min(rise, H * 0.6)
+    # (x, the foot of its path, its phase): the whole path is on the canvas.
+    pts = [(rng.random() * W, rise + rng.random() * (H - rise), rng.random()) for _ in range(n)]
 
     def dots(d):
-        for x, y, ph in pts:
-            yy = (y - t * 30.0) % H
-            a = 0.3 + 0.7 * abs(math.sin((t + ph) * math.tau))
+        for x, foot, ph in pts:
+            life = (t + ph) % 1.0
+            yy = foot - life * rise
+            a = math.sin(life * math.pi) * (0.3 + 0.7 * abs(math.sin((t + ph) * math.tau * 2.0)))
             d.ellipse(c.p(x - 1.4, yy - 1.4, x + 1.4, yy + 1.4), fill=_a(TEAL_CORE, a))
 
     c.glow(dots, 0.8)
@@ -268,35 +296,42 @@ def spectral_gap(t: float) -> Image.Image:
 
 def wallpaper_panel(t: float) -> Image.Image:
     """A WALL SECTION: plum damask of ellipses and their axes, a wainscot of
-    dark wood below, a strip of paper peeling at the seam."""
+    dark wood below, a strip of paper peeling.
+
+    It tiles side by side: the damask and the wainscot repeat each quarter of
+    the width, the rail runs off both edges, and the grime and the fog wrap
+    round, so a wall of panels shows no seam. A room lays panels a whole or a
+    quarter panel apart (the haunted wing's generator), so nothing drawn
+    crosses a quarter line: the damask, the wainscot's panels, the scratches,
+    the peel and the stain each stand between two."""
     W, H = 192, 256
     c = _Canvas((W, H))
     c.rect(0, 0, W, H, PLUM, outline=None)
     for row in range(6):
-        for col in range(5):
-            x = col * 40 + (20 if row % 2 else 0)
+        for col in range(W // 48):
+            x = col * 48 + (36 if row % 2 else 12)
             y = 16 + row * 30
             c.ellipse(x - 9, y - 6, x + 9, y + 6, outline=PLUM_LIGHT, w=0.8)
             c.line([(x - 9, y), (x + 9, y)], PLUM_LIGHT, w=0.5)
             c.line([(x, y - 6), (x, y + 6)], PLUM_DARK, w=0.5)
     # The wainscot and its rail.
     c.rect(0, 188, W, H, WOOD, outline=None)
-    c.rect(0, 184, W, 190, WOOD_LIGHT)
-    for x in range(8, W, 46):
+    c.rect(-4, 184, W + 4, 190, WOOD_LIGHT)
+    for x in range(6, W, 48):
         c.rect(x, 198, x + 36, H - 10, WOOD, outline=WOOD_LIGHT, w=0.8)
     # The peeling strip: a curl of paper off the seam, its back pale.
     c.poly([(120, 40), (136, 44), (140, 92), (128, 86)], (196, 176, 190, 255))
     c.poly([(120, 40), (128, 86), (122, 96)], PLUM_DARK)
-    _shade_and_grime(c, top=0.45, bottom=0.6, seed=5)
+    _shade_and_grime(c, top=0.45, bottom=0.6, seed=5, wrap_x=True)
     # Claw scratches torn down the paper, teal in them.
     for k in range(4):
-        _glow_crack(c, [(40 + k * 7, 70 + k * 3), (46 + k * 7, 110 + k * 2), (44 + k * 7, 150)], 0.6)
+        _glow_crack(c, [(56 + k * 7, 70 + k * 3), (62 + k * 7, 110 + k * 2), (60 + k * 7, 150)], 0.6)
     # A water stain shaped like a face, watching.
-    c.ellipse(140, 120, 176, 166, fill=(52, 30, 58, 150), outline=None)
-    _eyes_in_dark(c, 158, 136, t, 2.2)
+    c.ellipse(150, 120, 186, 166, fill=(52, 30, 58, 150), outline=None)
+    _eyes_in_dark(c, 168, 136, t, 2.2)
     # Ectoplasm running down from the cornice; fog at the skirting.
     _drips(c, (14, 70, 104, 168), 0, t, 18.0)
-    _fog(c, H - 4, t, 0.8)
+    _fog(c, H - 4, t, 0.8, wrap_x=True)
     return c.done()
 
 
@@ -325,6 +360,88 @@ def room_door(t: float) -> Image.Image:
     # A ghostly handprint smeared on its upper panel.
     _ghost_hand(c, W / 2 - 4, 76, 30, -4.0, 0.5)
     _fog(c, H - 2, t, 0.9)
+    return c.done()
+
+
+def lift_gate(t: float) -> Image.Image:
+    """The SERVICE LIFT'S GATE, drawn shut: a brass scissor gate across the
+    lift's doorway, a chain and padlock through it and an OUT OF ORDER tag on
+    the chain. The doorway behind shows dark through the lattice. It stands
+    where the lift is locked; the breaker takes it away."""
+    W, H = 96, 168
+    c = _Canvas((W, H))
+    # The frame of the gate: a brass track over it and a post each side.
+    c.rect(2, 4, W - 2, 14, BRASS_DARK)
+    c.rect(2, H - 8, W - 2, H, BRASS_DARK)
+    for x0 in (2, W - 12):
+        c.rect(x0, 4, x0 + 10, H, BRASS)
+    # The lattice: crossed bars between the posts, hinged where they cross.
+    cols, rows = 4, 7
+    x0, x1, y0, y1 = 12.0, W - 12.0, 14.0, H - 8.0
+    dx, dy = (x1 - x0) / cols, (y1 - y0) / rows
+    for i in range(cols + 1):
+        x = x0 + i * dx
+        c.line([(x, y0), (x, y1)], BRASS, w=2.4)
+    for j in range(rows):
+        for i in range(cols):
+            xa, ya = x0 + i * dx, y0 + j * dy
+            c.line([(xa, ya), (xa + dx, ya + dy)], BRASS_DARK, w=1.6)
+            c.line([(xa + dx, ya), (xa, ya + dy)], BRASS_DARK, w=1.6)
+            c.ellipse(xa + dx / 2 - 1.6, ya + dy / 2 - 1.6, xa + dx / 2 + 1.6, ya + dy / 2 + 1.6, fill=BRASS, outline=None)
+    # The chain round the middle bars, and its padlock.
+    cy = H * 0.52
+    for k in range(9):
+        x = W / 2 - 22 + k * 5.5
+        y = cy + 2.0 * math.sin(k * 0.9)
+        c.ellipse(x - 3, y - 2, x + 3, y + 2, outline=(150, 150, 160, 255), w=1.0)
+    c.rect(W / 2 - 7, cy + 2, W / 2 + 7, cy + 16, BRASS)
+    c.ellipse(W / 2 - 5, cy - 6, W / 2 + 5, cy + 6, outline=BRASS_DARK, w=1.6)
+    c.ellipse(W / 2 - 1.5, cy + 7, W / 2 + 1.5, cy + 10, fill=OUTLINE, outline=None)
+    # The tag on the chain, swinging a little.
+    sway = 2.0 * math.sin(t * math.tau)
+    tag = [(W / 2 + 14 + sway, cy + 4), (W / 2 + 34 + sway, cy + 4), (W / 2 + 32 + sway, cy + 22), (W / 2 + 12 + sway, cy + 22)]
+    c.line([(W / 2 + 14, cy + 1), (W / 2 + 22 + sway, cy + 4)], (150, 150, 160, 255), w=0.8)
+    c.poly(tag, (226, 214, 180, 255))
+    for k, y in enumerate((cy + 9, cy + 13, cy + 17)):
+        c.line([(W / 2 + 16 + sway, y), (W / 2 + 29 + sway - (k == 2) * 4, y)], (150, 40, 40, 255), w=0.8)
+    _shade_and_grime(c, top=0.65, bottom=0.75, seed=21)
+    # Teal light leaks round the lock: the lift is dead, not empty.
+    flicker = 0.55 + 0.45 * abs(math.sin(t * math.tau * 2.0))
+    c.glow(lambda d: d.ellipse(c.p(W / 2 - 4, cy + 6, W / 2 + 4, cy + 12), fill=_a(TEAL, flicker)), 1.5)
+    return c.done()
+
+
+def treasury_seal(t: float) -> Image.Image:
+    """The TREASURY SEAL: the vault's iron grille, barred and riveted, with a
+    ghostly ring of light locked across it, an infinity (the hotel's mark) in
+    its middle. It stands in the treasury's doorway while the Gram Reaper
+    stands; the reaper's fall takes it away."""
+    W, H = 96, 168
+    c = _Canvas((W, H))
+    IRON = (54, 50, 62, 255)
+    IRON_LIGHT = (96, 92, 108, 255)
+    c.rect(0, 0, W, H, (16, 10, 24, 255), outline=None)
+    for x in range(8, W, 16):
+        c.rect(x - 3, 0, x + 3, H, IRON, outline=OUTLINE, w=0.8)
+        c.line([(x - 1, 2), (x - 1, H - 2)], IRON_LIGHT, w=0.6)
+    for y in (10, H / 2, H - 12):
+        c.rect(0, y - 4, W, y + 4, IRON, outline=OUTLINE, w=0.8)
+        for x in range(8, W, 16):
+            c.ellipse(x - 1.6, y - 1.6, x + 1.6, y + 1.6, fill=IRON_LIGHT, outline=None)
+    _shade_and_grime(c, top=0.6, bottom=0.7, seed=23)
+    # The seal: a ring of light with its runes turning, and the infinity.
+    cx, cy = W / 2, H / 2
+    pulse = 0.65 + 0.35 * math.sin(t * math.tau)
+    c.glow(lambda d: d.ellipse(c.p(cx - 30, cy - 30, cx + 30, cy + 30), outline=_a(TEAL, pulse), width=int(4 * SUPER)), 2.5)
+    c.ellipse(cx - 30, cy - 30, cx + 30, cy + 30, outline=_a(TEAL_CORE, 0.9), w=1.0)
+    for k in range(8):
+        a = (k / 8.0 + t / 8.0) * math.tau
+        x, y = cx + math.cos(a) * 24, cy + math.sin(a) * 24
+        c.ellipse(x - 1.8, y - 1.8, x + 1.8, y + 1.8, fill=_a(TEAL_CORE, 0.6 + 0.4 * pulse), outline=None)
+    for sx in (-1, 1):
+        c.glow(lambda d, sx=sx: d.ellipse(c.p(cx + sx * 7 - 7, cy - 5, cx + sx * 7 + 7, cy + 5), outline=_a(TEAL, pulse), width=int(2 * SUPER)), 1.2)
+        c.ellipse(cx + sx * 7 - 7, cy - 5, cx + sx * 7 + 7, cy + 5, outline=TEAL_CORE, w=0.8)
+    _motes(c, t, 8, seed=24)
     return c.done()
 
 
@@ -402,7 +519,7 @@ def floor_strip(t: float) -> Image.Image:
     for k in range(8):
         for r in range(2):
             c.rect(k * 16, r * 16, k * 16 + 16, r * 16 + 16, MARBLE_A if (k + r) % 2 == 0 else MARBLE_B, w=0.6)
-    _shade_and_grime(c, top=0.85, bottom=0.6, seed=14)
+    _shade_and_grime(c, top=0.85, bottom=0.6, seed=14, wrap_x=True)
     _glow_crack(c, [(30, 2), (38, 12), (34, 22), (44, 30)], 0.8)
     _glow_crack(c, [(90, 0), (86, 10), (96, 18)], 0.6)
     return c.done()
@@ -413,6 +530,8 @@ PROPS: Dict[str, Tuple[Callable[[float], Image.Image], Tuple[int, int], int, int
     "hylbert_spectral_gap": (spectral_gap, (256, 144), 8, 120),
     "hylbert_wallpaper_panel": (wallpaper_panel, (192, 256), 6, 160),
     "hylbert_room_door": (room_door, (96, 168), 4, 140),
+    "hylbert_lift_gate": (lift_gate, (96, 168), 4, 160),
+    "hylbert_treasury_seal": (treasury_seal, (96, 168), 8, 120),
     "hylbert_wall_sconce": (wall_sconce, (48, 72), 6, 110),
     "hylbert_chandelier": (chandelier, (160, 128), 6, 120),
     "hylbert_luggage_cart": (luggage_cart, (128, 120), 6, 150),
