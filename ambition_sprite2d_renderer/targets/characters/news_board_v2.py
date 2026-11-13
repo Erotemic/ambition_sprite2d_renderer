@@ -14,7 +14,9 @@ a hole in it, a smoke cloud with a halo, a researcher in crosshairs, a red
 rubber stamp.
 
 The rows: ``idle`` (the loose slip lifts in a draught) and ``talk`` (the horn
-kicks on each word, its rings of sound show in turn). The old procedural board
+kicks on each word, its rings of sound show in turn), and its fight rows (Jon
+2026-11-12: it can be attacked and fights back): ``slash`` (it rocks back,
+then slams forward with the horn blaring), ``hit`` and ``death``. The old procedural board
 (``targets/props/news_board.py``) stays renderable.
 """
 

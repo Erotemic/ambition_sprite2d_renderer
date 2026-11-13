@@ -235,6 +235,72 @@
           "expr": "6.0*sin(2*tau*t) + 2.0"
         }
       }
+    },
+    "slash": {
+      "loop": false,
+      "frames": 6,
+      "duration_ms": 80,
+      "channels": {
+        "body": {
+          "expr": "-5*sin(pi*t/0.3) if t < 0.3 else 11*sin(pi*(t - 0.3)/0.7)"
+        },
+        "horn": {
+          "expr": "-10 if 0.3 <= t < 0.75 else 0"
+        },
+        "voice_near": {
+          "expr": "1 if 0.3 <= t < 0.85 else 0"
+        },
+        "voice_far": {
+          "expr": "1 if 0.45 <= t < 0.95 else 0"
+        },
+        "slip": {
+          "expr": "18*sin(pi*t)"
+        }
+      }
+    },
+    "hit": {
+      "loop": false,
+      "frames": 5,
+      "duration_ms": 70,
+      "channels": {
+        "body": {
+          "expr": "-7*sin(pi*t)"
+        },
+        "horn": {
+          "expr": "8*sin(2*tau*t)"
+        },
+        "voice_near": {
+          "expr": "0"
+        },
+        "voice_far": {
+          "expr": "0"
+        },
+        "slip": {
+          "expr": "28*sin(pi*t)"
+        }
+      }
+    },
+    "death": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 110,
+      "channels": {
+        "body": {
+          "expr": "-10*min(1, t*1.4)"
+        },
+        "horn": {
+          "expr": "45*t*t"
+        },
+        "voice_near": {
+          "expr": "0"
+        },
+        "voice_far": {
+          "expr": "0"
+        },
+        "slip": {
+          "expr": "70*min(1, t*1.2)"
+        }
+      }
     }
   }
 }
