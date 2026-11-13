@@ -53,6 +53,16 @@
       "rest_angle": 0
     },
     {
+      "name": "robot_head",
+      "parent": "head",
+      "offset": [
+        0.0,
+        -66.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
       "name": "guitar",
       "parent": "torso",
       "offset": [
@@ -195,6 +205,36 @@
       "rest_angle": 0
     },
     {
+      "name": "robot_head",
+      "bone": "robot_head",
+      "z": 35,
+      "kind": "sprite",
+      "include": [
+        "robot-head"
+      ],
+      "pivot": [
+        300.0,
+        110.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "robot_glow",
+      "bone": "robot_head",
+      "z": 36,
+      "kind": "sprite",
+      "include": [
+        "robot-glow"
+      ],
+      "pivot": [
+        300.0,
+        110.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "glow",
+      "opacity_default": 0
+    },
+    {
       "name": "head",
       "bone": "head",
       "z": 40,
@@ -281,6 +321,9 @@
         "head": {
           "expr": "3*abs(sin(2*pi*t)) - 1.5"
         },
+        "robot_head": {
+          "expr": "5*abs(sin(2*pi*t)) - 2.5"
+        },
         "near_arm_u": {
           "expr": "-4*sin(2*tau*t)"
         },
@@ -309,6 +352,9 @@
         "head": {
           "expr": "-8*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) + 14*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.4)/0.15000000000000002))) - 6*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.7)/0.30000000000000004)))"
         },
+        "robot_head": {
+          "expr": "-14*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) + 26*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.4)/0.15000000000000002))) - 12*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.7)/0.30000000000000004)))"
+        },
         "near_arm_u": {
           "expr": "-40*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) + 40*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.4)/0.15000000000000002)))"
         },
@@ -334,6 +380,9 @@
         "head": {
           "expr": "4*sin(2*tau*t)"
         },
+        "robot_head": {
+          "expr": "8*sin(2*tau*t)"
+        },
         "near_arm_l": {
           "expr": "10*sin(4*tau*t)"
         },
@@ -358,6 +407,9 @@
         },
         "head": {
           "expr": "-6 + 1.5*sin(3*tau*t)"
+        },
+        "robot_head": {
+          "expr": "-10 + 3*sin(6*tau*t)"
         },
         "near_arm_u": {
           "expr": "-20"

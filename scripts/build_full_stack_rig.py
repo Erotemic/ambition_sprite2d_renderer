@@ -15,7 +15,8 @@ catalog row ``npc_full_stack`` states them as still lines), so no row moves
 the cabinet or the guitar more than a pixel or two: the arms and the amp
 head play, the body keeps the beat.
 
-- ``idle``: it plays: a steady strum, the head nods on the beat. A mount with
+- ``idle``: it plays: a steady strum, the head nods on the beat (the robot's
+  head more than the amp under it). A mount with
   no conductor draws this row the whole fight.
 - ``strum``: the power chord: the arm high, then down across the strings.
 - ``riff``: the fretting hand runs up and down the neck.
@@ -66,6 +67,7 @@ CLIPS = {
         "channels": {
             "root_y": expr(f"1.5*{BEAT}"),
             "head": expr(f"3*{BEAT} - 1.5"),
+            "robot_head": expr(f"5*{BEAT} - 2.5"),
             "near_arm_u": expr("-4*sin(2*tau*t)"),
             "near_arm_l": expr("14*sin(2*tau*t)"),
             "far_arm_u": expr("2*sin(tau*t)"),
@@ -78,6 +80,7 @@ CLIPS = {
         "channels": {
             "root_y": expr(f"-2*{ramp(0.0, 0.4)} + 4*{ramp(0.4, 0.55)} - 2*{ramp(0.7, 1.0)}"),
             "head": expr(f"-8*{ramp(0.0, 0.4)} + 14*{ramp(0.4, 0.55)} - 6*{ramp(0.7, 1.0)}"),
+            "robot_head": expr(f"-14*{ramp(0.0, 0.4)} + 26*{ramp(0.4, 0.55)} - 12*{ramp(0.7, 1.0)}"),
             "near_arm_u": expr(f"-40*{ramp(0.0, 0.4)} + 40*{ramp(0.4, 0.55)}"),
             "near_arm_l": expr(f"-40*{ramp(0.0, 0.4)} + 60*{ramp(0.4, 0.55)} - 20*{ramp(0.7, 1.0)}"),
             "far_arm_l": expr(f"-6*{ramp(0.0, 0.4)} + 6*{ramp(0.7, 1.0)}"),
@@ -89,6 +92,7 @@ CLIPS = {
         "channels": {
             "root_y": expr(f"1*{BEAT}"),
             "head": expr("4*sin(2*tau*t)"),
+            "robot_head": expr("8*sin(2*tau*t)"),
             "near_arm_l": expr("10*sin(4*tau*t)"),
             "far_arm_u": expr("-10*sin(tau*t)"),
             "far_arm_l": expr("12*sin(tau*t)"),
@@ -100,6 +104,7 @@ CLIPS = {
         "channels": {
             "root_y": expr("0.8*sin(3*tau*t)"),
             "head": expr("-6 + 1.5*sin(3*tau*t)"),
+            "robot_head": expr("-10 + 3*sin(6*tau*t)"),
             "near_arm_u": expr("-20"),
             "near_arm_l": expr("-30 + 4*sin(3*tau*t)"),
             "glow": expr("1"),
