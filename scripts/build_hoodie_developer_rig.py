@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Build the bossofthegame's rig document (``bossofthegame_boss``).
+"""Build the hoodie developer's rig document (``hoodie_developer``).
 
-    uv run python scripts/svg_art/bossofthegame_art.py   # the drawing, once
-    uv run python scripts/build_bossofthegame_rig.py
-    ./scripts/regen/sprites.sh --target bossofthegame_boss
+    uv run python scripts/svg_art/hoodie_developer_art.py   # the drawing, once
+    uv run python scripts/build_hoodie_developer_rig.py
+
+No target renders him yet.
 
 The drawing says where each part turns (``joints`` and ``BONES`` of the art
 script, the Creator's skeleton). This script makes the skeleton from those
@@ -11,11 +12,11 @@ joints, binds each part layer to its bone, and authors the rows. A channel is
 the turn of a bone from the drawing, in degrees (positive clockwise on the
 screen: a hanging limb swings back, the torso leans forward).
 
-A boss sheet's first six rows are fixed slots (the game's
-``boss_sheets.ron``): ``rest`` (he types), ``floor_slam`` (both hands down on
+His rows are a boss sheet's six slots (the game's ``boss_sheets.ron``):
+``rest`` (he types), ``floor_slam`` (both hands down on
 the keys), ``side_sweep`` (a swing of the keyboard), ``spike_halo`` (arms up:
 he conducts his agent), ``hit`` and ``death``. He does not die: ``death`` is
-him sitting down on the stage, the crown in his hand. ``talk`` follows them.
+him sitting down on the stage. ``talk`` follows them.
 """
 
 from __future__ import annotations
@@ -31,12 +32,12 @@ if str(ROOT) not in sys.path:
 
 from ambition_sprite2d_renderer.devtools.svg_rig_tool import install_repo_metadata  # noqa: E402
 
-_spec = importlib.util.spec_from_file_location("bossofthegame_art", ROOT / "scripts" / "svg_art" / "bossofthegame_art.py")
+_spec = importlib.util.spec_from_file_location("hoodie_developer_art", ROOT / "scripts" / "svg_art" / "hoodie_developer_art.py")
 art = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(art)
 
 PKG = ROOT / "ambition_sprite2d_renderer"
-OUT = PKG / "targets" / "characters" / "rigged" / "bossofthegame" / "bossofthegame.rig.json"
+OUT = PKG / "targets" / "characters" / "rigged" / "hoodie_developer" / "hoodie_developer.rig.json"
 
 #: Frame pixels for each SVG unit.
 SCALE = 0.4
@@ -143,7 +144,7 @@ CLIPS = {
         },
     },
     # He does not die. He sits down on the stage, legs out in front, the
-    # keyboard down beside him, and holds his crown in his lap.
+    # keyboard down beside him.
     "death": {
         "loop": False, "frames": 10, "duration_ms": 105,
         "channels": {
@@ -193,9 +194,9 @@ def build() -> dict:
             entry["opacity_default"] = 1 if channel == "eye_open" else 0
         parts.append(entry)
     return {
-        "name": "bossofthegame",
+        "name": "hoodie_developer",
         "frame": FRAME,
-        "svg_source": {"path": "../../../../data/characters/bossofthegame/bossofthegame.svg", "view": art.VIEW, "ref_dpi": 25.4,
+        "svg_source": {"path": "../../../../data/characters/hoodie_developer/hoodie_developer.svg", "view": art.VIEW, "ref_dpi": 25.4,
                        "scale": SCALE},
         "sprite_tuning": {"collision_scale": 1.2, "frame_sample_inset": 1},
         "palette": {},

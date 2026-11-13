@@ -1,5 +1,5 @@
 {
-  "name": "bossofthegame",
+  "name": "hoodie_developer",
   "frame": {
     "width": 200,
     "height": 224,
@@ -11,8 +11,8 @@
     "trim": false
   },
   "svg_source": {
-    "path": "../../../../data/characters/bossofthegame/bossofthegame.svg",
-    "view": "bossofthegame - Side Right",
+    "path": "../../../../data/characters/hoodie_developer/hoodie_developer.svg",
+    "view": "hoodie_developer - Side Right",
     "ref_dpi": 25.4,
     "scale": 0.4
   },
@@ -367,12 +367,12 @@
       "rest_angle": 0
     },
     {
-      "name": "crown",
+      "name": "headset",
       "bone": "head",
       "z": 63,
       "kind": "sprite",
       "include": [
-        "crown"
+        "headset"
       ],
       "pivot": [
         280.0,

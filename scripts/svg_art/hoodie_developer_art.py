@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
-"""How the bossofthegame's SVG was first drawn (reference, not authority).
+"""How the hoodie developer's SVG was first drawn (reference, not authority).
 
-    uv run python scripts/svg_art/bossofthegame_art.py
+    uv run python scripts/svg_art/hoodie_developer_art.py
 
-Writes ``data/characters/bossofthegame/bossofthegame.svg``; the SVG owns the
+Writes ``data/characters/hoodie_developer/hoodie_developer.svg``; the SVG owns the
 art after this has run once. ``joints()`` says where each part turns and
-``LAYERS`` lists the parts; ``scripts/build_bossofthegame_rig.py`` reads both
+``LAYERS`` lists the parts; ``scripts/build_hoodie_developer_rig.py`` reads both
 and authors the rows.
 
-Who he is (the game's ``docs/planning/game/final-boss.md``): the creator of
-the game inside the fiction, the final boss. A developer, not a wizard: a
-charcoal hoodie with its hood down, jeans and sneakers, glasses, a gaming
-headset with a boom mic, and a gold paper crown over the headset. He carries
-a mechanical keyboard on a strap like a keytar, and he types what falls on
-the player. He is not the Creator of the intro (the robot's maker); he is
-drawn on the Creator's skeleton and parts (``creator_art``), so the two are
-the same build of man and the rows have the same bones.
+Who he is: a developer, not a wizard: a charcoal hoodie with its hood down,
+jeans and sneakers, glasses, a gaming headset with a boom mic. He carries a
+mechanical keyboard on a strap like a keytar. No character wears him yet; the
+final boss is the Director (``director_boss_art.py``), who borrowed the
+keyboard. He is not the Creator of the intro (the robot's maker); he is drawn
+on the Creator's skeleton and parts (``creator_art``), so the two are the same
+build of man and the rows have the same bones.
 """
 from __future__ import annotations
 
@@ -34,8 +33,8 @@ C = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(C)
 
 ROOT = HERE.parents[1]
-OUT = ROOT / "ambition_sprite2d_renderer" / "data" / "characters" / "bossofthegame" / "bossofthegame.svg"
-VIEW = "bossofthegame - Side Right"
+OUT = ROOT / "ambition_sprite2d_renderer" / "data" / "characters" / "hoodie_developer" / "hoodie_developer.svg"
+VIEW = "hoodie_developer - Side Right"
 OW = 1.5
 GROUND_Y = C.GROUND_Y
 BONES = C.BONES
@@ -92,13 +91,12 @@ def hoodie(o):
 
 def head(o):
     """The Creator's head with short hair, stubble and glasses; the headset
-    and the crown are a part of their own (``crown``)."""
+    is a part of its own (``headset``)."""
     return C.head(o)
 
 
-def crown(o):
-    """The headset (band over the top, cup on the ear, boom mic to the mouth)
-    and the gold paper crown over it."""
+def headset(o):
+    """The headset: band over the top, cup on the ear, boom mic to the mouth."""
     c, k = C.BASE_J["head"], C.HEAD_K
     out = []
     band = hd(c, k, [(-10, 4), (-14, -20), (-6, -42), (10, -46)])
@@ -110,13 +108,6 @@ def crown(o):
     out.append(line(mic, K.INK, 3.6))
     out.append(line(mic, "#54545e", 1.8))
     out += cel(smooth(hd(c, k, [(18, 25), (25, 25.5), (25, 30.5), (18, 31)])), "#34343c", "#1c1c22", None, s=(1, -1))
-    # the crown: a band of gold paper with three points, tipped back a little
-    pts = hd(c, k, [(-26, -24), (-27, -40), (-18, -32), (-8, -50), (2, -36), (12, -52), (18, -36), (27, -44), (24, -24)])
-    sil = smooth([(x, y, True) for x, y in pts])
-    gems = [ellipse(*hd(c, k, [(-8, -33)])[0], 2.6, 2.6, o["accent"]),
-            ellipse(*hd(c, k, [(10, -34)])[0], 2.6, 2.6, "#3c8ad2")]
-    out += cel(sil, o["gold"], o["gold_sh"], o["gold_lt"], gems + [line(hd(c, k, [(-25, -28), (23, -28)]), o["gold_sh"], 1.2)],
-               s=(3, -2))
     return out
 
 
@@ -195,7 +186,7 @@ LAYERS = [
     ("eye-shut", "Eye - Shut", "eye_shut", "head", 61, "eye_shut"),
     ("mouth-open", "Mouth - Open", "mouth_open", "head", 61, "mouth_open"),
     ("glasses", "Glasses", "glasses", "head", 62, ""),
-    ("crown", "Headset and Crown", "crown", "head", 63, ""),
+    ("headset", "Headset", "headset", "head", 63, ""),
     ("near-arm-upper", "Near Arm - Upper", "near_arm_u", "near_arm_u", 80, ""),
     ("near-arm-lower", "Near Arm - Lower", "near_arm_l", "near_arm_l", 81, ""),
     ("near-hand", "Near Hand and Keyboard", "near_hand", "near_hand", 82, ""),
@@ -206,7 +197,7 @@ def drawn(o) -> Dict[str, list]:
     out = {"far-arm-upper": far_upper(o, J), "far-arm-lower": far_lower(o, J),
            "torso": C.torso(o) + hoodie(o), "head": head(o),
            "eye-open": C.eyes(o, "open"), "eye-shut": C.eyes(o, "shut"), "mouth-open": C.mouth_open(o), "glasses": C.glasses(o),
-           "crown": crown(o),
+           "headset": headset(o),
            "near-arm-upper": near_upper(o, J), "near-arm-lower": near_lower(o, J), "near-hand": near_hand(o, J)}
     for side in ("far", "near"):
         out[f"{side}-thigh"] = C.thigh(o, J, side)
@@ -222,9 +213,9 @@ def svg_text() -> str:
     for group, label, name, bone, z, channel in LAYERS:
         K.part(group, label, name, bone, z, parts[group], channel, default_on=channel == "eye_open")
     return K.document(
-        design="bossofthegame", layer_id="bossofthegame", label=VIEW,
-        comment=["  <!-- the bossofthegame: side view facing right, the ground at y=500.",
-                 "       Drawn by scripts/svg_art/bossofthegame_art.py; each part turns about its bone's joint. -->"],
+        design="hoodie_developer", layer_id="hoodie_developer", label=VIEW,
+        comment=["  <!-- the hoodie_developer: side view facing right, the ground at y=500.",
+                 "       Drawn by scripts/svg_art/hoodie_developer_art.py; each part turns about its bone's joint. -->"],
         joints=joints(),
     )
 
