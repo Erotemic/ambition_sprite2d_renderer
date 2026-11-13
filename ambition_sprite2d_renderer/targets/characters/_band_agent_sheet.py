@@ -31,8 +31,12 @@ from ._band_instruments import band_clips, instrument_parts
 DATA = Path(__file__).resolve().parents[2] / "data" / "characters"
 
 #: The rows of an agent's sheet: a fighter's (moving, fighting, holding an
-#: item), then the band's.
-ROWS = tuple(PUBLISH_ROWS) + BAND_ROWS
+#: item), then the band's. Not the rows of sitting down and sleeping: a
+#: sheet that can sit sits down when its body stands idle
+#: (`request_actor_pose` in the game's animator), and an agent idles in the
+#: fight while it waits for its turn at the player.
+OFF_DUTY = ("sit_down", "sit_idle", "stand_up", "sleep")
+ROWS = tuple(r for r in PUBLISH_ROWS if r not in OFF_DUTY) + BAND_ROWS
 
 
 def spec_path(name: str) -> Path:
