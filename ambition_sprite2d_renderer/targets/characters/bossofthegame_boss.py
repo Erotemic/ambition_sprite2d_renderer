@@ -20,38 +20,29 @@ from pathlib import Path
 from ambition_sprite2d_renderer.authoring.part_flipbook import publish_rig_flipbook
 from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
 
-from ambition_sprite2d_renderer.authoring import strike_axis
-
-from . import director
 from ._authored_swing_fighter import AuthoredSwingFighter
 
 
 class _Director(AuthoredSwingFighter):
-    """The Director's sheet pipeline on his boss drawing: his ink-tinted
-    ribbons, on the axis measured off his pen (see `director._spec_for` and
-    `director._swing_axes`)."""
+    """The Director's sheet pipeline on his boss drawing, with no swing
+    ribbons: they follow the pen, his sword in Smash, which the Ambition boss
+    does not hold (`director_boss_art.py`)."""
 
     def spec_for(self, animation: str) -> dict | None:
-        spec = super().spec_for(animation)
-        for effect in ("trail", "poke"):
-            if spec and isinstance(spec.get(effect), dict):
-                spec[effect].update(director.TRAIL_TINT)
-        return spec
+        del animation
+        return None
 
     def _strike_axes(self, animation: str, frame_count: int, padding):
-        if not self.spec_for(animation):
-            return None
-        return strike_axis.from_part(
-            self.doc(), animation, self._sample_times(animation, frame_count), "pen", padding=padding
-        )
+        del animation, frame_count, padding
+        return None
 
 TARGET_NAME = "bossofthegame_boss"
 _FIGHTER = _Director("director_boss")
 
-#: Each boss slot and the Director's clip that plays it. He conducts his
-#: agent's moves with the pen raised (`smash_up`), brings it down for the
-#: keystroke rain (`smash_down`), and sweeps it for the backspace
-#: (`smash_forward`). Beaten, he goes down, and stays down.
+#: Each boss slot and the Director's clip that plays it. He counts the band
+#: in with his hand raised (`smash_up`), brings it down for the keystroke
+#: rain (`smash_down`), and sweeps it for the backspace (`smash_forward`);
+#: the pen of those clips is not drawn here. Beaten, he goes down, and stays down.
 BOSS_ROWS = (
     ("rest", "idle"),
     ("floor_slam", "smash_down"),

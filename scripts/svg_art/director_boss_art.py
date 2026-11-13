@@ -4,7 +4,8 @@
 The final boss (`bossofthegame_boss`) is the Director: the same SVG, rig and
 pen, with two props added: a mechanical keyboard slung across his waist on
 a strap, which he plays in his second phase ("Manual Override": he types),
-and a microphone in his far hand (the band's vocals are his alone). This
+and a microphone in his far hand (the band's vocals are his alone). His pen
+is not drawn: it is his sword in Smash. This
 script writes ``data/characters/director_boss/director_boss.svg`` from
 ``data/characters/director/director.svg``; rerun it after the Director's
 drawing changes.
@@ -124,7 +125,24 @@ def derive(svg: str) -> str:
         f'data-rig-bind-angle="{angle}" data-rig-elements="part-microphone"/>'
         + svg[hand_def_end:]
     )
+    svg = without_the_pen(svg)
     return svg.replace('data-character="director"', 'data-character="director_boss"')
+
+
+def without_the_pen(svg: str) -> str:
+    """Empty the pen's art: it is his sword in Smash, and the Ambition boss
+    does not fight with it (Jon, 2026-11-13). Its rig part stays, drawing
+    nothing, so the skeleton is the Director's."""
+    start = svg.index('<g id="part-near-pen" ')
+    body = svg.index(">", start) + 1
+    depth, i = 1, body
+    while depth:
+        nxt_open, nxt_close = svg.find("<g", i), svg.find("</g>", i)
+        if nxt_open != -1 and nxt_open < nxt_close:
+            depth, i = depth + 1, nxt_open + 2
+        else:
+            depth, i = depth - 1, nxt_close + 4
+    return svg[:body] + svg[i - 4:]
 
 
 def main() -> None:
