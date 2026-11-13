@@ -178,6 +178,9 @@ SKINS: tuple[Skin, ...] = (
     # with footlights in it, a fringe of red velvet under each block, and a
     # catwalk for a platform.
     Skin("art_stage", "timber", (66, 40, 40), (24, 14, 18), (110, 70, 62), (236, 182, 70), "footlights", (236, 182, 70), "fringe", "catwalk"),
+    # The Boss dimension's stage: black-painted boards with a lit edge of the
+    # show's magenta, and the risers and the truss a steel catwalk.
+    Skin("boss_stage", "timber", (40, 32, 48), (12, 10, 18), (82, 70, 96), (236, 48, 150), "strip", (64, 54, 78), "bolts", "catwalk"),
     # The Workshop Deeps: bricks fired in a kiln, a few of them glazed and
     # some scorched, under a plate of copper; a workbench is the platform.
     Skin("art_forge", "fired", (112, 54, 40), (40, 18, 14), (146, 80, 56), (255, 140, 50), "copper", (204, 116, 66), "bolts", "bench"),

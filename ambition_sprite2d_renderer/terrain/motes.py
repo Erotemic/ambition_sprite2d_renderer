@@ -886,6 +886,8 @@ MOTES = {
     # Sparks from the cables that are cut.
     "alarm": (_glow, (255, 170, 120)),
     "boss": (_glow, (255, 150, 100)),
+    # Confetti from the cannons of the show, in its magenta.
+    "boss_stage": (_confetti, (236, 48, 150)),
     "cave": (_twinkle, (150, 232, 255)),
     "eclipse": (_twinkle, (130, 246, 214)),
     "forest": (_glow, (226, 255, 140)),
@@ -1074,6 +1076,7 @@ SHADOWS = {
     "undertown": (6, 10, 10),
     "basement": (20, 8, 6),
     "boss": (16, 2, 8),
+    "boss_stage": (10, 6, 18),
     "cave": (8, 6, 22),
     "eclipse": (2, 4, 18),
     "forest": (10, 18, 12),

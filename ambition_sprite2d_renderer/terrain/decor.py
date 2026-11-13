@@ -796,6 +796,65 @@ def footlight(tile: Tile, c: dict) -> None:
     tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 5.0, G - 1.4, M + 5.0, G - 0.9)), c["stone_light"], 0.6)
 
 
+def monitor_wedge(tile: Tile, c: dict) -> None:
+    """A stage monitor: a black wedge on the floor, its grille turned up to
+    the player, a lamp of the desk on its top."""
+    _shadow(tile, 7.0)
+    body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 7.0, G), (M + 7.0, G), (M + 7.0, G - 4.0), (M - 3.0, G - 8.5), (M - 7.0, G - 8.5)]))
+    tile.put(body, _mix(c["dark"], c["metal"], 0.35))
+    grille = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 2.2, G - 7.2), (M + 6.0, G - 3.6), (M + 6.0, G - 1.0), (M - 2.2, G - 1.0)]))
+    tile.put(grille, c["dark"], 0.8)
+    tile.put(grille * ((tile.x * 2.0).astype(int) % 2 == 0), c["stone"], 0.35)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 7.0, G - 8.5, M - 3.0, G - 7.8)), c["stone_light"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 5.6, G - 6.0, 0.6)), c["glow"])
+
+
+def mic_stand(tile: Tile, c: dict) -> None:
+    """A mic stand on a tripod, its boom out over the floor, a mic on it."""
+    _shadow(tile, 4.0)
+    legs = [(M - 3.8, G), (M + 3.6, G), (M + 0.4, G - 0.6)]
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M, G - 3.2), leg], 0.5) for leg in legs]), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: (_line(p, dx, dy, [(M, G - 3.2), (M, G - 15.0)], 0.6), _line(p, dx, dy, [(M - 1.0, G - 14.2), (M + 6.0, G - 18.2)], 0.5))), c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 6.4, G - 18.6, 1.1, ry=0.9)), c["stone_light"])
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 6.0, G - 18.2), (M + 4.0, G - 12.0), (M + 2.0, G - 2.0), (M + 6.0, G - 0.4)], 0.25)), c["dark"], 0.8)
+    tile.alpha *= tile.y < G
+
+
+def setlist(tile: Tile, c: dict) -> None:
+    """The setlist taped to the floor, and a strip of gaffer tape by it."""
+    paper = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 6.0, G), (M + 3.0, G), (M + 4.2, G - 1.6), (M - 4.8, G - 1.6)]))
+    tile.put(paper, c["stone_light"], 0.9)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M - 4.6 + k * 0.6, G - 1.2 + k * 0.0, M - 1.0 + k * 0.4, G - 0.9) for k in range(1)]), c["dark"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 6.6, G - 1.0, M - 4.6, G), _box(p, dx, dy, M + 2.2, G - 1.8, M + 4.6, G - 0.6))), c["bloom"], 0.75)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M + 5.4, G - 0.6, M + 10.0, G)), c["bloom"], 0.7)
+    tile.alpha *= tile.y < G
+
+
+def pedalboard(tile: Tile, c: dict) -> None:
+    """A board of guitar pedals, each a small box with a knob and a lamp,
+    and the patch cords between them."""
+    _shadow(tile, 7.5)
+    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(M - 8.0, G), (M + 8.0, G), (M + 7.2, G - 2.0), (M - 7.2, G - 2.0)])), c["dark"])
+    for k, colour in enumerate((c["bloom"], c["glow"], c["plant"])):
+        x0 = M - 6.6 + k * 4.6
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, G - 5.4, x0 + 3.6, G - 2.0)), colour, 0.85)
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x0 + 1.0, G - 4.4, 0.55)), c["dark"])
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, x0 + 2.6, G - 4.6, 0.4)), (255, 80, 80))
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M - 3.0, G - 3.0), (M - 2.0, G - 6.6), (M + 1.4, G - 3.0)], 0.3)), c["metal"])
+
+
+def road_case(tile: Tile, c: dict) -> None:
+    """A flight case: black ply, aluminium edges, steel corners and a
+    stencil on it."""
+    _shadow(tile, 7.0)
+    body = tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 7.0, G - 10.0, M + 7.0, G))
+    tile.put(body, c["dark"])
+    edges = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 7.0, G - 10.0, M + 7.0, G - 9.2), _box(p, dx, dy, M - 7.0, G - 0.8, M + 7.0, G), _box(p, dx, dy, M - 7.0, G - 5.4, M + 7.0, G - 4.8), _box(p, dx, dy, M - 7.0, G - 10.0, M - 6.2, G), _box(p, dx, dy, M + 6.2, G - 10.0, M + 7.0, G)))
+    tile.put(edges, c["metal"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x, y, x + 1.6, y + 1.6) for x in (M - 7.0, M + 5.4) for y in (G - 10.0, G - 1.6)]), c["stone_light"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M - 4.0 + k * 1.6, G - 8.2, M - 3.2 + k * 1.6, G - 6.6) for k in range(5)]), c["stone_light"], 0.55)
+
+
 def roses(tile: Tile, c: dict) -> None:
     """Roses thrown on the stage: three heads on their stems, a petal by them."""
     for x, y, angle in ((-5.0, 1.6, 0.3), (0.5, 2.2, -0.2), (4.6, 1.4, 0.1)):
@@ -4627,6 +4686,9 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "hub": ((planter, lamp_post, crate, floor_light, planter, cone), _palette((15, 15, 46), (52, 52, 110), (100, 102, 170), (70, 64, 120), (60, 60, 120), (90, 150, 130), (236, 150, 90), (255, 206, 140))),
     "basement": ((anvil, coal, barrel, crate, brazier, coal), _palette((26, 12, 10), (70, 40, 34), (130, 80, 60), (104, 62, 40), (62, 46, 44), (90, 110, 60), (200, 90, 50), (255, 160, 70))),
     "boss": ((brazier, bones, column_stub, bones, rock, obelisk), _palette((22, 6, 12), (80, 30, 42), (140, 60, 70), (90, 40, 40), (50, 20, 26), (110, 60, 60), (200, 60, 60), (255, 120, 76))),
+    # The Boss dimension's stage: what a rock show leaves on the floor. No
+    # bones: it is a concert, not a crypt.
+    "boss_stage": ((monitor_wedge, coil, mic_stand, road_case, setlist, pedalboard), _palette((10, 8, 16), (60, 54, 72), (190, 184, 200), (40, 36, 48), (120, 124, 136), (70, 220, 255), (236, 48, 150), (255, 176, 70))),
     # The Noodly Temple: what is on the floor of a kitchen. `stone` is the
     # colour of pasta, `wood` of a meatball and `bloom` of sauce.
     # The town of the Math dimension: amphorae, planters, a column stub, a lamp.

@@ -41,6 +41,8 @@ from .art_quarters import forge_foreground as _art_forge
 from .art_quarters import resonance_foreground as _art_resonance
 from .art_quarters import stacks_foreground as _art_stacks
 from .art_quarters import stage_foreground as _art_stage
+from .boss_stage import SHOW
+from .boss_stage import crowd_foreground as _boss_stage
 from .artkit import Art, Pen, polar, scale
 from . import history_eras as _history
 from . import history_americas_pacific as _americas_pacific
@@ -305,6 +307,7 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "forest": (_forest, scale(FOREST["near"], 0.9)),
     "skybridge": (_skybridge, SKYBRIDGE["stone"]),
     "boss": (_boss, scale(BOSS["rock"], 0.8)),
+    "boss_stage": (_boss_stage, scale(SHOW["crowd"], 0.9)),
     "noodly": (_noodly, scale(NOODLY["noodle_dark"], 0.62)),
     "eclipse": (_eclipse, scale(ECLIPSE["rock"], 0.9)),
     "military_tower": (_military_tower, scale(TOWER["near"], 0.9)),
