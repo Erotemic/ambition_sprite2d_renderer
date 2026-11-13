@@ -6,12 +6,12 @@ was chosen. A gunmetal pressure shell with a hazard-striped belt, a brass cap
 and a lit fuse, a pressure valve at its back, one red visor eye under a brow
 plate, and a pair of hooked mandibles at the front.
 
-It has two hit points. It does not swing: in reach of its foe it plants and
-goes off (``exploding_mite_fuse``), its ``windup`` row (the shell cracked and
-glowing) held over the fuse; and its corpse detonates (``explodes_on_death``
-in the catalog). Its ``death`` row is the wind-up: the fuse burns down to the cap
-while the shell swells, its seams glow and then go white hot. The blast is
-the game's effect, not the sheet's. The first Exploding Mite (a robot-toon
+It has two hit points. It snaps with its mandibles (``exploding_mite_snap``)
+and goes off only when it dies (``explodes_on_death`` in the catalog). Its
+``death`` row is the fuse: the fuse burns down to the cap while the shell
+swells, its seams glow and then go white hot, and at the row's end the game
+draws the blast and takes the mite away. The blast is the game's effect, not
+the sheet's. The first Exploding Mite (a robot-toon
 config, ``configs/exploding_mite.yaml``) stays renderable.
 """
 
@@ -29,7 +29,7 @@ ACTOR_METADATA = _mite_v2.actor_metadata(
     notes=["The SVG owns the part shapes; each leg segment, mandible and the fuse turn about their own joints.",
            "Each leg is a thigh and a shin solved to a foot target, so the feet stay planted while the body moves.",
            "The shell is drawn at three stages of the wind-up and the wick at three lengths; the spark is drawn twice to flicker.",
-           "death: the fuse burns down while the shell swells and goes white hot; the blast is the game's effect."],
+           "death: the fuse burns down while the shell swells and goes white hot; the game's blast comes at its end."],
 )
 
 #: The body: the shell and the reach of the legs, in SVG units (x0, y0, x1, y1).

@@ -25,11 +25,12 @@ legs, mandibles gaping, held for the snap). Both loop on the game's clock, so
 every frame is the whole pose with a shiver.
 
 - ``death`` of the dividing mite: it strains, the ring goes hot, and the two
-  lobes pull apart left and right (the game puts a half, ``dividing_mite_half_v2``,
-  where each goes).
+  lobes pull apart left and right, each to a quarter of the body's width out
+  from its middle, where the game stands a half (``dividing_mite_half_v2``)
+  at the row's end.
 - ``death`` of a half: it cannot split again; it sags onto its belly.
 - ``death`` of the exploding mite: the fuse burns down to the cap and the
-  shell swells and glows white hot (the blast is the game's effect).
+  shell swells and glows white hot; the game's blast comes at the row's end.
 """
 
 from __future__ import annotations
@@ -227,13 +228,17 @@ def dividing_clips(m: Mite) -> Dict[str, dict]:
     clips["notice"]["channels"].update(front_feeler=held(-22.0, -25.0, -20.0), rear_feeler=held(16.0, 18.0, 14.0))
     clips["windup"]["channels"].update(front_feeler=held(18.0, 20.0, 16.0), rear_feeler=held(-14.0, -15.0, -13.0),
                                        **{"bone.rear_lobe.x": held(1.2, 1.4, 1.0), "bone.front_lobe.x": held(-1.2, -1.4, -1.0)})
-    # death: it strains, the ring goes hot, and the lobes pull apart
+    # death: it strains, the ring goes hot, and the lobes pull apart to where
+    # the game stands the two halves at the row's end: each a quarter of the
+    # body's width out from its middle (the body is SVG x 58..342,
+    # ``dividing_mite_v2.BODY_BOX``; a lobe's centre is 52 out at rest).
     n = 8
+    apart = ((342.0 - 58.0) / 4.0 - 52.0) * SCALE
     split, tilt, jitter, hot, strand = [], [], [], [], []
     for i in range(n):
         t = i / (n - 1)
         e = smooth((t - 0.35) / 0.65)
-        split.append(18.0 * e)
+        split.append(apart * e)
         tilt.append(11.0 * e)
         jitter.append((1.6 if i % 2 else -1.6) * (1 - e) * (t > 0.0))
         hot.append(1.0 if 0.15 < t < 0.75 else 0.0)
@@ -243,8 +248,8 @@ def dividing_clips(m: Mite) -> Dict[str, dict]:
         "bone.rear_lobe.x": keys([-s + j for s, j in zip(split, jitter)]),
         "bone.front_lobe.x": keys([s - j for s, j in zip(split, jitter)]),
         "rear_lobe": keys([-a for a in tilt]), "front_lobe": keys(tilt),
-        "rear_feeler": keys([-20.0 * min(1.0, s / 18.0) for s in split]),
-        "front_feeler": keys([20.0 * min(1.0, s / 18.0) for s in split]),
+        "rear_feeler": keys([-20.0 * min(1.0, s / apart) for s in split]),
+        "front_feeler": keys([20.0 * min(1.0, s / apart) for s in split]),
         "mandible_near": keys([18.0 * min(1.0, i / 4) for i in range(n)]),
         "mandible_far": keys([-14.0 * min(1.0, i / 4) for i in range(n)]),
         "ring_cool": keys([1.0 - h - s for h, s in zip(hot, strand)]),
@@ -297,10 +302,10 @@ def exploding_clips(m: Mite) -> Dict[str, dict]:
     # notice: the fuse stands up stiff and its spark flares
     clips["notice"]["channels"].update(fuse=held(4.0, 6.0, 3.0), spark_0a=held(0.0, 0.0, 0.0), spark_0b=held(0.0, 0.0, 0.0),
                                        spark_1a=held(1.0, 1.0, 1.0))
-    # windup: about to burst. The shell cracks and glows along its seams, the
-    # fuse is whipped back and its spark roars (its own fuse stays long: the
-    # crack is the threat, not the count-down).
-    clips["windup"]["channels"].update(fuse=held(-16.0, -14.0, -17.0), shell_0=held(0.0, 0.0, 0.0), shell_1=held(1.0, 1.0, 1.0),
+    # windup: reared for the snap, the fuse whipped back and its spark roaring.
+    # The shell stays whole: it cracks only in the death row, which is the
+    # fuse that ends in the blast.
+    clips["windup"]["channels"].update(fuse=held(-16.0, -14.0, -17.0),
                                        spark_0a=held(0.0, 0.0, 0.0), spark_0b=held(0.0, 0.0, 0.0), spark_1a=held(1.0, 1.0, 1.0))
     # death: the fuse burns down while the shell swells and goes white hot
     n = 8

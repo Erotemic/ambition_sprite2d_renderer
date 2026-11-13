@@ -7,9 +7,10 @@ four legs, cinched at the waist by a bright cleavage ring; one dark visor eye
 and a pair of hooked mandibles at the front (its swipe).
 
 It has four hit points and on death splits into its two halves
-(``dividing_mite_half_v2``), one each side of the corpse (``divides_into`` in
-the catalog). Its ``death`` row shows
-that: it strains, the ring goes hot, and the lobes pull apart left and right.
+(``dividing_mite_half_v2``, ``divides_into`` in the catalog). Its ``death``
+row is the division: it strains, the ring goes hot, and the lobes pull apart
+left and right, each to a quarter of the body's width out from its middle,
+where the game stands a half when the row ends.
 The first Dividing Mite (a robot-toon config, ``configs/dividing_mite.yaml``)
 stays renderable.
 """
@@ -27,7 +28,7 @@ ACTOR_METADATA = _mite_v2.actor_metadata(
     live=(0.32, 0.56), head=(292.0, 248.0), chest=(200.0, 268.0), jaws=(306.0, 306.0),
     notes=["The SVG owns the part shapes; each lobe, leg segment, feeler and mandible turns about its own joint.",
            "Each leg is a thigh and a shin solved to a foot target, so the feet stay planted while the body moves.",
-           "death: the cleavage ring goes hot, then the two lobes pull apart; the game spawns the two halves."],
+           "death: the cleavage ring goes hot, then the two lobes pull apart to where the game stands the two halves."],
 )
 
 #: The body: both lobes and the reach of the legs, in SVG units (x0, y0, x1, y1).
