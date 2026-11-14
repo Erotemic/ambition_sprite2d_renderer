@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, art_dimension, boss_stage, art_quarters, eureka, evil, foregrounds, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_oceania, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
+from . import arenas, art_dimension, boss_stage, art_quarters, eureka, evil, foregrounds, hobford, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_oceania, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from . import history_budj_bim
 from . import history_micronesia
 from .artkit import Art
@@ -81,6 +81,11 @@ SCENES: dict[str, Scene] = {
     "military_tower": military_tower.military_tower,
     "pirate_port": pirate_port.pirate_port,
     "ninja_village": ninja_village.ninja_village,
+    # Level 1, Hobford: the hill country, its woods and the Creator's barn
+    # (`hobford.py`).
+    "hobford": hobford.hobford,
+    "hobford_woods": hobford.hobford_woods,
+    "creator_workshop": hobford.creator_workshop,
     "orbital": orbital.orbital,
     "orbital_truss": orbital.orbital_truss,
     "eureka": eureka.eureka,

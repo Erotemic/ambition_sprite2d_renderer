@@ -912,6 +912,12 @@ MOTES = {
     "pirate_port": (_dot, (250, 244, 228)),
     # Maple leaves that fall in the village.
     "ninja_village": (_petal, (214, 84, 52)),
+    # Seeds and pollen over the fields of Hobford.
+    "hobford": (_dot, (255, 250, 226)),
+    # Leaves that come down in the woods.
+    "hobford_woods": (_petal, (196, 166, 72)),
+    # Dust in the light from the barn's windows.
+    "creator_workshop": (_dot, (255, 232, 190)),
     "castle_godwin": (_glow, (255, 140, 70)),
     # Sparks from the coils; ash in the throne room.
     "castle_godwin_lab": (_glow, (190, 230, 255)),

@@ -4921,6 +4921,13 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # The port: rope, mooring posts, the catch, nets, a lantern.
     "pirate_port": ((rope_coil, bollard, fish_basket, harbour_lantern, net_heap, bollard), _palette((40, 30, 24), (120, 112, 104), (196, 186, 170), (128, 94, 62), (58, 62, 70), (70, 110, 96), (214, 96, 60), (255, 200, 120))),
     # The village: a stone lantern, maples, a bucket, sandals, a fence.
+    # Hobford: sheaves, a milk pail, a crate of the crop, a stack of
+    # firewood, flowers by a wall, a standing stone in a field.
+    "hobford": ((wheat_sheaf, milk_pail, crop_crate, firewood_cord, flowers, standing_stone), _palette((34, 30, 22), (136, 130, 118), (196, 190, 174), (128, 92, 58), (96, 98, 100), (96, 150, 64), (226, 110, 96), (255, 220, 140))),
+    # The woods: ferns, mushrooms on a log, bushes and stones under the trees.
+    "hobford_woods": ((fern, log_mushrooms, bush, moss_stone, grass_tuft, fern), _palette((20, 22, 16), (92, 96, 84), (150, 152, 136), (100, 72, 48), (70, 70, 64), (70, 124, 56), (220, 180, 90), (255, 214, 130))),
+    # The workshop: crates, a barrel, an oil can, gears, rolled drawings, an anvil.
+    "creator_workshop": ((crate, barrel, oil_can, gear_wheel, blueprint_rolls, anvil), _palette((30, 22, 16), (120, 110, 98), (180, 170, 150), (130, 94, 60), (110, 112, 116), (90, 120, 70), (200, 90, 60), (255, 210, 140))),
     "ninja_village": ((toro, maple_shrub, water_bucket, sandal_rack, maple_shrub, bamboo_fence), _palette((30, 24, 30), (132, 128, 122), (190, 186, 176), (110, 76, 52), (70, 66, 64), (138, 150, 92), (206, 70, 48), (255, 186, 110))),
     "evil_forest": ((bones, bush, rock, grass_tuft, brazier, rock), _palette((8, 4, 6), (60, 50, 52), (110, 92, 90), (60, 36, 30), (50, 44, 48), (54, 44, 34), (200, 40, 32), (255, 110, 60))),
     # Castle Godwin: braziers, crates of the regime, anvils of its forge.

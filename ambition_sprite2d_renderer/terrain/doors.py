@@ -2849,6 +2849,12 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "pirate_port": (cabin, _colours((76, 54, 38), (132, 96, 64), (34, 24, 18), (214, 176, 108), (255, 214, 150))),
     # The village: sliding paper screens in a frame of dark cedar.
     "ninja_village": (shoji, _colours((52, 36, 30), (226, 216, 190), (24, 18, 16), (176, 60, 44), (255, 214, 160))),
+    # Hobford: a cottage door of painted planks in a stone frame.
+    "hobford": (plank, _colours((150, 140, 120), (70, 104, 82), (34, 28, 22), (196, 160, 80), (255, 222, 160))),
+    # The woods: a door of rough planks, as on a woodman's hut.
+    "hobford_woods": (plank, _colours((86, 66, 46), (120, 92, 62), (30, 22, 16), (160, 130, 70), (255, 214, 150))),
+    # The barn: a door of red-painted boards.
+    "creator_workshop": (plank, _colours((92, 64, 44), (150, 58, 44), (34, 22, 16), (220, 186, 120), (255, 222, 160))),
     "evil_forest": (iron, _colours((40, 30, 32), (70, 24, 26), (10, 4, 6), (220, 50, 36), (255, 110, 60))),
     "castle_godwin": (iron, _colours((82, 92, 112), (40, 44, 56), (10, 10, 16), (200, 40, 32), (255, 132, 48))),
     "castle_godwin_lab": (iron, _colours((70, 88, 86), (40, 52, 50), (8, 12, 10), (120, 255, 150), (190, 230, 255))),

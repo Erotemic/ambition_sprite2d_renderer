@@ -144,6 +144,13 @@ SKINS: tuple[Skin, ...] = (
     # The village of the ninja dimension: packed earth with a kerb of round
     # stones, and a roof of grey tiles for a platform (a ridge to walk).
     Skin("ninja_village", "earth", (84, 68, 58), (34, 28, 26), (130, 110, 92), (206, 72, 52), "kerb", (138, 138, 132), "roots", "roof"),
+    # Hobford, the hill country of level 1: brown soil under a thick turf,
+    # with a plank for a platform (a stile, a hay loft's boards).
+    Skin("hobford", "earth", (104, 80, 56), (44, 32, 22), (152, 122, 86), (236, 214, 130), "grass", (108, 160, 72), "roots", "plank"),
+    # The woods past the village: darker soil and moss under the trees.
+    Skin("hobford_woods", "earth", (76, 58, 42), (28, 20, 14), (122, 96, 68), (220, 200, 120), "grass", (72, 122, 58), "roots", "plank"),
+    # The Creator's workshop, a barn: floorboards, with planks for the loft.
+    Skin("creator_workshop", "timber", (124, 90, 60), (52, 36, 24), (172, 130, 88), (232, 188, 112), "deck", (178, 138, 94), "lip", "plank"),
     # Castle Godwin: the cold blue-grey blocks of a fortress, dark.
     Skin("castle_godwin", "block", (82, 92, 112), (28, 32, 44), (134, 146, 168), (200, 40, 32), "edge", (112, 122, 142), "bolts", "grate"),
     # The castle's lab: the same blocks, lit green by the vats.
