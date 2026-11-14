@@ -615,22 +615,101 @@ def _courses(tile: Tile, skin: Skin, row_h: float, unit_w: float, joint: float, 
             tile.put(low, skin.dark, 0.35)
 
 
+def _luma(colour: RGB) -> float:
+    return 0.299 * colour[0] + 0.587 * colour[1] + 0.114 * colour[2]
+
+
+#: The courses of a breakable brick: (top, bottom, the left edge of each
+#: brick), in units of its 32-unit block. Each course is half a brick along
+#: from the one above it. The block has a rim of mortar, so a brick at an edge
+#: stops at the rim and each block shows as one thing that can break.
+_BRICK_COURSES: tuple[tuple[float, float, tuple[float, ...]], ...] = (
+    (1.5, 8.6, (1.5, 16.6)),
+    (9.4, 15.6, (1.5, 8.6, 24.0)),
+    (16.4, 23.6, (1.5, 16.6)),
+    (24.4, 30.5, (1.5, 8.6, 24.0)),
+)
+
+
+def _brick_faces() -> list[tuple[float, float, float, float]]:
+    """The face of each brick in `_BRICK_COURSES`: (x0, y0, x1, y1)."""
+    out = []
+    for y0, y1, lefts in _BRICK_COURSES:
+        rights = tuple(x - 0.8 for x in lefts[1:]) + (30.5,)
+        out += [(x0, y0, x1, y1) for x0, x1 in zip(lefts, rights)]
+    return out
+
+
 def breakable_brick(skin: Skin) -> Image.Image:
-    """Draw loose masonry in the room palette, with open joints and cracks."""
+    """Draw one block of raised bricks in the room palette.
+
+    The block must not look like the ground of its room or the scene behind
+    it. Thus each brick is a raised face with a lit top and a shaded foot,
+    the joints and the rim of the block are near black, and a crack goes
+    through two bricks (the sign of a breakable wall in each dimension). In a
+    dark room the faces are lighter than the ground and the accent colour
+    glows in the crack. In a light room the faces are darker than the ground.
+    """
     tile = Tile((32, 32), True, True, skin.key, "breakable_brick")
-    tile.put(np.ones_like(tile.alpha), skin.dark)
-    for row, y in enumerate((1, 17)):
-        for x in ((1, 17) if row == 0 else (-7, 9, 25)):
-            left, right = max(1, x), min(30, x + 13)
-            body = tile.mask(lambda p, dx, dy: _box(p, dx, dy, left, y, right + 1, y + 13))
-            tile.put(body, _mix(skin.base, skin.light, 0.28))
-            top = tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(left, y), (right, y)], 1.0))
-            tile.put(top, skin.light)
-            edge = tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(right, y + 1), (right, y + 12)], 1.0))
-            tile.put(edge, _mix(skin.base, skin.dark, 0.45))
-    for points in ([(22, 3), (20, 7), (22, 10)], [(13, 20), (15, 24), (13, 28)]):
-        crack = tile.mask(lambda p, dx, dy: _line(p, dx, dy, points, 1.0))
-        tile.put(crack, skin.dark)
+    dark_room = _luma(skin.base) < 110
+    if dark_room:
+        face = _mix(skin.base, skin.light, 0.5)
+    else:
+        face = _mix(skin.base, skin.dark, 0.32)
+    lit = _mix(face, skin.light if dark_room else (255, 255, 255), 0.7 if dark_room else 0.5)
+    shade = _mix(face, skin.dark, 0.75)
+    joint = _mix(skin.dark, (0, 0, 0), 0.45)
+    rim = _mix(skin.dark, (0, 0, 0), 0.62)
+
+    tile.put(np.ones_like(tile.alpha), joint)
+    rim_mask = tile.mask(lambda p, dx, dy: (
+        _box(p, dx, dy, 0, 0, 32, 0.9), _box(p, dx, dy, 0, 31.1, 32, 32),
+        _box(p, dx, dy, 0, 0, 0.9, 32), _box(p, dx, dy, 31.1, 0, 32, 32)))
+    tile.put(rim_mask, rim)
+
+    grain = tile.noise(6, 6) - 0.5
+    for x0, y0, x1, y1 in _brick_faces():
+        tone = tile.rng.uniform(-0.07, 0.07)
+        colour = _mix(face, lit if tone > 0 else shade, abs(tone) * 1.4)
+        body = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0, x1, y1))
+        tile.put(body, colour)
+        top = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0, x1, y0 + 1.4))
+        tile.put(top, lit)
+        left = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0 + 1.25, x0 + 0.9, y1 - 1.0))
+        tile.put(left, lit, 0.55)
+        foot = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.6, y1 - 1.3, x1, y1))
+        tile.put(foot, shade)
+        side = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x1 - 0.9, y0 + 0.9, x1, y1))
+        tile.put(side, shade, 0.8)
+        # One bright corner, where the light falls on the edge of the brick.
+        corner = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0, x0 + 1.25, y0 + 1.25))
+        tile.put(corner, _mix(lit, (255, 255, 255), 0.4))
+    faces = tile.mask(lambda p, dx, dy: [_box(p, dx, dy, *face) for face in _brick_faces()])
+    # Each face is a little lighter at its top than at its foot: a round face.
+    fall = np.zeros_like(tile.alpha)
+    for y0, y1, _ in _BRICK_COURSES:
+        inside = (tile.y >= y0) & (tile.y < y1)
+        fall[inside] = 0.07 - 0.14 * (tile.y[inside] - y0) / (y1 - y0)
+    tile.tone((grain * 0.10 + fall) * faces)
+
+    # A chip off the top right corner of one brick: the joint shows through,
+    # and the broken face under it is in shade.
+    chip = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(27.4, 24.4), (30.5, 24.4), (30.5, 27.6), (29.0, 26.4), (28.2, 25.6)]))
+    tile.put(chip, shade)
+    notch = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(28.2, 24.4), (30.5, 24.4), (30.5, 26.6), (29.4, 25.6)]))
+    tile.put(notch, joint)
+
+    # The crack: from the joint over the second course, down through two
+    # bricks, with a short branch. The lip under it catches the light.
+    trunk = [(12.8, 9.4), (11.6, 12.2), (13.4, 15.6), (13.0, 16.4), (14.8, 19.2), (14.0, 21.6)]
+    branch = [(11.6, 12.2), (9.4, 13.6)]
+    lip = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x + 0.75, y + 0.55) for x, y in path], 0.8) for path in (trunk, branch)])
+    tile.put(lip, lit, 0.8)
+    line = tile.mask(lambda p, dx, dy: (_line(p, dx, dy, trunk[:4], 1.1), _line(p, dx, dy, trunk[3:], 0.85), _line(p, dx, dy, branch, 0.75)))
+    tile.put(line, joint)
+    if dark_room:
+        glow = tile.mask(lambda p, dx, dy: (_line(p, dx, dy, trunk[:4], 0.5), _line(p, dx, dy, trunk[3:], 0.4)))
+        tile.put(glow, skin.accent, 0.9)
     return tile.publish()
 
 

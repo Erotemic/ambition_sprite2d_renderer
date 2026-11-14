@@ -18,6 +18,7 @@ from ambition_sprite2d_renderer.core.draw import (
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw, downsample
 from ambition_sprite2d_renderer.terrain.door_swing import SWING, Leaf, Room, opening_frames
+from ambition_sprite2d_renderer.terrain.skins import Skin, breakable_brick
 from ambition_sprite2d_renderer.core.pipeline import (
     CROP_GROUND,
     CROP_NONE,
@@ -1073,17 +1074,20 @@ def bonus_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
     d.rectangle((14 * s, 24 * s, 18 * s - 1, 28 * s - 1), fill=glyph)
 
 
+#: The palette of a breakable brick in a room with no terrain skin: brick red.
+_UNTHEMED_BRICK = Skin("brick", "brick", (184, 84, 62), (72, 28, 24), (236, 150, 112), (255, 196, 120),
+                       "edge", (184, 84, 62), "lip", "slab")
+
+
 def brick_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
-    """Draw loose red bricks with open joints and small cracks."""
-    d.rectangle((0, 0, 32 * s - 1, 32 * s - 1), fill=rgba("#4E2630"))
-    for row, y in enumerate((1, 17)):
-        for x in ((1, 17) if row == 0 else (-7, 9, 25)):
-            left, right = max(1, x), min(30, x + 13)
-            d.rectangle((left * s, y * s, (right + 1) * s - 1, (y + 13) * s - 1), fill=rgba("#C45D4C"))
-            d.line([(left * s, y * s), (right * s, y * s)], fill=rgba("#F2AC78"), width=max(1, int(s)))
-            d.line([(right * s, (y + 1) * s), (right * s, (y + 12) * s)], fill=rgba("#8C3741"), width=max(1, int(s)))
-    d.line([(22 * s, 3 * s), (20 * s, 7 * s), (22 * s, 10 * s)], fill=rgba("#622E37"), width=max(1, int(s)))
-    d.line([(13 * s, 20 * s), (15 * s, 24 * s), (13 * s, 28 * s)], fill=rgba("#622E37"), width=max(1, int(s)))
+    """Draw the breakable brick of the terrain skins (`skins.breakable_brick`)
+    in brick red, for a room that has no skin."""
+    picture = breakable_brick(_UNTHEMED_BRICK).convert("RGBA")
+    step = 32 * s / picture.width
+    pixels = picture.load()
+    for y in range(picture.height):
+        for x in range(picture.width):
+            d.rectangle((x * step, y * step, (x + 1) * step - 1, (y + 1) * step - 1), fill=pixels[x, y])
 
 
 def spent_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
@@ -1927,7 +1931,7 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
         "brick_block_tile.png",
         "EntityArt override (a breakable brick)",
         "breakable brick",
-        "loose red bricks with open joints and small cracks",
+        "raised red bricks in a dark rim, with a crack through two of them",
         size=(32, 32),
         tight_crop=False,
     ),
