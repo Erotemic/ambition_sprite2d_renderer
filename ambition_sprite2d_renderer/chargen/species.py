@@ -321,6 +321,10 @@ def _cat(fig) -> HeadModel:
         al = wrap180(alpha)
         v = 0.03 * m * gauss(f, 0.64, 0.06) * (gauss(al, 12.0, 12.0) + gauss(al, -12.0, 12.0))
         v += 0.03 * gauss(f, 0.66, 0.08) * (gauss(al, 62.0, 18.0) + gauss(al, -62.0, 18.0))
+        # Cheek fluff: the fur stands out below and behind the eyes.
+        fluff = fig.spec.head.cheek_fluff
+        if fluff:
+            v += 0.06 * fluff * gauss(f, 0.72, 0.09) * (gauss(al, 78.0, 20.0) + gauss(al, -78.0, 20.0))
         return hh * v
 
     return HeadModel("cat", _rows(fig.fy, hh, rows), [relief], layout, ears="cat", hair="tuft", muzzle_f=0.6, neck_f=0.72)

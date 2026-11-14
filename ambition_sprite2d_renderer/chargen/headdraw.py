@@ -118,11 +118,12 @@ def _animal_ears(fig: Figure, kind: str, sgn: float) -> Tuple[List[Vec3], List[V
         inner = _leaf(add3(base, (0.0, -0.02 * hh, 0.012 * hh)), axis, across, 0.22 * hh * ln, 0.5 * w, droop=scale3(droop, 0.47))
         return outer, inner, sgn * 40.0
     if kind == "cat":
+        size = fig.spec.head.ear_size
         base = sk.point(sgn * 40.0, fig.fy(0.06), 0.0)
         axis = norm3((sgn * 0.35, -1.0, 0.1))
         across = norm3((1.0, 0.25 * sgn, -sgn * 0.45))
-        outer = _cupped(_leaf(base, axis, across, 0.26 * hh, 0.24 * hh, n=6), (sgn * 0.4, 0.0, 0.92), 0.06 * hh)
-        inner = _leaf(add3(base, (0.0, -0.015 * hh, 0.012 * hh)), axis, across, 0.17 * hh, 0.12 * hh, n=6)
+        outer = _cupped(_leaf(base, axis, across, 0.26 * hh * size, 0.24 * hh * size, n=6), (sgn * 0.4, 0.0, 0.92), 0.06 * hh * size)
+        inner = _leaf(add3(base, (0.0, -0.015 * hh, 0.012 * hh)), axis, across, 0.17 * hh * size, 0.12 * hh * size, n=6)
         return outer, inner, sgn * 40.0
     if kind == "flap":
         # A small rolled flap low behind the eye, laid back along the head.
@@ -209,6 +210,35 @@ def _marking(ctx: Ctx, pt: Paint, mark: str) -> None:
             return (abs(wrap180(a)) - (20.0 + 85.0 * smoothstep(0.0, 0.32, f))) * 0.01
 
         pt.flat(loft_region(ctx.view, hd.shell(0.02), hd.top, hd.bottom, m), mark)
+
+
+def _tabby_stripes(ctx: Ctx, pt: Paint) -> None:
+    """A tabby cat's stripes: the M on the brow (three bars up from the brow)
+    and two bars on each cheek, in a dark shade of the coat, as strong as
+    ``head.stripes``. The same on both sides."""
+    fig = ctx.fig
+    strength = fig.spec.head.stripes
+    if not strength or fig.species != "cat":
+        return
+    hd, hh, lay = fig.head, fig.hh, fig.face
+    color = mix(ctx.skin, shade(ctx.skin, 0.45), 0.35 + 0.65 * strength)
+    brow = lay["brow_f"]
+
+    def f_of(y: float) -> float:
+        return (y - fig.crown) / hh
+
+    def brow_m(a: float, y: float) -> float:
+        f, al = f_of(y), wrap180(a)
+        bars = max(2.4 - abs(al - c) for c in (-12.0, 0.0, 12.0)) * 0.01
+        return min(bars, f - 0.08, brow - 0.03 - f)
+
+    def cheek_m(a: float, y: float) -> float:
+        f, al = f_of(y), abs(wrap180(a))
+        bars = max(0.018 - abs(f - c - 0.03 * (al - 50.0) / 50.0) for c in (0.56, 0.64))
+        return min(bars, (al - 44.0) * 0.01, (104.0 - al) * 0.01)
+
+    pt.flat(loft_region(ctx.view, hd.shell(0.02), fig.fy(0.08), fig.fy(brow), brow_m), color)
+    pt.flat(loft_region(ctx.view, hd.shell(0.02), fig.fy(0.52), fig.fy(0.72), cheek_m), color)
 
 
 def _eye_rings(ctx: Ctx, pt: Paint) -> None:
@@ -305,6 +335,7 @@ def head_parts(ctx: Ctx) -> List[Part]:
         pt.flat(loft_region(ctx.view, hd.shell(0.02), fig.fy(sf), hd.bottom, sheen_m), sheen_colors(skin, model.sheen_strength)[0])
     if fig.species == "dog":
         _marking(ctx, pt, mark)
+    _tabby_stripes(ctx, pt)
     _eye_rings(ctx, pt)
     if painted(ctx):
         _face_paint(ctx, pt)

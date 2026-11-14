@@ -201,6 +201,13 @@ class Head:
     sheen: float = 1.0
     #: Pigeon: the ring of bare skin round each eye; 0 for none.
     eye_ring: float = 0.0
+    #: Cat: the ears' size, 1 as drawn.
+    ear_size: float = 1.0
+    #: Cat: the fur standing out from the cheeks; 0 for none.
+    cheek_fluff: float = 0.0
+    #: Cat: a tabby's stripes (the M on the brow, bars on the cheeks), their
+    #: strength; 0 for none. The same on both sides, so a mirrored view keeps them.
+    stripes: float = 0.0
 
 
 @dataclass
@@ -342,6 +349,7 @@ _SECTIONS = {"body": Body, "face": Face, "hair": Hair, "palette": Palette, "outf
 SPECIES_KNOBS: Dict[str, Tuple[str, ...]] = {
     "dog": ("stop", "skull", "flews", "ear_length", "ear_fold", "ear_set", "marking"),
     "pigeon": ("beak_curve", "cere", "sheen", "eye_ring"),
+    "cat": ("ear_size", "cheek_fluff", "stripes"),
 }
 HEAD_KNOB_DEFAULTS: Dict[str, Any] = {f.name: f.default for f in fields(Head) if f.name not in ("species", "muzzle", "ears")}
 #: Fields added after the first records: a record writes one only when it is
@@ -407,6 +415,9 @@ BOUNDS: Dict[str, Tuple[float, float]] = {
     "head.cere": (0.0, 2.0),
     "head.sheen": (0.0, 2.0),
     "head.eye_ring": (0.0, 1.0),
+    "head.ear_size": (0.75, 1.35),
+    "head.cheek_fluff": (0.0, 1.0),
+    "head.stripes": (0.0, 1.0),
     "outfit.geta_height": (3.0, 16.0),
 }
 
@@ -673,6 +684,11 @@ def _draw(base: Base, seed: int) -> CharacterSpec:
     ringed = rng.random() < 0.5
     ring = _uniform(rng, 0.35, 1.0)
     head.eye_ring = ring if ringed else 0.0
+    head.ear_size = _uniform(rng, 0.85, 1.25)
+    head.cheek_fluff = round(max(0.0, _uniform(rng, -0.3, 1.0)), 3)
+    striped = rng.random() < 0.5
+    strength = _uniform(rng, 0.4, 1.0)
+    head.stripes = strength if striped else 0.0
     if outfit.outer == "robe":
         outfit.outer_length = "ankle"
         outfit.outer_open = False

@@ -8,6 +8,10 @@ body:
   age: 0.4
 head:
   species: cat
+  # The cat knobs at their defaults: the head as it was first published.
+  ear_size: 1.0
+  cheek_fluff: 0.0
+  stripes: 0.0
 palette:
   skin: '#3a3436'
   hair: '#2a2628'
