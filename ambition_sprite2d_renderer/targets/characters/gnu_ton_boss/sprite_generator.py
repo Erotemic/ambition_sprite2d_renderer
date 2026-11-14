@@ -556,6 +556,13 @@ def _giant_frame(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
 GIANT_FEET = (FRAME_W * 0.5, float(_giant.to_frame((0.0, _giant.FLOOR))[1]))
 
 
+#: The giant's rows its flipbook tweens: its walking loops, as every
+#: character's walk is (`part_flipbook.LOCOMOTION_LOOPS`). Stepped, a walk
+#: frame moves the giant's legs 22-26 sheet pixels at once every 0.08 s
+#: while its body slides smoothly (GNU-MOTION-PARTS, measured 2026-11-14).
+GIANT_TWEENED_ROWS = ("walk", "walk_back", "armed_walk", "armed_walk_back")
+
+
 def _publish_giant_flipbook(outdir: Path, sheet_page: Image.Image) -> List[Path]:
     """The giant's part flipbook (`giant_gnu_parts.ron` and its pages), beside
     its sheet. The giant is drawn from pieces (`giant_art.scene_for`), so the
@@ -569,7 +576,8 @@ def _publish_giant_flipbook(outdir: Path, sheet_page: Image.Image) -> List[Path]
 
     if rendering_quality_tier():
         return []
-    flipbook = build_rig_flipbook(GIANT_TARGET_NAME, ANIMATIONS, _giant.render_giant, None, GIANT_FEET, FRAME_SIZE)
+    tweened = [row for row in GIANT_TWEENED_ROWS if any(name == row for name, _n, _ms in ANIMATIONS)]
+    flipbook = build_rig_flipbook(GIANT_TARGET_NAME, ANIMATIONS, _giant.render_giant, None, GIANT_FEET, FRAME_SIZE, tweened)
     flipbook.pack()
     most = max(len(draws) for _d, frames in flipbook.clips.values() for draws in frames)
     sheet_texels = sheet_page.width * sheet_page.height
