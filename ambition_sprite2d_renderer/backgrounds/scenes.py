@@ -84,6 +84,7 @@ SCENES: dict[str, Scene] = {
     # Level 1, Hobford: the hill country, its woods and the Creator's barn
     # (`hobford.py`).
     "hobford": hobford.hobford,
+    "hobford_gateside": hobford.hobford_gateside,
     "hobford_woods": hobford.hobford_woods,
     "creator_workshop": hobford.creator_workshop,
     "orbital": orbital.orbital,

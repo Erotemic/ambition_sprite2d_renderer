@@ -6,6 +6,9 @@ last year (`docs/planning/game/level-1.md` in the game repository).
   its mill, and on the east hill the old stone ring with new steel on it: a
   scaffold, a crane arm, cable poles marching up to it. Near the play: a
   hedge bank, a fence of split rails, an oak.
+- `hobford_gateside`: the same country without the ring and its steel, for
+  the rooms where the ring stands in the play itself (a landmark is in one
+  place: the background of its own room does not paint it again far off).
 - `hobford_woods`: the same morning under broadleaf trees: trunks in rows
   that go paler with distance, light coming through the canopy.
 - `creator_workshop`: the inside of the Creator's barn: plank walls, the
@@ -94,6 +97,16 @@ def _ring(stone: Pen, steel: Pen, cu: float, foot: float, r: float) -> None:
 
 
 def hobford(layer_key: str, art: Art) -> np.ndarray:
+    return _country(layer_key, art, ring=True)
+
+
+def hobford_gateside(layer_key: str, art: Art) -> np.ndarray:
+    # Drawn from the country's own seed, so its hills, fields and clouds are
+    # the ones the next room shows.
+    return _country(layer_key, Art(art.size, "hobford", layer_key), ring=False)
+
+
+def _country(layer_key: str, art: Art, *, ring: bool) -> np.ndarray:
     p = HOBFORD
     sun_at = (0.30, 0.34)
     if layer_key == "sky":
@@ -147,8 +160,9 @@ def hobford(layer_key: str, art: Art) -> np.ndarray:
         # The ring on the east hill, and the cable poles up to it.
         cu = 0.78
         foot = float(hill_line[int(cu * art.n)]) + 0.004
-        _ring(stone_pen, steel_pen, cu, foot, 0.035)
-        for k in range(6):
+        if ring:
+            _ring(stone_pen, steel_pen, cu, foot, 0.035)
+        for k in range(6 if ring else 0):
             pu = 0.50 + k * 0.045
             pv = float(np.minimum(line, hill_line)[int(pu * art.n)]) if pu > 0.55 else float(line[int(pu * art.n)])
             steel_pen.rect(pu - 0.0012, pv - 0.05, pu + 0.0012, pv)
