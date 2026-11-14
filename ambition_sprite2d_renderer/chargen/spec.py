@@ -80,6 +80,12 @@ MARKINGS = ("none", "mask", "blaze", "saddle")
 #: the face, a broad blaze from the forehead to the nose, or a snip between
 #: the nostrils.
 FACE_MARKS = ("none", "star", "strip", "blaze", "snip")
+#: A bird's crest: three short feathers raked back (a tuft), a long point
+#: swept back off the crown, an upright fan, or a smooth crown.
+CRESTS = ("tuft", "swept", "fan", "none")
+#: An alligator's scutes down the back of the head and neck: the two rows
+#: beside the spine, four rows, or none.
+SCUTE_ROWS = ("two", "four", "none")
 #: Face paint: ``geisha`` is white face paint (oshiroi) with red lips; on an
 #: animal, a pale painted face and red on the jaw line.
 MAKEUPS = ("none", "geisha")
@@ -217,6 +223,18 @@ class Head:
     face_length: float = 1.0
     #: Horse: the white face marking (``FACE_MARKS``).
     face_mark: str = "none"
+    #: Bird: the crest's shape (``CRESTS``).
+    crest: str = "tuft"
+    #: Bird: the crest's feathers' length, 1 as drawn.
+    crest_size: float = 1.0
+    #: Sea lion: how full the whisker pads stand out, 1 as drawn, 0 flat.
+    whisker_pads: float = 1.0
+    #: Sea lion: the whiskers' length, 1 as drawn.
+    whiskers: float = 1.0
+    #: Alligator: the snout's breadth, 1 as drawn (its length is ``muzzle``).
+    snout_width: float = 1.0
+    #: Alligator: the scute rows on the back of the head (``SCUTE_ROWS``).
+    scute_rows: str = "two"
 
 
 @dataclass
@@ -360,6 +378,9 @@ SPECIES_KNOBS: Dict[str, Tuple[str, ...]] = {
     "pigeon": ("beak_curve", "cere", "sheen", "eye_ring"),
     "cat": ("ear_size", "cheek_fluff", "stripes"),
     "horse": ("face_length", "face_mark"),
+    "bird": ("crest", "crest_size"),
+    "sea_lion": ("whisker_pads", "whiskers"),
+    "alligator": ("snout_width", "scute_rows"),
 }
 HEAD_KNOB_DEFAULTS: Dict[str, Any] = {f.name: f.default for f in fields(Head) if f.name not in ("species", "muzzle", "ears")}
 #: Fields added after the first records: a record writes one only when it is
@@ -429,6 +450,10 @@ BOUNDS: Dict[str, Tuple[float, float]] = {
     "head.cheek_fluff": (0.0, 1.0),
     "head.stripes": (0.0, 1.0),
     "head.face_length": (0.7, 1.5),
+    "head.crest_size": (0.6, 1.6),
+    "head.whisker_pads": (0.0, 2.5),
+    "head.whiskers": (0.5, 1.6),
+    "head.snout_width": (0.8, 1.25),
     "outfit.geta_height": (3.0, 16.0),
 }
 
@@ -452,6 +477,8 @@ CHOICES: Dict[str, Sequence[str]] = {
     "head.ears": EAR_STYLES,
     "head.marking": MARKINGS,
     "head.face_mark": FACE_MARKS,
+    "head.crest": CRESTS,
+    "head.scute_rows": SCUTE_ROWS,
     "face.makeup": MAKEUPS,
     "outfit.motif": MOTIFS,
     "outfit.obi_knot": OBI_KNOTS,
@@ -703,6 +730,12 @@ def _draw(base: Base, seed: int) -> CharacterSpec:
     head.stripes = strength if striped else 0.0
     head.face_length = _uniform(rng, 0.8, 1.3)
     head.face_mark = _pick(rng, {"none": 3, "star": 2, "strip": 2, "blaze": 2, "snip": 1})
+    head.crest = _pick(rng, {"tuft": 3, "swept": 2, "fan": 2, "none": 1})
+    head.crest_size = _uniform(rng, 0.75, 1.4)
+    head.whisker_pads = _uniform(rng, 0.5, 2.0)
+    head.whiskers = _uniform(rng, 0.7, 1.4)
+    head.snout_width = _uniform(rng, 0.85, 1.2)
+    head.scute_rows = _pick(rng, {"two": 3, "four": 2, "none": 1})
     if outfit.outer == "robe":
         outfit.outer_length = "ankle"
         outfit.outer_open = False
@@ -805,6 +838,6 @@ def spec_distance(a: CharacterSpec, b: CharacterSpec) -> float:
 
 
 __all__ = [
-    "BASES", "BOUNDS", "Base", "FACE_MARKS", "Body", "CHOICES", "CharacterSpec", "Face", "HEAD_KNOB_DEFAULTS", "Hair", "Outfit", "Palette", "SCHEMA",
+    "BASES", "BOUNDS", "Base", "CRESTS", "FACE_MARKS", "SCUTE_ROWS", "Body", "CHOICES", "CharacterSpec", "Face", "HEAD_KNOB_DEFAULTS", "Hair", "Outfit", "Palette", "SCHEMA",
     "SPECIES_KNOBS", "check", "complete", "crowd", "generate", "spec_distance", "spec_vector", "validate",
 ]

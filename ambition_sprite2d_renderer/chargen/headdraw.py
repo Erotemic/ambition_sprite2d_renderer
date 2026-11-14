@@ -617,7 +617,8 @@ def _alligator_features(ctx: Ctx, pt: Paint, behind: Paint) -> None:
                 pt.dot(ctx.p(hd.point(sgn * a, fig.fy(lay["mouth_f"] - 0.09), 0.04)), 0.012 * hh, pit)
     # Square scute plates in rows on the back of the head and the neck.
     scute = shade(ctx.skin, 0.1)
-    for al in (-162.0, 162.0):
+    rows = {"two": (-162.0, 162.0), "four": (-170.0, -152.0, 152.0, 170.0), "none": ()}[fig.spec.head.scute_rows]
+    for al in rows:
         if ctx.view.facing(al) < -0.35:
             continue
         for f in (0.22, 0.42, 0.62, 0.82):
@@ -650,12 +651,13 @@ def _sea_lion_nose(ctx: Ctx, pt: Paint) -> None:
     wcol = "#efe7d8" if luminance(ctx.skin) < 0.5 else shade(ctx.skin, 0.5)
     for sgn in (-1.0, 1.0):
         a0 = sgn * 20.0
+        reach = fig.spec.head.whiskers
         if not visible(ctx, a0, 0.1):
             continue
         for k, (df, dy) in enumerate(((0.0, -0.03), (0.035, 0.03), (0.07, 0.09), (0.1, 0.15))):
             p0 = hd.point(a0 + sgn * 4.0 * k, fig.fy(tip + 0.08 + df), 0.04)
-            mid = add3(p0, (sgn * 0.17 * hh, dy * 0.5 * hh, -0.03 * hh))
-            p1 = add3(p0, (sgn * 0.3 * hh, (dy + 0.04) * hh, -0.09 * hh))
+            mid = add3(p0, scale3((sgn * 0.17 * hh, dy * 0.5 * hh, -0.03 * hh), reach))
+            p1 = add3(p0, scale3((sgn * 0.3 * hh, (dy + 0.04) * hh, -0.09 * hh), reach))
             pt.line([ctx.p(p0), ctx.p(mid), ctx.p(p1)], wcol, FINE * 0.7)
 
 
@@ -1015,10 +1017,37 @@ def _nihongami_parts(ctx: Ctx, feature: str) -> List[Part]:
 
 
 def _crest(ctx: Ctx, pt: Paint, col: str) -> None:
+    """A bird's crest (``spec.CRESTS``), its feathers ``head.crest_size`` long."""
     fig = ctx.fig
     hh = fig.hh
     sk = fig.skull
+    kind, size = fig.spec.head.crest, fig.spec.head.crest_size
+    if kind == "none":
+        return
+    w = 0.025 * hh  # a feather's half width side to side, so it reads from the front
+    if kind == "fan":
+        # Five feathers standing up from the crown and opening from the brow
+        # back to the nape, broad in profile and narrow from the front.
+        for i, ang in enumerate((-8.0, 18.0, 44.0, 70.0, 96.0)):
+            ln = (0.34 - 0.03 * abs(i - 1)) * size
+            base = sk.point(0.0, fig.fy(0.05 + 0.025 * i), 0.0)
+            r = math.radians(ang)
+            tip = add3(base, (0.0, -ln * hh * math.cos(r), -ln * hh * math.sin(r)))
+            quad = [add3(base, (-w, 0.0, 0.0)), add3(base, (w, 0.0, 0.0)), add3(base, (0.0, 0.0, -0.08 * hh)), tip]
+            pt.region([hull(ctx.p(q) for q in quad)], shade(col, 0.05 * abs(i - 1)), smooth=True)
+        return
+    if kind == "swept":
+        # One long point raked back off the crown, a shorter one under it.
+        for i, ln in enumerate((0.46, 0.3)):
+            ln *= size
+            base = sk.point(0.0, fig.fy(0.05 + 0.07 * i), 0.0)
+            tip = add3(base, (0.0, -ln * hh * 0.55, -ln * hh * 0.95))
+            quad = [add3(base, (-w, 0.0, 0.0)), add3(base, (w, 0.0, 0.0)), add3(base, (0.0, 0.04 * hh, -0.14 * hh)), tip]
+            pt.region([hull(ctx.p(q) for q in quad)], col if i == 0 else shade(col, 0.12), smooth=True)
+        return
     for i, (a_off, ln) in enumerate(((0.0, 0.3), (-12.0, 0.24), (12.0, 0.24))):
+        if size != 1.0:
+            ln *= size
         base = sk.point(a_off, fig.fy(0.06 + 0.05 * i), 0.0)
         tip = add3(base, (0.0, -ln * hh * 0.7, -ln * hh * 0.75))
         side = add3(base, (0.0, 0.0, -0.1 * hh))

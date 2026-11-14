@@ -440,11 +440,12 @@ def _sea_lion(fig) -> HeadModel:
         "eye_f": 0.38, "brow_f": 0.3, "eye_alpha": 42.0, "eye_w": 0.185, "iris": 0.95, "nose_tip_f": 0.6, "mouth_f": 0.84,
         "mouth_alpha": 26.0, "nose": "sea_lion", "pupil": "round",
     }
+    pads = fig.spec.head.whisker_pads
 
     def relief(alpha: float, y: float) -> float:
         f = (y - fig.crown) / hh
         al = wrap180(alpha)
-        return hh * 0.035 * gauss(f, 0.72, 0.06) * (gauss(al, 16.0, 11.0) + gauss(al, -16.0, 11.0))
+        return hh * 0.035 * pads * gauss(f, 0.72, 0.06) * (gauss(al, 16.0, 11.0) + gauss(al, -16.0, 11.0))
 
     return HeadModel("sea_lion", _rows(fig.fy, hh, rows), [relief], layout, ears="flap", hair="none", muzzle_f=0.56, neck_f=0.58)
 
@@ -469,23 +470,26 @@ def _alligator(fig) -> HeadModel:
     hh = fig.hh
     m = fig.spec.head.muzzle
     w = 0.94 if fig.female else 1.06
+    # The snout's breadth widens the head's rings, not the skull's (hats and
+    # hair fit the skull).
+    sw = w * fig.spec.head.snout_width
     tip = 1.55 + 0.5 * m
     # (f, rx, rzf, rzb, cz, sq); the snout's rows are boxy (sq) for the U.
     rows = [
         (0.00, 0.0, 0.0, 0.0, 0.0, 2.0),
         # The back of the head slopes down into the thick neck.
-        (0.07, 0.36 * w, 0.5, 0.3, 0.0, 2.4),
-        (0.15, 0.4 * w, 0.66 * tip, 0.4, 0.0, 2.7),
-        (0.24, 0.42 * w, 0.83 * tip, 0.47, 0.0, 2.9),
-        (0.33, 0.43 * w, 0.96 * tip, 0.52, 0.0, 3.0),
-        (0.44, 0.44 * w, tip, 0.56, 0.0, 3.0),
-        (0.58, 0.44 * w, tip, 0.59, 0.0, 3.0),
+        (0.07, 0.36 * sw, 0.5, 0.3, 0.0, 2.4),
+        (0.15, 0.4 * sw, 0.66 * tip, 0.4, 0.0, 2.7),
+        (0.24, 0.42 * sw, 0.83 * tip, 0.47, 0.0, 2.9),
+        (0.33, 0.43 * sw, 0.96 * tip, 0.52, 0.0, 3.0),
+        (0.44, 0.44 * sw, tip, 0.56, 0.0, 3.0),
+        (0.58, 0.44 * sw, tip, 0.59, 0.0, 3.0),
         # The lower jaw is deep at the back and thin at the tip: its
         # underside rises toward the tip.
-        (0.7, 0.43 * w, tip - 0.1, 0.6, 0.0, 2.9),
-        (0.8, 0.41 * w, tip - 0.32, 0.6, 0.0, 2.8),
-        (0.9, 0.37 * w, tip - 0.68, 0.58, 0.0, 2.6),
-        (1.00, 0.27 * w, tip - 1.1, 0.5, 0.0, 2.3),
+        (0.7, 0.43 * sw, tip - 0.1, 0.6, 0.0, 2.9),
+        (0.8, 0.41 * sw, tip - 0.32, 0.6, 0.0, 2.8),
+        (0.9, 0.37 * sw, tip - 0.68, 0.58, 0.0, 2.6),
+        (1.00, 0.27 * sw, tip - 1.1, 0.5, 0.0, 2.3),
     ]
     # The skull that hair and hats sit on is behind the eye bumps (their
     # back edge is about 0.2 hh in front of the centre), so a wig or a hat
