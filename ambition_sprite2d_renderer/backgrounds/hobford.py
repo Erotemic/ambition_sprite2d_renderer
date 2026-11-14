@@ -70,11 +70,13 @@ def _mill(walls: Pen, roofs: Pen, wheel: Pen, u: float, foot: float, w: float) -
 
 
 def _ring(stone: Pen, steel: Pen, cu: float, foot: float, r: float) -> None:
-    """The old ring on its hill: a ring of stone on a stepped plinth, with new
-    steel round it: two towers of scaffold, a crane arm, cable poles."""
+    """The old ring on its hill: a triangle of stone (the network's rings are
+    triangles) on a stepped plinth, with new steel round it: two towers of
+    scaffold, a crane arm, cable poles."""
     stone.rect(cu - r * 1.25, foot - r * 0.16, cu + r * 1.25, foot + 0.01)
     stone.rect(cu - r * 1.05, foot - r * 0.30, cu + r * 1.05, foot - r * 0.14)
-    stone.ring(cu, foot - r * 1.22, r, r * 0.20)
+    apex, left, right = (cu, foot - r * 2.35), (cu - r * 1.10, foot - r * 0.28), (cu + r * 1.10, foot - r * 0.28)
+    stone.line([left, apex, right, left], r * 0.22)
     for side in (-1, 1):
         x = cu + side * r * 1.45
         steel.rect(x - r * 0.10, foot - r * 2.45, x - r * 0.07, foot)
