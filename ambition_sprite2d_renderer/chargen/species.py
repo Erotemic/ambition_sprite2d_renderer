@@ -217,16 +217,28 @@ def _horse(fig) -> HeadModel:
         "eye_f": 0.36, "brow_f": 0.29, "eye_alpha": 44.0, "eye_w": 0.155, "iris": 0.62, "nose_tip_f": 0.9, "mouth_f": 0.975,
         "mouth_alpha": 34.0, "nose": "horse", "pupil": "round",
     }
+    muzzle_f = 0.78
+    length = fig.spec.head.face_length
+    if length != 1.0:
+        # Every height on the head moves as f ** length: the crown and the
+        # chin stay, and the brow, the eyes and the muzzle's start climb (a
+        # longer face) or drop (a shorter one).
+        rows = [(f ** length, *rest) for f, *rest in rows]
+        for key in ("eye_f", "brow_f", "nose_tip_f", "mouth_f"):
+            layout[key] = layout[key] ** length
+        muzzle_f = muzzle_f ** length
 
     def relief(alpha: float, y: float) -> float:
         f = (y - fig.crown) / hh
+        if length != 1.0 and f > 0.0:
+            f = f ** (1.0 / length)  # back to the height the bumps were placed at
         al = wrap180(alpha)
         v = 0.02 * gauss(f, 0.3, 0.05) * (gauss(al, 40.0, 16.0) + gauss(al, -40.0, 16.0))
         v += 0.03 * gauss(f, 0.92, 0.05) * (gauss(al, 18.0, 12.0) + gauss(al, -18.0, 12.0))
         v += 0.02 * gauss(f, 0.6, 0.12) * (gauss(al, 70.0, 22.0) + gauss(al, -70.0, 22.0))
         return hh * v
 
-    return HeadModel("horse", _rows(fig.fy, hh, rows), [relief], layout, ears="horse", hair="mane", muzzle_f=0.78, neck_f=0.56)
+    return HeadModel("horse", _rows(fig.fy, hh, rows), [relief], layout, ears="horse", hair="mane", muzzle_f=muzzle_f, neck_f=0.56)
 
 
 # ---- dog ------------------------------------------------------------------------------------

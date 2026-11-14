@@ -212,6 +212,54 @@ def _marking(ctx: Ctx, pt: Paint, mark: str) -> None:
         pt.flat(loft_region(ctx.view, hd.shell(0.02), hd.top, hd.bottom, m), mark)
 
 
+def _face_mark(ctx: Ctx, pt: Paint) -> None:
+    """A horse's white face marking (``spec.FACE_MARKS``) down the front of
+    the face. The same on both sides."""
+    fig = ctx.fig
+    kind = fig.spec.head.face_mark
+    if kind == "none" or fig.species != "horse":
+        return
+    hd, hh, lay = fig.head, fig.hh, fig.face
+    brow, eye, tip, mouth = lay["brow_f"], lay["eye_f"], lay["nose_tip_f"], lay["mouth_f"]
+
+    def f_of(y: float) -> float:
+        return (y - fig.crown) / hh
+
+    if kind == "star":
+        # A diamond on the forehead, level with the eyes' tops.
+        c = (brow + eye) / 2.0
+
+        def m(a: float, y: float) -> float:
+            return 1.0 - abs(wrap180(a)) / 9.0 - abs(f_of(y) - c) / 0.05
+
+        top, bottom = c - 0.05, c + 0.05
+    elif kind == "strip":
+        # A narrow band from between the eyes down to above the nostrils.
+
+        def m(a: float, y: float) -> float:
+            f = f_of(y)
+            return min((4.0 - abs(wrap180(a))) * 0.01, f - eye, tip - 0.06 - f)
+
+        top, bottom = eye, tip - 0.06
+    elif kind == "blaze":
+        # Broad over the forehead, narrowing down the face, widening over the nose.
+
+        def m(a: float, y: float) -> float:
+            f = f_of(y)
+            w = 11.0 - 5.0 * smoothstep(brow, (brow + tip) / 2.0, f) + 10.0 * smoothstep(tip - 0.1, tip, f)
+            return min((w - abs(wrap180(a))) * 0.01, f - (brow - 0.06), mouth - 0.02 - f)
+
+        top, bottom = brow - 0.06, mouth - 0.02
+    else:  # snip
+        # A small patch between the nostrils.
+
+        def m(a: float, y: float) -> float:
+            return 1.0 - abs(wrap180(a)) / 8.0 - abs(f_of(y) - tip - 0.02) / 0.035
+
+        top, bottom = tip - 0.015, tip + 0.055
+    pt.flat(loft_region(ctx.view, hd.shell(0.02), fig.fy(top), fig.fy(bottom), m), BLAZE)
+
+
 def _tabby_stripes(ctx: Ctx, pt: Paint) -> None:
     """A tabby cat's stripes: the M on the brow (three bars up from the brow)
     and two bars on each cheek, in a dark shade of the coat, as strong as
@@ -336,6 +384,7 @@ def head_parts(ctx: Ctx) -> List[Part]:
     if fig.species == "dog":
         _marking(ctx, pt, mark)
     _tabby_stripes(ctx, pt)
+    _face_mark(ctx, pt)
     _eye_rings(ctx, pt)
     if painted(ctx):
         _face_paint(ctx, pt)
