@@ -332,13 +332,19 @@ def pp_air_forward(b: Body, a0: int, a1: int) -> List[Key]:
 
 def pp_air_back(b: Body, a0: int, a1: int) -> List[Key]:
     c = _contact(a0, a1)
+    # The arc runs from in front, over the head, to behind: more than half a
+    # turn. A hit of one live frame sweeps in from the frame before, and the
+    # sweep between two frames turns the short way round, so that frame must
+    # already be over the head. With the gather there, the sweep turned under
+    # her through her own body and the back air hit in front of her.
+    one = a1 == a0
     return _air([
         b.rest_key(0.0),
         # Gathered: the blade across the chest in front.
-        Key(at=F(a0 - 1), near=(40.0, -30.0, -20.0), far=(110.0, 110.0, 100.0), torso=10.0, head=4.0,
-            feet={"far": (6.0, 10.0, 0.0)}, ease="gather"),
+        Key(at=F(a0 - 1.5) if one else F(a0 - 1), near=(40.0, -30.0, -20.0), far=(110.0, 110.0, 100.0),
+            torso=10.0, head=4.0, feet={"far": (6.0, 10.0, 0.0)}, ease="gather"),
         # Smear: over the head on its way back.
-        Key(at=F(a0), near=(-110.0, -130.0, -120.0), far=(80.0, 50.0, 40.0), torso=-6.0, head=-8.0,
+        Key(at=F(a0 - 1) if one else F(a0), near=(-110.0, -130.0, -120.0), far=(80.0, 50.0, 40.0), torso=-6.0, head=-8.0,
             lunge=-1.0, feet={"near": (-6.0, 4.0, 30.0), "far": (6.0, 12.0, 0.0)}, ease="out"),
         # Contact: level behind, the body arched back into it.
         Key(at=F(c), near=(-178.0, -180.0, -180.0), far=(60.0, 30.0, 20.0), torso=-18.0, head=-14.0,
