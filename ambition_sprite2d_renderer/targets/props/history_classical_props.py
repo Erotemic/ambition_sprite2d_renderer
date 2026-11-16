@@ -17,6 +17,9 @@ marble, terracotta red, olive green and Aegean blue, with a sepia outline.
   world units, drawn at 2 to 1, as `art_colour_gate_*`). A bronze double
   door between two small columns, with a big question mark on it:
   Socratease opens it to the answer "I know that I know nothing".
+- ``history_colosseum_facade``: scenery. The outside of the Colosseum at its
+  door on the shore: three tiers of arches, the attic, the broken top of
+  the outer ring; the middle ground arch frames the door.
 - ``history_bust``: scenery. A marble bust of a stern Roman on a plinth.
   Somebody (a vandal) painted a black moustache on him.
 
@@ -44,6 +47,7 @@ AQUEDUCT_FRAME = (512, 384)
 AMPHORAE_FRAME = (128, 128)
 STOA_FRAME = (96, 384)
 BUST_FRAME = (96, 192)
+COLOSSEUM_FRAME = (384, 448)
 
 STONE = (226, 208, 176, 255)
 STONE_SHADE = (176, 152, 118, 255)
@@ -348,6 +352,70 @@ def _draw_bust(anim, i, n):
     return f.finish(outline=H.SEPIA_INK, width=1.6)
 
 
+def _draw_colosseum(anim, i, n):
+    """The outside of the Colosseum where its door is: three tiers of arches
+    (half-columns between them), the attic with its small windows, and the
+    broken top of the outer ring on the east. The middle arch of the ground
+    tier frames the door (48 x 96 world units)."""
+    w, h = COLOSSEUM_FRAME
+    f = K.Frame(COLOSSEUM_FRAME)
+    m = 6.0
+    foot = h - m
+    ground_top, middle_top, attic_top = 210.0, 110.0, 34.0
+    # The wall, its top broken away to the east as the outer ring is.
+    top = [(m, attic_top), (w * 0.62, attic_top), (w * 0.66, attic_top + 18.0), (w * 0.74, attic_top + 14.0),
+           (w * 0.8, middle_top - 6.0), (w * 0.9, middle_top + 4.0), (w - m, middle_top + 30.0)]
+    f.poly([(m, foot), *top, (w - m, foot)], STONE)
+
+    def arch(x0, x1, spring, base):
+        r = (x1 - x0) / 2.0
+        pts = [(x0, base), (x0, spring)]
+        for k in range(1, 12):
+            a = math.pi - math.pi * k / 12.0
+            pts.append(((x0 + x1) / 2.0 + math.cos(a) * r, spring - math.sin(a) * r))
+        pts += [(x1, spring), (x1, base)]
+        return pts
+
+    def tier(count, y_top, y_base, inset, spring_drop, column):
+        span = (w - 2 * m) / count
+        for k in range(count):
+            x0 = m + k * span + inset
+            x1 = m + (k + 1) * span - inset
+            if x1 > w * 0.9 and y_top < middle_top:
+                continue
+            f.poly(arch(x0, x1, y_top + spring_drop, y_base), STONE_SHADE, body=False)
+            # The shade of the corridor behind each arch, not the sky: it is
+            # a building, and the door stands in the middle arch.
+            f.poly(arch(x0 + 5.0, x1, y_top + spring_drop + 4.0, y_base), (96, 74, 58, 255), body=False)
+        for k in range(count + 1):
+            x = m + k * span
+            f.poly([(x - column, y_base), (x - column, y_top + 4.0), (x + column, y_top + 4.0), (x + column, y_base)], STONE_LIGHT, body=False)
+            f.ink([(x + column - 1.0, y_top + 6.0), (x + column - 1.0, y_base)], 1.0, STONE_SHADE)
+        f.limb([(m, y_top), (w - m, y_top)], 4.0, STONE_SHADE, body=False)
+
+    tier(3, ground_top, foot, 14.0, 92.0, 7.0)
+    tier(4, middle_top, ground_top - 4.0, 12.0, 46.0, 5.0)
+    # The attic: no arches, small square windows, and corbels for the masts
+    # that held the awning.
+    for k in range(5):
+        x = m + 24.0 + k * 60.0
+        if x > w * 0.62:
+            break
+        f.poly([(x, attic_top + 30.0), (x + 18.0, attic_top + 30.0), (x + 18.0, attic_top + 48.0), (x, attic_top + 48.0)], STONE_SHADE, body=False)
+        f.poly([(x + 6.0, attic_top + 4.0), (x + 12.0, attic_top + 4.0), (x + 12.0, attic_top + 12.0), (x + 6.0, attic_top + 12.0)], STONE_SHADE, body=False)
+    # Courses of travertine, and weeds in the broken top.
+    for y in range(int(attic_top) + 60, int(foot), 26):
+        f.ink([(m, float(y)), (w - m, float(y))], 0.7, K.alpha(STONE_SHADE, 0.45))
+    rng = random.Random("history_colosseum_facade")
+    for _ in range(6):
+        x = rng.uniform(w * 0.64, w - m - 4.0)
+        y = attic_top + 16.0 + (x - w * 0.62) * 0.45
+        f.ink([(x, y), (x - 3.0, y - 8.0)], 1.2, H.OLIVE)
+        f.ink([(x, y), (x + 3.0, y - 7.0)], 1.2, H.OLIVE)
+    f.poly([(m, foot - 6.0), (w - m, foot - 6.0), (w - m, foot), (m, foot)], STONE_SHADE, body=False)
+    return f.finish(outline=H.SEPIA_INK, width=2.0)
+
+
 def _scenery(name: str, display: str, frame, draw, foot):
     return _publisher(name, display, STILL, frame, draw, {"foot": foot}, "Scenery", ["prop", "scenery", "history", "classical"])
 
@@ -359,6 +427,7 @@ FRAMES = {
     "history_amphorae": AMPHORAE_FRAME,
     "history_stoa_gate": STOA_FRAME,
     "history_bust": BUST_FRAME,
+    "history_colosseum_facade": COLOSSEUM_FRAME,
 }
 DRAW = {
     "history_marble_column": _draw_column,
@@ -367,6 +436,7 @@ DRAW = {
     "history_amphorae": _draw_amphorae,
     "history_stoa_gate": _draw_stoa_gate,
     "history_bust": _draw_bust,
+    "history_colosseum_facade": _draw_colosseum,
 }
 
 TARGETS: Dict[str, dict] = {
@@ -377,4 +447,5 @@ TARGETS: Dict[str, dict] = {
     "history_stoa_gate": _publisher("history_stoa_gate", "Stoa Gate", STILL, STOA_FRAME, _draw_stoa_gate, {"foot": (48.0, 384.0)}, "Door",
                                     ["prop", "door", "lock", "history", "classical"], forward=(0.0, -1.0)),
     "history_bust": _scenery("history_bust", "Bust", BUST_FRAME, _draw_bust, (48.0, 192.0)),
+    "history_colosseum_facade": _scenery("history_colosseum_facade", "Colosseum", COLOSSEUM_FRAME, _draw_colosseum, (192.0, 448.0)),
 }
