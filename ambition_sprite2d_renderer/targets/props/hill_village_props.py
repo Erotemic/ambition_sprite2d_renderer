@@ -42,7 +42,8 @@ The upper row's rooms have their ground at y 672 (`COUNTRY_FLOOR`):
 
 `intro_fell` (`fell()`): `hill_fell_rocks`, `hill_fell_gorse` (and each
 as `_slope`, its foot on the drove road's rise of 0.4), `hill_fell_sheep`
-and `hill_fell_sheep_grazing`: drawn about their own origin, placed many
+and `hill_fell_sheep_grazing`, and `hill_fell_fold_wall` and `hill_fell_cairn`
+over the solid blocks they are: drawn about their own origin, placed many
 times (`fell()`'s `DRESSING` table says where the ground under each one's
 middle is in its frame).
 
@@ -443,7 +444,9 @@ def gorse(c, width, foot, grade, tag):
     rng = c.rand(tag, "gorse")
     clumps = [(rng.uniform(width * 0.2, width * 0.8), 0, rng.uniform(12, 20), rng.uniform(10, 16)) for _ in range(9)]
     clumps = [(x, ground(x) - ry * rng.uniform(0.7, 1.6), rx, ry) for x, _, rx, ry in clumps]
-    m = c.mask(lambda pen: [pen.ellipse(*cl) for cl in clumps], blur=0.8) * _on_the_ground(c, ground)
+    # Its stems meet the ground along the whole bush, so no clump floats.
+    base = [(x, ground(x) + 3) for x in (width * 0.12, width * 0.88)] + [(x, ground(x) - 14) for x in (width * 0.8, width * 0.2)]
+    m = c.mask(lambda pen: ([pen.ellipse(*cl) for cl in clumps], pen.poly(base)), blur=0.8) * _on_the_ground(c, ground)
     c.put(m, GORSE)
     spines = c.mask(lambda pen: [pen.line([(x, y), (x + rng.uniform(-3, 3), y - rng.uniform(2, 5))], 0.5)
                                  for x, y in ((rng.uniform(4, width - 4), rng.uniform(foot - 40, foot)) for _ in range(160))])
@@ -494,6 +497,79 @@ PIECES.update({
     "hill_fell_gorse_slope": _fell_piece(96, 56 + 20, lambda c, w, h: gorse(c, w, h - 4 - 20, FELL_GRADE, "gorse_slope")),
     "hill_fell_sheep": _fell_piece(64, 40, lambda c, w, h: sheep(c, w, h - 2, False, "sheep")),
     "hill_fell_sheep_grazing": _fell_piece(64, 40, lambda c, w, h: sheep(c, w, h - 2, True, "sheep_grazing")),
+})
+
+
+def dry_stone(c, width, height, tag, coping):
+    """Flat stones laid without mortar, filling the box of a solid block
+    (`width` x `height`, its top the walk line) so the block reads as stone,
+    with upright coping stones along the top of a wall."""
+    rng = c.rand(tag, "stones")
+    gaps = scale(STONE_GREY, 0.42)
+    c.put(c.mask(box(0, 0, width, height)), gaps)
+    y = 0.0
+    rows = []
+    while y < height:
+        rows.append((y, min(height, y + rng.uniform(6.5, 9.5))))
+        y = rows[-1][1]
+    for n, (y0, y1) in enumerate(rows):
+        x = -rng.uniform(0, 6)
+        while x < width:
+            x1 = min(width + 1, x + rng.uniform(5, 18))
+            j = lambda: rng.uniform(-1.4, 1.4)
+            stone = [(x + 0.8 + j(), y0 + 0.9 + j() * 0.5), ((x + x1) / 2 + j(), y0 + 0.5), (x1 - 0.8 + j(), y0 + 0.9 + j() * 0.5),
+                     (x1 - 0.4, (y0 + y1) / 2 + j()), (x1 - 0.9 + j(), y1 - 0.8), (x + 0.6 + j(), y1 - 0.7), (x + 0.2, (y0 + y1) / 2 + j())]
+            m = c.mask(lambda pen: pen.poly(stone), blur=0.45)
+            shade = rng.uniform(0.82, 1.08)
+            c.put(m, scale(STONE_GREY, shade))
+            c.tone(m * np.clip((y0 + 2 - c.y) / 3, 0, 1), 0.25)
+            c.tone(m * np.clip((c.y - y1 + 2) / 3, 0, 1), -0.25)
+            x = x1 + rng.uniform(0.4, 1.2)
+    if coping:
+        x = 0.0
+        while x < width:
+            x1 = min(width, x + rng.uniform(3.5, 5.5))
+            slab = [(x, 6), (x + 1.0, -0.2), (x1, -0.2), (x1 - 1.0, 6)]
+            m = c.mask(lambda pen: pen.poly(slab))
+            c.put(m, scale(STONE_GREY, rng.uniform(0.85, 1.05)))
+            c.tone(m * np.clip((x + 1.5 - c.x) / 1.5, 0, 1), 0.3)
+            x = x1 + 0.6
+    c.tone(c.mask(box(0, 0, width, height)) * (c.noise((tag, "weather"), 4, 3, 2) - 0.5), 0.2)
+    moss = c.mask(lambda pen: [pen.ellipse(rng.uniform(0, width), rng.uniform(0, height), rng.uniform(1.0, 2.4), rng.uniform(0.6, 1.4))
+                               for _ in range(int(width * height / 260))])
+    c.put(moss, (110, 132, 72), 0.4)
+
+
+def cairn(c, width, height):
+    """A walkers' cairn: rounded stones heaped to fill a solid block's box,
+    each one put there by someone who reached the top."""
+    rng = c.rand("cairn", "stones")
+    c.put(c.mask(box(0, 0, width, height)), scale(STONE_GREY, 0.4))
+    stones = []
+    y = height - 4
+    while y > -3:
+        x = rng.uniform(-3, 2)
+        r = rng.uniform(4.0, 6.5) * (0.75 + 0.25 * y / height)
+        while x < width + 2:
+            stones.append((x + r, y, r * rng.uniform(1.0, 1.4), r * rng.uniform(0.7, 0.95)))
+            x += r * 2 + rng.uniform(-1.5, 0.5)
+        y -= r * 1.35
+    for n, (cx, cy, rx, ry) in enumerate(stones):
+        inside = c.mask(box(0, 0, width, height))
+        c.put(c.mask(lambda pen: pen.ellipse(cx, cy, rx + 0.9, ry + 0.9), blur=0.3) * inside, scale(STONE_GREY, 0.45))
+        m = c.mask(lambda pen: pen.ellipse(cx, cy, rx, ry), blur=0.3) * inside
+        c.put(m, scale(STONE_GREY, rng.uniform(0.8, 1.1)))
+        c.tone(m * np.clip((cx - c.x) / rx, -1, 1) * np.clip((cy - c.y) / ry + 0.3, 0, 1), 0.3)
+    lichen = c.mask(lambda pen: [pen.ellipse(rng.uniform(0, width), rng.uniform(0, height), rng.uniform(0.8, 1.8), rng.uniform(0.5, 1.1))
+                                 for _ in range(10)])
+    c.put(lichen, (178, 176, 118), 0.45)
+
+
+PIECES.update({
+    # intro_fell: the sheepfold's wall and the cairn on the top, each over
+    # the solid block it is (48 x 48 and 64 x 48)
+    "hill_fell_fold_wall": Piece((0, 0, 48, 48), lambda c, k: dry_stone(c, 48, 48, "fold_wall", coping=True)),
+    "hill_fell_cairn": Piece((0, 0, 64, 48), lambda c, k: cairn(c, 64, 48)),
 })
 
 
