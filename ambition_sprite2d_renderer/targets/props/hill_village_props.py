@@ -39,6 +39,11 @@ The upper row's rooms have their ground at y 672 (`COUNTRY_FLOOR`):
   roof board (x 1380..1560 at 480): new prefabricated steel on a stone
   footing, a window with a counter, a cable run, a lamp.
 
+`intro_woods` (`HOLLOW`): `hill_woods_hollow_oak`, the oak split open, its
+three shelves the climb's boards, and the gap between its roots that is the
+way down into the salt run. `intro_millstream`: `hill_salt_run_hatch`, the
+trapdoor in the hollow's floor at the other end.
+
 `intro_fell` (`fell()`): `hill_fell_rocks`, `hill_fell_gorse` (and each
 as `_slope`, its foot on the drove road's rise of 0.4), `hill_fell_sheep`
 and `hill_fell_sheep_grazing`, and `hill_fell_fold_wall` and `hill_fell_cairn`
@@ -729,6 +734,73 @@ def gate_barrier(c, width, height, tag):
     c.put(band * c.mask(lambda pen: [pen.poly([(x, height - 10), (x + 4, height - 10), (x + 1, height), (x - 3, height)]) for x in np.arange(-4, width + 4, 8)]), (30, 30, 30))
     c.put(c.mask(lambda pen: pen.ellipse(width / 2, 5, 3)), (230, 70, 50))
     c.put(c.mask(lambda pen: pen.ellipse(width / 2 - 0.8, 4.2, 1.2)), (255, 200, 180))
+
+
+def hollow_oak(c, k):
+    """The woods' hollow oak (`intro_woods`, `HOLLOW`): an old trunk split
+    open from the ground to the crown's fork. Its inside is climbed on three
+    shelves of its own wood (the boards x 1700..1796 at 448, 1600..1696 at
+    384, 1700..1796 at 320); between the roots at its foot a dark gap goes
+    down (x 1640..1688): the way into the salt run."""
+    g = G
+    rng = c.rand("hollow_oak", "crown")
+    leaf = (66, 104, 56)
+    clumps = [(rng.uniform(1470, 1930), rng.uniform(40, 230), rng.uniform(30, 48), rng.uniform(20, 32)) for _ in range(44)]
+    crown = c.mask(lambda pen: [pen.ellipse(*cl) for cl in clumps], blur=1.4)
+    c.put(crown, leaf)
+    c.tone(crown * (c.noise(("hollow_oak", "leaf"), 30, 30, 3) - 0.5), 0.32)
+    c.tone(crown * np.clip((c.x - 1700) / 220, -1, 1), -0.16)
+    # The trunk, broad and flared, into its two forks.
+    outer = [(1500, g), (1556, g - 30), (1572, 300), (1590, 210), (1560, 120), (1600, 112), (1660, 200),
+             (1740, 200), (1810, 110), (1850, 118), (1818, 210), (1832, 300), (1846, g - 30), (1906, g)]
+    trunk = c.mask(lambda pen: pen.poly(outer), blur=0.5)
+    c.put(trunk, BARK)
+    c.put(trunk * c.mask(lambda pen: [pen.line([(x, g), (x + rng.uniform(-6, 6), 380), (x + rng.uniform(-8, 8), 220)], 1.1)
+                                      for x in np.arange(1560, 1850, 9)]), scale(BARK, 0.68), 0.6)
+    c.tone(trunk * np.clip((c.x - 1700) / 120, -1, 1), -0.2)
+    # The hollow: the split, dark inside, its rim lighter where the bark
+    # curls in.
+    hollow = c.mask(lambda pen: pen.arch(1592, 268, 1808, g), blur=0.6)
+    c.put(hollow, (40, 28, 20))
+    c.tone(hollow * np.clip((c.y - 268) / 244, 0, 1), 0.18)
+    rim = c.mask(lambda pen: pen.arch(1586, 262, 1814, g), blur=0.6) * (1 - hollow)
+    c.put(rim, OAK_LIGHT, 0.8)
+    c.put(hollow * c.mask(lambda pen: [pen.line([(x, g), (x + rng.uniform(-4, 4), 300)], 0.8) for x in np.arange(1600, 1800, 13)]),
+          (58, 42, 30), 0.7)
+    # Its shelves: lips of its own wood, their tops the walk line.
+    for x0, top in ((1700, 448), (1600, 384), (1700, 320)):
+        lip = c.mask(lambda pen: pen.poly([(x0 - 2, top), (x0 + 98, top), (x0 + 90, top + 10), (x0 + 6, top + 12)]), blur=0.4)
+        c.put(lip, mix(BARK, OAK_LIGHT, 0.5))
+        c.put(c.mask(box(x0, top, x0 + 96, top + 2)), OAK_LIGHT)
+    # The roots, flaring out over the ground, and the gap between two of
+    # them that goes down.
+    roots = c.mask(lambda pen: [pen.poly([(1440, g + 6), (1520, g - 24), (1580, g - 10), (1600, g + 4)]),
+                                pen.poly([(1820, g + 4), (1846, g - 14), (1900, g - 22), (1970, g + 6)]),
+                                pen.poly([(1616, g + 8), (1630, g - 6), (1640, g + 10)]),
+                                pen.poly([(1688, g + 10), (1700, g - 6), (1716, g + 8)])], blur=0.6)
+    c.put(roots, BARK)
+    c.tone(roots * np.clip((c.y - (g - 20)) / 30, 0, 1), -0.25)
+    gap = c.mask(lambda pen: pen.ellipse(1664, g + 10, 26, 22), blur=1.0)
+    c.put(gap, (14, 10, 8))
+    c.put(c.mask(lambda pen: [pen.line([(x, g - 2), (x + rng.uniform(-3, 3), g + 18)], 0.7) for x in np.arange(1644, 1686, 7)]),
+          (70, 52, 36), 0.8)
+
+
+def hatch(c, width, height, tag):
+    """A trapdoor of tarred boards in the floor of the millstream's hollow,
+    its iron ring: the way down into the salt run."""
+    c.put(c.mask(box(0, 2, width, height)), (52, 40, 30))
+    c.put(c.mask(lambda pen: [pen.line([(x, 2), (x, height)], 0.6) for x in np.arange(8, width, 8)]), (30, 22, 16), 0.9)
+    c.put(c.mask(box(0, 2, width, 4)), (96, 74, 50))
+    c.put(c.mask(lambda pen: pen.ring(width / 2, 7, 3.2, 1.2)), IRON)
+
+
+PIECES.update({
+    # intro_woods: the hollow oak, in room coordinates
+    "hill_woods_hollow_oak": Piece((1440, 20, 1970, 548), hollow_oak),
+    # intro_millstream: the hatch in the hollow's floor (48 x 16)
+    "hill_salt_run_hatch": _block_piece(48, 16, hatch, "salt_run_hatch"),
+})
 
 
 PIECES.update({
