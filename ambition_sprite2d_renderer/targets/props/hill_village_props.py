@@ -40,6 +40,12 @@ The upper row's rooms have their ground at y 672 (`COUNTRY_FLOOR`):
   roof board (x 1380..1560 at 480): new prefabricated steel on a stone
   footing, a window with a counter, a cable run, a lamp.
 
+`intro_fell` (`fell()`): `hill_fell_rocks`, `hill_fell_gorse` (and each
+as `_slope`, its foot on the drove road's rise of 0.4), `hill_fell_sheep`
+and `hill_fell_sheep_grazing`: drawn about their own origin, placed many
+times (`fell()`'s `DRESSING` table says where the ground under each one's
+middle is in its frame).
+
 Animations: ``idle``, 1 frame each. No drop shadows.
 """
 
@@ -379,6 +385,116 @@ PIECES: Dict[str, Piece] = {
     # intro_gate_clearing
     "hill_gate_office": Piece((1370, 460, 1570, 672), gate_office),
 }
+
+
+# ----------------------------------------------- the fell: open hillside
+#
+# Unlike the pieces above, these are drawn about their own origin and placed
+# many times (`intro_fell`, `fell()`): `foot` is the ground under the
+# piece's middle, in its frame. A `_slope` piece stands on the fell's
+# drove road, which rises east at `FELL_GRADE`: its foot follows the line,
+# so no corner floats over the road or sinks into it.
+
+FELL_GRADE = 0.4
+STONE_GREY = (150, 146, 136)
+GORSE = (58, 84, 44)
+GORSE_FLOWER = (238, 196, 52)
+FLEECE = (226, 218, 198)
+FACE = (36, 32, 30)
+
+
+def _ground(width, foot, grade):
+    """The ground under a piece `width` wide whose middle stands at `foot`,
+    rising east at `grade`: y at each x."""
+    return lambda x: foot - grade * (x - width / 2)
+
+
+def _on_the_ground(c, ground):
+    """1 above the ground line (with a little sunk in), 0 below it."""
+    return (c.y <= ground(c.x) + 1.5).astype(np.float32)
+
+
+def rocks(c, width, foot, grade, tag):
+    """Three boulders, bedded in the turf, lichen on them, lit from the west."""
+    ground = _ground(width, foot, grade)
+    rng = c.rand(tag, "rocks")
+    stones = [(width * 0.30, 26, 18), (width * 0.62, 20, 14), (width * 0.82, 12, 9)]
+    for n, (x, rx, ry) in enumerate(stones):
+        x += rng.uniform(-4, 4)
+        base = ground(x)
+        pts = [(x - rx, base + 4), (x - rx * 0.9, base - ry * 0.9), (x - rx * 0.3, base - ry * 1.6),
+               (x + rx * 0.5, base - ry * 1.5), (x + rx, base - ry * 0.6), (x + rx * 1.05, base + 4)]
+        m = c.mask(lambda pen: pen.poly(pts), blur=0.5) * _on_the_ground(c, ground)
+        c.put(m, scale(STONE_GREY, 1.0 - 0.06 * n))
+        c.tone(m * (c.noise((tag, "rock", n), 6, 4, 3) - 0.5), 0.35)
+        c.tone(m * np.clip((x - c.x) / rx, -1, 1), 0.18)
+        lichen = c.mask(lambda pen: [pen.ellipse(x + rng.uniform(-rx * 0.7, rx * 0.4), base - rng.uniform(ry * 0.4, ry * 1.3),
+                                                 rng.uniform(1.0, 2.2), rng.uniform(0.7, 1.5)) for _ in range(6)])
+        c.put(lichen * m, (178, 176, 118), 0.5)
+    # Grass at their feet.
+    blades = c.mask(lambda pen: [pen.line([(x, ground(x) + 2), (x + rng.uniform(-2, 2), ground(x) - rng.uniform(3, 8))], 0.8)
+                                 for x in np.arange(4, width - 4, 3.0)])
+    c.put(blades, (96, 130, 64), 0.8)
+
+
+def gorse(c, width, foot, grade, tag):
+    """A gorse bush in flower: dark spiny green, yellow all over the sun side."""
+    ground = _ground(width, foot, grade)
+    rng = c.rand(tag, "gorse")
+    clumps = [(rng.uniform(width * 0.2, width * 0.8), 0, rng.uniform(12, 20), rng.uniform(10, 16)) for _ in range(9)]
+    clumps = [(x, ground(x) - ry * rng.uniform(0.7, 1.6), rx, ry) for x, _, rx, ry in clumps]
+    m = c.mask(lambda pen: [pen.ellipse(*cl) for cl in clumps], blur=0.8) * _on_the_ground(c, ground)
+    c.put(m, GORSE)
+    spines = c.mask(lambda pen: [pen.line([(x, y), (x + rng.uniform(-3, 3), y - rng.uniform(2, 5))], 0.5)
+                                 for x, y in ((rng.uniform(4, width - 4), rng.uniform(foot - 40, foot)) for _ in range(160))])
+    c.put(spines * m, scale(GORSE, 0.6), 0.8)
+    c.tone(m * np.clip((width / 2 - c.x) / width, -0.5, 0.5), 0.3)
+    flowers = c.mask(lambda pen: [pen.ellipse(x, y, 1.4, 1.2) for x, y in
+                                  ((rng.uniform(4, width * 0.8), rng.uniform(foot - 44, foot - 4)) for _ in range(70))])
+    c.put(flowers * m, GORSE_FLOWER, 0.95)
+
+
+def sheep(c, width, foot, grazing, tag):
+    """A fell sheep, black-faced and black-legged, facing west; its head down
+    to the grass when `grazing`."""
+    rng = c.rand(tag, "sheep")
+    cx, top = width / 2 + 4, foot - 30
+    for x in (cx - 12, cx - 6, cx + 8, cx + 13):
+        c.put(c.mask(box(x - 1.5, foot - 12, x + 1.5, foot)), FACE)
+    body = c.mask(lambda pen: [pen.ellipse(cx + rng.uniform(-14, 14), top + 9 + rng.uniform(-4, 4), rng.uniform(7, 10), rng.uniform(6, 8))
+                               for _ in range(12)] + [pen.ellipse(cx, top + 10, 18, 9)], blur=0.7)
+    c.put(body, FLEECE)
+    c.tone(body * (c.noise((tag, "wool"), 10, 6, 2) - 0.5), 0.25)
+    c.tone(body * np.clip((c.y - top - 8) / 12, 0, 1), -0.22)
+    # The head: a long black face, the muzzle west, an ear back; on a neck
+    # from the fleece's front, raised or down to the grass.
+    hx, hy = (cx - 24, foot - 5) if grazing else (cx - 25, top + 1)
+    tilt = 0.9 if grazing else 0.35
+    neck = c.mask(lambda pen: pen.line([(cx - 13, top + 9), (hx + 6, hy - 1)], 6))
+    c.put(neck, FLEECE if not grazing else scale(FLEECE, 0.9))
+    head = c.mask(lambda pen: pen.poly([(hx + 7, hy - 4), (hx + 2, hy - 5), (hx - 5, hy - 2 + tilt * 3),
+                                        (hx - 6, hy + 1 + tilt * 3), (hx - 3, hy + 3 + tilt * 2), (hx + 6, hy + 3)]), blur=0.4)
+    c.put(head, FACE)
+    c.put(c.mask(lambda pen: pen.ellipse(hx + 8, hy - 3, 3.2, 1.4)), FACE)
+    c.put(c.mask(lambda pen: pen.ellipse(hx + 1, hy - 2, 0.9)), (230, 214, 160))
+    # A tuft of fleece on the crown.
+    c.put(c.mask(lambda pen: pen.ellipse(hx + 6, hy - 4, 3, 2.2), blur=0.4), FLEECE)
+
+
+def _fell_piece(width, height, draw):
+    """A piece `width` wide and `height` tall over its foot, with its draw."""
+    return Piece((0, 0, width, height), lambda c, k: draw(c, width, height))
+
+
+PIECES.update({
+    # intro_fell: dressing for its terraces and its drove road
+    "hill_fell_rocks": _fell_piece(128, 56, lambda c, w, h: rocks(c, w, h - 4, 0.0, "rocks")),
+    "hill_fell_rocks_slope": _fell_piece(128, 56 + 26, lambda c, w, h: rocks(c, w, h - 4 - 26, FELL_GRADE, "rocks_slope")),
+    "hill_fell_gorse": _fell_piece(96, 56, lambda c, w, h: gorse(c, w, h - 4, 0.0, "gorse")),
+    "hill_fell_gorse_slope": _fell_piece(96, 56 + 20, lambda c, w, h: gorse(c, w, h - 4 - 20, FELL_GRADE, "gorse_slope")),
+    "hill_fell_sheep": _fell_piece(64, 40, lambda c, w, h: sheep(c, w, h - 2, False, "sheep")),
+    "hill_fell_sheep_grazing": _fell_piece(64, 40, lambda c, w, h: sheep(c, w, h - 2, True, "sheep_grazing")),
+})
 
 
 def _ground_at_the_floor(draw, ground):
