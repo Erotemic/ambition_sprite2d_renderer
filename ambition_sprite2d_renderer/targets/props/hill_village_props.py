@@ -47,7 +47,8 @@ times (`fell()`'s `DRESSING` table says where the ground under each one's
 middle is in its frame).
 
 The blocks of the land (a stepping stone, a stream rock, a root, a standing
-stone, the meadow's wall and hut) are drawn over the solid blocks they are:
+stone, the meadow's wall and hut) are drawn over the solid blocks they are,
+and `hill_gate_barrier` is the look of the clearing's barrier (`LockWall`):
 see "the blocks of the land, drawn" below.
 
 Animations: ``idle``, 1 frame each. No drop shadows.
@@ -701,6 +702,38 @@ PIECES.update({
     # intro_high_meadow: the wall on the hilltop, the shepherd's hut
     "hill_meadow_wall": _block_piece(32, 48, lambda c, w, h, t: dry_stone(c, w, h, t, coping=True), "meadow_wall"),
     "hill_meadow_hut": _block_piece(176, 64, shepherds_hut, "meadow_hut"),
+})
+
+
+def gate_barrier(c, width, height, tag):
+    """The barrier across the road by the gate office: a tall leaf of the
+    same prefabricated steel, too high to climb, mesh between square posts,
+    a red and white bar across it and a hazard band at its foot. It is the
+    look of the clearing's `LockWall` and fills its box; the lever slides it
+    away."""
+    steel = (150, 160, 168)
+    c.put(c.mask(lambda pen: [pen.line([(x, 0), (x + height * 0.5, height)], 0.5) for x in np.arange(-height, width, 4)]
+                 + [pen.line([(x, 0), (x - height * 0.5, height)], 0.5) for x in np.arange(0, width + height, 4)]), (90, 98, 104), 0.9)
+    for x0 in (0, width - 4):
+        post = c.mask(box(x0, 0, x0 + 4, height))
+        c.put(post, steel)
+        c.tone(post * np.clip((x0 + 2 - c.x) / 2, -1, 1), 0.2)
+    for y in (2, height * 0.5, height - 14):
+        c.put(c.mask(box(0, y, width, y + 3)), scale(steel, 0.85))
+    bar_y = height - 64
+    bar = c.mask(box(-0.5, bar_y, width + 0.5, bar_y + 7))
+    c.put(bar, (236, 236, 230))
+    c.put(bar * c.mask(lambda pen: [pen.poly([(x, bar_y), (x + 4, bar_y), (x + 1, bar_y + 7), (x - 3, bar_y + 7)]) for x in np.arange(-4, width + 4, 8)]), (196, 40, 36))
+    band = c.mask(box(0, height - 10, width, height))
+    c.put(band, (220, 180, 40))
+    c.put(band * c.mask(lambda pen: [pen.poly([(x, height - 10), (x + 4, height - 10), (x + 1, height), (x - 3, height)]) for x in np.arange(-4, width + 4, 8)]), (30, 30, 30))
+    c.put(c.mask(lambda pen: pen.ellipse(width / 2, 5, 3)), (230, 70, 50))
+    c.put(c.mask(lambda pen: pen.ellipse(width / 2 - 0.8, 4.2, 1.2)), (255, 200, 180))
+
+
+PIECES.update({
+    # intro_gate_clearing: the barrier's look (`LockWall` look, 24 x 176)
+    "hill_gate_barrier": _block_piece(24, 176, gate_barrier, "gate_barrier"),
 })
 
 
