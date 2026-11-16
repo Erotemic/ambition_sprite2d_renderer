@@ -813,6 +813,31 @@ def lantern(c, width, height, tag):
     c.put(c.mask(lambda pen: pen.ring(cx, 8, 2.0, 0.8)), IRON)
 
 
+def ladder(c, width, height, tag):
+    """The smugglers' ladder up to a trapdoor overhead: two rails of rough
+    timber and their rungs, and the trapdoor from below, daylight at its
+    seams. The salt run's ways out at both ends."""
+    wood, dark = (92, 68, 44), (46, 34, 24)
+    door = 14
+    c.put(c.mask(box(2, 0, width - 2, door)), dark)
+    c.put(c.mask(lambda pen: [pen.line([(x, 1), (x, door - 1)], 0.5) for x in np.arange(10, width - 4, 9)]), (26, 18, 12), 0.9)
+    seams = c.mask(lambda pen: [pen.line([(2, door), (width - 2, door)], 0.8), pen.line([(2, 0), (2, door)], 0.6),
+                                pen.line([(width - 2, 0), (width - 2, door)], 0.6)], blur=0.8)
+    c.put(seams, (255, 236, 190), 0.85)
+    for x in (10, width - 10):
+        c.put(c.mask(lambda pen: pen.line([(x, door), (x + 1, height)], 2.2), blur=0.3), wood)
+        c.put(c.mask(lambda pen: pen.line([(x - 1.5, door), (x - 0.5, height)], 0.6)), dark, 0.6)
+    c.put(c.mask(lambda pen: [pen.line([(10, y), (width - 10, y + 1)], 1.6) for y in np.arange(door + 12, height - 4, 16)],
+                 blur=0.3), wood)
+
+
+PIECES.update({
+    # intro_salt_run: its ladders up to the hatch and up through the roots
+    # (48 x 192, floor to the room's top)
+    "hill_salt_run_ladder": _block_piece(48, 192, ladder, "salt_run_ladder"),
+})
+
+
 PIECES.update({
     # intro_woods: the hollow oak, in room coordinates
     "hill_woods_hollow_oak": Piece((1440, 20, 1970, 548), hollow_oak),
