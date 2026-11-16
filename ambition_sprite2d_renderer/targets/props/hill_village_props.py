@@ -16,10 +16,10 @@ walk line.
   smithy sells gate goods now: crates of batteries and lamp oil outside.
 - `hill_village_inn`: porch 1460..1540 at 464, roof 1500..1800 at 400. The
   Plough: two storeys under a slate roof, its bay window.
-- `hill_village_well`: over the well (x 1250..1314, top 464): its posts, roof,
-  windlass and bucket.
+- `hill_village_well`: over the well (x 1248..1312, top 464): its stone curb
+  (the solid block), posts, roof, windlass and bucket.
 - `hill_village_notice_board`: the board under the room's three notices
-  (their middles at x 2000, y 312..396): oak posts, a little roof.
+  (their middles at x 2090, y 312..396), east of the inn: oak posts, a little roof.
 
 `intro_millstream` (`millstream()`):
 
@@ -34,8 +34,7 @@ The upper row's rooms have their ground at y 672 (`COUNTRY_FLOOR`):
   where she stands (x 940): her tent, the theodolite on its tripod, a
   ranging pole and a folding table of maps.
 - `hill_meadow_oak` (`intro_high_meadow`): the oak beside the shepherd's
-  hut whose limbs are the room's boards (`OAK_LIMBS`, each 140 long: x
-  1080 at 544, 920 at 480, 1080 at 416, 920 at 352, 1080 at 288).
+  hut. Nothing stands on it, so its boughs are drawn as boughs, not boards.
 - `hill_gate_office` (`intro_gate_clearing`): the guard post under its
   roof board (x 1380..1560 at 480): new prefabricated steel on a stone
   footing, a window with a counter, a cable run, a lamp.
@@ -46,6 +45,10 @@ and `hill_fell_sheep_grazing`, and `hill_fell_fold_wall` and `hill_fell_cairn`
 over the solid blocks they are: drawn about their own origin, placed many
 times (`fell()`'s `DRESSING` table says where the ground under each one's
 middle is in its frame).
+
+The blocks of the land (a stepping stone, a stream rock, a root, a standing
+stone, the meadow's wall and hut) are drawn over the solid blocks they are:
+see "the blocks of the land, drawn" below.
 
 Animations: ``idle``, 1 frame each. No drop shadows.
 """
@@ -205,7 +208,10 @@ def inn(c, k):
 
 
 def well(c, k):
-    x0, x1 = 1250, 1314
+    x0, x1 = 1248, 1312
+    # The curb is the solid block the well stands on: dry stone, so no bare
+    # earth shows under the posts.
+    dry_stone(c, x1 - x0, G - PORCH, "well_curb", coping=False, at=(x0, PORCH))
     for x in (x0 + 5, x1 - 5):
         post(c, x, PORCH - 64, PORCH, 6)
     roof = c.mask(lambda p: p.poly([(x0 - 10, PORCH - 60), ((x0 + x1) / 2, PORCH - 86), (x1 + 10, PORCH - 60)]))
@@ -222,7 +228,7 @@ def well(c, k):
 
 
 def notice_board(c, k):
-    x0, x1, y0, y1 = 1770, 2230, 300, 404
+    x0, x1, y0, y1 = 1860, 2320, 300, 404
     for x in (x0 + 8, x1 - 8):
         post(c, x, y0 - 6, G, 7)
     face = c.mask(box(x0, y0, x1, y1))
@@ -309,41 +315,46 @@ def survey_station(c, k):
 
 
 def meadow_oak(c, k):
+    """The old oak by the shepherd's hut. Nothing stands on it: its boughs
+    climb and taper as an oak's do, so none reads as a board."""
     g = UPPER
-    limbs = [(1080, 544), (920, 480), (1080, 416), (920, 352), (1080, 288)]
     tx = 1066
     bark = (96, 74, 54)
     leaf = (74, 112, 60)
-    # The crown first, behind the boughs: clumps round each limb and the top,
-    # so each board reads against leaves, not sky.
     rng = c.rand("oak", "crown")
+    # Each bough: from the trunk, rising and thinning to the crown.
+    boughs = [(-1, 470, 940, 380), (1, 452, 1190, 360), (-1, 400, 960, 300), (1, 380, 1170, 280), (-1, 340, 1010, 250)]
     clumps = []
-    for x, y in limbs:
+    for _, _, x, y in boughs:
         for _ in range(9):
-            clumps.append((rng.uniform(x - 10, x + 150), rng.uniform(y - 46, y + 6), rng.uniform(20, 32), rng.uniform(14, 22)))
-    for _ in range(10):
-        clumps.append((rng.uniform(960, 1180), rng.uniform(214, 270), rng.uniform(26, 40), rng.uniform(18, 26)))
+            clumps.append((rng.uniform(x - 60, x + 60), rng.uniform(y - 50, y + 20), rng.uniform(22, 34), rng.uniform(15, 24)))
+    for _ in range(14):
+        clumps.append((rng.uniform(930, 1200), rng.uniform(200, 290), rng.uniform(26, 40), rng.uniform(18, 26)))
     crown = c.mask(lambda p: [p.ellipse(*cl) for cl in clumps], blur=1.4)
     c.put(crown, leaf)
     c.tone(crown * (c.noise(("oak", "leaf"), 30, 30, 3) - 0.5), 0.32)
     c.tone(crown * np.clip((c.x - 1070) / 170, -1, 1), -0.16)
     c.put(crown * c.mask(lambda p: [p.ellipse(cx - rx * 0.3, cy - ry * 0.35, rx * 0.5, ry * 0.4) for cx, cy, rx, ry in clumps], blur=2.0), mix(leaf, (220, 236, 160), 0.35), 0.5)
-    # The trunk, forking into the crown.
-    trunk = c.mask(lambda p: (p.poly([(tx - 30, g), (tx - 16, 330), (tx + 20, 330), (tx + 34, g)]),
-                              p.poly([(tx - 16, 336), (tx - 40, 250), (tx - 26, 246), (tx, 320)]),
-                              p.poly([(tx + 20, 336), (tx + 44, 254), (tx + 30, 250), (tx + 2, 320)])))
+    # The trunk, flaring into its roots, forking into the crown.
+    trunk = c.mask(lambda p: (p.poly([(tx - 44, g), (tx - 26, g - 16), (tx - 18, 330), (tx + 22, 330), (tx + 30, g - 16), (tx + 50, g)]),
+                              p.poly([(tx - 18, 336), (tx - 40, 250), (tx - 26, 246), (tx, 320)]),
+                              p.poly([(tx + 22, 336), (tx + 44, 254), (tx + 30, 250), (tx + 2, 320)])))
     c.put(trunk, bark)
     c.put(trunk * c.mask(lambda p: [p.line([(tx - 24 + i * 7, g), (tx - 12 + i * 4, 330)], 0.9) for i in range(9)]), scale(bark, 0.7), 0.6)
     c.tone(trunk * np.clip((c.x - tx) / 30, 0, 1), -0.2)
-    # Each limb: a bough from the trunk out along its board; its top is the
-    # walk line.
-    for x, y in limbs:
-        east = x >= tx - 20
-        near, far = (tx + 20, x + 140) if east else (tx - 16, x)
-        bough = c.mask(lambda p: p.poly([(near, y + 26), (far, y + 8), (far, y), (near, y - 2)]))
-        c.put(bough, bark)
-        c.tone(bough * np.clip((c.y - y) / 26, 0, 1), -0.25)
-        c.put(c.mask(box(min(near, far), y, max(near, far), y + 1.8)), mix(bark, (255, 236, 200), 0.4))
+    for side, y0, x1, y1 in boughs:
+        near = tx + (14 if side > 0 else -10)
+        # A tapering curve: thick at the trunk, thin in the leaves.
+        ts = np.linspace(0.0, 1.0, 14)
+        ctrl = ((near + x1) / 2, min(y0, y1) + (y0 - y1) * 0.15 - 10)
+        spine = [((1 - t) ** 2 * near + 2 * (1 - t) * t * ctrl[0] + t * t * x1,
+                  (1 - t) ** 2 * y0 + 2 * (1 - t) * t * ctrl[1] + t * t * y1) for t in ts]
+        half = [8.0 * (1 - t) + 1.5 * t for t in ts]
+        upper = [(x, y - w) for (x, y), w in zip(spine, half)]
+        lower = [(x, y + w) for (x, y), w in zip(spine, half)]
+        thick = c.mask(lambda p: p.poly(upper + lower[::-1]), blur=0.5)
+        c.put(thick, bark)
+        c.tone(thick * np.clip((c.y - min(y0, y1)) / 60, 0, 1), -0.18)
 
 
 def gate_office(c, k):
@@ -375,8 +386,8 @@ PIECES: Dict[str, Piece] = {
     "hill_village_cottage": Piece((240, 300, 560, 512), cottage),
     "hill_village_smithy": Piece((840, 270, 1180, 512), smithy),
     "hill_village_inn": Piece((1440, 300, 1820, 512), inn),
-    "hill_village_well": Piece((1236, 370, 1328, 470), well),
-    "hill_village_notice_board": Piece((1750, 280, 2250, 512), notice_board),
+    "hill_village_well": Piece((1236, 370, 1328, 512), well),
+    "hill_village_notice_board": Piece((1840, 280, 2340, 512), notice_board),
     # intro_millstream
     "hill_village_mill": Piece((1500, 220, 2080, 512), mill),
     # intro_hobford_lane
@@ -500,13 +511,14 @@ PIECES.update({
 })
 
 
-def dry_stone(c, width, height, tag, coping):
+def dry_stone(c, width, height, tag, coping, at=(0.0, 0.0)):
     """Flat stones laid without mortar, filling the box of a solid block
-    (`width` x `height`, its top the walk line) so the block reads as stone,
-    with upright coping stones along the top of a wall."""
+    (`width` x `height` from its top left `at`, its top the walk line) so the
+    block reads as stone, with upright coping stones along the top of a wall."""
+    ox, oy = at
     rng = c.rand(tag, "stones")
     gaps = scale(STONE_GREY, 0.42)
-    c.put(c.mask(box(0, 0, width, height)), gaps)
+    c.put(c.mask(box(ox, oy, ox + width, oy + height)), gaps)
     y = 0.0
     rows = []
     while y < height:
@@ -519,23 +531,24 @@ def dry_stone(c, width, height, tag, coping):
             j = lambda: rng.uniform(-1.4, 1.4)
             stone = [(x + 0.8 + j(), y0 + 0.9 + j() * 0.5), ((x + x1) / 2 + j(), y0 + 0.5), (x1 - 0.8 + j(), y0 + 0.9 + j() * 0.5),
                      (x1 - 0.4, (y0 + y1) / 2 + j()), (x1 - 0.9 + j(), y1 - 0.8), (x + 0.6 + j(), y1 - 0.7), (x + 0.2, (y0 + y1) / 2 + j())]
-            m = c.mask(lambda pen: pen.poly(stone), blur=0.45)
+            stone = [(px + ox, py + oy) for px, py in stone]
+            m = c.mask(lambda pen: pen.poly(stone), blur=0.45) * c.mask(box(ox, oy, ox + width, oy + height))
             shade = rng.uniform(0.82, 1.08)
             c.put(m, scale(STONE_GREY, shade))
-            c.tone(m * np.clip((y0 + 2 - c.y) / 3, 0, 1), 0.25)
-            c.tone(m * np.clip((c.y - y1 + 2) / 3, 0, 1), -0.25)
+            c.tone(m * np.clip((oy + y0 + 2 - c.y) / 3, 0, 1), 0.25)
+            c.tone(m * np.clip((c.y - oy - y1 + 2) / 3, 0, 1), -0.25)
             x = x1 + rng.uniform(0.4, 1.2)
     if coping:
         x = 0.0
         while x < width:
             x1 = min(width, x + rng.uniform(3.5, 5.5))
-            slab = [(x, 6), (x + 1.0, -0.2), (x1, -0.2), (x1 - 1.0, 6)]
+            slab = [(x + ox, oy + 6), (x + 1.0 + ox, oy - 0.2), (x1 + ox, oy - 0.2), (x1 - 1.0 + ox, oy + 6)]
             m = c.mask(lambda pen: pen.poly(slab))
             c.put(m, scale(STONE_GREY, rng.uniform(0.85, 1.05)))
-            c.tone(m * np.clip((x + 1.5 - c.x) / 1.5, 0, 1), 0.3)
+            c.tone(m * np.clip((ox + x + 1.5 - c.x) / 1.5, 0, 1), 0.3)
             x = x1 + 0.6
-    c.tone(c.mask(box(0, 0, width, height)) * (c.noise((tag, "weather"), 4, 3, 2) - 0.5), 0.2)
-    moss = c.mask(lambda pen: [pen.ellipse(rng.uniform(0, width), rng.uniform(0, height), rng.uniform(1.0, 2.4), rng.uniform(0.6, 1.4))
+    c.tone(c.mask(box(ox, oy, ox + width, oy + height)) * (c.noise((tag, "weather"), 4, 3, 2) - 0.5), 0.2)
+    moss = c.mask(lambda pen: [pen.ellipse(ox + rng.uniform(0, width), oy + rng.uniform(0, height), rng.uniform(1.0, 2.4), rng.uniform(0.6, 1.4))
                                for _ in range(int(width * height / 260))])
     c.put(moss, (110, 132, 72), 0.4)
 
@@ -570,6 +583,124 @@ PIECES.update({
     # the solid block it is (48 x 48 and 64 x 48)
     "hill_fell_fold_wall": Piece((0, 0, 48, 48), lambda c, k: dry_stone(c, 48, 48, "fold_wall", coping=True)),
     "hill_fell_cairn": Piece((0, 0, 64, 48), lambda c, k: cairn(c, 64, 48)),
+})
+
+
+# ------------------------------------------- the blocks of the land, drawn
+#
+# A solid block in an outdoor room is drawn in the room's terrain skin, so a
+# well's curb, a stone in a stream or a root in the woods was a cube of earth
+# with grass on it. Each piece below fills the box of one such block (its top
+# the walk line, `width` x `height` from its top left), and the room places
+# it over the block. Scenery draws in front of blocks, so the earth is hidden.
+
+WET = (84, 92, 88)
+ALGAE = (70, 96, 64)
+BARK = (92, 70, 50)
+TURF = (96, 128, 64)
+
+
+def boulder(c, width, height, tag, water_line=None):
+    """A rounded boulder filling its box; below `water_line` (y in the box)
+    it is wet and green with weed."""
+    rng = c.rand(tag, "boulder")
+    # The corners are cut only a little: the block behind is square, and its
+    # earth must not show past the stone.
+    pts = [(0, height), (-0.5, height * 0.45), (0.5, 3.0), (3.0, 0.2), (width * 0.5, -0.3), (width - 3.0, 0.2), (width - 0.5, 3.0),
+           (width + 0.5, height * 0.5), (width, height)]
+    pts = [(x + rng.uniform(-1, 1), y + rng.uniform(-0.6, 0.6)) for x, y in pts]
+    m = c.mask(lambda pen: pen.poly(pts), blur=0.5)
+    c.put(m, STONE_GREY)
+    c.tone(m * (c.noise((tag, "grain"), 5, 4, 3) - 0.5), 0.35)
+    c.tone(m * np.clip((width * 0.4 - c.x) / width, -0.5, 0.5), 0.3)
+    c.tone(m * np.clip((c.y - height * 0.3) / height, 0, 1), -0.2)
+    cracks = c.mask(lambda pen: [pen.line([(x, rng.uniform(4, height * 0.4)), (x + rng.uniform(-6, 6), rng.uniform(height * 0.5, height))], 0.6)
+                                 for x in (rng.uniform(width * 0.2, width * 0.8) for _ in range(2))])
+    c.put(cracks * m, scale(STONE_GREY, 0.55), 0.7)
+    if water_line is not None:
+        wet = m * (c.y > water_line).astype(np.float32)
+        c.put(wet, WET, 0.55)
+        weed = c.mask(lambda pen: [pen.line([(x, height), (x + rng.uniform(-2, 2), height - rng.uniform(4, 12))], 0.7)
+                                   for x in (rng.uniform(0, width) for _ in range(int(width / 4)))])
+        c.put(weed * wet, ALGAE, 0.75)
+    else:
+        lichen = c.mask(lambda pen: [pen.ellipse(rng.uniform(2, width - 2), rng.uniform(2, height * 0.6), rng.uniform(0.8, 2.0), rng.uniform(0.5, 1.2))
+                                     for _ in range(8)])
+        c.put(lichen * m, (178, 176, 118), 0.5)
+
+
+def stepping_stone(c, width, height, tag):
+    """A stepping stone: a pier of laid stone from the stream bed to the
+    bank's height, its top slab worn flat by boots, dark and weedy below the
+    water."""
+    rng = c.rand(tag, "pier")
+    dry_stone(c, width, height, tag, coping=False)
+    wet = c.mask(box(0, 8, width, height))
+    c.put(wet, WET, 0.45)
+    c.tone(wet * np.clip((c.y - 8) / height, 0, 1), -0.3)
+    weed = c.mask(lambda pen: [pen.line([(x, height), (x + rng.uniform(-2, 2), height - rng.uniform(6, 20))], 0.8)
+                               for x in (rng.uniform(0, width) for _ in range(int(width / 4)))])
+    c.put(weed, ALGAE, 0.75)
+    c.put(c.mask(box(-0.5, 0, width + 0.5, 5)), scale(STONE_GREY, 1.05))
+    c.put(c.mask(lambda pen: pen.poly([(2, 1), (width - 2, 1), (width - 4, 3.5), (4, 3.5)])), mix(STONE_GREY, (240, 236, 220), 0.25), 0.8)
+
+
+def standing_stone(c, width, height, tag):
+    """One of the old standing stones by the road to the gate: a squat slab,
+    lichened, a spiral cut in it long before anyone could read."""
+    boulder(c, width, height, tag)
+    cx, cy = width * 0.5, height * 0.52
+    spiral = [(cx + math.cos(t) * t * 1.35, cy + math.sin(t) * t * 1.35) for t in np.arange(0.5, 10.5, 0.25)]
+    c.put(c.mask(lambda pen: pen.line(spiral, 0.9)), scale(STONE_GREY, 0.55), 0.8)
+
+
+def woods_root(c, width, height, tag):
+    """A root of one of the great trees, arched out of the woods' floor:
+    bark ridged along it, moss on its back, which is where a foot goes."""
+    rng = c.rand(tag, "root")
+    m = c.mask(lambda pen: pen.poly([(0, height), (0, 6), (width * 0.2, 0.5), (width * 0.8, 0.5), (width, 6), (width, height)]), blur=0.5)
+    c.put(m, BARK)
+    ridges = c.mask(lambda pen: [pen.line([(x, height), (x + rng.uniform(-4, 4), height * 0.5), (x + rng.uniform(-6, 6), 2)], 1.0)
+                                 for x in np.arange(3, width, 5.5)])
+    c.put(ridges * m, scale(BARK, 0.65), 0.7)
+    c.tone(m * np.clip((width * 0.35 - c.x) / width, -0.5, 0.5), 0.28)
+    c.tone(m * np.clip((c.y - 6) / height, 0, 1), -0.25)
+    moss = c.mask(lambda pen: [pen.ellipse(rng.uniform(0, width), rng.uniform(0, 5), rng.uniform(3, 7), rng.uniform(1.5, 3)) for _ in range(9)], blur=0.5)
+    c.put(moss * m, (88, 120, 60), 0.9)
+
+
+def shepherds_hut(c, width, height, tag):
+    """The shepherd's hut on the meadow terrace: a low bothy of dry stone
+    under a turf roof, its door on the west, a small window. Its roof is
+    the step a walker climbs."""
+    dry_stone(c, width, height, tag, coping=False)
+    roof = c.mask(lambda pen: pen.poly([(-1, 9), (2, 0), (width - 2, 0), (width + 1, 9)]), blur=0.4)
+    c.put(roof, TURF)
+    c.tone(roof * (c.noise((tag, "turf"), 14, 2, 2) - 0.5), 0.3)
+    c.put(c.mask(lambda pen: [pen.line([(x, 1), (x + 0.6, -2.5)], 0.6) for x in np.arange(2, width - 2, 2.2)]), mix(TURF, (190, 214, 120), 0.4), 0.8)
+    c.put(c.mask(box(0, 9, width, 11)), scale(TURF, 0.6), 0.8)
+    c.put(c.mask(lambda pen: pen.arch(18, 22, 38, height)), (34, 30, 26))
+    c.put(c.mask(box(17, 21, 39, 22.5)), OAK_LIGHT)
+    c.put(c.mask(box(width - 54, 26, width - 38, 38)), (46, 52, 56))
+    c.put(c.mask(box(width - 55, 38, width - 37, 40)), OAK_LIGHT)
+
+
+def _block_piece(width, height, draw, tag):
+    return Piece((0, 0, width, height), lambda c, k: draw(c, width, height, tag))
+
+
+PIECES.update({
+    # intro_millstream: the stepping stones and the rock in the stream
+    "hill_stepping_stone": _block_piece(80, 96, stepping_stone, "stepping_stone"),
+    "hill_stepping_stone_narrow": _block_piece(64, 96, stepping_stone, "stepping_stone_narrow"),
+    "hill_stream_rock": _block_piece(64, 48, lambda c, w, h, t: boulder(c, w, h, t, water_line=-1), "stream_rock"),
+    # intro_woods: the roots across the path
+    "hill_woods_root": _block_piece(80, 48, woods_root, "woods_root"),
+    # intro_gate_clearing: the standing stones
+    "hill_standing_stone": _block_piece(48, 48, standing_stone, "standing_stone"),
+    # intro_high_meadow: the wall on the hilltop, the shepherd's hut
+    "hill_meadow_wall": _block_piece(32, 48, lambda c, w, h, t: dry_stone(c, w, h, t, coping=True), "meadow_wall"),
+    "hill_meadow_hut": _block_piece(176, 64, shepherds_hut, "meadow_hut"),
 })
 
 
