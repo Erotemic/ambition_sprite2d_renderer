@@ -795,9 +795,29 @@ def hatch(c, width, height, tag):
     c.put(c.mask(lambda pen: pen.ring(width / 2, 7, 3.2, 1.2)), IRON)
 
 
+def lantern(c, width, height, tag):
+    """A smugglers' tin lantern on an iron bracket driven into the rock: the
+    salt run's lamps (each a `LightSource` in the room). The bracket comes
+    from the wall at the top left; the lantern hangs from its end."""
+    tin = (70, 66, 60)
+    c.put(c.mask(lambda pen: pen.line([(1, 3), (width * 0.62, 3)], 1.4)), IRON)
+    c.put(c.mask(lambda pen: pen.line([(width * 0.62, 3), (width * 0.62, 9)], 0.8)), IRON)
+    cx = width * 0.62
+    body = c.mask(lambda pen: pen.poly([(cx - 6, 14), (cx + 6, 14), (cx + 7, height - 6), (cx - 7, height - 6)]), blur=0.4)
+    glass = c.mask(lambda pen: pen.poly([(cx - 4, 16), (cx + 4, 16), (cx + 5, height - 8), (cx - 5, height - 8)]), blur=0.4)
+    c.put(body, tin)
+    c.put(glass, PAL["lamp"])
+    c.put(glass * c.mask(lambda pen: pen.ellipse(cx, height * 0.6, 2.4, 4.0), blur=1.0), (255, 244, 214))
+    c.put(c.mask(lambda pen: pen.poly([(cx - 7, 14), (cx, 8), (cx + 7, 14)])), tin)
+    c.put(c.mask(box(cx - 8, height - 6, cx + 8, height - 3)), tin)
+    c.put(c.mask(lambda pen: pen.ring(cx, 8, 2.0, 0.8)), IRON)
+
+
 PIECES.update({
     # intro_woods: the hollow oak, in room coordinates
     "hill_woods_hollow_oak": Piece((1440, 20, 1970, 548), hollow_oak),
+    # intro_salt_run: a lamp on its bracket (24 x 40)
+    "hill_salt_run_lantern": _block_piece(24, 40, lantern, "salt_run_lantern"),
     # intro_millstream: the hatch in the hollow's floor (48 x 16)
     "hill_salt_run_hatch": _block_piece(48, 16, hatch, "salt_run_hatch"),
 })
