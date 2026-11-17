@@ -741,6 +741,43 @@ def freight_crates(c, width, height, tag):
     c.tone(whole * np.clip((c.y - height * 0.6) / height, 0, 1), -0.25)
 
 
+GOBLIN_DAUB = (150, 46, 34)
+ROPE = (164, 134, 86)
+
+
+def goblins_crate(c, width, height, tag):
+    """The crate the raiders packed the Creator's notes in (the siding's
+    chest): a freight crate like the others, lashed with a rope, its stencil
+    painted over with a goblin's red daub (a toothy grin), the lid nailed
+    down crooked."""
+    lid = 7.0
+    face = c.mask(box(0.5, lid, width - 0.5, height))
+    c.put(face, CRATE)
+    c.tone(face * (c.noise((tag, "grain"), 3, 8, 2) - 0.5), 0.2)
+    c.put(c.mask(lambda p: [p.rect(0.5, y, width - 0.5, y + 0.6) for y in np.arange(lid + 12, height - 1, 12)]) * face, scale(CRATE, 0.6))
+    c.put(c.mask(lambda p: p.line([(4, height - 4), (width - 4, lid + 4)], 2.4)) * face, scale(CRATE, 0.84))
+    frame = c.mask(lambda p: [p.rect(0.5, lid, 4, height), p.rect(width - 4, lid, width - 0.5, height),
+                              p.rect(0.5, height - 3.5, width - 0.5, height)])
+    c.put(frame, scale(CRATE, 0.78))
+    # The lid, nailed down askew.
+    c.put(c.mask(lambda p: p.poly([(-0.5, lid + 1), (width + 0.5, lid - 2.5), (width + 0.5, lid + 1.5), (-0.5, lid + 4.5)])), scale(CRATE, 0.9))
+    for nx in (6.0, width - 6.0):
+        c.put(c.mask(lambda p: p.ellipse(nx, lid + (2.6 if nx < 10 else 0.0), 0.9)), IRON)
+    # The daub: a grin of teeth, in red paint, over the up-arrow.
+    cx, cy = width / 2, lid + (height - lid) * 0.55
+    c.put(c.mask(lambda p: p.line([(cx - 13, cy - 3), (cx - 6, cy + 4), (cx + 6, cy + 4), (cx + 13, cy - 3)], 2.6)), GOBLIN_DAUB, 0.9)
+    c.put(c.mask(lambda p: [p.line([(x, cy + 3.5), (x + 1.5, cy - 0.5)], 1.6) for x in np.arange(cx - 7, cx + 8, 4)]), GOBLIN_DAUB, 0.9)
+    c.put(c.mask(lambda p: [p.ellipse(cx - 7, cy - 9, 2.2), p.ellipse(cx + 7, cy - 9, 2.2)]), GOBLIN_DAUB, 0.9)
+    # The rope round it, knotted on the front.
+    for rx in (14.0, width - 14.0):
+        c.put(c.mask(box(rx - 1.3, lid - 1, rx + 1.3, height - 1)), ROPE)
+        c.put(c.mask(lambda p: [p.line([(rx - 1.3, y), (rx + 1.3, y + 1.6)], 0.6) for y in np.arange(lid, height - 2, 3)]), scale(ROPE, 0.7))
+    c.put(c.mask(lambda p: p.ellipse(width - 14.0, lid + 12, 2.6)), scale(ROPE, 0.85))
+    whole = c.mask(box(0, 0, width, height))
+    c.tone(whole * np.clip((width * 0.3 - c.x) / width, -0.4, 0.4), 0.22)
+    c.tone(whole * np.clip((c.y - height * 0.6) / height, 0, 1), -0.25)
+
+
 def loading_stage(c, width, height, tag):
     """The siding's loading stage: a deck of planks on trestle legs, the
     height of a wagon's bed, so goods go across onto the freight without
@@ -884,6 +921,7 @@ PIECES.update({
     # intro_freight_yard: the freight crates (solid blocks), the loading
     # stages (one-way decks), the platform's notice, the drove road's post
     "hill_freight_crates": _block_piece(96, 48, freight_crates, "freight_crates"),
+    "hill_goblins_crate": _block_piece(76, 58, goblins_crate, "goblins_crate"),
     "hill_loading_stage": _block_piece(160, 112, loading_stage, "loading_stage"),
     "hill_siding_notice": _block_piece(240, 112, notice_on_posts, "siding_notice"),
     "hill_fingerpost": _block_piece(150, 120, fingerpost, "fingerpost"),
