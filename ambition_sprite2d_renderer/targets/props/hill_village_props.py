@@ -797,6 +797,41 @@ def fingerpost(c, width, height, tag):
     c.tone(arm * np.clip((c.y - 12) / 22, 0, 1), -0.15)
 
 
+def fallen_trunk(c, width, height, tag):
+    """A tree the wind brought down across the woods' path: its trunk lies
+    level, its top the walk line, on its torn-up root plate at the west end
+    and a broken stump at the east. A walker goes under it."""
+    rng = c.rand(tag, "trunk")
+    log = 22.0
+    # The root plate: a disc of earth and roots, torn up on edge.
+    plate = c.mask(lambda pen: pen.ellipse(21, height * 0.52, 20, height * 0.47), blur=0.6)
+    c.put(plate, (86, 66, 48))
+    c.tone(plate * (c.noise((tag, "soil"), 6, 8, 2) - 0.5), 0.35)
+    roots = c.mask(lambda pen: [pen.line([(20, height * 0.5), (20 + math.cos(a) * rng.uniform(18, 26), height * 0.5 + math.sin(a) * rng.uniform(22, 32))], rng.uniform(1.2, 2.4))
+                                for a in np.linspace(0, math.tau, 13)])
+    c.put(roots * plate, scale(BARK, 0.8))
+    # The broken stump at the east end, its splintered top under the log.
+    sx0, sx1 = width - 40, width - 12
+    stump = c.mask(lambda pen: pen.poly([(sx0 - 3, height), (sx0, log - 4), (sx0 + 7, log - 9), (sx0 + 13, log - 3), (sx0 + 20, log - 10), (sx1, log - 4), (sx1 + 3, height)]), blur=0.4)
+    c.put(stump, BARK)
+    c.put(c.mask(lambda pen: [pen.line([(x, height), (x + rng.uniform(-1, 1), log)], 0.9) for x in np.arange(sx0 + 2, sx1, 4)]) * stump, scale(BARK, 0.65), 0.7)
+    # The trunk, level, across the two.
+    trunk = c.mask(lambda pen: pen.poly([(0, 0.5), (width - 2, 0.5), (width, log * 0.5), (width - 2, log), (0, log + 0.5)]), blur=0.5)
+    c.put(trunk, mix(BARK, OAK_LIGHT, 0.15))
+    c.put(c.mask(lambda pen: [pen.line([(x, 2), (x + rng.uniform(4, 9), log - 1)], 0.8) for x in np.arange(16, width - 6, 7)]) * trunk, scale(BARK, 0.6), 0.7)
+    c.tone(trunk * np.clip((c.y - 2) / log, 0, 1), -0.3)
+    moss = c.mask(lambda pen: [pen.ellipse(rng.uniform(20, width - 10), rng.uniform(0.5, 3), rng.uniform(5, 10), rng.uniform(1.4, 2.6)) for _ in range(8)], blur=0.5)
+    c.put(moss * trunk, (88, 120, 60), 0.9)
+    # The broken end of the trunk, pale wood, at the stump.
+    c.put(c.mask(lambda pen: pen.ellipse(width - 1, log * 0.5, 2.5, log * 0.48)), (206, 176, 128))
+
+
+PIECES.update({
+    # intro_woods: the tree down across the path
+    "hill_woods_fallen_trunk": _block_piece(240, 64, fallen_trunk, "woods_fallen_trunk"),
+})
+
+
 PIECES.update({
     # intro_freight_yard: the freight crates (solid blocks), the loading
     # stages (one-way decks), the platform's notice, the drove road's post
