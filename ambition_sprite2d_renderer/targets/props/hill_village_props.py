@@ -710,6 +710,103 @@ PIECES.update({
 })
 
 
+CRATE = (152, 114, 72)
+STENCIL = (44, 38, 34)
+BURLAP = (178, 152, 106)
+
+
+def freight_crates(c, width, height, tag):
+    """Freight crates off the train on the siding's ground, two side by
+    side: planked, framed, braced corner to corner and iron-banded, a
+    stencilled arrow for which way is up. Their lids are the step a walker
+    climbs."""
+    rng = c.rand(tag, "crates")
+    for i, (x0, x1) in enumerate(((0.5, width / 2 - 0.5), (width / 2 + 0.5, width - 0.5))):
+        wood = scale(CRATE, rng.uniform(0.88, 1.04))
+        face = c.mask(box(x0, 0.5, x1, height))
+        c.put(face, wood)
+        c.tone(face * (c.noise((tag, "grain", i), 3, 9, 2) - 0.5), 0.2)
+        c.put(c.mask(lambda p: [p.rect(x0, y, x1, y + 0.6) for y in np.arange(height / 4, height - 1, height / 4)]) * face, scale(wood, 0.6))
+        c.put(c.mask(lambda p: p.line([(x0 + 3, height - 3), (x1 - 3, 3.5)], 2.2)) * face, scale(wood, 0.84))
+        frame = c.mask(lambda p: [p.rect(x0, 0.5, x0 + 3, height), p.rect(x1 - 3, 0.5, x1, height),
+                                  p.rect(x0, 0.5, x1, 3.5), p.rect(x0, height - 3, x1, height)])
+        c.put(frame, scale(wood, 0.78))
+        for bx in (x0 + 9, x1 - 9):
+            c.put(c.mask(box(bx - 0.7, 0.5, bx + 0.7, height)), IRON, 0.8)
+        cx, cy = (x0 + x1) / 2, height * 0.5
+        arrow = [(cx, cy - 9), (cx - 5, cy - 3), (cx - 1.6, cy - 3), (cx - 1.6, cy + 6), (cx + 1.6, cy + 6), (cx + 1.6, cy - 3), (cx + 5, cy - 3)]
+        c.put(c.mask(lambda p: p.poly(arrow)), STENCIL, 0.65)
+    whole = c.mask(box(0, 0, width, height))
+    c.tone(whole * np.clip((width * 0.3 - c.x) / width, -0.4, 0.4), 0.22)
+    c.tone(whole * np.clip((c.y - height * 0.6) / height, 0, 1), -0.25)
+
+
+def loading_stage(c, width, height, tag):
+    """The siding's loading stage: a deck of planks on trestle legs, the
+    height of a wagon's bed, so goods go across onto the freight without
+    lifting. Its deck is the walk line; a walker goes under it. Sacks wait
+    on the ground beneath for the noon window."""
+    rng = c.rand(tag, "stage")
+    deck = 8.0
+    legs = np.linspace(4, width - 10, 4)
+    for lx in legs:
+        c.put(c.mask(box(lx, deck, lx + 6, height)), OAK)
+        c.put(c.mask(box(lx, deck, lx + 1.6, height)), OAK_LIGHT, 0.6)
+    for a, b in zip(legs[:-1], legs[1:]):
+        c.put(c.mask(lambda p: p.line([(a + 6, deck + 4), (b, height - 10)], 2.0)), scale(OAK, 0.85))
+        c.put(c.mask(lambda p: p.line([(a + 6, height - 10), (b, deck + 4)], 2.0)), scale(OAK, 0.75))
+    c.put(c.mask(box(0, deck, width, deck + 3)), scale(OAK, 0.7))
+    planks = c.mask(box(0, 0, width, deck))
+    c.put(planks, OAK_LIGHT)
+    c.put(c.mask(lambda p: [p.rect(x, 0, x + 0.6, deck) for x in np.arange(14, width, 14 + rng.uniform(-1, 1))]) * planks, scale(OAK_LIGHT, 0.7))
+    c.tone(planks * np.clip((c.y - 1.0) / deck, 0, 1), -0.3)
+    # Sacks under the stage, on the ground.
+    for sx in (24.0, 40.0, width - 46.0):
+        sack = c.mask(lambda p: p.poly([(sx - 9, height), (sx - 10, height - 12), (sx - 6, height - 19), (sx, height - 21),
+                                        (sx + 6, height - 19), (sx + 10, height - 12), (sx + 9, height)]), blur=0.5)
+        c.put(sack, scale(BURLAP, rng.uniform(0.9, 1.05)))
+        c.tone(sack * np.clip((c.x - sx) / 10.0, -1, 1), -0.18)
+        c.put(c.mask(lambda p: p.line([(sx - 3, height - 19), (sx + 3, height - 19)], 1.2)), scale(BURLAP, 0.55))
+
+
+def notice_on_posts(c, width, height, tag):
+    """A railway notice board on two posts: planks painted the railway's
+    dark green in an iron frame, for pale words (the room writes them over
+    it)."""
+    board = 52.0
+    for x in (14.0, width - 20.0):
+        c.put(c.mask(box(x, board - 4, x + 6, height)), OAK)
+    face = c.mask(box(2, 2, width - 2, board))
+    c.put(c.mask(box(0, 0, width, board + 2)), IRON)
+    c.put(face, (40, 62, 50))
+    c.put(c.mask(lambda p: [p.rect(2, y, width - 2, y + 0.6) for y in np.arange(14, board, 13)]) * face, (30, 46, 38))
+    c.tone(face * np.clip((c.y - 2) / board, 0, 1), -0.15)
+
+
+def fingerpost(c, width, height, tag):
+    """A fingerpost at the foot of the drove road: an oak post and one dark
+    arm pointing east, up the fell (the room writes the way on the arm in
+    pale letters)."""
+    post_x = 16.0
+    c.put(c.mask(box(post_x, 6, post_x + 7, height)), OAK)
+    c.put(c.mask(box(post_x, 6, post_x + 2, height)), OAK_LIGHT, 0.6)
+    c.put(c.mask(lambda p: p.poly([(post_x - 1, 6), (post_x + 3.5, 1), (post_x + 8, 6)])), scale(OAK, 0.8))
+    arm = c.mask(lambda p: p.poly([(post_x - 4, 12), (width - 14, 12), (width - 1, 23), (width - 14, 34), (post_x - 4, 34)]))
+    c.put(c.mask(lambda p: p.poly([(post_x - 6, 10.5), (width - 13, 10.5), (width + 1, 23), (width - 13, 35.5), (post_x - 6, 35.5)])), scale(OAK, 0.6))
+    c.put(arm, scale(OAK, 0.8))
+    c.tone(arm * np.clip((c.y - 12) / 22, 0, 1), -0.15)
+
+
+PIECES.update({
+    # intro_freight_yard: the freight crates (solid blocks), the loading
+    # stages (one-way decks), the platform's notice, the drove road's post
+    "hill_freight_crates": _block_piece(96, 48, freight_crates, "freight_crates"),
+    "hill_loading_stage": _block_piece(160, 112, loading_stage, "loading_stage"),
+    "hill_siding_notice": _block_piece(240, 112, notice_on_posts, "siding_notice"),
+    "hill_fingerpost": _block_piece(150, 120, fingerpost, "fingerpost"),
+})
+
+
 def gate_barrier(c, width, height, tag):
     """The barrier across the road by the gate office: a tall leaf of the
     same prefabricated steel, too high to climb, mesh between square posts,
