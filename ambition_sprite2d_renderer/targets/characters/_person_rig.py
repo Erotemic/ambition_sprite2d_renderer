@@ -34,7 +34,7 @@ from PIL import Image
 from ._ai_era_kit import OUTLINE, WHITE, Kit, Point, Pose, RGBA, angle, blend, ease, keys, lerp, mix, pin, solve, turned
 
 __all__ = [
-    "AIR", "APEX", "Build", "CROUCH", "DASH", "FALL", "FP", "FRONT_REST", "GUARD", "HALF_UP", "HANG", "LANDED", "LIBRARY", "MAIN_ROWS", "P", "PERCH", "Person", "REST",
+    "AIR", "APEX", "Build", "CROUCH", "DASH", "FALL", "FIGHT_ROWS", "FP", "FRONT_REST", "GUARD", "HALF_UP", "HANG", "LANDED", "LIBRARY", "MAIN_ROWS", "P", "PERCH", "Person", "REST",
     "RISE", "SAT", "STRUCK", "SUPINE", "TUCK", "UP", "Seg", "Stamp", "bone", "burst", "chain", "chalk", "cycle", "dust", "glyph", "loop", "make_brows",
     "brow_mood", "entry_points", "front_arms", "make_back_shoe", "make_eyes", "make_figure", "make_front_shoe", "make_hand", "make_head", "make_mouth", "make_neck", "make_shoe", "make_torso", "ribbon", "shot", "stride", "swoosh", "tick",
 ]
@@ -425,6 +425,28 @@ GUARD = P(hip=(-1.0, 2.0), lean=2.0, na=(9.0, 12.0), fa=(13.0, 11.0), nh="fist",
 
 
 @_row
+def fight_idle(i: int, n: int) -> Pose:
+    """Squared up: the fists up in front of the chin, the weight on the back
+    foot, and a small bounce, so a person who has decided to fight does not
+    stand about as if waiting for a bus between swings."""
+    _, s, c = loop(i, n)
+    return dict(GUARD, hip=(-1.5 + 0.5 * c, 4.0 + 1.2 * s), lean=5.0 + 1.5 * s, head=(0.3, 0.0, 4.0 + 1.0 * s),
+                na=(11.0 + 1.5 * c, 6.0 + 1.0 * s), fa=(15.0 - 1.0 * c, 3.0 + 1.0 * s), nf=(-9.0, 0.0, 0.0), ff=(9.0, 0.0, 0.0),
+                eyes="open", hem=(1.0, 0.5 + 0.5 * abs(s)))
+
+
+@_row
+def fight_walk(i: int, n: int) -> Pose:
+    """Stepping in with the guard up: a short, flat-footed shuffle, the hands
+    staying where they would block or strike from."""
+    ph, s, c = loop(i, n)
+    nf, ff = stride(ph, 6.0, 2.5)
+    return dict(GUARD, hip=(0.0, 4.0 + 0.8 * math.cos(2.0 * ph)), lean=7.0, head=(0.5, 0.0, 4.0),
+                na=(12.0 + 1.5 * c, 6.0 - 0.5 * abs(c)), fa=(15.5 - 1.5 * c, 3.0 - 0.5 * abs(c)), nf=nf, ff=ff,
+                hem=(1.0 + abs(c), 0.5 + abs(c)))
+
+
+@_row
 def jab(i: int, n: int) -> Pose:
     poke = dict(GUARD, hip=(3.0, 3.0), lean=11.0, na=(27.0, 1.0), ff=(10.0, 0.0, 0.0), mouth="open")
     return keys(shot(i, n), [(0.0, GUARD), (0.3, poke), (0.6, poke), (1.0, GUARD)])
@@ -560,6 +582,7 @@ MAIN_ROWS: List[Tuple[str, int, int]] = [
     ("hit", 5, 90), ("death", 8, 120), ("talk", 8, 104), ("interact", 8, 92), ("jab", 5, 58), ("punch", 7, 72), ("slash", 8, 75),
     ("attack_side", 8, 65), ("attack_up", 8, 65), ("attack_down", 8, 65), ("air_neutral", 8, 60), ("air_forward", 7, 62), ("air_back", 7, 62),
     ("air_down", 7, 70), ("air_up", 7, 62), ("charge", 8, 90), ("cast", 8, 80), ("celebrate", 8, 92), ("taunt", 8, 110),
+    ("fight_idle", 8, 110), ("fight_walk", 8, 95),
 ]
 
 
@@ -572,6 +595,10 @@ MORTAL_ROWS: List[Tuple[str, int, int]] = [row for row in MAIN_ROWS if row[0] in
 #: `attack_side`, then `slash`) is drawn standing idle. A person with neither
 #: gets the rig's own.
 SWING_ROW: Tuple[str, int, int] = next(row for row in MAIN_ROWS if row[0] == "attack_side")
+#: And a person who fights stands like it: squared up between swings, and
+#: stepping in with the guard up (the game draws these while a body has a foe
+#: in reach, and falls back to ``idle`` and ``walk`` on a sheet without them).
+FIGHT_ROWS: List[Tuple[str, int, int]] = [row for row in MAIN_ROWS if row[0] in ("fight_idle", "fight_walk")]
 
 
 # ---- The person seen from the front -------------------------------------------
@@ -1823,8 +1850,8 @@ class Person:
     @property
     def rows(self) -> List[Tuple[str, int, int]]:
         """The rows of the sheet, in order: the character's own, then each of
-        :data:`MORTAL_ROWS` it did not name, and :data:`SWING_ROW` if it named
-        no swing."""
+        :data:`MORTAL_ROWS` it did not name, :data:`SWING_ROW` if it named
+        no swing, and each of :data:`FIGHT_ROWS` it did not name."""
         return self._rows
 
     @rows.setter
@@ -1834,6 +1861,7 @@ class Person:
         self._rows = rows + [row for row in MORTAL_ROWS if row[0] not in named]
         if not named & {"attack_side", "slash"}:
             self._rows.append(SWING_ROW)
+        self._rows += [row for row in FIGHT_ROWS if row[0] not in named]
 
     @property
     def body_box(self) -> Tuple[float, float, float, float]:

@@ -242,6 +242,9 @@ def wardrobe_sheet(spec: CharacterSpec, out: Path, *, px_per_cm: float = 1.4,
 TOWNSFOLK_ROWS: Tuple[str, ...] = (
     "idle", "idle_back", "walk", "walk_away", "walk_toward", "hurt", "death", "death_idle",
     "talk", "interact", "turnaround", "turn_away",
+    # Anyone provoked fights back with their fists: the guard they stand and
+    # close in with (the game draws these while a foe is near) and a swing.
+    "fight_idle", "fight_walk", "attack_side",
 )
 
 #: The rows of a character that moves, fights and holds items: what the game
@@ -252,7 +255,7 @@ PUBLISH_ROWS: Tuple[str, ...] = (
     "climb", "ledge_hang", "wall_slide", "dash", "attack", "attack_side", "jab", "attack_up", "attack_down", "air_neutral", "special",
     "hurt", "tumble", "death", "death_idle", "talk", "interact", "wave", "happy", "sit_down", "sit_idle", "stand_up",
     "sleep", "shield_hold", "item_hold", "item_pickup", "item_throw", "item_swing", "item_swing_up", "item_swing_down",
-    "item_swing_back", "turnaround", "turn_away",
+    "item_swing_back", "turnaround", "turn_away", "fight_idle", "fight_walk",
 )
 
 #: Rows composed across views: (view, mirrored) per frame, each the view's

@@ -303,6 +303,27 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
     add(_seq("walk_toward", 8, 100, True, out["walk"].keys, view="front_3q", cat="locomotion"))
     add(_seq("walk_stop", 4, 70, False, _even([walk_pose(0.0), k.pose(root=(0.01, -0.01, 0), lean=-3), stand]), cat="locomotion"))
 
+    # Squared up to a foe: the guard, breathing, and the guard carried forward
+    # in short steps (feet never cross, fists stay up). A provoked resident
+    # stands and closes in like this between swings.
+    def fight_pose(ph: float) -> Pose:
+        c, s = math.cos(ph), math.sin(ph)
+        return k.guard(root=(0.0, -0.045 - 0.006 * (1 + s), 0.0), lean=8.0 + 1.5 * s, head=(-4.0 - 1.0 * s, 0.0),
+                       rf=k.foot(R, 0.18, 0.0, 0.03), lf=k.foot(Lf, -0.18, 0.0, 0.03, toe=-6),
+                       rh=k.hand(R, 0.45 + 0.02 * c, 0.45 + 0.02 * s, 0.08, pole=(0.4, 0.6, -0.4)),
+                       lh=k.hand(Lf, 0.3 - 0.02 * c, 0.5 + 0.02 * s, 0.12, pole=(0.4, 0.6, -0.4)))
+
+    def fight_step(ph: float) -> Pose:
+        c, s = math.cos(ph), math.sin(ph)
+        return k.guard(root=(0.0, -0.04 + 0.008 * abs(c), 0.0), lean=10.0, head=(-5.0, 0.0),
+                       rf=k.foot(R, 0.12 + 0.1 * c, max(0.0, -s) * 0.06, 0.03),
+                       lf=k.foot(Lf, -0.12 + 0.1 * c, max(0.0, s) * 0.06, 0.03),
+                       rh=k.hand(R, 0.47 + 0.03 * c, 0.45, 0.08, pole=(0.4, 0.6, -0.4)),
+                       lh=k.hand(Lf, 0.32 - 0.03 * c, 0.5, 0.12, pole=(0.4, 0.6, -0.4)))
+
+    add(_seq("fight_idle", 8, 110, True, _cycle([fight_pose(2 * math.pi * i / 4) for i in range(4)]), cat="idle"))
+    add(_seq("fight_walk", 8, 95, True, _cycle([fight_step(2 * math.pi * i / 8) for i in range(8)]), cat="locomotion"))
+
     def run_pose(ph: float) -> Pose:
         c, s = math.cos(ph), math.sin(ph)
         return k.pose(root=(0.0, -0.035 + 0.03 * abs(s), 0.0), lean=16.0, head=(-10.0, 0.0),
