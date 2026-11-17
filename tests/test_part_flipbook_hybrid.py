@@ -26,3 +26,12 @@ def test_a_hybrid_names_its_baked_rows_after_its_clips():
 
 def test_a_flipbook_of_parts_alone_writes_no_baked_clips():
     assert "baked_clips" not in _flipbook([])
+
+
+def test_named_landmarks_survive_publication_and_readback(tmp_path):
+    part = PartRaster("a", Image.new("RGBA", (4, 4), (255, 0, 0, 255)), (2.0, 2.0))
+    flipbook = PartFlipbook("t", (8, 8), (4.0, 7.0), [part], {"idle": (0.1, [[PartDraw(0, (0.0, -3.0))]])})
+    flipbook.landmarks = {"idle": [{"eye": (1.25, -5.75)}]}
+    paths = flipbook.write(tmp_path)
+    restored = PartFlipbook.from_published(paths["ron"])
+    assert restored.landmarks == flipbook.landmarks

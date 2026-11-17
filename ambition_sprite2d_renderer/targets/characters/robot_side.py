@@ -77,7 +77,7 @@ class RigCanvas:
         x, y = pt[0] - self.pivot[0], pt[1] - self.pivot[1]
         return (self.pivot[0] + x * c - y * s, self.pivot[1] + x * s + y * c)
 
-    def put(self, part: Tuple[Image.Image, Point], at: Point, degrees: float, name: str, opacity: float = 1.0) -> None:
+    def put(self, part: Tuple[Image.Image, Point], at: Point, degrees: float, name: str, opacity: float = 1.0, scale_y: float = 1.0) -> None:
         """``part`` with its pivot at ``at``, turned ``degrees`` (clockwise)."""
         image, pivot = part
         if opacity <= 0.0 or image.getbbox() is None:
@@ -87,7 +87,7 @@ class RigCanvas:
             dx, dy, fade = self.warp(at, self._placed)
             self._placed += 1
             at, opacity = (at[0] + dx, at[1] + dy), opacity * fade
-        rigdoc.blit_rotated(self.canvas, image, pivot, at, degrees + self.turn, min(1.0, opacity), part_name=name)
+        rigdoc.blit_rotated(self.canvas, image, pivot, at, degrees + self.turn, min(1.0, opacity), part_name=name, scale_y=scale_y)
 
     def capsule(self, a: Point, b: Point, radius: float, fill: Color, outline: Color, outline_w: float, name: str, length: Optional[float] = None, opacity: float = 1.0) -> None:
         """``draw_capsule`` from ``a`` toward ``b`` as a bone (``length`` fixed,

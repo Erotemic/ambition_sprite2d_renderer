@@ -39,7 +39,7 @@ from PIL import Image
 #: Version of the published ``<target>_parts.ron`` schema. 2 added the track
 #: table (each draw's identity across frames) and the per-clip tween policy. 3
 #: added the placement rule, a draw's opacity and a frame's opacity.
-PART_FLIPBOOK_SCHEMA_VERSION = 3
+PART_FLIPBOOK_SCHEMA_VERSION = 4
 
 #: How a flipbook's draws land (``PartFlipbook.placement``).
 PLACEMENT_SNAPPED = "snapped"
@@ -116,6 +116,8 @@ class PartFlipbook:
     #: when the parts measured costlier than the sheet
     #: (``realization_by_cost``). The flipbook is published either way.
     realize: str = REALIZE_PARTS
+    #: Named points per row and frame, in full-resolution pixels from the feet.
+    landmarks: Dict[str, List[Dict[str, Tuple[float, float]]]] = field(default_factory=dict)
 
     # -- measurement -----------------------------------------------------------
     def tight_texels(self) -> int:
@@ -190,6 +192,12 @@ class PartFlipbook:
         lines.append("    ],")
         if tracks:
             lines.append("    tracks: [" + ", ".join(f'"{name}"' for name in tracks) + "],")
+        if self.landmarks:
+            rows = []
+            for row, frames in self.landmarks.items():
+                points = ["{" + ", ".join(f'"{name}": {pair(at)}' for name, at in frame.items()) + "}" for frame in frames]
+                rows.append(f'"{row}": [' + ", ".join(points) + "]")
+            lines.append("    landmarks: {" + ", ".join(rows) + "},")
         lines.append("    clips: {")
         for row, (duration, frames) in self.clips.items():
             tween = ", tween: Linear" if self.tweens.get(row) == TWEEN_LINEAR else ""
@@ -317,6 +325,9 @@ class PartFlipbook:
                         (float(tr), float(tg), float(tb)) if tr is not None else (1.0, 1.0, 1.0),
                     )
                 )
+        import ast
+        landmark_line = next((line.strip() for line in text.splitlines() if line.strip().startswith("landmarks:")), None)
+        landmarks = ast.literal_eval(landmark_line[len("landmarks:"):].strip().removesuffix(",")) if landmark_line else {}
         baked = re.search(r"baked_clips: \[([^\]]*)\]", text)
         return cls(
             target,
@@ -332,6 +343,7 @@ class PartFlipbook:
             bilinear,
             frame_opacity,
             (re.search(r"realize: (\w+)", text) or [None, REALIZE_PARTS])[1],
+            landmarks,
         )
 
     def draw_frame(

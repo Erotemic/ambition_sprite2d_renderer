@@ -237,9 +237,9 @@ class _FxLayer:
             self._rig = RigCanvas(Image.new("RGBA", (int(self.size[0] * K), int(self.size[1] * K)), (0, 0, 0, 0)))
         return self._rig
 
-    def put(self, part, at, degrees: float, name: str, opacity: float = 1.0) -> None:
+    def put(self, part, at, degrees: float, name: str, opacity: float = 1.0, scale_y: float = 1.0) -> None:
         """``part`` with its pivot at ``at`` (frame pixels)."""
-        self.rig.put(part, (at[0] * K, at[1] * K), degrees, name, opacity)
+        self.rig.put(part, (at[0] * K, at[1] * K), degrees, name, opacity, scale_y)
 
     def reduced(self) -> Optional[Image.Image]:
         return None if self._rig is None else rigdoc.downsampled_canvas(self._rig.canvas, self.size)
@@ -514,15 +514,30 @@ def _place_visor_glow(front: _FxLayer, world, params, frame_idx: int, doc: RigDo
     """The whole visor burns red: a bloom, the red fill and a pulsing hot band,
     on the visor in the frame of the head bone (they follow the head)."""
     head = world["head"]
-    # The head is not squashed or seen from its other side in this row: the
-    # pieces are not.
-    assert params.get("bone.head.flip_x", 0.0) < 0.5, "eye_laser: head flip_x"
-    assert abs(params.get("bone.head.scale_y", 1.0) - 1.0) < 1e-3, "eye_laser: head scale_y"
     pieces = _visor_pieces(doc)
     pulse = EYE_LASER_PULSE[frame_idx % len(EYE_LASER_PULSE)]
-    front.put(pieces["bloom"], head.origin, head.angle, "visor_bloom", pulse)
-    front.put(pieces["fill"], head.origin, head.angle, "visor_fill")
-    front.put(pieces["band"], head.origin, head.angle, "visor_band", 0.55 + 0.45 * pulse)
+    squash = params.get("bone.head.scale_y", 1.0)
+    front.put(pieces["bloom"], head.origin, head.angle, "visor_bloom", pulse, squash)
+    front.put(pieces["fill"], head.origin, head.angle, "visor_fill", scale_y=squash)
+    front.put(pieces["band"], head.origin, head.angle, "visor_band", 0.55 + 0.45 * pulse, squash)
+
+
+def _eye_point(doc: RigDocument, world, params):
+    """The lit visor's front midpoint, carried by the head pose."""
+    fill, pivot = _visor_pieces(doc)["fill"]
+    alpha = np.asarray(fill.getchannel("A"))
+    ys, _xs = np.nonzero(alpha > 127)
+    y = int(round((int(ys.min()) + int(ys.max())) / 2.0))
+    x = int(np.nonzero(alpha[y] > 127)[0].max())
+    local_x = (x - pivot[0]) / K
+    local_y = (y - pivot[1]) / K * params.get("bone.head.scale_y", 1.0)
+    if params.get("bone.head.flip_x", 0.0) >= 0.5:
+        local_x = -local_x
+    head = world["head"]
+    angle = math.radians(head.angle)
+    c, sn = math.cos(angle), math.sin(angle)
+    return (head.origin[0] + c * local_x - sn * local_y,
+            head.origin[1] + sn * local_x + c * local_y)
 
 
 def _render_body(doc: RigDocument, clip: str, t: float, solved) -> Image.Image:
@@ -585,7 +600,7 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
 
     # The eye laser: the game draws the beam from the front of the visor, and
     # the row makes all of the visor burn red.
-    if effect == "eye_laser":
+    if effect in {"eye_laser", "eye_laser_crouch"}:
         _place_visor_glow(front, world, params, frame_idx, doc)
 
     if effect == "hit":
@@ -714,12 +729,14 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
 
 def _frame_meta(animation: str, frame_idx: int, frame_count: int, doc: Optional[RigDocument] = None) -> dict:
     doc = load_doc() if doc is None else doc
-    world, _params = doc.solve(animation, doc.frame_time(animation, frame_idx, frame_count))
+    world, params = doc.solve(animation, doc.frame_time(animation, frame_idx, frame_count))
     head = world["head"].origin
     near_hand = world["near_arm_hand"].tip
     far_hand = world["far_arm_hand"].tip
+    eye = _eye_point(doc, world, params) if any(p["name"] == EYE_LASER_FACE for p in doc.parts) else None
     return {
         "anchors": {
+            **({"eye": [round(v, 3) for v in eye]} if eye is not None else {}),
             "head": [round(head[0], 3), round(head[1] - 14.0, 3)],
             "chest": [round(world["torso"].origin[0], 3), round(world["torso"].origin[1], 3)],
             "hand_l": [round(near_hand[0], 3), round(near_hand[1], 3)],
@@ -986,7 +1003,16 @@ def build_part_flipbook():
 
     size = (FRAME_SIZE[0] + PUBLISH_PADDING[0] + PUBLISH_PADDING[2], FRAME_SIZE[1] + PUBLISH_PADDING[1] + PUBLISH_PADDING[3])
     feet = body_metrics(*size)["feet_pixel"]
-    return build_rig_flipbook(TARGET_NAME, ROWS, published_frame, None, (feet["x"], feet["y"]), size, TWEENED_ROWS)
+    flipbook = build_rig_flipbook(TARGET_NAME, ROWS, published_frame, None, (feet["x"], feet["y"]), size, TWEENED_ROWS)
+    for row, count, _duration in ROWS:
+        frames = []
+        for index in range(count):
+            eye = frame_meta(row, index, count)["anchors"].get("eye")
+            frames.append({"eye": (eye[0] + PUBLISH_PADDING[0] - feet["x"],
+                                   eye[1] + PUBLISH_PADDING[1] - feet["y"])} if eye else {})
+        if any(frames):
+            flipbook.landmarks[row] = frames
+    return flipbook
 
 
 def _render_with_products(out_dir: str | Path, **opts):

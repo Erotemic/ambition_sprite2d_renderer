@@ -900,6 +900,14 @@ def eye_laser(body: RigBody) -> List[Key]:
     return keys
 
 
+def eye_laser_crouch(body: RigBody) -> List[Key]:
+    """Keep the crouched head and planted feet while the visor burns."""
+    keys = []
+    for i in range(EYE_LASER_FRAMES + 1):
+        keys.append(replace(crouched(body, i / EYE_LASER_FRAMES, ease="linear"), face="open", squint=0.0))
+    return keys
+
+
 # The game draws a held item in the hand of the blade arm: where the hand part
 # is, turned as the hand part is turned (`rendering::posed_hand` in the game).
 # A hand that is not turned holds the item this many degrees above level, so
@@ -998,6 +1006,7 @@ STRIKES: Dict[str, Callable[[RigBody], List[Key]]] = {
     "shoot": shoot,
     "aim": aim,
     "eye_laser": eye_laser,
+    "eye_laser_crouch": eye_laser_crouch,
 }
 
 

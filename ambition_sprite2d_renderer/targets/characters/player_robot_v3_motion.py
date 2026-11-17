@@ -200,6 +200,7 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     # The eye laser burns: the game shows this row for as long as the beam
     # burns, and loops it. The game draws the beam from the eyes.
     ("eye_laser", 6, 60),
+    ("eye_laser_crouch", 6, 60),
     ("interact", 6, 90),
     # Petting a pettable character: 2.0 s, the sim's `PET_SECONDS`.
     ("pet", 16, 125),
@@ -509,6 +510,7 @@ LOOPING_ROWS: Final[frozenset[str]] = frozenset(
         "aim",
         # Shown while the eye laser burns, for as long as it burns.
         "eye_laser",
+        "eye_laser_crouch",
         "hover",
         "float_glide",
         "charge",
