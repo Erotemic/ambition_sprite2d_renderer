@@ -313,11 +313,14 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
                        rh=k.hand(R, 0.45 + 0.02 * c, 0.45 + 0.02 * s, 0.08, pole=(0.4, 0.6, -0.4)),
                        lh=k.hand(Lf, 0.3 - 0.02 * c, 0.5 + 0.02 * s, 0.12, pole=(0.4, 0.6, -0.4)))
 
+    # The guard's shuffle keeps the idle guard's base: feet as far apart as
+    # in `fight_pose`, sliding together. Closer, a long shoe's sole touched
+    # the other's on the ground row, and the parts could not replay it.
     def fight_step(ph: float) -> Pose:
         c, s = math.cos(ph), math.sin(ph)
         return k.guard(root=(0.0, -0.04 + 0.008 * abs(c), 0.0), lean=10.0, head=(-5.0, 0.0),
-                       rf=k.foot(R, 0.12 + 0.1 * c, max(0.0, -s) * 0.06, 0.03),
-                       lf=k.foot(Lf, -0.12 + 0.1 * c, max(0.0, s) * 0.06, 0.03),
+                       rf=k.foot(R, 0.18 + 0.06 * c, max(0.0, -s) * 0.06, 0.03),
+                       lf=k.foot(Lf, -0.18 + 0.06 * c, max(0.0, s) * 0.06, 0.03),
                        rh=k.hand(R, 0.47 + 0.03 * c, 0.45, 0.08, pole=(0.4, 0.6, -0.4)),
                        lh=k.hand(Lf, 0.32 - 0.03 * c, 0.5, 0.12, pole=(0.4, 0.6, -0.4)))
 
