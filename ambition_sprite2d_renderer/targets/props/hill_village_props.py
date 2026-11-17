@@ -826,6 +826,31 @@ def fallen_trunk(c, width, height, tag):
     c.put(c.mask(lambda pen: pen.ellipse(width - 1, log * 0.5, 2.5, log * 0.48)), (206, 176, 128))
 
 
+def stake_board(c, width, height, tag):
+    """A board of the surveyors': a dark-stained oak board nailed to two
+    stakes driven into the ground, for a few pale words (the room writes
+    them over it)."""
+    board = 64.0
+    for x in (22.0, width - 28.0):
+        stake = c.mask(lambda pen: pen.poly([(x, board - 4), (x + 6, board - 4), (x + 6, height - 3), (x + 3, height), (x, height - 3)]))
+        c.put(stake, OAK)
+        c.put(c.mask(box(x, board - 4, x + 1.6, height - 3)), OAK_LIGHT, 0.6)
+    face = c.mask(box(2, 2, width - 2, board))
+    c.put(c.mask(box(0, 0, width, board + 2)), scale(OAK, 0.55))
+    c.put(face, scale(OAK, 0.82))
+    c.put(c.mask(lambda pen: [pen.rect(2, y, width - 2, y + 0.6) for y in (22.0, 43.0)]) * face, scale(OAK, 0.6))
+    c.tone(face * (c.noise((tag, "grain"), 8, 2, 2) - 0.5), 0.15)
+    for x in (24.5, width - 25.5):
+        for y in (8.0, board - 8.0):
+            c.put(c.mask(lambda pen: pen.ellipse(x, y, 1.1)), IRON)
+
+
+PIECES.update({
+    # The surveyors' boards (the lane's line and station, the woods' camp)
+    "hill_stake_board": _block_piece(200, 100, stake_board, "stake_board"),
+})
+
+
 PIECES.update({
     # intro_woods: the tree down across the path
     "hill_woods_fallen_trunk": _block_piece(240, 64, fallen_trunk, "woods_fallen_trunk"),
