@@ -13,7 +13,10 @@ channel, so any agent can play any of them:
 * ``prop.keytar``: a keytar on a strap, the keys under the right hand, the
   neck under the left;
 * ``prop.sticks``: a drumstick in each fist (the kit itself is a prop of the
-  stage, not of the body).
+  stage, not of the body);
+* ``prop.triangle``: an orchestral triangle on its loop in the left fist and
+  a steel beater in the right (Jon, 2026-11-17: Wren plays it, the smallest
+  instrument for the model he gives the smallest jobs).
 
 A strapped instrument rides the torso and is drawn in 3D from the figure in
 every view; the clips (``band_clips``) put the hands where its strings,
@@ -40,9 +43,9 @@ Point = Tuple[float, float]
 Vec3 = Tuple[float, float, float]
 
 #: The channels of the band's instruments (all hidden by default).
-CHANNELS = ("prop.guitar", "prop.bass", "prop.keytar", "prop.sticks")
+CHANNELS = ("prop.guitar", "prop.bass", "prop.keytar", "prop.sticks", "prop.triangle")
 #: The rows that play them.
-ROWS = ("band_guitar", "band_bass", "band_keytar", "band_drums")
+ROWS = ("band_guitar", "band_bass", "band_keytar", "band_drums", "band_triangle")
 
 
 def _cross(a: Vec3, b: Vec3) -> Vec3:
@@ -229,10 +232,49 @@ def sticks_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     return out
 
 
+def triangle_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
+    """The triangle hanging on its loop below the left fist, one corner left
+    open as a real one's is, and the steel beater run through the right fist
+    as the game holds an item."""
+    fig = ctx.fig
+    k = fig.k
+    steel, dark = "#d4d7de", "#5d6270"
+    gx, gy = ctx.p(grip_point(fig, "left"))
+    # The loop, then the bar bent into a triangle with 17 cm sides.
+    apex = (gx, gy + 5.0 * k)
+    side = 17.0 * k
+    left = (apex[0] - side * 0.5, apex[1] + side * 0.866)
+    right = (apex[0] + side * 0.5, apex[1] + side * 0.866)
+    gap = 0.12
+    # From just past the open corner, round the far corners, back to just
+    # short of it.
+    bar = [(left[0] + (right[0] - left[0]) * gap, left[1]), right, apex,
+           (left[0] + (apex[0] - left[0]) * gap, left[1] + (apex[1] - left[1]) * gap)]
+    pt = ctx.new()
+    pt.line([(gx, gy), apex], "#2a2630", 0.5 * k, smooth=False, fixed=True)
+    pt.line(bar, dark, 2.4 * k, smooth=False, fixed=True)
+    pt.line(bar, steel, 1.4 * k, smooth=False, fixed=True)
+    out = [Part("band_triangle", "far_grip", zmap["far_arm_hand"] - 0.2, pt.els, "Triangle (on its loop, left fist)",
+                opacity="prop.triangle", opacity_default=0)]
+    a = math.radians(-ITEM_REST_ANGLE)
+    ux, uy = math.cos(a), math.sin(a)
+    nx, ny = -uy, ux
+    g = ctx.p(grip_point(fig, "right"))
+
+    def at(t: float, w: float) -> Point:
+        return (g[0] + ux * t * k + nx * w * k, g[1] + uy * t * k + ny * w * k)
+
+    pt = ctx.new()
+    pt.region([[at(-4.0, 0.45), at(16.0, 0.4), at(17.0, 0.0), at(16.0, -0.4), at(-4.0, -0.45)]], steel, outline=FINE)
+    out.append(Part("band_triangle_beater", "near_grip", zmap["near_arm_hand"] - 0.2, pt.els, "Triangle Beater (right fist)",
+                    opacity="prop.triangle", opacity_default=0))
+    return out
+
+
 def instrument_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     """Every instrument of the band, all hidden (the ``chargen.extras``
     hook): a clip shows the one it plays."""
-    return guitar_parts(ctx) + bass_parts(ctx) + keytar_parts(ctx) + sticks_parts(ctx, zmap)
+    return guitar_parts(ctx) + bass_parts(ctx) + keytar_parts(ctx) + sticks_parts(ctx, zmap) + triangle_parts(ctx, zmap)
 
 
 # ---- playing ---------------------------------------------------------------------------------------
@@ -314,6 +356,20 @@ def band_clips(fig, extras: Dict[str, float]) -> Dict[str, Clip]:
     keys.append((1.0, keys[0][1]))
     out["band_drums"] = Clip("band_drums", 8, 85, True, keys, "front_3q", "band")
     del j
+
+    # The triangle: held up at the chest on its loop, the beater ticking it
+    # twice a bar, a happy bob between.
+    keys = []
+    for i in range(8):
+        t = i / 8
+        tick = max(0.0, math.cos(t * math.tau * 2.0))
+        # The left fist at its rest angle, so the triangle hangs plumb below
+        # it; the beater strikes up inside the triangle on each tick.
+        lh = kit.hand("left", 0.62, 0.12, 0.02, pole=(0.5, 0.5, -0.4), item=ITEM_REST_ANGLE)
+        rh = kit.hand("right", 0.36, 0.36 - 0.06 * tick, -0.02, pole=(0.4, 0.6, -0.4), item=24.0 - 14.0 * tick)
+        keys.append((t, pose("prop.triangle", rh, lh, bob=0.006 * tick, nod=-3.0 * tick, lean=1.0, face="happy")))
+    keys.append((1.0, keys[0][1]))
+    out["band_triangle"] = Clip("band_triangle", 8, 100, True, keys, "front_3q", "band")
     return out
 
 

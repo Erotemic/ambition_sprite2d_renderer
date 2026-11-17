@@ -16,8 +16,8 @@ ACTOR_METADATA = actor_metadata(
     TARGET_NAME,
     "npc_wren",
     "Wren",
-    "Wren, the Generalist: the Qwen parody among the bossofthegame's named agents, after Jon's concept sheet (the Field Agent's hood, the Engineer's wrench). A dark visor with two golden glowing eyes, a purple hood and a short purple cape with a gold edge, an open cream robe over a dark tunic, a purple scarf and belt, lilac boots, and a big wrench. Versatile; in the Boss's band she plays rhythm guitar.",
-    ['generalist', 'qwen_parody', 'band_guitar'],
+    "Wren, the Generalist: the Qwen parody among the bossofthegame's named agents, after Jon's concept sheet (the Field Agent's hood, the Engineer's wrench). A dark visor with two golden glowing eyes, a purple hood and a short purple cape with a gold edge, an open cream robe over a dark tunic, a purple scarf and belt, lilac boots, and a big wrench. Versatile; in the Boss's band she plays the triangle (the smallest instrument, for the model Jon gives the smallest jobs).",
+    ['generalist', 'qwen_parody', 'band_triangle'],
 )
 render = make_render(TARGET_NAME, wren_parts, ACTOR_METADATA, grip="tool", own_props={'prop.wrench': 1.0})
 
