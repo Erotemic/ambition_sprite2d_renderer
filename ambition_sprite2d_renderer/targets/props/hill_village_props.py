@@ -845,6 +845,29 @@ def stake_board(c, width, height, tag):
             c.put(c.mask(lambda pen: pen.ellipse(x, y, 1.1)), IRON)
 
 
+SLATE = (40, 46, 44)
+CHALK = (214, 216, 206)
+
+
+def chalk_slate(c, width, height, tag):
+    """A slate in an oak frame, nailed to the workshop's wall, for a line of
+    chalk (the room writes it over it): the old wiping shows as a haze."""
+    face = c.mask(box(3, 3, width - 3, height - 3))
+    c.put(c.mask(box(0, 0, width, height)), OAK)
+    c.put(c.mask(box(0, 0, width, 1.2)), OAK_LIGHT, 0.7)
+    c.put(face, SLATE)
+    c.put(face * c.noise((tag, "wiped"), 18, 3, 3), CHALK, 0.12)
+    for x in (1.5, width - 1.5):
+        for y in (1.5, height - 1.5):
+            c.put(c.mask(lambda pen: pen.ellipse(x, y, 0.9)), IRON)
+
+
+PIECES.update({
+    # The workshop's slates (intro_wake_room), one per width of words.
+    **{f"workshop_slate_{w}": _block_piece(w, 32, chalk_slate, f"slate_{w}") for w in (96, 120, 180, 260, 300)},
+})
+
+
 PIECES.update({
     # The surveyors' boards (the lane's line and station, the woods' camp)
     "hill_stake_board": _block_piece(200, 100, stake_board, "stake_board"),
