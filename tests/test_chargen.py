@@ -345,7 +345,7 @@ def test_every_species_head_draws_in_every_view():
         for dv in drawn:
             assert any(p.name == "head" for p in dv.parts), (species, dv.view.key)
             assert _alpha_box(render_view(spec, dv.view, 0.5)) is not None
-        if species in ("bird", "pigeon"):
+        if species in ("bird", "pigeon", "finch"):
             # From behind, the beak is drawn under the head, not over it.
             back = {p.name for p in drawn[-1].parts}
             assert "head_behind" in back

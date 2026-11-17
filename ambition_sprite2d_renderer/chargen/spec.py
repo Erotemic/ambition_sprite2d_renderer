@@ -69,7 +69,7 @@ HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", 
         "campaign")
 #: ``obi``: the wide sash of a kimono, knotted at the back (``outfit.obi_knot``).
 ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders", "webbing", "dog_tags", "obi", "bow_tie")
-SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator")
+SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator", "finch")
 EAR_STYLES = ("default", "floppy", "pointed")
 #: A dog's coat marking, in its second colour (the hair colour): a dark
 #: ``mask`` over the muzzle and round the eyes, a white ``blaze`` up the middle
@@ -235,6 +235,14 @@ class Head:
     snout_width: float = 1.0
     #: Alligator: the scute rows on the back of the head (``SCUTE_ROWS``).
     scute_rows: str = "two"
+    #: Finch: how deep and broad the seed-cracking beak is at its base, 1 as
+    #: drawn (Darwin's finches differ most in this).
+    beak_depth: float = 1.0
+    #: Finch: a dark cap over the crown (a goldfinch's), its strength; 0 for none.
+    cap: float = 0.0
+    #: Finch: a red patch round the beak and over the face (a goldfinch's, a
+    #: house finch's), its strength; 0 for none.
+    face_patch: float = 0.0
 
 
 @dataclass
@@ -381,6 +389,7 @@ SPECIES_KNOBS: Dict[str, Tuple[str, ...]] = {
     "bird": ("crest", "crest_size"),
     "sea_lion": ("whisker_pads", "whiskers"),
     "alligator": ("snout_width", "scute_rows"),
+    "finch": ("beak_depth", "cap", "face_patch"),
 }
 HEAD_KNOB_DEFAULTS: Dict[str, Any] = {f.name: f.default for f in fields(Head) if f.name not in ("species", "muzzle", "ears")}
 #: Fields added after the first records: a record writes one only when it is
@@ -454,6 +463,9 @@ BOUNDS: Dict[str, Tuple[float, float]] = {
     "head.whisker_pads": (0.0, 2.5),
     "head.whiskers": (0.5, 1.6),
     "head.snout_width": (0.8, 1.25),
+    "head.beak_depth": (0.6, 1.6),
+    "head.cap": (0.0, 1.0),
+    "head.face_patch": (0.0, 1.0),
     "outfit.geta_height": (3.0, 16.0),
 }
 
@@ -736,6 +748,13 @@ def _draw(base: Base, seed: int) -> CharacterSpec:
     head.whiskers = _uniform(rng, 0.7, 1.4)
     head.snout_width = _uniform(rng, 0.85, 1.2)
     head.scute_rows = _pick(rng, {"two": 3, "four": 2, "none": 1})
+    head.beak_depth = _uniform(rng, 0.7, 1.45)
+    capped = rng.random() < 0.45
+    cap = _uniform(rng, 0.6, 1.0)
+    head.cap = cap if capped else 0.0
+    patched = rng.random() < 0.4
+    patch = _uniform(rng, 0.5, 1.0)
+    head.face_patch = patch if patched else 0.0
     if outfit.outer == "robe":
         outfit.outer_length = "ankle"
         outfit.outer_open = False

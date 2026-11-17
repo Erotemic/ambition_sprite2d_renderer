@@ -289,6 +289,47 @@ def _tabby_stripes(ctx: Ctx, pt: Paint) -> None:
     pt.flat(loft_region(ctx.view, hd.shell(0.02), fig.fy(0.52), fig.fy(0.72), cheek_m), color)
 
 
+#: A finch's cap and face patch: a sooty black, and a goldfinch's red.
+FINCH_CAP = "#26221f"
+FINCH_RED = "#c4302a"
+
+
+def _finch_plumage(ctx: Ctx, pt: Paint) -> None:
+    """A finch's head marks: a dark cap over the crown back from the brow
+    (``head.cap``), and a red patch round the base of the beak, over the
+    forehead and down to the chin (``head.face_patch``), each mixed into the
+    coat as strongly as its knob. The same on both sides."""
+    fig = ctx.fig
+    if fig.species != "finch":
+        return
+    hd, hh, lay = fig.head, fig.hh, fig.face
+    brow, eye, mouth = lay["brow_f"], lay["eye_f"], lay["mouth_f"]
+
+    def f_of(y: float) -> float:
+        return (y - fig.crown) / hh
+
+    cap = lay.get("cap", 0.0)
+    if cap > 0.0:
+
+        def cap_m(a: float, y: float) -> float:
+            # Down to the brow in front, lower over the sides and the nape.
+            edge = brow - 0.02 + 0.2 * smoothstep(30.0, 150.0, abs(wrap180(a)))
+            return (edge - f_of(y)) * 4.0
+
+        pt.flat(loft_region(ctx.view, hd.shell(0.02), hd.top, fig.fy(brow + 0.2), cap_m), mix(ctx.skin, FINCH_CAP, 0.35 + 0.65 * cap))
+    patch = lay.get("face_patch", 0.0)
+    if patch > 0.0:
+
+        def patch_m(a: float, y: float) -> float:
+            # Round the beak, from the forehead to the chin; it reaches the
+            # eyes' inner corners and widens over the cheeks below them.
+            f, al = f_of(y), abs(wrap180(a))
+            reach = 34.0 + 12.0 * smoothstep(eye, mouth + 0.1, f)
+            return min((f - brow + 0.06) * 4.0, (mouth + 0.2 - f) * 4.0, (reach - al) * 0.02)
+
+        pt.flat(loft_region(ctx.view, hd.shell(0.025), fig.fy(brow - 0.06), fig.fy(mouth + 0.2), patch_m), mix(ctx.skin, FINCH_RED, 0.35 + 0.65 * patch))
+
+
 def _eye_rings(ctx: Ctx, pt: Paint) -> None:
     """A pigeon's eye ring: bare skin round each eye, under the eye."""
     fig = ctx.fig
@@ -385,6 +426,7 @@ def head_parts(ctx: Ctx) -> List[Part]:
         _marking(ctx, pt, mark)
     _tabby_stripes(ctx, pt)
     _face_mark(ctx, pt)
+    _finch_plumage(ctx, pt)
     _eye_rings(ctx, pt)
     if painted(ctx):
         _face_paint(ctx, pt)
@@ -455,7 +497,7 @@ def _species_features(ctx: Ctx, pt: Paint, behind: Paint) -> None:
                     pt.line([ctx.p(p0), ctx.p(p1)], shade(ctx.skin, 0.5), FINE * 0.6, smooth=False)
         for run in surface_line(ctx, hd, [(0.0, fig.fy(lay["nose_tip_f"] + 0.03)), (0.0, fig.fy(lay["mouth_f"] - 0.005))], out=0.1, thresh=0.25):
             pt.line(run, shade(ctx.skin, 0.45), FINE)
-    elif kind in ("bird", "pigeon"):
+    elif kind in ("bird", "pigeon", "finch"):
         _beak(ctx, pt if ctx.view.c > -0.05 else behind, open_=0.0)
     elif kind == "sea_lion":
         _sea_lion_nose(ctx, pt)
@@ -723,7 +765,8 @@ def hair_thickness(fig: Figure, style: Optional[str] = None) -> float:
         # A wig: as thick on any head.
         return 0.05 * hh
     if fig.species != "human":
-        return {"horse": 0.04, "dog": 0.0, "cat": 0.04, "bird": 0.05, "pigeon": 0.0, "sea_lion": 0.0, "alligator": 0.0}[fig.species] * hh
+        return {"horse": 0.04, "dog": 0.0, "cat": 0.04, "bird": 0.05, "pigeon": 0.0, "sea_lion": 0.0, "alligator": 0.0,
+                "finch": 0.0}[fig.species] * hh
     return {
         "buzz": 0.012, "short": 0.03 + 0.03 * v, "side_part": 0.035 + 0.035 * v, "curly": 0.05 + 0.06 * v, "afro": 0.16 + 0.12 * v,
         "pixie": 0.035 + 0.025 * v, "bob": 0.045 + 0.04 * v, "long": 0.035 + 0.04 * v, "ponytail": 0.025, "bun": 0.025, "braid": 0.025,
@@ -1318,7 +1361,7 @@ def _eye_geometry(fig: Figure, sgn: float, e: Expression) -> Dict[str, object]:
     hh = fig.hh
     lay = fig.face
     shape = s.eye_shape if fig.species == "human" else {"horse": "almond", "dog": "round", "cat": "almond", "bird": "round", "pigeon": "round",
-                                                                "sea_lion": "round", "alligator": "almond"}[fig.species]
+                                                                "sea_lion": "round", "alligator": "almond", "finch": "round"}[fig.species]
     ratio = {"almond": 0.42, "round": 0.56, "narrow": 0.3, "hooded": 0.36, "downturned": 0.42, "upturned": 0.42}[shape]
     if fig.species == "human":
         ratio *= family_of(fig.spec).face.eye_open
@@ -1396,6 +1439,7 @@ def _draw_eye(ctx: Ctx, pt: Paint, g: Dict[str, object], e: Expression) -> None:
         if len(cut) >= 3:
             eye_col = fig.spec.palette.eyes if fig.species == "human" else {"horse": "#3a261c", "dog": "#4a2e1e", "cat": "#9aa83a",
                                                                              "bird": "#2a2020", "pigeon": "#d8681f", "sea_lion": "#1e1612",
+                                                                             "finch": "#1a1312",
                                                                              "alligator": "#c4405a" if luminance(ctx.skin) > 0.75 else
                                                                              "#b39a3c"}[fig.species]
             if fig.species == "human" and family_of(fig.spec).face.pupil == "dot":
@@ -1568,7 +1612,7 @@ def _mouth(ctx: Ctx, pt: Paint, e: Expression) -> None:
     fig = ctx.fig
     hd = fig.head
     kind = fig.face["nose"]
-    if kind in ("bird", "pigeon"):
+    if kind in ("bird", "pigeon", "finch"):
         # From behind, the beak is the fixed one drawn under the head.
         if ctx.view.c > -0.05:
             _beak(ctx, pt, e.open)

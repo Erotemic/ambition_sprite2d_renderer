@@ -26,9 +26,9 @@ from typing import Dict, List, Tuple
 from .family import family_of
 from .geometry import Loft, RingKey, gauss, smoothstep, wrap180
 
-SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator")
+SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator", "finch")
 #: A species' head height against a human's of the same build.
-HEAD_SCALE = {"human": 1.0, "horse": 1.16, "dog": 1.05, "cat": 0.98, "bird": 1.0, "pigeon": 0.94, "sea_lion": 1.02, "alligator": 0.64}
+HEAD_SCALE = {"human": 1.0, "horse": 1.16, "dog": 1.05, "cat": 0.98, "bird": 1.0, "pigeon": 0.94, "sea_lion": 1.02, "alligator": 0.64, "finch": 0.94}
 #: Coats: fur and feathers, by species.
 COATS: Dict[str, Tuple[str, ...]] = {
     "horse": ("#7a4a2c", "#5c3a24", "#a8672f", "#2e2622", "#8d8a86", "#c9a26a", "#e6dfd2", "#4a3528"),
@@ -40,6 +40,9 @@ COATS: Dict[str, Tuple[str, ...]] = {
     "sea_lion": ("#c9a876", "#b8946a", "#d4b384", "#a9804f", "#4e3628", "#5c4232", "#3e3029", "#6b4a32"),
     # Dark olive to near black hides.
     "alligator": ("#3d4a2e", "#2f3a26", "#4a5434", "#2a2f24", "#424a30", "#55603a", "#33392a", "#262a20", "#efece3"),
+    # A house finch's streaky brown, a goldfinch's yellow, a greenfinch's
+    # olive, a zebra finch's grey, a bullfinch's rose, a chaffinch's chestnut.
+    "finch": ("#8a6a50", "#e2bb32", "#7c8048", "#8c8c8e", "#c46a5a", "#9a5a3a", "#b8955e", "#6e6258"),
 }
 #: The alligator's albino coat: white to pale cream (its eyes are pink-red).
 ALBINO = "#efece3"
@@ -395,6 +398,36 @@ def _pigeon(fig) -> HeadModel:
                      sheen_strength=h.sheen)
 
 
+# ---- finch ----------------------------------------------------------------------------------
+
+
+def _finch(fig) -> HeadModel:
+    """A finch: a round, full-cheeked head that sits on the shoulders with
+    hardly a neck, the brow running straight into a short, deep, conical
+    beak (a seed-cracker's: broad and deep at the base, coming to a point),
+    dark round eyes set on the sides, no crest, no ears. Its plumage may have
+    a dark cap and a red face (``head.cap``, ``head.face_patch``)."""
+    hh = fig.hh
+    h = fig.spec.head
+    rows = [
+        (0.00, 0.0, 0.0, 0.0, 0.0, 2.0),
+        (0.1, 0.3, 0.32, 0.34, -0.02, 2.0),
+        (0.24, 0.42, 0.45, 0.45, -0.01, 2.0),
+        (0.42, 0.46, 0.49, 0.46, 0.0, 2.0),
+        # Full cheeks down to the throat.
+        (0.6, 0.45, 0.47, 0.42, 0.0, 2.0),
+        (0.76, 0.39, 0.41, 0.37, 0.0, 2.0),
+        (0.9, 0.31, 0.32, 0.32, -0.02, 2.0),
+        (1.00, 0.27, 0.27, 0.3, -0.03, 2.0),
+    ]
+    layout = {
+        "eye_f": 0.38, "brow_f": 0.3, "eye_alpha": 47.0, "eye_w": 0.14, "iris": 0.95, "nose_tip_f": 0.5, "mouth_f": 0.52,
+        "mouth_alpha": 0.0, "nose": "finch", "pupil": "round", "beak": 0.16 * h.muzzle, "beak_w": 0.75 + 0.25 * h.beak_depth,
+        "beak_h": 0.95 + 0.6 * h.beak_depth, "beak_col": "#cdb293", "cap": h.cap, "face_patch": h.face_patch,
+    }
+    return HeadModel("finch", _rows(fig.fy, hh, rows), [], layout, ears="none", hair="none", neck_f=0.74)
+
+
 # ---- sea lion -------------------------------------------------------------------------------
 
 
@@ -519,7 +552,8 @@ def _alligator(fig) -> HeadModel:
                      throat=True, neck_f=0.62, skull_keys=_rows(fig.fy, hh, skull))
 
 
-_BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird": _bird, "pigeon": _pigeon, "sea_lion": _sea_lion, "alligator": _alligator}
+_BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird": _bird, "pigeon": _pigeon, "sea_lion": _sea_lion, "alligator": _alligator,
+             "finch": _finch}
 
 
 def head_model(fig) -> HeadModel:

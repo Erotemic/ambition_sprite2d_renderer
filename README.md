@@ -911,7 +911,7 @@ look (`look_left`…). Each face's eyes, brows and each talking mouth (visemes
 body, not a sheet row).
 
 **Species heads** (`species.py`, `head.species`: `human`, `horse`, `dog`,
-`cat`, `bird`, `pigeon`, `sea_lion`, `alligator`) are fresh anthropomorphic heads on the same humanoid body,
+`cat`, `bird`, `pigeon`, `sea_lion`, `alligator`, `finch`) are fresh anthropomorphic heads on the same humanoid body,
 each a head model (rows, relief, face layout, ears, mane/tuft/crest or none). They
 wear every hat, take every expression and pose like any other spec. Never
 trace or adapt an existing animal sprite for one. A species head says where
@@ -922,6 +922,12 @@ human's, `pose3d.SPECIES_HEAD_TURN`), and the neck's upper part
 body carries. Every rig declares that join to `pose_audit` (`continuity`:
 `head_on_neck`, `neck_under_head`), so a head that floats or a neck that
 opens is an audit error.
+
+The `finch` head is round and full-cheeked on a short neck, with a short,
+deep, conical seed-cracker's beak (`head.beak_depth`, the trait Darwin's
+finches differ most in), dark bead eyes, no crest and no ears. Its plumage
+may have a dark cap over the crown (`head.cap`, a goldfinch's) and a red
+face round the beak (`head.face_patch`, a goldfinch's or a house finch's).
 
 The `alligator` head is LOW and FLAT, not a dinosaur's tall skull: the
 snout is most of its length, broad, ending in a bulbous U (not a crocodile's
