@@ -1301,6 +1301,25 @@ def recorded_blits():
         rigdoc.blit_rotated = original
 
 
+def _same_picture_redrawn(flipbook: "PartFlipbook", a: PartDraw, b: PartDraw) -> bool:
+    """Two parts within a pixel of one size, drawn at one angle and one scale,
+    a step apart no longer than the picture: one picture rasterized again as
+    it moves (the giant's hoof as it lifts). A part change that turns or flips
+    is another picture; a longer step is a cut (a swim bubble that starts
+    again below). The runtime's ``same_picture_redrawn`` states it the same
+    way."""
+    ia, ib = flipbook.parts[a.part].image, flipbook.parts[b.part].image
+    turn = (b.rotation - a.rotation + math.pi) % (2.0 * math.pi) - math.pi
+    step = math.hypot(b.at[0] - a.at[0], b.at[1] - a.at[1])
+    return (
+        abs(ia.width - ib.width) <= 1
+        and abs(ia.height - ib.height) <= 1
+        and abs(turn) <= 1e-4
+        and all(abs(x - y) <= 1e-4 for x, y in zip(a.scale, b.scale))
+        and step <= max(ia.width * abs(a.scale[0]), ia.height * abs(a.scale[1]))
+    )
+
+
 def tween_draws(flipbook: "PartFlipbook", row: str, index: int, t: float) -> List[PartDraw]:
     """The draws ``t`` (0..1) of the way from frame ``index`` of ``row`` to the
     next frame (the first after the last: a tweened clip loops).
@@ -1308,10 +1327,12 @@ def tween_draws(flipbook: "PartFlipbook", row: str, index: int, t: float) -> Lis
     THE RULE, which the game's runtime implements the same way
     (`ambition_sprite_sheet::character::rigged::RiggedSpriteAsset::tweened`):
     the current frame's draws, in its order; a draw whose track is in the next
-    frame WITH THE SAME PART moves linearly to it (its turn by the shorter
-    way, its opacity linearly too); any other draw holds still. A clip that
-    steps, or ``t == 0``, is the frame itself. The frame's opacity is the
-    current frame's.
+    frame WITH THE SAME PART, or with the same picture redrawn (a part within
+    a pixel of its size, at its angle and scale: ``_same_picture_redrawn``),
+    moves linearly to it (its turn by the shorter way, its opacity linearly
+    too), keeping its own part until the frame changes; any other draw holds
+    still. A clip that steps, or ``t == 0``, is the frame itself. The frame's
+    opacity is the current frame's.
     """
     _duration, frames = flipbook.clips[row]
     current = frames[index]
@@ -1321,7 +1342,7 @@ def tween_draws(flipbook: "PartFlipbook", row: str, index: int, t: float) -> Lis
     out: List[PartDraw] = []
     for d in current:
         target = following.get(d.track)
-        if d.track is None or target is None or target.part != d.part:
+        if d.track is None or target is None or (target.part != d.part and not _same_picture_redrawn(flipbook, d, target)):
             out.append(d)
             continue
         turn = (target.rotation - d.rotation + math.pi) % (2.0 * math.pi) - math.pi
