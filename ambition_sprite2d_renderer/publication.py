@@ -64,10 +64,23 @@ def discover():
     return discover_all_targets()
 
 
+def collection(scope: str, registered) -> list[str]:
+    """The targets a declared collection names: a list of names, or
+    `{except: {name: reason}}`, every registered target but those."""
+    declared = policy()["collections"][scope]
+    if isinstance(declared, list):
+        return declared
+    excepted = declared["except"]
+    unknown = sorted(set(excepted) - set(registered))
+    if unknown:
+        raise ValueError(f"Collection {scope} excepts unregistered targets: {', '.join(unknown)}")
+    return sorted(set(registered) - set(excepted))
+
+
 def names_in(scope: str | None, requested=()) -> tuple[list[str], object]:
     scope = scope or library()["producers"]["sprites"]["collection"]
     report = discover()
-    names = list(dict.fromkeys(requested)) if requested else sorted(report.targets) if scope == "all" else policy()["collections"][scope]
+    names = list(dict.fromkeys(requested)) if requested else sorted(report.targets) if scope == "all" else collection(scope, report.targets)
     missing = sorted(set(names) - report.targets.keys())
     if missing:
         raise ValueError(f"Unregistered publication targets: {', '.join(missing)}. {report.failures}")
@@ -189,14 +202,28 @@ def recipe_state(recipe: dict | None, files: dict[str, Path], chain: dict, hashe
     Each reason has a `scope`: `direct` when the unit's own inputs changed, or
     `shared` when only shared renderer code, the toolchain or the set of source
     files changed. A unit stale only for shared reasons is possibly stale: it
-    may well render the same pixels (`stale_scope`)."""
+    may well render the same pixels (`stale_scope`).
+
+    A recipe with `listings` names the directories its render listed (a glob
+    of a data folder): a file added elsewhere does not change it. A recipe
+    without them (recorded before they were) keys every source file's name.
+    A target recipe's `policy` is the part of the sprite policy its render
+    read, so editing the collections does not change it."""
     if recipe is None:
         return "unknown", [{"code": "unknown-inputs", "scope": "direct"}]
     changed = []
     if recipe["toolchain"] != chain:
         changed.append({"code": "changed-toolchain", "scope": "shared"})
-    if recipe["membership"] != identity(sorted(files)):
-        changed.append({"code": "changed-source-membership", "scope": "shared"})
+    if "listings" not in recipe:
+        if recipe["membership"] != identity(sorted(files)):
+            changed.append({"code": "changed-source-membership", "scope": "shared"})
+    else:
+        for directory, expected in recipe["listings"].items():
+            if identity(listing(files, directory)) != expected:
+                changed.append({"code": "changed-listing", "path": directory,
+                                "scope": "direct" if direct_input(unit, directory, count) else "shared"})
+    if "policy" in recipe and recipe["policy"] != target_policy(unit.removeprefix("target:")):
+        changed.append({"code": "changed-policy", "scope": "direct"})
     for name, expected in recipe["inputs"].items():
         path = files.get(name)
         actual = hashes.file(path) if hashes is not None and path else digest(path) if path else None
@@ -205,6 +232,18 @@ def recipe_state(recipe: dict | None, files: dict[str, Path], chain: dict, hashe
             changed.append({"code": "changed-input", "path": name, "scope": "direct" if direct else "shared",
                             **({} if direct or count is None else {"readers": count.get(name, 0)})})
     return ("stale", changed) if changed else ("current", [])
+
+
+def listing(files: dict[str, Path], directory: str) -> list[str]:
+    """The names in `directory` of the source snapshot, which holds exactly the
+    source `files` (what `read_record.directories` listed in it)."""
+    prefix = directory.rstrip("/") + "/"
+    return sorted({name[len(prefix):].split("/", 1)[0] for name in files if name.startswith(prefix)})
+
+
+def target_policy(name: str) -> dict:
+    """The part of the sprite policy a target's render reads."""
+    return {"static_prop": policy()["static_props"].get(name)}
 
 
 def stale_scope(reasons: list[dict]) -> str | None:
@@ -310,7 +349,8 @@ def _worker(spec: dict) -> int:
                     logical = f"{TIERS[tier]}/{path.relative_to(dest).as_posix()}"
                     files[logical] = [str(path), "runtime", tier]
     reads = read_record.recorded() or []
-    write_json(work / "result.json", {"files": files, "reads": [Path(p).relative_to(root).as_posix() for p in reads]})
+    write_json(work / "result.json", {"files": files, "reads": [Path(p).relative_to(root).as_posix() for p in reads],
+                                      "directories": read_record.directories()})
     return 0
 
 
@@ -364,7 +404,8 @@ def build_packs(store: Store, bundles: dict, report, sources: dict, chain: dict,
     if set(parents) != set(owners.values()):
         raise ValueError(f"Missing atlas dependencies: {sorted(set(owners.values()) - parents.keys())}")
     inputs = {name: digest(path) for name, path in sources.items() if name.endswith(("/authoring/ultrapack.py", "/authoring/packer.py", "/data/pack_plan.yaml", "/publication.py", "/publication_store.py"))}
-    recipe = {"inputs": inputs, "membership": identity(sorted(sources)), "toolchain": chain, "quality": True}
+    # An atlas reads its parents' bundles and the packer, never a listing.
+    recipe = {"inputs": inputs, "listings": {}, "toolchain": chain, "quality": True}
     required = [tier for tier in TIERS if force or "atlas:"+tier not in bundles
                 or store.bundle(bundles["atlas:"+tier])["parents"] != parents
                 or recipe_state(store.bundle(bundles["atlas:"+tier])["recipe"], sources, chain)[0] != "current"
@@ -486,11 +527,14 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=
                     result = json.loads((work / "result.json").read_text())
                     validate_metadata(result["files"])
                     inputs = {path: original[path] for path in result["reads"] if path in original}
-                    # The recipe owner and collection policy affect every build.
+                    # The recipe owner affects every build. Of the sprite
+                    # policy, a build reads only its own row (`target_policy`).
                     for path, sha in original.items():
-                        if path.endswith(("/publication.py", "/artifacts.py", "/publication_store.py", "/sprites.yaml", "/library.json", "/quality.py")):
+                        if path.endswith(("/publication.py", "/artifacts.py", "/publication_store.py", "/library.json", "/quality.py")):
                             inputs[path] = sha
-                    recipe = {"inputs": inputs, "membership": identity(sorted(original)), "toolchain": chain, "quality": True, "tiers": getattr(target, "publication_tiers", list(TIERS))}
+                    listings = {row["path"]: identity(row["members"]) for row in result["directories"]}
+                    recipe = {"inputs": inputs, "listings": listings, "policy": target_policy(name), "toolchain": chain,
+                              "quality": True, "tiers": getattr(target, "publication_tiers", list(TIERS))}
                     key = store.accept("target:" + name, {k: (Path(v[0]), v[1], v[2]) for k,v in result["files"].items()}, recipe)
                     return name, key
             with ThreadPoolExecutor(max_workers=min(6, max(1, jobs))) as pool:

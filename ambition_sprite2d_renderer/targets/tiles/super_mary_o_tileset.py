@@ -30,6 +30,8 @@ from ..super_mary_o_common import (
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "super_mary_o_tileset"
+#: The sheet and its manifest; without them discovery expects a `_spritesheet.png`.
+SHEET_FILES = (f"{TARGET_NAME}.png", f"{TARGET_NAME}.yaml")
 TILE = 16
 COLS = 4
 ROWS = 4
