@@ -1063,7 +1063,21 @@ def _render_with_products(out_dir: str | Path, **opts):
         return paths, {"outputs": outputs}
     flipbook = build_part_flipbook()
     parts = flipbook.write(out_dir)
-    return paths + list(parts.values()), {"parts": flipbook, "outputs": outputs}
+    return paths + [write_scout_body_rig(out_dir)] + list(parts.values()), {"parts": flipbook, "outputs": outputs}
+
+
+def write_scout_body_rig(out_dir: Path) -> Path:
+    """The visual body rig (``_player_robot_v3_body_rig``) of the side rows,
+    relative to the sheet's feet pixel."""
+    from ._player_robot_v3_body_rig import write_body_rig
+
+    excluded = set(BACK_ROWS) | set(PURE_SIDE_ROWS) | {
+        row for row, _count, _ms in ROBOT_ROWS if FRONT_FRAMES.get(row) or BACK_FRAMES.get(row)
+    }
+    pad_left, pad_top, pad_right, pad_bottom = PUBLISH_PADDING
+    feet = body_metrics(FRAME_SIZE[0] + pad_left + pad_right, FRAME_SIZE[1] + pad_top + pad_bottom)["feet_pixel"]
+    return write_body_rig(TARGET_NAME, ROBOT_ROWS, MIRRORED, load_doc(), excluded,
+                          (feet["x"] - pad_left, feet["y"] - pad_top), out_dir)
 
 
 def render_canonical(out_dir: str | Path, **opts):

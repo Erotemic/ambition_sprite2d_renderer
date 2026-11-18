@@ -71,6 +71,12 @@ class BodyRigProduct:
     #: one ``JointPose`` per joint, in ``joints`` order.
     clips: Dict[str, Tuple[bool, float, List[List[JointPose]]]] = field(default_factory=dict)
     origin_from_centre: Point = (0.0, 0.0)
+    #: part-flipbook track name -> the joint that part rides, where the art
+    #: knows it. A runtime that places parts from joint frames reads the joint
+    #: here instead of guessing it from the frames: a flipbook that bakes a
+    #: limb's turn into its rasters (a supersampled rig) records no angle for
+    #: the guess to measure.
+    part_bindings: Dict[str, str] = field(default_factory=dict)
 
     def validate(self) -> None:
         names = [name for name, _parent in self.joints]
@@ -86,6 +92,9 @@ class BodyRigProduct:
         for name, joint, _shape in self.hurt_parts:
             if joint not in known:
                 raise ValueError(f"{self.target}: hurt part {name!r} names unknown joint {joint!r}")
+        for track, joint in self.part_bindings.items():
+            if joint not in known:
+                raise ValueError(f"{self.target}: part track {track!r} names unknown joint {joint!r}")
         for clip, (_loop, duration, frames) in self.clips.items():
             if not frames:
                 raise ValueError(f"{self.target}: clip {clip!r} has no frames")
@@ -120,6 +129,11 @@ class BodyRigProduct:
         for name, joint, shape in self.hurt_parts:
             out.append(f"        (name: {_s(name)}, joint: {_s(joint)}, shape: {_shape(shape)}),")
         out.append("    ],")
+        if self.part_bindings:
+            out.append("    part_bindings: {")
+            for track in sorted(self.part_bindings):
+                out.append(f"        {_s(track)}: {_s(self.part_bindings[track])},")
+            out.append("    },")
         out.append("    clips: {")
         for clip in sorted(self.clips):
             looping, duration, frames = self.clips[clip]
