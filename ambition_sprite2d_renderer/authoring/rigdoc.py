@@ -166,6 +166,11 @@ DEFAULT_SPRITE_TRANSFORM_CACHE_MB = 128
 DEFAULT_SPRITE_TRANSFORM_WORKERS = min(4, max(1, os.cpu_count() or 1))
 
 
+#: False while ``part_flipbook.recorded_paint(paint=False)`` records a frame
+#: without painting it: a turned raster made only to be painted is skipped.
+PAINTING = True
+
+
 def _sprite_transform_cache_bytes() -> int:
     value = os.environ.get(
         "AMBITION_SPRITE_TRANSFORM_CACHE_MB",
@@ -1172,7 +1177,9 @@ class RigDocument:
                 rotation_requests.append((sprite, delta))
 
         prepared_rotations: Dict[int, Image.Image] = {}
-        if rotation_requests:
+        # A record-only pass (`part_flipbook.recorded_paint(paint=False)`)
+        # turns no part onto a canvas, so it needs no turned raster.
+        if rotation_requests and PAINTING:
             prepared_rotations = dict(
                 zip(
                     rotation_slots,

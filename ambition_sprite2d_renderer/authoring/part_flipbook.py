@@ -494,9 +494,14 @@ def wrong_pixels(
     import numpy as np
 
     def premultiplied(image: Image.Image):
-        array = np.asarray(image.convert("RGBA"), dtype=np.int32)
-        alpha = array[..., 3:4]
-        return np.concatenate([array[..., :3] * alpha // 255, alpha], axis=-1)
+        # uint16 holds 255 * 255; the quotient fits int16, which the
+        # differences below need.
+        array = np.asarray(image if image.mode == "RGBA" else image.convert("RGBA"))
+        alpha = array[..., 3:4].astype(np.uint16)
+        out = np.empty(array.shape, dtype=np.int16)
+        out[..., :3] = array[..., :3].astype(np.uint16) * alpha // 255
+        out[..., 3] = array[..., 3]
+        return out
 
     def unmatched(a, b):
         """Pixels of ``a`` with no close match in ``b`` within the radius."""
@@ -525,7 +530,11 @@ def wrong_pixels(
         y1 = min(h, max(b[3] for b in boxes) + radius)
         ref, cand = premultiplied(reference.crop((x0, y0, x1, y1))), premultiplied(candidate.crop((x0, y0, x1, y1)))
         drawn[y0:y1, x0:x1] = (ref[..., 3] > 0) | (cand[..., 3] > 0)
-        wrong[y0:y1, x0:x1] = unmatched(ref, cand) | unmatched(cand, ref)
+        if radius == 0:
+            # Each pixel is matched only against itself: one mask, both ways.
+            wrong[y0:y1, x0:x1] = np.abs(ref - cand).max(axis=-1) > threshold
+        else:
+            wrong[y0:y1, x0:x1] = unmatched(ref, cand) | unmatched(cand, ref)
     if edge:
         # A band at the frame's border is not measured (`EDGE_BAND`).
         inner = np.zeros(drawn.shape, dtype=bool)
@@ -994,9 +1003,16 @@ PART_BORDER = 2
 
 
 @contextmanager
-def recorded_paint():
-    """Record every paint made through ``rigdoc``'s seams inside the block. The
-    calls still paint. Yields a ``PaintRecord``."""
+def recorded_paint(paint: bool = True):
+    """Record every paint made through ``rigdoc``'s seams inside the block.
+    Yields a ``PaintRecord``.
+
+    With ``paint`` (the default) the calls still paint. Without it the seams
+    only record (part-first publication): a part is not turned onto a canvas,
+    a canvas is not composited, and a reduced, mirrored or faded frame is a
+    blank image of its size that carries its record. Part rasters are still
+    reduced (``record.reduced``), and a procedural painter's shapes still
+    paint where they are drawn: they are cheap, and its text ops read them."""
     from dataclasses import replace
 
     from . import rigdoc
@@ -1029,7 +1045,9 @@ def recorded_paint():
                 scale_y=round(float(kwargs.get("scale_y", 1.0)), 4),
             )
         )
-        return originals["blit_rotated"](canvas, sprite, pivot, world_px, delta_deg, opacity, **kwargs)
+        if paint:
+            return originals["blit_rotated"](canvas, sprite, pivot, world_px, delta_deg, opacity, **kwargs)
+        return None
 
     def unique(target, op):
         """``op`` named apart from every draw already on ``target``: a track
@@ -1045,12 +1063,12 @@ def recorded_paint():
     def recording_layer(canvas, layer, dest=(0, 0), *, name="overlay"):
         target = record._list(canvas)
         target.append(unique(target, PaintedOverlay(layer, (int(dest[0]), int(dest[1])), str(name))))
-        return originals["composite_layer"](canvas, layer, dest, name=name)
+        return originals["composite_layer"](canvas, layer, dest, name=name) if paint else None
 
     def recording_scaled_layer(canvas, layer, factor, dest=(0, 0), *, name="overlay"):
         target = record._list(canvas)
         target.append(unique(target, PaintedOverlay(layer, (int(dest[0]), int(dest[1])), str(name), scale=int(factor))))
-        return originals["composite_scaled_layer"](canvas, layer, factor, dest, name=name)
+        return originals["composite_scaled_layer"](canvas, layer, factor, dest, name=name) if paint else None
 
     def recording_canvas(canvas, frame, dest=(0, 0)):
         dx, dy = int(dest[0]), int(dest[1])
@@ -1068,11 +1086,18 @@ def recorded_paint():
                     target.append(unique(target, replace(op, world=(op.world[0] + dx, op.world[1] + dy))))
                 else:
                     target.append(unique(target, replace(op, dest=(op.dest[0] + dx, op.dest[1] + dy))))
-        return originals["composite_canvas"](canvas, frame, dest)
+        return originals["composite_canvas"](canvas, frame, dest) if paint else None
+
+    def blank(size):
+        return Image.new("RGBA", (int(size[0]), int(size[1])), (0, 0, 0, 0))
 
     def recording_downsample(frame, size, resample=None):
-        out = originals["downsampled_canvas"](frame, size, resample)
         ops = record.ops_for(frame)
+        if not paint and ops is None:
+            # Nothing on this canvas went through the seams: it was painted
+            # directly, so it is reduced as it is.
+            return originals["downsampled_canvas"](frame, size, resample)
+        out = originals["downsampled_canvas"](frame, size, resample) if paint else blank(size)
         if ops is None:
             return out
 
@@ -1123,8 +1148,8 @@ def recorded_paint():
         return out
 
     def recording_mirror(frame):
-        out = originals["mirrored_canvas"](frame)
         ops = record.ops_for(frame)
+        out = originals["mirrored_canvas"](frame) if paint or ops is None else blank(frame.size)
         if ops is None:
             return out
         width = frame.width
@@ -1144,8 +1169,8 @@ def recorded_paint():
         return out
 
     def recording_fade(frame, opacity):
-        out = originals["faded_canvas"](frame, opacity)
         ops = record.ops_for(frame)
+        out = originals["faded_canvas"](frame, opacity) if paint or ops is None else blank(frame.size)
         if ops is None:
             return out
         target = record._list(out)
@@ -1271,9 +1296,12 @@ def recorded_paint():
     for name, fn in recorders.items():
         setattr(rigdoc, name, fn)
     core_draw.SHAPE_RECORDER = recording_shape
+    was_painting = rigdoc.PAINTING
+    rigdoc.PAINTING = paint
     try:
         yield record
     finally:
+        rigdoc.PAINTING = was_painting
         core_draw.SHAPE_RECORDER = None
         for name, fn in originals.items():
             setattr(rigdoc, name, fn)
@@ -1491,6 +1519,7 @@ def build_rig_flipbook(
     frame_size: Tuple[int, int],
     tween_rows: Sequence[str] = (),
     render_clip: Optional[Callable[[str, int], Sequence[Image.Image]]] = None,
+    paint: bool = True,
 ) -> PartFlipbook:
     """The flipbook of a rig-document character: ``part_rows`` from parts (every
     row when ``None``), and any other row of ``rows`` left to the baked sheet.
@@ -1519,6 +1548,13 @@ def build_rig_flipbook(
     outside the seams — a post-process over the whole frame, a direct
     ``ImageDraw`` — that no draw carries, and the flipbook is refused rather
     than published without it.
+
+    Without ``paint`` (part-first publication) each frame is only recorded
+    (``recorded_paint(paint=False)``). A sample of each clip is painted
+    (``replay_sample``: its middle frame) and every other frame's
+    reference is the unshared flipbook's own redraw: the record is the
+    paint, so the sharing steps are still measured on every frame, and the
+    sample measures the record against the paint.
     """
     known = {row for row, _count, _ms in rows}
     selected = known if part_rows is None else set(part_rows)
@@ -1539,22 +1575,24 @@ def build_rig_flipbook(
         return part_index[key]
 
     rendered: Dict[Tuple[str, int], Image.Image] = {}
+    painted_sample: Dict[Tuple[str, int], Image.Image] = {}
     for row, count, duration_ms in rows:
         if row not in selected:
             continue
         frames: List[List[PartDraw]] = []
         opacities: List[float] = []
         if render_clip is not None:
-            with recorded_paint() as clip_record:
+            with recorded_paint(paint) as clip_record:
                 clip = list(render_clip(row, int(count)))
             assert len(clip) == int(count), f"{target} {row}: {len(clip)} frames rendered for {count}"
         for index in range(int(count)):
             if render_clip is not None:
                 frame, record = clip[index], clip_record
             else:
-                with recorded_paint() as record:
+                with recorded_paint(paint) as record:
                     frame = render(row, index, int(count))
-            rendered[(row, index)] = frame
+            if paint:
+                rendered[(row, index)] = frame
             assert frame.size == tuple(frame_size), (
                 f"{target} {row}:{index} renders {frame.size}, not the {tuple(frame_size)} frame"
             )
@@ -1635,6 +1673,11 @@ def build_rig_flipbook(
         clips[row] = (float(duration_ms) / 1000.0, frames)
         if any(value < 1.0 for value in opacities):
             frame_opacity[row] = opacities
+        if not paint:
+            sample = replay_sample(int(count))
+            painted = list(render_clip(row, int(count))) if render_clip is not None else None
+            for index in sample:
+                painted_sample[(row, index)] = painted[index] if painted is not None else render(row, index, int(count))
     assert len(placements) <= 1, f"{target} draws some parts at whole pixels and some between them"
     assert len(filters) <= 1, f"{target} turns some parts bilinear and some bicubic"
     baked = [row for row, _count, _ms in rows if row not in selected]
@@ -1652,6 +1695,12 @@ def build_rig_flipbook(
         bilinear=filters.pop() if filters else False,
         frame_opacity=frame_opacity,
     )
+    if not paint:
+        rendered = {
+            (row, index): painted_sample.get((row, index)) or flipbook.recompose(row, index)
+            for row, (_duration, frames) in clips.items()
+            for index in range(len(frames))
+        }
     # Lossless sharing FIRST, then the rigid merge, then sharing again (a
     # composite can be another's mirror). Merged first, two mirrored quarters
     # of a slash ring fused into a new half-ring raster and the robot's pages
@@ -1688,6 +1737,14 @@ def build_rig_flipbook(
                 f"pixels wrong, a blob of {blob}) — something painted the frame outside rigdoc's seams"
             )
     return flipbook
+
+
+def replay_sample(count: int) -> List[int]:
+    """The frames of a clip of ``count`` a part-first publish paints to check
+    its record against its paint: the middle one, where a clip's effect is
+    usually under way. One a clip, so a paint outside the seams that a clip
+    makes in most of its frames is caught in that clip."""
+    return [count // 2]
 
 
 def _replay_failures(flipbook: "PartFlipbook", rendered: Mapping[Tuple[str, int], Image.Image]) -> List[str]:
