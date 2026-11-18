@@ -164,7 +164,7 @@ def render(target: str, metadata: Dict[str, Any], out_dir: str | Path):
         return rigdoc.mirrored_canvas(doc(target, left_side=True).render_frame(original, frame_idx, frame_count))
 
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=target,
         rows=rows,

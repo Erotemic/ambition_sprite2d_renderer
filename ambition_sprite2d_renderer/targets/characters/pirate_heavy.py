@@ -1321,7 +1321,7 @@ def render_variant(spec: VariantSpec, out_dir: str | Path, **opts) -> List[Path]
         return _draw_variant(anim, frame_idx, nframes, spec)
 
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=target_name,
         rows=ROWS,

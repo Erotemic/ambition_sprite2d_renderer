@@ -179,7 +179,9 @@ class TestSheetBuild:
     def test_build_outputs_and_manifest(self, tmp_path):
         paths = prf.render(tmp_path)
         names = {p.name for p in paths}
-        assert "player_robot_fable_spritesheet.png" in names
+        # Part-first: no page; the part flipbook is the published picture.
+        assert "player_robot_fable_spritesheet.png" not in names
+        assert {"player_robot_fable_parts.png", "player_robot_fable_parts.ron"} <= names
         assert "player_robot_fable_spritesheet.yaml" in names
         assert "player_robot_fable_spritesheet.ron" in names
         manifest = yaml.safe_load(

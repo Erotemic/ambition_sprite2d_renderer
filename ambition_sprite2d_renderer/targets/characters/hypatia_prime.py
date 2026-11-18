@@ -283,7 +283,7 @@ def render(out_dir: Path, **opts) -> List[Path]:
     del opts
     doc = _doc()
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=TARGET_NAME, rows=ROWS, render_fn=render_frame, out_dir=Path(out_dir),
         frame_size=(int(doc.data["frame"]["width"]), int(doc.data["frame"]["height"])),

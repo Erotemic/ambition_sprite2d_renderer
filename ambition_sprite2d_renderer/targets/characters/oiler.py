@@ -392,7 +392,7 @@ def render_portraits(out_dir: str | Path, **opts):
 def render(out_dir: str | Path, **opts):
     del opts
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,

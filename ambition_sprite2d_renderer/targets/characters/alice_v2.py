@@ -668,7 +668,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     frames = {name: n for name, n, _ms in sheet.rows()}
     meta = dict(ACTOR_METADATA, animation_bindings=_bindings(hits, frames))
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=sheet.rows(),

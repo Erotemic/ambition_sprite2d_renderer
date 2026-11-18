@@ -112,7 +112,7 @@ def _make(target: str):
         del opts
         doc = _doc(target)
         frame_transform: dict = {}
-        outputs = build_sheet(
+        outputs = build_sheet(parts=True, 
             frame_transform_out=frame_transform,
             target=target,
             rows=doc.rows(),

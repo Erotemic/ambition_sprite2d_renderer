@@ -95,7 +95,7 @@ def render(target: str, metadata: Dict, out_dir: str | Path):
         return doc.render_frame(animation, frame_idx, frame_count)
 
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=target,
         rows=doc.rows(),

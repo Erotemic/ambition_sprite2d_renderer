@@ -101,7 +101,7 @@ def render(name: str, actor: dict, box: tuple, out_dir: str | Path):
 
     rows = d.rows()
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=name,
         rows=rows,

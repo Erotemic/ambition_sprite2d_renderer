@@ -431,7 +431,8 @@ class Target:
 
     @profile
     def _render_sheet_module(self, out_dir: Path, **opts) -> List[Path]:
-        paths = list(self._render_fn(out_dir, **opts))
+        # A part-first sheet (`build_sheet(parts=True)`) has no page or preview.
+        paths = [Path(path) for path in self._render_fn(out_dir, **opts) if path is not None]
         paths.extend(
             _ensure_actor_sidecars(
                 target_name=self.name,

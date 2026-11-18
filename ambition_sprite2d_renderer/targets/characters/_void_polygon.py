@@ -429,7 +429,7 @@ class VoidPolygon:
         base = source._doc()
         rows = base.rows()
         frame_transform: dict = {}
-        outputs = build_sheet(
+        outputs = build_sheet(parts=True, render_clip=lambda row, count: list(self._build_clip(row, count)), 
             frame_transform_out=frame_transform,
             target=self.target,
             rows=rows,

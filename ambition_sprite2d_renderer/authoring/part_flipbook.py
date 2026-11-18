@@ -1293,8 +1293,16 @@ def recorded_paint(paint: bool = True):
         "mirrored_canvas": recording_mirror,
         "faded_canvas": recording_fade,
     }
+    # A target that imported a seam by name (`from .rigdoc import
+    # faded_canvas`) calls it through its own binding, which must be the
+    # recorder too: painted, the frame it returned rode as one whole-frame
+    # overlay (the spectral wolf's and the pirates' mirrored rows); recorded
+    # only, it came back blank.
+    bindings = _seam_bindings(originals)
     for name, fn in recorders.items():
         setattr(rigdoc, name, fn)
+    for module, name in bindings:
+        setattr(module, name, recorders[name])
     core_draw.SHAPE_RECORDER = recording_shape
     was_painting = rigdoc.PAINTING
     rigdoc.PAINTING = paint
@@ -1305,6 +1313,28 @@ def recorded_paint(paint: bool = True):
         core_draw.SHAPE_RECORDER = None
         for name, fn in originals.items():
             setattr(rigdoc, name, fn)
+        for module, name in bindings:
+            setattr(module, name, originals[name])
+
+
+_SEAM_BINDINGS: Dict[str, object] = {"modules": -1, "bindings": []}
+
+
+def _seam_bindings(originals: Dict[str, Callable]) -> List[Tuple[object, str]]:
+    """Every renderer module (but ``rigdoc``) holding a rigdoc seam under its
+    own name, rescanned when a module has been imported since."""
+    import sys
+
+    if _SEAM_BINDINGS["modules"] != len(sys.modules):
+        found = []
+        for module_name, module in list(sys.modules.items()):
+            if module is None or not module_name.startswith("ambition_sprite2d_renderer") or module_name.endswith(".rigdoc"):
+                continue
+            for name, original in originals.items():
+                if getattr(module, name, None) is original:
+                    found.append((module, name))
+        _SEAM_BINDINGS.update(modules=len(sys.modules), bindings=found)
+    return list(_SEAM_BINDINGS["bindings"])
 
 
 @contextmanager
@@ -1725,9 +1755,17 @@ def build_rig_flipbook(
     # Near twins (a texel over, a shade darker), each kept only where every
     # frame still replays (`_share_near_parts`).
     distinct = frozenset(DISTINCT_TRACKS.get(target, ()))
-    flipbook = _share_near_parts(flipbook, rendered, distinct)
+    # These two are lossy by design, so recorded only they are judged against
+    # the PAINT of each frame a candidate is drawn in (painted when asked):
+    # judged against the unshared redraw, a near twin spent the replay's
+    # bounds a second time and 246 part-first sheets failed a full paint
+    # audit (2026-11-18).
+    lossy = rendered if paint else _PaintOnDemand(rendered, counts_of(rows, selected), render, render_clip, painted_sample)
+    flipbook = _share_near_parts(flipbook, lossy, distinct)
     # Then each part that is its own mirror, stored as half (`_split_symmetric_parts`).
-    flipbook = _split_symmetric_parts(flipbook, rendered, distinct)
+    flipbook = _split_symmetric_parts(flipbook, lossy, distinct)
+    if not paint:
+        rendered = {key: lossy.painted.get(key, frame) for key, frame in rendered.items()}
     for (row, index), frame in rendered.items():
         replayed = flipbook.recompose(row, index)
         if flipbook.placement == PLACEMENT_SNAPPED:
@@ -1747,12 +1785,46 @@ def build_rig_flipbook(
     return flipbook
 
 
+def counts_of(rows, selected) -> Dict[str, int]:
+    return {row: int(count) for row, count, _ms in rows if row in selected}
+
+
+class _PaintOnDemand(Mapping):
+    """The reference frames of a part-first flipbook, each PAINTED the first
+    time it is read (a clip rendered at once is painted whole); the painted
+    sample is already here. Iterating gives the keys and paints nothing."""
+
+    def __init__(self, keys, counts, render, render_clip, painted):
+        self._keys = list(keys)
+        self._counts = counts
+        self._render = render
+        self._render_clip = render_clip
+        self.painted = dict(painted)
+
+    def __getitem__(self, key):
+        if key not in self.painted:
+            row, index = key
+            if self._render_clip is not None:
+                for i, frame in enumerate(self._render_clip(row, self._counts[row])):
+                    self.painted.setdefault((row, i), frame)
+            else:
+                self.painted[key] = self._render(row, index, self._counts[row])
+        return self.painted[key]
+
+    def __iter__(self):
+        return iter(self._keys)
+
+    def __len__(self):
+        return len(self._keys)
+
+
 def replay_sample(count: int) -> List[int]:
     """The frames of a clip of ``count`` a part-first publish paints to check
-    its record against its paint: the middle one, where a clip's effect is
-    usually under way. One a clip, so a paint outside the seams that a clip
-    makes in most of its frames is caught in that clip."""
-    return [count // 2]
+    its record against its paint: its first (a hit flash, a turn's mirrored
+    start) and its middle one, where a clip's effect is usually under way. A
+    paint outside the seams in one of them sends the sheet back to painting
+    (`sheet_build._part_first_rows`)."""
+    return sorted({0, count // 2})
 
 
 def _replay_failures(flipbook: "PartFlipbook", rendered: Mapping[Tuple[str, int], Image.Image]) -> List[str]:
@@ -2398,9 +2470,10 @@ def _withdrawn_until_replayed(flipbook, rendered, chosen: dict, build, label: st
     def drawing(parts) -> Dict[Tuple[str, int], Image.Image]:
         # Only a frame that draws a changed part can change, and the whole
         # flipbook is replayed again at the end (`build_rig_flipbook`).
+        # Keys first: a reference painted on demand paints only these.
         return {
-            (row, index): frame
-            for (row, index), frame in rendered.items()
+            (row, index): rendered[(row, index)]
+            for (row, index) in rendered
             if any(d.part in parts for d in flipbook.clips[row][1][index])
         }
 

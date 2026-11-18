@@ -170,7 +170,7 @@ class BirdFx:
     def render(self, out_dir: Path, actor_metadata: dict) -> List[Path]:
         rows = self.rows()
         frame_transform: dict = {}
-        outputs = build_sheet(
+        outputs = build_sheet(parts=True, 
             frame_transform_out=frame_transform,
             target=self.target,
             rows=rows,

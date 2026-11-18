@@ -1598,7 +1598,7 @@ def _body_metrics_override(fw: int, fh: int):
 def render(out_dir: Path, **opts) -> List[Path]:
     del opts
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,

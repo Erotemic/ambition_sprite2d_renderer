@@ -106,7 +106,9 @@ def render(out_dir: str | Path, **opts):
     del opts
     rows = _rows()
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, render_clip=lambda row, count: list(
+            AuthoredSwingFighter._clip_frames.__wrapped__(_FIGHTER, _CLIP_OF[row], count)
+        ), 
         frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=rows,

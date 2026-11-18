@@ -1454,7 +1454,7 @@ def render_target_with_products(
         frame_fits[(anim, frame_idx)] = fit
         return frame
 
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         target=target,
         rows=rows_of(target),
         render_fn=render_fn,

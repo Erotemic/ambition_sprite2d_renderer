@@ -875,7 +875,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     _finish_metadata()
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,

@@ -246,7 +246,7 @@ def render(out_dir: str | Path, **opts):
     del opts
     doc = _doc()
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=doc.rows(),

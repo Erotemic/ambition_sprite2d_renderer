@@ -38,7 +38,7 @@ from functools import lru_cache
 from contextvars import ContextVar
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -871,6 +871,7 @@ def build_sheet(
     column_tile: Optional[Tuple[float, float]] = None,
     fx: Optional[Dict[str, str]] = None,
     parts: bool = False,
+    render_clip: Optional[Callable[[str, int], Sequence[Image.Image]]] = None,
 ):
     """Build one module target's sheet from a frame callable + rows.
 
@@ -880,6 +881,8 @@ def build_sheet(
     written, and the returned ``flipbook`` is the part flipbook that draws it
     (``publish_rig_flipbook`` writes it). A target whose parts cost more than
     a sheet (``part_flipbook.realization_by_cost``) is painted as before.
+    ``render_clip`` is ``publish_rig_flipbook``'s, for a target that renders
+    a clip at once; only a part-first sheet records through it.
 
     ``frame_transform_out``, when given, is filled with ``{"dx": .., "dy": ..}``:
     the translation from a frame as ``render_fn`` drew it to the frame as the
@@ -939,6 +942,7 @@ def build_sheet(
         fx=fx,
     )
     source.parts = bool(parts)
+    source.render_clip = render_clip
     return render_sheet(source, out_dir, frame_transform_out=frame_transform_out)
 
 
@@ -1120,6 +1124,10 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
     progress("phase render: begin")
 
     parts_mode = bool(getattr(source, "parts", False))
+    if parts_mode and baked_pages_reason(target):
+        # The game still reads this sheet's pages (`sprites.yaml` `baked_pages`).
+        print(f"[sheet:{target}] baked pages kept: {baked_pages_reason(target)}", flush=True)
+        parts_mode = False
     flipbook = None
     if parts_mode:
         flipbook = _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame_meta_fn)
@@ -1592,7 +1600,30 @@ def _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame
         rigdoc.composite_canvas(canvas, source.render_fn(row, index, count), (pad_left, pad_top))
         return canvas
 
-    flipbook = build_rig_flipbook(source.target, source.rows, padded, None, (0.0, 0.0), size, (), paint=False)
+    clip = getattr(source, "render_clip", None)
+    padded_clip = None
+    if clip is not None:
+        def padded_clip(row, count):
+            frames = []
+            for frame in clip(row, count):
+                canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+                rigdoc.composite_canvas(canvas, frame, (pad_left, pad_top))
+                frames.append(canvas)
+            return frames
+
+    try:
+        flipbook = build_rig_flipbook(source.target, source.rows, padded, None, (0.0, 0.0), size, (),
+                                      render_clip=padded_clip, paint=False)
+    except Exception as refused:  # noqa: BLE001 - the painted build re-raises a real defect
+        # Its paint reads pixels it painted (a swing trail drawn from the
+        # frames before it, a piece raster cropped to what it drew): recorded
+        # only, those pixels are blank. Its frames are painted for the
+        # flipbook, once; still no page.
+        print(f"[sheet:{source.target}] recorded only, refused ({type(refused).__name__}: {str(refused)[:160]}): painting its frames", flush=True)
+        flipbook = build_rig_flipbook(source.target, source.rows, padded, None, (0.0, 0.0), size, (),
+                                      render_clip=padded_clip, paint=True)
+    if os.environ.get("AMBITION_PART_FIRST_AUDIT"):
+        _audit_part_first(source.target, source.rows, flipbook, padded, padded_clip)
     first_row, first_count = source.rows[0][0], int(source.rows[0][1])
     painted = {index: _pad_rgba_frame(source.render_fn(first_row, index, first_count).convert("RGBA"), frame_padding)
                for index in {0, min(1, first_count - 1)}}
@@ -1615,6 +1646,34 @@ def _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame
             frames_data.append((frame, meta))
         rendered_rows.append((anim, nframes, duration_ms, frames_data))
     return flipbook
+
+
+def baked_pages_reason(sheet: str) -> Optional[str]:
+    """Why the game still reads the baked pages of ``sheet`` (the publication
+    policy's ``baked_pages``), or None. A renderer checked out alone has no
+    policy, and every part-first sheet is page-less."""
+    from .. import publication
+
+    try:
+        return publication.policy().get("baked_pages", {}).get(sheet)
+    except (OSError, KeyError):
+        return None
+
+
+def _audit_part_first(target, rows, flipbook, padded, padded_clip) -> None:
+    """``AMBITION_PART_FIRST_AUDIT``: every frame painted and the part-first
+    flipbook's redraw held to the replay guard against it, as a painted
+    publish holds every frame. A part-first publish checks a sample; this
+    is the measurement that says the sample is enough."""
+    from .part_flipbook import _replay_failures
+
+    rendered = {}
+    for row, count, _ms in rows:
+        frames = padded_clip(row, int(count)) if padded_clip is not None else [padded(row, i, int(count)) for i in range(int(count))]
+        rendered.update({(row, i): frame for i, frame in enumerate(frames)})
+    failing = _replay_failures(flipbook, rendered)
+    print(f"[part-first audit] {target}: {len(rendered) - len(failing)} of {len(rendered)} frames replay the paint", flush=True)
+    assert not failing, f"{target}: the part-first flipbook does not replay the paint at {failing[:8]}"
 
 
 def body_metrics_feet(first, body_metrics_fn, fw, fh, crop_x, crop_y) -> Tuple[float, float]:

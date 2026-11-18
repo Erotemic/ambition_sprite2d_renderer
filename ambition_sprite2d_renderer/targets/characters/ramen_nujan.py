@@ -43,6 +43,8 @@ from typing import Callable, Dict, List, Tuple
 
 from PIL import Image
 
+from ...authoring import rigdoc
+
 from ._ai_era_kit import OUTLINE, WHITE, Kit, Point, Pose, RGBA, angle, blend, ease, keys, lerp, mix, pin, solve, turned
 
 TARGET_NAME = "ramen_nujan"
@@ -1712,8 +1714,9 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = _draw_frame(anim, frame_idx, nframes)
     if anim == "turnaround" and frame_idx in TURN_BACK:
         # Facing the way he was: his frame mirrored about his middle.
-        back = Image.new(img.mode, img.size)
-        back.paste(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (int(round(2.0 * CX)) - img.size[0], 0))
+        # Through rigdoc's seams, so a part flipbook records mirrored parts.
+        back = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        rigdoc.composite_canvas(back, rigdoc.mirrored_canvas(img), (int(round(2.0 * CX)) - img.size[0], 0))
         return back
     return img
 

@@ -106,7 +106,7 @@ def render(target: str, actor_metadata: dict, out_dir: Path) -> List[Path]:
     frame_transform: dict = {}
     sheet_rows = rows(target)
     draw = lambda animation, i, n: render_frame(target, animation, i, n)  # noqa: E731
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=target,
         rows=sheet_rows,

@@ -49,6 +49,8 @@ from typing import List
 
 from PIL import Image
 
+from ...authoring import rigdoc
+
 from ._ai_era_kit import OUTLINE, WHITE, RGBA, pin
 from . import _person_rig as R
 from ._person_rig import Build, Person, Stamp, loop, shot
@@ -1205,8 +1207,9 @@ def _render_frame(anim: str, i: int, n: int):
         return X.render_front("turnaround_front", TURN_FRONT.index(i), len(TURN_FRONT))
     img = R.Person.render_frame(X, anim, i, n)
     if anim == "turnaround" and i in TURN_BACK:
-        back = Image.new(img.mode, img.size)
-        back.paste(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (int(round(2.0 * X.cx * img.size[0] / X.frame[0])) - img.size[0], 0))
+        # Through rigdoc's seams, so a part flipbook records mirrored parts.
+        back = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        rigdoc.composite_canvas(back, rigdoc.mirrored_canvas(img), (int(round(2.0 * X.cx * img.size[0] / X.frame[0])) - img.size[0], 0))
         return back
     return img
 

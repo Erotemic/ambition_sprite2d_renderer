@@ -816,7 +816,7 @@ def render(out_dir: str | Path, variant: str = "bastion", **opts) -> List[Path]:
     spec = VARIANTS[variant]
     renderer = RobotHeavyRenderer(spec)
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=spec.target_name,
         rows=ROWS,

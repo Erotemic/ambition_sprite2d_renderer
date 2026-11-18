@@ -862,7 +862,7 @@ def render_target(spec: PlaneSpec, out_dir: str | Path) -> List[Path]:
         return render_frame(spec, anim, frame_idx, nframes)
 
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=spec.target_name,
         rows=ROWS,

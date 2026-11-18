@@ -2018,7 +2018,7 @@ def _render_form(target_name: str, skin: Skin, actor_metadata: dict, out_dir: st
     bodies = _pose_bodies(skin)
 
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=target_name,
         rows=ROWS,

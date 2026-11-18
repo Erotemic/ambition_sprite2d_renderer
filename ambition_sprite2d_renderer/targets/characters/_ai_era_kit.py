@@ -449,7 +449,7 @@ class Kit:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         frame_transform: dict = {}
-        outputs = build_sheet(
+        outputs = build_sheet(parts=True, 
             frame_transform_out=frame_transform,
             target=target,
             rows=rows,

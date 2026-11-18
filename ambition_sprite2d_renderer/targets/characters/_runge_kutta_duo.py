@@ -943,7 +943,7 @@ def render_target(style: DuoStyle, out_dir: Path) -> List[Path]:
         return render_frame(style, animation, frame_idx, frame_count)
 
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=style.target_name,
         rows=ROWS,

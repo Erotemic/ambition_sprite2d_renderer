@@ -1,10 +1,11 @@
-"""The pirate part flipbook draws the frames the sheet publishes.
+"""The pirate part flipbook draws the frames the pirates are painted as.
 
-Every frame is recomposed from the published part atlas and draw table and
-diffed against the same frame of the PUBLISHED sheet, by D6's bounds (the game
-repository's `docs/planning/engine/mary-o-part-realization.md`): at most 1% of
-the drawn pixels wrong and no wrong blob over 6 pixels, at the continuous
-replay tolerance.
+Their sheets are published part-first (`build_sheet(parts=True)`): no page.
+Published with ``AMBITION_PART_FIRST_AUDIT``, every frame is painted and the
+flipbook's redraw held to the replay guard against it, by D6's bounds (the
+game repository's `docs/planning/engine/mary-o-part-realization.md`): at
+most 1% of the drawn pixels wrong and no wrong blob over 6 pixels, at the
+continuous replay tolerance (`CONTINUOUS_REPLAY_PARITY`, `_BLOB`).
 
 A pirate frame is fitted by its own scale (``sheet_build.downsample``, 4.6x
 to 5.4x, never whole), so each shape is resized where the frame's resize
@@ -18,34 +19,19 @@ from pathlib import Path
 
 import pytest
 import yaml
-from PIL import Image
 
-from ambition_sprite2d_renderer.authoring.part_flipbook import (
-    CONTINUOUS_REPLAY_TOLERANCE,
-    largest_wrong_blob,
-    parity,
-)
+from ambition_sprite2d_renderer.authoring.part_flipbook import CONTINUOUS_REPLAY_BLOB, CONTINUOUS_REPLAY_PARITY
 from ambition_sprite2d_renderer.targets.characters._pirate_common import (
     render_target_with_products,
 )
 
-_PARITY_BOUND = 0.01
-_BLOB_BOUND = 6
 #: Faithful costs texels here: a shape resized by its frame's own scale is
-#: reused by no other frame. Measured 2026-10-03: 1.004 of the sheet's texels
-#: (raider), 1.074 (admiral); the unfaithful flipbook before saved 35%. A ceiling, so a
-#: flipbook that stops sharing what it can share shows.
-_TEXEL_CEILING = 1.15
-
-
-def _published_frame(atlas, row, index, frame_size):
-    rect = row["rects"][index]
-    frame = Image.new("RGBA", frame_size, (0, 0, 0, 0))
-    frame.paste(
-        atlas.crop((rect["x"], rect["y"], rect["x"] + rect["w"], rect["y"] + rect["h"])),
-        tuple(rect["off"]),
-    )
-    return frame
+#: reused by no other frame. A ceiling on the part pages against the frames
+#: they draw (every frame's whole cell), so a flipbook that stops sharing
+#: what it can share shows. Measured 2026-11-18: raider 0.041, admiral
+#: 0.022, quartermaster 0.062, lookout 0.068, navigator 0.058, Kernel Guide
+#: 0.049.
+_TEXEL_CEILING = 0.08
 
 
 # Each of the five: each has its own build and its own headwear, and the
@@ -56,28 +42,23 @@ def _published_frame(atlas, row, index, frame_size):
     # Not a pirate: the Kernel Guide, on the same rig with its own rows.
     "kernel_guide",
 ])
-def test_the_flipbook_recomposes_every_published_frame(kind, tmp_path: Path):
+def test_the_flipbook_replays_every_painted_frame(kind, tmp_path: Path, monkeypatch, capsys):
     from ambition_sprite2d_renderer.targets.characters import _pirate_common as crew
     from ambition_sprite2d_renderer.targets.characters import kernel_guide  # noqa: F401
 
+    assert (CONTINUOUS_REPLAY_PARITY, CONTINUOUS_REPLAY_BLOB) == (0.01, 6), "D6's bounds are the guard's"
+    monkeypatch.setenv("AMBITION_PART_FIRST_AUDIT", "1")
     outputs, products = render_target_with_products(kind, tmp_path)
     flipbook = products["parts"]
     assert Path(outputs["parts"]).read_text() == flipbook.to_ron()
+    frames = sum(len(f) for _d, f in flipbook.clips.values())
+    # The audit spoke for every frame (it raises on the first that fails).
+    assert f"{frames} of {frames} frames replay the paint" in capsys.readouterr().out
     sheet = yaml.safe_load(Path(outputs["yaml"]).read_text())
-    atlas = Image.open(Path(outputs["yaml"]).parent / sheet["image"]).convert("RGBA")
-    rows = {row["animation"]: row for row in sheet["rows"]}
-    assert [(row, len(frames)) for row, (_d, frames) in flipbook.clips.items()] == [
+    assert sheet.get("drawn_from_parts") is True and not outputs.get("spritesheet")
+    assert [(row, len(f)) for row, (_d, f) in flipbook.clips.items()] == [
         (row, count) for row, count, _ms in crew.rows_of(kind)
     ]
-    failures = []
-    for row, (_duration, frames) in flipbook.clips.items():
-        for index in range(len(frames)):
-            reference = _published_frame(atlas, rows[row], index, flipbook.frame_size)
-            candidate = flipbook.recompose(row, index)
-            wrong = parity(reference, candidate, **CONTINUOUS_REPLAY_TOLERANCE)
-            blob = largest_wrong_blob(reference, candidate, **CONTINUOUS_REPLAY_TOLERANCE)
-            if wrong > _PARITY_BOUND or blob > _BLOB_BOUND:
-                failures.append(f"{row}[{index}]: {wrong:.4f}, blob {blob}")
-    assert not failures, "frames the flipbook does not reproduce:\n" + "\n".join(failures)
-    cost = flipbook.packed_texels() / (atlas.width * atlas.height)
-    assert cost <= _TEXEL_CEILING, f"the part atlas costs {cost:.3f} of the sheet's texels"
+    cost = flipbook.packed_texels() / (frames * int(sheet["frame_width"]) * int(sheet["frame_height"]))
+    print(f"{kind}: part pages cost {cost:.3f} of the frames' texels")
+    assert cost <= _TEXEL_CEILING, f"the part atlas costs {cost:.3f} of the frames' texels"

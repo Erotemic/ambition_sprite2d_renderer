@@ -21,6 +21,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from PIL import Image
 
+from ..authoring import rigdoc
 from ..authoring.svg_parts import _svg_to_png_bytes
 from ..core.draw import blending_draw, font
 from .geometry import VIEW_BY_KEY, VIEWS, View
@@ -304,7 +305,9 @@ class RiggedCharacter:
         if animation in COMPOSED:
             view, mirrored = COMPOSED[animation][frame_idx % len(COMPOSED[animation])]
             im = self.docs[view].render_frame("idle", 0, int(self.docs[view].clips["idle"]["frames"]))
-            return im.transpose(Image.FLIP_LEFT_RIGHT) if mirrored else im
+            # Through the seam, so a part flipbook records the mirror as
+            # mirrored parts, not the view as one picture.
+            return rigdoc.mirrored_canvas(im) if mirrored else im
         return self.docs[self.views[animation]].render_frame(animation, frame_idx, frame_count)
 
 
@@ -534,7 +537,7 @@ def publish_sheet(spec: CharacterSpec, out_dir: Path, rigs: Optional[Dict[str, P
     rc = RiggedCharacter(rigs, rows)
     target = target or f"chargen_{slug(spec.name)}"
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=target,
         rows=rc.rows(),

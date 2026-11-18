@@ -44,7 +44,7 @@ def render(out_dir: str | Path, **opts):
     doc = _doc()
     frame = doc.data["frame"]
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=_rows(),

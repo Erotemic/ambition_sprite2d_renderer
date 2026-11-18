@@ -1,9 +1,10 @@
-"""The pirate family's body rig describes the frames the sheet publishes.
+"""The pirate family's body rig describes the frames the game draws.
 
 Its joints are the skeleton the paint pass draws on, placed through the same
 maps the frame pixels go through. So each hand must land on drawn art in every
-frame of the PUBLISHED sheet; a wrong fit, a wrong crop offset or a wrong
-parent composition puts it in empty air.
+frame the PUBLISHED part flipbook draws (the sheet is part-first: no page); a
+wrong fit, a wrong crop offset or a wrong parent composition puts it in empty
+air.
 """
 
 from __future__ import annotations
@@ -12,7 +13,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-from PIL import Image
 
 from ambition_sprite2d_renderer.authoring.body_rig import place
 from ambition_sprite2d_renderer.targets.characters._pirate_common import (
@@ -37,15 +37,13 @@ def _place(chain, point):
     return point if parent is None else _place(parent, point)
 
 
-def _near_drawn_pixel(alpha, rect, point) -> bool:
-    """``point`` is in published frame pixels; ``rect`` is where the frame's
-    trimmed pixels sit in the atlas."""
-    x = int(round(point[0])) - rect["off"][0]
-    y = int(round(point[1])) - rect["off"][1]
+def _near_drawn_pixel(alpha, point) -> bool:
+    """``point`` is in published frame pixels; ``alpha`` is the frame's."""
+    x, y = int(round(point[0])), int(round(point[1]))
     return any(
-        0 <= x + dx < rect["w"]
-        and 0 <= y + dy < rect["h"]
-        and alpha.getpixel((rect["x"] + x + dx, rect["y"] + y + dy)) > 0
+        0 <= x + dx < alpha.width
+        and 0 <= y + dy < alpha.height
+        and alpha.getpixel((x + dx, y + dy)) > 0
         for dy in range(-_TOLERANCE_PX, _TOLERANCE_PX + 1)
         for dx in range(-_TOLERANCE_PX, _TOLERANCE_PX + 1)
     )
@@ -58,13 +56,12 @@ def test_the_rig_hands_land_on_the_published_frame(kind, tmp_path: Path):
     assert Path(outputs["body_rig"]).read_text() == product.to_ron()
     sheet = yaml.safe_load(Path(outputs["yaml"]).read_text())
     feet = sheet["body_metrics"]["feet_pixel"]
-    alpha = Image.open(Path(outputs["yaml"]).parent / sheet["image"]).getchannel("A")
-    rows = {row["animation"]: row for row in sheet["rows"]}
+    flipbook = products["parts"]
     misses = []
     checked = 0
     for clip, (_loop, _duration, frames) in product.clips.items():
         for index, frame in enumerate(frames):
-            rect = rows[clip]["rects"][index]
+            alpha = flipbook.recompose(clip, index).getchannel("A")
             chains = _world(product, frame)
             for name, joint, offset in product.attachments:
                 if not name.startswith("hand"):
@@ -72,7 +69,7 @@ def test_the_rig_hands_land_on_the_published_frame(kind, tmp_path: Path):
                 x, y = _place(chains[joint], offset)
                 published = (x + feet["x"], y + feet["y"])
                 checked += 1
-                if not _near_drawn_pixel(alpha, rect, published):
+                if not _near_drawn_pixel(alpha, published):
                     misses.append(f"{clip}[{index}] {name} at {published}")
     assert checked > 40
     assert not misses, "hands in empty air:\n" + "\n".join(misses)

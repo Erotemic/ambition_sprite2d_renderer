@@ -244,7 +244,13 @@ def listing(files: dict[str, Path], directory: str) -> list[str]:
 
 def target_policy(name: str) -> dict:
     """The part of the sprite policy a target's render reads."""
-    return {"static_prop": policy()["static_props"].get(name)}
+    rules = policy()
+    found = {"static_prop": rules["static_props"].get(name)}
+    baked = rules.get("baked_pages", {}).get(name)
+    if baked:
+        # A part-first sheet whose pages the game still reads (`build_sheet`).
+        found["baked_pages"] = baked
+    return found
 
 
 def stale_scope(reasons: list[dict]) -> str | None:

@@ -211,7 +211,7 @@ class AuthoredSwingFighter:
     def render(self, out_dir, actor_metadata: dict):
         doc = self.doc()
         frame_transform: dict = {}
-        outputs = build_sheet(
+        outputs = build_sheet(parts=True, render_clip=lambda row, count: list(type(self)._clip_frames.__wrapped__(self, row, count)), 
             frame_transform_out=frame_transform,
             target=self.target,
             rows=doc.rows(),

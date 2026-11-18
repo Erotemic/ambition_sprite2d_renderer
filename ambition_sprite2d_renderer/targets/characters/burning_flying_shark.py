@@ -552,7 +552,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
             "feet_anchor_norm": {"x": round(feet_x / fw - 0.5, 6), "y": round(0.5 - feet_y / fh, 6)},
         }
 
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,

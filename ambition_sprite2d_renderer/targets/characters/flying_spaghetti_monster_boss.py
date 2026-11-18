@@ -1258,7 +1258,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
 
     # A fixed canvas (no auto-crop): the authored hulls are in its pixels.
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,

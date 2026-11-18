@@ -1492,7 +1492,7 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
         return _draw_form(form, animation, frame_idx, nframes)
 
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=form.target_name,
         rows=form.rows,

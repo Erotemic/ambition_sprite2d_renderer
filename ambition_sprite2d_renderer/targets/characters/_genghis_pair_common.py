@@ -652,7 +652,7 @@ def render_target(variant_name: str, out_dir: str | Path, **opts) -> List[Path]:
         return render_frame(variant_name, animation, frame_idx, frame_count)
 
     frame_transform: dict = {}
-    outputs = build_sheet(
+    outputs = build_sheet(parts=True, 
         frame_transform_out=frame_transform,
         target=spec.target_name,
         rows=ROWS,
