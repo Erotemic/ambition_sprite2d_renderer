@@ -49,6 +49,10 @@ CROUCH_DROP = 12.0
 KNEE_CLEARANCE = 5.0
 # The hold's shape on top of the leg solve. The head is a child of the torso, so
 # a negative head channel keeps the face level while the chest pitches forward.
+#: How far the head of a crouch tips down when the body looks down (deg,
+#: forward and down from the hold's head).
+CROUCH_LOOK_DOWN_DEG = 26.0
+
 CROUCH_SHAPE = {
     "torso": 8.0,
     "head": -4.0,
@@ -335,6 +339,22 @@ def reauthor_crouch(doc: RigDocument) -> dict:
         frame.update(head_channels(1.0, breath=0.02 * phase))
         holding.append(frame)
     poses["item_hold_crouch"] = holding
+
+    # crouch_look_down: the hold, still, with the head tipping down to look
+    # at what is under the ledge. A ramp the game draws at how far the camera
+    # looks down (`BodyPoseView::head_down`); it takes only the head's turn
+    # from it, over the crouch it draws, so every frame is the hold and the
+    # head alone moves.
+    look = []
+    for i in range(6):
+        down = ease(i / 5.0)
+        frame = dict(hold)
+        frame.update(CROUCH_SHAPE)
+        frame.update(head_channels(1.0))
+        frame["head"] = CROUCH_SHAPE["head"] + CROUCH_LOOK_DOWN_DEG * down
+        frame["eye_squint"] = CROUCH_SHAPE["eye_squint"] * (1.0 - 0.5 * down)
+        look.append(frame)
+    poses["crouch_look_down"] = look
 
     # crouch_jump: the crouch they LEFT THE GROUND IN, so it is the crouch they
     # keep while they are off it — legs tucked under, arms out for balance. Solved

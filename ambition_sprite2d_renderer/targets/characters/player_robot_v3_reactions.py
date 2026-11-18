@@ -375,15 +375,20 @@ def run_stop(body: RigBody) -> List[Key]:
     """A hard stop out of a run: the front boot planted ahead on its heel,
     the hips dropped low and back, the trunk thrown back against the momentum
     and the arms flung forward with it. The game slaves the row to the first
-    0.2 s of the stop."""
+    0.2 s of the stop.
+
+    The head does not go back with the trunk: it is the heavy end, and it
+    carries on, so it nods FORWARD as the boots bite and comes level as the
+    body settles. Thrown back with the trunk, it swung the ear cup down
+    behind and laid the antenna out backward, the wrong way for a brake."""
     return [
         Key(0.0, torso=12.0, head=6.0, drop=3.0, lunge=4.0, near=(60.0, 30.0), far=(-20.0, -40.0),
             feet={"far": (8.0, 0.0, -10.0), "near": (-6.0, 3.0, 20.0)}),
-        Key(0.25, torso=-28.0, head=-16.0, drop=6.0, lunge=-3.0, near=(-30.0, -10.0), far=(-10.0, 10.0),
+        Key(0.25, torso=-28.0, head=8.0, drop=6.0, lunge=-3.0, near=(-30.0, -10.0), far=(-10.0, 10.0),
             feet={"far": (11.0, 0.0, -30.0), "near": (-9.0, 0.0, 6.0)}, face="strain", ease="out"),
-        Key(0.6, torso=-24.0, head=-12.0, drop=5.5, lunge=-2.0, near=(-20.0, 0.0), far=(0.0, 20.0),
+        Key(0.6, torso=-24.0, head=4.0, drop=5.5, lunge=-2.0, near=(-20.0, 0.0), far=(0.0, 20.0),
             feet={"far": (10.0, 0.0, -26.0), "near": (-8.0, 0.0, 5.0)}, face="strain"),
-        Key(0.85, torso=-6.0, head=-3.0, drop=3.0, near=(60.0, 60.0), far=(40.0, 50.0),
+        Key(0.85, torso=-6.0, head=1.0, drop=3.0, near=(60.0, 60.0), far=(40.0, 50.0),
             feet={"far": (6.0, 0.0, -8.0), "near": (-4.0, 0.0, 2.0)}),
         Key(1.0, ease="smooth"),
     ]

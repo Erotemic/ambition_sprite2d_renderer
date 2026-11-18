@@ -40,6 +40,10 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("stumble", 6, 74),
     ("crouch_start", 5, 68),
     ("crouch", 6, 95),
+    # A ramp, not a loop: the head of a body that holds its crouch tips down
+    # as the camera looks down (`BodyPoseView::head_down`), drawn over the
+    # crouch it is in at that fraction.
+    ("crouch_look_down", 6, 40),
     ("crouch_walk", 8, 88),
     # From the crouch hold down onto the hands to the crawl's first frame, and
     # backward up out of it: the game slaves it to how far into the crawl the
@@ -346,6 +350,7 @@ FIGHTER_MOTION_COVERAGE: Final[dict[str, str]] = {
 # that the categories are semantically identical.
 POSE_ALIASES: Final[dict[str, str]] = {
     "idle_look_up": "idle",
+    "crouch_look_down": "crouch",
     "walk_stop": "land_recovery",
     "turnaround": "idle",
     # The side view's clips of the rows drawn from behind (`player_robot_v3_back`).
