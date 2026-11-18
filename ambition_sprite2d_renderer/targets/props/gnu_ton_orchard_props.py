@@ -10,11 +10,13 @@ chasm (x 896..1568), the swinging field's track (its centre 2176, 256 each
 way, 224 wide), the middle bank (x 1504..1888).
 
 - `orchard_rising_tree`: an apple tree in a planter on the floor, in the
-  first field. Its apples come off and fall UP: some on their way, a leaf
-  or two with them, and the rest resting against the vault's underside.
+  first field: a flared trunk, limbs into a full crown, a few apples
+  ripening on it. The apples that come off it are things of the world (the
+  `apple` held item, grown in its crown by the room's `GroundItem`s), and
+  they fall UP in its field, to the vault's underside.
 - `orchard_hanging_tree`: over the first chasm, a tree that grows down
-  from a planter in the vault (up is down for it), its apples fallen up
-  round its pot, where a body walking the ceiling walks among them.
+  from a planter in the vault (up is down for it). Its apples drop the way
+  it grows, onto the ceiling a body walks.
 - `orchard_swing_rail`: the swinging field's track, a rail under the vault
   with its end stops, and the hooks a tree hung from once.
 - `orchard_crates`: on the middle bank, crates of picked apples, stencilled
@@ -62,36 +64,106 @@ def apple(c, x, y, r=6.0, turn=0.0):
     c.put(c.mask(lambda p: p.ellipse(lx, ly, r * 0.45, r * 0.25)), LEAF)
 
 
-def rising(c, x, y, r=6.0, turn=0.0, trail=18.0):
-    """An apple on its way up: the comic's speed lines under it."""
-    c.put(c.mask(lambda p: [p.line([(x + dx, y + r + 3), (x + dx, y + r + 3 + trail * k)], 1.0) for dx, k in ((-3.5, 0.6), (0, 1.0), (3.5, 0.7))]), HULL_LIGHT, 0.55)
-    apple(c, x, y, r, turn)
-
-
 def leaf(c, x, y, ang, s=5.0):
     dx, dy = math.cos(ang) * s, math.sin(ang) * s
     c.put(c.mask(lambda p: p.poly([(x - dx, y - dy), (x - dy * 0.4, y + dx * 0.4), (x + dx, y + dy), (x + dy * 0.4, y - dx * 0.4)])), LEAF)
     c.put(c.mask(lambda p: p.line([(x - dx, y - dy), (x + dx, y + dy)], 0.6)), LEAF_DARK)
 
 
+LEAF_DEEP = scale(LEAF_DARK, 0.72)
+LEAF_SUN = mix(LEAF, (226, 244, 170), 0.42)
+BARK_LIGHT = mix(BARK, (200, 170, 130), 0.35)
+
+
+def clump(c, x, y, r, cx, cy, rx, ry, rim=True):
+    """One clump of leaves in a crown centred (cx, cy): darker under, and
+    lighter the nearer it sits to the crown's sunny upper left."""
+    lit = 0.5 + 0.5 * max(-1.0, min(1.0, ((cx - x) / rx + (cy - y) / ry) * 0.7))
+    if rim:
+        c.put(c.mask(lambda p: p.ellipse(x, y, r * 1.05, r * 0.9)), LEAF_DEEP)
+    c.put(c.mask(lambda p: p.ellipse(x, y, r, r * 0.86)), mix(LEAF_DARK, LEAF, 0.35 + 0.4 * lit))
+    c.put(c.mask(lambda p: p.ellipse(x - r * 0.18, y - r * 0.22, r * 0.72, r * 0.6)), mix(LEAF, LEAF_SUN, 0.15 + 0.5 * lit))
+    c.put(c.mask(lambda p: p.ellipse(x - r * 0.36, y - r * 0.4, r * 0.3, r * 0.22)), LEAF_SUN, 0.35 + 0.5 * lit)
+
+
 def canopy(c, cx, cy, rx, ry, seed):
-    """A round apple-tree crown: clumps of leaves, dark under, light over."""
+    """A full apple-tree crown, lit from the upper left: a deep shadow
+    inside, clumps of leaves over it, each clump darker under and lighter on
+    its sunny side, a leafy grain through it all and loose leaves at its
+    edge. Returns the clumps, front ones last."""
     rng = c.rand(seed)
-    clumps = [(cx + rng.uniform(-rx, rx) * 0.8, cy + rng.uniform(-ry, ry) * 0.75, rng.uniform(0.35, 0.55) * rx) for _ in range(14)]
-    c.put(c.mask(lambda p: [p.ellipse(x, y, r, r * 0.8) for x, y, r in clumps]), LEAF_DARK)
-    c.put(c.mask(lambda p: [p.ellipse(x - r * 0.15, y - r * 0.2, r * 0.8, r * 0.62) for x, y, r in clumps]), LEAF)
-    c.put(c.mask(lambda p: [p.ellipse(x - r * 0.35, y - r * 0.4, r * 0.35, r * 0.25) for x, y, r in clumps]), mix(LEAF, (220, 240, 180), 0.35), 0.8)
+    clumps = []
+    for _ in range(30):
+        a = rng.uniform(0.0, math.tau)
+        d = math.sqrt(rng.uniform(0.0, 1.0))
+        x, y = cx + math.cos(a) * d * rx * 0.86, cy + math.sin(a) * d * ry * 0.8
+        clumps.append((x, y, rng.uniform(0.26, 0.42) * rx))
+    # Back to front: the clumps lower and to the right are further round
+    # the crown from the light.
+    clumps.sort(key=lambda clump: clump[0] - clump[1])
+    crown = c.mask(lambda p: [p.ellipse(x, y, r * 1.05, r * 0.9) for x, y, r in clumps])
+    c.put(crown, LEAF_DEEP)
+    for x, y, r in clumps:
+        clump(c, x, y, r, cx, cy, rx, ry)
+    c.tone(crown * (c.noise((seed, "leaves"), rx / 5.0, ry / 5.0, 3) - 0.5), 0.32)
+    # Loose leaves round the edge break up its outline.
+    for _ in range(46):
+        a = rng.uniform(0.0, math.tau)
+        lx, ly = cx + math.cos(a) * rx * rng.uniform(0.88, 1.04), cy + math.sin(a) * ry * rng.uniform(0.86, 1.02)
+        leaf(c, lx, ly, a + rng.uniform(-0.8, 0.8), rng.uniform(3.4, 5.2))
     return clumps
 
 
-def trunk(c, x, y0, y1, w):
-    """A trunk from y0 to y1 (either way), forking at the far end."""
+def trunk(c, x, y0, y1, w, seed="trunk"):
+    """A trunk from its foot at y0 to its crown at y1 (either way): a flared
+    foot, a taper, bark grain, a knot or two, and four limbs that reach out
+    into the crown."""
     sign = 1 if y1 > y0 else -1
-    pts = [(x - w / 2, y0), (x + w / 2, y0), (x + w * 0.3, y1), (x - w * 0.3, y1)]
-    c.put(c.mask(lambda p: p.poly(pts)), BARK)
-    c.put(c.mask(lambda p: p.poly([(x + w * 0.15, y0), (x + w / 2, y0), (x + w * 0.3, y1), (x + w * 0.05, y1)])), BARK_DARK, 0.6)
-    for side in (-1, 1):
-        c.put(c.mask(lambda p: p.line([(x, y1 - sign * 10), (x + side * w * 1.6, y1 + sign * 14)], w * 0.35)), BARK)
+    length = abs(y1 - y0)
+    rng = c.rand(seed)
+    flare = [(x - w * 0.95, y0), (x - w * 0.5, y0 + sign * 10), (x - w * 0.36, y1), (x + w * 0.36, y1),
+             (x + w * 0.5, y0 + sign * 10), (x + w * 0.95, y0)]
+    body = c.mask(lambda p: p.poly(flare))
+    c.put(body, BARK)
+    # The shaded side and the lit edge.
+    c.put(c.mask(lambda p: p.poly([(x + w * 0.1, y0), (x + w * 0.95, y0), (x + w * 0.5, y0 + sign * 10), (x + w * 0.36, y1), (x + w * 0.04, y1)])), BARK_DARK, 0.55)
+    c.put(c.mask(lambda p: p.poly([(x - w * 0.5, y0 + sign * 10), (x - w * 0.36, y1), (x - w * 0.24, y1), (x - w * 0.36, y0 + sign * 10)])), BARK_LIGHT, 0.55)
+    # Bark grain along it, and knots.
+    grain = c.mask(lambda p: [p.line([(x + dx, y0 + sign * 6), (x + dx * 0.7, y1)], 0.9) for dx in (-w * 0.3, -w * 0.12, w * 0.06, w * 0.22)])
+    c.put(grain * body, BARK_DARK, 0.7)
+    c.tone(body * (c.noise((seed, "bark"), 3, max(4.0, length / 14.0), 2) - 0.5), 0.25)
+    for t in (0.38, 0.62):
+        kx, ky = x + rng.uniform(-w * 0.15, w * 0.15), y0 + sign * length * t
+        c.put(c.mask(lambda p: p.ellipse(kx, ky, w * 0.14, w * 0.2)), BARK_DARK)
+        c.put(c.mask(lambda p: p.ellipse(kx - 0.6, ky - 0.6, w * 0.07, w * 0.1)), BARK_LIGHT, 0.6)
+
+
+def limbs(c, x, y0, y1, w):
+    """The trunk's limbs, painted over the crown's lower part (the crown's
+    front clumps go over their ends after): out and on into the leaves,
+    thinning as they go, with twigs off them."""
+    sign = 1 if y1 > y0 else -1
+    for side, reach, rise in ((-1, 3.2, 1.2), (1, 3.6, 1.5), (-1, 1.5, 2.6), (1, 1.3, 2.9)):
+        bx, by = x + side * w * 0.12, y1 - sign * w * 0.9
+        mx, my = x + side * w * reach * 0.5, y1 + sign * w * rise * 0.8
+        ex, ey = x + side * w * reach, y1 + sign * w * rise * 1.6
+        c.put(c.mask(lambda p: p.line([(bx, by), (mx, my)], w * 0.42)), BARK)
+        c.put(c.mask(lambda p: p.line([(mx, my), (ex, ey)], w * 0.24)), BARK)
+        c.put(c.mask(lambda p: p.line([(bx + side * w * 0.12, by), (mx + side * w * 0.08, my), (ex, ey)], w * 0.1)), BARK_DARK, 0.6)
+        tx, ty = (mx + ex) / 2, (my + ey) / 2
+        c.put(c.mask(lambda p: p.line([(tx, ty), (tx - side * w * 0.5, ty + sign * w * 0.9)], w * 0.1)), BARK)
+
+
+def front_leaves(c, clumps, cx, cy, rx, ry, seed, every=3):
+    """Some of a crown's clumps again, over its limbs, so the limbs show in
+    the gaps between them and not as sticks laid on top."""
+    front = clumps[1::every]
+    for x, y, r in front:
+        clump(c, x, y, r * 0.72, cx, cy, rx, ry, rim=False)
+    m = c.mask(lambda p: [p.ellipse(x, y, r * 0.72, r * 0.62) for x, y, r in front])
+    c.tone(m * (c.noise((seed, "front"), rx / 5.0, ry / 5.0, 3) - 0.5), 0.32)
+    for x, y, r in front:
+        leaf(c, x + r * 0.5, y + r * 0.45, 0.6 + x % 1.3, 4.2)
 
 
 def planter(c, x0, x1, y_open, depth):
@@ -105,41 +177,41 @@ def planter(c, x0, x1, y_open, depth):
     c.put(c.mask(lambda p: [p.rect(x, lo + 4, x + 2, hi - 2) for x in range(int(x0) + 10, int(x1) - 6, 18)]), STEEL_DARK, 0.6)
 
 
+#: Where the trees' crowns are, for the room's apples: (centre x, centre y,
+#: half width, half height) in room coordinates. The generator grows the
+#: `apple` ground items inside these.
+RISING_CROWN = ((FIRST[0] + FIRST[1]) / 2, FLOOR - 262, 98, 70)
+HANGING_CROWN = ((BRIDGE[0] + BRIDGE[1]) / 2, VAULT + 236, 118, 74)
+
+
+def ripening(c, clumps, rng, stem_turn):
+    """A few apples ripening on the branches, half in the leaves: most of a
+    tree's apples are the world's own (the generator grows them)."""
+    for x, y, r in clumps[2::5]:
+        apple(c, x + rng.uniform(-r * 0.4, r * 0.4), y + r * 0.35 * (1 if stem_turn == 0.0 else -1), 5.2,
+              stem_turn + rng.uniform(-0.35, 0.35))
+
+
 def rising_tree(c, k):
     x0, x1 = FIRST
-    cx = (x0 + x1) / 2
+    cx, cy, rx, ry = RISING_CROWN
     planter(c, cx - 56, cx + 56, FLOOR - 14, 14)
-    trunk(c, cx, FLOOR - 14, FLOOR - 190, 18)
-    clumps = canopy(c, cx, FLOOR - 250, 92, 64, "rising_crown")
-    rng = c.rand("rising_apples")
-    for x, y, r in clumps[::2]:
-        apple(c, x + rng.uniform(-6, 6), y + r * 0.4, 5.5, rng.uniform(-0.4, 0.4))
-    # Off the tree and up: apples on their way, and a leaf or two.
-    for x, y in ((cx - 50, 360), (cx + 30, 300), (cx - 8, 230), (cx + 62, 190), (cx - 70, 160)):
-        rising(c, x, y, 6.0, rng.uniform(-0.6, 0.6), rng.uniform(14, 22))
-    for x, y, a in ((cx + 10, 330, 0.6), (cx - 40, 250, 2.2), (cx + 48, 140, 1.1)):
-        leaf(c, x, y, a)
-    # Fallen up: resting against the vault's underside, stems down, either
-    # side of the nook (the nook's own apple is its coin).
-    for x in (x0 + 14, x0 + 30, x0 + 47, x0 + 62, NOOK[1] + 14, NOOK[1] + 31, NOOK[1] + 50, x1 - 14):
-        apple(c, x, VAULT + 6.5, 6.0, math.pi + rng.uniform(-0.5, 0.5))
+    trunk(c, cx, FLOOR - 14, FLOOR - 200, 20, "rising_trunk")
+    clumps = canopy(c, cx, cy, rx, ry, "rising_crown")
+    limbs(c, cx, FLOOR - 14, FLOOR - 200, 20)
+    front_leaves(c, clumps, cx, cy, rx, ry, "rising_crown")
+    ripening(c, clumps, c.rand("rising_apples"), 0.0)
 
 
 def hanging_tree(c, k):
     x0, x1 = BRIDGE
-    cx = (x0 + x1) / 2
+    cx, cy, rx, ry = HANGING_CROWN
     planter(c, cx - 64, cx + 64, VAULT + 12, -12)
-    trunk(c, cx, VAULT + 12, VAULT + 170, 20)
-    clumps = canopy(c, cx, VAULT + 232, 110, 70, "hanging_crown")
-    rng = c.rand("hanging_apples")
-    for x, y, r in clumps[1::2]:
-        apple(c, x + rng.uniform(-6, 6), y - r * 0.4, 5.5, math.pi + rng.uniform(-0.4, 0.4))
-    # Its apples fall the way it grows: down to the ceiling, round its pot
-    # and out along the walk.
-    for x in (cx - 150, cx - 126, cx - 96, cx - 80, cx + 82, cx + 100, cx + 131, cx + 170, cx + 230):
-        apple(c, x, VAULT + 6.5, 6.0, math.pi + rng.uniform(-0.6, 0.6))
-    for x, y in ((cx - 46, VAULT + 70), (cx + 52, VAULT + 104)):
-        rising(c, x, y, 6.0, rng.uniform(-0.5, 0.5), 16)
+    trunk(c, cx, VAULT + 12, VAULT + 172, 22, "hanging_trunk")
+    clumps = canopy(c, cx, cy, rx, ry, "hanging_crown")
+    limbs(c, cx, VAULT + 12, VAULT + 172, 22)
+    front_leaves(c, clumps, cx, cy, rx, ry, "hanging_crown")
+    ripening(c, clumps, c.rand("hanging_apples"), math.pi)
 
 
 def swing_rail(c, k):
