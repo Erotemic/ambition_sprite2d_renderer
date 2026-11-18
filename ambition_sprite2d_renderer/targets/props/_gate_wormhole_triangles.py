@@ -88,7 +88,9 @@ class Aperture:
     inscribed in the ring's inner edge, and a round opening (the ring's
     aperture). A travel portal's: its own centre and door, and a TRIANGLE
     opening of circumradius ``opening_r`` about the door, upright as the
-    door is; nothing is drawn outside it.
+    door is; nothing is drawn outside it. An arch's: an ARCH opening,
+    ``opening_r`` half as wide as it is, its round head's crown
+    ``arch_crown`` above the centre and its threshold ``arch_foot`` below.
     """
 
     units: float = BASE_FRAME
@@ -96,6 +98,8 @@ class Aperture:
     door_r: float | None = None
     opening: str = "circle"
     opening_r: float | None = None
+    arch_crown: float | None = None
+    arch_foot: float | None = None
 
 
 GATE_APERTURE = Aperture()
@@ -127,21 +131,41 @@ class _Geo:
         self.unit = unit
         #: The opening the membrane fills. Round (the gate's): ``lip_d`` is
         #: the distance from the centre, 1 at the lip, and ``inside`` the
-        #: aperture's coverage. Triangular (a travel portal's): the same
-        #: measured triangularly, so the lip runs round the triangle, and
-        #: ``clip`` cuts everything drawn to it.
-        self.triangular = ap.opening == "triangle"
-        if self.triangular:
-            self.open_r = ap.opening_r * unit
-            sdf = _tri_sdf(self.dx, self.dy, self.open_r, 0.0)
+        #: aperture's coverage. Shaped (a triangle or an arch): the same
+        #: measured by the shape's own distance, so the lip runs round it,
+        #: and everything drawn is cut to it. ``open_r`` is twice the
+        #: distance from the centre to the shape's nearest edge, and
+        #: ``open_far`` the distance to its farthest point.
+        self.shaped = ap.opening != "circle"
+        if self.shaped:
+            if ap.opening == "triangle":
+                self.open_r = ap.opening_r * unit
+                self.open_far = self.open_r
+                r = self.open_r
+
+                def sdf_at(x, y):
+                    return _tri_sdf(x, y, r, 0.0)
+
+            elif ap.opening == "arch":
+                half, crown, foot = ap.opening_r * unit, ap.arch_crown * unit, ap.arch_foot * unit
+                self.open_r = 2.0 * half
+                self.open_far = max(crown, math.hypot(half, foot))
+
+                def sdf_at(x, y):
+                    return _arch_sdf(x, y, half, crown, foot)
+
+            else:
+                raise ValueError(f"unknown opening: {ap.opening}")
+            sdf = sdf_at(self.dx, self.dy)
             self.lip_d = 1.0 + sdf / (self.open_r / 2.0)
             self.inside = np.clip(-sdf / self.px + 0.5, 0.0, 1.0)
             o = out_size
             oy, ox = np.mgrid[0:o, 0:o].astype(np.float32)
-            out_sdf = _tri_sdf((ox + 0.5) * SS - self.cx, (oy + 0.5) * SS - self.cy, self.open_r, 0.0)
+            out_sdf = sdf_at((ox + 0.5) * SS - self.cx, (oy + 0.5) * SS - self.cy)
             self.keep_out = np.clip(-out_sdf / (1.5 * SS) + 0.5, 0.0, 1.0)
         else:
             self.open_r = self.portal_r
+            self.open_far = self.portal_r
             self.lip_d = self.dist / self.portal_r
             self.inside = np.clip((self.portal_r - self.dist) / self.px + 0.5, 0.0, 1.0)
             self.keep_out = None
@@ -187,6 +211,19 @@ def _tri_sdf(px: np.ndarray, py: np.ndarray, r: float, rot: float) -> np.ndarray
     y2 = np.where(m, (-k * x - y) / 2.0, y)
     x2 = x2 - np.clip(x2, -2.0 * h, 0.0)
     return -np.sqrt(x2 * x2 + y2 * y2) * np.sign(y2)
+
+
+def _arch_sdf(px: np.ndarray, py: np.ndarray, half: float, crown: float, foot: float) -> np.ndarray:
+    """Signed distance to an upright arch about the origin (negative
+    inside; y down): ``half`` its half width, a round head whose crown is
+    ``crown`` above the origin, straight jambs down to ``foot`` below it."""
+    head_y = -crown + half
+    head = np.sqrt(px * px + (py - head_y) ** 2) - half
+    mid = (head_y + foot) / 2.0
+    qx = np.abs(px) - half
+    qy = np.abs(py - mid) - (foot - head_y) / 2.0
+    box = np.sqrt(np.maximum(qx, 0.0) ** 2 + np.maximum(qy, 0.0) ** 2) + np.minimum(np.maximum(qx, qy), 0.0)
+    return np.minimum(head, box)
 
 
 # --- the canvas -----------------------------------------------------------------
@@ -273,8 +310,8 @@ class _Canvas:
         ``aperture`` (work pixels) plus its own soft edge."""
         g = self.g
         n, o = g.w, g.out
-        if g.triangular:
-            # Nothing outside a triangular opening: the frame's band is there.
+        if g.shaped:
+            # Nothing outside a shaped opening: the frame's band is there.
             self.rgb *= g.inside[..., None]
             self.a *= g.inside
             self.glow *= g.inside[..., None]
@@ -360,8 +397,8 @@ def _membrane(
     rgb = rgb * (1 - lip[..., None] * 0.55) + WHITE * lip[..., None] * 0.55
     inside = g.inside
     # How far the opening reaches, in the door's measure: the round lip, or
-    # a triangular opening's corners.
-    reach = inr + (g.open_r - g.frame_r * scale) if g.triangular else g.portal_r
+    # a shaped opening's farthest point.
+    reach = inr + (g.open_far - g.frame_r * scale) if g.shaped else g.portal_r
     edge = 1.0 + reveal * (reach / inr + 0.1 - 1.0)
     shown = np.clip((edge - tri_d) * inr / (5.0 * g.px) + 0.5, 0.0, 1.0) if reveal < 1.0 else 1.0
     cov = inside * shown * alpha
@@ -508,7 +545,7 @@ def _specks(cv: _Canvas, phase: float, alpha: float) -> None:
     g = cv.g
     for i in range(18):
         u = (i * 0.618034 + phase) % 1.0
-        rr = (g.open_r / 2.0 if g.triangular else g.portal_r) * (0.06 + 0.9 * u**1.6)
+        rr = (g.open_r / 2.0 if g.shaped else g.portal_r) * (0.06 + 0.9 * u**1.6)
         ang = i * 137.5 + u * 40.0
         x = math.cos(math.radians(ang)) * rr
         y = math.sin(math.radians(ang)) * rr
