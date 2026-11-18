@@ -5,8 +5,9 @@ transitions' recolours and effect layers included
 Her ``RigDocument`` paints every body pixel as a rigid part, and her effects go
 through ``rigdoc``'s compositing seams, so the flipbook is recorded from the
 real render (``build_rig_flipbook``). Each frame is recomposed from the
-PUBLISHED part atlas and draw table and diffed against the same frame of the
-PUBLISHED sheet, by two measures:
+PUBLISHED part atlas and draw table and diffed against the same frame of her
+painted reference sheet (she is published part-first, with no page), by two
+measures:
 
 * ``parity``: the share of drawn pixels that differ;
 * ``largest_wrong_blob``: the largest connected run of differing pixels. A
@@ -48,7 +49,13 @@ TEXEL_CEILING = 0.60
 
 @pytest.fixture(scope="module")
 def published(tmp_path_factory):
-    """Each form rendered and published once: (sheet yaml, atlas, flipbook)."""
+    """Each form published once (part-first: no page) and painted once as a
+    reference sheet (``sprites.sh --reference``): (reference sheet yaml, its
+    page, the published flipbook)."""
+    import os
+
+    from ambition_sprite2d_renderer.authoring.sheet_build import PAINT_REFERENCE_ENV
+
     out = {}
     for form in FORMS:
         root = tmp_path_factory.mktemp(form.target_name)
@@ -56,8 +63,16 @@ def published(tmp_path_factory):
         flipbook = products["parts"]
         ron = root / f"{form.target_name}_parts.ron"
         assert ron in paths and ron.read_text() == flipbook.to_ron()
-        sheet = yaml.safe_load(Path(products["outputs"]["yaml"]).read_text())
-        atlas = Image.open(root / sheet["image"]).convert("RGBA")
+        assert yaml.safe_load(Path(products["outputs"]["yaml"]).read_text()).get("drawn_from_parts") is True
+        assert not list(root.glob("*_spritesheet*.png")), "published part-first: no page"
+        reference = tmp_path_factory.mktemp(f"{form.target_name}_reference")
+        os.environ[PAINT_REFERENCE_ENV] = "1"
+        try:
+            _paths, painted = _render_form_with_products(form, reference)
+        finally:
+            del os.environ[PAINT_REFERENCE_ENV]
+        sheet = yaml.safe_load(Path(painted["outputs"]["yaml"]).read_text())
+        atlas = Image.open(reference / sheet["image"]).convert("RGBA")
         out[form.target_name] = (sheet, atlas, flipbook)
     return out
 

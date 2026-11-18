@@ -300,6 +300,7 @@ def render(out_dir: str | Path, **opts):
     doc = _doc()
     profile = _silhouette_profile()
     outputs = build_sheet(
+        parts=True,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -327,7 +328,12 @@ def render(out_dir: str | Path, **opts):
     # A canonical-only render (a portrait) publishes no sheet, so no flipbook.
     if rendering_canonical_only():
         return paths
-    return paths + list(build_part_flipbook(profile).write(Path(out_dir)).values())
+    from ...authoring.part_flipbook import write_part_first
+
+    parts = write_part_first(outputs, Path(out_dir), TWEENED_ROWS)
+    if parts is None:
+        parts = build_part_flipbook(profile).write(Path(out_dir))
+    return paths + list(parts.values())
 
 
 def render_canonical(out_dir: str | Path, **opts):

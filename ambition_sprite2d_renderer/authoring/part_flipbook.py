@@ -1502,6 +1502,27 @@ def publish_rig_flipbook(
     return write_with_realization(flipbook, Path(outputs["yaml"]), Path(out_dir))
 
 
+def write_part_first(
+    outputs: Mapping[str, Any], out_dir: Path, tween_rows: Sequence[str] = (),
+    landmarks: Optional[Callable[["PartFlipbook"], Dict[str, list]]] = None,
+) -> Optional[Dict[str, Path]]:
+    """Write the flipbook a part-first sheet recorded (``build_sheet(parts=True)``'s
+    ``outputs["flipbook"]``), its ``tween_rows`` tweened and its ``landmarks``
+    (computed from the flipbook, in its published frame) added. ``None`` when
+    the sheet recorded none (its parts cost more, so it was painted): the
+    caller builds its flipbook as before."""
+    flipbook = outputs.get("flipbook")
+    if flipbook is None:
+        return None
+    names = set(flipbook.clips)
+    flipbook.tweens = {row: TWEEN_LINEAR for row in tween_rows if row in names}
+    flipbook.realize = REALIZE_PARTS
+    if landmarks is not None:
+        flipbook.landmarks.update(landmarks(flipbook))
+    print(f"[part flipbook] {flipbook.target}: realize parts (part-first)", flush=True)
+    return flipbook.write(Path(out_dir))
+
+
 def write_with_realization(flipbook: "PartFlipbook", sheet_yaml: Path, out_dir: Path) -> Dict[str, Path]:
     """Write ``flipbook`` with its road decided by ``realization_by_cost``."""
     flipbook.pack()

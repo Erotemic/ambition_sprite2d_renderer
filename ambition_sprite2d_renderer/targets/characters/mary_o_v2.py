@@ -361,6 +361,7 @@ def _render_form_with_products(form: FormSpec, out_dir: str | Path):
         }
 
     outputs = build_sheet(
+        parts=True,
         target=form.target_name,
         rows=form.rows,
         render_fn=render_frame,
@@ -391,13 +392,16 @@ def _render_form_with_products(form: FormSpec, out_dir: str | Path):
     # parts, the transitions' recolours and effect layers included
     # (`docs/planning/engine/mary-o-part-realization.md`). The recorder refuses a
     # frame its draws do not reproduce exactly.
-    from ...authoring.part_flipbook import build_rig_flipbook
+    from ...authoring.part_flipbook import build_rig_flipbook, write_part_first
 
-    box = form_collision_box(form)
-    feet = (box["x"] + box["w"] / 2.0, float(box["y"] + box["h"]))
     tween_rows = [row for row, _count, _ms in form.rows if row in TWEENED_ROWS]
-    flipbook = build_rig_flipbook(form.target_name, form.rows, render_frame, None, feet, FRAME_SIZE, tween_rows)
-    parts = flipbook.write(out_dir)
+    flipbook = outputs.get("flipbook")
+    parts = write_part_first(outputs, out_dir, tween_rows)
+    if parts is None:
+        box = form_collision_box(form)
+        feet = (box["x"] + box["w"] / 2.0, float(box["y"] + box["h"]))
+        flipbook = build_rig_flipbook(form.target_name, form.rows, render_frame, None, feet, FRAME_SIZE, tween_rows)
+        parts = flipbook.write(out_dir)
     paths = [
         outputs[k]
         for k in (
@@ -409,6 +413,7 @@ def _render_form_with_products(form: FormSpec, out_dir: str | Path):
             "actor",
             "preview",
         )
+        if outputs.get(k)
     ] + [body_rig] + list(parts.values())
     return paths, {"parts": flipbook, "outputs": outputs}
 

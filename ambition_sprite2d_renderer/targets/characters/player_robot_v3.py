@@ -1004,15 +1004,22 @@ def build_part_flipbook():
     size = (FRAME_SIZE[0] + PUBLISH_PADDING[0] + PUBLISH_PADDING[2], FRAME_SIZE[1] + PUBLISH_PADDING[1] + PUBLISH_PADDING[3])
     feet = body_metrics(*size)["feet_pixel"]
     flipbook = build_rig_flipbook(TARGET_NAME, ROWS, published_frame, None, (feet["x"], feet["y"]), size, TWEENED_ROWS)
+    flipbook.landmarks.update(eye_landmarks(flipbook))
+    return flipbook
+
+
+def eye_landmarks(flipbook) -> Dict[str, list]:
+    """Each row's eye per frame, from its feet in the published (padded) frame."""
+    landmarks = {}
     for row, count, _duration in ROWS:
         frames = []
         for index in range(count):
             eye = frame_meta(row, index, count)["anchors"].get("eye")
-            frames.append({"eye": (eye[0] + PUBLISH_PADDING[0] - feet["x"],
-                                   eye[1] + PUBLISH_PADDING[1] - feet["y"])} if eye else {})
+            frames.append({"eye": (eye[0] + PUBLISH_PADDING[0] - flipbook.feet[0],
+                                   eye[1] + PUBLISH_PADDING[1] - flipbook.feet[1])} if eye else {})
         if any(frames):
-            flipbook.landmarks[row] = frames
-    return flipbook
+            landmarks[row] = frames
+    return landmarks
 
 
 def _render_with_products(out_dir: str | Path, **opts):
@@ -1023,6 +1030,7 @@ def _render_with_products(out_dir: str | Path, **opts):
     out_dir.mkdir(parents=True, exist_ok=True)
     hitboxes: Dict[str, dict] = _translated_legacy_hitboxes()
     outputs = build_sheet(
+        parts=True,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -1061,8 +1069,13 @@ def _render_with_products(out_dir: str | Path, **opts):
     # A canonical-only render (a portrait) publishes no sheet, so no flipbook.
     if rendering_canonical_only():
         return paths, {"outputs": outputs}
-    flipbook = build_part_flipbook()
-    parts = flipbook.write(out_dir)
+    from ...authoring.part_flipbook import write_part_first
+
+    parts = write_part_first(outputs, out_dir, TWEENED_ROWS, eye_landmarks)
+    flipbook = outputs.get("flipbook")
+    if parts is None:
+        flipbook = build_part_flipbook()
+        parts = flipbook.write(out_dir)
     return paths + [write_scout_body_rig(out_dir)] + list(parts.values()), {"parts": flipbook, "outputs": outputs}
 
 
