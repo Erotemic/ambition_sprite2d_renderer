@@ -9,10 +9,18 @@ import shutil
 from .publication_store import relative
 
 
+def drawn_from_parts(ron_text: str) -> bool:
+    """Whether a sheet record states that its pages are not published."""
+    return re.search(r'\bdrawn_from_parts\s*:\s*true\b', ron_text) is not None
+
+
 def references(path: Path) -> list[str]:
     """Read page references from the published metadata formats."""
     if path.suffix == ".ron":
         text = path.read_text()
+        if drawn_from_parts(text):
+            # The record keeps its sheet's name (the game's sheet id), not a page.
+            text = re.sub(r'\b(?:images\s*:\s*\[[^\]]*\]|image\s*:\s*"(?:[^"\\]|\\.)*")', "", text)
         fields = re.findall(r'\b(?:pages|images)\s*:\s*\[([^\]]*)\]|\bimage\s*:\s*("(?:[^"\\]|\\.)*")', text)
         return list(dict.fromkeys(json.loads(word) for group in fields for part in group
                                   for word in re.findall(r'"(?:[^"\\]|\\.)*"', part)))
@@ -22,6 +30,8 @@ def references(path: Path) -> list[str]:
         else:
             from .yaml_io import safe_load
             value = safe_load(path.read_text())
+        if isinstance(value, dict) and value.get("drawn_from_parts") is True:
+            value = {key: item for key, item in value.items() if key not in ("image", "images")}
         found = []
         def visit(value):
             if isinstance(value, dict):
@@ -84,9 +94,12 @@ def collect(target, directory: Path, *, portraits: bool = True) -> dict[str, Pat
             if not page_source.is_file():
                 raise ValueError(f"{target.name}: {source.name} names missing page {page}")
             result[(Path(logical).parent / page).as_posix()] = page_source
+    pageless = {path.name.removesuffix(".ron") for paths in by_name.values() for path in paths
+                if path.name.endswith("_spritesheet.ron") and drawn_from_parts(path.read_text())}
     for name in required_names(target, portraits=portraits):
         prefix = target.portrait_install_subdir if name in target.portrait_files else target.install_subdir
-        add(name, prefix or "")
+        page_of = re.sub(r'(_spritesheet)(?:_[a-z0-9_]+)?\.png$', r'\1', Path(name).name)
+        add(name, prefix or "", optional=name.endswith(".png") and page_of in pageless)
         for companion in companion_names(name):
             add(companion, prefix or "", optional=True)
     return result

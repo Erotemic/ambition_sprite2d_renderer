@@ -870,8 +870,16 @@ def build_sheet(
     frame_transform_out: Optional[dict] = None,
     column_tile: Optional[Tuple[float, float]] = None,
     fx: Optional[Dict[str, str]] = None,
+    parts: bool = False,
 ):
     """Build one module target's sheet from a frame callable + rows.
+
+    ``parts`` publishes the sheet part-first (``part_flipbook``,
+    `docs/planning/engine/part-first-publication.md`): its frames are recorded,
+    not painted, the record states ``drawn_from_parts`` and no page is
+    written, and the returned ``flipbook`` is the part flipbook that draws it
+    (``publish_rig_flipbook`` writes it). A target whose parts cost more than
+    a sheet (``part_flipbook.realization_by_cost``) is painted as before.
 
     ``frame_transform_out``, when given, is filled with ``{"dx": .., "dy": ..}``:
     the translation from a frame as ``render_fn`` drew it to the frame as the
@@ -930,6 +938,7 @@ def build_sheet(
         column_tile=column_tile,
         fx=fx,
     )
+    source.parts = bool(parts)
     return render_sheet(source, out_dir, frame_transform_out=frame_transform_out)
 
 
@@ -1110,7 +1119,11 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
     )
     progress("phase render: begin")
 
-    for row_idx, (anim, nframes, duration_ms) in enumerate(rows):
+    parts_mode = bool(getattr(source, "parts", False))
+    flipbook = None
+    if parts_mode:
+        flipbook = _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame_meta_fn)
+    for row_idx, (anim, nframes, duration_ms) in enumerate(rows if not parts_mode else ()):
         row_started = time.perf_counter()
         row_render_seconds = 0.0
         row_metadata_seconds = 0.0
@@ -1314,16 +1327,26 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
 
     layout_started = time.perf_counter()
     progress("phase layout/pack: begin")
-    page_sheets, rows_meta, num_pages = layout_sheet_rows(
-        target,
-        rendered_rows,
-        fw,
-        fh,
-        label_width=label_width,
-        trim=trim,
-        max_dim=max_sheet_dimension,
-        page_size=policy.page_size,
-    )
+    if parts_mode:
+        flipbook = _rebased_flipbook(flipbook, (fw, fh), (crop_x, crop_y), body_metrics_feet(first, body_metrics_fn, fw, fh, crop_x, crop_y))
+        realize, reason = _part_realization(flipbook, rendered_rows, fw, fh)
+        if realize != "parts":
+            # Its parts cost more than a sheet: painted, as before.
+            print(f"[sheet:{target}] parts-first refused ({reason}): painting the sheet", flush=True)
+            source.parts = False
+            return render_sheet(source, out_dir, frame_transform_out=frame_transform_out)
+        page_sheets, rows_meta, num_pages = [], _frame_grid_rows(rendered_rows, fw, fh, label_width), 1
+    else:
+        page_sheets, rows_meta, num_pages = layout_sheet_rows(
+            target,
+            rendered_rows,
+            fw,
+            fh,
+            label_width=label_width,
+            trim=trim,
+            max_dim=max_sheet_dimension,
+            page_size=policy.page_size,
+        )
     mirror_of = dict(getattr(source, "mirror_of", None) or {})
     if mirror_of:
         frames_of = {row["animation"]: row["frame_count"] for row in rows_meta}
@@ -1351,7 +1374,11 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
     # logical-row preview path.
     preview_started = time.perf_counter()
     progress("phase preview: begin")
-    if not trim:
+    if parts_mode:
+        # A review image, drawn on request (`--reference`), not by a publish.
+        preview = None
+        preview_w = preview_h = 0
+    elif not trim:
         preview_w = max(page.width for page in page_sheets)
         preview_h = sum(page.height for page in page_sheets)
         preview = Image.new("RGBA", (preview_w, preview_h), (43, 33, 40, 255))
@@ -1388,7 +1415,8 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
     can.save(canonical_transparent_path)
     for img, name in zip(page_sheets, page_image_names):
         img.save(out_dir / name)
-    preview.save(preview_path, compress_level=1)
+    if preview is not None:
+        preview.save(preview_path, compress_level=1)
     progress(f"phase image-write: done in {time.perf_counter() - image_write_started:.2f}s")
 
     metrics_started = time.perf_counter()
@@ -1478,6 +1506,10 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
     # their RON stays byte-identical to the pre-paging emitter.
     if num_pages > 1:
         manifest["images"] = page_image_names
+    if parts_mode:
+        # Drawn from its parts: the pages it names are not written
+        # (`SheetRecord::drawn_from_parts`).
+        manifest["drawn_from_parts"] = True
     publish_character_notes(manifest, actor_metadata)
     if authored_faces_left:
         # WHICH WAY THE ART WAS DRAWN — see `SheetRecord::authored_faces_left`.
@@ -1526,15 +1558,124 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
     progress(f"phase sidecars: done in {time.perf_counter() - sidecar_started:.2f}s")
     progress(f"complete in {time.perf_counter() - sheet_started:.2f}s")
     profile_checkpoint(f"{target}:complete", force=True)
-    return {
+    outputs = {
         "canonical": canonical_path,
         "canonical_transparent": canonical_transparent_path,
-        "spritesheet": sheet_path,
+        "spritesheet": None if parts_mode else sheet_path,
         "yaml": yaml_path,
         "ron": ron_path,
         "actor": actor_path,
-        "preview": preview_path,
+        "preview": None if parts_mode else preview_path,
     }
+    if parts_mode:
+        outputs["flipbook"] = flipbook
+    return outputs
+
+
+def _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame_meta_fn) -> "object":
+    """Pass 1 of a part-first sheet: the part flipbook of every frame,
+    recorded and not painted (``build_rig_flipbook(paint=False)``), in the
+    padded drawing frame with its origin at the frame's corner, and
+    ``rendered_rows`` filled with each frame redrawn from it. The first row's
+    first and canonical frames are painted: the body box is measured off
+    them, and the canonical picture is published, as a painted sheet's are.
+    Returns the flipbook."""
+    from . import rigdoc
+    from .part_flipbook import build_rig_flipbook
+
+    pad_left, pad_top, pad_right, pad_bottom = frame_padding
+    fw, fh = source.frame_size
+    size = (fw + pad_left + pad_right, fh + pad_top + pad_bottom)
+
+    def padded(row, index, count):
+        canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+        rigdoc.composite_canvas(canvas, source.render_fn(row, index, count), (pad_left, pad_top))
+        return canvas
+
+    flipbook = build_rig_flipbook(source.target, source.rows, padded, None, (0.0, 0.0), size, (), paint=False)
+    first_row, first_count = source.rows[0][0], int(source.rows[0][1])
+    painted = {index: _pad_rgba_frame(source.render_fn(first_row, index, first_count).convert("RGBA"), frame_padding)
+               for index in {0, min(1, first_count - 1)}}
+    for anim, nframes, duration_ms in source.rows:
+        frames_data = []
+        for frame_idx in range(int(nframes)):
+            frame = painted.get(frame_idx) if anim == first_row else None
+            if frame is None:
+                frame = flipbook.recompose(anim, frame_idx)
+            clipped = clipped_frame_edges(frame.crop((pad_left, pad_top, pad_left + fw, pad_top + fh)))
+            if clipped:
+                clipped_frames.append((anim, frame_idx, ",".join(clipped)))
+            meta = {}
+            if frame_meta_fn is not None:
+                extra = frame_meta_fn(anim, frame_idx, nframes)
+                if extra:
+                    meta = dict(extra)
+                    if pad_left or pad_top:
+                        meta = _shift_xy_payload(meta, pad_left, pad_top)
+            frames_data.append((frame, meta))
+        rendered_rows.append((anim, nframes, duration_ms, frames_data))
+    return flipbook
+
+
+def body_metrics_feet(first, body_metrics_fn, fw, fh, crop_x, crop_y) -> Tuple[float, float]:
+    """The feet pixel the sheet's record will state (``body_metrics.feet_pixel``),
+    worked out the way ``render_sheet`` works out its body metrics: off the
+    first frame, unless the target authors its body."""
+    metrics = alpha_bbox_metrics(first)
+    if body_metrics_fn is not None:
+        metrics = _cropped_body_metrics(body_metrics_fn(fw, fh), crop_x, crop_y, fw, fh)
+    return (float(metrics["feet_pixel"]["x"]), float(metrics["feet_pixel"]["y"]))
+
+
+def _rebased_flipbook(flipbook, frame_size, crop, feet):
+    """``flipbook`` (drawn in the padded frame with its origin at the corner)
+    in the published frame: cut to ``frame_size`` at ``crop`` and placed from
+    ``feet``, as ``publish_rig_flipbook`` places a painted sheet's draws."""
+    from dataclasses import replace
+
+    dx, dy = crop[0] + feet[0], crop[1] + feet[1]
+    flipbook.clips = {
+        row: (duration, [[replace(d, at=(d.at[0] - dx, d.at[1] - dy)) for d in draws] for draws in frames])
+        for row, (duration, frames) in flipbook.clips.items()
+    }
+    flipbook.frame_size = tuple(frame_size)
+    flipbook.feet = tuple(feet)
+    return flipbook
+
+
+def _part_realization(flipbook, rendered_rows, fw, fh) -> Tuple[str, str]:
+    """``part_flipbook.realization_by_cost`` for a sheet with no pages: the
+    sheet's texels are its frames' (the grid it would be painted on)."""
+    from .part_flipbook import REALIZE_MAX_DRAWS
+
+    flipbook.pack()
+    sheet_texels = sum(int(n) for _a, n, _d, _f in rendered_rows) * fw * fh
+    part_texels = flipbook.packed_texels()
+    most = max((len(draws) for _d, frames in flipbook.clips.values() for draws in frames), default=0)
+    if part_texels > sheet_texels:
+        return "baked", f"part pages {part_texels} texels > frames {sheet_texels}"
+    if most > REALIZE_MAX_DRAWS:
+        return "baked", f"{most} draws in a frame > {REALIZE_MAX_DRAWS}"
+    return "parts", f"part pages {part_texels} <= frames {sheet_texels}, at most {most} draws"
+
+
+def _frame_grid_rows(rendered_rows, fw, fh, label_width):
+    """``rows_meta`` of a sheet with no pages: each row's frames on a grid, as
+    the unpacked layout places them (``_grid_sheet_rows``), on page 0. The
+    rects are the frame algebra a body is built with; no image holds them."""
+    rows_meta = []
+    for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(rendered_rows):
+        rects = []
+        for frame_idx, (_frame, meta) in enumerate(frames_data):
+            rect = {"x": label_width + frame_idx * fw, "y": row_idx * fh, "w": fw, "h": fh, "page": 0}
+            if meta:
+                rect.update(meta)
+            rects.append(rect)
+        rows_meta.append({
+            "animation": anim, "row_index": row_idx, "frame_count": nframes, "duration_ms": duration_ms,
+            "duration_secs": round(duration_ms / 1000.0, 6), "page": 0, "rects": rects,
+        })
+    return rows_meta
 
 
 # RON manifest emission is unified in core.manifest_ron (one writer for both

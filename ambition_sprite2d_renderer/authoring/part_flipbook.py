@@ -1444,6 +1444,16 @@ def publish_rig_flipbook(
     # derived from this one (`generate_visual_quality_variants.py`).
     if rendering_canonical_only() or rendering_quality_tier() or "yaml" not in outputs:
         return {}
+    names = {row for row, _count, _ms in rows}
+    tweened = [row for row in (LOCOMOTION_LOOPS if tween_rows is None else tween_rows) if row in names]
+    if outputs.get("flipbook") is not None:
+        # A part-first sheet (`build_sheet(parts=True)`) recorded its flipbook
+        # while it measured its frames, and chose its road then.
+        flipbook = outputs["flipbook"]
+        flipbook.tweens = {row: TWEEN_LINEAR for row in tweened}
+        flipbook.realize = REALIZE_PARTS
+        print(f"[part flipbook] {flipbook.target}: realize parts (part-first)", flush=True)
+        return flipbook.write(Path(out_dir))
     sheet = yaml.safe_load(Path(outputs["yaml"]).read_text())
     size = (int(sheet["frame_width"]), int(sheet["frame_height"]))
     feet = sheet_feet(Path(outputs["yaml"]))
@@ -1458,8 +1468,6 @@ def publish_rig_flipbook(
         return place(render(row, index, count))
 
     published_clip = None if render_clip is None else (lambda row, count: [place(f) for f in render_clip(row, count)])
-    names = {row for row, _count, _ms in rows}
-    tweened = [row for row in (LOCOMOTION_LOOPS if tween_rows is None else tween_rows) if row in names]
     flipbook = build_rig_flipbook(target, rows, published, None, feet, size, tweened, render_clip=published_clip)
     return write_with_realization(flipbook, Path(outputs["yaml"]), Path(out_dir))
 

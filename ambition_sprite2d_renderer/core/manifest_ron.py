@@ -270,6 +270,9 @@ def record_to_ron(record: Dict) -> str:
         if fx
         else ""
     )
+    # DRAWN FROM ITS PARTS (`SheetRecord::drawn_from_parts`): the pages named
+    # here are not published. Emitted only when true.
+    parts_field = "    drawn_from_parts: true,\n" if record.get("drawn_from_parts") else ""
     tuning_field = ron_tuning(record)
     # `images: [...]` only for split (multi-page) sheets; single-page sheets
     # emit just `image:` so their RON is byte-identical to the pre-paging shape.
@@ -291,6 +294,7 @@ def record_to_ron(record: Dict) -> str:
         f"{faces_left_field}"
         f"{column_tile_field}"
         f"{fx_field}"
+        f"{parts_field}"
         f"    body_metrics: {_ron_body_metrics(record.get('body_metrics'))},\n"
         f"{rows_field}"
         f")"

@@ -805,8 +805,18 @@ def break_symlink_before_write(path: Path) -> None:
         path.unlink()
 
 
+def drawn_from_parts(record) -> bool:
+    """Whether a sheet record states that its pages are not published."""
+    if not isinstance(record, Struct):
+        return False
+    flag = record.get("drawn_from_parts")
+    return isinstance(flag, Atom) and flag.text == "true"
+
+
 def page_filenames(record: Struct) -> list[str]:
     # A part flipbook names its atlas pages `pages`; a sheet, `images`/`image`.
+    if drawn_from_parts(record):
+        return []
     pages = record.get("pages")
     if isinstance(pages, List_) and pages.items:
         return [v.value for v in pages.items if isinstance(v, Str)]
@@ -1126,6 +1136,15 @@ def build_sheet_variant(source: SheetSource, ron_dst: Path, variant: Variant) ->
     scaled = List_(
         [scale_record(r, scale) if isinstance(r, Struct) else r for r in records.items]
     )
+
+    if any(drawn_from_parts(record) for record in records.items):
+        # Drawn from its parts (`SheetRecord::drawn_from_parts`): the tier has
+        # no page to pack, and its record is the frame algebra, scaled. The
+        # tier's parts are the part flipbook's (`build_parts_variant`).
+        ron_dst.parent.mkdir(parents=True, exist_ok=True)
+        break_symlink_before_write(ron_dst)
+        ron_dst.write_text("[\n" + ",\n".join(dump(r) for r in scaled.items) + "\n]\n")
+        return 0
 
     source_pages = source.pages
     source_page_names = source.page_names
@@ -1516,7 +1535,7 @@ def generate_sprite_variants(
     publication.build(None, names if selectors else (), force=force or clean, jobs=jobs, missing_only=missing_only)
 
 
-_PAGE_FIELDS = frozenset(("pages", "images", "image"))
+_PAGE_FIELDS = frozenset(("pages", "images", "image", "drawn_from_parts"))
 
 
 def page_filenames_safe(ron: Path) -> list[str]:
