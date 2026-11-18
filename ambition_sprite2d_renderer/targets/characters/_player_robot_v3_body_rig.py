@@ -54,6 +54,8 @@ _TIPS = {
     "hand_far": ("far_arm_hand", 1.0),
     "foot_near": ("near_leg_foot", 0.0),
     "foot_far": ("far_leg_foot", 0.0),
+    # The head's own joint: what a follow-through turns the head about.
+    "head": ("head", 0.0),
 }
 
 
