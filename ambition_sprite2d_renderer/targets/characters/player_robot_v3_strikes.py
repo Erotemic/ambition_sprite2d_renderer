@@ -908,6 +908,45 @@ def eye_laser_crouch(body: RigBody) -> List[Key]:
     return keys
 
 
+#: The frames of the `zap` loop, one key on each frame.
+ZAP_FRAMES = 6
+#: The zapping arm, straight out at the target with the palm open: the game
+#: casts the lightning from the near hand of this row (`hand_near`), so the
+#: tremble moves the shoulder and the head, not the hand.
+ZAP_ARM = (2.0, -2.0, 0.0)
+
+
+def zap(body: RigBody) -> List[Key]:
+    """Lightning from the outstretched hand: the near arm straight out at the
+    target, the far arm braced back, the chest turned to the target and the
+    head down behind the arm. Loops on its own clock for as long as the
+    lightning crackles; the row is the body above its hips, and the legs walk
+    under it. A fast shake on a slow sway shows the current in the body."""
+    keys = []
+    for i in range(ZAP_FRAMES + 1):
+        u = i / ZAP_FRAMES
+        shake = math.cos(i * math.pi)
+        sway = math.sin(u * 2.0 * math.pi)
+        tremble = 0.6 * shake + 0.4 * sway
+        keys.append(Key(
+            at=u, near=ZAP_ARM, far=(64.0 - 3.0 * tremble, 34.0),
+            torso=7.0 + 0.8 * tremble, head=4.0 - 1.4 * tremble, lunge=3.0, drop=2.5 + 0.4 * tremble,
+            squash=0.98, shoulder=-3.0 + 0.6 * tremble, blade=0.0, turn="profile", face="fierce",
+            squint=0.35 + 0.1 * shake, ease="linear", arm_in_front=True))
+    return keys
+
+
+def zap_crouch(body: RigBody) -> List[Key]:
+    """`zap` from the crouch: the crouched trunk and head, the arm out."""
+    keys = []
+    for i in range(ZAP_FRAMES + 1):
+        u = i / ZAP_FRAMES
+        shake = math.cos(i * math.pi)
+        keys.append(replace(crouched(body, u, ease="linear"), near=ZAP_ARM, face="fierce",
+                            squint=0.35 + 0.1 * shake, arm_in_front=True))
+    return keys
+
+
 # The game draws a held item in the hand of the blade arm: where the hand part
 # is, turned as the hand part is turned (`rendering::posed_hand` in the game).
 # A hand that is not turned holds the item this many degrees above level, so
@@ -1007,6 +1046,8 @@ STRIKES: Dict[str, Callable[[RigBody], List[Key]]] = {
     "aim": aim,
     "eye_laser": eye_laser,
     "eye_laser_crouch": eye_laser_crouch,
+    "zap": zap,
+    "zap_crouch": zap_crouch,
 }
 
 

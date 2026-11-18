@@ -205,6 +205,10 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     # burns, and loops it. The game draws the beam from the eyes.
     ("eye_laser", 6, 60),
     ("eye_laser_crouch", 6, 60),
+    # Lightning from the outstretched hand, for as long as it crackles. The
+    # game casts it from the near hand.
+    ("zap", 6, 50),
+    ("zap_crouch", 6, 50),
     ("interact", 6, 90),
     # Petting a pettable character: 2.0 s, the sim's `PET_SECONDS`.
     ("pet", 16, 125),
@@ -516,6 +520,9 @@ LOOPING_ROWS: Final[frozenset[str]] = frozenset(
         # Shown while the eye laser burns, for as long as it burns.
         "eye_laser",
         "eye_laser_crouch",
+        # Shown while the lightning crackles.
+        "zap",
+        "zap_crouch",
         "hover",
         "float_glide",
         "charge",
