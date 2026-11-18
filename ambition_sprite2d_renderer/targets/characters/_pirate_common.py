@@ -1687,11 +1687,13 @@ def render_pirate_portraits(target: str, out_dir, *, kind: str | None = None,
 #: The fighters of the crew that have the two rows, and how each strikes:
 #: ``cutlass`` (drawn back over the shoulder), ``gun_sword`` (the game's
 #: gun-sword in the sword hand, aimed) or ``pistol`` (a flintlock in the free
-#: hand, aimed; the cutlass kept back).
+#: hand, aimed; the cutlass kept back). The lookout and the navigator are the
+#: crew's rangers (one profile in the game): both fire the bolt.
 TELEGRAPH_STRIKES = {
     "pirate_raider": "gun_sword",
     "pirate_quartermaster": "cutlass",
     "pirate_lookout": "pistol",
+    "pirate_navigator": "pistol",
 }
 TELEGRAPH_ROWS = [("notice", 3, 110), ("windup", 3, 90)]
 
@@ -1739,8 +1741,8 @@ def telegraph_pose(kind: str, anim: str, frame_idx: int, nframes: int) -> dict:
             mouth_open=0.24 + 0.03 * s,
         )
     else:
-        # The aim: a flintlock out at the end of her straight free arm, sighted
-        # down, the cutlass kept back and low behind her, her feet braced.
+        # The aim: a flintlock out at the end of the straight free arm, sighted
+        # down, the cutlass kept back and low behind, the feet braced.
         pose.update(
             body_tilt=-3.0, root_x=-2.0,
             left_thigh=28.0, left_shin=36.0, right_thigh=-30.0, right_shin=-12.0,
