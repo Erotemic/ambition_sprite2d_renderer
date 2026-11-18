@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 from . import artifacts
 from .publication_store import Store, TIERS, MANAGED_ROOTS, digest, identity, write_json
@@ -506,6 +507,7 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=
         with source_snapshot(sources) as (snapshot, original):
             snapshot_renderer = snapshot / RENDERER.relative_to(repo_root())
             def render(name):
+                started = time.monotonic()
                 target = report.targets[name]
                 with tempfile.TemporaryDirectory(prefix="ambition-art-build-") as temporary:
                     work = Path(temporary)
@@ -536,15 +538,15 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=
                     recipe = {"inputs": inputs, "listings": listings, "policy": target_policy(name), "toolchain": chain,
                               "quality": True, "tiers": getattr(target, "publication_tiers", list(TIERS))}
                     key = store.accept("target:" + name, {k: (Path(v[0]), v[1], v[2]) for k,v in result["files"].items()}, recipe)
-                    return name, key
+                    return name, key, time.monotonic() - started
             with ThreadPoolExecutor(max_workers=min(6, max(1, jobs))) as pool:
                 futures = {pool.submit(render, name): name for name in pending}
                 try:
                     for index, future in enumerate(as_completed(futures), 1):
                         try:
-                            name, key = future.result()
+                            name, key, seconds = future.result()
                             replacements["target:" + name] = key
-                            print(f"art: [{index}/{len(pending)}] {name}", file=sys.stderr, flush=True)
+                            print(f"art: [{index}/{len(pending)}] {name} {seconds:.1f} s", file=sys.stderr, flush=True)
                         except (ValueError, OSError) as error:
                             failures.append(str(error))
                             print(f"art: [{index}/{len(pending)}] FAILED {futures[future]}: {error}", file=sys.stderr, flush=True)
