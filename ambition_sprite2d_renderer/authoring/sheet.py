@@ -59,7 +59,9 @@ _DEFAULT_CROP_PADDING = 2
 
 
 @profile
-def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, Any]]:
+def build_spritesheet(
+    job: CharacterJob, *, parts_as: str | None = None, flipbook_out: List[Any] | None = None
+) -> Tuple[List[Image.Image], Dict[str, Any]]:
     """Render every frame at the configured canvas size, then crop the entire
     sheet to the *union* of all opaque-pixel bboxes across every frame.
 
@@ -70,6 +72,13 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
     bbox origins. The downside is that the crop only saves the margin that
     *every* animation can spare; tall jumps and wide attacks pull the union
     out toward the original canvas size.
+
+    ``parts_as`` (the sheet's name) publishes it part-first, as
+    ``build_sheet(parts=True)`` does: the part flipbook is recorded without
+    painting, every frame the record needs is redrawn from it, no page is
+    returned and the manifest says ``drawn_from_parts``; the flipbook, placed
+    in the published frame, is appended to ``flipbook_out``. A flipbook whose
+    parts cost more than the sheet is refused and the sheet is painted.
 
     The returned manifest carries the cropped frame dimensions in the
     standard `frame_width`/`frame_height` fields, plus a `crop` block that
@@ -102,13 +111,19 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
     union_min_x, union_min_y = src_fw, src_fh
     union_max_x, union_max_y = 0, 0
     any_visible = False
+    flipbook = None
+    if parts_as is not None:
+        flipbook, frame_of = _record_part_first(generator, spec, job, parts_as, selected, animations, (src_fw, src_fh))
     for animation in selected:
         info = animations[animation]
         row_frames: List[Image.Image] = []
         for frame_index in range(info["frames"]):
-            frame = generator.render_frame(
-                spec, animation, frame_index, (src_fw, src_fh), job
-            )
+            if flipbook is not None:
+                frame = frame_of(animation, frame_index)
+            else:
+                frame = generator.render_frame(
+                    spec, animation, frame_index, (src_fw, src_fh), job
+                )
             row_frames.append(frame)
             bbox = frame.getbbox()
             if bbox is not None:
@@ -234,16 +249,24 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         )
         for row_idx, animation in enumerate(selected)
     ]
-    pages, rows_meta, num_pages = layout_sheet_rows(
-        job.target,
-        rendered_rows,
-        fw,
-        fh,
-        label_width=label_w,
-        trim=trim,
-        max_dim=max_dim,
-        page_size=page_size,
-    )
+    if flipbook is not None:
+        from .sheet_build import _frame_grid_rows
+
+        pages, rows_meta, num_pages = [], _frame_grid_rows(rendered_rows, fw, fh, label_w), 1
+        # Drawn from its parts: the pages it names are not written
+        # (`SheetRecord::drawn_from_parts`).
+        manifest["drawn_from_parts"] = True
+    else:
+        pages, rows_meta, num_pages = layout_sheet_rows(
+            job.target,
+            rendered_rows,
+            fw,
+            fh,
+            label_width=label_w,
+            trim=trim,
+            max_dim=max_dim,
+            page_size=page_size,
+        )
     manifest["rows"] = rows_meta
     manifest["pages"] = num_pages
     metrics = (
@@ -438,7 +461,55 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         if anim_metrics:
             metrics["animations"] = anim_metrics
         manifest["body_metrics"] = metrics
+    if flipbook is not None:
+        from .sheet_build import _part_realization, _rebased_flipbook
+
+        feet = (manifest.get("body_metrics") or {}).get("feet_pixel")
+        refused = "no feet: the frames drew nothing" if feet is None else None
+        if refused is None:
+            flipbook = _rebased_flipbook(flipbook, (fw, fh), (crop_min_x, crop_min_y), (float(feet["x"]), float(feet["y"])))
+            realize, reason = _part_realization(flipbook, rendered_rows, fw, fh)
+            refused = None if realize == "parts" else reason
+        if refused is not None:
+            print(f"[sheet:{parts_as}] parts-first refused ({refused}): painting the sheet", flush=True)
+            return build_spritesheet(job)
+        if flipbook_out is not None:
+            flipbook_out.append(flipbook)
     return pages, manifest
+
+
+def _record_part_first(generator, spec, job, name: str, selected, animations, size):
+    """Pass 1 of a part-first generator sheet: its part flipbook, recorded and
+    not painted, at the source canvas with the origin at its corner, and the
+    frame the sheet measures for each (row, index): redrawn from the
+    flipbook, except the first row's first frame, which is painted (the body
+    box is measured off it, as the painted sheet's is)."""
+    import os
+
+    from .part_flipbook import build_rig_flipbook
+
+    rows = [(a, animations[a]["frames"], animations[a]["duration_ms"]) for a in selected]
+
+    def render(animation: str, index: int, count: int) -> Image.Image:
+        del count
+        return generator.render_frame(spec, animation, index, size, job)
+
+    try:
+        flipbook = build_rig_flipbook(name, rows, render, None, (0.0, 0.0), size, (), paint=False)
+    except Exception as refused:  # noqa: BLE001 - the painted build re-raises a real defect
+        print(f"[sheet:{name}] recorded only, refused ({type(refused).__name__}: {str(refused)[:160]}): painting its frames", flush=True)
+        flipbook = build_rig_flipbook(name, rows, render, None, (0.0, 0.0), size, (), paint=True)
+    if os.environ.get("AMBITION_PART_FIRST_AUDIT"):
+        from .sheet_build import _audit_part_first
+
+        _audit_part_first(name, rows, flipbook, render, None)
+    first = (selected[0], 0)
+    painted = generator.render_frame(spec, first[0], 0, size, job).convert("RGBA")
+
+    def frame_of(animation: str, index: int) -> Image.Image:
+        return painted if (animation, index) == first else flipbook.recompose(animation, index)
+
+    return flipbook, frame_of
 
 
 def _page_image_names(image_out: Path, num_pages: int) -> List[str]:
@@ -467,7 +538,9 @@ def write_spritesheet(
     manifest_out = Path(manifest_out)
     image_out.parent.mkdir(parents=True, exist_ok=True)
     manifest_out.parent.mkdir(parents=True, exist_ok=True)
-    pages, manifest = build_spritesheet(job)
+    stem = image_out.name.removesuffix("_spritesheet.png") if image_out.name.endswith("_spritesheet.png") else image_out.stem
+    flipbooks: List[Any] = []
+    pages, manifest = build_spritesheet(job, parts_as=stem if _publishes_part_first(job, stem) else None, flipbook_out=flipbooks)
     # Page 0 → `<stem>_spritesheet.png`; extra pages → `.1.png`, `.2.png`, …
     page_names = _page_image_names(image_out, len(pages))
     for img, name in zip(pages, page_names):
@@ -501,10 +574,33 @@ def write_spritesheet(
     # draw-review, factions, a registered config target).
     from .sheet_build import rendering_quality_tier
 
-    if get_generator(job.target).publishes_part_flipbook and not rendering_quality_tier():
-        stem = image_out.name.removesuffix("_spritesheet.png") if image_out.name.endswith("_spritesheet.png") else image_out.stem
+    if flipbooks:
+        from .part_flipbook import LOCOMOTION_LOOPS, REALIZE_PARTS, TWEEN_LINEAR
+
+        flipbook = flipbooks[0]
+        flipbook.tweens = {row: TWEEN_LINEAR for row in LOCOMOTION_LOOPS if row in flipbook.clips}
+        flipbook.realize = REALIZE_PARTS
+        print(f"[part flipbook] {flipbook.target}: realize parts (part-first)", flush=True)
+        flipbook.write(image_out.parent)
+    elif get_generator(job.target).publishes_part_flipbook and not rendering_quality_tier():
         publish_generator_flipbook(job, stem, manifest_out, image_out.parent)
     return image_out, manifest_out
+
+
+def _publishes_part_first(job: CharacterJob, stem: str) -> bool:
+    """Whether the generator sheet ``stem`` is published part-first: its
+    generator publishes a part flipbook, this is the full-resolution render
+    (a tier is derived from the full flipbook), no reference was asked for,
+    and the game reads no baked page of it (`sprites.yaml` `baked_pages`)."""
+    import os
+
+    from .sheet_build import PAINT_REFERENCE_ENV, baked_pages_reason, rendering_quality_tier
+
+    if not get_generator(job.target).publishes_part_flipbook or rendering_quality_tier():
+        return False
+    if os.environ.get(PAINT_REFERENCE_ENV):
+        return False
+    return baked_pages_reason(stem) is None
 
 
 def publish_generator_flipbook(

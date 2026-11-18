@@ -23,7 +23,8 @@ def test_write_spritesheet_emits_optional_actor_contract(tmp_path: Path):
         tmp_path / "goblin_spritesheet.yaml",
     )
     actor_path = tmp_path / "goblin_actor.ron"
-    assert image_path.exists()
+    # Published part-first: its parts draw it, and no page is written.
+    assert (tmp_path / "goblin_parts.ron").exists() and not image_path.exists()
     assert manifest_path.exists()
     assert actor_path.exists()
     text = actor_path.read_text()

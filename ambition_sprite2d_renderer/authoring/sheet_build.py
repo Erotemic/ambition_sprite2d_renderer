@@ -1128,6 +1128,9 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
         # The game still reads this sheet's pages (`sprites.yaml` `baked_pages`).
         print(f"[sheet:{target}] baked pages kept: {baked_pages_reason(target)}", flush=True)
         parts_mode = False
+    if parts_mode and os.environ.get(PAINT_REFERENCE_ENV):
+        # A reference sheet (`sprites.sh --reference`): every frame painted, never published.
+        parts_mode = False
     flipbook = None
     if parts_mode:
         flipbook = _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame_meta_fn)
@@ -1646,6 +1649,11 @@ def _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame
             frames_data.append((frame, meta))
         rendered_rows.append((anim, nframes, duration_ms, frames_data))
     return flipbook
+
+
+#: Set by `sprites.sh --reference`: a part-first sheet paints every frame to
+#: its pages, for a person to look at. Never set in a publish.
+PAINT_REFERENCE_ENV = "AMBITION_PAINT_REFERENCE"
 
 
 def baked_pages_reason(sheet: str) -> Optional[str]:

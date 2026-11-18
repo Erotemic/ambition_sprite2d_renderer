@@ -45,13 +45,14 @@ def test_config_target_sheet_smoke(tmp_path: Path, config_name: str):
     image_path, manifest_path = write_spritesheet(
         job, tmp_path / f"{Path(config_name).stem}.png", tmp_path / f"{Path(config_name).stem}.yaml"
     )
-    assert image_path.exists()
     assert manifest_path.exists()
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
 
-    img = Image.open(image_path).convert("RGBA")
+    # Published part-first: no page; the part atlas draws every frame.
+    assert manifest.get("drawn_from_parts") is True and not image_path.exists()
+    img = Image.open(tmp_path / f"{Path(config_name).stem}_parts.png").convert("RGBA")
     assert img.getchannel("A").getbbox() is not None
 
-    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     assert manifest["target"] == job.target
     assert manifest["rows"]
     assert manifest["frame_width"] > 0

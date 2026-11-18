@@ -329,7 +329,10 @@ def _worker(spec: dict) -> int:
             if tier not in spec["tiers"]:
                 continue
             dest = work / "assets" / TIERS[tier]
-            if target.kind == "config":
+            if target.kind == "config" and (not sheets or any(sheets.values())):
+                # A painted generator sheet is drawn again at the tier's scale;
+                # one drawn from parts has no page to draw, and its tiers are
+                # its record scaled and its parts downsampled, as below.
                 publish_source_quality_target(target, variant, dest)
             else:
                 for ron in sheets:
@@ -740,6 +743,34 @@ def adopt_existing(asset_root: Path, *, scope="runtime") -> dict:
     return publish_sprites(store, replacements, selected, replace=True)
 
 
+def reference(names) -> int:
+    """Paint the full sheet of each named target for a person to look at.
+
+    A sheet is published part-first: the game and the asset inspector draw its
+    frames from parts, and no page is stored. A reference paints every frame
+    to pages, on request, into the git-ignored `.agent/sprite_reference/`.
+    """
+    if not names:
+        print("art publication: --reference needs one or more --target", file=sys.stderr)
+        return 2
+    from .authoring.sheet_build import PAINT_REFERENCE_ENV
+    from .registry import discover_all_targets
+
+    os.environ[PAINT_REFERENCE_ENV] = "1"
+    targets = discover_all_targets().targets
+    unknown = [name for name in names if name not in targets]
+    if unknown:
+        print(f"art publication: unknown target(s): {', '.join(unknown)}", file=sys.stderr)
+        return 2
+    for name in names:
+        out = repo_root() / ".agent" / "sprite_reference" / name
+        shutil.rmtree(out, ignore_errors=True)
+        targets[name].render_sheet(out)
+        for page in sorted(out.rglob("*_spritesheet*.png")):
+            print(page)
+    return 0
+
+
 def main(argv=None):
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
@@ -761,6 +792,8 @@ def main(argv=None):
     parser.add_argument("--resolve-layout", action="store_true")
     parser.add_argument("--adopt-existing", type=Path)
     parser.add_argument("--jobs", type=int, default=min(6, max(1, (os.cpu_count() or 2)//2)))
+    parser.add_argument("--reference", action="store_true",
+                        help="paint each --target's full sheet (every frame) into .agent/sprite_reference/<target>/; publishes nothing")
     args = parser.parse_args(argv)
     if args.missing_only and args.force:
         parser.error("--only-missing cannot be combined with --force")
@@ -768,6 +801,8 @@ def main(argv=None):
         os.environ["AMBITION_CONTENT_LIBRARY"] = (repo_root() / args.library).resolve().relative_to(repo_root()).as_posix()
     if args.worker:
         return _worker(json.loads(args.worker))
+    if args.reference:
+        return reference(args.target)
     try:
         if args.audit:
             result = audit()
