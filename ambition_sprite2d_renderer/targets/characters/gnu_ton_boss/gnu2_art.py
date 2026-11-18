@@ -382,7 +382,7 @@ def armored_gnu2_scene(pose: dict, *, arms: bool = True) -> pc.Scene:
         if name == "beast":
             _mount(out, "flank-harness", 31, _barrel_plates(), placed.m, placed.stretch)
         elif name == "chest":
-            _mount(out, "breastplate", 35, _chest_armor(), placed.m)
+            _mount(out, "breastplate", 35, _chest_armor(), placed.m, reach=1400)
         elif name.endswith(("-upper", ":upper")) and (name.startswith("far-") or name.startswith("near-") or "hoof_right" in name):
             # Near foreleg is tagged `limb:hoof_right` by the original track map.
             kind = "hind" if "hind" in name else "fore-far" if "far-fore" in name else "fore-near"
@@ -407,12 +407,23 @@ def armored_gnu2_scene(pose: dict, *, arms: bool = True) -> pc.Scene:
         elif name == "epaulet_right":
             _mount(out, "shoulder-right", 47, _shoulder_armor("right"), placed.m)
         elif name == "neck":
-            _mount(out, "collar", 49, _neck_collar(), placed.m)
+            _mount(out, "collar", 49, _neck_collar(), placed.m, reach=1400)
         elif name == "horns":
             _mount(out, "horn-restraints", 57, _horn_rings(), placed.m)
         elif name == "head":
-            _mount(out, "neural-helm", 61, _head_armor(), placed.m)
+            _mount(out, "neural-helm", 61, _head_armor(), placed.m, reach=1400)
     return out
+
+
+def render_gnu2(anim: str, frame_idx: int, frame_count: int) -> "Image.Image":
+    """One frame of GNU2's body, as ``giant_art.render_giant`` draws the
+    giant's: the same pose, its pieces and armor composed at twice the frame
+    and brought down (a part flipbook records the pieces)."""
+    from ....authoring import rigdoc
+
+    pose = g.pose_for(anim, frame_idx / max(1, frame_count))
+    canvas = pc.compose(armored_gnu2_scene(pose), g.CANVAS, g.CANVAS_ORIGIN)
+    return rigdoc.downsampled_canvas(canvas, g.FRAME)
 
 
 def armored_gnu2_svg(pose: dict, *, arms: bool = True, view=VIEW) -> str:

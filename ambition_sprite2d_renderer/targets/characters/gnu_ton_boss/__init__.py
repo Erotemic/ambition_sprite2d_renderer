@@ -34,6 +34,8 @@ PORTRAIT_FILES = (
     f"{sprite_generator.GIANT_TARGET_NAME}_portraits.ron",
     "giant_gnu_hands_portraits.png",
     "giant_gnu_hands_portraits.ron",
+    f"{sprite_generator.GNU2_TARGET_NAME}_portraits.png",
+    f"{sprite_generator.GNU2_TARGET_NAME}_portraits.ron",
 )
 
 
@@ -61,9 +63,13 @@ def render_portraits(out_dir: str | Path, **opts) -> List[Path]:
         ),
         ("giant_gnu_hands", "hands", sprite_generator.GIANT_ACTOR_METADATA),
     )
+    from .gnu2_art import render_gnu2
+
+    sources = [(target, sprite_generator.draw_frame("rest", 1, 10, layer=layer), metadata)
+               for target, layer, metadata in products]
+    sources.append((sprite_generator.GNU2_TARGET_NAME, render_gnu2("rest", 1, 10), sprite_generator.GNU2_ACTOR_METADATA))
     outputs: List[Path] = []
-    for target, layer, metadata in products:
-        source = sprite_generator.draw_frame("rest", 1, 10, layer=layer)
+    for target, source, metadata in sources:
         portrait = render_canonical_portrait(source, actor_metadata=metadata)
         outputs.extend(
             write_portrait_sheet(

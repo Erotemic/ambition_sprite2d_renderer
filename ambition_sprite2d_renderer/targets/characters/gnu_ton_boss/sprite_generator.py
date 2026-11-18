@@ -9,6 +9,8 @@ four long legs with a chest that stands up at its front), and the scholar by
 
   - `giant_gnu`       the giant alone: the MOUNT of the fight
   - `giant_gnu_fist`  one fist alone: each fist is a body of its own
+  - `giant_gnu2`      GNU2, the giant in armor (`gnu2_art`): the finale's
+                      second giant, on the giant's rows and seams
   - `gnu_ton_rider`   the scholar alone: the boss
   - `gnu_ton_boss`    the three together (the Hall's exhibit), and its
                       `_full` / `_body` / `_hands` pages
@@ -47,6 +49,9 @@ RIDER_TARGET_NAME = "gnu_ton_rider"
 # Drawn by the same `draw_hand` as the giant's own sheet (the right fist; the
 # left is its mirror), so the fist the player fights IS the giant's fist.
 FIST_TARGET_NAME = "giant_gnu_fist"
+#: GNU2, the armored second giant of the finale (`gnu2_art`): the giant's
+#: pose, pieces and seams in its own armor and colours.
+GNU2_TARGET_NAME = "giant_gnu2"
 DATA_DIR = Path(__file__).resolve().parent
 # targets/characters/gnu_ton_boss -> the tool checkout root (display paths).
 TOOL_ROOT = DATA_DIR.parents[3]
@@ -158,6 +163,13 @@ OUTPUT_FILES = [
     # the first (`giant_gnu_parts_1.png`, ...) are installed by name pattern.
     f"{GIANT_TARGET_NAME}_parts.ron",
     f"{GIANT_TARGET_NAME}_parts.png",
+    # GNU2 (`_publish_gnu2`): its own sheet and part flipbook, drawn as the
+    # giant is; its part pages after the first are installed by name pattern.
+    f"{GNU2_TARGET_NAME}_spritesheet.png",
+    f"{GNU2_TARGET_NAME}_spritesheet.ron",
+    f"{GNU2_TARGET_NAME}_actor.ron",
+    f"{GNU2_TARGET_NAME}_parts.ron",
+    f"{GNU2_TARGET_NAME}_parts.png",
     f"{RIDER_TARGET_NAME}_spritesheet.png",
     f"{RIDER_TARGET_NAME}_spritesheet.ron",
     f"{RIDER_TARGET_NAME}_actor.ron",
@@ -242,6 +254,31 @@ GIANT_ACTOR_METADATA = {
         # The catalog authors the seat (`mount.saddle` of `npc_giant_gnu`): the
         # middle of the right shoulder's top, `giant_art.seat_place`.
         "The rider's seat is the catalog's (mount.saddle), from giant_art.seat_place",
+    ],
+}
+
+GNU2_ACTOR_METADATA = {
+    "authoring_description": (
+        "GNU2 is the Giant GNU's armored sequel in the GNU-ton finale: the same "
+        "wildebeest in a psychic containment harness (neural crown, horn collars, "
+        "reactor chest, armored legs, a synthetic tail), summoned through a live portal."
+    ),
+    "gameplay_description": (
+        "A second giant beside the first: the same body, stride and blows as the Giant "
+        "GNU, independently damageable, so the finale fights two giants at once."
+    ),
+    "dialogue_hints": {"barks": ["GNU2.", "GNU's Not Unix, 2."]},
+    "actor": {"character_id": f"npc_{GNU2_TARGET_NAME}"},
+    "body": {
+        "body_plan": "BossMultipart",
+        "body_kind": "Wide",
+        "traits": ["boss", "multipart", "mount"],
+    },
+    "brain": {"default_preset": "stand_still"},
+    "actions": {"default_preset": "peaceful"},
+    "tags": ["boss", "multipart", "mount"],
+    "missing_information": [
+        "The catalog authors its fight (the finale's summon and the two-boss victory)",
     ],
 }
 
@@ -563,7 +600,58 @@ GIANT_FEET = (FRAME_W * 0.5, float(_giant.to_frame((0.0, _giant.FLOOR))[1]))
 GIANT_TWEENED_ROWS = ("walk", "walk_back", "armed_walk", "armed_walk_back")
 
 
-def _publish_giant_flipbook(outdir: Path, sheet_page: Image.Image) -> List[Path]:
+def _publish_gnu2(outdir: Path, manifest: dict, parts_doc: dict, policy) -> List[Path]:
+    """GNU2's sheet, flipbook and actor contract (`giant_gnu2_*`), beside the
+    giant's. GNU2 is the giant in armor (`gnu2_art`): the same rows, pose,
+    seams, standing surfaces and body box, so it stands, is ridden and is
+    struck where the giant would be. Its frames are packed on their own trim
+    (the armor reaches past the giant's outline), like the scholar's."""
+    from ambition_sprite2d_renderer.targets.characters.gnu_ton_boss import gnu2_art as _gnu2
+
+    rendered: dict = {"full": {}}
+    origins: dict = {}
+    for row in manifest["rows"]:
+        for f in range(row["frames"]):
+            whole = _gnu2.render_gnu2(row["name"], f, row["frames"])
+            box = whole.getchannel("A").getbbox() or (0, 0, 1, 1)
+            origins[(row["row"], f)] = box[:2]
+            rendered["full"][(row["row"], f)] = whole.crop(box)
+    pages, rows_meta, num_pages = _pack_layers(rendered, manifest["rows"], policy, layers=("full",), origins=origins)
+    rendered.clear()
+    outputs: List[Path] = []
+    page_path = outdir / f"{GNU2_TARGET_NAME}_spritesheet.png"
+    pages["full"][0].save(str(page_path), "PNG")
+    outputs.append(page_path)
+    page_names = [f"{GNU2_TARGET_NAME}_spritesheet.png"] + [
+        f"{GNU2_TARGET_NAME}_spritesheet.{k}.png" for k in range(1, num_pages)
+    ]
+    outputs.extend(_publish_giant_flipbook(outdir, pages["full"][0], GNU2_TARGET_NAME, _gnu2.render_gnu2))
+    ron_path = outdir / f"{GNU2_TARGET_NAME}_spritesheet.ron"
+    ron_path.write_text(
+        _runtime_spritesheet_ron(
+            _with_seam_anchors(rows_meta, _giant_seams, FRAME_SIZE, _giant_surfaces),
+            parts_doc,
+            page_names,
+            target=GNU2_TARGET_NAME,
+            metrics_ron=_authored_body_metrics_ron(_giant.BODY_BBOX),
+        ),
+        encoding="utf8",
+    )
+    outputs.append(ron_path)
+    outputs.append(
+        _write_actor_contract(
+            outdir,
+            {"target": GNU2_TARGET_NAME, "frame_size": [FRAME_W, FRAME_H], "rows": manifest["rows"], "layers": ["gnu2_body"]},
+            ron_path,
+            target=GNU2_TARGET_NAME,
+            actor_metadata=GNU2_ACTOR_METADATA,
+        )
+    )
+    return outputs
+
+
+def _publish_giant_flipbook(outdir: Path, sheet_page: Image.Image, target: str = GIANT_TARGET_NAME,
+                            render=None) -> List[Path]:
     """The giant's part flipbook (`giant_gnu_parts.ron` and its pages), beside
     its sheet. The giant is drawn from pieces (`giant_art.scene_for`), so the
     flipbook keeps each piece once and where it is in each frame: the game
@@ -577,13 +665,13 @@ def _publish_giant_flipbook(outdir: Path, sheet_page: Image.Image) -> List[Path]
     if rendering_quality_tier():
         return []
     tweened = [row for row in GIANT_TWEENED_ROWS if any(name == row for name, _n, _ms in ANIMATIONS)]
-    flipbook = build_rig_flipbook(GIANT_TARGET_NAME, ANIMATIONS, _giant.render_giant, None, GIANT_FEET, FRAME_SIZE, tweened)
+    flipbook = build_rig_flipbook(target, ANIMATIONS, render or _giant.render_giant, None, GIANT_FEET, FRAME_SIZE, tweened)
     flipbook.pack()
     most = max(len(draws) for _d, frames in flipbook.clips.values() for draws in frames)
     sheet_texels = sheet_page.width * sheet_page.height
     cheaper = flipbook.packed_texels() <= sheet_texels and most <= REALIZE_MAX_DRAWS
     flipbook.realize = REALIZE_PARTS if cheaper else REALIZE_BAKED
-    print(f"  [part flipbook] {GIANT_TARGET_NAME}: realize {flipbook.realize} (part pages {flipbook.packed_texels()} "
+    print(f"  [part flipbook] {target}: realize {flipbook.realize} (part pages {flipbook.packed_texels()} "
           f"texels, sheet {sheet_texels}; at most {most} draws a frame)", flush=True)
     return list(flipbook.write(outdir).values())
 
@@ -1518,6 +1606,7 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     )
 
     outputs.extend(build_fist_sheet(outdir, policy))
+    outputs.extend(_publish_gnu2(outdir, manifest, parts_doc, policy))
 
     # G3 NOTE: the per-frame hand hit-geometry (`_hand_hit_frames` /
     # `gnu_hand_*` in `_gnu_ton_body_metrics`) is intentionally LEFT in place —
