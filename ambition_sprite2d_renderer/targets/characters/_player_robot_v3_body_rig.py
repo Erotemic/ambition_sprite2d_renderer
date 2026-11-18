@@ -5,8 +5,9 @@ The joints are the bones of the side rig document, and every clip frame is
 solved by the same ``RigDocument.solve`` that draws the sheet row. A part's
 pivot sits on its bone's origin, turned by the bone's angle less its rest
 angle (``rigdoc.paint_part``), so each part rides one joint exactly, and the
-rig names that joint for every part track (``part_bindings``). The runtime
-can then place the parts from joint frames (``PosedParts``).
+rig names that joint for every part track (``part_bindings``), and the three
+joints of each limb (``limbs``). The runtime can then place the parts from
+joint frames (``PosedParts``) and hold a hand where a pose plants it.
 
 It is a visual product. It has no hurt parts, and gameplay reads no rig unless
 a composition admits rigs (``BodyRigAdmission``, off by default), so
@@ -37,6 +38,14 @@ from typing import Dict, Iterable, List, Tuple
 
 from ...authoring.body_rig import BodyRigProduct, JointPose
 from ...authoring.rigdoc import RigDocument
+
+#: Attachment -> the limb that ends at it: upper bone, lower bone, end.
+_LIMBS = {
+    "hand_near": ("near_arm_u", "near_arm_l", "near_arm_hand"),
+    "hand_far": ("far_arm_u", "far_arm_l", "far_arm_hand"),
+    "foot_near": ("near_leg_u", "near_leg_l", "near_leg_foot"),
+    "foot_far": ("far_leg_u", "far_leg_l", "far_leg_foot"),
+}
 
 #: Attachment -> (bone, along the bone as a fraction of its length): the hands
 #: at the ends of the hand bones, the feet at the ankles.
@@ -111,7 +120,7 @@ def body_rig(target: str, rows: Iterable[Tuple[str, int, int]], mirrored_name: s
             for track in (str(part["name"]), f"{part['name']}~mirror"):
                 part_bindings[track] = str(part["bone"])
     return BodyRigProduct(target=target, joints=[(name, None) for name in bones], attachments=attachments,
-                          clips=clips, part_bindings=part_bindings)
+                          clips=clips, part_bindings=part_bindings, limbs=dict(_LIMBS))
 
 
 def write_body_rig(target: str, rows, mirrored_name: str, side: RigDocument, excluded,

@@ -77,6 +77,10 @@ class BodyRigProduct:
     #: limb's turn into its rasters (a supersampled rig) records no angle for
     #: the guess to measure.
     part_bindings: Dict[str, str] = field(default_factory=dict)
+    #: attachment name -> the three joints of the limb that ends at it (the
+    #: upper bone, the lower bone, the end): what a runtime solves to keep a
+    #: hand or a foot where a pose plants it while the body moves.
+    limbs: Dict[str, Tuple[str, str, str]] = field(default_factory=dict)
 
     def validate(self) -> None:
         names = [name for name, _parent in self.joints]
@@ -92,6 +96,13 @@ class BodyRigProduct:
         for name, joint, _shape in self.hurt_parts:
             if joint not in known:
                 raise ValueError(f"{self.target}: hurt part {name!r} names unknown joint {joint!r}")
+        attachment_names = {name for name, _joint, _offset in self.attachments}
+        for name, chain in self.limbs.items():
+            if name not in attachment_names:
+                raise ValueError(f"{self.target}: limb {name!r} names no attachment")
+            for joint in chain:
+                if joint not in known:
+                    raise ValueError(f"{self.target}: limb {name!r} names unknown joint {joint!r}")
         for track, joint in self.part_bindings.items():
             if joint not in known:
                 raise ValueError(f"{self.target}: part track {track!r} names unknown joint {joint!r}")
@@ -133,6 +144,12 @@ class BodyRigProduct:
             out.append("    part_bindings: {")
             for track in sorted(self.part_bindings):
                 out.append(f"        {_s(track)}: {_s(self.part_bindings[track])},")
+            out.append("    },")
+        if self.limbs:
+            out.append("    limbs: {")
+            for name in sorted(self.limbs):
+                chain = ", ".join(_s(joint) for joint in self.limbs[name])
+                out.append(f"        {_s(name)}: [{chain}],")
             out.append("    },")
         out.append("    clips: {")
         for clip in sorted(self.clips):
