@@ -22,8 +22,12 @@ shadow.
 
 The rows are the ones a brute of the game plays: ``idle``, ``walk``,
 ``slash`` (the club comes down from over his head with both hands), ``taunt``
-(he points it at you), ``hurt``, ``death``, and ``front`` (he faces you: the
-row he turns through).
+(he points it at you), ``hurt``, ``death``, ``front`` (he faces you: the
+row he turns through), and the two the game holds over a beat: ``notice``
+(he has seen you: the club off his shoulder and up before him, his free hand
+pointing you out) and ``windup`` (the club over his head in both hands, the
+top of the slash, held). Each frame of those two is the whole pose with a
+shiver, as the pirates' are.
 
 He is a person of ``_person_rig``: the bones, the poses and the frame are
 shared; the head, the clothes, the club and how he stands are his.
@@ -542,7 +546,22 @@ def _make(look: Look) -> SimpleNamespace:
         down = dict(X.full(R.SUPINE), held=0.0, eyes="closed", off=(13.0, -8.0))
         return X.keys(shot(i, n), [(0.0, back), (0.2, dict(back, lean=-24.0, held=0.0)), (0.7, down), (1.0, down)])
 
-    X.rows = [("idle", 6, 130), ("walk", 8, 95), ("slash", 7, 80), ("taunt", 6, 110), ("hurt", 4, 90), ("death", 8, 110)]
+    @X.row
+    def notice(i: int, n: int):
+        # He has seen you: drawn up, the club off his shoulder and held up
+        # before him, his head turned to you and his free hand out at you.
+        k = (0.0, 1.0, -1.0)[i % 3]
+        return P(hip=(0.5, -0.5), lean=-5.0, head=(0.4, -0.2, -5.0 + k), na=(17.0, -1.0 + 0.5 * k), nh="fist", club=-82.0 + 1.5 * k,
+                 fa=(28.0, -4.0 + 0.5 * k), fh="open", nf=(-8.0, 0.0, 0.0), ff=(10.0, 0.0, 0.0), brows=0.0, eyes="wide")
+
+    @X.row
+    def windup(i: int, n: int):
+        # The slash's top, held: both hands on the grip and the club over his
+        # head and back, his weight on his back foot.
+        k = (0.0, 1.0, -1.0)[i % 3]
+        return dict(RAISED, lean=-9.0 - 0.5 * k, club=-130.0 - 1.5 * k)
+
+    X.rows = [("idle", 6, 130), ("walk", 8, 95), ("slash", 7, 80), ("taunt", 6, 110), ("hurt", 4, 90), ("death", 8, 110), ("notice", 3, 110), ("windup", 3, 90)]
 
     # ---- What the club does ----------------------------------------------------------
 
