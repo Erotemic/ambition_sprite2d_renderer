@@ -16,7 +16,7 @@ The robot exercises what Mary-O does not:
 
 A continuous replay is not the same picture as the render to the bit: the
 render composites at 4x and reduces once, the replay reduces each part and
-composites. So the comparison forgives 64 levels but NO place
+composites. So the comparison forgives 96 levels but NO place
 (``part_flipbook.CONTINUOUS_REPLAY_TOLERANCE``): the usual pixel of slack
 forgave the robot's head drawn a pixel off. Bounded as the in-engine gate is
 (A <= 1%, B <= 6 px). The publish runs the same check on every frame

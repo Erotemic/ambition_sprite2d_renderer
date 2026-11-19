@@ -2651,10 +2651,19 @@ REPLAY_ROUNDING = 2
 #: composites its parts at the supersample and reduces the frame; the replay
 #: reduces each part and composites them between pixels. Those differ by
 #: resampling alone, a few levels on an edge, so the tolerance is in LEVELS
-#: (64) and NOT in place: ``parity``'s usual pixel of slack forgives exactly a
+#: and NOT in place: ``parity``'s usual pixel of slack forgives exactly a
 #: part drawn one pixel off (robot v3's head moved a pixel passed it).
 #: Measured on robot v3, 2026-10-03: honest frames make blobs of at most 2; a
 #: visible part one pixel off makes 15 to 174.
+#: 96 levels, not 64 (2026-11-19): the townsfolk's reaction rows put two
+#: resampling differences past 64 on 19 of 240 sheets, blobs of 7 to 14: two
+#: parts' anti-aliased edges meeting on one line (the soles of feet side by
+#: side), covered twice by parts reduced one by one and once by the frame
+#: reduced whole (alpha 195 against 128), and a part rotated after its
+#: reduction (tumble, launch_up, getup), its edge a third of a pixel over (up
+#: to 86 levels). Every poison of the replay tests still fails at 96 (a part a
+#: pixel off on robot v3 and Noether, a dropped part, an opacity, a stroke);
+#: half a pixel of PLACE slack did not (it passed Noether's head a pixel off).
 #: ⚠ The band at a frame's border a continuous replay is not measured over (the
 #: ``edge`` of ``CONTINUOUS_REPLAY_TOLERANCE``): the reach of the reduction
 #: filter. Art that runs past the frame is cut by the supersampled canvas
@@ -2664,7 +2673,7 @@ REPLAY_ROUNDING = 2
 #: made blobs to 121 along the frame's bottom (2026-10-03). Anything missing
 #: away from the border is still measured.
 EDGE_BAND = 3
-CONTINUOUS_REPLAY_TOLERANCE = {"threshold": 64, "radius": 0, "edge": EDGE_BAND}
+CONTINUOUS_REPLAY_TOLERANCE = {"threshold": 96, "radius": 0, "edge": EDGE_BAND}
 
 CONTINUOUS_REPLAY_PARITY = 0.01
 CONTINUOUS_REPLAY_BLOB = 6

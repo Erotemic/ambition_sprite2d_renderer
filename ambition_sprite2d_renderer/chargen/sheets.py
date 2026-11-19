@@ -246,6 +246,10 @@ TOWNSFOLK_ROWS: Tuple[str, ...] = (
     # Anyone provoked fights back with their fists: the guard they stand and
     # close in with (the game draws these while a foe is near) and a swing.
     "fight_idle", "fight_walk", "attack_side",
+    # Struck, thrown, grabbed and floored (`body_state_clip`): without these
+    # a launched or knocked-down townsperson was drawn in `hurt` throughout.
+    "hit_high", "hit_mid", "hit_low", "hit_air", "launch_up", "launch_horizontal", "launch_down", "tumble",
+    "prone_face_up", "prone_face_down", "getup", "grabbed",
 )
 
 #: The rows of a character that moves, fights and holds items: what the game
