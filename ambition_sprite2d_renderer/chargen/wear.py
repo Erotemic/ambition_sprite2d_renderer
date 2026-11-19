@@ -764,8 +764,9 @@ def _kimono_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     seen from the front), its collar (the trim colour) over a white
     under-collar, pulled down at the nape; wide sleeves that hang from the
     forearm as a deep pouch; the lining (the trim colour) at the hem and the
-    front edge; a motif near the hem. The wrap is not symmetric: a left view
-    (a mirror) shows it the other way."""
+    front edge; a motif near the hem. The wrap is not symmetric: the
+    mirrored figure (``View.mirrored``) wraps right over left, so a left
+    view made from it keeps the wrap's side."""
     from .headdraw import PAINT, painted
 
     fig, o, plan = ctx.fig, ctx.fig.spec.outfit, ctx.plan
@@ -793,6 +794,8 @@ def _kimono_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     def neck_j(a: float) -> float:
         return y0 - 0.3 + vee(a, 0.12 * T, 15.0) + 0.55 * drop(a)
 
+    lat = ctx.view.lateral
+    edge_a = lat * KIMONO_EDGE
     pt = ctx.new()
     skin = PAINT if painted(ctx) else ctx.skin
     # Skin in the collar's V and at the nape, the white under-collar, then
@@ -806,9 +809,9 @@ def _kimono_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     collar = shell.shell(0.25)
     for sgn in (1.0, -1.0):
         path = [(sgn * a, neck_k(sgn * a) + 0.9) for a in range(180, -1, -6)]
-        if sgn > 0:
+        if sgn == lat:
             yv = neck_k(0.0) + 0.9
-            path += [(lerp(0.0, KIMONO_EDGE, i / 8.0), lerp(yv, bottom, i / 8.0)) for i in range(1, 9)]
+            path += [(lerp(0.0, edge_a, i / 8.0), lerp(yv, bottom, i / 8.0)) for i in range(1, 9)]
         for run in surface_line(ctx, collar, path, out=0.1, thresh=0.0):
             pt.line(run, INK, 2.3, smooth=True)
             pt.line(run, trim, 1.7, smooth=True)
@@ -822,14 +825,15 @@ def _kimono_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         if b >= hem - 1e-6:
             # The lining shows as a band at the hem.
             p.flat(loft_region(ctx.view, lo.shell(0.05), hem - 0.03 * T, hem, m, solid=True), trim)
-        if side == "right" and visible(ctx, KIMONO_EDGE, 0.0):
-            edge = [(KIMONO_EDGE + 2.0 * (y - y_top) / (hem - y_top), y) for y in (lerp(max(a, y_top), b, i / 8.0) for i in range(9))]
+        if side == ("right" if lat > 0 else "left") and visible(ctx, edge_a, 0.0):
+            edge = [(lat * (KIMONO_EDGE + 2.0 * (y - y_top) / (hem - y_top)), y) for y in (lerp(max(a, y_top), b, i / 8.0) for i in range(9))]
             for run in surface_line(ctx, lo, edge, out=0.12, thresh=0.0):
                 p.line(run, trim, 0.7, smooth=True)
                 p.line(run, INK, FINE, smooth=True)
         if o.motif != "none":
             r = 0.035 * T
             for al, h in _MOTIF_SPOTS:
+                al *= lat
                 y = hem - h * (hem - y_top)
                 if not (a <= y <= b) or m(al, y) < 0.0 or not visible(ctx, al, 0.25):
                     continue

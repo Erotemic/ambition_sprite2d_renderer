@@ -271,15 +271,27 @@ COMPOSED: Dict[str, Tuple[Tuple[str, bool], ...]] = {
 }
 
 
+#: The left-facing twin of a row (``SheetRow::mirror_of``): the game draws it
+#: instead of flipping the row when the body faces left.
+MIRRORED_ROW = "{}~mirrored"
+
+
 class RiggedCharacter:
     """The rigs of one generated character, rendered as sheet rows. A row is
     a motion-library clip drawn from the view the library names for it
-    (``motion.publish_views``), or a :data:`COMPOSED` turn."""
+    (``motion.publish_views``), or a :data:`COMPOSED` turn.
 
-    def __init__(self, rigs: Dict[str, Path], rows: Optional[Sequence[str]] = None) -> None:
+    With ``mirrored`` (the mirrored figure's rigs of a one-sided character,
+    ``rig.one_sided``), each row has a left-facing twin
+    (:data:`MIRRORED_ROW`): the row drawn from the mirror image and flipped,
+    so a detail on one side of the body stays on it."""
+
+    def __init__(self, rigs: Dict[str, Path], rows: Optional[Sequence[str]] = None,
+                 mirrored: Optional[Dict[str, Path]] = None) -> None:
         from ..authoring.rigdoc import RigDocument
 
         self.docs = {k: RigDocument.load(p) for k, p in rigs.items()}
+        self.mirrored_docs = {k: RigDocument.load(p) for k, p in (mirrored or {}).items()}
         some = next(iter(self.docs.values()))
         views = some.data.get("chargen", {}).get("publish_views") or {}
         self.views: Dict[str, str] = {name: views.get(name, "side") for name in some.clips}
@@ -299,16 +311,36 @@ class RiggedCharacter:
                 continue
             c = self.docs[self.views[name]].clips[name]
             out.append((name, int(c["frames"]), int(c["duration_ms"])))
+        if self.mirrored_docs:
+            out += [(MIRRORED_ROW.format(name), frames, ms) for name, frames, ms in out]
         return out
 
+    def mirror_of(self) -> Dict[str, str]:
+        """Each left-facing twin row's row (empty for a symmetric character)."""
+        if not self.mirrored_docs:
+            return {}
+        return {MIRRORED_ROW.format(name): name for name in self.names}
+
     def render_frame(self, animation: str, frame_idx: int, frame_count: int) -> Image.Image:
-        if animation in COMPOSED:
-            view, mirrored = COMPOSED[animation][frame_idx % len(COMPOSED[animation])]
-            im = self.docs[view].render_frame("idle", 0, int(self.docs[view].clips["idle"]["frames"]))
+        twin = self.mirror_of().get(animation)
+        if twin is not None:
             # Through the seam, so a part flipbook records the mirror as
             # mirrored parts, not the view as one picture.
-            return rigdoc.mirrored_canvas(im) if mirrored else im
-        return self.docs[self.views[animation]].render_frame(animation, frame_idx, frame_count)
+            return rigdoc.mirrored_canvas(self._frame(twin, frame_idx, frame_count, figure_mirrored=True))
+        return self._frame(animation, frame_idx, frame_count, figure_mirrored=False)
+
+    def _frame(self, animation: str, frame_idx: int, frame_count: int, *, figure_mirrored: bool) -> Image.Image:
+        """A frame of ``animation`` facing right, of the figure or (with
+        ``figure_mirrored``) of its mirror image."""
+        docs, other = (self.mirrored_docs, self.docs) if figure_mirrored else (self.docs, self.mirrored_docs or self.docs)
+        if animation in COMPOSED:
+            view, left = COMPOSED[animation][frame_idx % len(COMPOSED[animation])]
+            if left:
+                # A left view: the other figure's right view, flipped.
+                im = other[view].render_frame("idle", 0, int(other[view].clips["idle"]["frames"]))
+                return rigdoc.mirrored_canvas(im)
+            return docs[view].render_frame("idle", 0, int(docs[view].clips["idle"]["frames"]))
+        return docs[self.views[animation]].render_frame(animation, frame_idx, frame_count)
 
 
 def posed_sheet(rigs: Dict[str, Path], out: Path, *, rows: Optional[Sequence[str]] = None, scale: float = 1.0) -> Path:
@@ -521,20 +553,24 @@ def actor_metadata(spec: CharacterSpec, *, character_id: Optional[str] = None, d
 
 
 def publish_sheet(spec: CharacterSpec, out_dir: Path, rigs: Optional[Dict[str, Path]] = None, *, target: Optional[str] = None,
-                  metadata: Optional[dict] = None, rows: Optional[Sequence[str]] = None, grip: str = "blade") -> List[Path]:
+                  metadata: Optional[dict] = None, rows: Optional[Sequence[str]] = None, grip: str = "blade",
+                  mirrored: Optional[Dict[str, Path]] = None) -> List[Path]:
     """The gameplay sprite sheet of ``spec`` (``rows``, default
     :data:`TOWNSFOLK_ROWS`; :data:`PUBLISH_ROWS` for a character that
     fights and holds items, its item rows posed for ``grip``) with its
     YAML/RON manifests, actor sidecar, part flipbook and previews.
     ``target`` names the files (default ``chargen_<slug>``); ``metadata`` is
-    the actor sidecar (default :func:`actor_metadata`)."""
+    the actor sidecar (default :func:`actor_metadata`). ``mirrored``: the
+    mirrored figure's rigs of a one-sided character, whose rows get
+    left-facing twins (:class:`RiggedCharacter`)."""
     from ..authoring.part_flipbook import publish_rig_flipbook
     from ..authoring.sheet_build import build_sheet
 
     out_dir = Path(out_dir)
     if rigs is None:
-        rigs = write_character(spec, out_dir, grip=grip).rigs
-    rc = RiggedCharacter(rigs, rows)
+        files = write_character(spec, out_dir, grip=grip)
+        rigs, mirrored = files.rigs, files.mirrored_rigs
+    rc = RiggedCharacter(rigs, rows, mirrored)
     target = target or f"chargen_{slug(spec.name)}"
     frame_transform: dict = {}
     outputs = build_sheet(parts=True, 
@@ -548,10 +584,11 @@ def publish_sheet(spec: CharacterSpec, out_dir: Path, rigs: Optional[Dict[str, P
         crop_margin=4,
         actor_metadata=metadata or actor_metadata(spec),
         sheet_tuning={"collision_scale": 1.7},
+        mirror_of=rc.mirror_of() or None,
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
     parts = publish_rig_flipbook(target, rc.rows(), rc.render_frame, outputs, frame_transform, out_dir)
     return [Path(outputs[k]) for k in keys if outputs.get(k)] + list(parts.values())
 
 
-__all__ = ["TOWNSFOLK_ROWS", "COMPOSED", "HELD_SHOTS", "HeldItemArt", "grips_sheet", "held_items_sheet", "load_held_item_art", "render_holding", "clip_union_sheet", "PUBLISH_ROWS", "SPECIES_FACES", "expression_sheet", "species_sheet", "wardrobe_sheet", "RiggedCharacter", "actor_metadata", "contact_sheet", "posed_sheet", "publish_sheet", "render_view", "turnaround"]
+__all__ = ["TOWNSFOLK_ROWS", "COMPOSED", "HELD_SHOTS", "MIRRORED_ROW", "HeldItemArt", "grips_sheet", "held_items_sheet", "load_held_item_art", "render_holding", "clip_union_sheet", "PUBLISH_ROWS", "SPECIES_FACES", "expression_sheet", "species_sheet", "wardrobe_sheet", "RiggedCharacter", "actor_metadata", "contact_sheet", "posed_sheet", "publish_sheet", "render_view", "turnaround"]

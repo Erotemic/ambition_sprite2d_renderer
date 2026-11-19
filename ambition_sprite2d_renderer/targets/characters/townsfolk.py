@@ -66,19 +66,21 @@ def inspection(path: Path) -> dict:
 #: resident wrote in this process, by the resident's spec file, its text and
 #: its grip. The portrait (the canonical frame) is drawn again from them: it
 #: is the same spec, and writing them is half the cost of a resident.
-_WRITTEN: Dict[Tuple[Path, str, str], dict] = {}
+_WRITTEN: Dict[Tuple[Path, str, str], Tuple[dict, dict]] = {}
 
 
-def _rigs(path: Path, spec: CharacterSpec, grip: str, out_dir: Path) -> dict:
-    """The rigs of the resident at ``path``: the ones this process wrote for
-    the same spec text and grip, when their files are still there; otherwise
-    new ones, written to ``out_dir``."""
+def _rigs(path: Path, spec: CharacterSpec, grip: str, out_dir: Path) -> Tuple[dict, dict]:
+    """The rigs of the resident at ``path``, and its mirrored figure's (none
+    for a symmetric resident): the ones this process wrote for the same spec
+    text and grip, when their files are still there; otherwise new ones,
+    written to ``out_dir``."""
     from ambition_sprite2d_renderer.chargen.rig import write_character
 
     key = (path.resolve(), path.read_text(encoding="utf8"), grip)
     rigs = _WRITTEN.get(key)
-    if rigs is None or not all(Path(rig).is_file() for rig in rigs.values()):
-        rigs = write_character(spec, out_dir, grip=grip).rigs
+    if rigs is None or not all(Path(rig).is_file() for some in rigs for rig in some.values()):
+        files = write_character(spec, out_dir, grip=grip)
+        rigs = (files.rigs, files.mirrored_rigs)
         _WRITTEN[key] = rigs
     return rigs
 
@@ -92,8 +94,8 @@ def _make(path: Path):
         meta = actor_metadata(spec, character_id=game["character_id"], description=game["description"])
         rows = publication_rows(game)
         grip = game.get("grip", "blade")
-        rigs = _rigs(path, spec, grip, Path(out_dir))
-        return publish_sheet(spec, Path(out_dir), rigs, target=target, metadata=meta, rows=list(rows), grip=grip)
+        rigs, mirrored = _rigs(path, spec, grip, Path(out_dir))
+        return publish_sheet(spec, Path(out_dir), rigs, target=target, metadata=meta, rows=list(rows), grip=grip, mirrored=mirrored)
 
     def render_canonical(out_dir: str | Path, **opts) -> Path:
         """The canonical frame alone (the portrait's source), drawn afresh

@@ -934,8 +934,9 @@ def _nihongami_parts(ctx: Ctx, feature: str) -> List[Part]:
     ornaments (kanzashi) ``hair.ornaments`` asks for, in order: a comb in
     front of the knot, a bar through it, a cluster of blossoms on the left,
     a ball pin on the right, silver strips hanging on the right, a ball pin
-    on the left. The ornaments are not symmetric: a left view (a mirror)
-    shows them on the other side.
+    on the left. The ornaments are not symmetric: the mirrored figure
+    (``View.mirrored``) wears them on the other side, so a left view made
+    from it keeps them where they are.
 
     On a head whose eyes sit high (an animal's), the hairline in front goes
     up with the brows, so the wig never covers the eyes."""
@@ -1005,17 +1006,20 @@ def _nihongami_parts(ctx: Ctx, feature: str) -> List[Part]:
         for q in (a, b):
             p.dot(ctx.p(q), 0.025 * hh, gold)
 
+    # The ornaments' x on this view's figure (the other side on the mirror).
+    X = view.lateral
+
     def hana(p: Paint) -> None:
-        base = (0.2 * hh, top + 0.03 * hh, cz + 0.06 * hh)
+        base = (X * 0.2 * hh, top + 0.03 * hh, cz + 0.06 * hh)
         for dx, dy, dz in ((0.0, 0.0, 0.0), (0.05, 0.05, -0.03), (-0.02, 0.07, 0.04), (0.06, -0.03, 0.05), (0.03, 0.1, 0.0)):
-            c = add3(base, (dx * hh, dy * hh, dz * hh))
+            c = add3(base, (X * dx * hh, dy * hh, dz * hh))
             for i in range(5):
                 a = math.pi / 2 + i * 2 * math.pi / 5
                 p.dot(ctx.p(add3(c, (0.03 * hh * math.cos(a), 0.03 * hh * math.sin(a), 0.0))), 0.024 * hh, orn)
             p.dot(ctx.p(c), 0.012 * hh, gold)
         for dz in (-0.02, 0.03):
-            a = add3(base, (0.06 * hh, 0.12 * hh, dz * hh))
-            b = add3(a, (0.01 * hh, 0.16 * hh, 0.0))
+            a = add3(base, (X * 0.06 * hh, 0.12 * hh, dz * hh))
+            b = add3(a, (X * 0.01 * hh, 0.16 * hh, 0.0))
             p.line([ctx.p(a), ctx.p(b)], gold, FINE * 0.7, smooth=False)
             p.dot(ctx.p(b), 0.018 * hh, orn)
 
@@ -1029,15 +1033,15 @@ def _nihongami_parts(ctx: Ctx, feature: str) -> List[Part]:
         return paint
 
     def bira(p: Paint) -> None:
-        base = (-0.21 * hh, top + 0.02 * hh, cz + 0.02 * hh)
+        base = (-X * 0.21 * hh, top + 0.02 * hh, cz + 0.02 * hh)
         p.dot(ctx.p(base), 0.03 * hh, silver)
         for i in range(5):
-            end = add3(base, ((-0.04 + 0.02 * i) * hh, 0.17 * hh, (0.04 - 0.02 * i) * hh))
+            end = add3(base, (X * (-0.04 + 0.02 * i) * hh, 0.17 * hh, (0.04 - 0.02 * i) * hh))
             p.line([ctx.p(base), ctx.p(end)], silver, FINE * 0.8, smooth=False)
 
-    placed = [((0.0, top, cz + 0.17 * hh), comb), ((0.0, top - 0.07 * hh, cz - 0.1 * hh), kogai), ((0.2 * hh, top, cz + 0.06 * hh), hana),
-              ((-0.17 * hh, top - 0.13 * hh, cz - 0.27 * hh), tama(-1.0)), ((-0.21 * hh, top, cz + 0.02 * hh), bira),
-              ((0.17 * hh, top - 0.13 * hh, cz - 0.27 * hh), tama(1.0))]
+    placed = [((0.0, top, cz + 0.17 * hh), comb), ((0.0, top - 0.07 * hh, cz - 0.1 * hh), kogai), ((X * 0.2 * hh, top, cz + 0.06 * hh), hana),
+              ((-X * 0.17 * hh, top - 0.13 * hh, cz - 0.27 * hh), tama(-X)), ((-X * 0.21 * hh, top, cz + 0.02 * hh), bira),
+              ((X * 0.17 * hh, top - 0.13 * hh, cz - 0.27 * hh), tama(X))]
     behind: List[Callable[[Paint], None]] = []
     for anchor, fn in placed[:max(0, min(6, hs.ornaments))]:
         dd = view.depth(sub3(anchor, centre))

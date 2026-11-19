@@ -35,7 +35,15 @@ one rig part of that view::
 A group's own ``transform`` only places it for an author in an editor; the
 drawing ignores it. A path's ``transform`` (``translate``, ``scale``,
 ``rotate``, ``matrix``) applies. Paths may use any command but arcs.
-A left view is the mirror of its right twin, like the rest of the drawing.
+
+A left view is the mirror of its right twin, like the rest of the drawing,
+so art on one side of the body (a watch chain, a plume) would change sides
+when the character faces left. Such art gives the view a second cell,
+``<g data-view="side" data-figure="mirrored">``: the art of the figure's
+mirror image (``View.mirrored``), the detail on its other side, drawn as a
+right view. A view with no mirrored cell draws its plain cell on the
+mirrored figure too. An overlay with a mirrored cell is one-sided
+(:func:`one_sided`), and its character publishes left-facing rows.
 """
 
 from __future__ import annotations
@@ -57,6 +65,9 @@ from .svgout import Canvas, El
 OVERLAYS = Path(__file__).resolve().parents[1] / "data" / "overlays"
 SUFFIX = ".overlay.svg"
 MODES = ("replace", "over")
+#: A cell's figure: the character as specified, or its mirror image.
+FIGURES = ("plain", "mirrored")
+MIRRORED_CELL = "~mirrored"
 SVG_NS = "{http://www.w3.org/2000/svg}"
 
 #: The measures an overlay can follow, in cm, from the figure.
@@ -69,6 +80,17 @@ MEASURES: Dict[str, Callable[[Figure], float]] = {
 
 Matrix = Tuple[float, float, float, float, float, float]
 IDENTITY: Matrix = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+
+
+def cell_key(view_key: str, mirrored: bool) -> str:
+    """The key of a view's cell in :attr:`Overlay.cells`."""
+    return view_key + MIRRORED_CELL if mirrored else view_key
+
+
+def one_sided(name: str) -> bool:
+    """Whether the overlay ``name`` has art on one side of the body (a
+    mirrored cell)."""
+    return bool(name) and any(key.endswith(MIRRORED_CELL) for key in load(name).cells)
 
 
 def available() -> List[str]:
@@ -120,6 +142,11 @@ def parse(text: str, name: str = "overlay") -> Overlay:
         view = cell.attrib.get("data-view")
         if view is None:
             continue
+        figure = cell.attrib.get("data-figure", "plain")
+        if figure not in FIGURES:
+            raise ValueError(f"overlay {name}: the cell of {view!r} has data-figure {figure!r}, not one of {FIGURES}")
+        if figure == "mirrored":
+            view = cell_key(view, True)
         if view in cells:
             raise ValueError(f"overlay {name}: two cells for the view {view!r}")
         groups = []
@@ -294,7 +321,9 @@ def apply(fig: Figure, view: View, canvas: Canvas, parts: Sequence[Part], joints
     if not name:
         return list(parts)
     ov = load(name)
-    groups = ov.cells.get(view.key, [])
+    groups = ov.cells.get(cell_key(view.key, view.mirrored)) if view.mirrored else None
+    if groups is None:
+        groups = ov.cells.get(view.key, [])
     by_name = {p.name: i for i, p in enumerate(parts)}
     out = list(parts)
     for g in groups:
@@ -324,4 +353,4 @@ def apply(fig: Figure, view: View, canvas: Canvas, parts: Sequence[Part], joints
     return out
 
 
-__all__ = ["MEASURES", "MODES", "OVERLAYS", "Overlay", "apply", "available", "load", "parse", "parse_d", "path_of"]
+__all__ = ["FIGURES", "MEASURES", "MODES", "OVERLAYS", "Overlay", "apply", "available", "cell_key", "load", "one_sided", "parse", "parse_d", "path_of"]

@@ -45,12 +45,19 @@ N_ALPHA = 72
 
 @dataclass(frozen=True)
 class View:
-    """An orthographic camera: ``yaw`` about the vertical axis, ``pitch`` down."""
+    """An orthographic camera: ``yaw`` about the vertical axis, ``pitch`` down.
+
+    ``mirrored``: the view draws the figure's mirror image, every one-sided
+    detail (a kimono's wrap, a hair ornament, an overlay's mirrored cell) on
+    the other side. Flipped on the canvas, it is the figure seen from the
+    left, as a left-facing row shows it; the symmetric rest draws exactly as
+    the plain view does."""
 
     key: str
     yaw: float
     label: str
     pitch: float = 6.0
+    mirrored: bool = False
     s: float = field(init=False, repr=False, compare=False)
     c: float = field(init=False, repr=False, compare=False)
     sp: float = field(init=False, repr=False, compare=False)
@@ -59,6 +66,12 @@ class View:
         object.__setattr__(self, "s", math.sin(math.radians(self.yaw)))
         object.__setattr__(self, "c", math.cos(math.radians(self.yaw)))
         object.__setattr__(self, "sp", math.sin(math.radians(self.pitch)))
+
+    @property
+    def lateral(self) -> float:
+        """The sign a one-sided detail's x (or surface angle) takes: -1 on
+        the mirrored figure."""
+        return -1.0 if self.mirrored else 1.0
 
     def depth(self, p: Vec3) -> float:
         """How far ``p`` is toward the camera."""
