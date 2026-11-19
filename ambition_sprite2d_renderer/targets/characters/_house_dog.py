@@ -176,6 +176,8 @@ def render(target: str, metadata: Dict[str, Any], out_dir: str | Path):
         actor_metadata=metadata,
         sheet_tuning=rig.sprite_tuning,
         mirror_of=mirror_of or None,
+        # A dog sits on its haunches, on the ground under it.
+        sits_on_ground=True,
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
     parts = publish_rig_flipbook(target, rows, render_frame, outputs, frame_transform, Path(out_dir))

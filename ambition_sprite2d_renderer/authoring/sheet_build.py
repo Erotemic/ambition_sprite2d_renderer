@@ -872,6 +872,7 @@ def build_sheet(
     fx: Optional[Dict[str, str]] = None,
     parts: bool = False,
     render_clip: Optional[Callable[[str, int], Sequence[Image.Image]]] = None,
+    sits_on_ground: bool = False,
 ):
     """Build one module target's sheet from a frame callable + rows.
 
@@ -883,6 +884,10 @@ def build_sheet(
     a sheet (``part_flipbook.realization_by_cost``) is painted as before.
     ``render_clip`` is ``publish_rig_flipbook``'s, for a target that renders
     a clip at once; only a part-first sheet records through it.
+    ``sits_on_ground``: the sheet's sit rows rest the body on the ground (a dog
+    on its haunches), so the game lets it sit wherever it stands; a sheet that
+    does not say so has a seated pose, which the game does not take on a bare
+    floor (`SheetRecord::sits_on_ground`).
 
     ``frame_transform_out``, when given, is filled with ``{"dx": .., "dy": ..}``:
     the translation from a frame as ``render_fn`` drew it to the frame as the
@@ -943,6 +948,7 @@ def build_sheet(
     )
     source.parts = bool(parts)
     source.render_clip = render_clip
+    source.sits_on_ground = bool(sits_on_ground)
     return render_sheet(source, out_dir, frame_transform_out=frame_transform_out)
 
 
@@ -1522,6 +1528,10 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
         # (`SheetRecord::drawn_from_parts`).
         manifest["drawn_from_parts"] = True
     publish_character_notes(manifest, actor_metadata)
+    if getattr(source, "sits_on_ground", False):
+        # Its sit rows rest the body on the ground (`SheetRecord::sits_on_ground`):
+        # the game lets it sit anywhere. Written only when true.
+        manifest["sits_on_ground"] = True
     if authored_faces_left:
         # WHICH WAY THE ART WAS DRAWN — see `SheetRecord::authored_faces_left`.
         # Written only when true so every +x-drawn sheet's YAML and RON stay

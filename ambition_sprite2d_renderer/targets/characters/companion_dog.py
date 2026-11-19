@@ -102,6 +102,8 @@ def render(out_dir: str | Path, **opts):
         crop_margin=4,
         actor_metadata=ACTOR_METADATA,
         sheet_tuning=doc.sprite_tuning,
+        # A dog sits on its haunches, on the ground under it.
+        sits_on_ground=True,
     )
     keys = (
         "spritesheet",
