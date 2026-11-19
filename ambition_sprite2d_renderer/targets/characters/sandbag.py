@@ -1094,17 +1094,64 @@ def _rows_for_sparse() -> List[Tuple[str, str, int, int]]:
     ]
 
 
+def _publishes_part_first() -> bool:
+    """Whether this render publishes the sheet from its parts (no page): the
+    full-resolution render, no reference asked for, and no baked page read by
+    the game (`sprites.yaml` `baked_pages`)."""
+    import os
+
+    from ...authoring.sheet_build import PAINT_REFERENCE_ENV, baked_pages_reason, rendering_canonical_only, rendering_quality_tier
+
+    if rendering_canonical_only() or rendering_quality_tier() or os.environ.get(PAINT_REFERENCE_ENV):
+        return False
+    return baked_pages_reason(TARGET_NAME) is None
+
+
+def _record_parts(rows: List[Tuple[str, str, int, int]]):
+    """The part flipbook of the sparse rows, recorded and not painted, with its
+    origin at the frame corner (rebased onto the feet once they are measured).
+    A painter the recording refuses is painted for its draws instead."""
+    import os
+
+    from ...authoring.part_flipbook import build_rig_flipbook
+
+    flip_rows = [(source, frames, ms) for _row, source, frames, ms in rows]
+    size = (FRAME_W, FRAME_H)
+    try:
+        flipbook = build_rig_flipbook(TARGET_NAME, flip_rows, render_sandbag_frame, None, (0.0, 0.0), size, (), paint=False)
+    except Exception as refused:  # noqa: BLE001 - the painted build re-raises a real defect
+        print(f"[sheet:{TARGET_NAME}] recorded only, refused ({type(refused).__name__}: {str(refused)[:160]}): painting its frames", flush=True)
+        flipbook = build_rig_flipbook(TARGET_NAME, flip_rows, render_sandbag_frame, None, (0.0, 0.0), size, (), paint=True)
+    if os.environ.get("AMBITION_PART_FIRST_AUDIT"):
+        from ...authoring.sheet_build import _audit_part_first
+
+        _audit_part_first(TARGET_NAME, flip_rows, flipbook, render_sandbag_frame, None)
+    return flipbook
+
+
 def build_sheet(
-    rows: List[Tuple[str, str, int, int]], *, sheet_background: RGBA = (0, 0, 0, 0)
-) -> Tuple[Image.Image, Dict[str, object]]:
-    max_frames = max(frames for _, _, frames, _ in rows)
-    sheet = Image.new(
-        "RGBA", (LABEL_W + max_frames * FRAME_W, len(rows) * FRAME_H), sheet_background
-    )
-    draw = blending_draw(sheet)
-    font = _font(12)
-    small = _font(10)
-    manifest: Dict[str, object] = {
+    rows: List[Tuple[str, str, int, int]], *, sheet_background: RGBA = (0, 0, 0, 0), parts: bool = False
+):
+    """The sparse sheet and its manifest; with ``parts``, ``(None, manifest,
+    flipbook)``: the frames are recorded as parts and no page is painted
+    (`SheetRecord::drawn_from_parts`), or ``None`` for the flipbook when the
+    parts would cost more than the frames (the caller paints the sheet)."""
+    if parts:
+        return _build_from_parts(rows)
+    sheet, manifest = _build_painted(rows, sheet_background)
+    return sheet, manifest, None
+
+
+def _frame_records(row_idx: int, frame_count: int, duration_ms: int) -> List[Dict[str, int]]:
+    y = row_idx * FRAME_H
+    return [
+        {"index": i, "x": LABEL_W + i * FRAME_W, "y": y, "w": FRAME_W, "h": FRAME_H, "duration_ms": duration_ms}
+        for i in range(frame_count)
+    ]
+
+
+def _base_manifest(rows: List[Tuple[str, str, int, int]]) -> Dict[str, object]:
+    return {
         "target": "sandbag",
         "frame_width": FRAME_W,
         "frame_height": FRAME_H,
@@ -1115,6 +1162,46 @@ def build_sheet(
         "style_notes": "Pale stitched cloth sandbag with strap and oval eyes; references the uploaded sandbag visually without copying its exact proportions or seams.",
         "animations": {},
     }
+
+
+def _build_from_parts(rows: List[Tuple[str, str, int, int]]):
+    from ...authoring.sheet_build import _part_realization, _rebased_flipbook
+
+    manifest = _base_manifest(rows)
+    for row_idx, (row_name, source_name, frame_count, duration_ms) in enumerate(rows):
+        manifest["animations"][row_name] = {
+            "source_animation": source_name,
+            "frames": _frame_records(row_idx, frame_count, duration_ms),
+            "duration_ms": duration_ms,
+        }
+    # The body box is measured off the first idle frame, as the painted sheet's is.
+    first = next((src for name, src, _n, _ms in rows if name == "idle"), None)
+    metrics = None if first is None else _measure_body_extent(render_sandbag_frame(first, 0, dict((n, c) for n, _s, c, _m in rows)["idle"]))
+    if metrics is None:
+        print(f"[sheet:{TARGET_NAME}] parts-first refused (no feet): painting the sheet", flush=True)
+        return None, manifest, None
+    manifest["body_metrics"] = metrics
+    feet = metrics["feet_pixel"]
+    flipbook = _rebased_flipbook(_record_parts(rows), (FRAME_W, FRAME_H), (0, 0), (float(feet["x"]), float(feet["y"])))
+    rendered_rows = [(name, n, ms, [None] * n) for name, _src, n, ms in rows]
+    realize, reason = _part_realization(flipbook, rendered_rows, FRAME_W, FRAME_H)
+    if realize != "parts":
+        print(f"[sheet:{TARGET_NAME}] parts-first refused ({reason}): painting the sheet", flush=True)
+        return None, manifest, None
+    # Drawn from its parts: the page it names is not written.
+    manifest["drawn_from_parts"] = True
+    return None, manifest, flipbook
+
+
+def _build_painted(rows: List[Tuple[str, str, int, int]], sheet_background: RGBA) -> Tuple[Image.Image, Dict[str, object]]:
+    max_frames = max(frames for _, _, frames, _ in rows)
+    sheet = Image.new(
+        "RGBA", (LABEL_W + max_frames * FRAME_W, len(rows) * FRAME_H), sheet_background
+    )
+    draw = blending_draw(sheet)
+    font = _font(12)
+    small = _font(10)
+    manifest = _base_manifest(rows)
     first_frame: Image.Image | None = None
     for row_idx, (row_name, source_name, frame_count, duration_ms) in enumerate(rows):
         y = row_idx * FRAME_H
@@ -1159,8 +1246,11 @@ def write_outputs(out_dir: Path) -> Tuple[Path, ...]:
     png_path = out_dir / f"{stem}.png"
     yaml_path = out_dir / f"{stem}.yaml"
     ron_path = out_dir / f"{stem}.ron"
-    sheet, manifest = build_sheet(rows)
-    sheet.save(png_path)
+    sheet, manifest, flipbook = build_sheet(rows, parts=_publishes_part_first())
+    if flipbook is None and sheet is None:
+        sheet, manifest, flipbook = build_sheet(rows)
+    if sheet is not None:
+        sheet.save(png_path)
     _write_manifest(yaml_path, manifest)
     # The runtime SheetRegistry parses RON, not YAML, at startup
     # (`presentation::character_sprites::registry`). The sandbag
@@ -1191,6 +1281,11 @@ def write_outputs(out_dir: Path) -> Tuple[Path, ...]:
             "tags": ["training"],
         },
     )
+    if flipbook is not None:
+        from ...authoring.part_flipbook import write_part_first
+
+        parts = write_part_first({"flipbook": flipbook}, out_dir)
+        return (yaml_path, ron_path, actor_path, *parts.values())
     # The part flipbook of the frames just published: each frame is drawn
     # at its sheet cell unchanged, so no frame transform applies.
     parts = publish_rig_flipbook(TARGET_NAME, SANDBAG_ROWS, render_sandbag_frame, {"yaml": yaml_path}, {}, out_dir)
