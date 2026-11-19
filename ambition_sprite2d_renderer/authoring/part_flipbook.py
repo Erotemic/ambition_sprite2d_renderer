@@ -1447,8 +1447,10 @@ def tween_draws(flipbook: "PartFlipbook", row: str, index: int, t: float) -> Lis
     a pixel of its size, at its angle and scale: ``_same_picture_redrawn``),
     moves linearly to it (its turn by the shorter way, its opacity linearly
     too), keeping its own part until the frame changes; any other draw holds
-    still. A clip that steps, or ``t == 0``, is the frame itself. The frame's
-    opacity is the current frame's.
+    still, and so does a draw whose next draw is mirrored where it is not
+    (a part shared with its own mirror: lerped, its scale passed through zero
+    and the limb folded flat half way). A clip that steps, or ``t == 0``, is
+    the frame itself. The frame's opacity is the current frame's.
     """
     _duration, frames = flipbook.clips[row]
     current = frames[index]
@@ -1458,7 +1460,8 @@ def tween_draws(flipbook: "PartFlipbook", row: str, index: int, t: float) -> Lis
     out: List[PartDraw] = []
     for d in current:
         target = following.get(d.track)
-        if d.track is None or target is None or (target.part != d.part and not _same_picture_redrawn(flipbook, d, target)):
+        flipped = target is not None and any(x * y <= 0.0 for x, y in zip(d.scale, target.scale))
+        if d.track is None or target is None or flipped or (target.part != d.part and not _same_picture_redrawn(flipbook, d, target)):
             out.append(d)
             continue
         turn = (target.rotation - d.rotation + math.pi) % (2.0 * math.pi) - math.pi
@@ -1518,7 +1521,9 @@ def publish_rig_flipbook(
     published one (padding added, auto-crop removed). Each frame is drawn onto
     a canvas of the published frame through ``rigdoc.composite_canvas``, so
     the flipbook's frame, feet and draws are the sheet's. ``tween_rows``
-    defaults to the rows of ``LOCOMOTION_LOOPS`` the target has.
+    defaults to the rows the publication policy declares for the target
+    (``tween_rows``, chosen by `devtools/tween_oracle.py`), else to the rows
+    of ``LOCOMOTION_LOOPS`` the target has.
     ``render_clip`` is for a target that renders a clip at once (a swing
     trail is drawn from the frames before it): see ``build_rig_flipbook``.
     """
@@ -1532,7 +1537,11 @@ def publish_rig_flipbook(
     # derived from this one (`generate_visual_quality_variants.py`).
     if rendering_canonical_only() or rendering_quality_tier() or "yaml" not in outputs:
         return {}
+    from .sheet_build import declared_tween_rows
+
     names = {row for row, _count, _ms in rows}
+    if tween_rows is None:
+        tween_rows = declared_tween_rows(target)
     tweened = [row for row in (LOCOMOTION_LOOPS if tween_rows is None else tween_rows) if row in names]
     if outputs.get("flipbook") is not None:
         # A part-first sheet (`build_sheet(parts=True)`) recorded its flipbook

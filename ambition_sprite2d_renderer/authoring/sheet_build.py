@@ -1678,6 +1678,20 @@ def baked_pages_reason(sheet: str) -> Optional[str]:
         return None
 
 
+def declared_tween_rows(target: str) -> Optional[List[str]]:
+    """The clips of ``target`` the publication policy declares tweened (its
+    ``tween_rows``, each a clip an in-between oracle of the target's rig
+    holds: `devtools/tween_oracle.py`), or None for the default. A renderer
+    checked out alone has no policy."""
+    from .. import publication
+
+    try:
+        rows = publication.policy().get("tween_rows", {}).get(target)
+    except (OSError, KeyError):
+        return None
+    return None if rows is None else list(rows)
+
+
 def _audit_part_first(target, rows, flipbook, padded, padded_clip) -> None:
     """``AMBITION_PART_FIRST_AUDIT``: every frame painted and the part-first
     flipbook's redraw held to the replay guard against it, as a painted

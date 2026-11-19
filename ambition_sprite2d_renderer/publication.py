@@ -250,6 +250,10 @@ def target_policy(name: str) -> dict:
     if baked:
         # A part-first sheet whose pages the game still reads (`build_sheet`).
         found["baked_pages"] = baked
+    tweened = rules.get("tween_rows", {}).get(name)
+    if tweened is not None:
+        # The clips its part flipbook tweens (`declared_tween_rows`).
+        found["tween_rows"] = list(tweened)
     return found
 
 
