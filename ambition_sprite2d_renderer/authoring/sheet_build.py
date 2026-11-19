@@ -1713,7 +1713,7 @@ def _rebased_flipbook(flipbook, frame_size, crop, feet):
 def _part_realization(flipbook, rendered_rows, fw, fh) -> Tuple[str, str]:
     """``part_flipbook.realization_by_cost`` for a sheet with no pages: the
     sheet's texels are its frames' (the grid it would be painted on)."""
-    from .part_flipbook import REALIZE_MAX_DRAWS
+    from .part_flipbook import REALIZE_MAX_DRAWS, draws_affordable
 
     flipbook.pack()
     sheet_texels = sum(int(n) for _a, n, _d, _f in rendered_rows) * fw * fh
@@ -1721,8 +1721,8 @@ def _part_realization(flipbook, rendered_rows, fw, fh) -> Tuple[str, str]:
     most = max((len(draws) for _d, frames in flipbook.clips.values() for draws in frames), default=0)
     if part_texels > sheet_texels:
         return "baked", f"part pages {part_texels} texels > frames {sheet_texels}"
-    if most > REALIZE_MAX_DRAWS:
-        return "baked", f"{most} draws in a frame > {REALIZE_MAX_DRAWS}"
+    if not draws_affordable(most, part_texels, sheet_texels):
+        return "baked", f"{most} draws in a frame > {REALIZE_MAX_DRAWS}, and the parts save too few texels"
     return "parts", f"part pages {part_texels} <= frames {sheet_texels}, at most {most} draws"
 
 

@@ -153,7 +153,6 @@ OUTPUT_FILES = [
     # scholar RIDER (drawn alone, its own tight-trim standalone sheet). Emitted
     # into the same `gnu_ton_boss/` install dir alongside the fused sheet.
     f"{GIANT_TARGET_NAME}_spritesheet.png",  # the giant body alone (fists are their own bodies)
-    f"{GIANT_TARGET_NAME}_body_spritesheet.png",
     f"{GIANT_TARGET_NAME}_hands_spritesheet.png",
     f"{GIANT_TARGET_NAME}_hands_spritesheet.ron",
     f"{GIANT_TARGET_NAME}_spritesheet.ron",
@@ -600,13 +599,101 @@ GIANT_FEET = (FRAME_W * 0.5, float(_giant.to_frame((0.0, _giant.FLOOR))[1]))
 GIANT_TWEENED_ROWS = ("walk", "walk_back", "armed_walk", "armed_walk_back")
 
 
+def _publishes_part_first(target: str) -> bool:
+    """Whether ``target`` (the giant or GNU2) publishes from its parts with no
+    page: the full-resolution render, no reference asked for, and no baked
+    page read by the game (`sprites.yaml` `baked_pages`)."""
+    import os
+
+    from ambition_sprite2d_renderer.authoring.sheet_build import (
+        PAINT_REFERENCE_ENV, baked_pages_reason, rendering_canonical_only, rendering_quality_tier)
+
+    if rendering_canonical_only() or rendering_quality_tier() or os.environ.get(PAINT_REFERENCE_ENV):
+        return False
+    return baked_pages_reason(target) is None
+
+
+def _record_giant_flipbook(target: str, render):
+    """The part flipbook of a giant-shaped sheet (the giant, GNU2), recorded
+    and not painted, or ``None`` when its parts cost more than its frames (the
+    caller paints the sheet). A painter the recording refuses is painted for
+    its draws instead; ``AMBITION_PART_FIRST_AUDIT`` paints every frame and
+    holds the flipbook to the replay guard against it."""
+    import os
+
+    from ambition_sprite2d_renderer.authoring.part_flipbook import REALIZE_PARTS, build_rig_flipbook
+    from ambition_sprite2d_renderer.authoring.sheet_build import _part_realization
+
+    tweened = [row for row in GIANT_TWEENED_ROWS if any(name == row for name, _n, _ms in ANIMATIONS)]
+    try:
+        flipbook = build_rig_flipbook(target, ANIMATIONS, render, None, GIANT_FEET, FRAME_SIZE, tweened, paint=False)
+    except Exception as refused:  # noqa: BLE001 - the painted build re-raises a real defect
+        print(f"  [{target}] recorded only, refused ({type(refused).__name__}: {str(refused)[:160]}): painting its frames", flush=True)
+        flipbook = build_rig_flipbook(target, ANIMATIONS, render, None, GIANT_FEET, FRAME_SIZE, tweened)
+    if os.environ.get("AMBITION_PART_FIRST_AUDIT"):
+        from ambition_sprite2d_renderer.authoring.sheet_build import _audit_part_first
+
+        _audit_part_first(target, ANIMATIONS, flipbook, render, None)
+    rendered_rows = [(name, n, ms, [None] * n) for name, n, ms in ANIMATIONS]
+    realize, reason = _part_realization(flipbook, rendered_rows, FRAME_W, FRAME_H)
+    print(f"  [part flipbook] {target}: realize {realize} ({reason})", flush=True)
+    if realize != "parts":
+        return None
+    flipbook.realize = REALIZE_PARTS
+    return flipbook
+
+
+def _frame_grid(manifest_rows: list[dict]) -> list[dict]:
+    """``rows_meta`` of a sheet with no page: each frame a whole frame on a
+    grid, the frame algebra a body is built with; no image holds them."""
+    return [
+        {
+            "animation": r["name"],
+            "row_index": r["row"],
+            "frame_count": r["frames"],
+            "duration_ms": r["duration_ms"],
+            "duration_secs": round(r["duration_ms"] / 1000.0, 6),
+            "rects": [{"x": f * FRAME_W, "y": r["row"] * FRAME_H, "w": FRAME_W, "h": FRAME_H} for f in range(r["frames"])],
+        }
+        for r in manifest_rows
+    ]
+
+
 def _publish_gnu2(outdir: Path, manifest: dict, parts_doc: dict, policy) -> List[Path]:
     """GNU2's sheet, flipbook and actor contract (`giant_gnu2_*`), beside the
     giant's. GNU2 is the giant in armor (`gnu2_art`): the same rows, pose,
     seams, standing surfaces and body box, so it stands, is ridden and is
-    struck where the giant would be. Its frames are packed on their own trim
-    (the armor reaches past the giant's outline), like the scholar's."""
+    struck where the giant would be. Drawn from its parts it publishes no
+    page; painted, its frames are packed on their own trim (the armor reaches
+    past the giant's outline), like the scholar's."""
     from ambition_sprite2d_renderer.targets.characters.gnu_ton_boss import gnu2_art as _gnu2
+
+    flipbook = _record_giant_flipbook(GNU2_TARGET_NAME, _gnu2.render_gnu2) if _publishes_part_first(GNU2_TARGET_NAME) else None
+    if flipbook is not None:
+        outputs = list(flipbook.write(outdir).values())
+        ron_path = outdir / f"{GNU2_TARGET_NAME}_spritesheet.ron"
+        ron_path.write_text(
+            _runtime_spritesheet_ron(
+                _with_seam_anchors(_frame_grid(manifest["rows"]), _giant_seams, FRAME_SIZE, _giant_surfaces),
+                parts_doc,
+                [f"{GNU2_TARGET_NAME}_spritesheet.png"],
+                target=GNU2_TARGET_NAME,
+                metrics_ron=_authored_body_metrics_ron(_giant.BODY_BBOX),
+                drawn_from_parts=True,
+            ),
+            encoding="utf8",
+        )
+        outputs.append(ron_path)
+        outputs.append(
+            _write_actor_contract(
+                outdir,
+                {"target": GNU2_TARGET_NAME, "frame_size": [FRAME_W, FRAME_H], "rows": manifest["rows"], "layers": ["gnu2_body"]},
+                ron_path,
+                target=GNU2_TARGET_NAME,
+                actor_metadata=GNU2_ACTOR_METADATA,
+            )
+        )
+        return outputs
 
     rendered: dict = {"full": {}}
     origins: dict = {}
@@ -659,7 +746,7 @@ def _publish_giant_flipbook(outdir: Path, sheet_page: Image.Image, target: str =
     one: parts unless their pages hold more texels than the sheet, or a frame
     takes more draws than the most a part-drawn body may."""
     from ambition_sprite2d_renderer.authoring.part_flipbook import (
-        REALIZE_BAKED, REALIZE_MAX_DRAWS, REALIZE_PARTS, build_rig_flipbook)
+        REALIZE_BAKED, REALIZE_PARTS, build_rig_flipbook, draws_affordable)
     from ambition_sprite2d_renderer.authoring.sheet_build import rendering_quality_tier
 
     if rendering_quality_tier():
@@ -669,7 +756,7 @@ def _publish_giant_flipbook(outdir: Path, sheet_page: Image.Image, target: str =
     flipbook.pack()
     most = max(len(draws) for _d, frames in flipbook.clips.values() for draws in frames)
     sheet_texels = sheet_page.width * sheet_page.height
-    cheaper = flipbook.packed_texels() <= sheet_texels and most <= REALIZE_MAX_DRAWS
+    cheaper = flipbook.packed_texels() <= sheet_texels and draws_affordable(most, flipbook.packed_texels(), sheet_texels)
     flipbook.realize = REALIZE_PARTS if cheaper else REALIZE_BAKED
     print(f"  [part flipbook] {target}: realize {flipbook.realize} (part pages {flipbook.packed_texels()} "
           f"texels, sheet {sheet_texels}; at most {most} draws a frame)", flush=True)
@@ -1187,6 +1274,7 @@ def _runtime_spritesheet_ron(
     include_metrics: bool = True,
     frame_size: Tuple[int, int] = FRAME_SIZE,
     metrics_ron: Optional[str] = None,
+    drawn_from_parts: bool = False,
 ) -> str:
     """Compose the `Vec<SheetRecord>` RON.
 
@@ -1211,6 +1299,10 @@ def _runtime_spritesheet_ron(
     if len(images) > 1:
         joined = ", ".join(f'"{name}"' for name in images)
         images_field = f"    images: [{joined}],\n"
+    if drawn_from_parts:
+        # Drawn from its parts: the page it names is not written
+        # (`SheetRecord::drawn_from_parts`).
+        images_field += "    drawn_from_parts: true,\n"
     return (
         "[\n"
         "(\n"
@@ -1396,12 +1488,20 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     """
     max_frames = max(frames for _, frames, _ in ANIMATIONS)
     rows = len(ANIMATIONS)
+    # The giant drawn from its parts publishes no page, so its layer is not
+    # painted; when its parts cost more than its frames it is painted as before.
+    giant_flipbook = (
+        _record_giant_flipbook(GIANT_TARGET_NAME, _giant.render_giant)
+        if _publishes_part_first(GIANT_TARGET_NAME) else None
+    )
+    lockstep = _LOCKSTEP_LAYERS if giant_flipbook is None else tuple(
+        layer for layer in _LOCKSTEP_LAYERS if layer != _GIANT_BODY_LAYER)
 
     # Pass 1: render every frame of every layer into memory + collect the
     # design-space anchors (gameplay hitboxes) on the full pass. We render the
     # fused layers (full/body/hands) PLUS the scholar-less `giant_body` (ADR 0020
     # MOUNT) lockstep, and the centered standalone `scholar` (RIDER) separately.
-    rendered: dict = {layer: {} for layer in _LOCKSTEP_LAYERS}
+    rendered: dict = {layer: {} for layer in lockstep}
     rendered_scholar: dict = {}
     manifest = {
         "target": TARGET_NAME,
@@ -1418,11 +1518,11 @@ def build_spritesheet(outdir: Path) -> List[Path]:
         for f in range(frame_count):
             whole = {
                 layer: draw_frame(anim_name, f, frame_count, layer=layer, parts=parts if layer == "full" else None)
-                for layer in _LOCKSTEP_LAYERS
+                for layer in lockstep
             }
             box = whole["full"].getchannel("A").getbbox() or (0, 0, 1, 1)
             origins[(row_idx, f)] = box[:2]
-            for layer in _LOCKSTEP_LAYERS:
+            for layer in lockstep:
                 rendered[layer][(row_idx, f)] = whole[layer].crop(box)
         manifest["rows"].append(
             {
@@ -1447,7 +1547,7 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     # pack source.
     policy = policy_for(TARGET_NAME)
     layer_pages, rows_meta, num_pages = _pack_layers(
-        rendered, manifest["rows"], policy, layers=_LOCKSTEP_LAYERS, origins=origins
+        rendered, manifest["rows"], policy, layers=lockstep, origins=origins
     )
 
     outputs: List[Path] = []
@@ -1491,25 +1591,28 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     # the SAME rows_meta (identical placement) and the same runtime body_metrics
     # (same giant). giant_gnu_body = the scholar-less body page; giant_gnu_hands
     # = the (identical) hands page; the alias composites the two (hands z-front).
-    giant_body_page = layer_pages[_GIANT_BODY_LAYER][0]
     giant_hands_page = layer_pages["hands"][0]
-    giant_body_path = outdir / f"{GIANT_TARGET_NAME}_body_spritesheet.png"
-    giant_body_page.save(str(giant_body_path), "PNG")
-    outputs.append(giant_body_path)
     giant_hands_path = outdir / f"{GIANT_TARGET_NAME}_hands_spritesheet.png"
     giant_hands_page.save(str(giant_hands_path), "PNG")
     outputs.append(giant_hands_path)
-    # The giant's own sheet is its BODY: its two fists are separate bodies the
-    # scholar conducts (`giant_gnu_fist`), so drawing them here as well put four
-    # fists on screen, two of which never moved.
-    giant_alias_path = outdir / f"{GIANT_TARGET_NAME}_spritesheet.png"
-    shutil.copyfile(giant_body_path, giant_alias_path)
-    outputs.append(giant_alias_path)
-
     giant_page_names = [f"{GIANT_TARGET_NAME}_spritesheet.png"] + [
         f"{GIANT_TARGET_NAME}_spritesheet.{k}.png" for k in range(1, num_pages)
     ]
-    outputs.extend(_publish_giant_flipbook(outdir, giant_body_page))
+    if giant_flipbook is not None:
+        # Drawn from its parts: no page, and its frames on a grid.
+        giant_body_page = None
+        outputs.extend(giant_flipbook.write(outdir).values())
+        giant_rows_meta, giant_page_names = _frame_grid(manifest["rows"]), giant_page_names[:1]
+    else:
+        # The giant's own sheet is its BODY: its two fists are separate bodies the
+        # scholar conducts (`giant_gnu_fist`), so drawing them here as well put four
+        # fists on screen, two of which never moved.
+        giant_body_page = layer_pages[_GIANT_BODY_LAYER][0]
+        giant_page_path = outdir / f"{GIANT_TARGET_NAME}_spritesheet.png"
+        giant_body_page.save(str(giant_page_path), "PNG")
+        outputs.append(giant_page_path)
+        outputs.extend(_publish_giant_flipbook(outdir, giant_body_page))
+        giant_rows_meta = rows_meta
     giant_ron_path = outdir / f"{GIANT_TARGET_NAME}_spritesheet.ron"
     # The giant's body IS its art: the authored box of the beast and its chest
     # (`giant_art.BODY_BBOX`: shoulders to hooves, not the head, the horns or
@@ -1518,11 +1621,12 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     # carried: the giant is the scholar's mount, not the thing you hit.
     giant_ron_path.write_text(
         _runtime_spritesheet_ron(
-            _with_seam_anchors(rows_meta, _giant_seams, FRAME_SIZE, _giant_surfaces),
+            _with_seam_anchors(giant_rows_meta, _giant_seams, FRAME_SIZE, _giant_surfaces),
             parts_doc,
             giant_page_names,
             target=GIANT_TARGET_NAME,
             metrics_ron=_authored_body_metrics_ron(_giant.BODY_BBOX),
+            drawn_from_parts=giant_flipbook is not None,
         ),
         encoding="utf8",
     )
@@ -1617,7 +1721,7 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     # read against an untrimmed canvas.
     # The pages are written: let them go before the grid is made.
     del layer_pages, giant_body_page, giant_hands_page
-    for layer in _LOCKSTEP_LAYERS:
+    for layer in lockstep:
         if layer != "full":
             rendered[layer].clear()
     from ambition_sprite2d_renderer.core.memory_budget import require_image

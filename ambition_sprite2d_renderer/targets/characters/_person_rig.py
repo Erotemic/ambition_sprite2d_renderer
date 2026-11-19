@@ -905,6 +905,34 @@ def bone(K: Kit, tag: str, length: float, w0: float, w1: float, colour: RGBA, ed
     return K.solid(("bone", tag, round(length, 2), w0, w1, colour, edge), shape, colour, None, outline=1.2 if edge else 0.0, rim=0.0, shade=0.0)
 
 
+def dressed_bone(K: Kit, tag: str, length: float, segs: Sequence[Seg], edge: bool) -> Optional[Part]:
+    """A bone along +x from ``home`` dressed in ``segs`` (each a ``bone`` from
+    a part of its length), composed in order as one part pivoted at its root.
+    Each piece lands on the whole pixel nearest its place along the bone, as
+    ``blit_rotated`` would have landed it on the frame."""
+    key = ("dressed", tag, round(length, 2), tuple(segs), edge)
+    if key in K._pieces:
+        return K._pieces[key]
+    placed = []
+    for t0, t1, w0, w1, colour in segs:
+        part = bone(K, tag, length * (t1 - t0), w0, w1, colour, edge)
+        if part is not None:
+            image, pivot = part
+            placed.append((image, round(length * t0 * K.scale - pivot[0]), round(-pivot[1])))
+    if not placed:
+        K._pieces[key] = None
+        return None
+    x0 = min(x for _image, x, _y in placed)
+    y0 = min(y for _image, _x, y in placed)
+    x1 = max(x + image.width for image, x, _y in placed)
+    y1 = max(y + image.height for image, _x, y in placed)
+    out = Image.new("RGBA", (x1 - x0, y1 - y0), (0, 0, 0, 0))
+    for image, x, y in placed:
+        out.alpha_composite(image.convert("RGBA"), (x - x0, y - y0))
+    K._pieces[key] = (out, (float(-x0), float(-y0)))
+    return K._pieces[key]
+
+
 def make_hand(K: Kit, skin: RGBA, shade: RGBA, deep: RGBA, cuff: Optional[RGBA] = None, cuff_far: Optional[RGBA] = None, size: float = 1.0):
     """``hand(mode, near)``: a hand along +x from its wrist at ``home``.
     ``cuff``: the colour of the band at its wrist, or none. ``size``: 1 is a
@@ -1602,15 +1630,25 @@ class Person:
 
     def limb(self, img: Image.Image, name: str, bones: List[Tuple[Point, Point, List[Seg]]]) -> None:
         """Every part's outline, and then every part. ``bones``: frame points
-        from and to, and what the bone is dressed in."""
+        from and to, and what the bone is dressed in.
+
+        A bone dressed in several pieces (plates cut where a body bends) is
+        ONE part: its pieces ride it rigidly, so they are composed along it
+        (``dressed_bone``) and placed once. Placed piece by piece, Jeff
+        Hinter's armour took 83 draws a frame, and over the budget his sheet
+        was a baked page of whole poses (2026-11-18)."""
         K = self.K
         for edge in (True, False):
+            suffix = "_edge" if edge else ""
             for k, (a, b, segs) in enumerate(bones):
                 length = math.dist(a, b)
                 turn = angle(a, b)
-                for j, (t0, t1, w0, w1, colour) in enumerate(segs):
+                if len(segs) == 1:
+                    t0, t1, w0, w1, colour = segs[0]
                     at = (lerp(a[0], b[0], t0), lerp(a[1], b[1], t0))
-                    K.place(img, bone(K, name, length * (t1 - t0), w0, w1, colour, edge), at, f"{name}_{k}_{j}{'_edge' if edge else ''}", turn)
+                    K.place(img, bone(K, name, length * (t1 - t0), w0, w1, colour, edge), at, f"{name}_{k}_0{suffix}", turn)
+                    continue
+                K.place(img, dressed_bone(K, name, length, segs, edge), a, f"{name}_{k}{suffix}", turn)
 
     def front_row(self, fn: Callable[[int, int], Pose]) -> Callable[[int, int], Pose]:
         """Decorator: this function is the pose of the row of its name, and

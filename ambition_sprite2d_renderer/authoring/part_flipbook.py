@@ -675,6 +675,8 @@ class PaintRecord:
         self.shapes = 0
         #: Reduced part rasters, by the supersampled raster they came from.
         self._reduced: Dict[tuple, Tuple[Image.Image, Image.Image, Tuple[float, float]]] = {}
+        #: Rigid runs composited (``_rigid_runs``), by the rasters they join.
+        self._joined: Dict[tuple, Tuple[Image.Image, Image.Image, Image.Image, Tuple[float, float]]] = {}
 
     def _list(self, canvas: Image.Image) -> list:
         entry = self._ops.get(id(canvas))
@@ -699,6 +701,56 @@ class PaintRecord:
             entry = (sprite,) + _reduce_part(sprite, pivot, factor, reduce, phase)
             self._reduced[key] = entry
         return entry[1], entry[2]
+
+    def joined(self, a: "PaintedPart", b: "PaintedPart") -> Tuple[Image.Image, Tuple[float, float]]:
+        """``b`` pasted over ``a`` with their whole-pixel pivots on one point:
+        one raster and its pivot."""
+        pa = (round(a.pivot[0]), round(a.pivot[1]))
+        pb = (round(b.pivot[0]), round(b.pivot[1]))
+        key = (id(a.sprite), id(b.sprite), pa, pb)
+        entry = self._joined.get(key)
+        if entry is None or entry[0] is not a.sprite or entry[1] is not b.sprite:
+            bx, by = pa[0] - pb[0], pa[1] - pb[1]
+            x0, y0 = min(0, bx), min(0, by)
+            x1 = max(a.sprite.width, bx + b.sprite.width)
+            y1 = max(a.sprite.height, by + b.sprite.height)
+            image = Image.new("RGBA", (x1 - x0, y1 - y0), (0, 0, 0, 0))
+            image.alpha_composite(a.sprite.convert("RGBA"), (-x0, -y0))
+            image.alpha_composite(b.sprite.convert("RGBA"), (bx - x0, by - y0))
+            entry = (a.sprite, b.sprite, image, (float(pa[0] - x0), float(pa[1] - y0)))
+            self._joined[key] = entry
+        return entry[2], entry[3]
+
+
+def _rigid_runs(ops: list, record: "PaintRecord") -> list:
+    """``ops`` of a supersampled canvas with each run of consecutive parts
+    placed alike (the same whole-pixel point, turn, squash and frame opacity,
+    opaque) joined into one part.
+
+    Pieces a rig paints on one bone (a coat, its trim, its overlay) land on one
+    point at one angle. On the supersampled canvas their pivots are whole
+    pixels, so pasted together there they are one raster turned once, and
+    reduced once, as the frame itself is. After the reduction the same pieces
+    sit at half texels of each other and cannot be pasted exactly
+    (Fukuzawa, 2026-11-18)."""
+
+    def key(op):
+        if not isinstance(op, PaintedPart) or op.grid or not op.exact or op.scale_x != 1.0 or op.opacity != 1.0:
+            return None
+        return (round(op.world[0]), round(op.world[1]), op.degrees, op.scale_y, op.group, op.bilinear)
+
+    out: list = []
+    last_key = None
+    for op in ops:
+        k = key(op)
+        if k is not None and k == last_key:
+            last = out[-1]
+            sprite, pivot = record.joined(last, op)
+            out[-1] = replace(last, sprite=sprite, pivot=pivot, name=f"{last.name}+{op.name}")
+            continue
+        out.append(op)
+        last_key = k
+    return out
 
 
 def _reduce_part(sprite: Image.Image, pivot: Tuple[float, float], factor: int, reduce: Callable, phase: Tuple[int, int] = (0, 0)):
@@ -1003,9 +1055,13 @@ PART_BORDER = 2
 
 
 @contextmanager
-def recorded_paint(paint: bool = True):
+def recorded_paint(paint: bool = True, rigid_runs: bool = False):
     """Record every paint made through ``rigdoc``'s seams inside the block.
     Yields a ``PaintRecord``.
+
+    With ``rigid_runs`` a supersampled canvas's runs of parts placed alike are
+    recorded as one part each (``_rigid_runs``): fewer draws a frame, for a
+    clip over ``REALIZE_MAX_DRAWS``.
 
     With ``paint`` (the default) the calls still paint. Without it the seams
     only record (part-first publication): a part is not turned onto a canvas,
@@ -1114,6 +1170,8 @@ def recorded_paint(paint: bool = True):
             assert resample is not None, f"a {frame.size} frame reduced to {size} is not a whole supersample of its parts"
             target.extend(_sampled_as_the_frame(ops, frame.size, size, resample))
             return out
+        if rigid_runs:
+            ops = _rigid_runs(ops, record)
         for op in _on_frame_grid(ops, factor, reduce):
             if isinstance(op, PaintedOverlay):
                 # An effect layer on the supersampled canvas is reduced as a
@@ -1536,6 +1594,22 @@ def write_with_realization(flipbook: "PartFlipbook", sheet_yaml: Path, out_dir: 
 #: rigs measured 16 to 35 (2026-10-03); a procedural painter recorded shape by
 #: shape reached 140.
 REALIZE_MAX_DRAWS = 64
+#: Over that budget a frame still draws from parts, up to this many draws,
+#: when its part pages hold at most 1/`REALIZE_OVER_BUDGET_SAVING` of the
+#: texels they replace. A budget is a guess about what a draw costs; texels
+#: are what a baked body costs. GNU2 at 67 draws was baked onto a 194 MP page
+#: in place of a 2.4 MP part atlas (2026-11-18). The ceiling stays below the
+#: 140-shape painter.
+REALIZE_CEILING_DRAWS = 96
+REALIZE_OVER_BUDGET_SAVING = 16
+
+
+def draws_affordable(most: int, part_texels: int, baked_texels: int) -> bool:
+    """Whether a frame of ``most`` draws may draw from parts whose pages hold
+    ``part_texels`` against the ``baked_texels`` they replace."""
+    if most <= REALIZE_MAX_DRAWS:
+        return True
+    return most <= REALIZE_CEILING_DRAWS and part_texels * REALIZE_OVER_BUDGET_SAVING <= baked_texels
 
 
 def realization_by_cost(flipbook: "PartFlipbook", sheet_yaml: Path) -> Tuple[str, str]:
@@ -1554,8 +1628,8 @@ def realization_by_cost(flipbook: "PartFlipbook", sheet_yaml: Path) -> Tuple[str
     most = max((len(draws) for _d, frames in flipbook.clips.values() for draws in frames), default=0)
     if part_texels > sheet_texels:
         return REALIZE_BAKED, f"part pages {part_texels} texels > sheet {sheet_texels}"
-    if most > REALIZE_MAX_DRAWS:
-        return REALIZE_BAKED, f"{most} draws in a frame > {REALIZE_MAX_DRAWS}"
+    if not draws_affordable(most, part_texels, sheet_texels):
+        return REALIZE_BAKED, f"{most} draws in a frame > {REALIZE_MAX_DRAWS}, and the parts save too few texels"
     return REALIZE_PARTS, f"part pages {part_texels} <= sheet {sheet_texels}, at most {most} draws"
 
 
@@ -1640,27 +1714,41 @@ def build_rig_flipbook(
             continue
         frames: List[List[PartDraw]] = []
         opacities: List[float] = []
-        if render_clip is not None:
-            with recorded_paint(paint) as clip_record:
-                clip = list(render_clip(row, int(count)))
-            assert len(clip) == int(count), f"{target} {row}: {len(clip)} frames rendered for {count}"
-        for index in range(int(count)):
+
+        def recorded_row(rigid_runs: bool) -> List[Tuple[Image.Image, list]]:
+            """Each frame of ``row`` and its ops, in paint order."""
             if render_clip is not None:
-                frame, record = clip[index], clip_record
-            else:
-                with recorded_paint(paint) as record:
-                    frame = render(row, index, int(count))
+                with recorded_paint(paint, rigid_runs) as clip_record:
+                    clip = list(render_clip(row, int(count)))
+                assert len(clip) == int(count), f"{target} {row}: {len(clip)} frames rendered for {count}"
+            out = []
+            for index in range(int(count)):
+                if render_clip is not None:
+                    frame, record = clip[index], clip_record
+                else:
+                    with recorded_paint(paint, rigid_runs) as record:
+                        frame = render(row, index, int(count))
+                assert frame.size == tuple(frame_size), (
+                    f"{target} {row}:{index} renders {frame.size}, not the {tuple(frame_size)} frame"
+                )
+                ops = record.ops_for(frame)
+                assert ops is not None, (
+                    f"{target} {row}:{index}: the returned frame was not painted through rigdoc's seams"
+                )
+                # An effect layer that paints nothing is no draw.
+                ops = [op for op in ops if isinstance(op, PaintedPart) or op.image.getchannel("A").getbbox() is not None]
+                out.append((frame, ops))
+            return out
+
+        recorded = recorded_row(False)
+        if any(len(ops) > REALIZE_MAX_DRAWS for _frame, ops in recorded):
+            # Over the draw budget: the clip is recorded again with each
+            # bone's pieces joined (`_rigid_runs`). Only such a clip spends the
+            # texels its composites add.
+            recorded = recorded_row(True)
+        for index, (frame, ops) in enumerate(recorded):
             if paint:
                 rendered[(row, index)] = frame
-            assert frame.size == tuple(frame_size), (
-                f"{target} {row}:{index} renders {frame.size}, not the {tuple(frame_size)} frame"
-            )
-            ops = record.ops_for(frame)
-            assert ops is not None, (
-                f"{target} {row}:{index}: the returned frame was not painted through rigdoc's seams"
-            )
-            # An effect layer that paints nothing is no draw.
-            ops = [op for op in ops if isinstance(op, PaintedPart) or op.image.getchannel("A").getbbox() is not None]
             # A frame fades as ONE picture or not at all: a frame opacity
             # cannot fade some draws and leave others.
             groups = {round(op.group, 6) for op in ops}

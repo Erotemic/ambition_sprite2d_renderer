@@ -166,14 +166,42 @@ def rasterize(piece: Piece) -> Tuple[Image.Image, Point]:
     return cached
 
 
+def _same_space(a: Placed, b: Placed) -> bool:
+    """Whether ``b`` is drawn in ``a``'s coordinates: the same rigid map, and
+    the same stretch about the same origin along the same axis."""
+    if a.m != b.m or a.stretch != b.stretch:
+        return False
+    return a.stretch == 1.0 or (a.piece.origin == b.piece.origin and a.piece.axis == b.piece.axis)
+
+
+def merged(draws: Sequence[Placed]) -> List[Placed]:
+    """``draws`` with each run of consecutive draws in one coordinate space
+    (``_same_space``) made one draw: their SVG bodies in order in one piece.
+    The picture is the same (the run was drawn in that order through that
+    map); a part flipbook keeps one part for the run, not one a shape. Armour
+    on a limb, a trim on a barrel, a helm on a head ride their piece."""
+    out: List[Placed] = []
+    for placed in draws:
+        last = out[-1] if out else None
+        if last is None or not _same_space(last, placed):
+            out.append(placed)
+            continue
+        a, b = last.piece, placed.piece
+        apart = math.hypot(b.origin[0] - a.origin[0], b.origin[1] - a.origin[1])
+        piece = Piece(a.body + b.body, a.origin, a.axis, max(a.reach, b.reach + apart))
+        out[-1] = Placed(f"{last.name}+{placed.name}", last.z, piece, last.m, last.stretch)
+    return out
+
+
 def compose(scene: Scene, size: Tuple[int, int], offset: Point) -> Image.Image:
     """The frame on a canvas of ``size``: each draw blitted, in order, through
     ``rigdoc.blit_rotated`` (a part flipbook records it there). ``offset`` is
-    the canvas pixel of the drawing's (0, 0)."""
+    the canvas pixel of the drawing's (0, 0). Consecutive draws in one
+    coordinate space are drawn as one (``merged``)."""
     from ....authoring import rigdoc
 
     canvas = Image.new("RGBA", size, (0, 0, 0, 0))
-    for placed in scene.ordered():
+    for placed in merged(scene.ordered()):
         raster, pivot = rasterize(placed.piece)
         at = apply(placed.m, placed.piece.origin)
         degrees = angle_of(placed.m) + placed.piece.axis - 90.0

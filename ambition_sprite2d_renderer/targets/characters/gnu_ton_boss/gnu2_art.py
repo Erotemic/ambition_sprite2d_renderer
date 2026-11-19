@@ -108,6 +108,26 @@ def _mount(scene, name, z, items, m=pc.IDENT, stretch=1.0, *, reach=1000.0):
     scene.add("gnu2-" + name, z, _piece(items, reach=reach), m, stretch)
 
 
+def _on_its_segment(scene, segment, suffix, items, *, reach):
+    """Armour that rides one limb segment: drawn right after the segment, in
+    its map and at its z. A segment and its armour are one draw
+    (`_pieces.merged`), and each limb stays one unit in the draw order: with
+    every plate one layer above every segment, a near arm crossing the chest
+    was drawn bare under the far arm's plates (2026-11-18)."""
+    scene.add(f"gnu2-{segment.name}-{suffix}", segment.z, _piece(items, reach=reach), segment.m, segment.stretch)
+
+
+def _after_their_segments(scene: pc.Scene, armour: dict) -> pc.Scene:
+    """``scene`` with each segment's armour (``armour[name]``: the scene of its
+    placements) inserted right after the segment."""
+    out = pc.Scene()
+    for placed in scene.items:
+        out.items.append(placed)
+        if placed.name in armour:
+            out.items.extend(armour[placed.name].items)
+    return out
+
+
 def _synthetic_tail():
     """A long flexible violet conduit in place of the giant's hair brush."""
     centers = [(350, 718), (318, 758), (274, 794), (218, 834), (156, 842),
@@ -377,6 +397,12 @@ def armored_gnu2_scene(pose: dict, *, arms: bool = True) -> pc.Scene:
         tail = by_name["tail"]
         _mount(out, "synth-tail", 19, _synthetic_tail(), tail.m, reach=950)
 
+    # Armour on a limb segment, inserted after its segment below.
+    on_segment: dict = {}
+
+    def segment_armour(placed):
+        return on_segment.setdefault(placed.name, pc.Scene())
+
     for placed in original.items:
         name = placed.name
         if name == "beast":
@@ -386,22 +412,22 @@ def armored_gnu2_scene(pose: dict, *, arms: bool = True) -> pc.Scene:
         elif name.endswith(("-upper", ":upper")) and (name.startswith("far-") or name.startswith("near-") or "hoof_right" in name):
             # Near foreleg is tagged `limb:hoof_right` by the original track map.
             kind = "hind" if "hind" in name else "fore-far" if "far-fore" in name else "fore-near"
-            _mount(out, name + "-plate", placed.z + .7, _leg_armor(name, kind, upper=True), placed.m, placed.stretch, reach=500)
+            _on_its_segment(segment_armour(placed), placed, "plate", _leg_armor(name, kind, upper=True), reach=500)
         elif name.endswith(("-lower", ":lower")) and (name.startswith("far-") or name.startswith("near-") or "hoof_right" in name):
             kind = "hind" if "hind" in name else "fore-far" if "far-fore" in name else "fore-near"
-            _mount(out, name + "-shin", placed.z + .7, _leg_armor(name, kind, upper=False), placed.m, placed.stretch, reach=500)
+            _on_its_segment(segment_armour(placed), placed, "shin", _leg_armor(name, kind, upper=False), reach=500)
         elif name.endswith(("-knee", ":knee")) and (name.startswith("far-") or name.startswith("near-") or "hoof_right" in name):
-            _mount(out, name + "-joint", placed.z + .7, _knee_armor(), placed.m, reach=110)
+            _on_its_segment(segment_armour(placed), placed, "joint", _knee_armor(), reach=110)
         elif name.endswith(("-foot", ":foot")) and (name.startswith("far-") or name.startswith("near-") or "hoof_right" in name):
-            _mount(out, name + "-boot", placed.z + .7, _hoof_armor(), placed.m, reach=180)
+            _on_its_segment(segment_armour(placed), placed, "boot", _hoof_armor(), reach=180)
         elif name.startswith("limb:hand_") and name.endswith(":upper"):
-            _mount(out, name + "-plate", 41, _arm_plate(True), placed.m, reach=500)
+            _on_its_segment(segment_armour(placed), placed, "plate", _arm_plate(True), reach=500)
         elif name.startswith("limb:hand_") and name.endswith(":fore"):
-            _mount(out, name + "-bracer", 41, _arm_plate(False), placed.m, reach=500)
+            _on_its_segment(segment_armour(placed), placed, "bracer", _arm_plate(False), reach=500)
         elif name.startswith("limb:hand_") and name.endswith(":tuft"):
-            _mount(out, name + "-elbow", 41, _elbow_armor(), placed.m, reach=110)
+            _on_its_segment(segment_armour(placed), placed, "elbow", _elbow_armor(), reach=110)
         elif name.startswith("limb:hand_") and name.endswith(":fist"):
-            _mount(out, name + "-gauntlet", 41, _gauntlet(), placed.m, reach=250)
+            _on_its_segment(segment_armour(placed), placed, "gauntlet", _gauntlet(), reach=250)
         elif name == "epaulet_left":
             _mount(out, "shoulder-left", 47, _shoulder_armor("left"), placed.m)
         elif name == "epaulet_right":
@@ -412,7 +438,7 @@ def armored_gnu2_scene(pose: dict, *, arms: bool = True) -> pc.Scene:
             _mount(out, "horn-restraints", 57, _horn_rings(), placed.m)
         elif name == "head":
             _mount(out, "neural-helm", 61, _head_armor(), placed.m, reach=1400)
-    return out
+    return _after_their_segments(out, on_segment)
 
 
 def render_gnu2(anim: str, frame_idx: int, frame_count: int) -> "Image.Image":
