@@ -910,6 +910,10 @@ MOTES = {
     "evil_forest": (_glow, (255, 104, 60)),
     # Spray off the sea in the late sun, at the port.
     "pirate_port": (_dot, (250, 244, 228)),
+    # Blown dust in the hot light; in the refinery, soot and sparks.
+    "frontier": (_dot, (240, 204, 160)),
+    "frontier_refinery": (_glow, (255, 170, 90)),
+    "frontier_interior": (_dot, (240, 220, 180)),
     # Maple leaves that fall in the village.
     "ninja_village": (_petal, (214, 84, 52)),
     # Seeds and pollen over the fields of Hobford.
@@ -1083,6 +1087,9 @@ SHADOWS = {
     "basement": (20, 8, 6),
     "boss": (16, 2, 8),
     "boss_stage": (10, 6, 18),
+    "frontier": (96, 46, 34),
+    "frontier_refinery": (30, 22, 20),
+    "frontier_interior": (50, 30, 20),
     "cave": (8, 6, 22),
     "eclipse": (2, 4, 18),
     "forest": (10, 18, 12),

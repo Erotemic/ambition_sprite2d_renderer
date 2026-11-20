@@ -4671,6 +4671,51 @@ def ore_cart(tile: Tile, c: dict) -> None:
     tile.alpha *= tile.y < G
 
 
+def cactus(tile: Tile, c: dict) -> None:
+    """A saguaro-like cactus: a trunk and two arms, ribbed."""
+    _shadow(tile, 4.0)
+    parts = lambda p, dx, dy: (
+        _box(p, dx, dy, M - 1.8, G - 17.0, M + 1.8, G), _dot(p, dx, dy, M, G - 17.0, 1.8),
+        _box(p, dx, dy, M - 6.0, G - 9.0, M - 1.8, G - 7.4), _box(p, dx, dy, M - 6.0, G - 13.5, M - 4.4, G - 7.4), _dot(p, dx, dy, M - 5.2, G - 13.5, 0.8),
+        _box(p, dx, dy, M + 1.8, G - 11.5, M + 5.6, G - 9.9), _box(p, dx, dy, M + 4.0, G - 15.0, M + 5.6, G - 9.9), _dot(p, dx, dy, M + 4.8, G - 15.0, 0.8))
+    body = tile.mask(parts)
+    tile.put(body, _mix(c["plant"], c["dark"], 0.25))
+    tile.put(body * (tile.x < M - 0.4), c["plant"], 0.55)
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(M + x, G - 16.0), (M + x, G)], 0.3) for x in (-0.9, 0.9)]) * body, c["dark"], 0.35)
+
+
+def tumbleweed(tile: Tile, c: dict) -> None:
+    """A dry tumbleweed: a ball of twigs, light where the sun is."""
+    _shadow(tile, 5.0)
+    r = 5.5
+    lines = []
+    for k in range(9):
+        a = k * 0.7
+        lines.append([(M + r * math.cos(a), G - r - r * math.sin(a)), (M - r * math.cos(a + 2.2), G - r - r * math.sin(a + 2.2) * 0.8)])
+    tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, l, 0.35) for l in lines]), c["wood"], 0.9)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - r, r)) * 0.25, c["wood_light"])
+
+
+def cow_skull(tile: Tile, c: dict) -> None:
+    """The skull of a steer, bleached, on the ground, its horns out."""
+    _shadow(tile, 5.0)
+    bone = tile.mask(lambda p, dx, dy: (
+        _poly(p, dx, dy, [(M - 2.6, G - 5.6), (M + 2.6, G - 5.6), (M + 1.4, G), (M - 1.4, G)]),
+        _poly(p, dx, dy, [(M - 2.6, G - 5.4), (M - 7.0, G - 7.0), (M - 8.0, G - 9.5), (M - 6.0, G - 7.4), (M - 2.4, G - 4.4)]),
+        _poly(p, dx, dy, [(M + 2.6, G - 5.4), (M + 7.0, G - 7.0), (M + 8.0, G - 9.5), (M + 6.0, G - 7.4), (M + 2.4, G - 4.4)])))
+    tile.put(bone, c["stone_light"])
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - 3.6, 0.8) for x in (-1.2, 1.2)]), c["dark"], 0.8)
+
+
+def hitching_rail(tile: Tile, c: dict) -> None:
+    """A hitching rail: two posts and a bar."""
+    _shadow(tile, 7.0)
+    wood = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 7.0, G - 8.0, M - 5.6, G), _box(p, dx, dy, M + 5.6, G - 8.0, M + 7.0, G),
+                                        _box(p, dx, dy, M - 8.0, G - 8.4, M + 8.0, G - 7.0)))
+    tile.put(wood, c["wood"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 8.0, G - 8.4, M + 8.0, G - 8.0)), c["wood_light"], 0.7)
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -4688,6 +4733,12 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "boss": ((brazier, bones, column_stub, bones, rock, obelisk), _palette((22, 6, 12), (80, 30, 42), (140, 60, 70), (90, 40, 40), (50, 20, 26), (110, 60, 60), (200, 60, 60), (255, 120, 76))),
     # The Boss dimension's stage: what a rock show leaves on the floor. No
     # bones: it is a concert, not a crypt.
+    # The Frontier dimension: Dry Dock's street (barrels, a cactus, a
+    # tumbleweed, a steer's skull, a hitching rail), its refinery (drums,
+    # cans, cable) and the inside of its buildings.
+    "frontier": ((barrel, cactus, tumbleweed, cow_skull, hitching_rail, crate), _palette((70, 34, 24), (190, 150, 120), (236, 222, 200), (130, 86, 52), (90, 84, 82), (96, 132, 70), (220, 120, 70), (255, 214, 150))),
+    "frontier_refinery": ((oil_drum, jerrycan, coil, oil_drum, crate, extinguisher), _palette((26, 20, 18), (96, 86, 80), (160, 146, 132), (110, 74, 48), (110, 104, 100), (80, 110, 70), (232, 160, 60), (255, 190, 110))),
+    "frontier_interior": ((barrel, crate, barrel, hitching_rail, crate, tumbleweed), _palette((40, 24, 16), (150, 120, 96), (210, 190, 160), (126, 82, 50), (96, 90, 86), (96, 132, 70), (200, 90, 60), (255, 214, 150))),
     "boss_stage": ((monitor_wedge, coil, mic_stand, road_case, setlist, pedalboard), _palette((10, 8, 16), (60, 54, 72), (190, 184, 200), (40, 36, 48), (120, 124, 136), (70, 220, 255), (236, 48, 150), (255, 176, 70))),
     # The Noodly Temple: what is on the floor of a kitchen. `stone` is the
     # colour of pasta, `wood` of a meatball and `bloom` of sauce.

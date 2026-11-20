@@ -2846,6 +2846,11 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "primeval": (stone, _colours((92, 84, 66), (120, 130, 86), (34, 28, 18), (255, 170, 80), (255, 236, 190))),
     "forest": (shoji, _colours((58, 36, 26), (150, 140, 110), (26, 16, 12), (214, 70, 60), (244, 236, 208))),
     # The port: a door of tarred planks with a round window, like a cabin's.
+    # The Frontier dimension: a plank door with a lamp in the town and the
+    # saloon; a steel bulkhead in the refinery.
+    "frontier": (plank, _colours((140, 84, 52), (120, 78, 48), (44, 26, 18), (226, 170, 72), (255, 214, 150))),
+    "frontier_interior": (plank, _colours((96, 60, 38), (132, 86, 54), (40, 24, 16), (226, 170, 72), (255, 214, 150))),
+    "frontier_refinery": (bulkhead, _colours((90, 76, 70), (122, 104, 94), (30, 24, 22), (232, 160, 60), (255, 190, 110))),
     "pirate_port": (cabin, _colours((76, 54, 38), (132, 96, 64), (34, 24, 18), (214, 176, 108), (255, 214, 150))),
     # The village: sliding paper screens in a frame of dark cedar.
     "ninja_village": (shoji, _colours((52, 36, 30), (226, 216, 190), (24, 18, 16), (176, 60, 44), (255, 214, 160))),

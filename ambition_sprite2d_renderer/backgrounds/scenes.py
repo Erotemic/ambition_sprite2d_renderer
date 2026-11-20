@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, art_dimension, boss_stage, art_quarters, eureka, evil, foregrounds, hobford, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_oceania, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
+from . import arenas, art_dimension, boss_stage, art_quarters, eureka, evil, foregrounds, frontier, hobford, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_oceania, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from . import history_budj_bim
 from . import history_micronesia
 from .artkit import Art
@@ -70,6 +70,10 @@ SCENES: dict[str, Scene] = {
     # The Boss dimension: the bossofthegame's last show (`boss_stage.py`).
     "boss_stage": boss_stage.boss_stage,
     "noodly": noodly.noodly,
+    # The Frontier dimension: Dry Dock in the Leaden Saddle (`frontier.py`).
+    "frontier": frontier.frontier,
+    "frontier_refinery": frontier.frontier_refinery,
+    "frontier_interior": frontier.frontier_interior,
     "math_town": math_town.math_town,
     "math_undercroft": math_town.undercroft,
     "math_interior": math_town.interior,

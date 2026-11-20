@@ -43,6 +43,9 @@ from .art_quarters import stacks_foreground as _art_stacks
 from .art_quarters import stage_foreground as _art_stage
 from .boss_stage import SHOW
 from .boss_stage import crowd_foreground as _boss_stage
+from .frontier import FRONTIER
+from .frontier import frontier_foreground as _frontier
+from .frontier import refinery_foreground as _frontier_refinery
 from .artkit import Art, Pen, polar, scale
 from . import history_eras as _history
 from . import history_americas_pacific as _americas_pacific
@@ -308,6 +311,10 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "skybridge": (_skybridge, SKYBRIDGE["stone"]),
     "boss": (_boss, scale(BOSS["rock"], 0.8)),
     "boss_stage": (_boss_stage, scale(SHOW["crowd"], 0.9)),
+    # The Frontier dimension: a telegraph wire and dry grass; the refinery's
+    # pipe and a valve. The inside of a building has none.
+    "frontier": (_frontier, scale(FRONTIER["wood_dark"], 0.8)),
+    "frontier_refinery": (_frontier_refinery, (48, 40, 38)),
     "noodly": (_noodly, scale(NOODLY["noodle_dark"], 0.62)),
     "eclipse": (_eclipse, scale(ECLIPSE["rock"], 0.9)),
     "military_tower": (_military_tower, scale(TOWER["near"], 0.9)),
