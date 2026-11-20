@@ -13,8 +13,9 @@ navy coat, a violet scarf, silver swept-back hair and a trimmed beard, a
 glowing pendant (today's chest sigil) and a tablet (today's pale card). The
 two other looks are drawn by the art script and cast nowhere.
 
-The rows are the four he has always had: ``idle``, ``speak``, ``gesture``,
-``walk``.
+The rows are the four he has always had (``idle``, ``speak``, ``gesture``,
+``walk``) and, since he fights in the raid and dies after it, ``hurt``,
+``death`` and ``death_idle``.
 """
 
 from __future__ import annotations

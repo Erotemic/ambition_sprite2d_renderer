@@ -10,8 +10,9 @@ layer to its bone, and authors the rows. It never draws. A channel is the turn
 of a bone from the drawing, in degrees (positive clockwise on the screen: a
 hanging limb swings back, the torso leans forward).
 
-The rows are the four he has always had: ``idle``, ``speak``, ``gesture``,
-``walk``. His far hand stays in his coat pocket; the near hand holds the
+The rows are the four he has always had (``idle``, ``speak``, ``gesture``,
+``walk``) and, since he fights in the raid and dies after it, ``hurt``,
+``death`` and ``death_idle``. His far hand stays in his coat pocket; the near hand holds the
 tablet, kept upright when the arm lifts it.
 """
 
@@ -116,6 +117,45 @@ CLIPS = {
             "far_arm_u": expr("-6*sin(tau*t)"),
             **tablet_arm("4*sin(tau*t)", "-2*sin(tau*t)"),
             **face(),
+        },
+    },
+    # Struck: he jolts back from the blow, eyes shut, the tablet flung out,
+    # and comes back to his feet's balance.
+    "hurt": {
+        "loop": False, "frames": 4, "duration_ms": 80,
+        "channels": {
+            "root_x": expr("-3*sin(pi*t)"),
+            "torso": expr("-14*sin(pi*t)"),
+            "head": expr("-12*sin(pi*t)"),
+            **tablet_arm("20*sin(pi*t)", "-20*sin(pi*t)"),
+            "far_arm_u": expr("15*sin(pi*t)"),
+            **face(shut="sin(pi*t) > 0.3", talk="sin(pi*t) > 0.3"),
+        },
+    },
+    # His last words said, his knees give: he sinks onto them, shins on the
+    # floor, and folds forward, head bowed, the tablet slipping down. The
+    # frame is too narrow for a man lying full length.
+    "death": {
+        "loop": False, "frames": 8, "duration_ms": 110,
+        "channels": {
+            "root_y": expr(f"31*{ramp(0.0, 0.5)}"),
+            **legs(f"-15*{ramp(0.0, 0.5)}", f"-15*{ramp(0.0, 0.5)}", f"105*{ramp(0.0, 0.5)}", f"105*{ramp(0.0, 0.5)}"),
+            "torso": expr(f"55*{ramp(0.35, 0.9)}"),
+            "head": expr(f"25*{ramp(0.4, 1.0)}"),
+            **tablet_arm(f"-20*{ramp(0.3, 0.9)}", f"-10*{ramp(0.3, 0.9)}"),
+            "far_arm_u": expr(f"-15*{ramp(0.3, 0.9)}"),
+            **face(shut="t > 0.3"),
+        },
+    },
+    # Where he stays.
+    "death_idle": {
+        "loop": True, "frames": 1, "duration_ms": 500,
+        "channels": {
+            "root_y": expr("31"),
+            **legs("-15", "-15", "105", "105"),
+            "torso": expr("55"), "head": expr("25"),
+            **tablet_arm("-20", "-10"), "far_arm_u": expr("-15"),
+            **face(shut="True"),
         },
     },
 }
