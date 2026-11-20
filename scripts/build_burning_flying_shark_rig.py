@@ -127,6 +127,51 @@ def windup(i: int, n: int, t: float) -> Pose:
     return p
 
 
+def hurt(i: int, n: int, t: float) -> Pose:
+    """Struck: thrown back from the blow, the body jack-knifed, the jaws
+    flung open, the eye squeezed shut and the flames guttering."""
+    s = math.sin(math.pi * t)
+    p = F.swim(0.0, tail=0.0, fin=0.0, bob=0.0)
+    p["root_x"] = -12.0 * s
+    p["root_y"] = -3.0 * s
+    p["body"] = 14.0 * s
+    p["head"] = -16.0 * s
+    p["jaw"] = 4.0 + 22.0 * s
+    p["near_pec"] = 20.0 * s
+    p["far_pec"] = 16.0 * s
+    p["tail1"] = -14.0 * s
+    p["tail2"] = -18.0 * s
+    p["fluke"] = -20.0 * s
+    p["fx.flame"] = 1.0 - 0.6 * s
+    p.update(eyes("shut" if 0.15 < t < 0.85 else "open"))
+    return p
+
+
+def death(i: int, n: int, t: float) -> Pose:
+    """Its fire goes out: it rolls belly up as it sinks, the jaws slack, the
+    fins and tail gone limp."""
+    u = t
+    p = F.swim(0.0, tail=0.0, fin=0.0, bob=0.0)
+    p["root_y"] = 30.0 * u * u
+    p["body"] = 30.0 * u
+    p["head"] = 12.0 * u
+    p["jaw"] = 4.0 + 14.0 * u
+    p["near_pec"] = 30.0 * u
+    p["far_pec"] = 26.0 * u
+    p["dorsal"] = 10.0 * u
+    p["tail1"] = 10.0 * u
+    p["tail2"] = 14.0 * u
+    p["fluke"] = 18.0 * u
+    p["fx.flame"] = max(0.0, 1.0 - 1.6 * u)
+    p.update(eyes("dead" if u > 0.3 else "open"))
+    return p
+
+
+def death_idle(i: int, n: int, t: float) -> Pose:
+    """Dead where it came down: the last frame of ``death`` held."""
+    return death(0, 1, 1.0)
+
+
 CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "idle": idle,
     "fly": fly,
@@ -134,6 +179,9 @@ CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "dive": dive,
     "notice": notice,
     "windup": windup,
+    "hurt": hurt,
+    "death": death,
+    "death_idle": death_idle,
 }
 
 DEFAULTS: Pose = {"eye.open": 1.0, "jaw": 4.0}
@@ -158,6 +206,10 @@ SPEC = F.fish_spec(
         # over its bite's startup (the telegraph).
         ("notice", 3, 110, False),
         ("windup", 3, 90, False),
+        # Struck, and its death: it drew ``idle`` for both.
+        ("hurt", 4, 80, False),
+        ("death", 8, 100, False),
+        ("death_idle", 1, 100, True),
     ],
     clips=CLIPS,
     defaults=DEFAULTS,

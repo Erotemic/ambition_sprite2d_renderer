@@ -456,6 +456,34 @@
         }
       }
     },
+    "hurt": {
+      "loop": false,
+      "frames": 4,
+      "duration_ms": 80,
+      "channels": {
+        "root_y": {
+          "expr": "1*sin(pi*t)"
+        },
+        "head": {
+          "expr": "-8*sin(pi*t)"
+        },
+        "robot_head": {
+          "expr": "-22*sin(pi*t)"
+        },
+        "near_arm_u": {
+          "expr": "12*sin(pi*t)"
+        },
+        "near_arm_l": {
+          "expr": "-18*sin(pi*t)"
+        },
+        "far_arm_l": {
+          "expr": "6*sin(pi*t)"
+        },
+        "glow": {
+          "expr": "1 if 0.2 < t < 0.8 else 0"
+        }
+      }
+    },
     "feedback": {
       "loop": true,
       "frames": 6,

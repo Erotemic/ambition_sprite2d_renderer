@@ -29,7 +29,7 @@ Point = Tuple[float, float]
 TARGET_NAME = "void_star"
 FRAME_SIZE = (96, 96)
 SUPER = 4
-ROWS: List[Tuple[str, int, int]] = [("idle", 6, 150), ("walk", 8, 90), ("death", 5, 100)]
+ROWS: List[Tuple[str, int, int]] = [("idle", 6, 150), ("walk", 8, 90), ("hurt", 4, 70), ("death", 5, 100)]
 
 TRANSPARENT = (0, 0, 0, 0)
 VOID: RGBA = (10, 10, 14, 255)
@@ -55,6 +55,7 @@ ACTOR_METADATA = {
     "animation_bindings": {
         "default": {"animation": "idle", "events": []},
         "locomotion.walk": {"animation": "walk", "events": []},
+        "combat.hurt": {"animation": "hurt", "events": []},
         "combat.death": {"animation": "death", "events": []},
     },
 }
@@ -92,6 +93,13 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         shut = frame_idx == nframes - 1
     elif anim == "walk":
         turn = phase * math.tau / POINTS
+    elif anim == "hurt":
+        # Struck: it squashes and its wheel is knocked back a little, the
+        # eyes squeezed shut (it drew ``idle``).
+        s = math.sin(math.pi * (frame_idx + 0.5) / float(max(nframes, 1)))
+        scale = 1.0 - 0.14 * s
+        turn = -0.3 * s
+        shut = s > 0.5
     elif anim == "death":
         scale = max(0.08, 1.0 - (frame_idx + 1) / float(nframes))
         turn = phase * math.tau * 0.6

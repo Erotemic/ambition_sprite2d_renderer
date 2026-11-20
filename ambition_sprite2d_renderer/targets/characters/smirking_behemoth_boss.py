@@ -72,6 +72,7 @@ ACTOR_METADATA = {
             ],
         },
         "death": {"animation": "death", "events": []},
+        "combat.hurt": {"animation": "hurt", "events": []},
     },
     "sockets": {
         "eye": {"source": f"{TARGET_NAME}.geometry", "point": {"x": 164.0, "y": 96.0}},
@@ -122,6 +123,7 @@ ROWS: List[Tuple[str, int, int]] = [
     ("mouth_open", 6, 92),
     ("eye_beam", 6, 82),
     ("death", 8, 108),
+    ("hurt", 4, 80),
 ]
 
 FRAME_SIZE = (208, 288)
@@ -477,7 +479,14 @@ def _body_geometry(anim: str, frame_idx: int, nframes: int) -> Dict[str, float]:
     # be the same rectangle. Attack motion happens in facial features and
     # external eye-beam projectiles, not by bobbing the slab.
     bob = 0.0
-    if anim == "mouth_open":
+    # A struck flinch rises and falls over the row: the slab stays put, the
+    # face recoils, the hat jumps and a crack flashes.
+    jolt = math.sin(math.pi * (frame_idx + 0.5) / max(1, nframes)) if anim == "hurt" else 0.0
+    if anim == "hurt":
+        mouth_open = 0.22 * jolt
+        beam = 0.0
+        settle = 0.0
+    elif anim == "mouth_open":
         mouth_open = 0.12 + 0.88 * math.sin(t * math.pi)
         beam = 0.0
         settle = 0.0
@@ -506,26 +515,27 @@ def _body_geometry(anim: str, frame_idx: int, nframes: int) -> Dict[str, float]:
     body_y1 = SMIRKING_BODY_Y1
     body_x2 = SMIRKING_BODY_X2
     body_y2 = SMIRKING_BODY_Y2
-    eye_x = body_x2 - 44.0 + math.sin(t * math.tau) * (1.0 if anim == "rest" else 0.35)
-    eye_y = body_y1 + 82.0 + (settle * 1.5)
+    eye_x = body_x2 - 44.0 + math.sin(t * math.tau) * (1.0 if anim == "rest" else 0.35) - jolt * 7.0
+    eye_y = body_y1 + 82.0 + (settle * 1.5) - jolt * 3.0
     eye_r = 14.0 + beam * 4.5
-    mouth_x = body_x2 - 24.0
+    mouth_x = body_x2 - 24.0 - jolt * 4.0
     mouth_y = body_y1 + 142.0 + settle * 1.5
     mouth_w = 50.0 + mouth_open * 10.0
     mouth_h = 5.0 + mouth_open * 30.0
     death_eye_left_x = body_x1 + 68.0
     death_eye_right_x = body_x1 + 132.0
     death_eye_y = body_y1 + 92.0 + settle * 2.0
-    hat_cx = (body_x1 + body_x2) * 0.5 - 4.0 + (settle * 8.0)
+    hat_cx = (body_x1 + body_x2) * 0.5 - 4.0 + (settle * 8.0) - jolt * 8.0
     # The brim underside sits exactly on the slab top. Keep the crown
     # touching the top pixel and inside the frame and the brim visually tangent to the head.
     hat_y = body_y1 - 14.0 + settle * 1.6
-    hat_tilt = -3.0 + math.sin(t * math.tau) * 1.5 + settle * 16.0
+    hat_tilt = -3.0 + math.sin(t * math.tau) * 1.5 + settle * 16.0 + jolt * 14.0
     return {
         "t": t,
         "bob": bob,
         "beam": beam,
         "settle": settle,
+        "jolt": jolt,
         "mouth_open": mouth_open,
         "body_x1": body_x1,
         "body_y1": body_y1,
@@ -1080,7 +1090,9 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         _place_cracks(img, g["settle"])
         _place_dust(img, g)
     else:
-        _place_eye(img, g, g["eye_x"], g["eye_y"], False, "eye")
+        _place_eye(img, g, g["eye_x"], g["eye_y"], g["jolt"] > 0.5, "eye")
+        if g["jolt"] > 0.5:
+            _place_cracks(img, 0.3)
         opening = round(g["mouth_open"], 4)
         mouth = dict(g, mouth_open=opening)
         _place_feature(img, ("mouth", opening, round(g["mouth_w"], 4), round(g["mouth_h"], 4)), lambda c: _draw_mouth(blending_draw(c), mouth), "mouth")

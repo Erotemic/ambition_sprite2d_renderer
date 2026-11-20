@@ -23,6 +23,8 @@ head play, the body keeps the beat.
 - ``feedback``: the meters pin in the red and the cones glow.
 - ``solo``: between the Boss's phases, while he holds his beat: the arm
   windmills over the strings, both heads bang, the cones flash.
+- ``hurt``: struck: both heads snap back and the cones flash; the cabinet
+  and the guitar keep still, as on every row.
 - ``outro``: he has gone down; it plays him off: a slow strum, the robot's
   head bowed (the amp head, where he stands, barely moves).
 """
@@ -126,6 +128,18 @@ CLIPS = {
             "near_arm_l": expr("9*sin(tau*t)"),
             "far_arm_l": expr("-2*sin(tau*t)"),
             "glow": expr("0"),
+        },
+    },
+    "hurt": {
+        "loop": False, "frames": 4, "duration_ms": 80,
+        "channels": {
+            "root_y": expr("1*sin(pi*t)"),
+            "head": expr("-8*sin(pi*t)"),
+            "robot_head": expr("-22*sin(pi*t)"),
+            "near_arm_u": expr("12*sin(pi*t)"),
+            "near_arm_l": expr("-18*sin(pi*t)"),
+            "far_arm_l": expr("6*sin(pi*t)"),
+            "glow": expr("1 if 0.2 < t < 0.8 else 0"),
         },
     },
     "feedback": {

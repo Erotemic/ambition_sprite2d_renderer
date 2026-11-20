@@ -62,6 +62,7 @@ ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 120),
     ("walk", 8, 95),
     ("slash", 8, 75),
+    ("hurt", 4, 80),
 ]
 LOOPS = {"idle", "walk"}
 
@@ -461,7 +462,27 @@ CLIP_SLASH = Clip(
     },
 )
 
-CLIPS: Dict[str, Clip] = {"idle": CLIP_IDLE, "walk": CLIP_WALK, "slash": CLIP_SLASH}
+# Struck (it drew ``idle``): thrown back from the blow, the arms flung, the
+# antenna whipping, the eyes squeezed; then it settles back to the idle hang.
+CLIP_HURT = Clip(
+    loop=False,
+    channels={
+        "root_x": Channel((0, 0), (0.35, -3.0, "out"), (1, 0)),
+        "pelvis": Channel((0, 0), (0.35, -4, "out"), (1, 0)),
+        "torso": Channel((0, 0), (0.35, -13, "out"), (1, 0)),
+        "head": Channel((0, 0), (0.35, -11, "out"), (1, 0)),
+        "antenna": Channel((0, 0), (0.3, 24, "out"), (0.65, -10), (1, 0)),
+        "near_arm_u": Channel((0, 0), (0.35, -32, "out"), (1, 0)),
+        "near_arm_l": Channel((0, -15), (0.35, -40, "out"), (1, -15)),
+        "far_arm_u": Channel((0, 0), (0.35, 26, "out"), (1, 0)),
+        "far_arm_l": Channel((0, -15), (0.35, -30, "out"), (1, -15)),
+        "near_foot_x": 5.0,
+        "far_foot_x": -4.5,
+        "eye_squint": Channel((0, 0.1), (0.25, 0.9, "out"), (0.7, 0.9), (1, 0.1)),
+    },
+)
+
+CLIPS: Dict[str, Clip] = {"idle": CLIP_IDLE, "walk": CLIP_WALK, "slash": CLIP_SLASH, "hurt": CLIP_HURT}
 
 _DEFAULT_FOOT_X = {"near": 5.0, "far": -4.5}
 

@@ -11,7 +11,8 @@ of a bone from the drawing, in degrees (positive clockwise on the screen: a
 hanging limb swings back, the torso leans forward).
 
 The rows are the five the pair has always had: ``idle``, ``walk``, ``talk``,
-``interact``, ``taunt``. The pun is in the body, so it is in the rows too:
+``interact``, ``taunt``, and the reactions both share (``REACTIONS``:
+``hurt``, ``death``, ``death_idle``). The pun is in the body, so it is in the rows too:
 Can keeps pointing the way (he walks pointing), and his taunt thrusts the
 point at the sky; Can't keeps his fist under his chin (he walks thinking), and
 his taunt is a shrug with the hand fallen open.
@@ -209,6 +210,59 @@ CLIPS = {
         },
     },
 }
+
+
+#: How far the pelvis drops when he sinks onto his knees (frame px): the
+#: thigh tipped back, the shin folded under it, the knee on the floor.
+KNEEL_DROP = 31
+
+#: Struck, and his fall: both brothers alike (Jon, 2026-11-19: a struck body
+#: drew ``idle``). He is thrown back, eyes shut and mouth open; dying he
+#: sinks onto his knees and folds forward, the frame too narrow for a man
+#: lying full length.
+REACTIONS = {
+    "hurt": {
+        "loop": False, "frames": 4, "duration_ms": 80,
+        "channels": {
+            "root_x": expr("-3*sin(pi*t)"),
+            "torso": expr("-14*sin(pi*t)"),
+            "head": expr("-12*sin(pi*t)"),
+            "near_arm_u": expr("20*sin(pi*t)"),
+            "near_arm_l": expr("-20*sin(pi*t)"),
+            "far_arm_u": expr("15*sin(pi*t)"),
+            **face(shut="sin(pi*t) > 0.3", talk="sin(pi*t) > 0.3"),
+        },
+    },
+    "death": {
+        "loop": False, "frames": 8, "duration_ms": 110,
+        "channels": {
+            "root_y": expr(f"{KNEEL_DROP}*{ramp(0.0, 0.5)}"),
+            **legs(f"-15*{ramp(0.0, 0.5)}", f"-15*{ramp(0.0, 0.5)}", f"105*{ramp(0.0, 0.5)}", f"105*{ramp(0.0, 0.5)}"),
+            "torso": expr(f"55*{ramp(0.35, 0.9)}"),
+            "head": expr(f"25*{ramp(0.4, 1.0)}"),
+            "near_arm_u": expr(f"-20*{ramp(0.3, 0.9)}"),
+            "near_arm_l": expr(f"-10*{ramp(0.3, 0.9)}"),
+            "far_arm_u": expr(f"-15*{ramp(0.3, 0.9)}"),
+            **face(shut="t > 0.3"),
+        },
+    },
+    "death_idle": {
+        "loop": True, "frames": 1, "duration_ms": 500,
+        "channels": {
+            "root_y": expr(f"{KNEEL_DROP}"),
+            **legs("-15", "-15", "105", "105"),
+            "torso": expr("55"), "head": expr("25"),
+            "near_arm_u": expr("-20"), "near_arm_l": expr("-10"), "far_arm_u": expr("-15"),
+            **face(shut="True"),
+        },
+    },
+}
+for _clips in CLIPS.values():
+    _clips.update(json.loads(json.dumps(REACTIONS)))
+# Can's arm points the way at rest: dying, it falls (a turn clockwise lowers
+# a forward arm), so he does not die pointing.
+CLIPS["can"]["death"]["channels"]["near_arm_u"] = expr(f"70*{ramp(0.3, 0.9)}")
+CLIPS["can"]["death_idle"]["channels"]["near_arm_u"] = expr("70")
 
 
 def build(who: str) -> dict:
