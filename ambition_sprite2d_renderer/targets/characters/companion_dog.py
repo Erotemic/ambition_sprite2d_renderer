@@ -72,6 +72,7 @@ ACTOR_METADATA = {
         "interaction.use": {"animation": "happy", "events": []},
         "interaction.talk": {"animation": "sit_idle", "events": []},
         "vocalization.bark": {"animation": "bark", "events": []},
+        "combat.hurt": {"animation": "hurt", "events": []},
         "life.death": {"animation": "death", "events": []},
     },
     "tags": ["animal", "dog", "quadruped", "companion", "svg_rigged"],
