@@ -46,6 +46,11 @@ from .boss_stage import crowd_foreground as _boss_stage
 from .frontier import FRONTIER
 from .frontier import frontier_foreground as _frontier
 from .frontier import refinery_foreground as _frontier_refinery
+from .frontier_slice import RAILS as FRONTIER_RAILS
+from .frontier_slice import WORKS as FRONTIER_WORKS
+from .frontier_slice import rails_foreground as _frontier_rails
+from .frontier_slice import siding_foreground as _frontier_siding
+from .frontier_slice import works_foreground as _frontier_works
 from .artkit import Art, Pen, polar, scale
 from . import history_eras as _history
 from . import history_americas_pacific as _americas_pacific
@@ -315,6 +320,9 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     # pipe and a valve. The inside of a building has none.
     "frontier": (_frontier, scale(FRONTIER["wood_dark"], 0.8)),
     "frontier_refinery": (_frontier_refinery, (48, 40, 38)),
+    "frontier_siding": (_frontier_siding, scale(FRONTIER["wood_dark"], 0.8)),
+    "frontier_rails": (_frontier_rails, scale(FRONTIER_RAILS["rock_dark"], 0.8)),
+    "frontier_works": (_frontier_works, scale(FRONTIER_WORKS["iron"], 0.8)),
     "noodly": (_noodly, scale(NOODLY["noodle_dark"], 0.62)),
     "eclipse": (_eclipse, scale(ECLIPSE["rock"], 0.9)),
     "military_tower": (_military_tower, scale(TOWER["near"], 0.9)),

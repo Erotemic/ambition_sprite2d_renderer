@@ -914,6 +914,9 @@ MOTES = {
     "frontier": (_dot, (240, 204, 160)),
     "frontier_refinery": (_glow, (255, 170, 90)),
     "frontier_interior": (_dot, (240, 220, 180)),
+    "frontier_siding": (_dot, (240, 214, 176)),
+    "frontier_rails": (_dot, (236, 200, 150)),
+    "frontier_works": (_glow, (255, 150, 70)),
     # Maple leaves that fall in the village.
     "ninja_village": (_petal, (214, 84, 52)),
     # Seeds and pollen over the fields of Hobford.
@@ -1090,6 +1093,9 @@ SHADOWS = {
     "frontier": (96, 46, 34),
     "frontier_refinery": (30, 22, 20),
     "frontier_interior": (50, 30, 20),
+    "frontier_siding": (96, 60, 40),
+    "frontier_rails": (40, 26, 22),
+    "frontier_works": (20, 16, 18),
     "cave": (8, 6, 22),
     "eclipse": (2, 4, 18),
     "forest": (10, 18, 12),

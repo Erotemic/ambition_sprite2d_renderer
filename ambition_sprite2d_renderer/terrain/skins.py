@@ -195,6 +195,12 @@ SKINS: tuple[Skin, ...] = (
     Skin("frontier", "rock", (112, 58, 42), (52, 26, 20), (156, 92, 62), (240, 196, 130), "packed_earth", (196, 120, 76), "lip", "plank_walk"),
     Skin("frontier_refinery", "deckplate", (96, 78, 70), (40, 30, 28), (150, 126, 110), (232, 160, 60), "hazard", (122, 100, 88), "pipes", "catwalk"),
     Skin("frontier_interior", "timber", (96, 62, 40), (42, 26, 18), (140, 96, 62), (232, 188, 112), "deck", (176, 128, 84), "lip", "rough_plank"),
+    # The first slice: Halfway Siding's buff sandstone and packed earth; the
+    # freight's ballast and car steel (its cars are drawn over it); Clinker
+    # Flats' cinder ground with an ash crust, a steel catwalk.
+    Skin("frontier_siding", "rock", (150, 104, 76), (72, 46, 34), (198, 152, 112), (240, 210, 150), "packed_earth", (204, 162, 116), "lip", "plank_walk"),
+    Skin("frontier_rails", "deckplate", (92, 74, 66), (38, 30, 28), (144, 120, 104), (214, 160, 80), "hazard", (110, 92, 82), "bolts", "catwalk"),
+    Skin("frontier_works", "rock", (64, 58, 60), (26, 24, 26), (108, 98, 98), (255, 150, 70), "packed_earth", (120, 112, 108), "pipes", "catwalk"),
     # The Workshop Deeps: bricks fired in a kiln, a few of them glazed and
     # some scorched, under a plate of copper; a workbench is the platform.
     Skin("art_forge", "fired", (112, 54, 40), (40, 18, 14), (146, 80, 56), (255, 140, 50), "copper", (204, 116, 66), "bolts", "bench"),

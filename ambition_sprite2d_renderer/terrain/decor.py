@@ -4739,6 +4739,9 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "frontier": ((barrel, cactus, tumbleweed, cow_skull, hitching_rail, crate), _palette((70, 34, 24), (190, 150, 120), (236, 222, 200), (130, 86, 52), (90, 84, 82), (96, 132, 70), (220, 120, 70), (255, 214, 150))),
     "frontier_refinery": ((oil_drum, jerrycan, coil, oil_drum, crate, extinguisher), _palette((26, 20, 18), (96, 86, 80), (160, 146, 132), (110, 74, 48), (110, 104, 100), (80, 110, 70), (232, 160, 60), (255, 190, 110))),
     "frontier_interior": ((barrel, crate, barrel, hitching_rail, crate, tumbleweed), _palette((40, 24, 16), (150, 120, 96), (210, 190, 160), (126, 82, 50), (96, 90, 86), (96, 132, 70), (200, 90, 60), (255, 214, 150))),
+    "frontier_siding": ((barrel, cactus, tumbleweed, cow_skull, hitching_rail, crate), _palette((80, 44, 30), (200, 166, 132), (240, 226, 204), (140, 96, 60), (96, 90, 86), (104, 138, 78), (220, 130, 80), (255, 214, 150))),
+    "frontier_rails": ((crate, coil, crate, oil_drum, crate, coil), _palette((30, 22, 20), (110, 84, 70), (170, 150, 130), (120, 80, 50), (100, 96, 92), (80, 110, 70), (214, 160, 80), (255, 200, 130))),
+    "frontier_works": ((oil_drum, coil, crate, jerrycan, oil_drum, coil), _palette((20, 16, 18), (90, 82, 80), (150, 140, 134), (104, 72, 50), (100, 96, 96), (70, 96, 64), (255, 150, 70), (255, 190, 120))),
     "boss_stage": ((monitor_wedge, coil, mic_stand, road_case, setlist, pedalboard), _palette((10, 8, 16), (60, 54, 72), (190, 184, 200), (40, 36, 48), (120, 124, 136), (70, 220, 255), (236, 48, 150), (255, 176, 70))),
     # The Noodly Temple: what is on the floor of a kitchen. `stone` is the
     # colour of pasta, `wood` of a meatball and `bloom` of sauce.

@@ -2851,6 +2851,9 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "frontier": (plank, _colours((140, 84, 52), (120, 78, 48), (44, 26, 18), (226, 170, 72), (255, 214, 150))),
     "frontier_interior": (plank, _colours((96, 60, 38), (132, 86, 54), (40, 24, 16), (226, 170, 72), (255, 214, 150))),
     "frontier_refinery": (bulkhead, _colours((90, 76, 70), (122, 104, 94), (30, 24, 22), (232, 160, 60), (255, 190, 110))),
+    "frontier_siding": (plank, _colours((150, 98, 64), (128, 86, 54), (48, 30, 20), (226, 170, 72), (255, 214, 150))),
+    "frontier_rails": (bulkhead, _colours((110, 60, 44), (132, 80, 60), (36, 22, 18), (232, 160, 60), (255, 190, 110))),
+    "frontier_works": (bulkhead, _colours((80, 74, 74), (112, 104, 100), (28, 24, 24), (255, 150, 70), (255, 190, 120))),
     "pirate_port": (cabin, _colours((76, 54, 38), (132, 96, 64), (34, 24, 18), (214, 176, 108), (255, 214, 150))),
     # The village: sliding paper screens in a frame of dark cedar.
     "ninja_village": (shoji, _colours((52, 36, 30), (226, 216, 190), (24, 18, 16), (176, 60, 44), (255, 214, 160))),
