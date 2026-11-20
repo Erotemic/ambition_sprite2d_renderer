@@ -59,9 +59,11 @@ Point = Tuple[float, float]
 TARGET_NAME = "marshal_gallus"
 FRAME_SIZE = (400, 400)
 SUPER = 4
-#: Where the feet stand: the frame's centre plus half the body, at the sheet's
-#: ``collision_scale`` 5/3 (the body is 140 world units tall, the frame 233).
-FLOOR = 320.0
+#: Where the feet stand. The game sizes his body from the drawn body box
+#: and draws the frame's centre at the body's centre, so the drawn body
+#: (from the hat's crown to the feet, about 290 px) is centred on the frame:
+#: its bottom, the feet, at 200 + 145.
+FLOOR = 340.0
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 130),
     ("walk", 8, 105),
