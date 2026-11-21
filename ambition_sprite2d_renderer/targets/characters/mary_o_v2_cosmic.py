@@ -21,11 +21,11 @@ from PIL import Image
 
 from ...authoring.sheet_build import build_sheet
 from . import _mary_o_v2_model as M
-from ._mary_o_v2_cosmic_art import COSMIC_FORM, Look, Pose, Stage, frame
+from ._mary_o_v2_cosmic_art import COSMIC_FORM, OUT, S, Look, Pose, Stage, frame
 from .mary_o_v2 import _actor_metadata
 
 TARGET = "mary_o_v2_cosmic"
-LABEL_WIDTH = 122
+LABEL_WIDTH = M.LABEL_WIDTH
 
 #: The canvas of each frame: room for her wings over her head and behind
 #: her, and, in the transformation, for the star that comes down, for the
@@ -202,11 +202,14 @@ def _cosmic_metadata() -> dict:
     metadata["tags"] = [tag for tag in metadata["tags"] if tag != "fire"] + ["cosmic"]
     # A socket of the fire form is in the pixels of its published frame: two
     # times the authored 80 by 96, with her 72 by 96 drawing in its middle.
+    # Her sheet is published at the same scale, with that drawing at the
+    # place of the stage.
+    inset = (M.AUTHORING_FRAME_SIZE[0] - M.LOGICAL_SIZE[0] * S) / 2.0
     for socket in metadata["sockets"].values():
         socket["source"] = f"{TARGET}.geometry"
         point = socket["point"]
-        point["x"] = STAGE.ox * 3 + point["x"] / M.OUTPUT_RESOLUTION_SCALE - 4.0
-        point["y"] = STAGE.oy * 3 + point["y"] / M.OUTPUT_RESOLUTION_SCALE
+        point["x"] = (STAGE.ox * S - inset) * OUT + point["x"]
+        point["y"] = STAGE.oy * S * OUT + point["y"]
     bindings = metadata["animation_bindings"]
     bindings["locomotion.fall"] = {"animation": "fall", "events": []}
     bindings["power.transform"] = {"animation": "transform", "events": []}

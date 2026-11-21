@@ -66,6 +66,12 @@ class Skin:
     cap_colour: RGB
     under: str
     oneway: str
+    #: How its breakable bricks are drawn: "cracked", one block of raised
+    #: bricks in a dark rim with a crack (the tell of a breakable wall), or
+    #: "bond", bricks in the material of the ground, laid in a bond that runs
+    #: on from block to block (Mary-O, where rows and walls of bricks are
+    #: common and a crack in each one repeats).
+    brick: str = "cracked"
 
 
 SKINS: tuple[Skin, ...] = (
@@ -108,19 +114,19 @@ SKINS: tuple[Skin, ...] = (
     Skin("primeval", "earth", (86, 56, 36), (34, 20, 12), (136, 98, 62), (255, 190, 90), "grass", (58, 146, 62), "roots", "plank"),
     # Mary-O's land: the ground blocks of an old platform game, in the pinks
     # of a magical girl, under mint icing.
-    Skin("starlight", "candy", (236, 150, 186), (158, 86, 140), (255, 206, 222), (255, 240, 170), "frosting", (176, 232, 208), "lip", "slab"),
+    Skin("starlight", "candy", (236, 150, 186), (158, 86, 140), (255, 206, 222), (255, 240, 170), "frosting", (176, 232, 208), "lip", "slab", brick="bond"),
     # The desert of Mary-O's second world: the same ground blocks in the
     # colours of sandstone, under a lip of pale sand.
-    Skin("stardune", "candy", (240, 186, 124), (172, 108, 78), (255, 226, 172), (255, 250, 214), "sand", (255, 236, 186), "lip", "slab"),
+    Skin("stardune", "candy", (240, 186, 124), (172, 108, 78), (255, 226, 172), (255, 250, 214), "sand", (255, 236, 186), "lip", "slab", brick="bond"),
     # Under Mary-O's land: the brick of an old game's underground, in the
     # violet of the dark, with a line of magenta light on its edge.
-    Skin("starless", "brick", (58, 46, 112), (17, 12, 40), (112, 96, 180), (255, 86, 170), "edge", (34, 26, 72), "spikes", "grate"),
+    Skin("starless", "brick", (58, 46, 112), (17, 12, 40), (112, 96, 180), (255, 86, 170), "edge", (34, 26, 72), "spikes", "grate", brick="bond"),
     # Mary-O's castle: cut stone the colour of a plum, with a line of gold on
     # its edge. It is not red: the fire in the pits is. The void has no part in the ground: a body stands on what is whole.
     # The void, in Mary-O's land: a body with no light in it, and one thin
     # white line on each edge, as the void enemies have. No colour.
     Skin("void", "void", (8, 8, 9), (3, 3, 4), (244, 244, 244), (255, 255, 255), "rim", (246, 246, 246), "rim", "rim"),
-    Skin("void_castle", "ruin", (104, 66, 116), (34, 18, 46), (170, 124, 176), (255, 206, 116), "edge", (138, 90, 146), "bolts", "slab"),
+    Skin("void_castle", "ruin", (104, 66, 116), (34, 18, 46), (170, 124, 176), (255, 206, 116), "edge", (138, 90, 146), "bolts", "slab", brick="bond"),
     # The Noodly Temple: noodles in a press, under marinara that runs down
     # the edge, with noodles that hang under each block.
     # The town of the Math dimension: pale limestone in courses, under a
@@ -660,6 +666,99 @@ def _brick_faces() -> list[tuple[float, float, float, float]]:
     return out
 
 
+#: The bond of a "bond" brick, in units of its 32-unit block: four courses,
+#: each brick twice as long as it is high, each course half a brick along
+#: from the one above. A brick that crosses the edge of the block goes on in
+#: the next block, so a row of bricks is one wall.
+_BOND_ROW = 8.0
+_BOND_UNIT = 16.0
+
+
+def _bond_bricks() -> list[tuple[float, float, float, float]]:
+    """(x0, y0, x1, y1) of each brick of the bond; x may pass the block edge."""
+    out = []
+    for row in range(4):
+        y0 = row * _BOND_ROW
+        shift = _BOND_UNIT * 0.5 if row % 2 else 0.0
+        for k in range(2):
+            x0 = shift + k * _BOND_UNIT
+            out.append((x0, y0, x0 + _BOND_UNIT, y0 + _BOND_ROW))
+    return out
+
+
+def _bond_brick(skin: Skin) -> Image.Image:
+    """Bricks in the material of the room's ground, a shade from it.
+
+    The ground of each Mary-O biome is a material (candy blocks, brick, cut
+    stone); a breakable brick is the same material cut as bricks: the same
+    corners, the same light from the top left, the same joints. What tells it
+    from the ground is its shape (bricks in a bond, not the ground's squares
+    or stones) and its shade. Nothing is drawn on one brick alone, so a row of
+    them repeats with nothing that stamps each block.
+    """
+    tile = Tile((32, 32), True, True, skin.key, "breakable_brick")
+    rng = tile.rng
+    bricks = _bond_bricks()
+    if skin.material == "candy":
+        # Round-cornered bricks a shade deeper than the ground blocks, lit and
+        # shaded as they are, with a glaze of light along the top.
+        face = _mix(skin.base, skin.dark, 0.24)
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        for x0, y0, x1, y1 in bricks:
+            tone = rng.uniform(-0.06, 0.06)
+            colour = _mix(face, skin.light if tone > 0 else skin.dark, abs(tone) * 1.4)
+
+            def rounded(p, dx, dy, ax, ay, bx, by, x0=x0, y0=y0):
+                p.rounded_rectangle(((x0 + ax) * K + dx, (y0 + ay) * K + dy, (x0 + bx) * K + dx, (y0 + by) * K + dy),
+                                    radius=2.2 * K, fill=255)
+
+            w, h = x1 - x0, y1 - y0
+            body = tile.mask(lambda p, dx, dy: rounded(p, dx, dy, 0.6, 0.6, w - 0.6, h - 0.6))
+            tile.put(body, colour)
+            lit = body * np.clip(1.0 - tile.mask(lambda p, dx, dy: rounded(p, dx, dy, 1.7, 1.7, w + 0.6, h + 0.6)), 0.0, 1.0)
+            tile.put(lit, skin.light, 0.7)
+            low = body * np.clip(1.0 - tile.mask(lambda p, dx, dy: rounded(p, dx, dy, -0.6, -0.6, w - 1.7, h - 1.7)), 0.0, 1.0)
+            tile.put(low, skin.dark, 0.6)
+            glaze = tile.mask(lambda p, dx, dy: rounded(p, dx, dy, 3.0, 2.2, w * 0.55, 3.1))
+            tile.put(glaze, (255, 255, 255), 0.35)
+        tile.tone((tile.noise(2, 2, 3) - 0.5) * 0.06)
+    elif skin.material == "ruin":
+        # Cut stone laid in a bond, the corners worn round as the ground's
+        # stones are, lighter than the ground; a little gold in the joints.
+        face = _mix(skin.base, skin.light, 0.3)
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        for x0, y0, x1, y1 in bricks:
+            tone = rng.uniform(-0.12, 0.10)
+            colour = _mix(face, skin.light if tone > 0 else skin.dark, abs(tone) * 1.5)
+            soft = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.7, y0 + 0.7, x1 - 0.7, y1 - 0.7), blur=0.8)
+            body = np.clip((soft - 0.5) * 6.0 + 0.5, 0.0, 1.0)
+            tile.put(body, colour)
+            inside = ((tile.y - y0) % 32.0 < (y1 - y0))
+            tile.put(body * inside * np.clip(1.0 - ((tile.y - y0) % 32.0) / 2.2, 0.0, 1.0), skin.light, 0.30)
+            tile.put(body * inside * np.clip(((tile.y - y0) % 32.0 - (y1 - y0 - 2.6)) / 2.6, 0.0, 1.0), skin.dark, 0.35)
+        joints = 1.0 - np.clip(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, a + 1.0, b + 1.0, c - 1.0, d - 1.0) for a, b, c, d in bricks], blur=0.6), 0.0, 1.0)
+        tile.put(joints, skin.accent, 0.18)
+        tile.tone((tile.noise(3, 3, 4) - 0.5) * 0.18)
+    else:
+        # Brick: raised bricks, lighter than the bricks of the ground, and a
+        # line of the room's light in the mortar.
+        face = _mix(skin.base, skin.light, 0.38)
+        lit = _mix(face, skin.light, 0.6)
+        shade = _mix(face, skin.dark, 0.6)
+        tile.put(np.ones_like(tile.alpha), _mix(skin.dark, (0, 0, 0), 0.3))
+        mortar = 1.0 - np.clip(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, a + 0.2, b + 0.2, c - 0.2, d - 0.2) for a, b, c, d in bricks]), 0.0, 1.0)
+        tile.put(mortar, skin.accent, 0.28)
+        for x0, y0, x1, y1 in bricks:
+            tone = rng.uniform(-0.08, 0.08)
+            colour = _mix(face, lit if tone > 0 else shade, abs(tone) * 1.4)
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.6, y0 + 0.6, x1 - 0.6, y1 - 0.6)), colour)
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.6, y0 + 0.6, x1 - 0.6, y0 + 1.6)), lit, 0.8)
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.6, y0 + 0.6, x0 + 1.4, y1 - 0.6)), lit, 0.45)
+            tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.6, y1 - 1.7, x1 - 0.6, y1 - 0.6)), shade, 0.85)
+        tile.tone((tile.noise(4, 4, 3) - 0.5) * 0.16)
+    return tile.publish()
+
+
 def breakable_brick(skin: Skin) -> Image.Image:
     """Draw one block of raised bricks in the room palette.
 
@@ -669,7 +768,11 @@ def breakable_brick(skin: Skin) -> Image.Image:
     through two bricks (the sign of a breakable wall in each dimension). In a
     dark room the faces are lighter than the ground and the accent colour
     glows in the crack. In a light room the faces are darker than the ground.
+
+    A skin whose `brick` is "bond" draws `_bond_brick` instead.
     """
+    if skin.brick == "bond":
+        return _bond_brick(skin)
     tile = Tile((32, 32), True, True, skin.key, "breakable_brick")
     dark_room = _luma(skin.base) < 110
     if dark_room:

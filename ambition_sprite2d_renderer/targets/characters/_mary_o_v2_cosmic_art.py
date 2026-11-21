@@ -30,10 +30,17 @@ from ._mary_o_v2_art import _draw_dead_front, _draw_side_pose, _side_pose_head_o
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Pose = M.Pose
-#: Pixels to the logical unit. Her other forms are drawn at 3 and published at
-#: two times that; this form is published as drawn, so its sheet is a quarter
-#: of the area, and its catalog row states her height.
-S = 3
+#: Pixels to the logical unit of her body, as each of her forms is drawn.
+S = M.SCALE
+#: Each of her sheets is published at two times its drawing (nearest), and so
+#: is this one: a sheet at half the pixels was magnified twice as far by the
+#: game's linear filter, and lost real pixels in the half quality tier.
+OUT = int(M.OUTPUT_RESOLUTION_SCALE)
+#: Published pixels to the logical unit. Her body is drawn at `S` and enlarged
+#: `OUT` times; what the form adds to it (wings, hair, ring, crown, the light of
+#: the transformation) is drawn at `P`, with outlines `OUT` pixels wide, so it
+#: has the weight of her body's lines and the edges of the published pixels.
+P = S * OUT
 
 #: Where the middle of her gameplay body is in her 24 by 32 frame, and where
 #: her feet are (`BODY_BOX_CENTER_X` and `collision_bottom_px` of the model).
@@ -54,15 +61,15 @@ class Stage:
 
     @property
     def frame_px(self) -> tuple[int, int]:
-        return (self.w * S, self.h * S)
+        return (self.w * P, self.h * P)
 
     @property
     def feet_px(self) -> tuple[float, float]:
-        return ((self.ox + BODY_CENTER_X) * S, (self.oy + FEET_Y) * S)
+        return ((self.ox + BODY_CENTER_X) * P, (self.oy + FEET_Y) * P)
 
     def body_box_px(self) -> dict:
         fx, fy = self.feet_px
-        return {"x": int(round(fx - BODY_W * S / 2.0)), "y": int(round(fy - BODY_H * S)), "w": int(round(BODY_W * S)), "h": int(round(BODY_H * S))}
+        return {"x": int(round(fx - BODY_W * P / 2.0)), "y": int(round(fy - BODY_H * P)), "w": int(round(BODY_W * P)), "h": int(round(BODY_H * P))}
 
 
 OUTLINE = (28, 22, 19, 255)
@@ -128,7 +135,7 @@ class Layer:
         self.image = Image.new("RGBA", stage.frame_px, (0, 0, 0, 0))
 
     def _pts(self, pts):
-        return [(int(round(x * S)), int(round(y * S))) for x, y in pts]
+        return [(int(round(x * P)), int(round(y * P))) for x, y in pts]
 
     def poly(self, pts, fill, outline=OUTLINE, gradient=None):
         mask = Image.new("L", self.image.size, 0)
@@ -142,19 +149,20 @@ class Layer:
             (ax, ay), (bx, by), stops = gradient
             paint = Image.new("RGBA", self.image.size)
             px = paint.load()
-            dx, dy = (bx - ax) * S, (by - ay) * S
+            dx, dy = (bx - ax) * P, (by - ay) * P
             d2 = dx * dx + dy * dy or 1.0
             for y in range(box[1], box[3]):
                 for x in range(box[0], box[2]):
-                    t = ((x - ax * S) * dx + (y - ay * S) * dy) / d2
+                    t = ((x - ax * P) * dx + (y - ay * P) * dy) / d2
                     # Steps, not a smooth ramp: her art is flat colours.
                     px[x, y] = ramp(stops, round(t * 6) / 6)
         self.image.paste(paint, (0, 0), mask)
         if outline is not None:
-            blending_draw(self.image).line(self._pts(pts) + self._pts(pts[:1]), fill=outline, width=1)
+            blending_draw(self.image).line(self._pts(pts) + self._pts(pts[:1]), fill=outline, width=OUT, joint="curve")
 
     def dot(self, x, y, colour):
-        blending_draw(self.image).point((int(x * S), int(y * S)), fill=colour)
+        x0, y0 = int(x * S) * OUT, int(y * S) * OUT
+        blending_draw(self.image).rectangle((x0, y0, x0 + OUT - 1, y0 + OUT - 1), fill=colour)
 
     def star(self, cx, cy, outer, inner, fill, outline=OUTLINE, turn=-90.0, points=5):
         n = points * 2
@@ -324,7 +332,9 @@ def figure_layers(stage: Stage, look: Look):
         wings(layer("near_wing"), OX + 7.0 + hdx, oy + 13.6 + hdy, look)
     if look.sweep is not None:
         ring(layer("sweep_back"), OX + 10.5, oy + 31.0 - look.sweep * 30.0, 9.0, 2.2, 0.0, front=False, colour=WHITE, stars=False, thick=0.7)
-    layer("body").image.alpha_composite(body, (int(round(OX * S)), int(round(oy * S))))
+    # On the grid of her drawn pixels, as her other sheets are.
+    body = body.resize((body.width * OUT, body.height * OUT), Image.NEAREST)
+    layer("body").image.alpha_composite(body, (int(round(OX * S)) * OUT, int(round(oy * S)) * OUT))
     if worn:
         ring(layer("ring_front"), head[0], head[1] - 0.6, 10.5, 3.0, -14.0, front=True, part=look.ring)
     if look.sweep is not None:
@@ -342,8 +352,8 @@ def figure(stage: Stage, look: Look):
     if look.light > 0.0:
         # A figure of light: each pixel of her above the line of the reveal.
         px = image.load()
-        line = (oy + 32.0 - look.reveal * 46.0) * S
-        top, bottom = (oy - 12.0) * S, (oy + 32.0) * S
+        line = (oy + 32.0 - look.reveal * 46.0) * P
+        top, bottom = (oy - 12.0) * P, (oy + 32.0) * P
         for y in range(image.height):
             if y >= line:
                 break
@@ -354,7 +364,7 @@ def figure(stage: Stage, look: Look):
                     px[x, y] = lerp((r, g, b, a), shade[:3] + (a,), look.light)
     if look.spin != 1.0:
         # A turn about her own middle: her picture, made narrow, and her other side.
-        cx = int(round((OX + BODY_CENTER_X) * S))
+        cx = int(round((OX + BODY_CENTER_X) * P))
         half = max(cx, image.width - cx)
         wide = Image.new("RGBA", (half * 2, image.height), (0, 0, 0, 0))
         wide.alpha_composite(image, (half - cx, 0))
