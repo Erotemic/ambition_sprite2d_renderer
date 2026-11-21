@@ -25,6 +25,8 @@ transforms; Godot-specific scene/resource structure is never part of this model.
 
 from __future__ import annotations
 
+from ambition_sprite2d_renderer.svg_affine import Matrix, matrix_mul, transform_matrix, length_to_reference_px
+
 from dataclasses import dataclass, field, replace
 import json
 import math
@@ -34,7 +36,6 @@ from typing import Any, Iterable, Mapping, Sequence
 import xml.etree.ElementTree as ET
 
 Point = tuple[float, float]
-Matrix = tuple[float, float, float, float, float, float]
 
 SVG_RIG_SCHEMA = "ambition-svg-rig-v1"
 MOTION_BINDING_SCHEMA = "ambition-character-motion-v1"
@@ -84,55 +85,6 @@ def _mul(point: Point, scale: float) -> Point:
     return (point[0] * scale, point[1] * scale)
 
 
-def _matrix_mul(left: Matrix, right: Matrix) -> Matrix:
-    a1, b1, c1, d1, e1, f1 = left
-    a2, b2, c2, d2, e2, f2 = right
-    return (
-        a1 * a2 + c1 * b2,
-        b1 * a2 + d1 * b2,
-        a1 * c2 + c1 * d2,
-        b1 * c2 + d1 * d2,
-        a1 * e2 + c1 * f2 + e1,
-        b1 * e2 + d1 * f2 + f1,
-    )
-
-
-def _transform_matrix(raw: str | None) -> Matrix:
-    current: Matrix = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
-    if not raw:
-        return current
-    for match in re.finditer(r"([A-Za-z]+)\s*\(([^)]*)\)", raw):
-        name = match.group(1).lower()
-        values = [float(v) for v in re.split(r"[\s,]+", match.group(2).strip()) if v]
-        if name == "matrix" and len(values) == 6:
-            op: Matrix = tuple(values)  # type: ignore[assignment]
-        elif name == "translate" and len(values) in {1, 2}:
-            op = (1.0, 0.0, 0.0, 1.0, values[0], values[1] if len(values) == 2 else 0.0)
-        elif name == "scale" and len(values) in {1, 2}:
-            sy = values[1] if len(values) == 2 else values[0]
-            op = (values[0], 0.0, 0.0, sy, 0.0, 0.0)
-        elif name == "rotate" and len(values) in {1, 3}:
-            angle = math.radians(values[0])
-            ca, sa = math.cos(angle), math.sin(angle)
-            rot: Matrix = (ca, sa, -sa, ca, 0.0, 0.0)
-            if len(values) == 3:
-                cx, cy = values[1], values[2]
-                op = _matrix_mul(
-                    _matrix_mul((1.0, 0.0, 0.0, 1.0, cx, cy), rot),
-                    (1.0, 0.0, 0.0, 1.0, -cx, -cy),
-                )
-            else:
-                op = rot
-        elif name == "skewx" and len(values) == 1:
-            op = (1.0, 0.0, math.tan(math.radians(values[0])), 1.0, 0.0, 0.0)
-        elif name == "skewy" and len(values) == 1:
-            op = (1.0, math.tan(math.radians(values[0])), 0.0, 1.0, 0.0, 0.0)
-        else:
-            raise ValueError(f"unsupported SVG transform component {match.group(0)!r}")
-        current = _matrix_mul(current, op)
-    return current
-
-
 def _ancestors(root: ET.Element, target: ET.Element) -> list[ET.Element]:
     parent_by_child = {child: parent for parent in root.iter() for child in parent}
     out: list[ET.Element] = []
@@ -148,8 +100,8 @@ def _element_matrix(root: ET.Element, elem: ET.Element) -> Matrix:
     for ancestor in reversed(_ancestors(root, elem)):
         if ancestor is root:
             continue
-        current = _matrix_mul(current, _transform_matrix(ancestor.get("transform")))
-    return _matrix_mul(current, _transform_matrix(elem.get("transform")))
+        current = matrix_mul(current, transform_matrix(ancestor.get("transform")))
+    return matrix_mul(current, transform_matrix(elem.get("transform")))
 
 
 def _apply_matrix(matrix: Matrix, point: Point) -> Point:
@@ -165,34 +117,6 @@ def _element_point_in_root(root: ET.Element, elem: ET.Element) -> Point:
     else:
         raise ValueError(f"SVG marker {elem.get('id')!r} has no point coordinates")
     return _apply_matrix(_element_matrix(root, elem), point)
-
-
-def _length_to_reference_px(raw: str | None, *, dpi: float) -> float | None:
-    if not raw:
-        return None
-    match = re.fullmatch(
-        r"\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))(?:[eE]([+-]?\d+))?\s*([A-Za-z%]*)\s*",
-        raw,
-    )
-    if not match:
-        return None
-    value = float(match.group(1))
-    if match.group(2):
-        value *= 10.0 ** int(match.group(2))
-    unit = match.group(3).lower()
-    if unit in {"", "px"}:
-        return value
-    if unit == "mm":
-        return value * dpi / 25.4
-    if unit == "cm":
-        return value * dpi / 2.54
-    if unit == "in":
-        return value * dpi
-    if unit == "pt":
-        return value * dpi / 72.0
-    if unit == "pc":
-        return value * dpi / 6.0
-    return None
 
 
 @dataclass(frozen=True)
@@ -218,8 +142,8 @@ def svg_reference_space(svg_path: str | Path, *, dpi: float = 96.0) -> SvgRefere
     if len(values) != 4:
         raise ValueError(f"{svg_path}: malformed root viewBox {raw!r}")
     vx, vy, vw, vh = values
-    width_px = _length_to_reference_px(root.get("width"), dpi=dpi)
-    height_px = _length_to_reference_px(root.get("height"), dpi=dpi)
+    width_px = length_to_reference_px(root.get("width"), dpi=dpi)
+    height_px = length_to_reference_px(root.get("height"), dpi=dpi)
     if width_px is None or height_px is None or vw == 0.0 or vh == 0.0:
         raise ValueError(f"{svg_path}: cannot map root SVG units to reference pixels")
     sx, sy = width_px / vw, height_px / vh
