@@ -2076,3 +2076,17 @@ lineages:
     ids: [village_ume]
     paths: ['townsfolk/village_ume\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
+  marshal_gallus:
+    name: Marshal Gallus
+    ids: [marshal_gallus, marshal_gallus_v1]
+    paths: ['marshal_gallus']
+    summary: "the Frontier's boss: from a robot rooster with a steam whistle to a rooster-headed lawman in a duster"
+    eras:
+      - commit: "8141b7c"
+        id: marshal_gallus_v1
+        label: "First draft: the robot rooster"
+        note: "A big rooster standing as a man: a boiler-plate chest, a steam whistle for a voice, exhaust pipes in the tail, a wide studded hat. Kept renderable as `marshal_gallus_v1`."
+      - commit: "015613c"
+        id: marshal_gallus
+        label: "Rocq: the duster and the poncho"
+        note: "Redrawn from Jon's second character sheet (2026-11-21): a stout man with a rooster's head in a riveted duster and red poncho, a brown hat with the comb out of its back, a plated machine arm. Current design."

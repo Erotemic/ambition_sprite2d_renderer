@@ -422,6 +422,22 @@ variants:
     source:
       kind: target
       name: fascist_enforcer
+  marshal_gallus.marshal_gallus_v1:
+    lineage: marshal_gallus
+    label: 'First draft: the robot rooster'
+    source:
+      kind: target
+      name: marshal_gallus_v1
+    reference:
+      commit: 8141b7c
+  marshal_gallus.marshal_gallus:
+    lineage: marshal_gallus
+    label: 'Rocq: the duster and the poncho'
+    source:
+      kind: target
+      name: marshal_gallus
+    reference:
+      commit: 015613c
   alice.toon_placeholder:
     lineage: alice
     label: Early toon placeholder, normalized
