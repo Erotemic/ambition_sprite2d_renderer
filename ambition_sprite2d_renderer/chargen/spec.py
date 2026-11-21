@@ -69,7 +69,7 @@ HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", 
         "campaign")
 #: ``obi``: the wide sash of a kimono, knotted at the back (``outfit.obi_knot``).
 ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders", "webbing", "dog_tags", "obi", "bow_tie")
-SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator", "finch")
+SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator", "finch", "rabbit", "bear", "ram", "owl")
 EAR_STYLES = ("default", "floppy", "pointed")
 #: A dog's coat marking, in its second colour (the hair colour): a dark
 #: ``mask`` over the muzzle and round the eyes, a white ``blaze`` up the middle
@@ -86,6 +86,9 @@ CRESTS = ("tuft", "swept", "fan", "none")
 #: An alligator's scutes down the back of the head and neck: the two rows
 #: beside the spine, four rows, or none.
 SCUTE_ROWS = ("two", "four", "none")
+#: A ram's horns: a ram's ``curl`` (back, down and forward round the ear), or a
+#: goat's ``swept`` (up and back in a scimitar arc).
+HORN_STYLES = ("curl", "swept")
 #: Face paint: ``geisha`` is white face paint (oshiroi) with red lips; on an
 #: animal, a pale painted face and red on the jaw line.
 MAKEUPS = ("none", "geisha")
@@ -243,6 +246,18 @@ class Head:
     #: Finch: a red patch round the beak and over the face (a goldfinch's, a
     #: house finch's), its strength; 0 for none.
     face_patch: float = 0.0
+    #: Rabbit: the ears lopped, 0 upright .. 1 hanging down beside the face.
+    ear_lop: float = 0.0
+    #: Ram: the horns' size, 1 as drawn; 0 for none (a polled head).
+    horns: float = 1.0
+    #: Ram: the horns' shape (``HORN_STYLES``).
+    horn_style: str = "curl"
+    #: Ram: a goat's beard under the chin, its length; 0 for none.
+    beard: float = 0.0
+    #: Owl: the feather tufts over the eyes (the "ears"), their length; 0 for none.
+    ear_tufts: float = 1.0
+    #: Owl: how strongly the facial disc's dark rim is drawn, 1 as drawn.
+    disc: float = 1.0
 
 
 @dataclass
@@ -390,6 +405,10 @@ SPECIES_KNOBS: Dict[str, Tuple[str, ...]] = {
     "sea_lion": ("whisker_pads", "whiskers"),
     "alligator": ("snout_width", "scute_rows"),
     "finch": ("beak_depth", "cap", "face_patch"),
+    "rabbit": ("ear_length", "ear_lop"),
+    "bear": ("ear_size",),
+    "ram": ("horns", "horn_style", "beard"),
+    "owl": ("ear_tufts", "disc"),
 }
 HEAD_KNOB_DEFAULTS: Dict[str, Any] = {f.name: f.default for f in fields(Head) if f.name not in ("species", "muzzle", "ears")}
 #: Fields added after the first records: a record writes one only when it is
@@ -466,6 +485,11 @@ BOUNDS: Dict[str, Tuple[float, float]] = {
     "head.beak_depth": (0.6, 1.6),
     "head.cap": (0.0, 1.0),
     "head.face_patch": (0.0, 1.0),
+    "head.ear_lop": (0.0, 1.0),
+    "head.horns": (0.0, 1.5),
+    "head.beard": (0.0, 1.5),
+    "head.ear_tufts": (0.0, 1.6),
+    "head.disc": (0.0, 1.5),
     "outfit.geta_height": (3.0, 16.0),
 }
 
@@ -491,6 +515,7 @@ CHOICES: Dict[str, Sequence[str]] = {
     "head.face_mark": FACE_MARKS,
     "head.crest": CRESTS,
     "head.scute_rows": SCUTE_ROWS,
+    "head.horn_style": HORN_STYLES,
     "face.makeup": MAKEUPS,
     "outfit.motif": MOTIFS,
     "outfit.obi_knot": OBI_KNOTS,
@@ -755,6 +780,21 @@ def _draw(base: Base, seed: int) -> CharacterSpec:
     patched = rng.random() < 0.4
     patch = _uniform(rng, 0.5, 1.0)
     head.face_patch = patch if patched else 0.0
+    # The rabbit, bear, ram and owl knobs (2026-11-21), after all the above.
+    lopped = rng.random() < 0.25
+    lop = _uniform(rng, 0.75, 1.0)
+    head.ear_lop = lop if lopped else 0.0
+    polled = rng.random() < 0.15
+    horns = _uniform(rng, 0.75, 1.3)
+    head.horns = 0.0 if polled else horns
+    head.horn_style = _pick(rng, {"curl": 3, "swept": 2})
+    bearded = rng.random() < 0.35
+    beard = _uniform(rng, 0.5, 1.2)
+    head.beard = beard if bearded else 0.0
+    tufted = rng.random() < 0.65
+    tufts = _uniform(rng, 0.7, 1.4)
+    head.ear_tufts = tufts if tufted else 0.0
+    head.disc = _uniform(rng, 0.6, 1.3)
     if outfit.outer == "robe":
         outfit.outer_length = "ankle"
         outfit.outer_open = False

@@ -26,9 +26,10 @@ from typing import Dict, List, Tuple
 from .family import family_of
 from .geometry import Loft, RingKey, gauss, smoothstep, wrap180
 
-SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator", "finch")
+SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator", "finch", "rabbit", "bear", "ram", "owl")
 #: A species' head height against a human's of the same build.
-HEAD_SCALE = {"human": 1.0, "horse": 1.16, "dog": 1.05, "cat": 0.98, "bird": 1.0, "pigeon": 0.94, "sea_lion": 1.02, "alligator": 0.64, "finch": 0.94}
+HEAD_SCALE = {"human": 1.0, "horse": 1.16, "dog": 1.05, "cat": 0.98, "bird": 1.0, "pigeon": 0.94, "sea_lion": 1.02, "alligator": 0.64, "finch": 0.94,
+              "rabbit": 1.0, "bear": 1.12, "ram": 1.08, "owl": 1.05}
 #: Coats: fur and feathers, by species.
 COATS: Dict[str, Tuple[str, ...]] = {
     "horse": ("#7a4a2c", "#5c3a24", "#a8672f", "#2e2622", "#8d8a86", "#c9a26a", "#e6dfd2", "#4a3528"),
@@ -43,6 +44,14 @@ COATS: Dict[str, Tuple[str, ...]] = {
     # A house finch's streaky brown, a goldfinch's yellow, a greenfinch's
     # olive, a zebra finch's grey, a bullfinch's rose, a chaffinch's chestnut.
     "finch": ("#8a6a50", "#e2bb32", "#7c8048", "#8c8c8e", "#c46a5a", "#9a5a3a", "#b8955e", "#6e6258"),
+    # Wild agouti, white, grey, black, fawn, cream, chocolate.
+    "rabbit": ("#b8916a", "#ece7de", "#8e8984", "#3a3432", "#c9a27a", "#dcc09a", "#6e5544", "#a08a74"),
+    # Brown, dark, black, cinnamon, honey, polar white.
+    "bear": ("#6a4a32", "#4a3628", "#2c2624", "#80583a", "#a47a50", "#eee8dc", "#5a4232", "#3a2e28"),
+    # Wool white, cream, a black face, a brown goat, tan, grey.
+    "ram": ("#ece4d2", "#ddd0b6", "#3a3230", "#8a6e52", "#b49a78", "#9a928a", "#c9bda8", "#6e6258"),
+    # Tawny, a barn owl's buff, grey, snowy white, dark brown.
+    "owl": ("#8a6a4a", "#c9a06a", "#9a9690", "#ece6da", "#6e5440", "#b88a56", "#7a7068", "#a88460"),
 }
 #: The alligator's albino coat: white to pale cream (its eyes are pink-red).
 ALBINO = "#efece3"
@@ -552,8 +561,157 @@ def _alligator(fig) -> HeadModel:
                      throat=True, neck_f=0.62, skull_keys=_rows(fig.fy, hh, skull))
 
 
+# ---- rabbit ---------------------------------------------------------------------------------
+
+
+def _rabbit(fig) -> HeadModel:
+    """A rounded head, a little taller than wide, with full cheeks and a
+    short soft muzzle: whisker pads either side of a small nose and a split
+    lip, buck teeth under it. Big dark eyes set out on the sides. Long ears
+    upright from the crown, or lopped down beside the face
+    (``head.ear_lop``)."""
+    hh = fig.hh
+    m = fig.spec.head.muzzle
+    rows = [
+        (0.00, 0.0, 0.0, 0.0, -0.04, 2.0),
+        (0.14, 0.33, 0.36, 0.40, -0.04, 2.0),
+        (0.30, 0.39, 0.42, 0.44, -0.03, 2.0),
+        (0.48, 0.41, 0.45 + 0.03 * m, 0.41, -0.01, 2.1),
+        (0.62, 0.41, 0.48 + 0.05 * m, 0.35, 0.0, 2.2),
+        (0.76, 0.34, 0.45 + 0.05 * m, 0.29, 0.01, 2.1),
+        (0.88, 0.24, 0.36, 0.23, 0.01, 2.0),
+        (1.00, 0.10, 0.26, 0.17, 0.01, 2.0),
+    ]
+    layout = {
+        "eye_f": 0.43, "brow_f": 0.35, "eye_alpha": 40.0, "eye_w": 0.15, "iris": 0.95, "nose_tip_f": 0.6, "mouth_f": 0.72,
+        "mouth_alpha": 11.0, "nose": "rabbit", "pupil": "round",
+    }
+
+    def relief(alpha: float, y: float) -> float:
+        f = (y - fig.crown) / hh
+        al = wrap180(alpha)
+        # The whisker pads, and the full cheeks behind them.
+        v = 0.035 * m * gauss(f, 0.66, 0.05) * (gauss(al, 13.0, 10.0) + gauss(al, -13.0, 10.0))
+        v += 0.03 * gauss(f, 0.64, 0.09) * (gauss(al, 64.0, 18.0) + gauss(al, -64.0, 18.0))
+        return hh * v
+
+    ears = "rabbit_lop" if fig.spec.head.ear_lop >= 0.5 else "rabbit"
+    return HeadModel("rabbit", _rows(fig.fy, hh, rows), [relief], layout, ears=ears, hair="tuft", muzzle_f=0.58, muzzle_alpha=58.0,
+                     neck_f=0.72)
+
+
+# ---- bear -----------------------------------------------------------------------------------
+
+
+def _bear(fig) -> HeadModel:
+    """A big, broad, round skull with small round ears high at its corners;
+    under a shallow stop a short deep muzzle in a lighter colour, a big dark
+    nose on its tip. Small eyes set close to the muzzle. Heavy cheeks."""
+    hh = fig.hh
+    m = fig.spec.head.muzzle
+    mz = 0.24 * m
+    rows = [
+        (0.00, 0.0, 0.0, 0.0, -0.05, 2.0),
+        (0.10, 0.34, 0.32, 0.38, -0.05, 2.0),
+        (0.22, 0.46, 0.42, 0.47, -0.04, 2.0),
+        (0.36, 0.50, 0.47, 0.48, -0.03, 2.1),
+        (0.46, 0.49, 0.50, 0.46, -0.02, 2.1),
+        # The muzzle steps out under the brow.
+        (0.52, 0.36, 0.50 + mz, 0.43, -0.02, 2.5),
+        (0.62, 0.34, 0.52 + mz, 0.39, -0.02, 2.6),
+        (0.70, 0.33, 0.50 + mz, 0.35, -0.02, 2.5),
+        (0.80, 0.29, 0.40 + 0.6 * mz, 0.31, -0.02, 2.3),
+        (0.90, 0.23, 0.32 + 0.3 * mz, 0.27, -0.02, 2.1),
+        (1.00, 0.11, 0.20, 0.20, -0.02, 2.0),
+    ]
+    layout = {
+        "eye_f": 0.4, "brow_f": 0.32, "eye_alpha": 30.0, "eye_w": 0.11, "iris": 0.92, "nose_tip_f": 0.55, "mouth_f": 0.71,
+        "mouth_alpha": 48.0, "nose": "dog", "pupil": "round",
+    }
+
+    def relief(alpha: float, y: float) -> float:
+        f = (y - fig.crown) / hh
+        al = wrap180(alpha)
+        v = 0.025 * gauss(f, 0.36, 0.04) * (gauss(al, 24.0, 13.0) + gauss(al, -24.0, 13.0))
+        # Heavy cheeks: the fur stands out at the sides of the jaw.
+        v += 0.05 * gauss(f, 0.62, 0.1) * (gauss(al, 74.0, 20.0) + gauss(al, -74.0, 20.0))
+        return hh * v
+
+    return HeadModel("bear", _rows(fig.fy, hh, rows), [relief], layout, ears="round", hair="tuft", muzzle_f=0.5, muzzle_alpha=62.0,
+                     neck_f=0.72)
+
+
+# ---- ram ------------------------------------------------------------------------------------
+
+
+def _ram(fig) -> HeadModel:
+    """A ram's (or a goat's) head: long and narrow, the face running down
+    from a flat poll over a gently Roman nose to a narrow muzzle; the eyes
+    set on the sides with horizontal pupils; ears held out sideways; horns
+    (``head.horns``, ``head.horn_style``) and a goat's beard (``head.beard``)
+    are drawn by ``headdraw``."""
+    hh = fig.hh
+    m = fig.spec.head.muzzle
+    rows = [
+        (0.00, 0.0, 0.0, 0.0, -0.06, 2.0),
+        (0.10, 0.27, 0.30, 0.32, -0.06, 2.0),
+        (0.24, 0.33, 0.36, 0.40, -0.05, 2.1),
+        (0.38, 0.33, 0.40 + 0.03 * m, 0.40, -0.01, 2.2),
+        (0.52, 0.30, 0.43 + 0.05 * m, 0.36, 0.03 * m, 2.3),
+        (0.66, 0.26, 0.45 + 0.07 * m, 0.28, 0.08 * m, 2.3),
+        (0.78, 0.23, 0.44 + 0.07 * m, 0.20, 0.13 * m, 2.3),
+        (0.90, 0.21, 0.38 + 0.06 * m, 0.17, 0.17 * m, 2.2),
+        (1.00, 0.15, 0.30 + 0.05 * m, 0.12, 0.18 * m, 2.1),
+    ]
+    layout = {
+        "eye_f": 0.36, "brow_f": 0.29, "eye_alpha": 48.0, "eye_w": 0.14, "iris": 0.95, "nose_tip_f": 0.86, "mouth_f": 0.95,
+        "mouth_alpha": 24.0, "nose": "ram", "pupil": "bar",
+    }
+
+    def relief(alpha: float, y: float) -> float:
+        f = (y - fig.crown) / hh
+        al = wrap180(alpha)
+        # The Roman nose: a ridge down the face.
+        v = 0.03 * m * gauss(f, 0.6, 0.12) * gauss(al, 0.0, 14.0)
+        v += 0.02 * gauss(f, 0.34, 0.05) * (gauss(al, 42.0, 14.0) + gauss(al, -42.0, 14.0))
+        return hh * v
+
+    return HeadModel("ram", _rows(fig.fy, hh, rows), [relief], layout, ears="ram", hair="tuft", muzzle_f=0.8, muzzle_alpha=40.0,
+                     neck_f=0.56)
+
+
+# ---- owl ------------------------------------------------------------------------------------
+
+
+def _owl(fig) -> HeadModel:
+    """A broad round head with a FLAT face: the facial disc (two rounded
+    dishes of pale feathers, rimmed dark, ``head.disc``) round big eyes that
+    look forward; a small hooked beak low between them; feather tufts over
+    the eyes (``head.ear_tufts``). No neck to speak of: the head sits on the
+    shoulders."""
+    hh = fig.hh
+    h = fig.spec.head
+    rows = [
+        (0.00, 0.0, 0.0, 0.0, -0.02, 2.0),
+        (0.12, 0.36, 0.30, 0.40, -0.04, 2.0),
+        (0.28, 0.46, 0.34, 0.47, -0.05, 2.2),
+        (0.45, 0.49, 0.36, 0.48, -0.05, 2.3),
+        (0.62, 0.47, 0.35, 0.45, -0.05, 2.3),
+        (0.78, 0.40, 0.33, 0.40, -0.04, 2.2),
+        (0.90, 0.33, 0.29, 0.35, -0.03, 2.0),
+        (1.00, 0.29, 0.27, 0.33, -0.03, 2.0),
+    ]
+    layout = {
+        "eye_f": 0.44, "brow_f": 0.33, "eye_alpha": 25.0, "eye_w": 0.18, "iris": 0.96, "nose_tip_f": 0.54, "mouth_f": 0.58,
+        "mouth_alpha": 0.0, "nose": "owl", "pupil": "round", "beak": 0.11 * h.muzzle, "beak_w": 0.55, "beak_h": 1.15,
+        "beak_col": "#d6c49a", "beak_droop": 0.06, "disc": h.disc,
+    }
+    ears = "tufts" if h.ear_tufts > 0.0 else "none"
+    return HeadModel("owl", _rows(fig.fy, hh, rows), [], layout, ears=ears, hair="none", neck_f=0.74)
+
+
 _BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird": _bird, "pigeon": _pigeon, "sea_lion": _sea_lion, "alligator": _alligator,
-             "finch": _finch}
+             "finch": _finch, "rabbit": _rabbit, "bear": _bear, "ram": _ram, "owl": _owl}
 
 
 def head_model(fig) -> HeadModel:
