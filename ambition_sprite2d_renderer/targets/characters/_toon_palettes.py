@@ -26,6 +26,14 @@ def rgba(value: str, alpha: int = 255) -> Color:
 
 
 PALETTES = {
+    "alice_toon_placeholder": {
+        "skin": rgba("#E5C5A6"), "skin_shadow": rgba("#B3936F"),
+        "hair": rgba("#1C1C24"), "hair_shine": rgba("#3A3A4A"),
+        "outfit": rgba("#1B5E6E"), "outfit_dark": rgba("#0F3A47"),
+        "accent": rgba("#F0EAD2"), "accent_dark": rgba("#A89C7A"),
+        "shoe": rgba("#1B1F22"), "outline": rgba("#10141A"),
+        "shadow": rgba("#000000", 40), "white": rgba("#F8F2E0"),
+    },
     "hero": {
         "skin": rgba("#F1C7A4"),
         "skin_shadow": rgba("#D09C77"),

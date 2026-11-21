@@ -1,0 +1,434 @@
+# Maintained render sources. References identify comparison art only.
+variants:
+  alice.alice:
+    lineage: alice
+    label: 'A rig: props, effects, faces are pieces'
+    source:
+      kind: target
+      name: alice
+    reference:
+      commit: d64c64d9a
+  alice.alice_v2:
+    lineage: alice
+    label: 'v2: chargen body, the old face, bag and letters'
+    source:
+      kind: target
+      name: alice_v2
+    reference:
+      commit: 0d2b365
+  player_robot.robot:
+    lineage: player_robot
+    label: v0, redrawn as rig pieces
+    source:
+      kind: target
+      name: robot
+    reference:
+      commit: d25dfd23a
+  player_robot.player_robot_fable:
+    lineage: player_robot
+    label: Fable 5's bone-and-keyframe candidate
+    source:
+      kind: target
+      name: player_robot_fable
+    reference:
+      commit: 2c69b7755
+  player_robot.player_robot_v2:
+    lineage: player_robot
+    label: 'v2: Keep the robot you used to be'
+    source:
+      kind: target
+      name: player_robot_v2
+    reference:
+      commit: 60d97631c
+  player_robot.player_robot_v3:
+    lineage: player_robot
+    label: v3, drawn from both sides
+    source:
+      kind: target
+      name: player_robot_v3
+    reference:
+      commit: 7726f1b52
+  mockingbird.mockingbird_boss:
+    lineage: mockingbird
+    label: Actor contract sidecars
+    source:
+      kind: target
+      name: mockingbird_boss
+    reference:
+      commit: bafa83591
+  mockingbird.mockingbird_boss_v2:
+    lineage: mockingbird
+    label: Hooded skull head
+    source:
+      kind: target
+      name: mockingbird_boss_v2
+    reference:
+      commit: ced13c003
+  gnu_ton_scholar_rig.gnu_ton_scholar_fighter:
+    lineage: gnu_ton_scholar_rig
+    label: An old, stern man in a full wig
+    source:
+      kind: target
+      name: gnu_ton_scholar_fighter
+    reference:
+      commit: ba9ce46
+  gnu_ton_scholar_rig.gnu_ton_scholar_villain:
+    lineage: gnu_ton_scholar_rig
+    label: Gnu Ton Scholar Villain
+    source:
+      kind: target
+      name: gnu_ton_scholar_villain
+  gnu_ton_scholar_rig.gnu_ton_scholar_boss:
+    lineage: gnu_ton_scholar_rig
+    label: Gnu Ton Scholar Boss
+    source:
+      kind: target
+      name: gnu_ton_scholar_boss
+  ninja_heavy.ninja_heavy:
+    lineage: ninja_heavy
+    label: The mountain of the dojo
+    source:
+      kind: target
+      name: ninja_heavy
+    reference:
+      commit: 19e7c0b
+  ninja_heavy.ninja_heavy_eye_band:
+    lineage: ninja_heavy
+    label: Ninja Bruiser
+    source:
+      kind: target
+      name: ninja_heavy_eye_band
+    reference:
+      commit: 1b56d04
+  ninja_heavy.ninja_heavy_bare_arms:
+    lineage: ninja_heavy
+    label: Ninja Wrestler
+    source:
+      kind: target
+      name: ninja_heavy_bare_arms
+    reference:
+      commit: 1b56d04
+  ninja_shadow_duelist.ninja_shadow_duelist:
+    lineage: ninja_shadow_duelist
+    label: The line of the dojo
+    source:
+      kind: target
+      name: ninja_shadow_duelist
+    reference:
+      commit: 22e5258
+  ninja_shadow_duelist.ninja_shadow_duelist_eye_band:
+    lineage: ninja_shadow_duelist
+    label: Ninja Swordsman
+    source:
+      kind: target
+      name: ninja_shadow_duelist_eye_band
+    reference:
+      commit: 1b56d04
+  ninja_shadow_duelist.ninja_shadow_duelist_blue_scarf:
+    lineage: ninja_shadow_duelist
+    label: Blue Scarf Duelist
+    source:
+      kind: target
+      name: ninja_shadow_duelist_blue_scarf
+    reference:
+      commit: 1b56d04
+  sentinel_bosses.gradient_sentinel_boss:
+    lineage: sentinel_bosses
+    label: Three sentinels
+    source:
+      kind: target
+      name: gradient_sentinel_boss
+    reference:
+      commit: 104ec30
+  sentinel_bosses.boss:
+    lineage: sentinel_bosses
+    label: Boss
+    source:
+      kind: target
+      name: boss
+  genghis_can.genghis_can:
+    lineage: genghis_can
+    label: The procedural conqueror
+    source:
+      kind: target
+      name: genghis_can
+    reference:
+      commit: 039a376
+  genghis_can.genghis_can_v2:
+    lineage: genghis_can
+    label: Steppe
+    source:
+      kind: target
+      name: genghis_can_v2
+    reference:
+      commit: 7e84e2b
+  genghis_cant.genghis_cant:
+    lineage: genghis_cant
+    label: The procedural conqueror
+    source:
+      kind: target
+      name: genghis_cant
+    reference:
+      commit: 039a376
+  genghis_cant.genghis_cant_v2:
+    lineage: genghis_cant
+    label: Steppe
+    source:
+      kind: target
+      name: genghis_cant_v2
+    reference:
+      commit: 7e84e2b
+  carl_runga.carl_runga:
+    lineage: carl_runga
+    label: The numerical operator
+    source:
+      kind: target
+      name: carl_runga
+    reference:
+      commit: 6b01ba0
+  carl_runga.carl_runga_v2:
+    lineage: carl_runga
+    label: The Goettingen professor
+    source:
+      kind: target
+      name: carl_runga_v2
+    reference:
+      commit: d0f486f
+  martin_cutta.martin_cutta:
+    lineage: martin_cutta
+    label: The numerical operator
+    source:
+      kind: target
+      name: martin_cutta
+    reference:
+      commit: 6b01ba0
+  martin_cutta.martin_cutta_v2:
+    lineage: martin_cutta
+    label: The coefficient clerk
+    source:
+      kind: target
+      name: martin_cutta_v2
+    reference:
+      commit: d0f486f
+  paul_diracula.paul_diracula:
+    lineage: paul_diracula
+    label: The procedural vampire
+    source:
+      kind: target
+      name: paul_diracula
+    reference:
+      commit: 039a376
+  paul_diracula.paul_diracula_v2:
+    lineage: paul_diracula
+    label: The Count
+    source:
+      kind: target
+      name: paul_diracula_v2
+    reference:
+      commit: b0e13f2
+  architect.architect:
+    lineage: architect
+    label: The toon architect
+    source:
+      kind: target
+      name: architect
+    reference:
+      commit: 2b15cc8
+  architect.architect_v2:
+    lineage: architect
+    label: The modernist
+    source:
+      kind: target
+      name: architect_v2
+    reference:
+      commit: 56aa282
+  vault_keeper.vault_keeper:
+    lineage: vault_keeper
+    label: The toon keeper
+    source:
+      kind: target
+      name: vault_keeper
+    reference:
+      commit: 2b15cc8
+  vault_keeper.vault_keeper_v2:
+    lineage: vault_keeper
+    label: The keeper of the vault
+    source:
+      kind: target
+      name: vault_keeper_v2
+    reference:
+      commit: 56aa282
+  merchant_prototype.merchant_prototype:
+    lineage: merchant_prototype
+    label: The toon merchant
+    source:
+      kind: target
+      name: merchant_prototype
+    reference:
+      commit: 2b15cc8
+  merchant_prototype.merchant_prototype_v2:
+    lineage: merchant_prototype
+    label: The travelling pedlar
+    source:
+      kind: target
+      name: merchant_prototype_v2
+    reference:
+      commit: 56aa282
+  general_hero.general_hero:
+    lineage: general_hero
+    label: The toon hero
+    source:
+      kind: target
+      name: general_hero
+    reference:
+      commit: 2b15cc8
+  general_hero.general_hero_v2:
+    lineage: general_hero
+    label: The knight who came back
+    source:
+      kind: target
+      name: general_hero_v2
+    reference:
+      commit: 56aa282
+  dividing_mite.dividing_mite:
+    lineage: dividing_mite
+    label: The replicator drone
+    source:
+      kind: target
+      name: dividing_mite
+    reference:
+      commit: a29ed41
+  dividing_mite.dividing_mite_v2:
+    lineage: dividing_mite
+    label: The twin-core cell
+    source:
+      kind: target
+      name: dividing_mite_v2
+    reference:
+      commit: eefba37
+  exploding_mite.exploding_mite:
+    lineage: exploding_mite
+    label: The volatile bomb drone
+    source:
+      kind: target
+      name: exploding_mite
+    reference:
+      commit: a29ed41
+  exploding_mite.exploding_mite_v2:
+    lineage: exploding_mite
+    label: The bomb
+    source:
+      kind: target
+      name: exploding_mite_v2
+    reference:
+      commit: eefba37
+  stochastic_parrot.stochastic_parrot:
+    lineage: stochastic_parrot
+    label: The first parrot
+    source:
+      kind: target
+      name: stochastic_parrot
+    reference:
+      commit: 8f5f2f3dce
+  stochastic_parrot.stochastic_parrot_v2:
+    lineage: stochastic_parrot
+    label: 'v2: the SVG-rigged macaw'
+    source:
+      kind: target
+      name: stochastic_parrot_v2
+    reference:
+      commit: f0ada62
+  mary_o.super_mary_o:
+    lineage: mary_o
+    label: Super Mary-O
+    source:
+      kind: target
+      name: super_mary_o
+    reference:
+      commit: 7f901c3f8a
+  mary_o.mary_o_v2:
+    lineage: mary_o
+    label: 'v2: drawn by Jon by hand'
+    source:
+      kind: target
+      name: mary_o_v2
+    reference:
+      commit: dc09e88d89
+  mary_o.super_mary_o_tall:
+    lineage: mary_o
+    label: Super Mary O Tall
+    source:
+      kind: target
+      name: super_mary_o_tall
+  mary_o.mary_o_v2_tall:
+    lineage: mary_o
+    label: Mary O V2 Tall
+    source:
+      kind: target
+      name: mary_o_v2_tall
+  mary_o.super_mary_o_fire:
+    lineage: mary_o
+    label: Super Mary O Fire
+    source:
+      kind: target
+      name: super_mary_o_fire
+  mary_o.mary_o_v2_fire:
+    lineage: mary_o
+    label: Mary O V2 Fire
+    source:
+      kind: target
+      name: mary_o_v2_fire
+  mary_o.mary_o_v2_cosmic:
+    lineage: mary_o
+    label: Mary O V2 Cosmic
+    source:
+      kind: target
+      name: mary_o_v2_cosmic
+  sanic.sanic:
+    lineage: sanic
+    label: The MS Paint meme, as SVG parts
+    source:
+      kind: target
+      name: sanic
+    reference:
+      commit: 218b2d6
+  sanic.super_sanic:
+    lineage: sanic
+    label: Super Sanic
+    source:
+      kind: target
+      name: super_sanic
+  wolfenstein.wolfenstein:
+    lineage: wolfenstein
+    label: Wolfenstein
+    source:
+      kind: target
+      name: wolfenstein
+  wolfenstein.wolfenstein_inugami:
+    lineage: wolfenstein
+    label: Wolfenstein Inugami
+    source:
+      kind: target
+      name: wolfenstein_inugami
+  raid_enforcer.raid_enforcer:
+    lineage: raid_enforcer
+    label: Raid Enforcer
+    source:
+      kind: target
+      name: raid_enforcer
+  raid_enforcer.fascist_enforcer:
+    lineage: raid_enforcer
+    label: Fascist Enforcer
+    source:
+      kind: target
+      name: fascist_enforcer
+  alice.toon_placeholder:
+    lineage: alice
+    label: Early toon placeholder, normalized
+    source:
+      kind: config
+      path: data/lineage_variants/alice_toon_placeholder.yaml
+    reference:
+      commit: 5d206dc8bd74caa30fb6e3ec15b0ff3b49a533a4
+    review: Normalized with the current toon framework. Compare with the archived
+      appearance before selecting it for the game.

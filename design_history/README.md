@@ -3,6 +3,19 @@
 A viewing aid: **how each character looked over time, and which model drew each
 look.** It makes progression sheets such as "Alice, May to October".
 
+## Maintained sources are the normal render path
+
+Use `scripts/regen/lineages.sh --all` from the superproject to render maintained
+variants through the current authoring framework. Its recipe catalog is
+`ambition_sprite2d_renderer/data/lineage_variants.yaml`. It needs no Git history
+or archive. This package supplies reference images and provenance for research;
+it does not define the reproducible source of a maintained variant.
+
+Import important old appearance values, SVGs, or rig data into current authoring
+formats. Share current renderers and posing code. Do not keep a full retired
+renderer for each era. Reference commits can stay as metadata without being
+runtime inputs. See the [current workflow](../../../docs/tools/generated-visual-tools.md#maintained-character-lineage-variants).
+
 ## Why this is walled off
 
 An old design is not an authority. A retired drawing that sits in the tree
@@ -151,13 +164,13 @@ Some commits do not render (an old command is missing, or the tree is broken at
 that point). Those are skipped and cached as failures, so they cost nothing the
 second time.
 
-## Prepare recorded looks on a new machine
+## Prepare archive reference images
 
 From the superproject, after the normal developer setup:
 
 ```bash
-./scripts/regen/lineages.sh --plan --json
-./scripts/regen/lineages.sh --all --jobs 2
+./scripts/regen/lineages.sh --archive-reference --plan --json
+./scripts/regen/lineages.sh --archive-reference --all --jobs 2
 python3 scripts/asset_inspector.py build
 ```
 
@@ -171,9 +184,9 @@ The inspector build then copies the available stills into its offline index.
 A run can be restricted and resumed:
 
 ```bash
-./scripts/regen/lineages.sh alice bob --jobs 2
-./scripts/regen/lineages.sh --all --offline --curated-only
-./scripts/regen/lineages.sh alice --retry-failed
+./scripts/regen/lineages.sh --archive-reference alice bob --jobs 2
+./scripts/regen/lineages.sh --archive-reference --all --offline --curated-only
+./scripts/regen/lineages.sh --archive-reference alice --retry-failed
 ```
 
 Without the superproject wrapper, run `python -m design_history prepare` in

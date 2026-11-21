@@ -1,0 +1,49 @@
+target: toon
+name: Alice, early toon look
+output_name: alice_toon_placeholder
+seed: 525
+archetype: alice
+spec:
+  name: Alice
+  role: npc
+  palette_name: alice_toon_placeholder
+  body_plan: hero
+  outfit: tabard
+  hair_style: chignon
+  prop: cipher_scroll
+  accessory: scarf
+  head_w: 24.5
+  head_h: 28.5
+  chin_h: 6.2
+  neck_h: 4.0
+  shoulder_w: 24.0
+  torso_w: 20.5
+  torso_h: 28.0
+  hip_w: 19.0
+  arm_upper: 13.5
+  arm_lower: 13.0
+  arm_radius: 2.6
+  leg_upper: 17.5
+  leg_lower: 16.5
+  leg_radius: 2.8
+  hand_r: 3.0
+  foot_w: 11.5
+  foot_h: 4.5
+  coat_len: 10.0
+  cape_len: 0.0
+  hair_volume: 5.5
+  nose_len: 2.8
+  satchel_size: 0.0
+  feminine_coded: false
+animations:
+- idle
+- walk
+- talk
+- interact
+render:
+  frame_width: 128
+  frame_height: 128
+  single_width: 160
+  single_height: 160
+  supersample: 4
+  background: transparent
