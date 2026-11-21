@@ -9,8 +9,8 @@ and 872, each 48 wide); a closet's floor (y 256).
 - `math_ballroom_room`: a ballroom made a game-show stage: red curtains
   drawn back, a proscenium of gold, footlights, a number lit over each door,
   the audience's empty chairs at the front, a scoreboard of probabilities.
-- `math_goat`: a goat, standing, unimpressed.
-- `math_car`: a red convertible with a bow on it.
+- `math_goat`: a goat, standing, unimpressed (the actor `math_show_goat` at rest).
+- `math_car`: a red convertible with a bow on it (the actor `math_show_car` at rest).
 - `math_closet_curtain`: the velvet curtain of a closet, floor to ceiling
   (x 160 to its east wall). It is the look of a `LockWall` that the host
   opens; the goat and the car are the looks of the walls behind it.
@@ -102,34 +102,17 @@ def ballroom(c, k):
 
 
 def goat(c, k):
-    g = 80
-    body = c.mask(lambda p: (p.ellipse(44, g - 38, 28, 16), p.rect(22, g - 30, 26, g), p.rect(30, g - 30, 34, g), p.rect(56, g - 30, 60, g), p.rect(64, g - 30, 68, g)))
-    c.put(body, (220, 214, 200))
-    c.tone(body * np.clip((c.y - (g - 54)) / 40, 0, 1), -0.2)
-    head = c.mask(lambda p: (p.poly([(66, g - 46), (76, g - 64), (90, g - 52), (86, g - 44), (74, g - 40)]), p.ellipse(88, g - 47, 4, 4)))
-    c.put(head, (226, 220, 206))
-    c.put(c.mask(lambda p: (p.line([(74, g - 62), (68, g - 74), (62, g - 70)], 2.4), p.line([(78, g - 63), (76, g - 76), (70, g - 74)], 2.4))), (150, 130, 100))
-    c.put(c.mask(lambda p: p.line([(84, g - 42), (84, g - 34)], 2.2)), (200, 194, 180))
-    c.put(c.mask(lambda p: p.rect(78, g - 57, 83, g - 55)), (40, 30, 20))
-    c.put(c.mask(lambda p: p.line([(16, g - 42), (10, g - 50)], 3)), (200, 194, 180))
-    c.put(c.mask(lambda p: [p.rect(x - 0.5, g - 3, x + 4.5, g) for x in (22, 30, 56, 64)]), (60, 50, 40))
+    # The actor at rest (`targets/characters/math_show_prizes.py`).
+    from ..characters.math_show_prizes import goat_at_rest
+
+    # Lifted by the ink's width, so the outline stays in the frame.
+    goat_at_rest(c, 79.2)
 
 
 def car(c, k):
-    g = 90
-    red = (196, 40, 44)
-    body = c.mask(lambda p: p.poly([(10, g - 18), (14, g - 40), (60, g - 44), (90, g - 66), (130, g - 66), (150, g - 44), (192, g - 40), (196, g - 18)]))
-    c.put(body, red)
-    c.tone(body * np.clip((c.y - (g - 66)) / 48, 0, 1), -0.25)
-    c.put(c.mask(lambda p: p.poly([(96, g - 64), (126, g - 64), (138, g - 46), (92, g - 46)])), (170, 210, 230), 0.8)
-    c.put(c.mask(box(14, g - 42, 196, g - 39)), (240, 230, 220))
-    for x in (46, 160):
-        c.put(c.mask(lambda p: p.ellipse(x, g - 14, 16)), (30, 30, 34))
-        c.put(c.mask(lambda p: p.ellipse(x, g - 14, 7)), (200, 200, 210))
-    # The bow on top.
-    bx, by = 112, g - 72
-    c.put(c.mask(lambda p: (p.poly([(bx, by), (bx - 22, by - 12), (bx - 20, by + 10)]), p.poly([(bx, by), (bx + 22, by - 12), (bx + 20, by + 10)]), p.ellipse(bx, by, 5))), GOLD)
-    c.put(c.mask(lambda p: (p.line([(bx, by), (bx - 8, by + 22)], 2), p.line([(bx, by), (bx + 10, by + 22)], 2))), GOLD)
+    from ..characters.math_show_prizes import car_at_rest
+
+    car_at_rest(c, 89.2)
 
 
 def closet_curtain(c, k):
