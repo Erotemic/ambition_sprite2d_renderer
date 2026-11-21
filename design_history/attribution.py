@@ -53,8 +53,10 @@ class Attribution:
 
     def label(self) -> str:
         if self.models:
-            how = "no trailer" if self.basis == "unsigned" else self.basis
-            return ", ".join(self.models) + ("" if self.basis == "measured" else f" ({how})")
+            how = "inferred, no trailer" if self.basis == "unsigned" else self.basis
+            if "version from the date" in self.note:
+                how += ", version inferred from date"
+            return ", ".join(self.models) + ("" if self.basis == "measured" and "version from the date" not in self.note else f" ({how})")
         return self.note or self.basis
 
 

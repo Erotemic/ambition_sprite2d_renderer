@@ -7,6 +7,7 @@ import dataclasses
 import json
 import os
 import sys
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -52,7 +53,7 @@ def cmd_fetch(args) -> int:
         active_ambition=root if (root / ".git").exists() else None,
         active_renderer=HERE.parent if (HERE.parent / ".git").exists() else None,
     )
-    print(f"history store ready: {store}")
+    print(f"history store ready: {store}", file=sys.stderr)
     return 0
 
 
@@ -176,6 +177,44 @@ def cmd_build(args) -> int:
         if not args.keep_worktrees:
             worktrees.remove()
     return 0
+
+
+def cmd_prepare(args) -> int:
+    from . import prepare as preparation
+
+    if args.timeout < 1:
+        raise SystemExit('--timeout must be positive')
+    lineages = load_lineages()
+    names = list(lineages) if args.all or not args.lineage else args.lineage
+    unknown = set(names) - lineages.keys()
+    if unknown:
+        raise SystemExit('Unknown lineages: ' + ', '.join(sorted(unknown)))
+    store, cache, _ = _context(args)
+    fetch_error = None
+    if not args.plan and not args.offline:
+        try:
+            cmd_fetch(args)
+        except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+            fetch_error = str(error)
+            print('History fetch failed: ' + fetch_error, file=sys.stderr)
+    rows = preparation.plan(lineages, variations_mod.load(), names, store, cache, curated_only=args.curated_only)
+    if not args.plan:
+        rows = preparation.prepare(rows, python=_python(args), store=store, cache=cache,
+                                   jobs=args.jobs, retry=args.retry_failed, timeout=args.timeout)
+    result = preparation.report(rows, store=store, cache=cache, python=_python(args))
+    result['render_timeout_seconds'] = args.timeout
+    if fetch_error:
+        result['fetch_error'] = fetch_error
+    if not args.plan or args.report:
+        path = Path(args.report) if args.report else cache / 'prepared.json'
+        preparation.write_report(path, result)
+        print(f'Lineage report: {path}', file=sys.stderr)
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        print('Recorded looks: ' + ', '.join(f'{count} {state}' for state, count in result['summary'].items()))
+        print(result['scope'])
+    return 0 if args.plan or all(row['state'] == 'ready' for row in rows) else 1
 
 
 def cmd_list(args) -> int:
@@ -303,6 +342,18 @@ def main(argv=None) -> int:
     p.add_argument("--all", action="store_true")
     p.add_argument("--per-row", type=int, default=6, help="tiles per row unless a lineage sets per_row")
     p.set_defaults(fn=cmd_build)
+    p = sub.add_parser("prepare", help="prepare cached stills for recorded milestones and variations")
+    p.add_argument("lineage", nargs="*", help="lineage names; default: all lineages")
+    p.add_argument("--all", action="store_true")
+    p.add_argument("--plan", action="store_true", help="report cache and source availability without fetching or rendering")
+    p.add_argument("--offline", action="store_true", help="use the existing history store without fetching")
+    p.add_argument("--curated-only", action="store_true", help="prepare milestones only, without recorded variations")
+    p.add_argument("--retry-failed", action="store_true", help="retry failures for the selected recipes")
+    p.add_argument("--jobs", type=int, choices=range(1, 7), default=2, help="render workers (1 to 6; default: 2)")
+    p.add_argument("--timeout", type=int, default=120, help="seconds per historical renderer command (default: 120)")
+    p.add_argument("--report", help="JSON report path; default after rendering: <cache>/prepared.json")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(fn=cmd_prepare)
     p = sub.add_parser("character", help="a character's lineage, eras and authorship (a catalog id, target or lineage)")
     p.add_argument("name")
     p.add_argument("--json", action="store_true")

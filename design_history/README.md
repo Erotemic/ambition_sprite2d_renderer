@@ -51,7 +51,7 @@ defaults to a sibling `ambition-history` checkout, else a cache directory
 | `unknown` | nothing says |
 
 A model named without its version ("Codex", "Claude Code", Jon's rule's
-"GPT") takes the newest version of its family on the commit's date
+"GPT") is inferred as the newest version of its family on the commit's date
 (`models.py`): the newest version that a ledger row or trailer signs with,
 dated by the first commit that names it. Before the first known version it
 is "GPT before 5.5".
@@ -60,8 +60,11 @@ Jon's rule: a commit that no model signed is likely GPT's. Claude Code adds a
 `Co-Authored-By` trailer and GPT mostly does not. The ledger agrees: of its
 measured commits, 42 of 908 Claude-only commits have no trailer, and 10 of 11
 GPT-only commits have none. Jon's own hand commits (a pointer bump, a format
-run) look the same; the basis says `unsigned` and the share is named
-`GPT-5.6 (no trailer)`, with the version of its date.
+run) look the same; the basis says `unsigned` and the share is marked as inferred, for example
+`GPT-5.6 (inferred, no trailer, version inferred from date)`, with the version of its date.
+
+A date-selected version is an inference, not a measured model version. A
+message mention can describe a plan rather than the author.
 
 A commit is evidence about a *session*, not proof that one model drew every
 pixel, and an era's commit may be a polish over earlier art. The basis is shown
@@ -147,6 +150,74 @@ helper that many characters share; name the helper in `paths` or `--sweep`.
 Some commits do not render (an old command is missing, or the tree is broken at
 that point). Those are skipped and cached as failures, so they cost nothing the
 second time.
+
+## Prepare recorded looks on a new machine
+
+From the superproject, after the normal developer setup:
+
+```bash
+./scripts/regen/lineages.sh --plan --json
+./scripts/regen/lineages.sh --all --jobs 2
+python3 scripts/asset_inspector.py build
+```
+
+The first command reads the current recipes and reports cache coverage. It does
+not fetch or render. The second fetches historical refs when needed and updates
+active refs from the local checkouts. It prepares each recorded milestone and
+variation with that revision's renderer. It does not run a new survey, change
+`lineages.yaml` or `variations.yaml`, or choose which looks the game will ship.
+The inspector build then copies the available stills into its offline index.
+
+A run can be restricted and resumed:
+
+```bash
+./scripts/regen/lineages.sh alice bob --jobs 2
+./scripts/regen/lineages.sh --all --offline --curated-only
+./scripts/regen/lineages.sh alice --retry-failed
+```
+
+Without the superproject wrapper, run `python -m design_history prepare` in
+this directory. Set `AMBITION_HISTORY_STORE` for the source store and
+`AMBITION_DESIGN_HISTORY_CACHE` for the image cache. Use the tool's Python
+override for a different rendering environment. The default is two workers;
+one to six are supported. Each historical command has a 120-second limit;
+use `--timeout SECONDS` for a known slower renderer. Historical scratch checkouts remain outside the
+working source tree and are removed after the run.
+
+The report is `<cache>/prepared.json`, or `--report PATH`. It records the full
+source revision, target aliases in their trial order, frame/file pick, image
+path, pixel hash, recorded reference hashes, and Python package versions.
+Each recipe is counted once even when several lineages refer to it.
+
+- `ready`: the still is available and matches the recorded hash when one exists.
+- `different`: the still was made, but its pixels differ from the recorded hash.
+  Review the image and environment before accepting it.
+- `failed`: rendering failed, or a previous failure was kept. Read its failure
+  text. Use `--retry-failed` after fixing the cause; successful images are kept.
+- `missing-source`: the source revision or renderer layout could not be found.
+  Fetch the history store before retrying.
+- A plan also reports `cached` and `missing` without decoding or drawing images.
+
+A rendering run returns nonzero if any requested recipe is unresolved, failed,
+or different. Other recipes still complete. Per-recipe caches allow a later run
+to resume. Progress goes to stderr; `--json` leaves stdout as one JSON report.
+A plan returns zero because missing products are useful plan results.
+
+Historical code uses the selected Python environment. A new dependency version
+can change pixels or break an old renderer. The report exposes this; the command
+does not claim that current packages recreate every old environment exactly.
+A family that produces several canonicals needs an explicit `pick` on its
+recorded era, such as `file:<name>` or `frame:idle@<sheet>`. Select the image
+after visual review. The tool does not guess a character from a family.
+Model attribution is not an input to these render recipes.
+
+These outputs are review stills, not animation sheets or runtime skins. The
+[character generations plan](../../../docs/planning/game/character-generations.md)
+owns visual-era review, selection, and runtime publication. It allows normalized
+generators for old looks and does not require copying retired code into the
+active renderer. A runtime skin must use the normal publication boundary and
+must not change the character's mechanics. Do not package every recorded Git
+revision as a playable skin.
 
 ## Curated lineages
 

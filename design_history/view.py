@@ -10,7 +10,7 @@ from pathlib import Path
 from .attribution import attribute, curated
 from .authorship import Blamer, era_generator
 from .characters import era_ids, lineage_targets
-from .stills import cached_still
+from .stills import cached_still, cache_state
 from .store import commit_info, git
 
 
@@ -59,6 +59,7 @@ def lineage_view(
             if cache is not None:
                 still = cached_still(cache, sha, row["ids"], era.get("pick", spec.get("pick")))
                 row["still"] = str(still) if still else None
+                row["render"] = cache_state(cache, sha, row["ids"], era.get("pick", spec.get("pick")))
         eras.append(row)
     return {
         "lineage": name,

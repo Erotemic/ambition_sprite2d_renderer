@@ -64,7 +64,7 @@ class Worktrees:
             if not (path / ".git").exists():
                 path.parent.mkdir(parents=True, exist_ok=True)
                 git(self.store, "worktree", "prune")
-                git(self.store, "worktree", "add", "--detach", "--no-checkout", "-f", str(path), seg.ref)
+                git(self.store, "worktree", "add", "--detach", "--no-checkout", "-f", str(path), sha)
                 if seg.prefix:
                     git(path, "sparse-checkout", "init", "--cone")
                     git(path, "sparse-checkout", "set", seg.prefix.rstrip("/"))
@@ -105,7 +105,8 @@ def package_of(root: Path) -> str | None:
     return next((name for name in PACKAGES if (root / name).is_dir()), None)
 
 
-def _run(python: str, root: Path, args: list[str], timeout: int = 600, *, module: bool = True):
+def _run(python: str, root: Path, args: list[str], timeout: int | None = None, *, module: bool = True):
+    timeout = timeout or int(os.environ.get("AMBITION_DESIGN_HISTORY_RENDER_TIMEOUT", "600"))
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONPATH="")
     return subprocess.run(
         [python, *(["-m", package_of(root)] if module else []), *args],
@@ -120,6 +121,7 @@ def _imports_this_tree(python: str, root: Path) -> bool:
     out = subprocess.run(
         [python, "-c", f"import {package_of(root)} as a; print(a.__file__)"],
         cwd=root, env=env, capture_output=True, text=True,
+        timeout=int(os.environ.get("AMBITION_DESIGN_HISTORY_RENDER_TIMEOUT", "600")),
     ).stdout.strip()
     return bool(out) and Path(out).resolve().is_relative_to(root.resolve())
 
@@ -251,7 +253,59 @@ def _tail(result) -> str:
     return (lines[-1] if lines else "no output")[:140]
 
 
-RUNGS = (_rung_canonical, _rung_config, _rung_render)
+_MODULE = r"""
+import importlib, inspect, sys
+from pathlib import Path
+module, out = importlib.import_module(sys.argv[1]), Path(sys.argv[2])
+out.mkdir(parents=True, exist_ok=True)
+if sys.argv[3] == 'all' and callable(getattr(module, 'render', None)):
+    module.render(out)
+elif callable(getattr(module, 'render_canonical', None)):
+    module.render_canonical(out)
+elif callable(getattr(module, 'canonical_preview', None)):
+    module.canonical_preview().save(out / 'historical_canonical.png')
+elif callable(getattr(module, 'render', None)):
+    variant = inspect.signature(module.render).parameters.get('variant')
+    if variant is not None and variant.default == 'all':
+        print('Multiple historical variants; select a file or frame pick explicitly', file=sys.stderr)
+        sys.exit(6)
+    module.render(out)
+elif callable(getattr(module, 'main', None)):
+    sys.argv = [module.__file__, '--out-dir', str(out)]
+    module.main()
+else:
+    raise RuntimeError('This historical module has no supported render entry point')
+"""
+
+
+def _rung_module(python: str, root: Path, target_id: str, out: Path, *, all_outputs=False) -> str:
+    """Call a historical target's own public render hook when its CLI omits it."""
+    package = package_of(root)
+    paths = sorted((root / package / 'targets').rglob(target_id + '.py'), key=lambda path: len(path.parts))
+    if not paths:
+        return 'No historical target module named ' + target_id
+    notes = []
+    for path in paths:
+        module = '.'.join(path.relative_to(root).with_suffix('').parts)
+        destination = out / target_id
+        result = _run(python, root, ['-c', _MODULE, module, str(destination), 'all' if all_outputs else 'single'], module=False)
+        if all_outputs and any(path.is_file() for path in destination.rglob('*')):
+            return ''
+        if result.returncode == 6:
+            return 'Multiple historical variants; select a file or frame pick explicitly'
+        images = sorted(destination.rglob('*.png'))
+        canonical = [image for image in images if 'canonical' in image.stem]
+        exact = [image for image in canonical if image.stem.startswith(target_id)]
+        transparent = [image for image in (exact or canonical) if 'transparent' in image.stem]
+        found = transparent or exact or canonical
+        if len(found) == 1:
+            shutil.copyfile(found[0], out / (target_id + '_canonical.png'))
+            return ''
+        notes.append((_tail(result) or 'No canonical image was produced') if not found else 'Multiple historical canonicals; select a file pick explicitly')
+    return '; '.join(notes)
+
+
+RUNGS = (_rung_module, _rung_canonical, _rung_config, _rung_render)
 
 
 def _outputs_of(python: str, root: Path, target_id: str, out: Path) -> str:
@@ -260,8 +314,11 @@ def _outputs_of(python: str, root: Path, target_id: str, out: Path) -> str:
     A batched target may exit non-zero after writing its files (a missing
     canonical hook), so the exit code is not trusted: the caller looks for the
     file it wants."""
+    failure = _rung_module(python, root, target_id, out, all_outputs=True)
+    if not failure:
+        return ""
     result = _run(python, root, ["canonical", target_id, "--out-dir", str(out)])
-    if any(out.iterdir()):
+    if any(path.is_file() for path in out.rglob("*")):
         return ""
     result = _run(python, root, ["render", target_id])
     generated = root / "generated" / target_id
@@ -282,8 +339,12 @@ def _first_frame(out: Path, sheet: str, animation: str) -> Path | None:
     from PIL import Image
 
     _allow_large_images()
-    png, ron = out / f"{sheet}_spritesheet.png", out / f"{sheet}_spritesheet.ron"
-    if not (png.exists() and ron.exists()):
+    matches = list(out.rglob(f"{sheet}_spritesheet.png"))
+    if len(matches) != 1:
+        return None
+    png = matches[0]
+    ron = png.with_suffix(".ron")
+    if not ron.exists():
         return None
     text = ron.read_text(encoding="utf-8", errors="replace")
     row = re.search(rf'animation:\s*"{re.escape(animation)}"(.*?)(?=animation:\s*"|\Z)', text, re.S)
@@ -395,6 +456,8 @@ def render_still(
                 return png, target_id, ""
             shutil.rmtree(out, ignore_errors=True)
             notes.append(f"{target_id}/{rung.__name__[6:]}: {failure}")
+            if failure.startswith("Multiple historical variants"):
+                return None, target_id, "; ".join(notes)
     return None, None, "; ".join(notes)
 
 
@@ -413,6 +476,14 @@ def cached_still(cache: Path, sha: str, target_ids: list[str], pick: str | None 
     return hit if hit.is_file() else None
 
 
+
+def cache_state(cache: Path, sha: str, target_ids: list[str], pick: str | None = None) -> dict:
+    """Describe a cached image or failure without running the renderer."""
+    if cached_still(cache, sha, target_ids, pick):
+        return {'state': 'cached'}
+    failure = cache / 'stills' / (still_key(sha, target_ids, pick) + '.failed')
+    return {'state': 'failed', 'failure': failure.read_text()} if failure.is_file() else {'state': 'missing'}
+
 def still_for(
     *, python: str, worktrees: Worktrees, cache: Path, seg: Segment, sha: str,
     target_ids: list[str], pick: str | None = None,
@@ -429,7 +500,10 @@ def still_for(
     if miss.exists():
         return Still(None, None, None, miss.read_text())
     root = worktrees.at(seg, sha)
-    png, used, failure = render_still(python, root, target_ids, pick, kept=cache / "outputs" / sha[:12])
+    outputs = cache / "outputs"
+    if worktrees.slot:
+        outputs /= worktrees.slot
+    png, used, failure = render_still(python, root, target_ids, pick, kept=outputs / sha[:12])
     if png is None:
         miss.write_text(failure)
         return Still(None, None, None, failure)
