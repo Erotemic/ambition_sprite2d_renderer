@@ -129,12 +129,14 @@ ANIMATIONS: List[Tuple[str, int, int]] = [
     ("grieve", 10, 120),
     ("float", 10, 110),
     ("armed_float", 10, 110),
+    # The stomp with its arms on (GNU2 stomps with them).
+    ("armed_stomp", 8, 70),
 ]
 
 # The rows whose giant has its fists on its arms: the fused sheet draws no
 # fist beside it.
 _ROWS_WITH_FISTS_ON = ("armed_rest", "armed_rest_b", "armed_hit", "armed_buck", "armed_walk", "armed_walk_back",
-                       "armed_look_back", "armed_roar", "grieve", "armed_float") + tuple(
+                       "armed_look_back", "armed_roar", "grieve", "armed_float", "armed_stomp", "death") + tuple(
     f"{blow}_{part}" for blow in ("hammer", "jab", "upper", "left_hammer", "left_hook", "left_upper", "armed_kick")
     for part in ("windup", "strike", "hold", "recover"))
 
@@ -501,6 +503,7 @@ _FUSED_SCHOLAR_ROW = {
     "armed_rest_b": "rest",
     "armed_hit": "hit",
     "armed_buck": "brace",
+    "armed_stomp": "point",
     "clamp": "invoke",
     **{f"{blow}_{part}": ("conduct" if part == "recover" else "point")
        for blow in ("hammer", "jab", "upper", "left_hammer", "left_hook", "left_upper", "kick", "armed_kick")

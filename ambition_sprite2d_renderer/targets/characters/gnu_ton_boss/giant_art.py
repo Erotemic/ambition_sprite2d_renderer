@@ -1546,6 +1546,11 @@ def pose_for(anim: str, phase: float) -> dict:
         anim = anim[len("armed_"):]
     if anim.endswith("_b"):
         anim = anim[:-2]
+    # A giant dies with its arms on: at its end no portal holds its fists, so
+    # `death` is drawn whole whatever the fight did with them (Jon,
+    # 2026-11-21: "the dead pose has no arms").
+    if anim == "death":
+        armed = True
 
     def breathe(st, amount=1.0):
         s = dict(st)
@@ -1671,7 +1676,7 @@ def pose_for(anim: str, phase: float) -> dict:
 
     if not armed:
         pose["arms"] = _clamped_arms(1.0)
-    elif anim == "buck":
+    elif anim in ("buck", "death"):
         pose["arms"] = _whole_arms(pts=pose["stance"]["arms"])
     else:
         pose["arms"] = _whole_arms(sway=6.0 * math.sin(two_pi * phase) if anim == "rest" else 0.0)
