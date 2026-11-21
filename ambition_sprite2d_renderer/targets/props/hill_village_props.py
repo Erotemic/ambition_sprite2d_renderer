@@ -1072,6 +1072,407 @@ PIECES.update({
 })
 
 
+# ------------------------------------------------ the village built uphill
+#
+# `intro_hobford` is a hill room (`village()`): its lower street is at VG
+# and the upper street runs along the top of the terrace wall behind it, at
+# VU. These pieces are drawn in that room's coordinates; each one says the
+# boards it draws (their tops are the walk lines the room places).
+
+VG, VU = 1280, 976
+ROOF_SLATE = (84, 92, 104)
+WHITEWASH = (232, 228, 214)
+DOOR_BLUE = (58, 82, 120)
+GLOW = (120, 236, 220)
+LASER = (255, 92, 120)
+
+
+def _porch_at(c, x0, x1, wall_x, floor, tag):
+    """`porch` over a floor of the caller's: its boards 48 over `floor`."""
+    top = floor - 48
+    roof = c.mask(lambda p: p.poly([(x0 - 6, top + 6), (x1, top + 6), (x1, top - 10), (x0 - 6, top - 2)]))
+    c.put(roof, ROOF_SLATE)
+    c.tone(roof * (c.noise((tag, "porch"), 20, 4, 2) - 0.5), 0.2)
+    walk_edge(c, x0 - 6, x1, top)
+    for x in (x0 + 4, wall_x - 6 if wall_x < x1 else x1 - 6):
+        post(c, x, top + 6, floor, 5)
+
+
+def _landing(c, x0, x1, y, posts_to=None, tag="landing"):
+    """A timber landing whose boards are at `y`: on posts down to `posts_to`,
+    or on two brackets from the wall behind it."""
+    walk_edge(c, x0, x1, y)
+    c.put(c.mask(box(x0, y + 6, x1, y + 10)), scale(OAK, 0.8))
+    if posts_to is not None:
+        for x in (x0 + 5, x1 - 5):
+            post(c, x, y + 6, posts_to, 5)
+    else:
+        for x in (x0 + 10, x1 - 10):
+            c.put(c.mask(lambda p: p.poly([(x - 3, y + 6), (x + 3, y + 6), (x + 3, y + 26), (x - 3, y + 10)])), OAK)
+    c.put(c.mask(lambda p: [p.rect(x, y - 18, x + 1.6, y) for x in np.arange(x0 + 2, x1, 12)]), OAK, 0.85)
+    c.put(c.mask(box(x0, y - 20, x1, y - 17)), OAK_LIGHT, 0.9)
+
+
+#: The terrace wall's run, and its buttresses. The wall is drawn in four
+#: pieces whose seams are under buttresses: each piece masks only its own
+#: stones on its own canvas (one piece of the whole wall took 400 s).
+TERRACE_X = (1140, 2400)
+BUTTRESSES = (1440, 1740, 2040, 2340)
+TERRACE_STAIR = (1120, 1216, VG - 240)
+
+
+def terrace_bank(c, k):
+    """The grass of the bank the upper town is built into, behind the upper
+    street (VU), rising east: a field wall along it, bushes, and on the
+    street a lamp and two tubs of flowers."""
+    x0, x1 = TERRACE_X
+    rng = c.rand("terrace", "bank")
+    ridge = [(x0, VU), (x0 + 120, VU - 46), (1500, VU - 92), (1800, VU - 118), (2100, VU - 160), (x1, VU - 182), (x1, VU)]
+    bank = c.mask(lambda p: p.poly(ridge), blur=0.8)
+    c.put(bank, TURF)
+    c.tone(bank * (c.noise(("terrace", "turf"), 40, 8, 3) - 0.5), 0.22)
+    c.tone(bank * np.clip((c.y - (VU - 180)) / 180, 0, 1), -0.18)
+    wall_line = [(x0 + 80, VU - 30), (1500, VU - 70), (1800, VU - 94), (2100, VU - 132), (x1, VU - 152)]
+    c.put(c.mask(lambda p: p.line(wall_line, 3.2), blur=0.4), STONE_GREY)
+    c.put(c.mask(lambda p: p.line(wall_line, 1.0)), mix(STONE_GREY, (255, 255, 240), 0.4))
+    for _ in range(9):
+        bx = rng.uniform(x0 + 100, x1 - 40)
+        top = np.interp(bx, [px for px, _ in ridge[:-1]], [py for _, py in ridge[:-1]])
+        bush = c.mask(lambda p: [p.ellipse(bx + rng.uniform(-12, 12), top + rng.uniform(0, 14), rng.uniform(8, 16), rng.uniform(6, 10)) for _ in range(4)], blur=1.0)
+        c.put(bush * bank, GORSE)
+        c.tone(bush * bank * np.clip((bx - c.x) / 16, -1, 1), 0.15)
+    k.ground = VU
+    k.lamp(1470, h=58, lit=0.0, tag="terrace_lamp")
+    for tx in (1880, 1930):
+        tub = c.mask(lambda p: p.poly([(tx - 10, VU - 16), (tx + 10, VU - 16), (tx + 8, VU), (tx - 8, VU)]))
+        c.put(tub, BOARD)
+        k.flowerbox(tx - 10, tx + 10, VU - 18, (226, 86, 96), f"terrace_tub{tx}")
+
+
+def terrace_wall(sx0, sx1):
+    """The terrace wall from `sx0` to `sx1`: dressed stone from the lower
+    street (VG) up to the upper street (VU), its coping the upper street's
+    walk line, ivy and a spout. Its west end carries the stone stair off the
+    smithy's loft: a landing x 1120..1216 at VG - 240 on a corbel, and steps
+    cut in the wall's face up to the coping."""
+
+    def draw(c, k):
+        x0, x1 = max(TERRACE_X[0], sx0), sx1
+        rng = c.rand("terrace", "wall", sx0)
+        k.wall(x0, VU + 6, x1, VG, mix(LIMESTONE_WARM, STONE_GREY, 0.45), texture="stone", tag=f"terrace_wall{sx0}")
+        if sx0 <= 1560 < sx1:
+            spout = (1560, VU + 70)
+            c.put(c.mask(box(spout[0] - 6, spout[1], spout[0] + 6, spout[1] + 8)), IRON)
+            streak = c.mask(lambda p: p.poly([(spout[0] - 5, spout[1] + 8), (spout[0] + 5, spout[1] + 8), (spout[0] + 9, VG), (spout[0] - 9, VG)]), blur=2.0)
+            c.put(streak, ALGAE, 0.45)
+        ivy = c.mask(lambda p: [p.ellipse(rng.uniform(x0, x1), rng.uniform(VU + 10, VG - 20), rng.uniform(2, 5), rng.uniform(1.5, 3.5))
+                                for _ in range(int((x1 - x0) / 5))], blur=0.4)
+        ivy_band = np.clip(1 - np.abs(((c.x - TERRACE_X[0]) % 420) - 120) / 90, 0, 1)
+        c.put(ivy * ivy_band, (70, 110, 58), 0.85)
+        walk_edge(c, x0 - 4, x1, VU, mix(STONE_GREY, LIMESTONE, 0.4))
+        for bx in BUTTRESSES:
+            if bx + 24 < sx0 or bx - 24 > sx1:
+                continue
+            butt = c.mask(lambda p: p.poly([(bx - 22, VG), (bx - 14, VU + 30), (bx + 14, VU + 30), (bx + 22, VG)]))
+            c.put(butt, mix(LIMESTONE_WARM, STONE_GREY, 0.3))
+            c.put(butt * c.mask(lambda p: [p.rect(bx - 24, y, bx + 24, y + 0.7) for y in np.arange(VU + 40, VG, 14)]), scale(STONE_GREY, 0.7), 0.6)
+            c.tone(butt * np.clip((bx - c.x) / 22, -1, 1), 0.14)
+            c.put(c.mask(lambda p: p.poly([(bx - 16, VU + 30), (bx, VU + 16), (bx + 16, VU + 30)])), STONE_GREY)
+        if sx0 <= TERRACE_STAIR[0]:
+            lx0, lx1, ly = TERRACE_STAIR
+            wx = TERRACE_X[0]
+            c.put(c.mask(box(wx - 2, ly, wx + 30, VG)), mix(LIMESTONE_WARM, STONE_GREY, 0.3))
+            corbel = c.mask(lambda p: p.poly([(lx0, ly + 10), (lx1, ly + 10), (lx1 - 20, ly + 34), (lx0 + 30, ly + 34)]))
+            c.put(corbel, STONE_GREY)
+            c.tone(corbel * np.clip((c.y - ly - 10) / 24, 0, 1), -0.25)
+            walk_edge(c, lx0, lx1, ly, mix(STONE_GREY, LIMESTONE, 0.4))
+            c.put(c.mask(box(lx0, ly + 6, lx1, ly + 10)), scale(STONE_GREY, 0.75))
+            for n in range(4):
+                sy = ly - 16 * (n + 1)
+                c.put(c.mask(box(lx1 - 30 + n * 10, sy, lx1 + 10 + n * 10, sy + 16)), mix(STONE_GREY, LIMESTONE, 0.25 + 0.05 * n))
+                c.put(c.mask(box(lx1 - 30 + n * 10, sy, lx1 + 10 + n * 10, sy + 1.4)), mix(LIMESTONE, (255, 250, 230), 0.5))
+
+    return draw
+
+
+def upper_cottage(c, k):
+    """A whitewashed cottage on the upper street: porch boards x 1240..1320 at
+    VU - 48, roof x 1280..1440 at VU - 112. On its thatch a satellite dish
+    off the freight, pointed at the gate."""
+    k.ground = VU
+    x0, x1, eave = 1280, 1440, VU - 112
+    k.wall(x0, eave, x1, VU, WHITEWASH, texture="plaster", tag="upper_cottage")
+    k.eave_shade(x0, x1, eave + 4, 8)
+    k.door(1400, 26, 52, DOOR_BLUE, arch=False, tag="upper_cottage_door")
+    k.window(1340, eave + 30, 22, 24, shutters=DOOR_BLUE, flowers=(240, 200, 70), tag="upper_cottage_win")
+    thatch(c, x0, x1, eave, eave - 62, "upper_cottage_thatch")
+    k.chimney(1300, eave - 26, 14, 36, LIMESTONE_WARM, smoke=(236, 236, 236), tag="upper_cottage_chim")
+    # The dish: a pale bowl on a bracket strapped to the ridge, its feed arm,
+    # and a cable stapled down the thatch to the window.
+    dx, dy = 1396, eave - 66
+    c.put(c.mask(lambda p: p.line([(dx, dy + 18), (dx, dy + 36)], 1.4)), IRON)
+    bowl = c.mask(lambda p: p.ellipse(dx - 4, dy + 6, 11, 14), blur=0.3)
+    c.put(bowl, (226, 228, 230))
+    c.tone(bowl * np.clip((c.x - dx + 4) / 11, -1, 1), -0.2)
+    c.put(c.mask(lambda p: p.line([(dx - 4, dy + 6), (dx + 12, dy + 2)], 0.8)), IRON)
+    c.put(c.mask(lambda p: p.ellipse(dx + 13, dy + 2, 1.8)), (60, 60, 64))
+    c.put(c.mask(lambda p: p.line([(dx, dy + 36), (1372, eave + 4), (1352, eave + 28)], 0.6)), (30, 30, 30), 0.9)
+    _porch_at(c, 1240, 1320, x0, VU, "upper_cottage")
+
+
+def guild_hall(c, k):
+    """The adventurers' guild: three storeys stacked into the bank, x
+    1520..1840. Its boards (on the 16 px grid, as the room's boards are): the
+    stair's west landing x 1480..1560 at VU - 64,
+    the first-floor gallery 1520..1840 at VU - 112, the east landing
+    1800..1880 at VU - 176, and the top gallery 1520..1840 at VU - 224, where
+    the trophy room's door is (x 1576..1624). By the front door a rack of
+    laser swords and a drinks machine off the freight."""
+    x0, x1 = 1520, 1840
+    first, top, eaves = VU - 112, VU - 224, VU - 336
+    # The ground floor: rough stone, the double door, two windows.
+    k.ground = VU
+    k.wall(x0, first, x1, VU, mix(LIMESTONE_WARM, STONE_GREY, 0.25), texture="stone", tag="guild_ground")
+    k.door(1680, 40, 70, OAK, arch=True, glass_lit=0.5, tag="guild_door")
+    for cx in (1580, 1780):
+        k.window(cx, first + 34, 24, 30, kind="arch", lit=0.45, tag=f"guild_win{cx}")
+    # The first floor: oak frame on plaster, jettied out over the gallery.
+    k.wall(x0 + 6, top, x1 - 6, first, mix(WHITEWASH, LIMESTONE, 0.4), texture="plaster", tag="guild_first")
+    k.timber(x0 + 6, top, x1 - 6, first, OAK, posts=6, tag="guild_first_frame")
+    for cx in (1600, 1680, 1760):
+        k.window(cx, top + 34, 22, 28, lit=0.35, tag=f"guild_first_win{cx}")
+    # The top floor: the trophy room, its window lit the plate's cold green;
+    # through it a chair stands on the ceiling.
+    k.wall(x0 + 14, eaves, x1 - 14, top, mix(WHITEWASH, LIMESTONE, 0.4), texture="plaster", tag="guild_top")
+    k.timber(x0 + 14, eaves, x1 - 14, top, OAK, posts=5, tag="guild_top_frame")
+    wx0, wx1, wy0, wy1 = 1690, 1790, eaves + 26, eaves + 82
+    pane = c.mask(box(wx0, wy0, wx1, wy1))
+    c.put(c.mask(box(wx0 - 3, wy0 - 3, wx1 + 3, wy1 + 3)), OAK)
+    c.put(pane, (30, 52, 54))
+    c.light(pane * np.clip((wy1 - c.y) / (wy1 - wy0), 0, 1), GLOW, 0.55)
+    chair = c.mask(lambda p: (p.rect(1726, wy0, 1729, wy0 + 18), p.rect(1748, wy0, 1751, wy0 + 18),
+                              p.rect(1724, wy0 + 18, 1753, wy0 + 22), p.rect(1724, wy0 + 22, 1727, wy0 + 40)))
+    c.put(chair * pane, (40, 30, 24))
+    c.put(c.mask(lambda p: [p.rect(x, wy0, x + 1.4, wy1) for x in (1723, 1757)]) * pane, OAK)
+    c.put(c.mask(box(wx0, (wy0 + wy1) / 2, wx1, (wy0 + wy1) / 2 + 1.4)), OAK)
+    # The trophy room's door on the top gallery.
+    k.ground = top
+    k.door(1600, 30, 58, DOOR_RED, arch=True, step=False, glass_lit=0.3, tag="guild_top_door")
+    # The roof, and on its ridge a weathervane cut as a laser sword.
+    k.gable(x0 + 14, x1 - 14, eaves, 72, ROOF_SLATE, tiles="slate", overhang=16, tag="guild_roof")
+    vx, vy = 1680, eaves - 72
+    c.put(c.mask(lambda p: p.line([(vx, vy), (vx, vy - 26)], 1.2)), IRON)
+    c.put(c.mask(lambda p: p.line([(vx - 14, vy - 26), (vx - 4, vy - 26)], 2.0)), (60, 60, 66))
+    blade = c.mask(lambda p: p.line([(vx - 4, vy - 26), (vx + 22, vy - 26)], 1.8), blur=0.6)
+    c.put(blade, LASER)
+    c.light(c.mask(lambda p: p.line([(vx - 4, vy - 26), (vx + 22, vy - 26)], 4.0), blur=3), LASER, 0.5)
+    k.chimney(1560, eaves - 20, 16, 46, LIMESTONE_WARM, smoke=(236, 236, 236), tag="guild_chim")
+    # The galleries and the stair's landings.
+    for y in (first, top):
+        walk_edge(c, x0, x1, y)
+        c.put(c.mask(box(x0, y + 6, x1, y + 12)), scale(OAK, 0.85))
+        c.put(c.mask(lambda p: [p.poly([(x, y + 12), (x + 6, y + 12), (x + 3, y + 22)]) for x in np.arange(x0 + 10, x1 - 10, 40)]), OAK)
+        c.put(c.mask(lambda p: [p.rect(x, y - 20, x + 1.8, y) for x in np.arange(x0 + 4, x1, 14)]), OAK, 0.85)
+        c.put(c.mask(box(x0, y - 22, x1, y - 18)), OAK_LIGHT)
+    _landing(c, 1480, 1560, VU - 64, posts_to=VU, tag="guild_west_landing")
+    _landing(c, 1800, 1880, VU - 176, tag="guild_east_landing")
+    # The guild's sign: crossed swords on a board, one blade glowing.
+    sx, sy = 1846, first + 20
+    c.put(c.mask(lambda p: (p.line([(x1, sy - 6), (sx + 30, sy - 6)], 1.4), p.line([(x1, sy + 8), (sx + 4, sy - 6)], 0.8))), IRON)
+    board = c.mask(box(sx, sy, sx + 32, sy + 26))
+    c.put(board, BOARD)
+    c.put(c.mask(lambda p: p.line([(sx + 6, sy + 22), (sx + 26, sy + 4)], 1.4)), (196, 196, 200))
+    c.put(c.mask(lambda p: p.line([(sx + 6, sy + 4), (sx + 26, sy + 22)], 1.6), blur=0.5), LASER)
+    c.light(c.mask(lambda p: p.line([(sx + 6, sy + 4), (sx + 26, sy + 22)], 3.0), blur=2), LASER, 0.4)
+    # By the door: the rack of laser swords, hilts up, blades dark but one,
+    # and the drinks machine humming beside the old oak.
+    k.ground = VU
+    rx = 1622
+    c.put(c.mask(box(rx - 16, VU - 40, rx + 16, VU - 36)), OAK)
+    c.put(c.mask(box(rx - 16, VU - 6, rx + 16, VU)), OAK)
+    for n, hx in enumerate((rx - 10, rx, rx + 10)):
+        c.put(c.mask(box(hx - 1.6, VU - 52, hx + 1.6, VU - 36)), (70, 70, 76))
+        c.put(c.mask(box(hx - 3, VU - 38, hx + 3, VU - 36)), (176, 140, 72))
+        if n == 1:
+            c.put(c.mask(box(hx - 1.2, VU - 36, hx + 1.2, VU - 6), blur=0.4), (120, 210, 255))
+            c.light(c.mask(box(hx - 3, VU - 36, hx + 3, VU - 6), blur=3), (120, 210, 255), 0.5)
+    mx0, mx1 = 1712, 1748
+    c.put(c.mask(box(mx0, VU - 70, mx1, VU)), (176, 34, 40))
+    c.put(c.mask(box(mx0, VU - 70, mx1, VU - 68)), (220, 90, 90))
+    c.put(c.mask(box(mx0 + 4, VU - 62, mx1 - 14, VU - 26)), (230, 236, 240))
+    c.light(c.mask(box(mx0 + 4, VU - 62, mx1 - 14, VU - 26)), (255, 255, 255), 0.3)
+    c.put(c.mask(lambda p: [p.rect(mx0 + 6, y, mx1 - 16, y + 3) for y in np.arange(VU - 58, VU - 30, 7)]), (70, 120, 200), 0.8)
+    c.put(c.mask(box(mx1 - 11, VU - 56, mx1 - 5, VU - 40)), (40, 40, 44))
+    c.put(c.mask(box(mx0 + 4, VU - 18, mx1 - 4, VU - 10)), (30, 30, 32))
+
+
+def watch_tower(c, k):
+    """The old watch tower at the upper street's east end, x 2060..2220: a
+    stone base to VU - 128 (its top a floor across it), a timber stage above
+    it with landings climbing alternate sides (x 2140..2220 at VU - 192, x
+    2060..2140 at VU - 256, x 2140..2220 at VU - 320, x 2060..2140 at VU -
+    384) to the lookout x 2040..2240 at VU - 448 under a pyramid roof; its
+    first step a landing x 2040..2120 at VU - 64. On the lookout an imported
+    floodlight is clamped to the rail."""
+    x0, x1 = 2060, 2220
+    base_top, look = VU - 128, VU - 448
+    # The timber stage first, so the base and landings draw over its feet.
+    for x in (x0 + 6, x1 - 6):
+        post(c, x, look, base_top, 8)
+    rng = c.rand("tower", "braces")
+    for y0 in range(base_top, look, -64):
+        y1 = y0 - 64
+        c.put(c.mask(lambda p: p.line([(x0 + 8, y0), (x1 - 8, y1)] if (y0 // 64) % 2 else [(x0 + 8, y1), (x1 - 8, y0)], 2.6)), scale(OAK, 0.9))
+    # The base: big squared stones, a round-headed doorway, an arrow slit.
+    k.ground = VU
+    k.wall(x0, base_top, x1, VU, mix(STONE_GREY, LIMESTONE, 0.35), texture="stone", tag="tower_base")
+    door = c.mask(lambda p: p.arch(2120, VU - 74, 2160, VU))
+    c.put(c.mask(lambda p: p.arch(2116, VU - 78, 2164, VU)), mix(STONE_GREY, LIMESTONE, 0.6))
+    c.put(door, (36, 30, 26))
+    c.put(c.mask(box(2186, VU - 104, 2192, VU - 74)), (30, 26, 24))
+    walk_edge(c, x0 - 2, x1 + 2, base_top, mix(STONE_GREY, LIMESTONE, 0.5))
+    _landing(c, 2040, 2120, VU - 64, posts_to=VU, tag="tower_step")
+    for n, (lx0, lx1, ly) in enumerate(((2140, 2220, VU - 192), (2060, 2140, VU - 256),
+                                         (2140, 2220, VU - 320), (2060, 2140, VU - 384))):
+        walk_edge(c, lx0, lx1, ly)
+        c.put(c.mask(box(lx0, ly + 6, lx1, ly + 10)), scale(OAK, 0.8))
+    # The lookout: its deck, rail, the posts of its roof and the roof.
+    walk_edge(c, 2040, 2240, look)
+    c.put(c.mask(box(2040, look + 6, 2240, look + 12)), scale(OAK, 0.8))
+    c.put(c.mask(lambda p: [p.rect(x, look - 22, x + 2, look) for x in np.arange(2042, 2240, 12)]), OAK, 0.9)
+    c.put(c.mask(box(2040, look - 24, 2240, look - 20)), OAK_LIGHT)
+    for x in (2046, 2234):
+        post(c, x, look - 76, look, 5)
+    roof = c.mask(lambda p: p.poly([(2026, look - 72), (2254, look - 72), (2140, look - 128)]))
+    c.put(roof, ROOF_SLATE)
+    c.tone(roof * (c.noise(("tower", "roof"), 18, 8, 2) - 0.5), 0.18)
+    c.put(c.mask(lambda p: p.line([(2026, look - 72), (2140, look - 128)], 2.0)), mix(ROOF_SLATE, (255, 240, 220), 0.4))
+    c.put(c.mask(box(2026, look - 74, 2254, look - 70)), scale(ROOF_SLATE, 0.6))
+    # The bell under the roof, and a pennant on the finial.
+    bell = c.mask(lambda p: p.poly([(2132, look - 48), (2148, look - 48), (2152, look - 34), (2128, look - 34)]))
+    c.put(c.mask(lambda p: p.line([(2140, look - 70), (2140, look - 48)], 0.8)), IRON)
+    c.put(bell, (176, 140, 72))
+    c.put(c.mask(lambda p: p.line([(2140, look - 128), (2140, look - 158)], 1.0)), IRON)
+    c.put(c.mask(lambda p: p.poly([(2140, look - 158), (2168, look - 152), (2140, look - 146)])), DOOR_RED)
+    # The floodlight off the freight: a grey can on a yoke clamped to the
+    # rail, its cable looped down the post.
+    fx, fy = 2222, look - 34
+    c.put(c.mask(lambda p: p.line([(fx - 8, look - 22), (fx - 8, fy + 6)], 1.4)), (90, 90, 96))
+    can = c.mask(lambda p: p.poly([(fx - 16, fy - 6), (fx + 2, fy - 10), (fx + 4, fy + 8), (fx - 16, fy + 6)]))
+    c.put(can, (150, 154, 160))
+    c.put(c.mask(lambda p: p.ellipse(fx + 3, fy - 1, 3, 9)), (250, 250, 230))
+    c.light(c.mask(lambda p: p.ellipse(fx + 3, fy - 1, 10, 14), blur=6), (255, 250, 220), 0.4)
+    cable = [(fx - 8, fy + 6), (fx - 2, look + 20), (x1 - 6, look + 60), (x1 - 4, base_top)]
+    c.put(c.mask(lambda p: p.line(cable, 0.7)), (24, 24, 24), 0.9)
+
+
+#: The guild's trophy room (`intro_guild_trophy_room`): floor at 384, the
+#: ceiling's underside at 64, the gravity plate's field over x 480..1248.
+TROPHY_FLOOR, TROPHY_CEILING, PLATE_X = 384, 64, 480
+
+
+def trophy_room(c, k):
+    """The guild's top room, from inside. By the door (the west end) all is
+    as it should be: a counter, a coat stand, the guild's book. Past it the
+    imported gravity plate in the floor, fitted upside down: there down is
+    up, so the guild furnished the ceiling (a rug, a table and its chairs, a
+    tankard) and hung its trophies on the floor (the chandelier stands up
+    off the boards, the banners rise, the heads on their shields are the
+    wrong way up)."""
+    f, ceil, x1 = TROPHY_FLOOR, TROPHY_CEILING, 1248
+    # The back wall: oak panels under a plaster frieze.
+    wall = c.mask(box(32, ceil, x1, f))
+    c.put(wall, mix(OAK_LIGHT, LIMESTONE, 0.35))
+    c.put(c.mask(lambda p: [p.rect(x, ceil, x + 2, f) for x in np.arange(32, x1, 64)]) * wall, scale(OAK, 0.9), 0.7)
+    c.put(c.mask(lambda p: [p.rect(32, y, x1, y + 2) for y in (ceil + 40, f - 70)]), scale(OAK, 0.9), 0.8)
+    c.tone(wall * (c.noise(("trophy", "panel"), 20, 6, 3) - 0.5), 0.14)
+    # The plate's field: a cold shimmer rising off the floor.
+    field = c.mask(box(PLATE_X, ceil, x1, f))
+    streaks = np.clip(1 - np.abs(((c.x - PLATE_X) % 37.0) - 18) / 2.0, 0, 1) * np.clip((c.y - ceil) / (f - ceil), 0, 1)
+    c.light(field * streaks, GLOW, 0.22)
+    c.light(field * np.clip((c.y - (f - 60)) / 60, 0, 1), GLOW, 0.25)
+    # The plate in the floor, its hexes lit, stencilled THIS SIDE UP with
+    # the arrow pointing at the boards.
+    plate = c.mask(box(PLATE_X + 8, f - 6, x1 - 8, f))
+    c.put(plate, (60, 70, 76))
+    c.light(plate * c.mask(lambda p: [p.ellipse(x, f - 3, 5, 2) for x in np.arange(PLATE_X + 20, x1 - 10, 14)]), GLOW, 0.9)
+    for ax in (PLATE_X + 60, 860, 1160):
+        c.put(c.mask(lambda p: (p.rect(ax - 1.5, f - 34, ax + 1.5, f - 14), p.poly([(ax - 6, f - 14), (ax + 6, f - 14), (ax, f - 8)]))), (240, 200, 60))
+    # The west end: the counter, the guild's book on it, a coat stand.
+    c.put(c.mask(box(180, f - 46, 300, f)), OAK)
+    c.put(c.mask(box(176, f - 50, 304, f - 44)), OAK_LIGHT)
+    c.put(c.mask(box(220, f - 56, 252, f - 50)), (120, 40, 36))
+    c.put(c.mask(box(222, f - 57, 250, f - 55)), PAPER)
+    c.put(c.mask(lambda p: p.ellipse(280, f - 53, 4, 3)), (176, 140, 72))
+    c.put(c.mask(lambda p: (p.rect(372, f - 96, 375, f), p.rect(362, f - 4, 386, f), p.line([(373, f - 92), (360, f - 84)], 1.2),
+                             p.line([(373, f - 92), (386, f - 84)], 1.2))), OAK)
+    cloak = c.mask(lambda p: p.poly([(360, f - 84), (366, f - 86), (370, f - 40), (354, f - 44)]))
+    c.put(cloak, (70, 60, 110))
+    # The ceiling's furniture, standing on the ceiling: the rug, the table
+    # (its legs up into the ceiling) and two chairs, a tankard on the table.
+    c.put(c.mask(box(700, ceil, 1000, ceil + 4)), (150, 50, 50))
+    c.put(c.mask(lambda p: [p.rect(x, ceil, x + 6, ceil + 4) for x in np.arange(704, 1000, 18)]), (210, 170, 90), 0.8)
+    for lx in (790, 900):
+        c.put(c.mask(box(lx, ceil + 4, lx + 5, ceil + 40)), OAK)
+    c.put(c.mask(box(770, ceil + 40, 926, ceil + 47)), OAK_LIGHT)
+    tank = c.mask(box(840, ceil + 47, 852, ceil + 62))
+    c.put(tank, (150, 150, 156))
+    c.put(c.mask(lambda p: p.ring(855, ceil + 54, 4, 1.2)), (150, 150, 156))
+    for cx, back in ((734, 0), (944, 15)):
+        c.put(c.mask(lambda p: (p.rect(cx, ceil + 4, cx + 3, ceil + 26), p.rect(cx + 15, ceil + 4, cx + 18, ceil + 26),
+                                 p.rect(cx - 1, ceil + 26, cx + 19, ceil + 30), p.rect(cx + back, ceil + 30, cx + back + 3, ceil + 58),
+                                 p.rect(cx + back - 1, ceil + 52, cx + back + 4, ceil + 55))), OAK)
+    # The trophies, hung on the floor: the chandelier stands up off the
+    # boards on its chain, its candles' flames pointing down.
+    chx = 640
+    c.put(c.mask(lambda p: p.line([(chx, f), (chx, f - 60)], 1.0)), IRON)
+    c.put(c.mask(lambda p: p.ellipse(chx, f - 70, 34, 6)), IRON)
+    for dx in (-30, -15, 0, 15, 30):
+        c.put(c.mask(box(chx + dx - 2, f - 88, chx + dx + 2, f - 72)), PAPER)
+        flame = c.mask(lambda p: p.poly([(chx + dx - 2.5, f - 88), (chx + dx + 2.5, f - 88), (chx + dx, f - 98)]), blur=0.4)
+        flame = c.mask(lambda p: p.ellipse(chx + dx, f - 92, 2.2, 4), blur=0.5)
+        c.put(flame, (255, 210, 120))
+        c.light(c.mask(lambda p: p.ellipse(chx + dx, f - 92, 8), blur=5), (255, 200, 120), 0.4)
+    # Banners rising from the floor, the guild's crossed swords on them.
+    for bx, colour in ((1060, (60, 80, 140)), (1180, (130, 40, 40))):
+        c.put(c.mask(box(bx - 1, f - 150, bx + 1, f)), IRON)
+        ban = c.mask(lambda p: p.poly([(bx - 20, f - 20), (bx + 20, f - 20), (bx + 20, f - 140), (bx, f - 156), (bx - 20, f - 140)]))
+        c.put(ban, colour)
+        c.put(c.mask(lambda p: (p.line([(bx - 10, f - 110), (bx + 10, f - 50)], 1.4), p.line([(bx + 10, f - 110), (bx - 10, f - 50)], 1.4))), (220, 200, 140))
+        c.put(c.mask(box(bx - 22, f - 22, bx + 22, f - 18)), OAK)
+    # The heads on their shields, upside down on the back wall: a goblin's
+    # helmet and a cloud sheep's fleece in a jar.
+    for hx, kind in ((760, "helmet"), (930, "cloud")):
+        hy = f - 120
+        shield = c.mask(lambda p: p.poly([(hx - 22, hy + 30), (hx + 22, hy + 30), (hx + 22, hy - 4), (hx, hy - 24), (hx - 22, hy - 4)]))
+        c.put(shield, OAK)
+        c.put(c.mask(lambda p: p.poly([(hx - 18, hy + 26), (hx + 18, hy + 26), (hx + 18, hy - 2), (hx, hy - 19), (hx - 18, hy - 2)])), mix(OAK_LIGHT, OAK, 0.4))
+        if kind == "helmet":
+            helm = c.mask(lambda p: (p.ellipse(hx, hy + 6, 12, 10), p.poly([(hx - 14, hy + 6), (hx - 22, hy - 6), (hx - 10, hy + 2)]),
+                                     p.poly([(hx + 14, hy + 6), (hx + 22, hy - 6), (hx + 10, hy + 2)])))
+            c.put(helm, (110, 120, 70))
+            c.put(c.mask(box(hx - 8, hy + 8, hx + 8, hy + 11)), (30, 30, 30))
+        else:
+            jar = c.mask(lambda p: p.ellipse(hx, hy + 6, 11, 14))
+            c.put(jar, (200, 220, 236), 0.6)
+            c.put(c.mask(lambda p: [p.ellipse(hx + dx, hy + 6 + dy, 6) for dx, dy in ((-3, 2), (3, 4), (0, -3))], blur=1.0), (250, 250, 252))
+            c.put(c.mask(box(hx - 7, hy + 18, hx + 7, hy + 22)), (176, 140, 72))
+
+
+PIECES.update({
+    # intro_hobford, the hill room: the terrace wall under the upper street
+    # and the bank behind it; the upper street's cottage, guild and tower.
+    "hill_village_terrace_bank": Piece((1100, VU - 200, 2400, VU + 2), terrace_bank),
+    **{f"hill_village_terrace_wall_{n}": Piece((x0, VU - 8, x1, VG), terrace_wall(x0, x1))
+       for n, (x0, x1) in enumerate(((1100, 1440), (1440, 1740), (1740, 2040), (2040, 2400)))},
+    "hill_village_upper_cottage": Piece((1220, VU - 220, 1460, VU), upper_cottage),
+    "hill_village_guild_hall": Piece((1440, VU - 460, 1900, VU), guild_hall),
+    "hill_village_watch_tower": Piece((2010, VU - 620, 2270, VU), watch_tower),
+    # intro_guild_trophy_room: the room seen from inside, in its coordinates
+    "hill_guild_trophy_room": Piece((32, TROPHY_CEILING, 1248, TROPHY_FLOOR), trophy_room),
+})
+
+
 def _ground_at_the_floor(draw, ground):
     """A piece stands on its room's ground: doors and lamps on it."""
 
