@@ -21,6 +21,7 @@ from ...chargen.draw import ITEM_REST_ANGLE, grip_point
 from ...chargen.drawkit import Ctx, Part, shaded_region
 from ...chargen.geometry import Loft, RingKey
 from ...chargen.svgout import FINE, shade
+from . import _western_gear as _western
 
 Point = Tuple[float, float]
 
@@ -162,6 +163,11 @@ GEAR: Dict[str, Callable[[Ctx, Dict[str, float]], List[Part]]] = {
     "calculator": calculator,
     "wizard_hat": wizard_hat,
     "head_torch": head_torch,
+    "cowboy_hat": _western.cowboy_hat,
+    "muzzle_cage": _western.muzzle_cage,
+    "bushy_tail": _western.bushy_tail,
+    "poncho": _western.poncho,
+    "gun_belt": _western.gun_belt,
 }
 
 
