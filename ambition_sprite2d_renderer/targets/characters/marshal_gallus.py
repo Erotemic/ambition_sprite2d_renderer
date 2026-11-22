@@ -229,7 +229,7 @@ class Pen:
 
     def __init__(self, img: Image.Image):
         self.img = img
-        self.d = ImageDraw.Draw(img, "RGBA")
+        self.d = ImageDraw.Draw(img, "RGBA")  # raw-draw-ok: opaque strokes only; translucent ones go through _over
 
     def _over(self, box: Sequence[float], paint) -> None:
         """``paint(draw, dx, dy)`` on a layer the size of ``box`` (canvas
@@ -239,7 +239,7 @@ class Pen:
         if x1 <= x0 or y1 <= y0:
             return
         layer = Image.new("RGBA", (x1 - x0, y1 - y0), (0, 0, 0, 0))
-        paint(ImageDraw.Draw(layer, "RGBA"), -x0, -y0)
+        paint(ImageDraw.Draw(layer, "RGBA"), -x0, -y0)  # raw-draw-ok: a clear layer, alpha-composited over the art
         self.img.alpha_composite(layer, (x0, y0))
 
     @staticmethod
@@ -323,7 +323,7 @@ class Pen:
 
 def _glow(img: Image.Image, fn, blur: float) -> None:
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    fn(ImageDraw.Draw(layer, "RGBA"))
+    fn(ImageDraw.Draw(layer, "RGBA"))  # raw-draw-ok: a clear glow layer, blurred and alpha-composited
     layer = layer.filter(ImageFilter.GaussianBlur(blur * SUPER))
     img.alpha_composite(layer)
 

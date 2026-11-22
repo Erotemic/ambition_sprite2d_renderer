@@ -217,7 +217,7 @@ class Pen:
 
     def __init__(self, img: Image.Image):
         self.img = img
-        self.d = ImageDraw.Draw(img, "RGBA")
+        self.d = ImageDraw.Draw(img, "RGBA")  # raw-draw-ok: the first draft's pen, kept as it was drawn (a lineage keepsake)
 
     def poly(self, pts: Sequence[Point], fill: RGBA, line: float = 1.4, outline: RGBA = OUTLINE) -> None:
         sp = [_s(p) for p in pts]
@@ -268,7 +268,7 @@ class Pen:
 
 def _glow(img: Image.Image, fn, blur: float) -> None:
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    fn(ImageDraw.Draw(layer, "RGBA"))
+    fn(ImageDraw.Draw(layer, "RGBA"))  # raw-draw-ok: a clear glow layer, blurred and alpha-composited
     layer = layer.filter(ImageFilter.GaussianBlur(blur * SUPER))
     img.alpha_composite(layer)
 
