@@ -391,8 +391,13 @@ def validate_metadata(files: dict) -> None:
         raise ValueError(f"Invalid sheet metadata: {report['failures']}")
     for path, records in report.get("sheets", {}).items():
         for record in records:
-            if any(not row["valid"] for row in record["rows"]) or any(not page["exists"] for page in record["pages"]):
-                raise ValueError(f"Invalid sheet rows or pages: {path}")
+            rows = [row for row in record["rows"] if not row["valid"]]
+            pages = [page for page in record["pages"] if not page["exists"]]
+            if rows or pages:
+                # Name what failed: a bare path sends the reader to rebuild the
+                # whole target with no idea which row or page to look at.
+                raise ValueError(f"Invalid sheet rows or pages: {path}: invalid rows {rows[:8]}; "
+                                 f"missing pages {pages[:8]}")
 
 
 def pack_parents(report) -> dict[str, str]:

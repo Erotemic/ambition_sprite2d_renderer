@@ -2154,29 +2154,40 @@ def _share_transformed_parts(flipbook: "PartFlipbook") -> "PartFlipbook":
     if flipbook.placement == PLACEMENT_SNAPPED:
         return flipbook
     parts = list(flipbook.parts)
-    seen: Dict[Tuple[Tuple[int, int], bytes], int] = {}
+    tracked = {d.part for _duration, frames in flipbook.clips.values() for draws in frames for d in draws if d.track is not None}
+    seen: Dict[Tuple[Tuple[int, int], bytes], List[int]] = {}
     source_of: Dict[int, tuple] = {}
+
+    def source(i, key, op):
+        """The first part seen with pixels ``key`` that part i can be drawn
+        from under ``op`` (keeping a tracked part's pivot: `_pivot_kept`)."""
+        for match in seen.get(key, ()):
+            if i not in tracked or _pivot_kept(parts[i], parts[match], op, (0, 0)):
+                return match
+        return None
+
     for i, part in enumerate(parts):
         crop, _box = _trimmed(part.image)
         key = (crop.size, crop.tobytes())
-        if key in seen:
-            # The same pixels at another pivot or padding: the recorder keys
-            # a part by its pivot too, so these slip past it (18% of the player
-            # robot's texels after its effects became pieces, 2026-10-04).
-            source_of[i] = (seen[key], None, (0, 0), (1.0, 1.0, 1.0))
+        # The same pixels at another pivot or padding: the recorder keys a part
+        # by its pivot too, so these slip past it (18% of the player robot's
+        # texels after its effects became pieces, 2026-10-04).
+        match = source(i, key, None)
+        if match is not None:
+            source_of[i] = (match, None, (0, 0), (1.0, 1.0, 1.0))
             continue
         for op in _LOSSLESS:
             turned = crop.transpose(op)
-            match = seen.get((turned.size, turned.tobytes()))
+            # op(part i) is a seen part, so part i is the INVERSE of op applied
+            # to it (only the quarter turns differ).
+            inverse = {Image.Transpose.ROTATE_90: Image.Transpose.ROTATE_270,
+                       Image.Transpose.ROTATE_270: Image.Transpose.ROTATE_90}.get(op, op)
+            match = source(i, (turned.size, turned.tobytes()), inverse)
             if match is not None:
-                # op(part i) is part match, so part i is the INVERSE of op
-                # applied to part match (only the quarter turns differ).
-                inverse = {Image.Transpose.ROTATE_90: Image.Transpose.ROTATE_270,
-                           Image.Transpose.ROTATE_270: Image.Transpose.ROTATE_90}.get(op, op)
                 source_of[i] = (match, inverse, (0, 0), (1.0, 1.0, 1.0))
                 break
         else:
-            seen[key] = i
+            seen.setdefault(key, []).append(i)
     return _drawn_from_sources(flipbook, source_of)
 
 
@@ -2247,12 +2258,10 @@ def _drawn_from_sources(flipbook: "PartFlipbook", source_of: Dict[int, tuple]) -
     return _replace(flipbook, parts=[parts[i] for i in used], clips=clips, rects=[], pages=[])
 
 
-def _redrawn(d: PartDraw, r_img: PartRaster, p_img: PartRaster, src: int, op, offset, tint) -> PartDraw:
-    """Draw ``d`` (of the part ``r_img``) as the part ``src`` (``p_img``): r's
-    drawn extent is ``op`` applied to p's, lying ``offset`` texels into r's, in
-    p's colours times ``tint`` (``_drawn_from_sources``)."""
-    from dataclasses import replace as _replace
-
+def _pivot_in_source(r_img: PartRaster, p_img: PartRaster, op, offset) -> Tuple[float, float]:
+    """The point of ``p_img`` (its own pixels) that is ``r_img``'s pivot, when
+    r's drawn extent is ``op`` applied to p's lying ``offset`` texels into it
+    (``_redrawn``)."""
     ox, oy = offset
     p_crop, p_box = _trimmed(p_img.image)
     _r_crop, r_box = _trimmed(r_img.image)
@@ -2262,7 +2271,33 @@ def _redrawn(d: PartDraw, r_img: PartRaster, p_img: PartRaster, src: int, op, of
     # R's pivot r comes from P's point p_r = L^-1 (r - r_box0 - offset - t) + p_box0.
     rx, ry = r_img.pivot[0] - r_box[0] - ox - tx, r_img.pivot[1] - r_box[1] - oy - ty
     det = la * ld - lb * lc
-    ix, iy = (ld * rx - lb * ry) / det + p_box[0], (-lc * rx + la * ry) / det + p_box[1]
+    return (ld * rx - lb * ry) / det + p_box[0], (-lc * rx + la * ry) / det + p_box[1]
+
+
+#: How far (texels) a source's own pivot may land from the pivot of a TRACKED
+#: part drawn from it. A track's draw is placed at its part's pivot, and the
+#: runtime poses it there: a limb part's pivot is its joint (Scout's arms turn
+#: about their shoulders in a hold, a swing, a blend). Scout's far upper arm,
+#: drawn as its near twin turned a half, hung its pivot on the elbow, and every
+#: pose turned the arm about the wrong end while every frame still replayed.
+SHARED_PIVOT_TOLERANCE = 0.5
+
+
+def _pivot_kept(r_img: PartRaster, p_img: PartRaster, op, offset) -> bool:
+    """Whether ``p_img`` drawn as ``r_img`` (``_redrawn``) keeps r's pivot:
+    p's own pivot lands on it (`SHARED_PIVOT_TOLERANCE`)."""
+    ix, iy = _pivot_in_source(r_img, p_img, op, offset)
+    return math.hypot(p_img.pivot[0] - ix, p_img.pivot[1] - iy) <= SHARED_PIVOT_TOLERANCE
+
+
+def _redrawn(d: PartDraw, r_img: PartRaster, p_img: PartRaster, src: int, op, offset, tint) -> PartDraw:
+    """Draw ``d`` (of the part ``r_img``) as the part ``src`` (``p_img``): r's
+    drawn extent is ``op`` applied to p's, lying ``offset`` texels into r's, in
+    p's colours times ``tint`` (``_drawn_from_sources``)."""
+    from dataclasses import replace as _replace
+
+    (la, lb, lc, ld), _t = _lossless_map(op, _trimmed(p_img.image)[0].size)
+    ix, iy = _pivot_in_source(r_img, p_img, op, offset)
     c, s = math.cos(d.rotation), math.sin(d.rotation)
     # M = R S L.
     rs = (c * d.scale[0], -s * d.scale[1], s * d.scale[0], c * d.scale[1])
@@ -2337,6 +2372,9 @@ def _near_sources(flipbook: "PartFlipbook", distinct=frozenset()) -> Dict[int, t
     crops = [_trimmed(p.image)[0] for p in parts]
     arrays = [np.asarray(c, dtype=np.float32) for c in crops]
 
+    def tracked(i):
+        return any(t is not None for t in tracks_of.get(i, ()))
+
     def brightness(i):
         a = arrays[i]
         w = a[..., 3]
@@ -2404,6 +2442,8 @@ def _near_sources(flipbook: "PartFlipbook", distinct=frozenset()) -> Dict[int, t
         for i in candidates:
             for op in [None, *_LOSSLESS]:
                 hit = compare(i, op, j)
+                if hit and tracked(j) and not _pivot_kept(parts[j], parts[i], op, hit[:2]):
+                    continue
                 if hit and (best is None or hit[3] < best[1][3]):
                     best = ((i, op), hit)
         if best:
