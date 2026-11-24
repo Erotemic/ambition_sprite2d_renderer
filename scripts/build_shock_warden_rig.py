@@ -284,7 +284,7 @@ ACTOR_METADATA = {
         "visual_inspirations": [
             "Short, wide armored soldier with an oversized electrified riot shield.",
             "A black coat, steel mask, heavy boots, and a steel electric baton.",
-            "Fictional gear emblems mark the authoritarian unit.",
+            "Castle Godwin's mark appears on the armband and shield.",
         ],
         "rigging_notes": [
             "The SVG owns every part shape and joint marker.",

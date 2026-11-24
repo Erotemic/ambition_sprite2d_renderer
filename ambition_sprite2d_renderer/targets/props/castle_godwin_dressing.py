@@ -13,8 +13,7 @@ of the frame on the floor, the blue-grey stone, black iron and red of the
 castle, and a dark line round each part, as the characters have. No drop
 shadow is drawn.
 
-The mark of the regime is the cog of ``_evil_faction``: an invented mark,
-not a real symbol. Every word on a poster is invented.
+The posters and props carry the fictional faction's mark.
 
 The bunk bed lines up with the room's one-way platforms: the top of its
 lower mattress is 112 units over the floor and the top of its upper one 224.
@@ -33,7 +32,6 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
-from ..characters import _evil_faction as F
 from . import castle_godwin as CG
 from ._town_kit import Canvas, box, mix, scale
 
@@ -132,17 +130,12 @@ def rivets(c: Canvas, pts, r: float = 1.1) -> None:
 
 
 def mark(c: Canvas, cx: float, cy: float, r: float, ring: float = 0.0) -> None:
-    """The mark of the regime: the black cog on a white disc (``ring``: a
-    red ring round the disc this wide)."""
+    """Draw the mark with a border and an optional red ring."""
     if ring > 0:
         c.put(c.mask(lambda p: p.ellipse(cx, cy, r + ring + 0.7)), INK)
         c.put(c.mask(lambda p: p.ellipse(cx, cy, r + ring)), RED)
     c.put(c.mask(lambda p: p.ellipse(cx, cy, r + 0.6)), INK)
-    c.put(c.mask(lambda p: p.ellipse(cx, cy, r)), WHITE)
-    k = r * 0.8
-    body = c.mask(lambda p: (p.poly(F.cog_points((cx, cy), k)), p.ellipse(cx, cy, k * F.COG_BODY)))
-    hole = c.mask(lambda p: p.ellipse(cx, cy, k * F.COG_HOLE))
-    c.put(body * (1.0 - hole), BLACK)
+    CG.emblem(c, cx, cy, r)
 
 
 def words(c: Canvas, text: str, cx: float, top: float, h: float, ink=INK, light=None) -> None:
@@ -252,17 +245,14 @@ def _poster_frame(c: Canvas, colour, dark) -> np.ndarray:
 
 
 def _poster_a(c: Canvas) -> None:
-    """OBEY THE GEAR: the mark, big, on red, rays behind it."""
-    w, h = 48, 72
+    """Draw the OBEY poster with the mark over red rays."""
     m = _poster_frame(c, RED_LIGHT, RED_DARK)
     rays = c.mask(lambda p: [p.poly([(24, 28), (24 + 40 * math.cos(a - 0.1), 28 + 40 * math.sin(a - 0.1)), (24 + 40 * math.cos(a + 0.1), 28 + 40 * math.sin(a + 0.1))])
                              for a in [math.tau * k / 12 for k in range(12)]])
     c.put(rays * m * c.mask(box(4, 4, 44, 52)), RED_DARK, 0.6)
     mark(c, 24, 28, 15)
     c.put(m * c.mask(box(2, 50, 46, 70)), BLACK)
-    words(c, "OBEY", w / 2, 53, 6, ink=WHITE)
-    words(c, "THE GEAR", w / 2, 62, 4.6, ink=WHITE)
-    del h
+    words(c, "OBEY", 24, 55, 10, ink=WHITE)
 
 
 def _poster_b(c: Canvas) -> None:

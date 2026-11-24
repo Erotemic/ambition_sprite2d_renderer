@@ -10,8 +10,7 @@ A lean guard dog of the regime, like a German shepherd: a dark coat (a
 black saddle on dark rust), tall ears that point forward, raised hackles,
 an amber eye under a low brow, and a snarl that shows the teeth. A black
 collar with steel spikes and a red stripe; its red tag carries the mark of
-the regime (``_evil_faction.cog``: the black cog with a hole, on a white
-disc, on red).
+the regime on a white disc.
 
 THE JOINTS ARE THE COMPANION DOG'S, as for the house dogs
 (``house_dogs_art.py``): the same parts about the same joints, and legs
@@ -37,6 +36,7 @@ for entry in (ROOT, HERE):
 from house_dogs_art import PAW_JOINT_Y, fit_leg, fit_legs, layer, legs, line, path, shift  # noqa: E402
 
 from ambition_sprite2d_renderer.targets.characters import _evil_faction  # noqa: E402
+from ambition_sprite2d_renderer.evil_faction_mark import mark_points  # noqa: E402
 
 NAME = "evil_attack_hound"
 SVG_NAME = f"{NAME}_side"
@@ -77,28 +77,14 @@ def _hex(colour: Sequence[int]) -> str:
     return "#%02x%02x%02x" % tuple(colour[:3])
 
 
-class _SvgPen:
-    """Takes the drawing calls of ``_evil_faction.cog`` and keeps them as SVG
-    elements, so the mark on the tag is the mark of the shared module."""
-
-    def __init__(self) -> None:
-        self.out: List[str] = []
-
-    def poly(self, _d, pts: Sequence[Tuple[float, float]], colour) -> None:
-        points = " ".join(f"{x:.2f},{y:.2f}" for x, y in pts)
-        self.out.append(f'<polygon points="{points}" fill="{_hex(colour)}"/>')
-
-    def oval(self, _d, c: Tuple[float, float], rx: float, ry: float, colour) -> None:
-        self.out.append(f'<ellipse cx="{c[0]:.2f}" cy="{c[1]:.2f}" rx="{rx:.2f}" ry="{ry:.2f}" fill="{_hex(colour)}"/>')
-
-
 def regime_tag(c: Tuple[float, float], r: float) -> List[str]:
-    """The red tag with the mark: a white disc and the black cog on it."""
-    pen = _SvgPen()
-    pen.out.append(f'<circle cx="{c[0]:g}" cy="{c[1]:g}" r="{r:g}" fill="{_hex(_evil_faction.RED)}" stroke="{P["outline"]}" stroke-width="4"/>')
-    pen.out.append(f'<circle cx="{c[0]:g}" cy="{c[1]:g}" r="{r * 0.72:g}" fill="{_hex(_evil_faction.DISC)}"/>')
-    _evil_faction.cog(pen, None, c, r * 0.6)
-    return pen.out
+    """Draw the red collar tag with the faction's mark."""
+    points = " ".join(f"{x:.2f},{y:.2f}" for x, y in mark_points(c, r * 0.6))
+    return [
+        f'<circle cx="{c[0]:g}" cy="{c[1]:g}" r="{r:g}" fill="{_hex(_evil_faction.RED)}" stroke="{P["outline"]}" stroke-width="4"/>',
+        f'<circle cx="{c[0]:g}" cy="{c[1]:g}" r="{r * 0.72:g}" fill="{_hex(_evil_faction.DISC)}"/>',
+        f'<polygon points="{points}" fill="{_hex(_evil_faction.MARK_INK)}"/>',
+    ]
 
 
 def tooth(tip: Tuple[float, float], root: Tuple[float, float], half: float) -> str:

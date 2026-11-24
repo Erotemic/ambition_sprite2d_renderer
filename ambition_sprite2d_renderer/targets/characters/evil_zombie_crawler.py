@@ -5,7 +5,7 @@ the ground with their arms").
 
 He is the Risen Conscript's kin (``evil_zombie``) and wears that man's
 pieces: the dead grey face, the dented helmet, the torn grey-green tunic, the
-red armband (an invented cog, not a real symbol), the bare near forearm. His
+red faction armband, the bare near forearm. His
 legs end in two torn stumps of breeches under the hem of his tunic. He lies
 on his belly, facing right, his head up and his arms out in front of him.
 
@@ -69,7 +69,7 @@ ACTOR_METADATA = {
     },
     "authoring_description": (
         "A Risen Conscript with no legs: the same dead grey face, dented helmet, torn grey-green "
-        "tunic and red armband (an invented cog; no real symbol), and two torn stumps of breeches. "
+        "tunic and red faction armband, and two torn stumps of breeches. "
         "He lies on his belly and drags himself along the floor on his arms."
     ),
     "gameplay_description": (

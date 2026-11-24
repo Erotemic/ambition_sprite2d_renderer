@@ -6,8 +6,7 @@ fortress on its crag with searchlights that sweep the cloud, and in the castle
 cold iron-grey stone, red banners with the mark of the regime and the light of
 braziers. Nothing in it is warm or kind.
 
-The mark of the regime is a black gear on a white disc on red (`emblem`). It
-is an invented mark: the art shows no real symbol of a real regime.
+The banners carry the fictional faction's mark on a white disc.
 """
 
 from __future__ import annotations
@@ -16,6 +15,7 @@ import math
 
 import numpy as np
 
+from ..evil_faction_mark import mark_points
 from .artkit import Art, Pen, mix, scale, smoothstep
 from .parts import HORIZON, cloud_mask, fog, haze, lamps, shafts, solid, vignette
 
@@ -51,20 +51,10 @@ CASTLE = {
 }
 
 
-def emblem(pen_disc: Pen, pen_gear: Pen, cu: float, cv: float, r: float) -> None:
-    """The mark of the regime at `(cu, cv)`, radius `r`: a white disc
-    (`pen_disc`) and a black eight-tooth gear on it (`pen_gear`). The hole of
-    the gear is drawn with value 0 on the gear's pen."""
+def emblem(pen_disc: Pen, pen_mark: Pen, cu: float, cv: float, r: float) -> None:
+    """Draw the disc and the mark on separate layers."""
     pen_disc.ellipse(cu, cv, r)
-    teeth = 8
-    pts = []
-    for k in range(teeth * 4):
-        a = math.tau * k / (teeth * 4)
-        outer = (k % 4) in (1, 2)
-        rr = r * (0.80 if outer else 0.60)
-        pts.append((cu + rr * math.cos(a), cv + rr * math.sin(a)))
-    pen_gear.poly(pts)
-    pen_gear.ellipse(cu, cv, r * 0.22, value=0)
+    pen_mark.poly(mark_points((cu, cv), r * 0.8))
 
 
 def _dead_tree(pen: Pen, rng, u: float, foot: float, h: float, w: float) -> None:
@@ -197,11 +187,11 @@ def _courses(art: Art, rows: float, cols: float) -> np.ndarray:
     return np.maximum(course, joint)
 
 
-def _banner(pen_red: Pen, pen_disc: Pen, pen_gear: Pen, cu: float, top: float, w: float, h: float) -> None:
+def _banner(pen_red: Pen, pen_disc: Pen, pen_mark: Pen, cu: float, top: float, w: float, h: float) -> None:
     """A long red banner that hangs from `top`, its foot cut in a point, with
     the mark of the regime on it."""
     pen_red.poly([(cu - w / 2, top), (cu + w / 2, top), (cu + w / 2, top + h), (cu, top + h - w * 0.45), (cu - w / 2, top + h)])
-    emblem(pen_disc, pen_gear, cu, top + h * 0.50, w * 0.36)
+    emblem(pen_disc, pen_mark, cu, top + h * 0.50, w * 0.36)
 
 
 def castle_godwin(layer_key: str, art: Art) -> np.ndarray:
@@ -230,7 +220,7 @@ def castle_godwin(layer_key: str, art: Art) -> np.ndarray:
         image, pen = art.drawing()
         reds, red_pen = art.drawing()
         discs, disc_pen = art.drawing()
-        gears, gear_pen = art.drawing()
+        marks, mark_pen = art.drawing()
         span = 0.25
         for cu in np.arange(0.0, 1.0 + span, span):
             pen.rect(cu - 0.03, 0.12, cu + 0.03, 1.0)
@@ -239,7 +229,7 @@ def castle_godwin(layer_key: str, art: Art) -> np.ndarray:
                 pen.rect(cu - 0.042 + k * 0.032, 0.185, cu - 0.042 + k * 0.032 + 0.02, 0.20)
         pen.rect(0.0, 0.10, 1.0, 0.13)
         for cu in np.arange(span / 2, 1.0 + span, span):
-            _banner(red_pen, disc_pen, gear_pen, cu, 0.13, 0.075, 0.50)
+            _banner(red_pen, disc_pen, mark_pen, cu, 0.13, 0.075, 0.50)
         body = art.mask_of(image)
         layer = solid(art, body, mix(p["stone"], p["stone_dark"], 0.35), p["stone_dark"], 0.2, 0.9, "stone", 0.10)
         art.shade(layer, art.blur(_courses(art, 30.0, 40.0), 0.3) * body, 0.35)
@@ -249,7 +239,7 @@ def castle_godwin(layer_key: str, art: Art) -> np.ndarray:
         banner = solid(art, red, p["red"], p["red_dark"], 0.15, 0.6, "cloth", 0.10)
         layer = art.over(layer, banner)
         art.put(layer, art.mask_of(discs) * red, mix(p["white"], p["stone_dark"], 0.15))
-        art.put(layer, art.mask_of(gears) * red, p["black"])
+        art.put(layer, art.mask_of(marks) * red, p["black"])
         art.shade(layer, art.rim(red, 0.003, 0.0, 0.6) * red, 0.30)
         haze(art, layer, p["deep"], 0.22, None)
         return layer

@@ -8,7 +8,7 @@ iron helmet that hides all his face: a round dome with a ridge, a face plate
 with one dark slit for his eyes and holes to breathe through, a straight
 guard over his neck. The shape is invented; it is not a copy of a helmet of
 a real army. The red armband of the regime is over the plate of his near
-arm (``_evil_faction``: an invented cog, not a real symbol). Heavy boots.
+arm. Heavy boots.
 
 He carries a chain gun, but nothing he carries is in this drawing: the gun
 is the prop ``evil_chain_gun``, and the runtime held-item system draws it.
@@ -71,7 +71,7 @@ ACTOR_METADATA = {
     "authoring_description": (
         "A heavy trooper of the Evil dimension's regime: riveted iron plate over the grey-green "
         "uniform, an iron helmet with one slit for his eyes (an invented shape), the red armband "
-        "with the faction's invented cog over the plate of his arm. His hands are empty in a "
+        "with the faction's mark over the plate of his arm. His hands are empty in a "
         "two-handed grip; his chain gun is the held prop `evil_chain_gun`."
     ),
     "gameplay_description": "A slow, armored gunner: he braces and fires, drives the gun into you, and pounds the floor.",

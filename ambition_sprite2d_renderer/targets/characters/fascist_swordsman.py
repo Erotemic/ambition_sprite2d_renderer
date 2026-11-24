@@ -3,7 +3,7 @@ drawn sabre (Jon, 2026-10-30: "maybe we have a few facists with swords or
 clubs").
 
 He is the enforcer (``fascist_enforcer``: the cap, the grey-green tunic, the
-jackboots, the red armband with the faction's invented cog) and he holds a
+jackboots, the red armband with the faction's mark) and he holds a
 straight officer's sabre with a brass guard in his near hand. He is a
 pompous man who thinks the sabre makes him a duellist. It does not, but it
 does reach.
@@ -66,7 +66,7 @@ ACTOR_METADATA = {
     },
     "authoring_description": (
         "A Fascist Enforcer with a drawn sabre: the same peaked cap, grey-green tunic, jackboots "
-        "and red armband (an invented cog; no real symbol), and a straight sabre with a brass "
+        "and the faction's red armband, and a straight sabre with a brass "
         "guard in his hand. A pompous goon who fancies himself a duellist."
     ),
     "gameplay_description": "A quick, long-reaching thrust from a short, readable windup; he holds just out of reach and lunges in.",

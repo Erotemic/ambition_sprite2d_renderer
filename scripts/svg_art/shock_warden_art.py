@@ -11,10 +11,14 @@ SVG with the programmatic drawing.
 from __future__ import annotations
 
 import argparse
-import math
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from ambition_sprite2d_renderer.evil_faction_mark import mark_points
+
 NAME = "shock_warden"
 VIEW = "Shock Warden - Side"
 SVG = ROOT / "ambition_sprite2d_renderer/data/characters/shock_warden/shock_warden.svg"
@@ -102,12 +106,8 @@ def group(gid: str, label: str, *elements: str) -> str:
             + "\n      ".join(elements) + "\n    </g>")
 
 
-def gear(cx: float, cy: float, radius: float, teeth: int = 10) -> str:
-    points = []
-    for i in range(teeth * 4):
-        a = 2 * math.pi * i / (teeth * 4) - math.pi / 2
-        r = radius * (1 if i % 4 in (1, 2) else 0.79)
-        points.append(f"{cx + r * math.cos(a):.2f},{cy + r * math.sin(a):.2f}")
+def mark(cx: float, cy: float, radius: float) -> str:
+    points = [f"{x:.2f},{y:.2f}" for x, y in mark_points((cx, cy), radius)]
     return "M " + " L ".join(points) + " Z"
 
 
@@ -198,8 +198,7 @@ def build_svg() -> str:
     layers.append(group("insignia", "Fictional Unit Badge",
         path("M 263,294 L 298,300 L 288,327 L 253,317 Z", RED, sw=3),
         ellipse(276,309,10,9,"#ece8db",2),
-        path(gear(276,309,7,8), "#242a31", "#242a31", 1),
-        circle(276,309,2,"#e9e7dd",1)))
+        path(mark(276,309,7), "#242a31", "none", 0)))
     layers.append(group("baton-forearm", "Baton Arm - Forearm Plate",
         path("M 246,324 L 265,342 L 241,366 L 218,349 Z", ARMOR),
         path("M 239,334 L 257,348", "none", "#b0b7a7", 6),
@@ -243,12 +242,10 @@ def build_svg() -> str:
     layers.append(group("shield-viewport", "Perspective Viewing Slit",
         path("M 486,221 L 525,229 L 527,248 L 486,241 Z", "#13212e", sw=3),
         path("M 491,229 L 520,234 L 522,241 L 491,237 Z", "#e2fbff", "none", 0)))
-    layers.append(group("shield-emblem", "Shield Gear Plate",
-        # The faction's cog, large, white on red: the mark reads first.
+    layers.append(group("shield-emblem", "Shield Emblem Plate",
         path("M 485,293 L 525,297 L 529,377 L 487,372 Z", RED, sw=4),
         circle(507,335,19,"#ece8db",3),
-        path(gear(507,335,15,8), "#1d2228", "#1d2228", 2),
-        circle(507,335,5,"#ece8db",2)))
+        path(mark(507,335,15), "#1d2228", "none", 0)))
     layers.append(group("shield-electric", "Shield Electrical Rim",
         path("M 455,188 L 445,178 L 458,169 L 453,160 M 528,198 L 544,204 L 539,219 L 552,229 L 540,245", "none", BLUE, 5),
         path("M 451,272 L 442,285 L 454,297 L 444,314 L 455,326 M 545,327 L 556,344 L 545,360 L 559,377 L 547,398", "none", LIGHT, 4),

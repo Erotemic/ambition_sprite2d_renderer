@@ -10,10 +10,7 @@ grey-green tunic with a stand collar, four pockets and a black belt with a
 cross strap; breeches that flare at the thigh; black jackboots to the knee;
 black gloves. On his near (left) arm, a red armband.
 
-The emblem of the faction is invented, and it is not a real symbol: a black
-cog of eight teeth with a hole in its middle, on a white disc, on red. It is
-on the armband and the badge of the cap, and the banners of the castle carry
-the same mark.
+The armband and cap carry the same mark as the castle banners.
 
 He fights with his fists and his boots: a jab and a cross (``slash``), an
 overhand (``punch``), a front kick with his boot (``attack_side``), an
@@ -81,8 +78,7 @@ ACTOR_METADATA = {
     "authoring_description": (
         "The rank-and-file soldier of the Evil dimension's fascist faction: a big man in a "
         "grey-green uniform, peaked cap, black jackboots and a red armband with the faction's "
-        "cog. He is drawn to be punched, as in Wolfenstein. The emblem is invented; no real "
-        "symbol is used."
+        "mark. He is drawn to be punched, as in Wolfenstein."
     ),
     "gameplay_description": (
         "A melee brawler: a jab and cross, an overhand, a front kick with his boot, an uppercut "
@@ -236,10 +232,10 @@ def _cap():
         # The visor.
         K.poly(d, [K.at(2.6, -6.8), K.at(9.4, -7.0), K.at(14.2, -4.4), K.at(12.6, -3.2), K.at(4.4, -4.2)], BOOT)
         K.line(d, [K.at(5.0, -5.8), K.at(9.6, -6.0), K.at(12.8, -4.4)], BOOT_SHINE, 0.5)
-        # The badge: the faction's cog on a white disc.
+        # The faction's mark on the cap badge.
         K.oval(d, K.at(7.0, -14.6), 2.8, 2.8, OUTLINE)
         K.oval(d, K.at(7.0, -14.6), 2.4, 2.4, DISC)
-        F.cog(K, d, K.at(7.0, -14.6), 1.9)
+        F.mark(K, d, K.at(7.0, -14.6), 1.9)
 
     return K.solid(("cap",), shape, UNIFORM, detail, outline=1.2, rim=0.3, shade=0.35, shade_colour=UNIFORM_DARK)
 
@@ -620,7 +616,7 @@ def _front_cap():
         K.line(d, [K.at(-6.0, -5.6), K.at(6.0, -5.6)], BOOT_SHINE, 0.5)
         K.oval(d, K.at(0.0, -14.8), 2.9, 2.9, OUTLINE)
         K.oval(d, K.at(0.0, -14.8), 2.5, 2.5, DISC)
-        F.cog(K, d, K.at(0.0, -14.8), 2.0)
+        F.mark(K, d, K.at(0.0, -14.8), 2.0)
 
     return K.solid(("front_cap",), shape, UNIFORM, detail, outline=1.2, rim=0.3, shade=0.35, shade_colour=UNIFORM_DARK)
 
@@ -722,6 +718,8 @@ def _side_cap():
         K.line(d, [K.at(5.8, -5.8), K.at(10.2, -6.0), K.at(13.8, -4.4)], BOOT_SHINE, 0.5)
         K.oval(d, K.at(10.6, -14.6), 1.2, 2.6, OUTLINE)
         K.oval(d, K.at(10.6, -14.6), 0.9, 2.2, DISC)
+        points = [K.at(10.6 + x * 0.4, -14.6 + y) for x, y in F.mark_points((0.0, 0.0), 1.9)]
+        K.poly(d, points, F.MARK_INK)
 
     return K.solid(("side_cap",), shape, UNIFORM, detail, outline=1.2, rim=0.3, shade=0.35, shade_colour=UNIFORM_DARK)
 
@@ -752,12 +750,24 @@ def _side_layers(pose):
     return out
 
 
+class _CapMark:
+    """Paint the badge on the curved cap."""
+
+    def apply(self, g, out, u, v, x, lit):
+        points = F.mark_points((0.0, -14.4), 1.9)
+        inside = np.zeros(x.shape, dtype=bool)
+        for (x0, y0), (x1, y1) in zip(points, points[1:] + points[:1]):
+            if y0 != y1:
+                inside ^= ((y0 > v) != (y1 > v)) & (x < x0 + (x1 - x0) * (v - y0) / (y1 - y0))
+        O.put(out, inside, F.MARK_INK)
+
+
 #: His cap: the crown high in front, the band with its red piping, the badge;
 #: the black visor in front only (its back is inside the crown).
 CAP_3D = W.Hat(crown=[O.Ring(-6.4, 0.0, 0.6, 8.8, 8.8), O.Ring(-10.8, 0.0, 0.6, 9.0, 9.2), O.Ring(-14.6, 0.0, 0.6, 11.6, 11.8, droop=-2.4),
                       O.Ring(-16.0, 0.0, 0.8, 10.6, 11.0, droop=-3.2), O.Ring(-16.4, 0.0, 0.8, 0.0, 0.0, droop=-3.2)],
-               brim=None, garment=W.Garment(UNIFORM, UNIFORM_DARK, [W.Band(-10.8, -6.2, COLLAR), W.Band(-11.3, -10.8, RED), W.Dot(0.0, -14.4, 2.4, DISC, ring=OUTLINE),
-                                                                     W.Dot(0.0, -14.4, 1.2, F.COG), W.Shade(-0.4)]), under=UNIFORM_DARK)
+               brim=None, garment=W.Garment(UNIFORM, UNIFORM_DARK, [W.Band(-10.8, -6.2, COLLAR), W.Band(-11.3, -10.8, RED), W.Dot(0.0, -14.4, 2.4, DISC),
+                                                                     _CapMark(), W.Shade(-0.4)]), under=UNIFORM_DARK)
 VISOR_3D = W.Worn("visor", [O.Ring(-6.6, 0.0, 3.6, 7.8, 8.8, v=0.0), O.Ring(-4.6, 0.0, 4.8, 8.0, 9.8, droop=1.6, v=1.0), O.Ring(-6.0, 0.0, 3.6, 7.8, 8.8, v=3.0)],
                   W.Garment(BOOT, BOOT_DARK), on="head")
 

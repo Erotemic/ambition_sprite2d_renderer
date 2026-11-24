@@ -9,8 +9,7 @@ front and facing right. He is huge, about 240 cm: square heavy shoulders,
 long arms, big grey-green hands with claws and stitches, bolts in his neck, a
 black coat that is too short for him (its sleeves stop above his wrists),
 dark trousers and heavy boots with thick soles. On his near (right) arm is the
-red armband of the regime with its mark (``_evil_faction``: an invented cog,
-not a real symbol).
+red armband of the regime with its mark.
 
 On his neck is the head of a wolf, sewn on: a stitched seam goes round his
 neck where the fur meets his skin. It is the wolf of the Insanity Wolf meme:
@@ -94,7 +93,7 @@ ACTOR_METADATA = {
     "authoring_description": (
         "Wolfenstein: the body of Frankenstein's monster with the head of Insanity Wolf sewn "
         "onto it, in a coat too short for him and the red armband of the Evil dimension's "
-        "regime (an invented cog; no real symbol). The boss of Godwin Castle."
+        "regime. The boss of Godwin Castle."
     ),
     "gameplay_description": (
         "A huge melee boss: a claw swipe, a lunging bite, a claw uppercut and a two-fisted "

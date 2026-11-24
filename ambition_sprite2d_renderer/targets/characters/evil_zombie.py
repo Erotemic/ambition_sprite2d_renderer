@@ -12,8 +12,7 @@ sockets with a small dead glow in them; his near cheek is gone and his
 teeth show through it. A dented steel helmet sits crooked on his head, its
 strap loose. His tunic is torn and stained; the near sleeve is torn off at
 the elbow and his thin bare forearm comes out of it. The regime's red
-armband is still on his near arm (``_evil_faction``: an invented cog, not a
-real symbol). Breeches and scuffed jackboots.
+armband is still on his near arm. Breeches and scuffed jackboots.
 
 He reaches: his near arm is out in front of him, his far arm hangs. He
 walks slowly and drags his far foot. He holds nothing. There is no drop
@@ -75,7 +74,7 @@ ACTOR_METADATA = {
     "authoring_description": (
         "A dead rank-and-file soldier of the Evil dimension's regime, raised in the castle lab: "
         "grey dead skin, sunk glowing eyes, a torn cheek, a dented steel helmet askew, a torn and "
-        "stained grey-green tunic with the red armband (an invented cog; no real symbol), breeches "
+        "stained grey-green tunic with the faction's red armband, breeches "
         "and jackboots. He stoops, reaches with one arm and drags one foot."
     ),
     "gameplay_description": "A slow, weak shambler for the start of the castle: a clumsy two-arm swipe and a lunging bite, both telegraphed.",
@@ -311,7 +310,7 @@ def _helmet(at: Point = HELMET_AT):
         K.oval(d, h(1.2, -5.2), 1.0, 0.8, mix(HELMET, RUST, 0.5))
         # The regime's mark on its side, faded.
         K.oval(d, h(-4.0, -7.4), 2.6, 2.6, mix(HELMET, F.DISC, 0.55))
-        F.cog(K, d, h(-4.0, -7.4), 2.0, mix(HELMET, F.COG, 0.55), mix(HELMET, F.DISC, 0.55))
+        F.mark(K, d, h(-4.0, -7.4), 2.0, mix(HELMET, F.MARK_INK, 0.55))
 
     return K.solid(("helmet",) + ((at,) if at != HELMET_AT else ()), shape, HELMET, detail, outline=1.2, rim=0.3, shade=0.35, shade_colour=HELMET_DARK)
 

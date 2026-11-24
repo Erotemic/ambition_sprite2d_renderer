@@ -13,8 +13,7 @@ its foot.
 - ``evil_thorn_bush``: a black-green bush of thorns, after the round bushes
   at a Mario fortress.
 
-The mark of the regime is a black gear on a white disc on red. It is an
-invented mark: no real symbol of a real regime is drawn.
+The banners carry the fictional faction's mark on a white disc.
 
 Drawn in world units at `PX` pixels to the unit; the bottom of the frame is
 the ground. No drop shadow is drawn.
@@ -34,6 +33,7 @@ import numpy as np
 from PIL import Image
 
 from ...authoring.sheet_build import build_sheet
+from ...evil_faction_mark import mark_points
 from ._town_kit import Canvas, box, mix, scale
 
 #: Pixels of the frame to one world unit.
@@ -111,16 +111,9 @@ def lettering(c: Canvas, text: str, cx: float, top: float, h: float, ink, light=
 
 
 def emblem(c: Canvas, cx: float, cy: float, r: float) -> None:
-    """The mark of the regime: a black eight-tooth gear on a white disc."""
+    """Draw the mark on a white disc."""
     c.put(c.mask(lambda p: p.ellipse(cx, cy, r)), WHITE)
-    teeth = 8
-    pts = []
-    for k in range(teeth * 4):
-        a = math.tau * k / (teeth * 4)
-        rr = r * (0.80 if (k % 4) in (1, 2) else 0.60)
-        pts.append((cx + rr * math.cos(a), cy + rr * math.sin(a)))
-    gear = c.mask(lambda p: p.poly(pts)) * (1.0 - c.mask(lambda p: p.ellipse(cx, cy, r * 0.22)))
-    c.put(gear, BLACK)
+    c.put(c.mask(lambda p: p.poly(mark_points((cx, cy), r * 0.8))), BLACK)
 
 
 def banner(c: Canvas, cx: float, top: float, w: float, h: float) -> None:

@@ -8,8 +8,7 @@ smaller and madder than Wolfenstein's, with one ear torn and one eye larger
 than the other; grey fur in patches and the grey-green skin of the monster
 between them; one arm and one leg furred, the others bare skin; stitches
 everywhere; one bolt in his neck. A torn hospital gown with a number on it,
-and on one arm the red armband of the regime (``_evil_faction``: an invented
-cog, not a real symbol). He is pitiful and he is dangerous; he is not cute.
+and on one arm the faction's red armband. He is pitiful and dangerous.
 
 He holds nothing. There is no drop shadow.
 
@@ -69,8 +68,7 @@ ACTOR_METADATA = {
     },
     "authoring_description": (
         "A failed attempt at Wolfenstein from the castle lab: a small stitched wolf-man of "
-        "mismatched parts in a torn hospital gown, with the regime's armband (an invented cog; "
-        "no real symbol). He lopes hunched and runs on all fours; they come in packs."
+        "mismatched parts in a torn hospital gown, with the faction's armband. He lopes hunched and runs on all fours; they come in packs."
     ),
     "gameplay_description": "A fast, weak pack enemy: a claw swipe and a pouncing bite. It yips before it comes.",
     "dialogue_hints": {"barks": ["Yip. YIP.", "*a howl that breaks in the middle*", "Ex-per-i-ment... seven."]},

@@ -2,7 +2,7 @@
 club (Jon, 2026-10-30: "maybe we have a few facists with swords or clubs").
 
 He is the enforcer (``fascist_enforcer``: the cap, the grey-green tunic, the
-jackboots, the red armband with the faction's invented cog) and he carries a
+jackboots, the red armband with the faction's mark) and he carries a
 long oak club bound in iron, which he calls "the persuader". He is slow, and
 very sure of himself.
 
@@ -63,7 +63,7 @@ ACTOR_METADATA = {
     },
     "authoring_description": (
         "A Fascist Enforcer with a long oak club bound in iron: the same peaked cap, grey-green "
-        "tunic, jackboots and red armband (an invented cog; no real symbol). A slow, smug goon."
+        "tunic, jackboots and the faction's red armband. A slow, smug goon."
     ),
     "gameplay_description": "A slow overhead smash: the club goes up high (a long tell), comes down hard for two hearts, and stays down a while.",
     "dialogue_hints": {"barks": ["Meet the persuader.", "This is a dialogue. I am the club half.", "Hold still. It is for order."]},

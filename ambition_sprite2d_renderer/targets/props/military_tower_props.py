@@ -22,7 +22,7 @@ ladder that goes up from its floor and over the two doors.
   wall, the General's medal cabinet and two banners.
 
 The mark of the faction is a white five-point star on an olive roundel with a
-brass rim (an invented mark; the gear is the mark of Castle Godwin's regime).
+brass rim.
 No drop shadows: form shade on a thing's own faces only.
 
 Animations: ``idle``, 1 frame each.

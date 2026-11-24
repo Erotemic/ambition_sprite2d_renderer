@@ -1,56 +1,27 @@
-"""The mark of the fascist faction of the Evil dimension, as its people wear
-it: a black cog of eight teeth with a hole in its middle, on a white disc,
-on red. The castle's banners carry the same mark.
-
-The mark is invented. It is not a real symbol, and no real symbol of a real
-regime may be drawn in its place.
-"""
+"""The fictional faction's badge and red armband."""
 
 from __future__ import annotations
 
-import math
-from typing import List
-
+from ...evil_faction_mark import mark_points
 from ._ai_era_kit import OUTLINE, WHITE, Kit, Point, RGBA, mix
 
 RED: RGBA = (184, 36, 40, 255)
 RED_DARK: RGBA = (124, 22, 30, 255)
 DISC: RGBA = (246, 244, 238, 255)
-COG: RGBA = (22, 20, 24, 255)
+MARK_INK: RGBA = (22, 20, 24, 255)
 
 
-#: The cog as parts of its radius: the round of its body, and its hole.
-COG_BODY = 0.7
-COG_HOLE = 0.28
-
-
-def cog_points(c: Point, r: float) -> List[Point]:
-    """The outline of the cog's eight square teeth about ``c``, ``r`` to
-    their tips. The body (``COG_BODY``) and the hole (``COG_HOLE``) are
-    circles: any drawing surface can draw the mark from these."""
-    pts = []
-    for k in range(8):
-        a = math.tau * k / 8.0
-        for da, rr in ((-0.24, COG_BODY), (-0.17, 1.0), (0.17, 1.0), (0.24, COG_BODY)):
-            pts.append((c[0] + math.cos(a + da) * r * rr, c[1] + math.sin(a + da) * r * rr))
-    return pts
-
-
-def cog(K: Kit, d, c: Point, r: float, colour: RGBA = COG, hole: RGBA = DISC) -> None:
-    """The cog about ``c``: eight square teeth, ``r`` to their tips, and a
-    hole in its middle."""
-    K.poly(d, cog_points(c, r), colour)
-    K.oval(d, c, r * COG_BODY, r * COG_BODY, colour)
-    K.oval(d, c, r * COG_HOLE, r * COG_HOLE, hole)
+def mark(K: Kit, d, c: Point, r: float, colour: RGBA = MARK_INK) -> None:
+    K.poly(d, mark_points(c, r), colour)
 
 
 def emblem(K: Kit, radius: float):
-    """The white disc with the black cog, from its middle."""
+    """Draw the mark on a white disc."""
 
     def paint(d) -> None:
         K.oval(d, K.home, radius + 0.45, radius + 0.45, OUTLINE)
         K.oval(d, K.home, radius, radius, DISC)
-        cog(K, d, K.home, radius * 0.8)
+        mark(K, d, K.home, radius * 0.8)
 
     return K.piece(("emblem", radius), paint)
 

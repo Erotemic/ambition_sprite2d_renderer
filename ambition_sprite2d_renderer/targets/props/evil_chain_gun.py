@@ -3,8 +3,7 @@
 A heavy rotary gun of the Evil dimension's regime: a cluster of barrels in
 two clamps, an iron body with a carry handle, a pistol grip at the rear, a
 second grip under the barrels, a box of ammunition under the body with a
-belt going in, and a red plate with the faction's invented cog
-(``_evil_faction``; not a real symbol).
+belt going in, and a red plate with the faction's mark.
 
 It is drawn as the held props are (``_held_prop_common``): flat, the muzzle
 pointing RIGHT (+x). The game pins it at ``grip`` (the pistol grip, the
@@ -99,7 +98,7 @@ def _body():
         K.rrect(d, K.home[0] + 58.0, K.home[1] + 25.0, K.home[0] + 76.0, K.home[1] + 37.0, 1.0, F.RED, OUTLINE, 0.5)
         K.oval(d, at(67.0, 31.0), 4.6, 4.6, OUTLINE)
         K.oval(d, at(67.0, 31.0), 4.1, 4.1, F.DISC)
-        F.cog(K, d, at(67.0, 31.0), 3.3)
+        F.mark(K, d, at(67.0, 31.0), 3.3)
 
     return K.solid(("gun_body",), shape, IRON, detail, outline=1.3, rim=0.35, shade=0.35, shade_colour=IRON_DEEP)
 
