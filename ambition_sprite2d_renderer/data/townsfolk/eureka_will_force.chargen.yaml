@@ -1,0 +1,51 @@
+# A resident made by the character generator; see targets/characters/townsfolk.py.
+# Will Force, the Science Horse: the anchor of QED-TV in Eureka (the Science
+# dimension). A chestnut horse with a star on his brow, the anchorman's big
+# side-parted hair and a moustache, a burgundy suit and a blue polka-dot
+# bow tie. No safety goggles.
+schema: ambition-chargen-v1
+name: Will Force
+base: broad_male
+seed: 3141
+overlay: will_force
+body:
+  height_cm: 190
+  age: 0.45
+  shoulders: 1.12
+  chest: 1.15
+head:
+  species: horse
+  face_length: 1.05
+  face_mark: star
+palette:
+  skin: '#8a4a28'
+  hair: '#3a2416'
+  eyes: '#3f2b1f'
+hair:
+  style: side_part
+  facial: mustache
+  volume: 1.0
+outfit:
+  top: shirt
+  sleeves: long
+  neckline: collar
+  top_color: '#f1ede2'
+  outer: jacket
+  outer_length: hip
+  outer_color: '#7a1f2e'
+  bottom: trousers
+  bottom_color: '#6a1b28'
+  shoes: shoes
+  shoe_color: '#2a1a14'
+  hat: none
+  accessories:
+  - bow_tie
+  accent_color: '#2f5aa8'
+game:
+  character_id: npc_will_force
+  description: 'Will Force, the Science Horse, anchors the evening news on QED-TV in Eureka, the institute town of the
+    Science dimension. He is an invented character, a horse, and a parody of two television men: the bow tie and the
+    enthusiasm of a children''s science presenter, and the burgundy suit, the big hair, the moustache and the vanity of
+    a comedy-film news anchor. He takes the science seriously and himself more seriously. His name puns on willpower
+    and horsepower.'
+  rows: full
