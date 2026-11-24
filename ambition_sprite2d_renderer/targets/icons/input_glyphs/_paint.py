@@ -172,6 +172,49 @@ def rim_width(box: Box) -> float:
     return max(1.5, 0.055 * min(w, h))
 
 
+#: How far a face's lit top and shaded foot depart from its colour (0..1).
+FACE_LIGHT = 0.16
+FACE_SHADE = 0.12
+#: The sheen along a face's top edge, and the soft shadow a raised part casts.
+SHEEN: Color = (255, 255, 255, 120)
+CAST_SHADOW: Color = (0, 0, 0, 70)
+
+
+def mix(a: Color, b: Color, t: float) -> Color:
+    return tuple(int(round(x + (y - x) * t)) for x, y in zip(a, b))  # type: ignore[return-value]
+
+
+def polygon_mask(size: Tuple[int, int], points: Sequence[Point]) -> Image.Image:
+    mask = Image.new("L", size, 0)
+    blending_draw(mask).polygon(list(points), fill=255)
+    return mask
+
+
+def shaded_face(canvas: Image.Image, face: Sequence[Point], body: Color, sheen: Sequence[Point] | None = None) -> None:
+    """A face lit from above: lighter at its top, darker at its foot, with a
+    sheen along the top edge. Reads as a curved surface at 128 px and as the
+    flat colour at 32 px, where the gradient averages out."""
+    ys = [y for _, y in face]
+    top, bottom = min(ys), max(ys)
+    span = max(1.0, bottom - top)
+    lit, shade = mix(body, (255, 255, 255, body[3]), FACE_LIGHT), mix(body, (0, 0, 0, body[3]), FACE_SHADE)
+    gradient = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    d = blending_draw(gradient)
+    y0, y1 = int(math.floor(top)), int(math.ceil(bottom))
+    for y in range(max(0, y0), min(canvas.height, y1 + 1)):
+        d.line([(0, y), (canvas.width, y)], fill=mix(lit, shade, (y - top) / span))
+    from PIL import ImageChops
+
+    mask = polygon_mask(canvas.size, face)
+    gradient.putalpha(ImageChops.multiply(gradient.getchannel("A"), mask))
+    canvas.alpha_composite(gradient)
+    if sheen:
+        layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        blending_draw(layer).polygon(list(sheen), fill=SHEEN)
+        layer.putalpha(ImageChops.multiply(layer.getchannel("A"), mask))
+        canvas.alpha_composite(layer)
+
+
 def plate(
     canvas: Image.Image,
     shape: Shape,
@@ -181,14 +224,23 @@ def plate(
     lip: Color = LIP,
     bevel: float = 0.0,
 ) -> None:
-    """A raised part: a dark rim, a darker lower lip, and a light top face."""
+    """A raised part: a soft cast shadow, a dark rim, a darker lower lip, and a
+    top face lit from above with a sheen along its upper edge."""
     d = blending_draw(canvas)
+    d.polygon(shift(shape(rim), 0, rim * 0.9), fill=CAST_SHADOW)
     d.polygon(shape(rim), fill=INK)
     if bevel > 0:
         d.polygon(shape(0), fill=lip)
-        d.polygon(shift(shape(-bevel * 0.55), 0, -bevel * 0.55), fill=body)
+        face = shift(shape(-bevel * 0.55), 0, -bevel * 0.55)
     else:
-        d.polygon(shape(0), fill=body)
+        face = shape(0)
+    # The sheen: the face pulled in and lifted, kept to its upper part, so a
+    # band of light hugs the top edge.
+    inset = max(rim * 0.8, 1.0)
+    lifted = shift(shape(-bevel * 0.55 - inset), 0, -bevel * 0.55 - inset * 1.4)
+    ys = [y for _, y in face]
+    cut = min(ys) + (max(ys) - min(ys)) * 0.42
+    shaded_face(canvas, face, body, sheen=[(x, min(y, cut)) for x, y in lifted])
 
 
 def text_size(label: str, size_px: float, stroke: int = 0) -> Tuple[float, float]:
