@@ -207,3 +207,27 @@ def test_missing_only_publication_keeps_files_owned_by_a_collection(tmp_path):
     accepted = store.publish({'producer:backgrounds': collection}, None)
     scoped = store.accept('skin:paint', {'room_dressing/paint.png': (source, 'runtime', 'full')}, {}, roots=['room_dressing'])
     assert store.publish({'skin:paint': scoped}, accepted, only_missing=True)['generation'] == accepted['generation']
+
+
+def test_target_flag_accepts_space_separated_and_repeated_names(monkeypatch):
+    """--target takes one or more names: space-separated in one flag, or
+    repeated. Both forms flatten to a flat list of names."""
+    import ambition_sprite2d_renderer.publication as publication
+
+    captured = {}
+
+    def fake_plan(scope, requested):
+        captured["requested"] = list(requested)
+        return {"schema": "ambition.art_plan.v1", "scope": scope, "complete": True,
+                "warnings": [], "failures": [], "units": {}, "exact": False, "unresolved": []}
+
+    monkeypatch.setattr(publication, "plan", fake_plan)
+
+    assert publication.main(["--plan", "--target", "one", "two"]) == 0
+    assert captured["requested"] == ["one", "two"]
+
+    assert publication.main(["--plan", "--target", "one", "--target", "two"]) == 0
+    assert captured["requested"] == ["one", "two"]
+
+    assert publication.main(["--plan", "--target", "one"]) == 0
+    assert captured["requested"] == ["one"]
