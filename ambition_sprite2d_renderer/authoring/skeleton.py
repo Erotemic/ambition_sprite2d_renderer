@@ -151,18 +151,27 @@ def two_bone_ik(
     len1: float,
     len2: float,
     bend: float = 1.0,
+    *,
+    fold_margin: float = 1e-6,
+    extension_margin: float = 1e-6,
 ) -> Tuple[float, float]:
     """Solve a two-segment chain from ``root`` toward ``target``.
 
     Returns ``(world_deg_upper, world_deg_lower)``. ``bend=+1`` puts the
-    middle joint on the clockwise side of the root→target line — for a
-    right-facing character with limbs hanging down that is the +x side,
-    i.e. knees forward; use ``bend=-1`` for elbows. Unreachable targets are
-    clamped to the chain's reach (segments straighten / fold)."""
+    middle joint on the negative-angle side of the root→target line — for
+    a downward chain that is the +x side (knees forward for a right-facing
+    character). ``bend=-1`` selects the other side. Unreachable targets are
+    clamped to the chain's reach (segments straighten / fold).
+
+    ``fold_margin`` and ``extension_margin`` are positive distances in the
+    same units as the segment lengths. They keep the solution away from
+    the fully folded and fully extended singularities. Authors can request
+    larger margins for a limb that should never become perfectly straight.
+    The defaults preserve the original solver's behavior."""
     dx, dy = target[0] - root[0], target[1] - root[1]
     d = math.hypot(dx, dy)
-    lo = abs(len1 - len2) + 1e-6
-    hi = len1 + len2 - 1e-6
+    lo = abs(len1 - len2) + fold_margin
+    hi = len1 + len2 - extension_margin
     d = clamp(d, lo, hi)
     base = math.atan2(dy, dx)
     cos_a = (len1 * len1 + d * d - len2 * len2) / (2.0 * len1 * d)
@@ -174,6 +183,33 @@ def two_bone_ik(
     clamped_target = add(root, (math.cos(base) * d, math.sin(base) * d))
     a2 = math.atan2(clamped_target[1] - joint[1], clamped_target[0] - joint[0])
     return math.degrees(a1), math.degrees(a2)
+
+
+def two_bone_ik_points(
+    root: Point,
+    target: Point,
+    len1: float,
+    len2: float,
+    bend: float = 1.0,
+    *,
+    fold_margin: float = 1e-6,
+    extension_margin: float = 1e-6,
+) -> Tuple[Point, Point]:
+    """Return the world-space middle joint and actual (possibly clamped) tip.
+
+    This is the point-oriented interface to :func:`two_bone_ik`, for direct
+    procedural part painters rather than angle-driven skeletons. It uses
+    exactly the same solver, bend convention and reach margins. Attach
+    hands, feet and held objects to the returned tip, not the requested
+    target, so an unreachable goal cannot stretch or detach the chain.
+    """
+    upper, lower = two_bone_ik(
+        root, target, len1, len2, bend=bend,
+        fold_margin=fold_margin, extension_margin=extension_margin,
+    )
+    joint = add(root, vec(len1, upper))
+    tip = add(joint, vec(len2, lower))
+    return joint, tip
 
 
 # ---- Keyframe channels -------------------------------------------------------

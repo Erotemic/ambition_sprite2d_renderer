@@ -16,6 +16,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ...authoring.skeleton import two_bone_ik_points
 from ...core.draw import resize_transparent_sprite
 from ...core.measure import body_metrics_for_box
 
@@ -262,13 +263,6 @@ def transform_for(pose):
     return lambda p:add(add(ORIGIN,(pose.shift,pose.drop)),rotate(p,a))
 
 
-def joint(a,b,l1,l2,side):
-    u=unit(sub(b,a)); dist=max(abs(l1-l2)+.01,min(math.hypot(*sub(b,a)),l1+l2-.01))
-    end=add(a,mul(u,dist)); along=(l1*l1-l2*l2+dist*dist)/(2*dist)
-    height=math.sqrt(max(0,l1*l1-along*along))
-    return add(add(a,mul(u,along)),mul(perp(u),height*side)),end
-
-
 def beam(p,a,b,w,face,edge=STEEL_D):
     q=perp(unit(sub(b,a)))
     shape=[add(a,mul(q,-w*.5)),add(b,mul(q,-w*.5)),add(b,mul(q,w*.5)),add(a,mul(q,w*.5))]
@@ -278,7 +272,9 @@ def beam(p,a,b,w,face,edge=STEEL_D):
 
 
 def draw_leg(p,hip,ankle,near,collapse):
-    knee,ankle=joint(hip,ankle,39,39,-1)
+    knee, ankle = two_bone_ik_points(
+        hip, ankle, 39, 39, bend=1, fold_margin=.01, extension_margin=.01,
+    )
     metal=STEEL if near else STEEL_D
     beam(p,hip,knee,18 if near else 16,metal)
     p.oval(hip,10,10,DARK,INK,2);p.oval(hip,5,5,metal,INK,1)
@@ -298,7 +294,9 @@ def draw_leg(p,hip,ankle,near,collapse):
 
 
 def draw_arm(p,shoulder,hand,near,side):
-    elbow,hand=joint(shoulder,hand,39,39,side)
+    elbow, hand = two_bone_ik_points(
+        shoulder, hand, 39, 39, bend=-side, fold_margin=.01, extension_margin=.01,
+    )
     metal=SILVER if near else STEEL_D
     beam(p,shoulder,elbow,12,metal)
     p.oval(shoulder,9,9,DARK,INK,2);p.oval(shoulder,5,5,metal,INK,1)

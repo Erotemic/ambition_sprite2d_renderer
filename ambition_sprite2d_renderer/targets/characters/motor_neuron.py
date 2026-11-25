@@ -19,6 +19,7 @@ import random
 from PIL import Image, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ...authoring.skeleton import two_bone_ik_points
 from ...core.draw import resize_transparent_sprite
 from ...core.measure import body_metrics_for_box
 
@@ -507,18 +508,6 @@ def draw_motor(p,g,pose):
 
 # ------------ Locomotion anatomy ------------
 
-def leg_joints(hip,ankle):
-    """Two-link knee, forward-bending. Limit extension to anatomical reach."""
-    a,b=49.0,48.0
-    v=sub(ankle,hip); d=math.hypot(*v); u=unit(v)
-    d_eff=max(abs(a-b)+.1,min(a+b-.2,d))
-    ankle=add(hip,mul(u,d_eff))
-    along=(a*a-b*b+d_eff*d_eff)/(2*d_eff)
-    height=math.sqrt(max(0,a*a-along*along))
-    knee=add(hip,add(mul(u,along),mul(cross(u),-height)))
-    return knee,ankle
-
-
 def shaft(p,a,b,width,base,hi):
     p.tube([a,lerp_point(a,b,.5),b],[width*.5,width*.5,width*.5],base,INK,1.5,hi)
 
@@ -616,7 +605,12 @@ def render_frame(anim,i,n):
     # may shift visually, but root movement is never baked into the sheet.
     fa=(ORIGIN[0]+pose.back_x-9,GROUND-14-pose.back_lift)
     na=(ORIGIN[0]+pose.front_x,GROUND-14-pose.front_lift)
-    fk,fa=leg_joints(far_hip,fa); nk,na=leg_joints(near_hip,na)
+    fk, fa = two_bone_ik_points(
+        far_hip, fa, 49, 48, bend=1, fold_margin=.1, extension_margin=.2,
+    )
+    nk, na = two_bone_ik_points(
+        near_hip, na, 49, 48, bend=1, fold_margin=.1, extension_margin=.2,
+    )
     draw_leg(world,far_hip,fk,fa,pose.back_toe,False,pose.flex)
     draw_motor(p,gb,pose)
     draw_soma(p,gb,pose)

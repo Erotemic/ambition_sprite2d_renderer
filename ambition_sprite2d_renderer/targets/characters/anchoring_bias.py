@@ -17,6 +17,7 @@ import random
 from PIL import Image, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ...authoring.skeleton import two_bone_ik_points
 from ...core.draw import resize_transparent_sprite
 from ...core.measure import body_metrics_for_box
 
@@ -319,15 +320,6 @@ def pose_for(anim,i,n):
 def body_transform(pose):
     a=pose.lean; c=math.cos(a); s=math.sin(a)
     return lambda p:(ORIGIN[0]+pose.x+p[0]*c-p[1]*s,ORIGIN[1]+pose.y+p[0]*s+p[1]*c)
-
-
-def joint(a,b,l1,l2,bend):
-    """Two-link IK, clamping unreachable targets rather than stretching limbs."""
-    v=sub(b,a); d=math.hypot(*v); u=unit(v)
-    d=max(abs(l1-l2)+.1,min(l1+l2-.1,d))
-    end=add(a,mul(u,d)); x=(l1*l1+d*d-l2*l2)/(2*d)
-    h=math.sqrt(max(0,l1*l1-x*x))
-    return add(add(a,mul(u,x)),mul(cross(u),bend*h)),end
 
 
 def rivet(p,pt,r=2.7):
@@ -638,16 +630,27 @@ def render_frame(anim,i,n):
     # Far leg, far arm and bracing hand are under the torso.
     far_hip=tr((-25,4)); near_hip=tr((24,6))
     fa=(ORIGIN[0]+pose.back,GROUND-14-pose.back_lift); na=(ORIGIN[0]+pose.front,GROUND-14-pose.front_lift)
-    fk,fa=joint(far_hip,fa,49,50,-1); nk,na=joint(near_hip,na,49,50,-1)
+    fk, fa = two_bone_ik_points(
+        far_hip, fa, 49, 50, bend=1, fold_margin=.1, extension_margin=.1,
+    )
+    nk, na = two_bone_ik_points(
+        near_hip, na, 49, 50, bend=1, fold_margin=.1, extension_margin=.1,
+    )
     draw_leg(world,far_hip,fk,fa,False,pose.collapse)
-    far_sh=tr((30,-69)); brace=tr((pose.brace_x,pose.brace_y)); fe,brace=joint(far_sh,brace,38,40,-1)
+    far_sh=tr((30,-69)); brace=tr((pose.brace_x,pose.brace_y))
+    fe, brace = two_bone_ik_points(
+        far_sh, brace, 38, 40, bend=1, fold_margin=.1, extension_margin=.1,
+    )
     draw_arm(world,far_sh,fe,brace,False,pose.charge); draw_fist(world,brace,sub(brace,fe),False)
     draw_body(body,pose)
     draw_leg(world,near_hip,nk,na,True,pose.collapse)
     draw_head(body,pose)
     # The anchor remains on a distinct transparent layer, with a hollow ring.
     # Grip is IK-limited; the chain starts at the actual end of the arm.
-    near_sh=tr((-28,-69)); grip=tr((pose.grip_x,pose.grip_y)); ne,grip=joint(near_sh,grip,42,45,1)
+    near_sh=tr((-28,-69)); grip=tr((pose.grip_x,pose.grip_y))
+    ne, grip = two_bone_ik_points(
+        near_sh, grip, 42, 45, bend=-1, fold_margin=.1, extension_margin=.1,
+    )
     anchor=Image.new('RGBA',size); ring,atr=anchor_transform(pose,grip); draw_anchor(Pen(anchor),atr)
     # The chain passes behind the foreground gauntlet, but in front of the torso.
     img.alpha_composite(anchor)
