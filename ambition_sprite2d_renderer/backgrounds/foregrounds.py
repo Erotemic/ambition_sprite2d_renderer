@@ -49,6 +49,9 @@ from .business import office_foreground as _business_office
 from .neural import CIRCUIT, CORTEX
 from .neural import circuit_foreground as _neural_circuit
 from .neural import neural_foreground as _neural
+from .authority import HALL, PLAZA
+from .authority import authority_foreground as _authority
+from .authority import hall_foreground as _authority_hall
 from .frontier import FRONTIER
 from .frontier import frontier_foreground as _frontier
 from .frontier import refinery_foreground as _frontier_refinery
@@ -330,6 +333,10 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     # cable tray and the corner of a rack.
     "neural": (_neural, scale(CORTEX["membrane_dark"], 0.8)),
     "neural_circuit": (_neural_circuit, scale(CIRCUIT["rack"], 0.9)),
+    # The Central Hub: hedges and a lamp arm on the plaza; a rope barrier
+    # and a lamp rod in the hall.
+    "authority": (_authority, scale(PLAZA["stone_dark"], 0.6)),
+    "authority_hall": (_authority_hall, scale(HALL["steel"], 0.8)),
     # The Frontier dimension: a telegraph wire and dry grass; the refinery's
     # pipe and a valve. The inside of a building has none.
     "frontier": (_frontier, scale(FRONTIER["wood_dark"], 0.8)),

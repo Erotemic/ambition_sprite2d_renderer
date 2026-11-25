@@ -203,6 +203,11 @@ SKINS: tuple[Skin, ...] = (
     # glossy wet top; the Weights, dark circuit panels with a cyan trace.
     Skin("neural", "karst", (108, 46, 92), (48, 18, 48), (176, 96, 148), (255, 228, 160), "flowstone", (255, 172, 206), "drips", "log"),
     Skin("neural_circuit", "panel", (36, 42, 82), (14, 16, 36), (84, 98, 160), (80, 210, 255), "strip", (80, 210, 255), "bolts", "grate"),
+    # The Central Hub (the Gate Authority's capital, LICENSED): the plaza's
+    # pale lilac stone in dressed blocks, ivy under its edges, a slab for a
+    # platform; the Concourse's slate-blue deck panels with a brass rail.
+    Skin("authority", "block", (172, 166, 188), (86, 82, 108), (220, 214, 230), (226, 184, 92), "edge", (232, 226, 238), "weed", "slab"),
+    Skin("authority_hall", "panel", (64, 76, 110), (24, 30, 50), (118, 134, 174), (226, 184, 92), "brass", (210, 178, 104), "bolts", "catwalk"),
     # The Frontier dimension (Dry Dock, LEADENSADDLE): red sandstone under
     # packed red earth, the town's boardwalk for a platform; the refinery's
     # rusted deck plate with hazard paint, pipes under it and a catwalk;

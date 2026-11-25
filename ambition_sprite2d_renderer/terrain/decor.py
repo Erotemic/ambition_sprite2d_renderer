@@ -4783,6 +4783,10 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # fluid; in the Weights, consoles, floor lights and coiled cable.
     "neural": ((mushrooms, crystal, reeds, mushrooms, crystal, bush), _palette((30, 12, 34), (150, 70, 120), (220, 130, 180), (110, 50, 90), (90, 220, 210), (200, 100, 170), (255, 170, 210), (255, 228, 160))),
     "neural_circuit": ((console, floor_light, coil, console, cone, floor_light), _palette((10, 12, 28), (40, 48, 90), (90, 104, 170), (60, 60, 90), (60, 70, 120), (80, 150, 140), (255, 76, 96), (80, 210, 255))),
+    # The Central Hub: the plaza's planters, benches, lamps and flowers; the
+    # Concourse's luggage, planters and crates of freight.
+    "authority": ((planter, campus_bench, gas_lamp, flowers, planter, bollard), _palette((40, 38, 60), (196, 190, 208), (236, 230, 240), (110, 72, 50), (60, 66, 100), (90, 140, 90), (240, 170, 200), (255, 220, 150))),
+    "authority_hall": ((tin_trunk, planter, crate, briefcase, planter, tin_trunk), _palette((20, 24, 40), (120, 134, 174), (220, 210, 196), (120, 80, 50), (70, 84, 120), (80, 140, 90), (226, 184, 92), (255, 222, 160))),
     "boss_stage": ((monitor_wedge, coil, mic_stand, road_case, setlist, pedalboard), _palette((10, 8, 16), (60, 54, 72), (190, 184, 200), (40, 36, 48), (120, 124, 136), (70, 220, 255), (236, 48, 150), (255, 176, 70))),
     # The Noodly Temple: what is on the floor of a kitchen. `stone` is the
     # colour of pasta, `wood` of a meatball and `bloom` of sauce.

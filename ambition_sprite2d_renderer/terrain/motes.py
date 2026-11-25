@@ -891,6 +891,8 @@ MOTES = {
     # Sparks of firing in the Cortex; points of light in the Weights.
     "neural": (_glow, (255, 210, 230)),
     "neural_circuit": (_twinkle, (110, 230, 255)),
+    "authority": (_glow, (255, 214, 232)),
+    "authority_hall": (_dot, (250, 240, 220)),
     # Pollen in the warm light of the plaza; in Records, paper dust.
     "business": (_glow, (255, 232, 196)),
     "business_office": (_dot, (240, 232, 214)),
@@ -1098,6 +1100,8 @@ SHADOWS = {
     "boss_stage": (10, 6, 18),
     "neural": (30, 10, 36),
     "neural_circuit": (6, 8, 22),
+    "authority": (44, 42, 70),
+    "authority_hall": (20, 24, 40),
     "business": (40, 30, 50),
     "business_office": (24, 18, 28),
     "frontier": (96, 46, 34),
