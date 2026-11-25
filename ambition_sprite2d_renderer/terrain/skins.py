@@ -213,6 +213,11 @@ SKINS: tuple[Skin, ...] = (
     # hazard edge and a grate.
     Skin("unfinished", "earth", (92, 80, 72), (40, 34, 32), (130, 116, 104), (232, 190, 70), "grass", (110, 132, 96), "roots", "plank"),
     Skin("unfinished_void", "panel", (56, 60, 76), (20, 22, 30), (98, 102, 122), (150, 170, 210), "hazard", (200, 170, 70), "bolts", "grate"),
+    # The Automaton dimension: the Works is cut lavender stone with grass
+    # on it and brass in it; the Life field is dark cubes with an amber edge.
+    Skin("automaton", "block", (150, 136, 176), (60, 52, 84), (200, 188, 222), (214, 170, 92), "grass", (110, 150, 96), "lip", "slab"),
+    Skin("automaton_tower", "timber", (130, 86, 56), (60, 40, 30), (170, 120, 80), (214, 170, 92), "deck", (150, 104, 70), "lip", "plank"),
+    Skin("automaton_life", "block", (34, 34, 70), (10, 10, 26), (80, 84, 140), (120, 220, 255), "edge", (255, 184, 70), "lip", "slab"),
     # The Frontier dimension (Dry Dock, LEADENSADDLE): red sandstone under
     # packed red earth, the town's boardwalk for a platform; the refinery's
     # rusted deck plate with hazard paint, pipes under it and a catwalk;

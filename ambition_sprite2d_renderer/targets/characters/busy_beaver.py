@@ -5,6 +5,13 @@ a broad paddle tail, a dented yellow hard hat, and a work vest loaded with
 small tools.  The design deliberately avoids baked-in held props or effects so
 runtime equipment and VFX remain composable.
 
+He is an automaton, the tireless builder of the Automaton dimension (the
+concept sheet `assets/concept_art/misc/Busy Beaver Automaton Concept
+Sheet.png`, `docs/planning/game/automaton-dimension.md`): a status beacon
+on the hat, a 3x3 grid of lit cells on the vest, a tail of riveted panels
+with cells lit in it, a bolt in the cheek, and purple synthetic trim at the
+joints, the belt and the soles.
+
 Animations:
 - ``idle``: heavy breathing, tail settling, occasional blink.
 - ``walk``: short, determined construction-site march.
@@ -181,14 +188,19 @@ TOOTH = "#f6ead1"
 TAIL_DARK = "#3a261c"
 TAIL_MID = "#62422c"
 TAIL_LIGHT = "#8b6441"
-VEST_DARK = "#303a37"
-VEST_MID = "#465852"
-VEST_LIGHT = "#65736a"
+VEST_DARK = "#24402f"
+VEST_MID = "#2f5a40"
+VEST_LIGHT = "#4f7a5a"
 HAT_DARK = "#a46d11"
 HAT = "#e5a91f"
 HAT_LIGHT = "#ffd45c"
 BELT = "#2b2520"
 METAL = "#a8b0ae"
+#: The automaton's computation light and its synthetic trim.
+ENERGY = "#b8f03c"
+ENERGY_DARK = "#6f9a1c"
+TRIM = "#6c4bb0"
+TRIM_LIGHT = "#9474d6"
 
 
 def _rgba(color: str, alpha: int = 255) -> RGBA:
@@ -455,19 +467,22 @@ def _paint_tail(d: ImageDraw.ImageDraw, cx: float, cy: float, flatten: float) ->
         (cx - 26.0 * flatten, cy + 6.0),
     ]
     d.polygon([_pt(*q) for q in inner], fill=_rgba(TAIL_MID))
-    # Cross-hatched paddle texture.
+    # Riveted panels, a cell lit in some of them.
     for off in (-16, -7, 2):
         d.line(
             [_pt(cx - 25.0 * flatten, cy + off), _pt(cx + 6.0, cy + off + 8.0)],
-            fill=_rgba(TAIL_LIGHT),
-            width=_s(0.8),
+            fill=_rgba(OUTLINE_SOFT),
+            width=_s(0.9),
         )
     for off in (-18, -7, 4):
         d.line(
             [_pt(cx + off, cy - 12.0), _pt(cx + off - 8.0, cy + 11.0)],
             fill=_rgba(OUTLINE_SOFT),
-            width=_s(0.65),
+            width=_s(0.9),
         )
+    for px, py in ((-20.0, -6.0), (-9.0, 2.0), (-1.0, -6.0), (-15.0, 8.0)):
+        x, y = cx + px * flatten, cy + py
+        d.rectangle(_box(x - 2.2, y - 2.2, x + 2.2, y + 2.2), fill=_rgba(ENERGY), outline=_rgba(ENERGY_DARK), width=_s(0.5))
 
 
 #: Limb bones (frame pixels): a limb is two bones of this length bent toward
@@ -491,6 +506,7 @@ def _draw_leg(body: _Body, hip: Point, foot: Point, far: bool) -> None:
 def _paint_foot(d: ImageDraw.ImageDraw, fx: float, fy: float, far: bool) -> None:
     color = _rgba(FUR_DARK if far else FUR_MID)
     d.ellipse(_box(fx - 8.5, fy - 6.0, fx + 9.0, fy + 2.0), fill=color, outline=_rgba(OUTLINE), width=_s(1.3))
+    d.chord(_box(fx - 8.5, fy - 6.0, fx + 9.0, fy + 2.0), 20, 160, fill=_rgba(TRIM_LIGHT if not far else TRIM), outline=_rgba(OUTLINE), width=_s(1.0))
     # Broad webbed toes.
     for dx in (-4.5, 0.0, 4.5):
         d.line([_pt(fx + dx - 1.8, fy - 2.0), _pt(fx + dx + 2.5, fy)], fill=_rgba(FUR_LIGHT), width=_s(0.8))
@@ -509,6 +525,7 @@ def _paint_hand(d: ImageDraw.ImageDraw, hx: float, hy: float, far: bool) -> None
     color = _rgba(FUR_DARK if far else FUR_MID)
     d.ellipse(_box(hx - 5.0, hy - 4.0, hx + 5.5, hy + 5.0), fill=color, outline=_rgba(OUTLINE), width=_s(1.0))
     d.line([_pt(hx - 2.5, hy + 1.0), _pt(hx + 4.0, hy + 2.0)], fill=_rgba(FUR_LIGHT), width=_s(0.8))
+    d.arc(_box(hx - 5.0, hy - 4.0, hx + 5.5, hy + 5.0), 200, 290, fill=_rgba(TRIM_LIGHT if not far else TRIM), width=_s(1.8))
 
 
 def _paint_torso(draw: ImageDraw.ImageDraw) -> None:
@@ -525,9 +542,16 @@ def _paint_torso(draw: ImageDraw.ImageDraw) -> None:
     draw.polygon([_pt(61.0, 80.0), _pt(72.0, 74.0), _pt(77.0, 108.0), _pt(64.0, 112.0)], fill=_rgba(VEST_MID))
     draw.polygon([_pt(87.0, 74.0), _pt(99.0, 81.0), _pt(98.0, 108.0), _pt(83.0, 108.0)], fill=_rgba(VEST_MID))
     draw.line([_pt(80.0, 76.0), _pt(80.0, 112.0)], fill=_rgba(VEST_LIGHT), width=_s(1.1))
+    # The computation grid on the breast: three by three lit cells.
+    draw.rounded_rectangle(_box(84.5, 86.0, 98.5, 100.0), radius=_s(1.5), fill=_rgba(VEST_DARK), outline=_rgba(OUTLINE), width=_s(0.8))
+    for r in range(3):
+        for c in range(3):
+            x, y = 86.0 + c * 4.3, 87.5 + r * 4.3
+            draw.rectangle(_box(x, y, x + 2.9, y + 2.9), fill=_rgba(ENERGY))
     # Tool belt and small integrated tools; no held prop.
     draw.rounded_rectangle(_box(57.0, 105.0, 103.0, 114.0), radius=_s(3.0), fill=_rgba(BELT), outline=_rgba(OUTLINE), width=_s(1.0))
-    draw.rectangle(_box(67.0, 106.5, 77.0, 115.0), fill=_rgba(FUR_LIGHT), outline=_rgba(OUTLINE), width=_s(0.8))
+    draw.rectangle(_box(67.0, 106.5, 77.0, 115.0), fill=_rgba(TRIM), outline=_rgba(OUTLINE), width=_s(0.8))
+    draw.rectangle(_box(70.0, 109.0, 74.0, 112.5), fill=_rgba(ENERGY))
     draw.line([_pt(93.0, 105.0), _pt(93.0, 114.0)], fill=_rgba(METAL), width=_s(2.2))
 
 
@@ -549,6 +573,9 @@ def _paint_head(hd: ImageDraw.ImageDraw) -> None:
     hd.ellipse(_box(hx - 18.0, hy + 5.0, hx + 17.0, hy + 24.0), fill=_rgba(MUZZLE), outline=_rgba(OUTLINE), width=_s(1.0))
     hd.ellipse(_box(hx - 13.0, hy + 8.0, hx + 12.0, hy + 20.0), fill=_rgba(MUZZLE_LIGHT))
     hd.ellipse(_box(hx - 5.0, hy + 2.0, hx + 7.0, hy + 11.0), fill=_rgba(NOSE), outline=_rgba(OUTLINE), width=_s(0.7))
+    # The bolt in the cheek, lit.
+    hd.ellipse(_box(hx - 26.0, hy + 0.0, hx - 18.0, hy + 8.0), fill=_rgba(TRIM), outline=_rgba(OUTLINE), width=_s(0.8))
+    hd.ellipse(_box(hx - 24.0, hy + 2.0, hx - 20.0, hy + 6.0), fill=_rgba(ENERGY))
 
 
 #: Eye centres (x offsets from the head centre, and the row below it).
@@ -601,6 +628,9 @@ def _paint_hat(hdraw: ImageDraw.ImageDraw) -> None:
     hdraw.pieslice(_box(hx - 21.0, hy - 46.0, hx + 18.0, hy - 16.0), 180, 360, fill=_rgba(HAT), outline=_rgba(OUTLINE), width=_s(1.2))
     hdraw.polygon([_pt(hx - 2.0, hy - 44.0), _pt(hx + 4.0, hy - 42.0), _pt(hx + 1.0, hy - 25.0), _pt(hx - 5.0, hy - 25.0)], fill=_rgba(HAT_LIGHT))
     hdraw.line([_pt(hx - 18.0, hy - 27.0), _pt(hx + 18.0, hy - 27.0)], fill=_rgba(HAT_LIGHT), width=_s(1.2))
+    # The status beacon on the crown, and a lit cell on the front.
+    hdraw.rounded_rectangle(_box(hx - 5.5, hy - 51.0, hx + 2.5, hy - 44.0), radius=_s(1.5), fill=_rgba(ENERGY), outline=_rgba(OUTLINE), width=_s(1.0))
+    hdraw.rectangle(_box(hx + 7.0, hy - 38.0, hx + 12.0, hy - 33.0), fill=_rgba(ENERGY), outline=_rgba(ENERGY_DARK), width=_s(0.6))
 
 
 def _draw_body(img: Image.Image, p: Pose) -> None:

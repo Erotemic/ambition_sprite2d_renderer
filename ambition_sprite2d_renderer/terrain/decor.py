@@ -4790,6 +4790,9 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # The Unfinished dimension: crates, cones, coils of cable and a lamp; in
     # the Void, cones and floor lights.
     "unfinished": ((crate, cone, coil, lamp_post, crate, bush), _palette((30, 28, 30), (150, 146, 140), (210, 206, 200), (120, 90, 60), (90, 94, 106), (110, 132, 96), (232, 190, 70), (255, 224, 160))),
+    "automaton": ((gear_wheel, flowers, oil_can, gas_lamp, gear_wheel, bush), _palette((40, 32, 52), (150, 136, 176), (214, 204, 230), (130, 86, 56), (150, 110, 60), (110, 150, 96), (214, 170, 92), (255, 222, 150))),
+    "automaton_tower": ((gear_wheel, oil_can, coil, gear_wheel, blueprint_rolls, oil_can), _palette((40, 32, 52), (126, 110, 150), (200, 188, 222), (130, 86, 56), (150, 110, 60), (110, 150, 96), (214, 170, 92), (255, 222, 150))),
+    "automaton_life": ((floor_light, console, coil, floor_light, console, coil), _palette((10, 10, 26), (34, 34, 70), (80, 84, 140), (60, 50, 90), (70, 74, 120), (60, 120, 140), (255, 184, 70), (120, 220, 255))),
     "unfinished_void": ((cone, floor_light, crate, coil, floor_light, cone), _palette((14, 16, 24), (60, 64, 80), (120, 124, 140), (100, 80, 60), (70, 74, 92), (80, 100, 90), (200, 170, 70), (150, 170, 210))),
     "boss_stage": ((monitor_wedge, coil, mic_stand, road_case, setlist, pedalboard), _palette((10, 8, 16), (60, 54, 72), (190, 184, 200), (40, 36, 48), (120, 124, 136), (70, 220, 255), (236, 48, 150), (255, 176, 70))),
     # The Noodly Temple: what is on the floor of a kitchen. `stone` is the

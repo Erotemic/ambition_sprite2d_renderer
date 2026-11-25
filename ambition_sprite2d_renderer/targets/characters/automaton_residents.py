@@ -1,0 +1,237 @@
+"""Two residents of the Automaton dimension (gate address CELLS,
+`docs/planning/game/automaton-dimension.md`).
+
+**Neighbour Moore**, of the Life field: an automaton of dark cubes whose
+chest is a three-by-three grid, the Moore neighbourhood. The middle cell is
+amber: that is him. The eight round it are his neighbours, and they live
+and die as he breathes (a blinker steps through them at rest). His head is a
+cube with a visor and two cyan eyes; an antenna with a cell on it.
+
+**The Head**, of the Tape Room: the read/write head of the Busy Beaver's
+machine. A carriage on four small wheels with a round lens in front that
+reads the cell under it, a stamp under the lens that writes, and on its back
+a row of five state lamps (A to E), one lit: the state it is in. It wears
+the Busy Beaver's colours, lime and purple.
+
+Rows: ``idle``, ``talk``, ``hit`` and ``death`` (it sits, or stops, and its
+lights go out). Nothing here is writing.
+"""
+
+from __future__ import annotations
+
+import math
+from pathlib import Path
+from typing import List, Tuple
+
+from . import _art_cast_kit as K
+from . import _picture_palace_kit as M
+
+ROWS: List[Tuple[str, int, int]] = [("idle", 8, 150), ("talk", 6, 110), ("hit", 3, 90), ("death", 8, 160)]
+LOOPS = {"idle", "talk"}
+
+# Neighbour Moore.
+CUBE = (40, 40, 82, 255)
+CUBE_LIGHT = (74, 76, 128, 255)
+CUBE_DARK = (22, 22, 48, 255)
+CELL = (120, 220, 255, 255)
+CELL_OFF = (34, 52, 96, 255)
+AMBER = (255, 184, 70, 255)
+VISOR = (14, 16, 34, 255)
+
+# The Head.
+BODY = (96, 84, 130, 255)
+BODY_LIGHT = (140, 126, 178, 255)
+TRIM = (108, 75, 176, 255)
+LIME = (184, 240, 60, 255)
+LIME_OFF = (60, 70, 50, 255)
+LENS = (150, 230, 240, 255)
+STEEL = (70, 72, 84, 255)
+INK = (24, 22, 30, 255)
+
+
+# ---------------------------------------------------------------------------
+# Neighbour Moore
+# ---------------------------------------------------------------------------
+
+MOORE_FRAME = (96, 128)
+#: The eight neighbours, clockwise from the top left; the blinker through
+#: them at rest (a vertical then a horizontal bar of three through the middle).
+NEIGHBOURS = ((0, 0), (1, 0), (2, 0), (2, 1), (2, 2), (1, 2), (0, 2), (0, 1))
+BLINKER = ({(1, 0), (1, 2)}, {(0, 1), (2, 1)})
+
+
+def _moore(anim: str, i: int, n: int):
+    t = K.phase(i, n, anim in LOOPS)
+    cyc = math.tau * t
+    f = K.Frame(MOORE_FRAME)
+    foot = 124.0
+    cx = 48.0
+    bob, tilt, lights, sit = 0.0, 0.0, 1.0, 0.0
+    lit = BLINKER[(i // 2) % 2]
+    if anim == "idle":
+        bob = 0.8 * math.sin(cyc)
+    elif anim == "talk":
+        bob = 0.6 * math.sin(cyc * 2.0)
+        lit = set(NEIGHBOURS[k] for k in range(8) if (k + i) % 3 == 0)
+    elif anim == "hit":
+        tilt = -8.0
+        lit = {NEIGHBOURS[(i * 3) % 8]}
+    elif anim == "death":
+        sit = min(1.0, t * 1.6)
+        tilt = 8.0 * sit
+        lights = max(0.0, 1.0 - t * 1.3)
+        lit = set(NEIGHBOURS[: max(0, int(round(8 * (1.0 - t * 1.4))))]) & set(BLINKER[0] | BLINKER[1])
+    top = 36.0 + bob + 20.0 * sit
+    pivot = (cx, top + 44.0)
+
+    def turn(pts):
+        return K.turn(pts, pivot[0], pivot[1], tilt)
+
+    # Legs: two stacks of cubes.
+    for dx in (-10.0, 10.0):
+        for k in range(3):
+            y0 = top + 58.0 + k * ((foot - top - 58.0) / 3.0)
+            y1 = y0 + (foot - top - 58.0) / 3.0 - 1.5
+            x0 = cx + dx - 6.0 + (6.0 * sit * k if dx > 0 else 0.0)
+            f.poly([(x0, y0), (x0 + 12.0, y0), (x0 + 12.0, y1), (x0, y1)], CUBE if k % 2 else CUBE_LIGHT)
+    # Arms: a cube at the shoulder, a thin rod, a cube hand.
+    lift = 8.0 * math.sin(cyc * 2.0) if anim == "talk" else 0.0
+    for side in (-1.0, 1.0):
+        sh = turn([(cx + side * 22.0, top + 26.0)])[0]
+        hand = (sh[0] + side * 6.0, sh[1] + 26.0 - (lift if side > 0 else 0.0))
+        f.limb([sh, hand], 3.0, CUBE_DARK)
+        f.poly([(sh[0] - 4.0, sh[1] - 4.0), (sh[0] + 4.0, sh[1] - 4.0), (sh[0] + 4.0, sh[1] + 4.0), (sh[0] - 4.0, sh[1] + 4.0)], CUBE_LIGHT)
+        f.poly([(hand[0] - 4.0, hand[1] - 3.0), (hand[0] + 4.0, hand[1] - 3.0), (hand[0] + 4.0, hand[1] + 5.0), (hand[0] - 4.0, hand[1] + 5.0)], CUBE)
+    # The chest: the Moore neighbourhood, him in the middle.
+    body = [(cx - 19.0, top + 20.0), (cx + 19.0, top + 20.0), (cx + 19.0, top + 58.0), (cx - 19.0, top + 58.0)]
+    f.poly(turn(body), CUBE)
+    s = 11.0
+    for gy in range(3):
+        for gx in range(3):
+            x0, y0 = cx - 16.5 + gx * s, top + 22.5 + gy * s
+            sq = turn([(x0 + 1.0, y0 + 1.0), (x0 + s - 1.0, y0 + 1.0), (x0 + s - 1.0, y0 + s - 1.0), (x0 + 1.0, y0 + s - 1.0)])
+            if (gx, gy) == (1, 1):
+                colour = AMBER if lights > 0.0 else CELL_OFF
+                f.poly(sq, colour, body=False)
+                if lights > 0.0:
+                    mx, my = sum(p[0] for p in sq) / 4, sum(p[1] for p in sq) / 4
+                    f.glow(mx, my, 8.0, K.alpha(AMBER, 0.5 * lights))
+            elif (gx, gy) in lit and lights > 0.0:
+                f.poly(sq, CELL, body=False)
+                mx, my = sum(p[0] for p in sq) / 4, sum(p[1] for p in sq) / 4
+                f.glow(mx, my, 6.0, K.alpha(CELL, 0.4 * lights))
+            else:
+                f.poly(sq, CELL_OFF, body=False)
+    # The head: a cube, its visor and eyes, the antenna with a cell.
+    hx, hy = turn([(cx, top + 6.0)])[0]
+    head = [(hx - 14.0, hy - 13.0), (hx + 14.0, hy - 13.0), (hx + 14.0, hy + 12.0), (hx - 14.0, hy + 12.0)]
+    f.poly(head, CUBE_LIGHT)
+    f.poly([(hx - 11.0, hy - 5.0), (hx + 13.0, hy - 5.0), (hx + 13.0, hy + 6.0), (hx - 11.0, hy + 6.0)], VISOR, body=False)
+    if lights > 0.0:
+        h = 2.6 if not (anim == "idle" and i == 5) else 0.6
+        for ex in (hx - 3.0, hx + 7.0):
+            f.poly([(ex - 2.4, hy - h), (ex + 2.4, hy - h), (ex + 2.4, hy + h), (ex - 2.4, hy + h)], CELL, body=False)
+            f.glow(ex, hy, 5.0, K.alpha(CELL, 0.5 * lights))
+    f.limb([(hx + 6.0, hy - 13.0), (hx + 9.0, hy - 22.0)], 1.6, CUBE_DARK)
+    f.poly([(hx + 6.0, hy - 28.0), (hx + 12.0, hy - 28.0), (hx + 12.0, hy - 22.0), (hx + 6.0, hy - 22.0)], AMBER if lights > 0.0 else CELL_OFF)
+    return f.finish(outline=K.shade(CUBE_DARK, 0.6), width=1.4, glow_blur=2.0)
+
+
+# ---------------------------------------------------------------------------
+# The Head
+# ---------------------------------------------------------------------------
+
+HEAD_FRAME = (96, 96)
+
+
+def _head(anim: str, i: int, n: int):
+    t = K.phase(i, n, anim in LOOPS)
+    cyc = math.tau * t
+    f = K.Frame(HEAD_FRAME)
+    ground = 92.0
+    cx = 46.0
+    bob, tilt, lights, stamp, state = 0.0, 0.0, 1.0, 0.0, i % 5
+    look = 0.0
+    if anim == "idle":
+        look = 2.0 * math.sin(cyc)
+        bob = 0.5 * math.sin(cyc * 2.0)
+    elif anim == "talk":
+        stamp = abs(math.sin(cyc * 1.5))
+        state = (i // 2) % 5
+    elif anim == "hit":
+        tilt = -10.0
+        state = -1 if i % 2 else 2
+    elif anim == "death":
+        tilt = 6.0 * min(1.0, t * 2.0)
+        lights = max(0.0, 1.0 - t * 1.4)
+        state = 4
+    base = ground - 10.0 + bob
+
+    def turn(pts):
+        return K.turn(pts, cx, ground, tilt)
+
+    # The wheels and the axle frame.
+    for wx in (cx - 22.0, cx - 8.0, cx + 8.0, cx + 22.0):
+        f.ellipse(*turn([(wx, ground - 5.0)])[0], 5.0, 5.0, STEEL)
+        f.dot(*turn([(wx, ground - 5.0)])[0], 1.4, BODY_LIGHT)
+    f.poly(turn([(cx - 28.0, base - 2.0), (cx + 28.0, base - 2.0), (cx + 28.0, base + 2.0), (cx - 28.0, base + 2.0)]), TRIM)
+    # The carriage: a box with a sloped front.
+    box = [(cx - 26.0, base - 40.0), (cx + 16.0, base - 40.0), (cx + 28.0, base - 28.0), (cx + 28.0, base - 2.0), (cx - 26.0, base - 2.0)]
+    f.poly(turn(box), BODY)
+    f.poly(turn([(cx - 26.0, base - 40.0), (cx + 16.0, base - 40.0), (cx + 14.0, base - 35.0), (cx - 24.0, base - 35.0)]), BODY_LIGHT, body=False)
+    # Purple trim on the corners, rivets.
+    for x, y in ((cx - 22.0, base - 6.0), (cx - 22.0, base - 32.0), (cx + 22.0, base - 6.0)):
+        f.dot(*turn([(x, y)])[0], 1.3, TRIM)
+    # The state lamps on its back: five, one lit.
+    for k in range(5):
+        lx, ly = turn([(cx - 20.0 + k * 7.0, base - 46.0)])[0]
+        on = k == state and lights > 0.0
+        f.ellipse(lx, ly, 2.6, 2.6, LIME if on else LIME_OFF)
+        if on:
+            f.glow(lx, ly, 6.0, K.alpha(LIME, 0.6 * lights))
+    f.poly(turn([(cx - 24.0, base - 42.0), (cx + 12.0, base - 42.0), (cx + 12.0, base - 40.0), (cx - 24.0, base - 40.0)]), TRIM)
+    # The lens that reads, in front, looking about.
+    lx, ly = turn([(cx + 16.0, base - 20.0)])[0]
+    f.ellipse(lx, ly, 10.0, 10.0, STEEL)
+    f.ellipse(lx, ly, 7.5, 7.5, INK, body=False)
+    if lights > 0.0:
+        f.ellipse(lx + look, ly, 4.5, 4.5, LENS, body=False)
+        f.dot(lx + look + 1.5, ly - 1.5, 1.2, (240, 255, 255, 255))
+        f.glow(lx + look, ly, 9.0, K.alpha(LENS, 0.35 * lights))
+    # The stamp that writes, under the lens.
+    sx, sy = turn([(cx + 6.0, base)])[0]
+    drop = 6.0 * stamp
+    f.limb([(sx, sy - 2.0), (sx, sy + 2.0 + drop)], 2.2, STEEL)
+    f.poly([(sx - 4.0, sy + 2.0 + drop), (sx + 4.0, sy + 2.0 + drop), (sx + 4.0, sy + 5.0 + drop), (sx - 4.0, sy + 5.0 + drop)], LIME if lights > 0.0 else LIME_OFF)
+    return f.finish(outline=K.shade(INK, 1.0), width=1.3, glow_blur=2.0)
+
+
+# ---------------------------------------------------------------------------
+# Targets
+# ---------------------------------------------------------------------------
+
+
+def _target(name: str, character_id: str, display_name: str, frame_size, frame, body_plan: str, traits, description: str) -> dict:
+    metadata = M.machine_metadata(character_id, display_name, body_plan, "Small", traits, description, walks=False)
+    metadata["tags"] = ["townsfolk", "automaton", "peaceful", "machine"]
+
+    def render(out_dir: str | Path, **opts) -> List[Path]:
+        return K.render_target(name, ROWS, frame, frame_size, metadata, out_dir, **opts)
+
+    return {"render": render, "actor_metadata": metadata}
+
+
+TARGETS = {
+    "automaton_neighbour_moore": _target(
+        "automaton_neighbour_moore", "npc_automaton_neighbour_moore", "Neighbour Moore", MOORE_FRAME, _moore, "Biped",
+        ["automaton", "cellular", "cubes"],
+        "An automaton of dark cubes whose chest is the Moore neighbourhood: three by three cells, the amber middle one "
+        "himself, the eight round it his neighbours, lit cyan as they live. A cube head with a visor and two cyan eyes.",
+    ),
+    "automaton_head": _target(
+        "automaton_head", "npc_automaton_head", "The Head", HEAD_FRAME, _head, "Wheeled",
+        ["automaton", "turing_machine", "tape"],
+        "The read/write head of the Busy Beaver's machine: a violet carriage on four wheels, a lens in front that reads, "
+        "a stamp under it that writes, and five state lamps on its back, one lit lime.",
+    ),
+}

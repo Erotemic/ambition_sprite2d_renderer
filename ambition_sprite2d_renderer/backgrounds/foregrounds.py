@@ -55,6 +55,11 @@ from .authority import hall_foreground as _authority_hall
 from .unfinished import SITE, VOID
 from .unfinished import unfinished_foreground as _unfinished
 from .unfinished import void_foreground as _unfinished_void
+from .automaton import LIFE, WORKS
+from .automaton import TOWER as CLOCK_TOWER
+from .automaton import tower_foreground as _automaton_tower
+from .automaton import automaton_foreground as _automaton
+from .automaton import life_foreground as _automaton_life
 from .frontier import FRONTIER
 from .frontier import frontier_foreground as _frontier
 from .frontier import refinery_foreground as _frontier_refinery
@@ -344,6 +349,9 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     # corner and a loose cable in the Void.
     "unfinished": (_unfinished, scale(SITE["steel"], 0.8)),
     "unfinished_void": (_unfinished_void, scale(VOID["slab"], 0.5)),
+    "automaton": (_automaton, scale(WORKS["brass_dark"], 0.6)),
+    "automaton_life": (_automaton_life, scale(LIFE["cube"], 0.6)),
+    "automaton_tower": (_automaton_tower, scale(CLOCK_TOWER["brass_dark"], 0.6)),
     # The Frontier dimension: a telegraph wire and dry grass; the refinery's
     # pipe and a valve. The inside of a building has none.
     "frontier": (_frontier, scale(FRONTIER["wood_dark"], 0.8)),

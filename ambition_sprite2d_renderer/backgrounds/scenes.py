@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, art_dimension, authority, boss_stage, business, neural, unfinished, art_quarters, eureka, evil, foregrounds, frontier, frontier_slice, hobford, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_oceania, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
+from . import arenas, art_dimension, authority, automaton, boss_stage, business, neural, unfinished, art_quarters, eureka, evil, foregrounds, frontier, frontier_slice, hobford, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_oceania, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from . import history_budj_bim
 from . import history_micronesia
 from .artkit import Art
@@ -81,6 +81,10 @@ SCENES: dict[str, Scene] = {
     # The Unfinished dimension: the site the Boss's agents are still building (`unfinished.py`).
     "unfinished": unfinished.unfinished,
     "unfinished_void": unfinished.unfinished_void,
+    # The Automaton dimension: the clockwork Works and the Life field (`automaton.py`).
+    "automaton": automaton.automaton,
+    "automaton_life": automaton.automaton_life,
+    "automaton_tower": automaton.automaton_tower,
     "noodly": noodly.noodly,
     # The Frontier dimension: Dry Dock in the Leaden Saddle (`frontier.py`).
     "frontier": frontier.frontier,
