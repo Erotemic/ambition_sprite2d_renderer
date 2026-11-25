@@ -24,7 +24,7 @@ style. Do not fork a drawing module for it.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Dict, Optional, Tuple
 
 from .svgout import STANDARD, Style
@@ -162,6 +162,18 @@ FAMILIES: Dict[str, Family] = {
         style=Style(key="cast", ink="#14110f", outline=1.1, fine=1.45),
     ),
 }
+
+# The void (Fia's embraced form, `targets/characters/fia.py`): black and white,
+# never colour. The cast's body and face, so a cast character and its void
+# form share one rig and one set of poses; inked in white on black, its shade
+# toward black and a white rim on the lit edge.
+FAMILIES["void"] = Family(
+    "void",
+    "The look of the void: the cast's body and face, inked in white on near-black, with a white rim on the lit edge.",
+    body=FAMILIES["cast"].body,
+    face=replace(FAMILIES["cast"].face, lip_color="#e9e9e9", ink="#f4f4f4"),
+    style=Style(key="void", ink="#f4f4f4", outline=1.25, fine=1.3, shade_tint="#000000", shade_mix=1.6, rim=0.11, rim_mix=0.9),
+)
 
 DEFAULT = "standard"
 

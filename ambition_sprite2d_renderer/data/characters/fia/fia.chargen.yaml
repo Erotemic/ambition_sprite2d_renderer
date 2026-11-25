@@ -1,0 +1,66 @@
+# Faith "Fia" Knoss, the town mechanic who works under Oiler (docs/storylines/
+# cannon.md; the arc: docs/brainstorms/the_fia_arc.md). Concept art:
+# assets/concept_art/character-concepts/Fia. Drawn by the character generator in
+# every view; her hand-drawn overlay (data/overlays/fia.overlay.svg) draws her
+# hair and bandana, her face's freckles and the plaster on her cheek, and her
+# duster. The target is targets/characters/fia.py; her void-embraced form is
+# fia_void.chargen.yaml, the same body.
+#
+# No goggles: the red bandana is her head's mark (Jon, 2026-11-25: "I think we
+# also don't give her goggles. I'm not sure though").
+schema: ambition-chargen-v1
+name: Fia
+base: average_female
+seed: 1931
+family: cast
+overlay: fia
+body:
+  height_cm: 166
+  head: 0.16
+  shoulders: 1.0
+  waist: 0.96
+  hips: 1.0
+  bust: 0.55
+  legs: 1.0
+  limbs: 1.0
+  age: 0.3
+face:
+  eye_shape: almond
+  eye_size: 1.05
+  eye_spacing: 1.05
+  brow: angled
+  brow_weight: 0.9
+  nose: button
+  nose_size: 0.9
+  mouth: smirk
+  mouth_width: 0.95
+  lips: 0.95
+  jaw: round
+  jaw_width: 0.92
+  chin: 0.9
+  ears: 1.0
+  ear_angle: 0.2
+hair:
+  style: ponytail
+  facial: none
+palette:
+  skin: '#d9a17b'
+  hair: '#3b2418'
+  eyes: '#5b3a22'
+outfit:
+  top: shirt
+  sleeves: rolled
+  neckline: collar
+  top_color: '#e6d8bd'
+  tucked: true
+  outer: coat
+  outer_length: knee
+  outer_color: '#a8875a'
+  outer_open: true
+  bottom: trousers
+  bottom_color: '#3a3330'
+  shoes: boots
+  shoe_color: '#4a3123'
+  hat: none
+  accessories: [belt]
+  accent_color: '#a8322d'

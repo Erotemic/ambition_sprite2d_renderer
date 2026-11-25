@@ -1,0 +1,63 @@
+# Fia embraced by the void: the same woman (fia.chargen.yaml: the same base,
+# seed and body numbers, so the same rig and poses), drawn in the void's black
+# and white (chargen family `void`). Concept art:
+# assets/concept_art/character-concepts/Fia ("Void Form"); the void is black and
+# white, never the purple of some of those sheets (Jon, 2026-11-25). Her
+# overlay (data/overlays/fia_void.overlay.svg) draws her white hair loose, her
+# white eyes and the coat coming apart into the void.
+schema: ambition-chargen-v1
+name: Fia (void)
+base: average_female
+seed: 1931
+family: void
+overlay: fia_void
+body:
+  height_cm: 166
+  head: 0.16
+  shoulders: 1.0
+  waist: 0.96
+  hips: 1.0
+  bust: 0.55
+  legs: 1.0
+  limbs: 1.0
+  age: 0.3
+face:
+  eye_shape: almond
+  eye_size: 1.05
+  eye_spacing: 1.05
+  brow: angled
+  brow_weight: 0.9
+  nose: button
+  nose_size: 0.9
+  mouth: smirk
+  mouth_width: 0.95
+  lips: 0.95
+  jaw: round
+  jaw_width: 0.92
+  chin: 0.9
+  ears: 1.0
+  ear_angle: 0.2
+hair:
+  style: ponytail
+  facial: none
+palette:
+  skin: '#1a1a1d'
+  hair: '#f2f2f2'
+  eyes: '#ffffff'
+outfit:
+  top: shirt
+  sleeves: rolled
+  neckline: collar
+  top_color: '#111113'
+  tucked: true
+  outer: coat
+  outer_length: knee
+  outer_color: '#0b0b0c'
+  outer_open: true
+  bottom: trousers
+  bottom_color: '#141416'
+  shoes: boots
+  shoe_color: '#0e0e10'
+  hat: none
+  accessories: [belt]
+  accent_color: '#f4f4f4'
