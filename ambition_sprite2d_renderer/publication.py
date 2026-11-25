@@ -785,7 +785,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path)
     parser.add_argument("--worker")
-    parser.add_argument("--target", action="append", default=[])
+    parser.add_argument("--target", action="append", nargs="+", default=[],
+                       help="select one or more targets (repeatable; space-separated)")
     parser.add_argument("--scope", help="declared collection, or all registered targets")
     parser.add_argument("--plan", action="store_true")
     parser.add_argument("--list", action="store_true")
@@ -804,6 +805,8 @@ def main(argv=None):
     parser.add_argument("--reference", action="store_true",
                         help="paint each --target's full sheet (every frame) into .agent/sprite_reference/<target>/; publishes nothing")
     args = parser.parse_args(argv)
+    # --target may be repeated or carry several names in one flag; flatten to one list.
+    args.target = [name for chunk in args.target for name in chunk]
     if args.missing_only and args.force:
         parser.error("--only-missing cannot be combined with --force")
     if args.library:
