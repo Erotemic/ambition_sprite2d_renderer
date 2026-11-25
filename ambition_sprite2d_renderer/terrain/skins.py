@@ -199,6 +199,10 @@ SKINS: tuple[Skin, ...] = (
     # Processing, dark office panels with the red trim of its catwalks.
     Skin("business", "marble", (106, 94, 108), (46, 40, 54), (176, 162, 170), (238, 194, 96), "brass", (226, 214, 206), "lip", "slab"),
     Skin("business_office", "panel", (70, 58, 76), (30, 24, 36), (134, 118, 142), (178, 52, 62), "strip", (156, 54, 64), "bolts", "catwalk"),
+    # The Neural dimension (LATENT): the Cortex, porous living tissue with a
+    # glossy wet top; the Weights, dark circuit panels with a cyan trace.
+    Skin("neural", "karst", (108, 46, 92), (48, 18, 48), (176, 96, 148), (255, 228, 160), "flowstone", (255, 172, 206), "drips", "log"),
+    Skin("neural_circuit", "panel", (36, 42, 82), (14, 16, 36), (84, 98, 160), (80, 210, 255), "strip", (80, 210, 255), "bolts", "grate"),
     # The Frontier dimension (Dry Dock, LEADENSADDLE): red sandstone under
     # packed red earth, the town's boardwalk for a platform; the refinery's
     # rusted deck plate with hazard paint, pipes under it and a catwalk;

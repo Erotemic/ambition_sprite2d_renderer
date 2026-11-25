@@ -46,6 +46,9 @@ from .boss_stage import crowd_foreground as _boss_stage
 from .business import BUSINESS, OFFICE
 from .business import business_foreground as _business
 from .business import office_foreground as _business_office
+from .neural import CIRCUIT, CORTEX
+from .neural import circuit_foreground as _neural_circuit
+from .neural import neural_foreground as _neural
 from .frontier import FRONTIER
 from .frontier import frontier_foreground as _frontier
 from .frontier import refinery_foreground as _frontier_refinery
@@ -323,6 +326,10 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     # stacks of files and a tube.
     "business": (_business, scale(BUSINESS["leaf_dark"], 0.8)),
     "business_office": (_business_office, scale(OFFICE["shelf_dark"], 0.9)),
+    # The Neural dimension: a dendrite and synapse bulbs; in the Weights, a
+    # cable tray and the corner of a rack.
+    "neural": (_neural, scale(CORTEX["membrane_dark"], 0.8)),
+    "neural_circuit": (_neural_circuit, scale(CIRCUIT["rack"], 0.9)),
     # The Frontier dimension: a telegraph wire and dry grass; the refinery's
     # pipe and a valve. The inside of a building has none.
     "frontier": (_frontier, scale(FRONTIER["wood_dark"], 0.8)),

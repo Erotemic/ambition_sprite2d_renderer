@@ -888,6 +888,9 @@ MOTES = {
     "boss": (_glow, (255, 150, 100)),
     # Confetti from the cannons of the show, in its magenta.
     "boss_stage": (_confetti, (236, 48, 150)),
+    # Sparks of firing in the Cortex; points of light in the Weights.
+    "neural": (_glow, (255, 210, 230)),
+    "neural_circuit": (_twinkle, (110, 230, 255)),
     # Pollen in the warm light of the plaza; in Records, paper dust.
     "business": (_glow, (255, 232, 196)),
     "business_office": (_dot, (240, 232, 214)),
@@ -1093,6 +1096,8 @@ SHADOWS = {
     "basement": (20, 8, 6),
     "boss": (16, 2, 8),
     "boss_stage": (10, 6, 18),
+    "neural": (30, 10, 36),
+    "neural_circuit": (6, 8, 22),
     "business": (40, 30, 50),
     "business_office": (24, 18, 28),
     "frontier": (96, 46, 34),

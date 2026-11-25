@@ -2639,6 +2639,10 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     # steel office door.
     "business": (stone, _colours((214, 200, 190), (120, 84, 54), (40, 30, 30), (238, 194, 96), (255, 226, 160))),
     "business_office": (iron, _colours((70, 58, 76), (110, 104, 120), (20, 16, 24), (178, 52, 62), (255, 214, 150))),
+    # The Neural dimension: a door of living tissue; in the Weights, a
+    # bulkhead with a cyan light.
+    "neural": (hide_door, _colours((150, 70, 120), (200, 110, 160), (50, 20, 50), (255, 228, 160), (255, 240, 200))),
+    "neural_circuit": (bulkhead, _colours((40, 48, 90), (70, 84, 140), (12, 14, 30), (80, 210, 255), (170, 245, 255))),
     "boss_stage": (star_door, _colours((36, 28, 46), (52, 36, 70), (10, 8, 16), (236, 48, 150), (255, 214, 120))),
     "cave": (plank, _colours((60, 58, 104), (108, 80, 66), (22, 16, 30), (140, 226, 250), (150, 232, 255))),
     "cove": (cabin, _colours((70, 50, 36), (128, 92, 60), (30, 20, 16), (224, 180, 90), (150, 220, 230))),

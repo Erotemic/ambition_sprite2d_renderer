@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, art_dimension, boss_stage, business, art_quarters, eureka, evil, foregrounds, frontier, frontier_slice, hobford, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_oceania, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
+from . import arenas, art_dimension, boss_stage, business, neural, art_quarters, eureka, evil, foregrounds, frontier, frontier_slice, hobford, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_oceania, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from . import history_budj_bim
 from . import history_micronesia
 from .artkit import Art
@@ -72,6 +72,9 @@ SCENES: dict[str, Scene] = {
     # The Business dimension: Capital, the city doing business (`business.py`).
     "business": business.business,
     "business_office": business.business_office,
+    # The Neural dimension: the Cortex and the Weights (`neural.py`).
+    "neural": neural.neural,
+    "neural_circuit": neural.neural_circuit,
     "noodly": noodly.noodly,
     # The Frontier dimension: Dry Dock in the Leaden Saddle (`frontier.py`).
     "frontier": frontier.frontier,
