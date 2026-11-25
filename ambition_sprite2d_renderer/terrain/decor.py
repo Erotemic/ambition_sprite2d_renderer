@@ -4787,6 +4787,10 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     # Concourse's luggage, planters and crates of freight.
     "authority": ((planter, campus_bench, gas_lamp, flowers, planter, bollard), _palette((40, 38, 60), (196, 190, 208), (236, 230, 240), (110, 72, 50), (60, 66, 100), (90, 140, 90), (240, 170, 200), (255, 220, 150))),
     "authority_hall": ((tin_trunk, planter, crate, briefcase, planter, tin_trunk), _palette((20, 24, 40), (120, 134, 174), (220, 210, 196), (120, 80, 50), (70, 84, 120), (80, 140, 90), (226, 184, 92), (255, 222, 160))),
+    # The Unfinished dimension: crates, cones, coils of cable and a lamp; in
+    # the Void, cones and floor lights.
+    "unfinished": ((crate, cone, coil, lamp_post, crate, bush), _palette((30, 28, 30), (150, 146, 140), (210, 206, 200), (120, 90, 60), (90, 94, 106), (110, 132, 96), (232, 190, 70), (255, 224, 160))),
+    "unfinished_void": ((cone, floor_light, crate, coil, floor_light, cone), _palette((14, 16, 24), (60, 64, 80), (120, 124, 140), (100, 80, 60), (70, 74, 92), (80, 100, 90), (200, 170, 70), (150, 170, 210))),
     "boss_stage": ((monitor_wedge, coil, mic_stand, road_case, setlist, pedalboard), _palette((10, 8, 16), (60, 54, 72), (190, 184, 200), (40, 36, 48), (120, 124, 136), (70, 220, 255), (236, 48, 150), (255, 176, 70))),
     # The Noodly Temple: what is on the floor of a kitchen. `stone` is the
     # colour of pasta, `wood` of a meatball and `bloom` of sauce.

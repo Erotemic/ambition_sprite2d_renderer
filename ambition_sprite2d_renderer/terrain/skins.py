@@ -208,6 +208,11 @@ SKINS: tuple[Skin, ...] = (
     # platform; the Concourse's slate-blue deck panels with a brass rail.
     Skin("authority", "block", (172, 166, 188), (86, 82, 108), (220, 214, 230), (226, 184, 92), "edge", (232, 226, 238), "weed", "slab"),
     Skin("authority_hall", "panel", (64, 76, 110), (24, 30, 50), (118, 134, 174), (226, 184, 92), "brass", (210, 178, 104), "bolts", "catwalk"),
+    # The Unfinished dimension (INSTALLING): plain earth under a muted turf,
+    # scaffold planks for a platform; in the Void, unpainted panels with a
+    # hazard edge and a grate.
+    Skin("unfinished", "earth", (92, 80, 72), (40, 34, 32), (130, 116, 104), (232, 190, 70), "grass", (110, 132, 96), "roots", "plank"),
+    Skin("unfinished_void", "panel", (56, 60, 76), (20, 22, 30), (98, 102, 122), (150, 170, 210), "hazard", (200, 170, 70), "bolts", "grate"),
     # The Frontier dimension (Dry Dock, LEADENSADDLE): red sandstone under
     # packed red earth, the town's boardwalk for a platform; the refinery's
     # rusted deck plate with hazard paint, pipes under it and a catwalk;

@@ -893,6 +893,8 @@ MOTES = {
     "neural_circuit": (_twinkle, (110, 230, 255)),
     "authority": (_glow, (255, 214, 232)),
     "authority_hall": (_dot, (250, 240, 220)),
+    "unfinished": (_dot, (230, 226, 216)),
+    "unfinished_void": (_twinkle, (180, 190, 220)),
     # Pollen in the warm light of the plaza; in Records, paper dust.
     "business": (_glow, (255, 232, 196)),
     "business_office": (_dot, (240, 232, 214)),
@@ -1102,6 +1104,8 @@ SHADOWS = {
     "neural_circuit": (6, 8, 22),
     "authority": (44, 42, 70),
     "authority_hall": (20, 24, 40),
+    "unfinished": (40, 36, 36),
+    "unfinished_void": (10, 12, 20),
     "business": (40, 30, 50),
     "business_office": (24, 18, 28),
     "frontier": (96, 46, 34),

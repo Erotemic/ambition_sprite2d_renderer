@@ -52,6 +52,9 @@ from .neural import neural_foreground as _neural
 from .authority import HALL, PLAZA
 from .authority import authority_foreground as _authority
 from .authority import hall_foreground as _authority_hall
+from .unfinished import SITE, VOID
+from .unfinished import unfinished_foreground as _unfinished
+from .unfinished import void_foreground as _unfinished_void
 from .frontier import FRONTIER
 from .frontier import frontier_foreground as _frontier
 from .frontier import refinery_foreground as _frontier_refinery
@@ -337,6 +340,10 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     # and a lamp rod in the hall.
     "authority": (_authority, scale(PLAZA["stone_dark"], 0.6)),
     "authority_hall": (_authority_hall, scale(HALL["steel"], 0.8)),
+    # The Unfinished dimension: barrier tape and a crane's cable; a slab's
+    # corner and a loose cable in the Void.
+    "unfinished": (_unfinished, scale(SITE["steel"], 0.8)),
+    "unfinished_void": (_unfinished_void, scale(VOID["slab"], 0.5)),
     # The Frontier dimension: a telegraph wire and dry grass; the refinery's
     # pipe and a valve. The inside of a building has none.
     "frontier": (_frontier, scale(FRONTIER["wood_dark"], 0.8)),
