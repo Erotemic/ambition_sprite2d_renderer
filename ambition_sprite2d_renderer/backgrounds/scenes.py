@@ -85,6 +85,7 @@ SCENES: dict[str, Scene] = {
     "automaton": automaton.automaton,
     "automaton_life": automaton.automaton_life,
     "automaton_tower": automaton.automaton_tower,
+    "automaton_arena": automaton.automaton_arena,
     "noodly": noodly.noodly,
     # The Frontier dimension: Dry Dock in the Leaden Saddle (`frontier.py`).
     "frontier": frontier.frontier,

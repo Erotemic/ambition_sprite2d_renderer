@@ -351,6 +351,7 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "unfinished_void": (_unfinished_void, scale(VOID["slab"], 0.5)),
     "automaton": (_automaton, scale(WORKS["brass_dark"], 0.6)),
     "automaton_life": (_automaton_life, scale(LIFE["cube"], 0.6)),
+    "automaton_arena": (_automaton_life, scale(LIFE["cube"], 0.6)),
     "automaton_tower": (_automaton_tower, scale(CLOCK_TOWER["brass_dark"], 0.6)),
     # The Frontier dimension: a telegraph wire and dry grass; the refinery's
     # pipe and a valve. The inside of a building has none.

@@ -18,6 +18,10 @@ lavender stone in the warm light that comes through the back of the clock
 face, a great disc of lit glass with the shadows of its hands; brass gears
 turning behind; beams across, chains and the pendulum hanging in front.
 
+`automaton_arena`: the Cell-ular Arena's backdrop (the room's terrain is the
+Life field's): a bowl of cube stands, the crowd lit cells, and a screen
+over the ring with Gosper's glider gun firing on it.
+
 Nothing on a backdrop is writing (the game draws some backdrops mirrored).
 """
 
@@ -382,6 +386,156 @@ def automaton_life(layer_key: str, art: Art) -> np.ndarray:
         return layer
     layer = art.blank()
     art.put(layer, fog(art, "life mist", 0.9, 0.08, cells=3.0), p["galaxy"], 0.12)
+    return layer
+
+
+#: Gosper's glider gun (1970): the first pattern found to grow without end.
+#: It fires a glider every thirty generations. The arena's screen shows it.
+GOSPER_GUN = (
+    "000000000000000000000000100000000000",
+    "000000000000000000000010100000000000",
+    "000000000000110000001100000000000011",
+    "000000000001000100001100000000000011",
+    "110000000010000010001100000000000000",
+    "110000000010001011000010100000000000",
+    "000000000010000010000000100000000000",
+    "000000000001000100000000000000000000",
+    "000000000000110000000000000000000000",
+)
+
+#: The two gliders the gun has fired by generation 120, in its cells (the
+#: rule run from `GOSPER_GUN`: one leaves every thirty generations, going
+#: down and right).
+FIRED = ((30, 17), (31, 18), (31, 19), (32, 17), (32, 18), (38, 24), (38, 26), (39, 25), (39, 26), (40, 25))
+
+
+def automaton_arena(layer_key: str, art: Art) -> np.ndarray:
+    """The Cell-ular Arena: the Life field's night, and round it a bowl of
+    stands made of cubes, the crowd a scatter of lit cells that blink; light
+    pylons at the sides throw beams up; over the ring a great screen hangs on
+    chains of cubes, Gosper's glider gun on it, firing."""
+    p = LIFE
+    if layer_key == "sky":
+        layer = art.opaque(art.ramp([(0.0, p["top"]), (0.5, p["mid"]), (1.0, p["low"])]))
+        rng = art.rand("arena stars")
+        stars, s_pen = art.drawing()
+        for _ in range(120):
+            s_pen.ellipse(rng.random(), rng.uniform(0.0, 0.5), rng.uniform(0.0008, 0.0018), value=rng.randint(80, 255))
+        art.light(layer, art.mask_of(stars, blur=0.4), p["star"], 0.6)
+        # The pylons' beams, crossing high over the ring.
+        beams, b_pen = art.drawing()
+        for u0, u1 in ((0.04, 0.30), (0.10, 0.46), (0.96, 0.70), (0.90, 0.54)):
+            b_pen.poly([(u0 - 0.006, HORIZON - 0.18), (u0 + 0.006, HORIZON - 0.18), (u1 + 0.04, -0.05), (u1 - 0.04, -0.05)])
+        art.light(layer, art.mask_of(beams, blur=6.0) * smoothstep(-0.05, HORIZON, art.v), p["cell"], 0.22)
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        # The bowl: tier on tier of cube stands, curving round behind the ring.
+        layer = art.blank()
+        foot = HORIZON + 0.06
+        image, pen = art.drawing()
+        rows = 7
+        for r in range(rows):
+            top = foot - 0.05 - r * 0.045
+            sag = 0.03 + r * 0.008
+            pts = [(u, top + sag * (1.0 - (2.0 * u - 1.0) ** 2)) for u in np.linspace(-0.02, 1.02, 40)]
+            pen.poly(pts + [(1.02, 1.0), (-0.02, 1.0)])
+        body = art.mask_of(image)
+        layer = solid(art, body, p["cube_light"], p["cube"], foot - 0.4, foot, "stands", 0.05)
+        # Each tier's lip, lit amber.
+        lips, l_pen = art.drawing()
+        for r in range(rows):
+            top = foot - 0.05 - r * 0.045
+            sag = 0.03 + r * 0.008
+            l_pen.line([(u, top + sag * (1.0 - (2.0 * u - 1.0) ** 2)) for u in np.linspace(-0.02, 1.02, 40)], 0.0022)
+        lm = art.mask_of(lips, blur=0.4)
+        art.put(layer, lm, p["amber"], 0.7)
+        # The crowd: lit cells on the tiers, some in blinkers.
+        rng = art.rand("arena crowd")
+        crowd, c_pen = art.drawing()
+        for r in range(rows):
+            top = foot - 0.05 - r * 0.045
+            sag = 0.03 + r * 0.008
+            for _ in range(70):
+                u = rng.random()
+                v = top + sag * (1.0 - (2.0 * u - 1.0) ** 2) + 0.012
+                s = 0.006 - r * 0.0004
+                if rng.random() < 0.2:
+                    cells(c_pen, BLINKER if rng.random() < 0.5 else ("111",), u, v - 0.02, s * 0.8, 0.3)
+                else:
+                    c_pen.rect(u, v, u + s, v + s)
+        cm = art.mask_of(crowd, blur=0.4)
+        art.put(layer, cm, p["cell"], 0.9)
+        art.light(layer, art.blur(cm, 3.0), p["cell"], 0.35)
+        # The arena floor in front of the stands, its cell lines.
+        floor, f_pen = art.drawing()
+        f_pen.rect(-0.02, foot, 1.02, 1.0)
+        art.put(layer, art.mask_of(floor), p["cube"])
+        lines, g_pen = art.drawing()
+        for k in range(-30, 31):
+            g_pen.line([(0.5 + k * 0.02, foot), (0.5 + k * 0.12, 1.1)], 0.0012)
+        v, step = foot, 0.008
+        while v < 1.0:
+            g_pen.line([(-0.02, v), (1.02, v)], 0.0012)
+            step *= 1.3
+            v += step
+        art.light(layer, art.mask_of(lines, blur=0.4) * smoothstep(foot, foot + 0.2, art.v), p["grid"], 0.5)
+        haze(art, layer, p["haze"], 0.18, foot)
+        return layer
+    if layer_key == "near_background":
+        layer = art.blank()
+        # The pylons at the sides, their lamp heads.
+        image, pen = art.drawing()
+        for u in (0.16, 0.84):
+            pen.rect(u - 0.012, HORIZON - 0.18, u + 0.012, 1.0)
+            pen.rect(u - 0.04, HORIZON - 0.22, u + 0.04, HORIZON - 0.17)
+        body = art.mask_of(image)
+        art.put(layer, body, art.ramp([(0.0, p["cube_light"]), (0.8, p["cube"]), (1.0, p["cube"])]))
+        heads, h_pen = art.drawing()
+        for u in (0.16, 0.84):
+            for k in range(4):
+                h_pen.rect(u - 0.034 + k * 0.018, HORIZON - 0.214, u - 0.022 + k * 0.018, HORIZON - 0.18)
+        hm = art.mask_of(heads, blur=0.4)
+        art.put(layer, hm, p["cell"])
+        art.light(layer, art.blur(hm, 6.0), p["cell"], 0.6)
+        # The screen over the ring, on chains of cubes.
+        # Low on the panel: the near layer is larger than the view, so its
+        # top is above the room's top.
+        su0, sv0, su1, sv1 = 0.32, 0.30, 0.68, 0.51
+        screen, sc_pen = art.drawing()
+        sc_pen.rect(su0, sv0, su1, sv1)
+        art.put(layer, art.mask_of(screen, blur=0.4), mix(p["cube"], p["top"], 0.4), 0.95)
+        edge, e_pen = art.drawing()
+        e_pen.line([(su0, sv0), (su1, sv0), (su1, sv1), (su0, sv1), (su0, sv0)], 0.003)
+        art.put(layer, art.mask_of(edge, blur=0.4), p["amber"], 0.9)
+        chains, ch_pen = art.drawing()
+        for x in (su0 + 0.04, su1 - 0.04):
+            for k in range(int(sv0 / 0.02) + 1):
+                ch_pen.rect(x - 0.003, sv0 - (k + 1) * 0.02 + 0.004, x + 0.003, sv0 - k * 0.02)
+        art.put(layer, art.mask_of(chains, blur=0.3), p["cube_light"])
+        # Gosper's gun on it, and the gliders it has fired going down-right.
+        lit, li_pen = art.drawing()
+        s = 0.007
+        gu, gv = su0 + 0.035, sv0 + 0.008
+        cells(li_pen, GOSPER_GUN, gu, gv, s, 0.2)
+        for x, y in FIRED:
+            li_pen.rect(gu + (x + 0.1) * s, gv + (y + 0.1) * s, gu + (x + 0.9) * s, gv + (y + 0.9) * s)
+        lm = art.mask_of(lit, blur=0.4)
+        art.put(layer, lm, p["cell"])
+        art.light(layer, art.blur(lm, 3.0), p["cell"], 0.5)
+        # Banners down from the screen's corners, a glider on each.
+        flags, fl_pen = art.drawing()
+        for u in (su0 - 0.06, su1 + 0.02):
+            fl_pen.poly([(u, sv0), (u + 0.04, sv0), (u + 0.04, sv0 + 0.16), (u + 0.02, sv0 + 0.13), (u, sv0 + 0.16)])
+        art.put(layer, art.mask_of(flags, blur=0.4), mix(p["galaxy"], p["cube"], 0.4), 0.95)
+        marks, m_pen = art.drawing()
+        for u in (su0 - 0.06, su1 + 0.02):
+            cells(m_pen, GLIDER, u + 0.008, sv0 + 0.03, 0.008, 0.25)
+        art.put(layer, art.mask_of(marks, blur=0.4), p["amber"])
+        haze(art, layer, p["haze"], 0.12, None)
+        return layer
+    layer = art.blank()
+    art.put(layer, fog(art, "arena mist", 0.9, 0.08, cells=3.0), p["galaxy"], 0.12)
     return layer
 
 

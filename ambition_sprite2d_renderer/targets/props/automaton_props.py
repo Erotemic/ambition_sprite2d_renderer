@@ -16,6 +16,10 @@ together.
   life, on its plinth; the Sierpinski panel on the terrace.
 - The Tape Room (floor y 512): the tape between its two spools, with its
   ones lit; the rail the Head runs on; the table of states.
+- The Cell-ular Arena (gallery y 448, ground y 768, ring top y 720): the
+  ring's face, the four generations of rule 150 lit along it, and its corner
+  posts; the failure log on the gallery, a row of cells for each challenger,
+  each row ending in a red cell.
 
 Also ``automaton_glider_lift``, the look of the glider lifts of the Life
 field (`data/platform_looks.ron`): a slab of cubes whose front shows a
@@ -89,6 +93,12 @@ ROOM_FLOOR = 512
 SPOOLS = ((150, 330), (1450, 330))
 TAPE_Y = (306, 354)
 TABLE = (1060, 110, 1420, 270)
+
+#: The Cell-ular Arena.
+GALLERY = (0, 448, 448)
+ARENA_GROUND = 768
+RING = (832, 1856, 720)
+LOG = (160, 230, 360, 448)
 
 #: The glider lift's sheet.
 LIFT_FRAME = (160, 96)
@@ -415,6 +425,80 @@ def state_table(c, k):
                 c.put(c.mask(box(ex + 77, y - 7, ex + 91, y + 7)), (220, 80, 70))
 
 
+# ---------------------------------------------------------------------------
+# The Cell-ular Arena
+# ---------------------------------------------------------------------------
+
+
+def rule150_cycle():
+    """Rule 150 (each cell the XOR of itself and its two neighbours) on a ring
+    of sixteen, from two live cells eight apart: it comes back in four
+    generations. The PCA's fight music is written from the same rows."""
+    row = [1 if i in (0, 8) else 0 for i in range(16)]
+    rows = []
+    for _ in range(4):
+        rows.append(row)
+        row = [row[i - 1] ^ row[i] ^ row[(i + 1) % 16] for i in range(16)]
+    assert row == rows[0]
+    return rows
+
+
+def arena_ring(c, k):
+    """The ring's face: dark cubes, an amber lip, the four generations of
+    rule 150 lit along the front; a post of cubes at each corner with a lit
+    cube on top."""
+    x0, x1, top = RING
+    g = ARENA_GROUND
+    face = c.mask(box(x0, top, x1, g))
+    c.put(face, CUBE)
+    c.put(c.mask(lambda p: [p.rect(x, top + 4, x + 1.5, g) for x in range(x0, x1, 16)]), CUBE_LIGHT)
+    c.put(c.mask(box(x0, top, x1, top + 4)), AMBER)
+    c.light(c.soften(c.mask(box(x0, top, x1, top + 4)), 6), AMBER, 0.35)
+    rows = rule150_cycle()
+    seg = (x1 - x0 - 64) / 4.0
+    s = (seg - 24) / 16.0
+    for n, row in enumerate(rows):
+        pattern(c, ["".join(str(v) for v in row)], x0 + 32 + n * seg + 12, top + 16, s, CELL, gap=0.25, glow=0.3)
+    for px in (x0 - 8, x1 - 24):
+        for j in range(4):
+            cube(c, px, top - 32 * (j + 1), 32, CUBE_LIGHT, mix(CUBE_LIGHT, (255, 255, 255), 0.25), CUBE)
+        m = c.mask(box(px + 6, top - 150, px + 26, top - 130))
+        c.put(m, CELL)
+        c.light(c.soften(m, 14), CELL, 0.6)
+
+
+def failure_log(c, k):
+    """The failure log: a dark board on two posts, a row of dim cells for
+    each challenger (a name in the rule's own writing), each ending in a red
+    cell; the last row empty, its first cell lit, waiting."""
+    x0, y0, x1, g = LOG
+    for x in (x0 + 24, x1 - 24):
+        c.put(c.mask(box(x - 5, y0, x + 5, g)), CUBE_LIGHT)
+    y1 = y0 + 160
+    c.put(c.mask(box(x0, y0, x1, y1)), CUBE)
+    edge = c.mask(lambda p: p.line([(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)], 3))
+    c.put(edge, AMBER)
+    rng = np.random.default_rng(65)
+    rows = 8
+    rh = (y1 - y0 - 24) / rows
+    cs = 9.0
+    for r in range(rows):
+        y = y0 + 12 + r * rh + (rh - cs) / 2
+        if r == rows - 1:
+            m = c.mask(box(x0 + 14, y, x0 + 14 + cs, y + cs))
+            c.put(m, CELL)
+            c.light(c.soften(m, 6), CELL, 0.5)
+            continue
+        n = int(rng.integers(6, 14))
+        bits = rng.integers(0, 2, n)
+        c.put(c.mask(lambda p: [p.rect(x0 + 14 + j * (cs + 2), y, x0 + 14 + j * (cs + 2) + cs, y + cs) for j in range(n) if bits[j]]),
+              mix(CELL, CUBE, 0.45))
+        xr = x1 - 14 - cs
+        m = c.mask(box(xr, y, xr + cs, y + cs))
+        c.put(m, (230, 70, 70))
+        c.light(c.soften(m, 5), (230, 70, 70), 0.4)
+
+
 #: Every piece: its frame in its room, and how it is drawn.
 PIECES: Dict[str, Piece] = {
     # The Works.
@@ -428,6 +512,9 @@ PIECES: Dict[str, Piece] = {
     # The Tape Room.
     "automaton_tape": Piece((60, 250, 1540, 512), tape),
     "automaton_state_table": Piece((1050, 100, 1430, 280), state_table),
+    # The Cell-ular Arena.
+    "automaton_arena_ring": Piece((816, 560, 1872, 768), arena_ring),
+    "automaton_failure_log": Piece((150, 220, 370, 448), failure_log),
 }
 
 TARGETS = targets(PIECES, PAL)
