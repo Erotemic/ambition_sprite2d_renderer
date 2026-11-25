@@ -63,6 +63,13 @@ BOTTOMS = ("trousers", "shorts", "skirt", "long_skirt")
 #: ``geta``: tabi socks on raised wooden sandals (two teeth, a thong strap),
 #: ``outfit.geta_height`` tall. Geta raise the whole figure.
 SHOES = ("shoes", "boots", "geta")
+#: How shoes and boots are built: ``chunky`` is a heavy work boot (a thick
+#: sole, a broad toe, a wide shaft with a turned cuff).
+SHOE_STYLES = ("regular", "chunky")
+#: How trousers fit: ``baggy`` is wide work trousers gathered at the boot.
+FITS = ("regular", "baggy")
+#: Gloves: ``fingerless`` leaves the last joints of the fingers bare.
+GLOVES = ("none", "full", "fingerless")
 #: ``helmet``, ``beret``, ``garrison_cap``, ``peaked_cap`` and ``campaign`` (a
 #: drill instructor's brimmed hat with a pinched crown) are military.
 HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", "bowler", "helmet", "beret", "garrison_cap", "peaked_cap",
@@ -299,6 +306,15 @@ class Outfit:
     obi_knot: str = "taiko"
     #: How tall geta are, in cm (sole of the foot to the ground).
     geta_height: float = 9.0
+    #: The shoes' build (``SHOE_STYLES``) and the trousers' fit (``FITS``).
+    shoe_style: str = "regular"
+    fit: str = "regular"
+    #: Gloves (``GLOVES``) and their colour ("": the shoes' leather).
+    gloves: str = "none"
+    glove_color: str = ""
+    #: How much a long coat's skirt flares out at its hem (0 as cut, 1 a
+    #: full swing).
+    outer_flare: float = 0.0
 
 
 @dataclass
@@ -422,6 +438,11 @@ OPTIONAL_DEFAULTS: Dict[Tuple[str, str], Any] = {
     ("outfit", "obi_color"): "",
     ("outfit", "obi_knot"): "taiko",
     ("outfit", "geta_height"): 9.0,
+    ("outfit", "shoe_style"): "regular",
+    ("outfit", "fit"): "regular",
+    ("outfit", "gloves"): "none",
+    ("outfit", "glove_color"): "",
+    ("outfit", "outer_flare"): 0.0,
 }
 
 
@@ -491,6 +512,7 @@ BOUNDS: Dict[str, Tuple[float, float]] = {
     "head.ear_tufts": (0.0, 1.6),
     "head.disc": (0.0, 1.5),
     "outfit.geta_height": (3.0, 16.0),
+    "outfit.outer_flare": (0.0, 1.0),
 }
 
 CHOICES: Dict[str, Sequence[str]] = {
@@ -519,9 +541,12 @@ CHOICES: Dict[str, Sequence[str]] = {
     "face.makeup": MAKEUPS,
     "outfit.motif": MOTIFS,
     "outfit.obi_knot": OBI_KNOTS,
+    "outfit.shoe_style": SHOE_STYLES,
+    "outfit.fit": FITS,
+    "outfit.gloves": GLOVES,
 }
 #: Colours that may be "" (derived from another colour).
-OPTIONAL_COLORS = ("hair.ornament_color", "outfit.trim_color", "outfit.obi_color")
+OPTIONAL_COLORS = ("hair.ornament_color", "outfit.trim_color", "outfit.obi_color", "outfit.glove_color")
 COLORS = ("palette.skin", "palette.hair", "palette.eyes", "outfit.top_color", "outfit.outer_color", "outfit.bottom_color",
           "outfit.shoe_color", "outfit.hat_color", "outfit.accent_color")
 

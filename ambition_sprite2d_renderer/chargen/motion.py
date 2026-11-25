@@ -759,19 +759,19 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
             g = (0.0, 0.5, 1.0, 0.75, 0.25, 0.0)[i]
             poses.append(k.pose(lean=-1 + g, head=((-1) ** i * 2.0, 0), rh=k.hand(R, 0.12 + 0.4 * g, 0.88 - 0.55 * g, 0.12 + 0.05 * g,
                                                                                  pole=(0.4, 0.4, -0.6)),
-                                face=face, vis=v))
+                                face=face, vis=v, open_right=g))
         return _cycle(poses)
 
     add(_seq("talk", 6, 100, True, talk_keys("neutral"), view="front_3q", cat="social"))
     for emo in ("happy", "angry", "sad", "afraid", "surprised", "smug", "pained", "determined"):
         add(_seq(f"talk_{emo}", 6, 100, True, talk_keys(emo), view="front_3q", cat="social"))
     add(_seq("interact", 6, 90, False, _even([stand, k.pose(root=(0.02, -0.02, 0), lean=12, rh=k.hand(R, 0.9, 0.4, 0.1, pole=(0.3, 0.6, -0.4)),
-                                                            face="neutral"), stand]), view="front_3q", cat="social"))
+                                                            face="neutral", open_right=1.0), stand]), view="front_3q", cat="social"))
     hips = dict(rh=k.hand(R, 0.05, 0.42, 0.5, pole=(1.0, 0.0, 0.2)), lh=k.hand(Lf, 0.05, 0.42, 0.5, pole=(1.0, 0.0, 0.2)))
     add(_seq("taunt", 8, 100, False, _even([stand, k.pose(lean=-8, head=(-14, 0), face="happy", vis="a", **hips),
                                             k.pose(lean=-10, head=(-16, 0), face="smug", **hips), stand]), view="front_3q", cat="emote"))
     add(_seq("entrance", 8, 100, False, _even([k.pose(root=(-0.05, 0, 0), rf=k.foot(R, -0.2, 0.1)), walk_pose(0.0),
-                                               k.pose(rh=k.hand(R, 0.3, -0.9, 0.35, pole=(0.7, 0, -0.4)), face="happy", vis="a")]),
+                                               k.pose(rh=k.hand(R, 0.3, -0.9, 0.35, pole=(0.7, 0, -0.4)), face="happy", vis="a", open_right=1.0)]),
               view="front_3q", cat="emote"))
     cheer = k.pose(root=(0, 0.06, 0), lean=-6, head=(-16, 0), rh=k.hand(R, 0.15, -0.97, 0.35, pole=(0.7, 0, -0.4)),
                    lh=k.hand(Lf, 0.1, -0.97, 0.4, pole=(0.7, 0, -0.4)), rf=k.bfoot(R, 0.05, 0.95, toe=30), lf=k.bfoot(Lf, -0.05, 0.95, toe=30),
@@ -796,7 +796,8 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
 
     def wave(ph: float) -> Pose:
         s = math.sin(ph)
-        return k.pose(lean=-2, head=(-4, 0), rh=k.hand(R, 0.3, -0.75, 0.45 + 0.12 * s, pole=(0.8, 0.3, -0.3)), face="happy", vis="rest" if s < 0 else "e")
+        return k.pose(lean=-2, head=(-4, 0), rh=k.hand(R, 0.3, -0.75, 0.45 + 0.12 * s, pole=(0.8, 0.3, -0.3)), face="happy", vis="rest" if s < 0 else "e",
+                      open_right=1.0)
 
     add(_seq("wave", 8, 90, True, _cycle([wave(2 * math.pi * i / 8) for i in range(8)]), view="front_3q", cat="social"))
     add(_seq("point", 6, 90, False, _even([stand, k.pose(lean=4, rh=k.hand(R, 0.97, -0.15, 0.05, pole=(0.3, 0.8, -0.2), wrist=-3), face="determined",
@@ -804,24 +805,26 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
     add(_seq("nod", 6, 90, False, _even([stand, k.pose(head=(16, 0), face="happy"), stand, k.pose(head=(12, 0), face="happy"), stand]),
               view="front_3q", cat="social"))
     shrug = k.pose(head=(-4, 8), rh=k.hand(R, 0.35, 0.35, 0.55, pole=(0.9, 0.4, -0.1)), lh=k.hand(Lf, 0.35, 0.35, 0.55, pole=(0.9, 0.4, -0.1)),
-                   face="smug")
+                   face="smug", open_right=1.0, open_left=1.0)
     add(_seq("shrug", 6, 100, False, _even([stand, shrug, shrug, stand]), view="front_3q", cat="social"))
     add(_seq("laugh", 8, 80, True, _cycle([k.pose(lean=-8, head=(-14, 0), face="happy", vis="a", **hips),
                                            k.pose(lean=6, head=(6, 0), face="happy", vis="e", **hips)]), view="front_3q", cat="emote"))
     add(_seq("cry", 8, 110, True, _cycle([k.pose(lean=14, head=(24, 0), rh=k.hand(R, 0.35, -0.12, -0.15, pole=(0.5, 0.6, -0.4)),
-                                                 lh=k.hand(Lf, 0.35, -0.1, -0.12, pole=(0.5, 0.6, -0.4)), face="sad", vis="o"),
+                                                 lh=k.hand(Lf, 0.35, -0.1, -0.12, pole=(0.5, 0.6, -0.4)), face="sad", vis="o", open_right=1.0, open_left=1.0),
                                           k.pose(lean=15, head=(26, 0), rh=k.hand(R, 0.35, -0.12, -0.15, pole=(0.5, 0.6, -0.4)),
-                                                 lh=k.hand(Lf, 0.35, -0.1, -0.12, pole=(0.5, 0.6, -0.4)), face="sad")]), view="front_3q", cat="emote"))
+                                                 lh=k.hand(Lf, 0.35, -0.1, -0.12, pole=(0.5, 0.6, -0.4)), face="sad", open_right=1.0, open_left=1.0)]), view="front_3q", cat="emote"))
     add(_seq("angry", 6, 100, True, _cycle([k.pose(lean=6, head=(-6, 0), face="angry", vis="e", **hips),
                                             k.pose(lean=7, head=(-7, 0), face="angry", vis="a", **hips)]), view="front_3q", cat="emote"))
     add(_seq("scared", 6, 80, True, _cycle([k.crouch(0.08, lean=-10, rh=k.hand(R, 0.5, -0.1, 0.1, pole=(0.5, 0.6, -0.4)),
-                                                     lh=k.hand(Lf, 0.45, 0.0, 0.05, pole=(0.5, 0.6, -0.4)), face="afraid"),
+                                                     lh=k.hand(Lf, 0.45, 0.0, 0.05, pole=(0.5, 0.6, -0.4)), face="afraid", open_right=1.0, open_left=1.0),
                                             k.crouch(0.09, lean=-11, rh=k.hand(R, 0.5, -0.12, 0.1, pole=(0.5, 0.6, -0.4)),
-                                                     lh=k.hand(Lf, 0.45, -0.02, 0.05, pole=(0.5, 0.6, -0.4)), face="afraid")]), view="front_3q",
+                                                     lh=k.hand(Lf, 0.45, -0.02, 0.05, pole=(0.5, 0.6, -0.4)), face="afraid", open_right=1.0,
+                                                     open_left=1.0)]), view="front_3q",
               cat="emote"))
     add(_seq("happy", 6, 100, True, _cycle([k.pose(root=(0, 0.01, 0), face="happy", vis="a"), k.pose(face="happy")]), view="front_3q", cat="emote"))
-    pat = k.crouch(0.22, lean=24, rh=k.hand(R, 0.9, 0.75, 0.1), face="happy")
-    add(_seq("pet", 8, 125, True, _cycle([pat, k.crouch(0.22, lean=24, rh=k.hand(R, 0.8, 0.72, 0.1), face="happy")]), view="front_3q", cat="social"))
+    pat = k.crouch(0.22, lean=24, rh=k.hand(R, 0.9, 0.75, 0.1), face="happy", open_right=1.0)
+    add(_seq("pet", 8, 125, True, _cycle([pat, k.crouch(0.22, lean=24, rh=k.hand(R, 0.8, 0.72, 0.1), face="happy", open_right=1.0)]), view="front_3q",
+              cat="social"))
     add(_seq("petted", 6, 120, True, _cycle([k.pose(head=(10, 8), face="happy"), k.pose(head=(12, 10), face="happy", blink=1.0)]), view="front_3q",
               cat="social"))
     add(_seq("bark", 4, 80, False, _even([stand, k.pose(lean=8, head=(-8, 0), face="angry", vis="a"), stand]), view="front_3q", cat="social"))
@@ -852,7 +855,8 @@ def pose_at(clip: Clip, t: float, rest: RestFrame) -> Pose:
 
 def _default_of(name: str) -> float:
 
-    return 1.0 if name in (eyes_part("neutral") + "_vis", brows_part("neutral") + "_vis", mouth_part("neutral") + "_vis") else 0.0
+    return 1.0 if name in (eyes_part("neutral") + "_vis", brows_part("neutral") + "_vis", mouth_part("neutral") + "_vis",
+                           "near_hand_vis", "far_hand_vis") else 0.0
 
 
 #: The most a forearm may turn between two frames (degrees): past it a

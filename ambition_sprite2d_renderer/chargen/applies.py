@@ -43,6 +43,9 @@ REQUIRES: Dict[str, Tuple[str, Tuple[Any, ...]]] = {
     "outfit.geta_height": ("outfit.shoes", ("geta",)),
     "outfit.hat_color": ("outfit.hat", tuple(h for h in S.HATS if h != "none")),
     "outfit.tucked": ("outfit.top", ("tshirt", "shirt", "blouse", "sweater")),
+    "outfit.fit": ("outfit.bottom", ("trousers",)),
+    "outfit.glove_color": ("outfit.gloves", ("full", "fingerless")),
+    "outfit.outer_flare": ("outfit.outer", ("robe", "coat", "jacket", "cardigan")),
 }
 
 #: The views a measure draws: a field that shows only from the back (an obi's

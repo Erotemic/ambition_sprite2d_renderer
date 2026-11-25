@@ -86,11 +86,26 @@ def grip_point(fig: Figure, side: str) -> Vec3:
     return add3(add3(W, scale3(u, 0.46 * L)), add3(scale3(v, 0.3 * k), scale3(w, 0.5 * k)))
 
 
-def draw_hand(ctx: Ctx, side: str) -> List:
+def modeled_hands(fig: Figure) -> bool:
+    """Whether the figure's hands are drawn from the hand model
+    (``hand.py``): a person's are; an animal's keep their own paws."""
+    return fig.species == "human"
+
+
+def draw_hand(ctx: Ctx, side: str, shape: str = "") -> List:
+    """The hand of ``side``: at rest a loose fist that holds an item; the
+    shape ``open`` is the open hand of a gesture (``hand_parts``)."""
     fig = ctx.fig
+    rel = (0.94 if fig.female else 1.0) * (0.9 + 0.1 * fig.spec.body.limbs) * family_of(fig.spec).body.hand
+    if modeled_hands(fig):
+        from .hand import REST_SHAPE, draw_hand_model
+
+        if shape == "open":
+            return draw_hand_model(ctx, side, _hand_frame(fig, side), fig.joints[f"{side}_wrist"], rel, "open", turn_to=None)
+        return draw_hand_model(ctx, side, _hand_frame(fig, side), grip_point(fig, side), rel, shape or REST_SHAPE, turn_to=ITEM_REST_ANGLE)
     pt = ctx.new()
     W, u, v, w, L = _hand_frame(fig, side)
-    k = fig.k * (0.94 if fig.female else 1.0) * (0.9 + 0.1 * fig.spec.body.limbs) * family_of(fig.spec).body.hand
+    k = fig.k * rel
     pts3: List[Vec3] = []
     # A loose fist: the palm, the knuckles, the fingers curled back under.
     for t, half_v, half_w, curl in ((0.0, 2.6, 1.7, 0.0), (0.25, 4.1, 2.0, 0.0), (0.5, 4.5, 2.1, 0.2), (0.66, 4.2, 1.9, 1.0),
@@ -146,6 +161,23 @@ def draw_hand(ctx: Ctx, side: str) -> List:
             b = add3(add3(W, scale3(u, L * 0.68)), add3(scale3(v, off * 0.9 * k), scale3(w, 1.2 * k)))
             pt.line([P(a), P(b)], ctx.skin_dk, FINE * 0.8, smooth=False)
     return pt.els
+
+
+def hand_parts(ctx: Ctx, depth: str, side: str, zmap: Dict[str, float]) -> List[Part]:
+    """The hand of one side as rig parts: the fist (``<depth>_hand``), and
+    for a modeled hand its open alternate (``<depth>_hand_open``), each
+    shown by its opacity channel (``hand_channels``)."""
+    z = zmap[f"{depth}_arm_hand"]
+    label = f"Hand - {depth.title()}"
+    if not modeled_hands(ctx.fig):
+        return [Part(f"{depth}_hand", f"{depth}_grip", z, draw_hand(ctx, side), label)]
+    return [Part(f"{depth}_hand", f"{depth}_grip", z, draw_hand(ctx, side), label, f"{depth}_hand_vis", 1),
+            Part(f"{depth}_hand_open", f"{depth}_grip", z, draw_hand(ctx, side, "open"), f"{label} (open)", f"{depth}_hand_open_vis", 0)]
+
+
+def hand_channels(depth: str, open_: bool) -> Dict[str, float]:
+    """The opacity channels that show the hand of ``depth`` open or closed."""
+    return {f"{depth}_hand_vis": 0.0 if open_ else 1.0, f"{depth}_hand_open_vis": 1.0 if open_ else 0.0}
 
 
 def _throat(ctx: Ctx, pt, y0: float, y1: float) -> None:
@@ -224,7 +256,7 @@ def body_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         pl = ctx.new()
         tube3(ctx, pl, E, W, re * 0.97, rw, ctx.skin)
         out.append(Part(f"{depth}_arm_l", f"{depth}_arm_l", zmap[f"{depth}_arm_l"], pl.els, f"Lower Arm - {depth.title()}"))
-        out.append(Part(f"{depth}_hand", f"{depth}_grip", zmap[f"{depth}_arm_hand"], draw_hand(ctx, side), f"Hand - {depth.title()}"))
+        out += hand_parts(ctx, depth, side, zmap)
         Hp, K, A = j[f"{side}_hip"], j[f"{side}_knee"], j[f"{side}_ankle"]
         tu = ctx.new()
         tube3(ctx, tu, Hp, K, rt, rk * 1.05, ctx.skin, joint_b=True)

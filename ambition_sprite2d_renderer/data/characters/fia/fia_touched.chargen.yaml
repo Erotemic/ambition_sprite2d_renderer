@@ -1,0 +1,68 @@
+# Fia touched by the void: its first traces (the "Touched" stage of
+# assets/concept_art/character-concepts/Fia/Fia's Void Embrace Progression.png).
+# The same body and clothes as fia.chargen.yaml; her gloves and hands gone
+# black, and her overlay (data/overlays/fia_touched.overlay.svg, drawn by
+# scripts/draw_fia_overlays.py) adds the white streak in her hair, the black
+# creeping up her forearms and two of the void's diamonds. The target is
+# targets/characters/fia.py.
+schema: ambition-chargen-v1
+name: Fia (touched)
+base: average_female
+seed: 1931
+family: cast
+overlay: fia_touched
+body:
+  height_cm: 166
+  head: 0.16
+  shoulders: 1.0
+  waist: 0.96
+  hips: 1.0
+  bust: 0.55
+  legs: 1.0
+  limbs: 1.0
+  age: 0.3
+face:
+  eye_shape: almond
+  eye_size: 1.05
+  eye_spacing: 1.05
+  brow: angled
+  brow_weight: 0.9
+  nose: button
+  nose_size: 0.9
+  mouth: smirk
+  mouth_width: 0.95
+  lips: 0.95
+  jaw: round
+  jaw_width: 0.92
+  chin: 0.9
+  ears: 1.0
+  ear_angle: 0.2
+hair:
+  style: ponytail
+  facial: none
+palette:
+  skin: '#d9a17b'
+  hair: '#3b2418'
+  eyes: '#5b3a22'
+outfit:
+  top: shirt
+  sleeves: rolled
+  neckline: collar
+  top_color: '#e6d8bd'
+  tucked: true
+  outer: coat
+  outer_length: knee
+  outer_color: '#a8875a'
+  outer_open: true
+  outer_flare: 0.6
+  bottom: trousers
+  bottom_color: '#3a3330'
+  shoes: boots
+  shoe_style: chunky
+  fit: baggy
+  gloves: full
+  glove_color: '#232327'
+  shoe_color: '#4a3123'
+  hat: none
+  accessories: [belt]
+  accent_color: '#a8322d'

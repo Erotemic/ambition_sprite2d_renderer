@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Mapping, Optional, Tuple
 
 from .body import Figure
+from .draw import hand_channels
 from .geometry import Vec3, View, add3, norm3, scale3, sub3
 
 #: An unturned hand part holds an item this many degrees above forward
@@ -272,6 +273,7 @@ class ViewSolver:
         # Screen cm -> frame px about the rest hip centre (the rig's own map).
         self.hip_c = hip_c
         self.chains = {c["channel_prefix"]: c for c in doc.get("ik_chains", [])}
+        self.opacity_channels = {p["opacity_channel"] for p in doc["parts"] if p.get("opacity_channel")}
         # How far the head turns on its neck either way (degrees): a head the
         # neck goes into (a horse's, a dog's) turns less than a human's, or
         # its carried neck kinks off the neck below.
@@ -493,7 +495,14 @@ class ViewSolver:
             else:
                 out[f"{fpre}_pitch"] = float(leg["rest_pitch"])
         out.update(pose.face)
-        out.update(pose.extra)
+        extra = dict(pose.extra)
+        for depth, side in SIDES:
+            # A hand shape (``open_<side>``, 0 a fist, 1 open) shows the
+            # hand's open alternate where the rig has one (``draw.hand_parts``).
+            amount = extra.pop(f"open_{side}", None)
+            if amount is not None and f"{depth}_hand_open_vis" in self.opacity_channels:
+                out.update(hand_channels(depth, amount >= 0.5))
+        out.update(extra)
         return out
 
 

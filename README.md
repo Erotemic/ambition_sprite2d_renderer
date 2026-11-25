@@ -858,8 +858,8 @@ as radial bumps). `geometry.py` projects them: a loft's silhouette is the
 visible arc of each ring, and a *coverage margin* `m(alpha, y)` (positive
 where covered) cuts a region out of a surface — the hairline, a V-neck, an
 open coat, a beard — so a garment or a hairstyle is the same region in every
-view. Limbs are tubes (a crease at the joint, not a full outline), hands are a
-loose fist, shoes convex hulls of 3D points. `draw.py` paints each view as rig
+view. Limbs are tubes (a crease at the joint, not a full outline), a person's
+hands are the hand generator's model (below), shoes convex hulls of 3D points. `draw.py` paints each view as rig
 parts (`data-rig-part`/`-bone`/`-z`/`-feature`; the paint order depends on the
 view). Every view is drawn at one scale (`PX_PER_CM`), so a tall character is
 a tall sprite.
@@ -873,6 +873,22 @@ of the fist: the item socket. The fist is drawn so an item held in it runs
 forward and 24° up on screen in every view (`draw.ITEM_REST_ANGLE`, the
 runtime's `ITEM_REST_ANGLE`), so a held item seats in the hand without a
 per-character offset.
+
+**Hands** (`chargen/hand.py`) are `handgen`'s skeleton (the Dealer's hand)
+placed in the figure's hand frame and painted as SVG: one outline round the
+whole hand, a thin seam where a finger crosses the palm, and a wrist stub
+that starts at the wrist with the forearm's own width and direction, is
+inked along its sides only (no line across the wrist), and never reaches back
+over a cuff. At sprite size a finger is two or three pixels: the model buys
+the silhouette (knuckles, a thumb, a heel flaring out of the wrist) and the
+right order of fingers and palm in every view. A person's hand has two
+parts: `<depth>_hand` (the loose fist that holds items, channel
+`<depth>_hand_vis`, shown by default) and `<depth>_hand_open` (an open hand
+turned palm to the camera, `<depth>_hand_open_vis`). A pose asks for an open
+hand with `open_right`/`open_left` (0 a fist, 1 open; the solver writes both
+channels, so a blend never hides both); `wave`, `talk`, `shrug`, `pet`,
+`cry`, `scared`, `interact` and `entrance` use it. An animal keeps its own
+paws (`draw.modeled_hands`).
 
 **Motion** (`motion.py`, `pose3d.py`) is posed once, in 3D, for every view: a
 `Pose` places the root, spins and leans the body, and puts each hand and foot
@@ -956,7 +972,17 @@ animal a pale face and red on the front of the jaw line) and
 `geta_height` cm). Geta raise the whole figure (`Figure.sole_y`): every
 height is measured from the soles, planted feet stay on the ground, and a
 pose on the ground (`Kit.pose(ground=True)`) is lowered by the geta. So geta
-and other footwear cannot be wardrobe alternates of each other. The kimono's
+and other footwear cannot be wardrobe alternates of each other.
+
+**Silhouette options** (2026-11-25): `outfit.shoe_style: chunky` (a heavy
+work boot or shoe: a thick welted sole, a broad toe, a wide boot shaft under
+a turned cuff), `outfit.fit: baggy` (wide trousers gathered in a round fold
+where the boot or the ankle takes them in), `outfit.gloves`
+(`none`/`full`/`fingerless`, in `glove_color`, "" the shoes' leather; a
+glove's cuff is inked over the wrist) and `outfit.outer_flare` (0..1: how
+far a long coat's skirt swings out at its hem). Like the geisha fields they
+are written only when not at their default. Fia (`targets/characters/fia.py`)
+wears all four. The kimono's
 wrap and the kanzashi are not symmetric; a left view (a mirror) shows them
 the other way. These fields are written to a record only when they are not
 at their default, so older records and their SVGs do not change. The

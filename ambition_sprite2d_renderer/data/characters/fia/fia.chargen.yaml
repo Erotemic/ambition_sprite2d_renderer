@@ -1,4 +1,4 @@
-# Faith "Fia" Knoss, the town mechanic who works under Oiler (docs/storylines/
+# Fia Knoss, the town mechanic who works under Oiler (docs/storylines/
 # cannon.md; the arc: docs/brainstorms/the_fia_arc.md). Concept art:
 # assets/concept_art/character-concepts/Fia. Drawn by the character generator in
 # every view; her hand-drawn overlay (data/overlays/fia.overlay.svg) draws her
@@ -57,9 +57,14 @@ outfit:
   outer_length: knee
   outer_color: '#a8875a'
   outer_open: true
+  outer_flare: 0.6
   bottom: trousers
   bottom_color: '#3a3330'
   shoes: boots
+  shoe_style: chunky
+  fit: baggy
+  gloves: fingerless
+  glove_color: '#3a2a22'
   shoe_color: '#4a3123'
   hat: none
   accessories: [belt]

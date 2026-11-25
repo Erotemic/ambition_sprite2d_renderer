@@ -1,4 +1,5 @@
-"""Draw Fia's overlays: ``data/overlays/fia.overlay.svg`` (her own look) and
+"""Draw Fia's overlays: ``data/overlays/fia.overlay.svg`` (her own look),
+``fia_touched.overlay.svg`` (the void's first traces) and
 ``fia_void.overlay.svg`` (embraced by the void), hand-placed art over the
 generated parts of ``data/characters/fia/*.chargen.yaml`` (``chargen.overlay``;
 the target is ``targets/characters/fia.py``).
@@ -131,6 +132,8 @@ LOOKS = {
         band="#a8322d", band_dark="#741d1a", band_light="#cf5b50", freckle="#a35d3d", plaster="#efdcb8", plaster_dot="#c7a77c",
         cuff="#8c6c44", cuff_dark="#5e4428", leather="#4a3123", leather_dark="#2e1d14", leather_light="#6e4c35", brass="#c99a45",
         steel="#9aa0a6", steel_dark="#5d6268", steel_light="#d6dade", wrap="#a8322d", glow="#f2b44a", lining="#8e2a28",
+        # Her own hair has no white in it: the streak is the void's first mark.
+        streaked=False,
     ),
 }
 W = 3.0     # the outline, in overlay units
@@ -185,17 +188,31 @@ def bandana_side(c):
     return out
 
 
-def ponytail_side(c):
-    """A high, messy ponytail from the back of the crown, out and down in flicks."""
-    tail = path([
-        (-30, -64), (-42, -71), (-56, -70), (-66, -63, "c"), (-60, -59), (-68, -48, "c"), (-60, -46), (-64, -33, "c"),
-        (-55, -36), (-53, -22, "c"), (-47, -32), (-41, -25, "c"), (-39, -37), (-33, -46),
-    ])
-    out = inked(tail, c["hair"], c["ink"], W)
-    out.append(el(path([(-36, -62), (-52, -64), (-62, -56), (-56, -50), (-44, -52)]), c["hair_light"], opacity=0.6))
-    for pts in (((-40, -60), (-56, -54), (-64, -40)), ((-38, -52), (-48, -40), (-52, -26))):
-        out.append(el(path(pts, closed=False), "none", c["hair_dark"], FINE))
+#: Her ponytail, side view: tied high at the back of the crown, it rises and
+#: sweeps back in big spiky locks, the shape that marks her at any size.
+TAIL_SIDE = [
+    (-20, -80), (-24, -96), (-34, -110), (-40, -122, "c"), (-44, -106), (-56, -112), (-70, -116, "c"), (-66, -102), (-82, -100),
+    (-98, -98, "c"), (-84, -88), (-94, -78), (-106, -70, "c"), (-88, -66), (-94, -54), (-100, -40, "c"), (-82, -46), (-76, -32, "c"),
+    (-66, -46), (-54, -42, "c"), (-48, -56), (-34, -58),
+]
+
+
+def _tail(c, pts, sheen, strands):
+    out = inked(path(pts), c["hair"], c["ink"], W)
+    out.append(el(path(sheen), c["hair_light"], opacity=0.6))
+    for q in strands:
+        out.append(el(path(q, closed=False), "none", c["hair_dark"], FINE))
     return out
+
+
+def _squash(pts, kx, dx=0.0, ky=1.0, dy=0.0):
+    return [(x * kx + dx, y * ky + dy) + tuple(p[2:]) for p in pts for x, y in [p[:2]]]
+
+
+def ponytail_side(c):
+    """The high ponytail: up from the crown and back in spiky locks."""
+    return _tail(c, TAIL_SIDE, [(-26, -92), (-40, -106), (-62, -104), (-80, -92), (-60, -94), (-40, -94)],
+                 (((-30, -86), (-54, -96), (-84, -92)), ((-32, -76), (-62, -78), (-92, -68)), ((-36, -66), (-64, -62), (-84, -50))))
 
 
 def face_side(c):
@@ -241,14 +258,10 @@ def bandana_f3q(c):
 
 
 def ponytail_f3q(c):
-    tail = path([
-        (-22, -74), (-38, -80), (-52, -76), (-60, -66, "c"), (-52, -64), (-60, -50, "c"), (-50, -50), (-54, -34, "c"),
-        (-44, -40), (-40, -26, "c"), (-34, -40), (-26, -50),
-    ])
-    out = inked(tail, c["hair"], c["ink"], W)
-    for pts in (((-30, -66), (-44, -60), (-50, -46)),):
-        out.append(el(path(pts, closed=False), "none", c["hair_dark"], FINE))
-    return out
+    """Turned toward us the tail sweeps back past the far side of her head."""
+    pts = _squash(TAIL_SIDE, 0.78, -6.0)
+    return _tail(c, pts, _squash([(-26, -92), (-40, -106), (-62, -104), (-80, -92), (-60, -94), (-40, -94)], 0.78, -6.0),
+                 [_squash(q, 0.78, -6.0) for q in (((-30, -86), (-54, -96), (-84, -92)), ((-36, -66), (-64, -62), (-84, -50)))])
 
 
 def face_f3q(c):
@@ -289,9 +302,11 @@ def streak_front(c):
 
 
 def ponytail_front(c):
-    """Seen from the front, the high ponytail shows above and beside the crown."""
-    tail = path([(8, -80), (18, -90), (30, -90), (40, -82, "c"), (34, -80), (42, -70, "c"), (32, -72), (24, -78)])
-    return inked(tail, c["hair"], c["ink"], W)
+    """From the front the tail is behind her head, sweeping away from us: its
+    locks show over the crown and out past her left side (+x)."""
+    pts = [(-14, -80), (-12, -96), (-4, -108, "c"), (4, -98), (16, -112, "c"), (20, -96), (36, -104, "c"), (34, -90), (52, -88, "c"),
+           (42, -78), (56, -66, "c"), (40, -66), (46, -52, "c"), (32, -60), (24, -76)]
+    return inked(path(pts), c["hair"], c["ink"], W) + [el(path(((8, -92), (24, -94), (38, -84)), closed=False), "none", c["hair_dark"], FINE)]
 
 
 def face_front(c):
@@ -305,20 +320,23 @@ def face_front(c):
 
 
 def _back_tail(c, cx, lean):
-    """The ponytail from behind, over the back of her head: gathered at the knot
-    (cx, -62), out and down in flicks; lean turns it toward +x."""
-    pts = [(cx - 8, -66), (cx - 22 + lean, -60), (cx - 30 + lean, -48, "c"), (cx - 22 + lean, -46), (cx - 26 + lean, -32, "c"),
-           (cx - 15 + lean, -36), (cx - 12 + lean, -18, "c"), (cx - 4 + lean, -30), (cx + 4 + lean, -16, "c"), (cx + 8 + lean, -32),
-           (cx + 18 + lean, -24, "c"), (cx + 16 + lean, -40), (cx + 26 + lean, -42, "c"), (cx + 16 + lean, -54), (cx + 8, -66)]
+    """The ponytail from behind, over the back of her head: tied at the knot
+    (cx, -66), its locks spring up past the crown and fan out and down to
+    either side; ``lean`` turns it toward +x."""
+    pts = [(cx - 8, -68), (cx - 18 + lean, -84), (cx - 28 + lean, -100, "c"), (cx - 16 + lean, -96), (cx - 8 + lean, -112, "c"),
+           (cx + 2 + lean, -96), (cx + 16 + lean, -108, "c"), (cx + 16 + lean, -90), (cx + 30 + lean, -86, "c"), (cx + 22 + lean, -74),
+           (cx + 34 + lean, -52, "c"), (cx + 18 + lean, -60), (cx + 16 + lean, -36, "c"), (cx + 6 + lean, -52), (cx - 2 + lean, -30, "c"),
+           (cx - 8 + lean, -50), (cx - 20 + lean, -38, "c"), (cx - 20 + lean, -58), (cx - 32 + lean, -60, "c"), (cx - 22 + lean, -72)]
     out = inked(path(pts), c["hair"], c["ink"], W)
-    out.append(el(path([(cx - 6, -60), (cx - 14 + lean, -50), (cx - 6 + lean, -40), (cx + 4 + lean, -46), (cx + 6, -58)]), c["hair_light"], opacity=0.55))
-    for pts2 in (((cx - 4, -58), (cx - 10 + lean, -44), (cx - 10 + lean, -30)), ((cx + 4, -58), (cx + 6 + lean, -44), (cx + 10 + lean, -30))):
+    out.append(el(path([(cx - 6, -74), (cx - 12 + lean, -92), (cx + 4 + lean, -100), (cx + 12 + lean, -88), (cx + 6, -74)]), c["hair_light"], opacity=0.55))
+    for pts2 in (((cx - 4, -70), (cx - 14 + lean, -86), (cx - 18 + lean, -96)), ((cx + 4, -70), (cx + 16 + lean, -84), (cx + 24 + lean, -92)),
+                 ((cx - 4, -62), (cx - 12 + lean, -52), (cx - 14 + lean, -46)), ((cx + 4, -62), (cx + 14 + lean, -54), (cx + 26 + lean, -54))):
         out.append(el(path(pts2, closed=False), "none", c["hair_dark"], FINE))
-    # the knot, and its tails over the hair
-    for d in (path([(cx - 3, -64), (cx - 14, -70), (cx - 22, -66, "c"), (cx - 15, -63), (cx - 5, -61)]),
-              path([(cx + 3, -64), (cx + 12, -58), (cx + 16, -48, "c"), (cx + 10, -54), (cx + 2, -60)])):
+    # the bandana's knot, and its tails out over the hair
+    for d in (path([(cx - 3, -66), (cx - 16, -74), (cx - 26, -68, "c"), (cx - 17, -64), (cx - 5, -63)]),
+              path([(cx + 3, -66), (cx + 14, -58), (cx + 20, -46, "c"), (cx + 12, -54), (cx + 2, -62)])):
         out += inked(d, c["band"], c["ink"], W * 0.7)
-    out += inked(ellipse(cx, -64, 5, 4.2), c["band_dark"], c["ink"], W * 0.7)
+    out += inked(ellipse(cx, -66, 5, 4.2), c["band_dark"], c["ink"], W * 0.7)
     return out
 
 
@@ -438,8 +456,13 @@ def wrist_cuff(c, view):
 
 # ---- the void: Fia embraced ---------------------------------------------------------------------------
 
+#: Touched by the void: its first traces. A white streak in her hair, her
+#: hands gone black and the black creeping up her forearms from the wrists,
+#: two of its diamonds near her.
+LOOKS["fia_touched"] = dict(LOOKS["fia"], streaked=True, touched=True, creep="#1c1c20", creep_edge="#3a3a3e", white="#f6f6f6")
+
 LOOKS["fia_void"] = dict(
-    LOOKS["fia"], void=True, ink="#050506", hair="#f2f2f2", hair_dark="#9a9a9e", hair_light="#ffffff", streak="#0b0b0c",
+    LOOKS["fia"], void=True, streaked=True, ink="#050506", hair="#f2f2f2", hair_dark="#9a9a9e", hair_light="#ffffff", streak="#0b0b0c",
     streak_shade="#3a3a3e", cuff="#0b0b0c", cuff_dark="#3a3a3e", leather="#0b0b0c", leather_dark="#000000", leather_light="#26262a",
     brass="#f4f4f4", steel="#e6e6e8", steel_dark="#8a8a8e", steel_light="#ffffff", wrap="#0b0b0c", glow="#ffffff", band="#0b0b0c",
     band_dark="#000000", band_light="#3a3a3e", white="#f6f6f6",
@@ -453,36 +476,54 @@ def _vinked(d, fill, c, w):
     return inked(d, fill, VOID_INK if c.get("void") else c["ink"], w)
 
 
+def _grow(pts, k, root):
+    """``pts`` scaled ``k`` times about ``root``: the void's flame is bigger
+    than the ponytail it was."""
+    rx, ry = root
+    return [(rx + (p[0] - rx) * k, ry + (p[1] - ry) * k) + tuple(p[2:]) for p in pts]
+
+
+#: How much bigger than her ponytail the void's flame is.
+FLAME = 1.45
+
+
+#: The void's flame, side view: her ponytail loosed, white locks rising up and back.
+FLAME_SIDE = [(-30, -64), (-42, -80), (-52, -100, "c"), (-52, -84), (-68, -96, "c"), (-64, -78), (-84, -78, "c"), (-70, -66),
+              (-86, -56, "c"), (-68, -52), (-78, -38, "c"), (-60, -42), (-60, -26, "c"), (-48, -38), (-42, -26, "c"), (-38, -40), (-33, -46)]
+FLAME_STRANDS = (((-38, -60), (-56, -72), (-70, -74)), ((-38, -52), (-58, -54), (-72, -50)), ((-40, -46), (-52, -40), (-56, -32)))
+
+
+def _flame(c, kx, dx):
+    root = (-30, -60)
+    out = inked(path(_squash(_grow(FLAME_SIDE, FLAME, root), kx, dx)), c["hair"], c["ink"], W)
+    for q in FLAME_STRANDS:
+        out.append(el(path(_squash(_grow(q, FLAME, root), kx, dx), closed=False), "none", c["hair_dark"], FINE))
+    return out
+
+
 def flame_side(c):
     """Her ponytail loosed by the void: white locks rising up and back like flame."""
-    pts = [(-30, -64), (-42, -80), (-52, -100, "c"), (-52, -84), (-68, -96, "c"), (-64, -78), (-84, -78, "c"), (-70, -66),
-           (-86, -56, "c"), (-68, -52), (-78, -38, "c"), (-60, -42), (-60, -26, "c"), (-48, -38), (-42, -26, "c"), (-38, -40), (-33, -46)]
-    out = inked(path(pts), c["hair"], c["ink"], W)
-    for q in (((-38, -60), (-56, -72), (-70, -74)), ((-38, -52), (-58, -54), (-72, -50)), ((-40, -46), (-52, -40), (-56, -32))):
-        out.append(el(path(q, closed=False), "none", c["hair_dark"], FINE))
-    return out
+    return _flame(c, 1.0, 0.0)
 
 
 def flame_f3q(c):
-    pts = [(-22, -74), (-30, -90), (-34, -106, "c"), (-24, -94), (-14, -104, "c"), (-12, -88), (-40, -84), (-56, -92, "c"),
-           (-50, -76), (-66, -68, "c"), (-52, -62), (-62, -46, "c"), (-48, -50), (-50, -32, "c"), (-38, -42), (-28, -52)]
-    out = inked(path(pts), c["hair"], c["ink"], W)
-    out.append(el(path(((-30, -70), (-46, -72), (-56, -66)), closed=False), "none", c["hair_dark"], FINE))
-    return out
+    return _flame(c, 0.78, -2.0)
 
 
 def flame_front(c):
     pts = [(-26, -74), (-34, -96, "c"), (-20, -86), (-12, -106, "c"), (-2, -88), (10, -108, "c"), (16, -88), (30, -100, "c"),
            (30, -82), (44, -88, "c"), (36, -72)]
-    return inked(path(pts), c["hair"], c["ink"], W)
+    return inked(path(_grow(pts, FLAME * 0.9, (4, -72))), c["hair"], c["ink"], W)
 
 
 def _back_flame(c, cx, lean):
     pts = [(cx - 10, -64), (cx - 22 + lean, -76), (cx - 30 + lean, -98, "c"), (cx - 16 + lean, -84), (cx - 8 + lean, -104, "c"),
            (cx + 2 + lean, -86), (cx + 14 + lean, -102, "c"), (cx + 14 + lean, -82), (cx + 30 + lean, -90, "c"), (cx + 20 + lean, -72),
            (cx + 10, -62)]
-    out = inked(path(pts), c["hair"], c["ink"], W)
-    out.append(el(path(((cx - 4, -66), (cx - 8 + lean, -82), (cx - 10 + lean, -94)), closed=False), "none", c["hair_dark"], FINE))
+    root = (cx, -66)
+    out = inked(path(_grow(pts, FLAME * 0.9, root)), c["hair"], c["ink"], W)
+    out.append(el(path(_grow(((cx - 4, -66), (cx - 8 + lean, -82), (cx - 10 + lean, -94)), FLAME * 0.9, root), closed=False), "none", c["hair_dark"],
+                  FINE))
     return out
 
 
@@ -509,15 +550,40 @@ def tatters(c, view, side):
     return out
 
 
-def diamonds(c, view):
-    """White diamonds that drift about her (anchored at the waist)."""
+def creep(c, elbow, arm_r):
+    """The void creeping up a forearm from the wrist (anchored at the wrist;
+    ``elbow`` is the elbow from it, ``arm_r`` the arm's radii in cm): black
+    to a little past halfway, its top edge in flames, a vein or two above."""
+    ex, ey = elbow
+    L = math.hypot(ex, ey) or 1.0
+    ux, uy = ex / L, ey / L
+    nx, ny = -uy, ux
+    _rs, re, rw = (r * UNIT for r in arm_r)
+
+    def at(t, k):
+        r = (rw + (re - rw) * t) * k + 0.4
+        return (ux * L * t + nx * r, uy * L * t + ny * r)
+
+    pts = [at(-0.04, -1.0), at(-0.04, 1.0)]
+    for t, k in ((0.38, 1.0), (0.5, 0.75), (0.44, 0.45), (0.6, 0.15), (0.47, -0.15), (0.54, -0.5), (0.4, -0.8), (0.36, -1.0)):
+        pts.append(at(t, k) + (("c",) if abs(k) < 0.9 and t > 0.45 else ()))
+    out = [el(path(pts), c["creep"])]
+    for t0, t1, k in ((0.5, 0.68, 0.3), (0.52, 0.64, -0.55)):
+        out.append(el(path([at(t0, k), at((t0 + t1) / 2, k + 0.12), at(t1, k - 0.05)], closed=False), "none", c["creep_edge"], 1.2))
+    return out
+
+
+def diamonds(c, view, which=(0, 1, 2, 3), size=1.0):
+    """White diamonds that drift about her (anchored at the waist): ``which``
+    of them, at ``size``."""
     spots = {"side": ((-52, -50, 5.5), (56, -78, 4.0), (-62, 30, 3.2), (60, 20, 4.6)),
              "front_3q": ((-58, -62, 5.0), (66, -70, 4.2), (-64, 24, 3.4), (70, 30, 4.4)),
              "front": ((-66, -60, 5.0), (66, -72, 4.4), (-70, 26, 3.4), (70, 18, 4.2)),
              "back_3q": ((-60, -70, 4.4), (66, -58, 5.0), (-66, 30, 4.2), (70, 22, 3.4)),
              "back": ((-66, -70, 4.4), (66, -60, 5.0), (-70, 20, 4.2), (70, 28, 3.4))}[view]
     out = []
-    for x, y, r in spots:
+    for x, y, r in (spots[i] for i in which):
+        r *= size
         d = path([(x, y - r * 1.7, "c"), (x + r, y, "c"), (x, y + r * 1.7, "c"), (x - r, y, "c")])
         out += inked(d, c["white"], c["ink"], 1.4)
         out.append(el(path([(x, y - r * 1.1, "c"), (x + r * 0.35, y, "c"), (x, y + r * 1.1, "c"), (x - r * 0.35, y, "c")]), "#cfcfd3"))
@@ -554,7 +620,7 @@ def write(look: str) -> Path:
             h.update(ponytail={"side": flame_side, "front_3q": flame_f3q, "front": flame_front}.get(key, nothing),
                      face=(lambda c, m=mark: face_void(c, *m)) if mark else nothing)
         gs = [
-            group("hair", "replace", "neck", "head head", J["neck"], h["hair"](c) + h["bandana"](c) + h["streak"](c)),
+            group("hair", "replace", "neck", "head head", J["neck"], h["hair"](c) + h["bandana"](c) + (h["streak"](c) if c.get("streaked") else [])),
             group("hair_back", "replace", "neck", "head head", J["neck"], h["ponytail"](c)),
             group("head", "over", "neck", "head head", J["neck"], h["face"](c)),
         ]
@@ -566,11 +632,15 @@ def write(look: str) -> Path:
         if c.get("void"):
             gs += [group(f"{side}_skirt__outer", "over", f"{side}_hip", "trunk trunk", J[f"{side}_hip"], tatters(c, key, side)) for side in ("near", "far")]
             gs.append(group("torso__top", "over", "waist", "trunk trunk", J["waist"], diamonds(c, key)))
+        if c.get("touched"):
+            gs.append(group("torso__top", "over", "waist", "trunk trunk", J["waist"], diamonds(c, key, (0, 3), 0.7)))
+            for side in ("near", "far"):
+                e = (J[f"{side}_elbow"][0] - J[f"{side}_wrist"][0], J[f"{side}_elbow"][1] - J[f"{side}_wrist"][1])
+                gs.append(group(f"{side}_arm_l", "over", f"{side}_wrist", "trunk trunk", J[f"{side}_wrist"], creep(c, e, fig.arm_r)))
         for side in ("near", "far"):
             gs += [
                 group(f"{side}_arm_l__outer", "replace", f"{side}_elbow", "trunk trunk", J[f"{side}_elbow"], []),
                 group(f"{side}_arm_u__outer", "over", f"{side}_elbow", "trunk trunk", J[f"{side}_elbow"], coat_cuff(c, key)),
-                group(f"{side}_arm_l", "over", f"{side}_wrist", "trunk trunk", J[f"{side}_wrist"], wrist_cuff(c, key)),
             ]
         cells.append(f'<g data-view="{key}">\n' + "\n".join(gs) + "\n</g>")
     w = CELL_W * len(VIEWS)

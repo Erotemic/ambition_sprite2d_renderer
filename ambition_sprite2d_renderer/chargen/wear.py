@@ -355,6 +355,8 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
                             cuff=o.outer in ("coat", "jacket", "field_jacket"), wide=2.0 if o.outer == "robe" else 0.0)
     if hem > torso_bottom + 0.02 * T:
         flare = {"robe": 1.3, "coat": 1.2, "apron": 1.0, "cardigan": 1.1, "jacket": 1.05, "vest": 1.0}.get(o.outer, 1.1)
+        if o.outer != "apron":
+            flare += 0.55 * o.outer_flare
         lo = skirt_loft(fig, fig.y_belt, hem, t + 0.6, flare)
 
         def extra(p: Paint, side: str) -> None:
@@ -475,7 +477,22 @@ def legwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     rt, rk, rc, ra = fig.leg_r
     for depth, side, _sgn in SIDES:
         Hp, K, A = j[f"{side}_hip"], j[f"{side}_knee"], j[f"{side}_ankle"]
-        if o.bottom == "trousers":
+        if o.bottom == "trousers" and o.fit == "baggy":
+            # Wide work trousers: full through the thigh and the knee, the
+            # cloth gathered in a round fold where the boot (or the ankle)
+            # takes it in.
+            pu = ctx.new()
+            tube3(ctx, pu, Hp, K, rt + 1.6, rk * 1.05 + 2.6, col, joint_b=True)
+            pl = ctx.new()
+            gather = 0.42 if o.shoes == "boots" else 0.86
+            aa, bb = segment(K, A, 0.0, gather)
+            tube3(ctx, pl, aa, bb, rc + 2.4, lerp(rc, ra, gather) + 3.4, col, round_b=True)
+            if gather < 1.0:
+                ca, cb = segment(K, A, gather, 1.0)
+                tube3(ctx, pl, ca, cb, lerp(rc, ra, gather) + 0.8, ra + 0.9, col, round_a=False, round_b=False, band=False)
+            fa, fb = segment(K, A, gather - 0.12, gather)
+            pl.line([ctx.p(fa), ctx.p(fb)], shade(col, 0.35), FINE)
+        elif o.bottom == "trousers":
             pu = ctx.new()
             tube3(ctx, pu, Hp, K, rt + 0.5, rk * 1.05 + 0.6, col, joint_b=True)
             pl = ctx.new()
@@ -529,14 +546,18 @@ def footwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     out: List[Part] = []
     j = fig.joints
     rt, rk, rc, ra = fig.leg_r
+    chunky = o.shoe_style == "chunky"
     for depth, side, _sgn in SIDES:
         pt = ctx.new()
-        sole, top, collar = foot_points(fig, side)
+        sole, top, collar = foot_points(fig, side, 1.14 if chunky else 1.0)
+        k = fig.k
         shoe = hull(ctx.p(q) for q in sole + top + collar)
         pt.region([shoe], o.shoe_color, smooth=True)
-        k = fig.k
-        sole_band = hull([ctx.p(q) for q in sole] + [ctx.p((q[0], -1.3 * k, q[2])) for q in sole])
+        sole_band = hull([ctx.p(q) for q in sole] + [ctx.p((q[0], -(2.6 if chunky else 1.3) * k, q[2])) for q in sole])
         pt.flat([sole_band], shade(o.shoe_color, 0.4), smooth=True)
+        if chunky:
+            # The thick sole's welt.
+            pt.line([ctx.p((q[0], -2.6 * k, q[2])) for q in sole[::2]], shade(o.shoe_color, 0.55), FINE * 0.8)
         A = j[f"{side}_ankle"]
         from .geometry import capsule_band
 
@@ -544,7 +565,16 @@ def footwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         p = _part(f"{depth}_foot__footwear", f"{depth}_leg_foot", zmap[f"{depth}_leg_foot"] + LAYER["footwear"], pt, f"Shoe - {depth}", feature)
         if p:
             out.append(p)
-        if o.shoes == "boots":
+        if o.shoes == "boots" and chunky:
+            # A wide shaft, a turned cuff over its top, a strap across it.
+            K = j[f"{side}_knee"]
+            pb = ctx.new()
+            aa, bb = segment(K, A, 0.46, 1.0)
+            tube3(ctx, pb, aa, bb, lerp(rc, ra, 0.46) + 2.2, ra + 2.3, o.shoe_color, round_a=False)
+            ca, cb = segment(K, A, 0.42, 0.56)
+            tube3(ctx, pb, ca, cb, lerp(rc, ra, 0.42) + 2.7, lerp(rc, ra, 0.56) + 3.0, light(o.shoe_color, 0.1), band=False, round_a=False,
+                  round_b=False)
+        elif o.shoes == "boots":
             K = j[f"{side}_knee"]
             pb = ctx.new()
             aa, bb = segment(K, A, 0.42, 1.0)
@@ -552,6 +582,7 @@ def footwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
             ca, cb = segment(K, A, 0.42, 0.49)
             tube3(ctx, pb, ca, cb, lerp(rc, ra, 0.42) + 1.4, lerp(rc, ra, 0.49) + 1.4, shade(o.shoe_color, 0.15), band=False, round_a=False,
                   round_b=False)
+        if o.shoes == "boots":
             p = _part(f"{depth}_leg_l__footwear", f"{depth}_leg_l", zmap[f"{depth}_leg_l"] + LAYER["footwear"], pb, f"Boot - {depth}", feature)
             if p:
                 out.append(p)

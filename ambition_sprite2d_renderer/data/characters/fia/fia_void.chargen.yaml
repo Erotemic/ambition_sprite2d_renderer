@@ -54,9 +54,13 @@ outfit:
   outer_length: knee
   outer_color: '#0b0b0c'
   outer_open: true
+  outer_flare: 0.6
   bottom: trousers
   bottom_color: '#141416'
   shoes: boots
+  shoe_style: chunky
+  fit: baggy
+  gloves: fingerless
   shoe_color: '#0e0e10'
   hat: none
   accessories: [belt]
