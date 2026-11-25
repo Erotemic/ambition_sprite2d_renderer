@@ -888,6 +888,9 @@ MOTES = {
     "boss": (_glow, (255, 150, 100)),
     # Confetti from the cannons of the show, in its magenta.
     "boss_stage": (_confetti, (236, 48, 150)),
+    # Pollen in the warm light of the plaza; in Records, paper dust.
+    "business": (_glow, (255, 232, 196)),
+    "business_office": (_dot, (240, 232, 214)),
     "cave": (_twinkle, (150, 232, 255)),
     "eclipse": (_twinkle, (130, 246, 214)),
     "forest": (_glow, (226, 255, 140)),
@@ -1090,6 +1093,8 @@ SHADOWS = {
     "basement": (20, 8, 6),
     "boss": (16, 2, 8),
     "boss_stage": (10, 6, 18),
+    "business": (40, 30, 50),
+    "business_office": (24, 18, 28),
     "frontier": (96, 46, 34),
     "frontier_refinery": (30, 22, 20),
     "frontier_interior": (50, 30, 20),

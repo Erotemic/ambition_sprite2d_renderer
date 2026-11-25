@@ -194,6 +194,11 @@ SKINS: tuple[Skin, ...] = (
     # The Boss dimension's stage: black-painted boards with a lit edge of the
     # show's magenta, and the risers and the truss a steel catwalk.
     Skin("boss_stage", "timber", (40, 32, 48), (12, 10, 18), (82, 70, 96), (236, 48, 150), "strip", (64, 54, 78), "bolts", "catwalk"),
+    # The Business dimension (Capital, DEALINGS): the plaza's warm grey
+    # stone with a gilt kerb and a stone slab for a platform; Records &
+    # Processing, dark office panels with the red trim of its catwalks.
+    Skin("business", "marble", (106, 94, 108), (46, 40, 54), (176, 162, 170), (238, 194, 96), "brass", (226, 214, 206), "lip", "slab"),
+    Skin("business_office", "panel", (70, 58, 76), (30, 24, 36), (134, 118, 142), (178, 52, 62), "strip", (156, 54, 64), "bolts", "catwalk"),
     # The Frontier dimension (Dry Dock, LEADENSADDLE): red sandstone under
     # packed red earth, the town's boardwalk for a platform; the refinery's
     # rusted deck plate with hazard paint, pipes under it and a catwalk;

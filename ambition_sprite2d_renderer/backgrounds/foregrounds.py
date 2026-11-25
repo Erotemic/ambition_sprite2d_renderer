@@ -43,6 +43,9 @@ from .art_quarters import stacks_foreground as _art_stacks
 from .art_quarters import stage_foreground as _art_stage
 from .boss_stage import SHOW
 from .boss_stage import crowd_foreground as _boss_stage
+from .business import BUSINESS, OFFICE
+from .business import business_foreground as _business
+from .business import office_foreground as _business_office
 from .frontier import FRONTIER
 from .frontier import frontier_foreground as _frontier
 from .frontier import refinery_foreground as _frontier_refinery
@@ -316,6 +319,10 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "skybridge": (_skybridge, SKYBRIDGE["stone"]),
     "boss": (_boss, scale(BOSS["rock"], 0.8)),
     "boss_stage": (_boss_stage, scale(SHOW["crowd"], 0.9)),
+    # The Business dimension: a clipped hedge and a lamp's arm; in Records,
+    # stacks of files and a tube.
+    "business": (_business, scale(BUSINESS["leaf_dark"], 0.8)),
+    "business_office": (_business_office, scale(OFFICE["shelf_dark"], 0.9)),
     # The Frontier dimension: a telegraph wire and dry grass; the refinery's
     # pipe and a valve. The inside of a building has none.
     "frontier": (_frontier, scale(FRONTIER["wood_dark"], 0.8)),

@@ -4716,6 +4716,39 @@ def hitching_rail(tile: Tile, c: dict) -> None:
     tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 8.0, G - 8.4, M + 8.0, G - 8.0)), c["wood_light"], 0.7)
 
 
+def briefcase(tile: Tile, c: dict) -> None:
+    """A briefcase set down on the ground: leather, a brass clasp, a handle."""
+    _shadow(tile, 6.0)
+    body = tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 6.0, G - 7.5, M + 6.0, G))
+    tile.put(body, c["wood"])
+    tile.put(body * (tile.y < G - 6.0), c["wood_light"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 6.0, G - 4.2, M + 6.0, G - 3.6)), c["dark"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 2.6, G - 10.0, M + 2.6, G - 9.0), _box(p, dx, dy, M - 2.6, G - 10.0, M - 1.8, G - 7.5), _box(p, dx, dy, M + 1.8, G - 10.0, M + 2.6, G - 7.5))), c["dark"])
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x, G - 6.4, x + 1.4, G - 5.0) for x in (M - 4.0, M + 2.6)]), c["glow"])
+
+
+def water_cooler(tile: Tile, c: dict) -> None:
+    """An office water cooler: a pale stand, its two taps, a blue bottle on
+    top with an air bubble in it."""
+    _shadow(tile, 5.0)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 3.6, G - 12.0, M + 3.6, G)), c["stone_light"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M + 1.4, G - 12.0, M + 3.6, G)), c["stone"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x, G - 9.0, x + 1.2, G - 7.8) for x in (M - 2.4, M + 0.8)]), c["bloom"])
+    bottle = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 3.2, G - 19.0, M + 3.2, G - 13.0), _dot(p, dx, dy, M, G - 19.0, 3.2, ry=1.0), _box(p, dx, dy, M - 1.2, G - 13.0, M + 1.2, G - 12.0)))
+    tile.put(bottle, c["metal"], 0.85)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 1.2, G - 17.0, 0.9)), c["stone_light"], 0.7)
+
+
+def paper_stack(tile: Tile, c: dict) -> None:
+    """A stack of forms tied with red tape, a sticky note on top."""
+    for k in range(5):
+        off = (-0.4, 0.3, -0.2, 0.4, 0.0)[k]
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 6.0 + off, G - (k + 1) * 2.0, M + 6.0 + off, G - k * 2.0 - 0.4)), c["stone_light"])
+        tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 6.0 + off, G - k * 2.0 - 0.4, M + 6.0 + off, G - k * 2.0)), c["stone"])
+    tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 0.6, G - 10.0, M + 0.6, G), _box(p, dx, dy, M - 6.2, G - 6.0, M + 6.2, G - 5.0))), c["bloom"])
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M + 2.0, G - 11.6, M + 5.0, G - 10.0)), c["glow"])
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -4742,6 +4775,10 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "frontier_siding": ((barrel, cactus, tumbleweed, cow_skull, hitching_rail, crate), _palette((80, 44, 30), (200, 166, 132), (240, 226, 204), (140, 96, 60), (96, 90, 86), (104, 138, 78), (220, 130, 80), (255, 214, 150))),
     "frontier_rails": ((crate, coil, crate, oil_drum, crate, coil), _palette((30, 22, 20), (110, 84, 70), (170, 150, 130), (120, 80, 50), (100, 96, 92), (80, 110, 70), (214, 160, 80), (255, 200, 130))),
     "frontier_works": ((oil_drum, coil, crate, jerrycan, oil_drum, coil), _palette((20, 16, 18), (90, 82, 80), (150, 140, 134), (104, 72, 50), (100, 96, 96), (70, 96, 64), (255, 150, 70), (255, 190, 120))),
+    # The Business dimension: in the plaza, planters, benches, a briefcase
+    # someone set down, a notice board; in Records, forms, water coolers.
+    "business": ((planter, campus_bench, briefcase, gas_lamp, planter, notice_board), _palette((40, 34, 52), (196, 184, 176), (240, 230, 220), (110, 66, 44), (90, 92, 110), (70, 110, 84), (132, 36, 54), (238, 194, 96))),
+    "business_office": ((paper_stack, water_cooler, briefcase, paper_stack, planter, crumpled_paper), _palette((26, 20, 30), (200, 196, 188), (244, 240, 230), (104, 60, 42), (110, 150, 214), (70, 110, 84), (178, 52, 62), (246, 214, 96))),
     "boss_stage": ((monitor_wedge, coil, mic_stand, road_case, setlist, pedalboard), _palette((10, 8, 16), (60, 54, 72), (190, 184, 200), (40, 36, 48), (120, 124, 136), (70, 220, 255), (236, 48, 150), (255, 176, 70))),
     # The Noodly Temple: what is on the floor of a kitchen. `stone` is the
     # colour of pasta, `wood` of a meatball and `bloom` of sauce.

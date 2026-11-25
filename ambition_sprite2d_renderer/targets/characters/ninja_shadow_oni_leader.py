@@ -18,11 +18,12 @@ and all of him is plate and cord:
 He shows no skin. He is a man in armour and not a demon: the oni is his mask.
 There is no drop shadow.
 
-His name is Zorlack 8. It is a secret (Jon, 2026-10-13: "that is a secret
-name, just document it in his generator file so we can use it in gameplay.
-Keep the current title for the nameplate"): his nameplate and his catalog row
-say "Shadow Oni Leader", and no art and no label of this file shows the name.
-``SECRET_NAME`` holds it for the day the game says it.
+He is Zorlack 65536, the last leader of the Shadow Clan: the clan's
+ancestral wall has 65536 places for Zorlacks, and his is the last
+(`docs/brainstorms/story_and_world_directions_2026-11-18.md`). His name was
+first a secret, kept off his nameplate under the title "Shadow Oni Leader"
+(Jon, 2026-10-13); on 2026-11-24 Jon had him renamed, so the nameplate and
+the catalog row say his name. No art of this file writes it.
 
 A pose that is held keeps the sword off his face. At rest he does not hold a
 guard: the point of his sword is on the ground in front of him and his two
@@ -57,12 +58,10 @@ from ._person_rig import Build, Person, Stamp, loop, shot
 
 TARGET_NAME = "ninja_shadow_oni_leader"
 TARGET_BASENAME = TARGET_NAME
-DISPLAY_NAME = "Shadow Oni Leader"
-#: His own name. Not his nameplate: see the top of this file.
-SECRET_NAME = "Zorlack 8"
+DISPLAY_NAME = "Zorlack 65536"
 
 ACTOR_METADATA = {
-    "actor": {"character_id": "npc_ninja_shadow_oni_leader", "display_name": "Shadow Oni Leader"},
+    "actor": {"character_id": "npc_ninja_shadow_oni_leader", "display_name": "Zorlack 65536"},
     "lineage": {
         "family": "npc_ninja_shadow_oni_leader",
         "variant": "the_warlord",

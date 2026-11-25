@@ -2635,6 +2635,10 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "basement": (iron, _colours((48, 34, 32), (86, 58, 48), (20, 10, 9), (224, 150, 60), (255, 170, 80))),
     "boss": (iron, _colours((40, 12, 20), (96, 32, 44), (16, 4, 8), (220, 70, 60), (255, 120, 76))),
     # The Boss dimension: a stage door with the star of a dressing room on it.
+    # The Business dimension: a bronze door in a stone frame; in Records, a
+    # steel office door.
+    "business": (stone, _colours((214, 200, 190), (120, 84, 54), (40, 30, 30), (238, 194, 96), (255, 226, 160))),
+    "business_office": (iron, _colours((70, 58, 76), (110, 104, 120), (20, 16, 24), (178, 52, 62), (255, 214, 150))),
     "boss_stage": (star_door, _colours((36, 28, 46), (52, 36, 70), (10, 8, 16), (236, 48, 150), (255, 214, 120))),
     "cave": (plank, _colours((60, 58, 104), (108, 80, 66), (22, 16, 30), (140, 226, 250), (150, 232, 255))),
     "cove": (cabin, _colours((70, 50, 36), (128, 92, 60), (30, 20, 16), (224, 180, 90), (150, 220, 230))),
