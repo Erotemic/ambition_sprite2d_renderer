@@ -131,6 +131,27 @@ def bones(c, x, ground, n, tag):
     c.put(c.mask(lambda p: p.ellipse(sx - 3, ground - 11, 2.4)), (40, 34, 30))
 
 
+def hall_ledge(c, x0, x1, top, ground):
+    """Draw an open arch under a one-way ledge."""
+    rim = 14
+    spring = top + 36
+    centre = (x0 + x1) / 2
+    radius = (x1 - x0) / 2 - rim
+    curve = [
+        (centre + radius * math.cos(angle), spring - 18 * math.sin(angle))
+        for angle in np.linspace(math.pi, 0, 21)
+    ]
+    arch = [(x0 + rim, ground), *curve, (x1 - rim, ground)]
+    span = c.mask(box(x0, top, x1, ground))
+    open_bay = c.mask(lambda p: p.poly(arch))
+    masonry = span * (1.0 - open_bay)
+    blocks(c, masonry, mix(TEMPLE, TEMPLE_LIGHT, 0.4), 24, 40, ("ledge", x0))
+    c.tone(masonry * np.clip((c.y - top) / (ground - top), 0, 1), -0.38)
+    c.put(masonry * c.mask(lambda p: p.line(curve, 8)), TEMPLE_DARK, 0.8)
+    c.put(c.mask(box(x0, top, x1, top + 11)), TEMPLE_LIGHT)
+    c.put(c.mask(box(x0, top, x1, top + 3)), mix(TEMPLE_LIGHT, (255, 250, 220), 0.5))
+
+
 def tyrant_hall_room(c, k):
     """The T-rex's hall."""
     w, g = HALL_W, HALL_FLOOR
@@ -162,13 +183,8 @@ def tyrant_hall_room(c, k):
     c.put(c.mask(lambda p: [p.ellipse(x, g - 172, 1.6) for x in (tx - 6, tx, tx + 6)]), (200, 40, 60))
     # The tyrant's tooth sign over the throne.
     c.put(c.mask(lambda p: p.poly([(tx - 18, g - 420), (tx + 18, g - 420), (tx, g - 470)])), BONE)
-    # The ledges and steps by each wall: fallen blocks whose tops are the walk
-    # lines.
     for x0, x1, y in LEDGES + STEPS:
-        m = c.mask(box(x0, y, x1, g))
-        blocks(c, m, TEMPLE_LIGHT, 24, 40, ("ledge", x0))
-        c.put(c.mask(box(x0, y, x1, y + 3)), mix(TEMPLE_LIGHT, (255, 250, 220), 0.5))
-        c.tone(m * np.clip((c.y - y) / (g - y), 0, 1), -0.2)
+        hall_ledge(c, x0, x1, y, g)
     # Braziers, bones, ferns and vines.
     for bx in (640, 1160):
         brazier(c, bx, g, ("br", bx))
