@@ -440,6 +440,28 @@ def net_loft(c, k):
     rope_line(c, [(x0 + 3, ROOF_B - 18), (x1 - 3, ROOF_B - 18)], 0.8)
 
 
+def net_alley(c, k):
+    """Draw the decks for sorting nets between the two roofs."""
+    for x, top in ((2022, 454), (2073, 454)):
+        post(c, x, top, STREET, 7, TIMBER)
+    c.put(c.mask(lambda p: p.line([(2024, 704), (2074, 624), (2024, 544), (2074, 464)], 5)), TIMBER)
+    for x0, x1, top in ((1984, 2080, 704), (2048, 2144, 624), (1952, 2048, 544), (2016, 2112, 464)):
+        c.put(c.mask(lambda p: (
+            p.poly([(x0 + 16, top + 10), (x0 + 42, top + 10), (x0 + 42, top + 38)]),
+            p.poly([(x1 - 42, top + 10), (x1 - 16, top + 10), (x1 - 42, top + 38)]),
+        )), TIMBER)
+        planks(c, k, x0, top, x1, top + 12, (65, 96, 93), step=8, tag=("net_alley_deck", top))
+        deck_edge(c, x0, x1, top, (106, 154, 141))
+        c.put(c.mask(lambda p: ([p.ellipse(x, top + 8, 1.4) for x in (x0 + 8, x1 - 8)])), PAL["brass"])
+    coil(c, 2001, 704, 8)
+    c.put(c.mask(lambda p: p.line(sag((2068, 636), (2116, 636), 26), 2)), ROPE)
+    c.put(c.mask(lambda p: [p.line(sag((1964, 556 + y), (2002, 556 + y), 16), 0.6)
+                          for y in range(0, 27, 5)]), ROPE)
+    c.put(c.mask(lambda p: [p.line([(x, 557), (x + 3, 588)], 0.7)
+                          for x in range(1965, 1999, 5)]), ROPE)
+    lantern(c, k, 2060, 481, 0.55)
+
+
 # ---------------------------------------------------------------------------
 # The tavern
 # ---------------------------------------------------------------------------
@@ -789,6 +811,7 @@ PIECES: Dict[str, Piece] = {
     "port_chandler_stall": Piece((750, 630, 970, 768), chandler_stall),
     "port_chandlery": Piece((1660, 420, 2020, 768), chandlery),
     "port_net_loft": Piece((2076, 356, 2560, 768), net_loft),
+    "port_net_alley": Piece((1948, 450, 2148, 768), net_alley),
     # pirate_port_tavern
     "port_tavern_room": Piece((16, 32, 1008, 384), tavern_room),
     # pirate_port_docks
