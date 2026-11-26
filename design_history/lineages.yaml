@@ -1696,7 +1696,7 @@ lineages:
     paths: ['straw_man']
     eras: []
   pirate_admiral:
-    name: Pirate Admiral
+    name: R. Badely
     ids: [pirate_admiral]
     paths: ['_pirate_common', '_pirate_rig', '(targets|characters)/_?pirate_admiral(_moves)?\.py']
     eras: []
