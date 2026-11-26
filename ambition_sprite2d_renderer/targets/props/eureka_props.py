@@ -357,7 +357,7 @@ def observatory_front(c, k):
 PO_FLOOR, PO_CEILING = 576, 32
 COUNTER_X0, COUNTER_X1, COUNTER_TOP = 480, 720, 536
 CABINET_X0, CABINET_X1, CABINET_TOP = 820, 980, 480
-GALLERY_X0, GALLERY_X1, GALLERY = 760, 1008, 400
+GALLERY_X0, GALLERY = 768, 400
 WAINSCOT = 446
 
 
@@ -488,8 +488,10 @@ def patent_room(c, k):
         b.add(OAK_DARK, 1.0, box(GALLERY_X0 + 10, sy, x1, sy + 5))
         books(b, c.rand("archive", sy), GALLERY_X0 + 14, x1 - 14, sy, 30, 46, 7, 14)
     b.draw()
-    # The shelf of patent models on the gallery's back wall.
+    # The display case gives each model a dark background.
     my = GALLERY - 46
+    c.put(c.mask(box(GALLERY_X0 + 10, my - 64, x1 - 10, my + 6)), OAK_DARK)
+    c.put(c.mask(box(GALLERY_X0 + 14, my - 60, x1 - 14, my)), BOARD)
     c.put(c.mask(box(GALLERY_X0 + 20, my, GALLERY_X0 + 210, my + 5)), OAK_LIGHT)
     wx, wy = GALLERY_X0 + 50, my - 22  # the wheel that would turn for ever
     c.put(c.mask(lambda p: (p.ring(wx, wy, 18, 1.4), [p.line([(wx, wy), (wx + 18 * math.cos(a), wy + 18 * math.sin(a))], 0.8) for a in np.linspace(0, math.tau, 9)[:-1]], p.poly([(wx - 2, wy), (wx + 2, wy), (wx + 6, my), (wx - 6, my)]))), BRASS)
@@ -500,13 +502,12 @@ def patent_room(c, k):
     bulb(c, GALLERY_X0 + 180, my - 20, 8.0, (255, 236, 170), 1.2)
     c.light(c.mask(lambda p: p.ellipse(GALLERY_X0 + 180, my - 20, 14), blur=6), PAL["lamp"], 0.35)
     c.put(c.mask(box(GALLERY_X0 + 172, my - 6, GALLERY_X0 + 188, my)), OAK_DARK)
-    # The gallery's floor and brackets, the rail behind, the library ladder.
+    # The rail starts clear of the ladder at the west end.
     edge_line(c, GALLERY_X0, x1, GALLERY, OAK_LIGHT, 8)
-    c.put(c.mask(lambda p: [p.poly([(x, GALLERY + 8), (x + 4, GALLERY + 8), (x + 2, GALLERY + 28)]) for x in np.arange(GALLERY_X0 + 10, x1, 60)]), OAK_DARK)
-    rail = c.mask(lambda p: (p.rect(GALLERY_X0, GALLERY - 30, x1, GALLERY - 28), [p.rect(x, GALLERY - 30, x + 1.2, GALLERY) for x in np.arange(GALLERY_X0 + 2, x1, 10)]))
+    rail_start = GALLERY_X0 + 40
+    c.put(c.mask(lambda p: [p.poly([(x, GALLERY + 8), (x + 4, GALLERY + 8), (x + 2, GALLERY + 28)]) for x in np.arange(rail_start + 10, x1, 60)]), OAK_DARK)
+    rail = c.mask(lambda p: (p.rect(rail_start, GALLERY - 30, x1, GALLERY - 28), [p.rect(x, GALLERY - 30, x + 1.2, GALLERY) for x in np.arange(rail_start, x1, 10)]))
     c.put(rail, BRASS, 0.8)
-    c.put(c.mask(lambda p: (p.line([(GALLERY_X0 + 4, GALLERY - 34), (GALLERY_X0 - 36, CABINET_TOP)], 2.0), p.line([(GALLERY_X0 + 18, GALLERY - 34), (GALLERY_X0 - 22, CABINET_TOP)], 2.0),
-                            [p.line([(GALLERY_X0 + 4 - 40 * t, GALLERY - 34 + (CABINET_TOP - GALLERY + 34) * t), (GALLERY_X0 + 18 - 40 * t, GALLERY - 34 + (CABINET_TOP - GALLERY + 34) * t)], 1.2) for t in np.linspace(0.08, 0.92, 7)])), OAK_LIGHT)
     # The lamps.
     for lx in (430, 620, 900):
         pendant(c, lx, PO_CEILING + 14, 50 if lx != 900 else 30)
