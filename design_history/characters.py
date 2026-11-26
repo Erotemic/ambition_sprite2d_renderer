@@ -2,7 +2,8 @@
 
 A character has three names, and each names it in a different place:
 
-* a **lineage** name (`lineages.yaml`): the character as the player knows it;
+* a **lineage** (`lineages.yaml`): a history of related looks, with a catalog
+  character ID for its title or an authored title for an independent history;
 * a **renderer target** (`alice`, `paul_diracula_v2`): the generator of one
   sheet. A lineage claims the targets in its `ids` and in the `id` of each era;
 * a **catalog id** (`npc_paul_diracula`, `stochastic_parrot`): a row of a game's
@@ -25,6 +26,7 @@ from pathlib import Path
 
 _SHEET = re.compile(r'"(?:sprites/)?((?:[a-z0-9_]+/)*[a-z0-9_]+?)_spritesheet\.(?:ron|png)"')
 _ROW = re.compile(r'^ {8}"([^"]+)"\s*:\s*\(')
+_DISPLAY_NAME = re.compile(r'^ {12}display_name:\s*("(?:\\.|[^"\\])*")')
 _FIELD = {
     "form_of": re.compile(r'^\s*form_of:\s*Some\("([^"]+)"\)'),
     "derived_from": re.compile(r'^\s*derived_from:\s*Some\("([^"]+)"\)'),
@@ -89,6 +91,7 @@ class CatalogRow:
     form_of: str | None = None
     derived_from: str | None = None
     kind: str = "character"  # character | boss
+    display_name: str | None = None
 
 
 def catalog_rows(repo: Path) -> dict[str, CatalogRow]:
@@ -114,6 +117,12 @@ def catalog_rows(repo: Path) -> dict[str, CatalogRow]:
                 continue
             if row is None:
                 continue
+            if row.display_name is None and (display := _DISPLAY_NAME.match(line)):
+                quoted = display.group(1)
+                try:
+                    row.display_name = json.loads(quoted)
+                except ValueError:
+                    row.display_name = quoted[1:-1]
             row.sheets += [s for s in _SHEET.findall(code) if s not in row.sheets]
             for field, regex in _FIELD.items():
                 hit = regex.match(code)

@@ -255,7 +255,8 @@ def cmd_character(args) -> int:
     current = set(census_mod.registry(_python(args)))
     views = []
     for name, via in hits:
-        view = lineage_view(name, lineages[name], store=store, cache=default_cache(), blamer=blamer, current=current, ledger=ledger)
+        view = lineage_view(name, lineages[name], store=store, cache=default_cache(), blamer=blamer,
+                            current=current, ledger=ledger, catalog=join.rows)
         view["found_via"] = via
         views.append(view)
     if args.json:

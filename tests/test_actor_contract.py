@@ -245,6 +245,23 @@ def test_catalog_defaults_enrich_actor_contract_when_available(tmp_path: Path):
     assert 'default_preset: Some("peaceful")' in ron
 
 
+def test_actor_sidecar_can_leave_the_name_with_the_character_catalog():
+    from ambition_sprite2d_renderer.authoring.actor_contract import build_actor_contract, to_ron
+
+    ron = to_ron(build_actor_contract(
+        stem="subject",
+        target="toon",
+        image="subject_spritesheet.png",
+        sheet_manifest="subject_spritesheet.ron",
+        manifest={"rows": []},
+        job_data={"name": "An authored fallback"},
+        authoring={"actor": {"character_id": "npc_subject", "display_name": None}},
+    ))
+    assert 'character_id: "npc_subject"' in ron
+    assert "display_name: None" in ron
+    assert "An authored fallback" not in ron
+
+
 def test_json_manifest_targets_can_emit_actor_sidecar(tmp_path: Path):
     from ambition_sprite2d_renderer.registry import _ensure_actor_sidecars
 
