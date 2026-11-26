@@ -106,6 +106,7 @@ SCENES: dict[str, Scene] = {
     "castle_godwin_throne": evil.castle_godwin_throne,
     "military_tower": military_tower.military_tower,
     "pirate_port": pirate_port.pirate_port,
+    "pirate_headland": pirate_port.pirate_headland,
     "ninja_village": ninja_village.ninja_village,
     # Level 1, Hobford: the hill country, its woods and the Creator's barn
     # (`hobford.py`).

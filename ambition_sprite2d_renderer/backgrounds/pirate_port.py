@@ -103,7 +103,7 @@ def _house(walls: Pen, roofs: Pen, timber: Pen, windows: Pen, rng, u: float, foo
                 windows.rect(cu - w * 0.07, v0 + h / floors * 0.30, cu + w * 0.07, v0 + h / floors * 0.70)
 
 
-def pirate_port(layer_key: str, art: Art) -> np.ndarray:
+def pirate_port(layer_key: str, art: Art, *, show_lighthouse: bool = True) -> np.ndarray:
     p = PORT
     if layer_key == "sky":
         layer = art.opaque(art.ramp([(0.0, p["top"]), (0.30, p["mid"]), (HORIZON - 0.03, mix(p["mid"], p["warm"], 0.75)),
@@ -113,19 +113,19 @@ def pirate_port(layer_key: str, art: Art) -> np.ndarray:
         clouds = cumulus(art, "heap clouds", 0.40, 0.11, 3.2, 0.40, p["cloud"], mix(p["cloud_shade"], p["mid"], 0.3))
         clouds[:, :, 3] *= (art.v < HORIZON - 0.03) * 0.92
         layer = art.over(layer, clouds)
-        # The far headland and its lighthouse, in the haze of the sea air.
-        land, line = art.ridge("headland", HORIZON - 0.015, 0.03, cells=2.0, octaves=4, sharp=0.3)
-        land = land * smoothstep(0.62, 0.70, art.u) * (art.v < HORIZON + 0.002)
-        image, pen = art.drawing()
-        lu = 0.86
-        lv = float(line[int(lu * art.n)])
-        pen.poly([(lu - 0.006, lv), (lu + 0.006, lv), (lu + 0.004, lv - 0.07), (lu - 0.004, lv - 0.07)])
-        pen.rect(lu - 0.007, lv - 0.078, lu + 0.007, lv - 0.07)
-        pen.poly([(lu - 0.006, lv - 0.078), (lu + 0.006, lv - 0.078), (lu, lv - 0.092)])
-        far = np.maximum(land, art.mask_of(image))
-        art.put(layer, far, mix(p["land"], p["warm"], 0.45))
-        stripes = art.mask_of(image) * (np.sin(art.v * art.n / 22.0) > 0.4)
-        art.put(layer, stripes, mix((190, 70, 60), p["warm"], 0.45), 0.8)
+        if show_lighthouse:
+            land, line = art.ridge("headland", HORIZON - 0.015, 0.03, cells=2.0, octaves=4, sharp=0.3)
+            land = land * smoothstep(0.62, 0.70, art.u) * (art.v < HORIZON + 0.002)
+            image, pen = art.drawing()
+            lu = 0.86
+            lv = float(line[int(lu * art.n)])
+            pen.poly([(lu - 0.006, lv), (lu + 0.006, lv), (lu + 0.004, lv - 0.07), (lu - 0.004, lv - 0.07)])
+            pen.rect(lu - 0.007, lv - 0.078, lu + 0.007, lv - 0.07)
+            pen.poly([(lu - 0.006, lv - 0.078), (lu + 0.006, lv - 0.078), (lu, lv - 0.092)])
+            far = np.maximum(land, art.mask_of(image))
+            art.put(layer, far, mix(p["land"], p["warm"], 0.45))
+            stripes = art.mask_of(image) * (np.sin(art.v * art.n / 22.0) > 0.4)
+            art.put(layer, stripes, mix((190, 70, 60), p["warm"], 0.45), 0.8)
         # The skyship, high over the headland, its sails set.
         ship, ship_pen = art.drawing()
         rig, rig_pen = art.drawing()
@@ -260,3 +260,23 @@ def pirate_port(layer_key: str, art: Art) -> np.ndarray:
     art.put(layer, shafts(art, "evening shafts", 4, -0.14, 0.0, 0.8, 0.05), p["sun"], 0.10)
     art.put(layer, fog(art, "sea haze", 0.62, 0.06), mix(p["warm"], p["mid"], 0.4), 0.14)
     return layer
+
+
+def pirate_headland(layer_key: str, art: Art) -> np.ndarray:
+    """Draw the sea and the rocks below Lighthouse Point."""
+    p = PORT
+    if layer_key == "far_backplate":
+        land, _ = art.ridge("distant coast", HORIZON - 0.018, 0.035, cells=3.0, octaves=4, sharp=0.45)
+        land *= (1 - smoothstep(0.27, 0.48, art.u)) * (art.v < HORIZON + 0.003)
+        layer = solid(art, land, mix(p["land"], p["warm"], 0.45), p["land"], 0.48, HORIZON, "coastal rock", 0.08)
+        return layer
+    if layer_key == "near_background":
+        image, pen = art.drawing()
+        for x, y, w, h in ((0.19, 0.68, 0.12, 0.027), (0.32, 0.66, 0.055, 0.012), (0.83, 0.73, 0.075, 0.02)):
+            pen.poly([(x - w, y), (x - w * 0.55, y - h * 0.6), (x - w * 0.1, y - h),
+                      (x + w * 0.26, y - h * 0.8), (x + w, y)])
+        rock = art.mask_of(image)
+        layer = solid(art, rock, (110, 126, 128), (49, 84, 97), 0.63, 0.74, "reef rock", 0.13)
+        art.put(layer, art.rim(rock, 0.0, 0.006, 0.5), mix(p["glint"], p["sea"], 0.42), 0.7)
+        return layer
+    return pirate_port(layer_key, art, show_lighthouse=False)
