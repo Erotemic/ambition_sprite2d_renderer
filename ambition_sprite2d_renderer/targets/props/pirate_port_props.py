@@ -12,7 +12,7 @@ draws the light top edge of the thing that is walked on at that y.
 - The waterfront: timber-and-plaster houses with one long gallery (y 512),
   the stair to it, the chandler's stall, the front of The Drowned Compass,
   the chandlery and the net loft with roof terraces (y 448, 384).
-- The tavern: its back wall, back bar, counter (y 344) and tables.
+- The tavern: the chart gallery, the bar, and the tables.
 - The docks: the bonded warehouse (roof y 448), the gantry and its crane
   (y 384), and the brig PERSISTENCE: her hull (deck y 640), two masts, the
   yards (y 528, 416), the crow's nest (y 304), the signal rope (y 416).
@@ -447,10 +447,34 @@ def net_loft(c, k):
 TAV_FLOOR, TAV_CEILING = 384, 32
 
 
+def tavern_chart(c):
+    """Draw the harbor chart on the gallery wall."""
+    c.put(c.mask(box(311, 102, 517, 193)), TIMBER)
+    c.put(c.mask(box(316, 107, 512, 187)), (105, 139, 139))
+    c.put(c.mask(lambda p: ([
+        p.line([(x, 108), (x, 186)], 0.55) for x in range(324, 511, 12)
+    ], [
+        p.line([(317, y), (511, y)], 0.55) for y in range(114, 187, 12)
+    ])), (193, 207, 179), 0.5)
+    c.put(c.mask(lambda p: (
+        p.poly([(316, 107), (366, 107), (379, 118), (360, 127), (365, 139),
+                (340, 146), (337, 161), (316, 169)]),
+        p.poly([(512, 123), (498, 130), (501, 148), (477, 158), (490, 172),
+                (474, 187), (512, 187)]),
+        p.poly([(400, 144), (412, 135), (421, 142), (415, 149), (405, 152)]),
+        p.poly([(443, 168), (451, 157), (460, 160), (457, 169), (451, 175)]),
+    )), (218, 197, 145))
+    course = [(353, 156), (366, 152), (381, 154), (398, 165), (418, 172), (437, 163), (465, 149), (485, 145)]
+    c.put(c.mask(lambda p: [p.line([a, b], 1.7) for a, b in zip(course[::2], course[1::2])]), (153, 65, 47))
+    c.put(c.mask(lambda p: (
+        p.ring(466, 125, 11, 0.9),
+        p.poly([(466, 111), (468, 123), (480, 125), (468, 127),
+                (466, 139), (464, 127), (452, 125), (464, 123)]),
+    )), (246, 223, 160))
+
+
 def tavern_room(c, k):
-    """The Drowned Compass inside: planked walls under beams, two windows on
-    the harbour, the back bar with its bottles over the counter (y 344,
-    x 720..960), tables, lanterns and a ship's wheel on the wall."""
+    """Draw the gallery, tables, and bar in the Drowned Compass."""
     x0, x1 = 16, 1008
     g = TAV_FLOOR
     k.ground = g
@@ -458,7 +482,7 @@ def tavern_room(c, k):
     c.put(c.mask(lambda p: [p.rect(x, TAV_CEILING, x + 10, g) for x in np.arange(x0 + 100, x1, 220)]), TIMBER)
     c.put(c.mask(box(x0, TAV_CEILING, x1, TAV_CEILING + 14)), TIMBER)
     c.put(c.mask(box(x0, g - 70, x1, g - 64)), PLANK_DARK)
-    for cx in (220, 520):
+    for cx in (248, 570):
         k.window(cx, 110, 70, 80, "rect", lit=0.0, tag=("tav_in_w", cx))
     # The door out (the room's door zone, x 40..88, 96 tall on the floor):
     # a planked cabin door in a frame, with a lit porthole.
@@ -470,8 +494,19 @@ def tavern_room(c, k):
     c.put(c.mask(lambda p: p.ring(64, g - 56, 8, 2.4)), PAL["brass"])
     k.glass(c.mask(lambda p: p.ellipse(64, g - 56, 6.6)), 0.5, g - 63, g - 49, "tavern_door_port")
     c.put(c.mask(lambda p: p.ellipse(82, g - 44, 2.2)), PAL["brass"])
-    # The wheel.
-    c.put(c.mask(lambda p: (p.ring(380, 140, 26, 4), [p.line([(380, 140), (380 + 36 * math.cos(a), 140 + 36 * math.sin(a))], 2.4) for a in np.linspace(0, math.tau, 9)[:-1]], p.ellipse(380, 140, 6))), PLANK_LIGHT)
+    tavern_chart(c)
+    for bx in (228, 418, 602):
+        c.put(c.mask(lambda p: p.poly([(bx - 16, 236), (bx + 12, 236), (bx - 16, 265)])), TIMBER)
+    planks(c, k, 192, 224, 624, 237, PLANK, step=9, tag="chart_gallery")
+    deck_edge(c, 192, 624, 224, PLANK_LIGHT)
+    for x in (164, 188):
+        post(c, x, 192, g, 4, PLANK_LIGHT)
+    c.put(c.mask(lambda p: [p.rect(164, y, 188, y + 3) for y in range(200, g, 16)]), PLANK_LIGHT)
+    c.put(c.mask(box(624, 288, 720, g)), TIMBER)
+    for bx in (650, 694):
+        planks(c, k, bx - 19, 294, bx + 19, g, PLANK, step=6, vertical=True, tag=("tav_keg", bx))
+        c.put(c.mask(lambda p: (p.rect(bx - 19, 310, bx + 19, 315), p.rect(bx - 19, 356, bx + 19, 361))), TAR)
+    deck_edge(c, 624, 720, 288, PLANK_LIGHT)
     # The back bar: shelves of bottles.
     c.put(c.mask(box(700, 90, 990, g - 40)), PLANK_DARK)
     for y in (130, 190, 250):
@@ -487,13 +522,15 @@ def tavern_room(c, k):
     for x in (760, 820, 880):
         c.put(c.mask(lambda p: (p.rect(x, 330, x + 8, 344), p.ring(x + 10, 337, 3, 1.2))), (190, 170, 120))
     # Tables and stools.
-    for tx in (180, 560):
+    for tx in (270, 514):
         c.put(c.mask(box(tx - 40, g - 34, tx + 40, g - 28)), PLANK_LIGHT)
         post(c, tx, g - 28, g, 5, PLANK_DARK)
         for sx in (tx - 54, tx + 54):
             c.put(c.mask(box(sx - 9, g - 22, sx + 9, g - 18)), PLANK)
             post(c, sx, g - 18, g, 3, PLANK_DARK)
-        c.put(c.mask(lambda p: (p.rect(tx - 10, g - 44, tx - 2, g - 34), p.rect(tx + 8, g - 42, tx + 16, g - 34))), (200, 180, 130))
+    c.put(c.mask(lambda p: p.poly([(489, g - 43), (513, g - 43), (509, g - 35), (493, g - 35)])), (166, 168, 151))
+    c.put(c.mask(lambda p: p.line([(489, g - 43), (513, g - 43)], 1.2)), (236, 217, 167))
+    c.put(c.mask(lambda p: (p.rect(526, g - 46, 536, g - 34), p.ring(537, g - 41, 3, 1.2))), (200, 180, 130))
     for lx in (180, 560, 840):
         lantern(c, k, lx, TAV_CEILING + 26, 0.8)
 
