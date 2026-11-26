@@ -21,11 +21,8 @@
     hazard_edge    64 by 12 units, repeats along an open edge of that
                    surface: a row of spikes. Its top row is the outer side
 
-A ladder is of the make of its biome: steel where the ground is steel or
-cut stone, wood and rope where it is rock or earth. The water, the blink
-walls and the spikes are the same in each biome: violet is the colour of a
-blink and red the colour of danger in each room, and a player must know
-each at a look.
+The theme sets the ladder material. It can also supply a liquid body and
+surface. Blink walls and spikes use the same colors in all themes.
 """
 
 from __future__ import annotations
@@ -122,6 +119,32 @@ def water_surface() -> Image.Image:
     glints = [(tile.rng.uniform(0, 64), tile.rng.uniform(4.0, 6.5), tile.rng.uniform(1.0, 2.6)) for _ in range(9)]
     tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x, y, x + w, y + 0.35) for x, y, w in glints]), (236, 252, 255), 0.6)
     return tile.publish()
+
+
+def tar_body() -> Image.Image:
+    """Draw opaque tar with faint deposits below the surface."""
+    tile = Tile(WATER, True, True, "primeval", "tar_body")
+    tile.put(np.ones_like(tile.alpha), (23, 19, 16))
+    deposits = tile.noise(3, 7, 3)
+    tile.put(np.clip((deposits - 0.48) * 3.0, 0.0, 1.0), (43, 34, 29), 0.55)
+    return tile.publish()
+
+
+def tar_surface() -> Image.Image:
+    """Put a thin reflection at the top of the tar."""
+    tile = Tile(SURFACE, True, False, "primeval", "tar_surface")
+    meniscus = 2.6 + 0.22 * np.sin(tile.x / SURFACE[0] * math.tau * 2.0)
+    depth = tile.y - meniscus
+    tile.put(np.clip(1.0 - np.abs(depth) / 1.4, 0.0, 1.0), (12, 10, 9))
+    glint = 0.5 + 0.5 * np.sin(tile.x / SURFACE[0] * math.tau)
+    tile.put(np.clip(1.0 - np.abs(depth - 0.65) / 0.8, 0.0, 1.0) * glint, (161, 135, 105), 0.72)
+    return tile.publish()
+
+
+PAINTERS = {
+    ("primeval", "water_murky"): tar_body,
+    ("primeval", "water_surface"): tar_surface,
+}
 
 
 def blink_soft() -> Image.Image:

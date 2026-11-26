@@ -67,11 +67,8 @@ def jobs(names: list[str]) -> list[Job]:
     out += [(key, "shimmer", shimmer.picture, lambda key=key: shimmer.picture(key)) for key in keyed(shimmer.SHIMMERS)]
     for skin in chosen:
         out.append((skin.key, "ladder", fixtures.ladder, lambda key=skin.key: fixtures.ladder(key)))
-        # The water, the blink walls and the spikes are the same in each
-        # biome: each one has its copy, so the game finds it by the theme of
-        # the room as each other part.
         for part in _WATER:
-            fn = getattr(fixtures, part)
+            fn = fixtures.PAINTERS.get((skin.key, part)) or getattr(fixtures, part)
             out.append((skin.key, part, fn, fn))
     out += [(key, "water_backdrop", render, render) for key, render in water_backdrops.BACKDROPS.items() if wanted is None or key in wanted]
     for key in keyed(doors.DOORS):
