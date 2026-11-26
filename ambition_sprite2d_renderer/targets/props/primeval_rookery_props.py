@@ -1,5 +1,5 @@
 """The birdwatcher's hide in the rookery (`primeval_rookery`, the jungle
-dimension), on the raised ground (x 1472..1680, y 416) between the second
+dimension), on a deck (x 1472..1680, y 416) between the second
 nest and the second palm.
 
 Drawn in room coordinates (`_district_props`) on the level's own numbers
@@ -20,10 +20,12 @@ import numpy as np
 
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
+from .pirate_port_props import deck_edge, planks, post
 from .primeval_props import LEAF, LEAF_LIGHT, PAL
 
-#: The raised ground the hide stands on (x 1472..1680).
+#: The deck under the hide (x 1472..1680).
 G = 416
+TRAIL = 480
 CANVAS = (96, 110, 70)
 CANVAS_DARK = (64, 76, 48)
 POLE = (110, 82, 52)
@@ -31,6 +33,11 @@ POLE = (110, 82, 52)
 
 def hide(c, k):
     rng = c.rand("hide")
+    for x in (1488, 1580, 1664):
+        post(c, x, G + 9, TRAIL, 8, POLE)
+        c.put(c.mask(lambda p: p.line([(x, G + 34), (x + 12, G + 10)], 4)), POLE)
+    planks(c, k, 1472, G, 1680, G + 11, POLE, step=9, vertical=True, tag="hide_deck")
+    deck_edge(c, 1472, 1680, G, (155, 126, 79))
     x0, x1 = 1490, 1610
     # The canvas over its poles: a box with a sagging roof.
     body = c.mask(lambda p: p.poly([(x0, G), (x0, G - 84), (x0 + 30, G - 90), (x1 - 30, G - 88), (x1, G - 84), (x1, G)]))
@@ -59,7 +66,7 @@ def hide(c, k):
 
 
 PIECES: Dict[str, Piece] = {
-    "rookery_hide": Piece((1470, G - 110, 1690, G), hide),
+    "rookery_hide": Piece((1470, G - 110, 1690, TRAIL), hide),
 }
 
 TARGETS = targets(PIECES, PAL)
