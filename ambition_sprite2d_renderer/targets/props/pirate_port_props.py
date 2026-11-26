@@ -635,6 +635,22 @@ def brig(c, k):
         rope_line(c, sag((bx, DECK - 12), (hx, SHIP_DECK + 30), 10), 1.4)
 
 
+def cove_entrance(c, k):
+    """Draw the dockside entrance around the cove door."""
+    x0, x1, eave = 2672, 2792, 600
+    planks(c, k, x0, eave, x1, DECK, SEA_GREEN, step=8, vertical=True, tag="cove_entry")
+    k.hipped(x0, x1, eave, 26, ROOF_SLATE, tiles="slate", overhang=6, tag="cove_entry_roof")
+    k.eave_shade(x0, x1, eave, 8)
+    for x in (x0 + 3, x1 - 3):
+        post(c, x, eave, DECK, 6)
+    c.put(c.mask(box(2714, 662, 2774, DECK)), TIMBER)
+    c.put(c.mask(box(2720, 672, 2768, DECK)), PAL["dark"])
+    painted_board(c, 2678, 612, 2786, 650, (40, 66, 70), emblem=None)
+    lettering(c, "PIRATE COVE", 2732, 618, 9, (240, 222, 170))
+    lettering(c, "CREWS ONLY", 2732, 634, 8, (214, 189, 139))
+    lantern(c, k, 2700, 681)
+
+
 def dock_clutter(c, k):
     """Barrels, a coil of rope and a crate, for the pier."""
     x0, y0, x1, y1 = PIECES["port_dock_clutter"].frame
@@ -682,6 +698,7 @@ PIECES: Dict[str, Piece] = {
     "port_warehouse": Piece((828, 440, 1508, 928), warehouse),
     "port_gantry": Piece((0, 220, 890, 928), gantry),
     "port_brig": Piece((1496, 196, 2640, 772), brig),
+    "port_cove_entrance": Piece((2664, 568, 2800, 768), cove_entrance),
     "port_dock_clutter": Piece((0, 0, 120, 40), dock_clutter),
     # The pickup of the port's problem.
     "port_manifest_page": Piece((0, 0, 24, 24), manifest_page, px=4.0, traits=("pickup",)),
