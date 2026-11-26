@@ -74,7 +74,7 @@ HALL_FLOOR = 1024
 CATWALK = (960, 1720, 512)
 STAIR_GAP = (1800, 2140)
 STEPS = ((2040, 2140, 768), (1940, 2040, 832), (1840, 1940, 896), (1740, 1840, 960))
-CONVEYOR = (300, 1200, 984)
+CONVEYOR = (300, 1120, 984)
 #: Authority Plaza.
 BALCONY = (16, 520, 448)
 PLAZA_STEPS = ((520, 600, 512), (600, 680, 576))
@@ -228,6 +228,32 @@ def stairwell(c, k):
     c.put(c.mask(lambda p: p.line(pts, 3)), GOLD)
     c.put(c.mask(lambda p: [p.rect(x1 - 6, top - 34, x1 - 3, top) for x0, x1, top in STEPS]), GOLD, 0.9)
     c.light(c.mask(lambda p: p.ellipse((g0 + g1) / 2, FLOOR + 40, 120, 40), blur=16), LAMP, 0.2)
+
+
+def baggage_lift_shaft(c, _kit):
+    """Draw the lift rails and the grate at the upper stop."""
+    c.put(c.mask(box(1120, 644, 1280, 1008)), NAVY, 0.84)
+    for x in (1120, 1272):
+        c.put(c.mask(box(x, 616, x + 8, 1008)), STEEL_DARK)
+        c.put(c.mask(box(x + 2, 616, x + 4, 1008)), STEEL_LIGHT)
+        c.put(c.mask(lambda p: [p.rect(x - 4, y, x + 12, y + 4) for y in range(640, 1008, 64)]), GOLD)
+    c.put(c.mask(box(1120, FLOOR, 1280, FLOOR + 10)), STEEL_DARK)
+    c.put(c.mask(lambda p: [p.rect(x, FLOOR + 2, x + 3, FLOOR + 10) for x in range(1124, 1280, 10)]), STEEL_LIGHT)
+    walk_top(c, 1120, 1280, FLOOR, STEEL_LIGHT)
+    c.put(c.mask(box(1172, 598, 1228, 625)), IRON)
+    c.put(c.mask(lambda p: p.poly([(1187, 614), (1200, 602), (1213, 614), (1204, 614), (1204, 621), (1196, 621), (1196, 614)])), GOLD_LIGHT)
+
+
+def baggage_lift(c, _kit):
+    """Draw the lift car with the walking surface at y 20."""
+    c.put(c.mask(box(12, 20, 164, 40)), STEEL_DARK)
+    walk_top(c, 12, 164, 20, STEEL_LIGHT)
+    c.put(c.mask(box(15, 30, 161, 33)), GOLD)
+    c.put(c.mask(lambda p: [
+        p.poly([(x, 39), (x + 12, 39), (x + 8, 46), (x + 4, 46)])
+        for x in (18, 146)
+    ]), STEEL)
+    c.put(c.mask(box(70, 34, 106, 38)), SCREEN_LIGHT)
 
 
 def _baggage_wall(x0, x1):
@@ -543,6 +569,8 @@ PIECES: Dict[str, Piece] = {
     "authority_baggage_wall_west": Piece((8, 696, 1224, 1032), _baggage_wall(16, 1216)),
     "authority_baggage_wall_east": Piece((1176, 696, 2392, 1032), _baggage_wall(1184, 2384)),
     "authority_baggage_hall": Piece((16, 704, 1720, 1024), baggage_hall),
+    "authority_baggage_lift_shaft": Piece((1100, 598, 1300, 1016), baggage_lift_shaft),
+    "authority_baggage_lift": Piece((0, 0, 176, 52), baggage_lift),
     # Authority Plaza.
     "authority_clock_arcade": Piece((0, 140, 700, 640), clock_arcade),
     "authority_blossom_tree": Piece((780, 160, 1640, 640), blossom_tree),
