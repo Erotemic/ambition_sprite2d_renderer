@@ -62,8 +62,9 @@ SCREEN_LIGHT = (120, 180, 240)
 
 #: The Callosum.
 CALLOSUM_FLOOR = 640
-CAPS = ((1240, 560, 128), (1420, 464, 128))
+CAPS = ((1104, 576, 112), (1280, 512, 144), (1488, 448, 96))
 ARCH = (1600, 2000, 368)
+FIBRE_CLIMB = (2032, 320, 32, 320)
 #: The Neural Cathedral.
 CATHEDRAL_FLOOR = 1024
 GALLERY = (600, 1240, 544)
@@ -153,8 +154,8 @@ def signpost(c, k):
         else:
             pts = [(x - 46, y + 6), (x + 46, y + 6), (x + 46, y + 30), (x - 46, y + 30)]
         board = c.mask(lambda p: p.poly(pts))
-        c.put(board, SIGN)
-        c.put(c.mask(lambda p: p.line(pts + [pts[0]], 2)), WOOD_DARK)
+        c.put(board, mix(SIGN, WOOD_DARK, 0.78))
+        c.put(c.mask(lambda p: p.line(pts + [pts[0]], 2)), WOOD)
     brain = c.mask(lambda p: (p.ellipse(x - 8, 462, 16, 12), p.ellipse(x + 8, 462, 16, 12)))
     c.put(brain, FLESH)
     c.put(c.mask(lambda p: [p.line([(x + dx - 6, 458 + dy), (x + dx + 6, 460 + dy)], 1.6) for dx in (-10, 8) for dy in (-4, 2)]), FLESH_DARK)
@@ -164,24 +165,33 @@ def signpost(c, k):
 
 
 def callosum_caps(c, k):
-    """The synapse caps that step up off the bridge (y 560, 464), and the
-    arch of fibre (y 368) the last one reaches, sparks running along it."""
+    """Draw the synapse steps, fibre arch, and climb at the east end."""
     g = CALLOSUM_FLOOR
     a0, a1, top = ARCH
-    # The arch: a bundle of fibres from the floor, over, and back down.
+    x, climb_top, width, height = FIBRE_CLIMB
+    centre = x + width / 2
+    # The arch joins the upright fibre bundle.
     for k_ in range(5):
         off = k_ * 3.0
         c.put(c.mask(lambda p: p.line([(a0 - 40, g), (a0 - 10, top + 40 + off), (a0 + 30, top + 6 + off), ((a0 + a1) / 2, top + 2 + off),
-                                      (a1 - 30, top + 6 + off), (a1 + 10, top + 40 + off), (a1 + 40, g)], 4)), mix(DENDRITE, FLESH, k_ / 5))
+                                      (a1 - 30, top + 6 + off), (a1 + 14, top + 24 + off), (centre, top + 30 + off)], 4)), mix(DENDRITE, FLESH, k_ / 5))
     c.put(c.mask(box(a0, top, a1, top + 3)), FLESH_LIGHT)
+    for offset in (-10, -5, 0, 5, 10):
+        points = [(centre + offset + 3 * math.sin(y / 36 + offset), y)
+                  for y in range(climb_top, climb_top + height + 1, 16)]
+        branch(c, points, 4, mix(DENDRITE, FLESH_LIGHT, 0.5))
+    for y in range(climb_top + 24, climb_top + height, 40):
+        c.put(c.mask(lambda p: p.line([(x + 3, y + 6), (centre, y), (x + width - 3, y + 6)], 2)), GLOW)
+        glow_bulb(c, centre, y, 3, SPARK, 0.8)
     rng = c.rand("arch sparks")
     for _ in range(9):
         glow_bulb(c, rng.uniform(a0 + 20, a1 - 20), top + rng.uniform(5, 14), 2.0, SPARK, 0.8)
     for x0, top_, w in CAPS:
         synapse_cap(c, x0, x0 + w, top_, g)
-    # The spark that jumps the gap between the two caps.
-    (xa, ya, wa), (xb, yb, wb) = CAPS
-    c.light(c.mask(lambda p: p.line([(xa + wa / 2, ya + 16), (xa + wa * 0.7, ya - 20), (xb + 10, yb + 30), (xb + wb / 2, yb + 16)], 2), blur=1), SPARK, 0.9)
+    # Sparks cross the gaps between the caps.
+    for (xa, ya, wa), (xb, yb, wb) in zip(CAPS, CAPS[1:]):
+        c.light(c.mask(lambda p: p.line([(xa + wa / 2, ya + 16), (xa + wa * 0.7, ya - 20),
+                                        (xb + 10, yb + 30), (xb + wb / 2, yb + 16)], 2), blur=1), SPARK, 0.9)
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +363,7 @@ def echo_screens(c, k):
 PIECES: Dict[str, Piece] = {
     # neural_callosum
     "neural_signpost": Piece((640, 440, 840, 640), signpost),
-    "neural_callosum_caps": Piece((1200, 340, 2060, 640), callosum_caps),
+    "neural_callosum_caps": Piece((1076, 312, 2080, 640), callosum_caps),
     # neural_cathedral
     "neural_memory_gallery": Piece((580, 32, 1260, 576), memory_gallery),
     "neural_dendrite_tree": Piece((1260, 590, 1800, 1024), dendrite_tree),

@@ -51,6 +51,18 @@ STEEL = {"lab", "alarm", "undertown", "hub", "basement", "boss", "boss_stage", "
 def ladder(theme_key: str) -> Image.Image:
     skin = next(skin for skin in SKINS if skin.key == theme_key)
     tile = Tile(LADDER, True, True, theme_key, "ladder")
+    if theme_key == "neural":
+        # The rails and rungs are nerve fibres.
+        rails = [[(x + 0.6 * math.sin(y * math.tau / 16 + phase), y)
+                  for y in range(-1, 34)] for x, phase in ((2.5, 0.0), (13.5, math.pi))]
+        rung_heights = (3.0, 11.0, 19.0, 27.0)
+        rungs = [[(2.5, y), (8.0, y + 2.0), (13.5, y)] for y in rung_heights]
+        paths = rails + rungs
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, path, 2.8) for path in paths]), skin.base)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, path, 1.2) for path in paths]), skin.cap_colour)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, 8.0, y + 2.0, 0.6)
+                                              for y in rung_heights]), skin.accent)
+        return tile.publish()
     if skin.material == "void":
         # Black rails and rungs, each with the white line of the void round it.
         def parts(p, dx, dy, grow: float) -> None:
