@@ -563,7 +563,7 @@ def tavern_room(c, k):
 
 DECK, SEA_FLOOR = 768, 928
 HULL_X0, HULL_X1, SHIP_DECK = 1760, 2560, 640
-FOREMAST, MAINMAST = 1960, 2256
+FOREMAST, MAINMAST = 1968, 2256
 WAREHOUSE_ROOF, GANTRY, RIGGING_ROPE = 448, 384, 416
 
 
@@ -645,7 +645,7 @@ def gantry(c, k):
 def brig(c, k):
     """The brig PERSISTENCE at her moorings on the east span. Her hull is the
     room's block (x 1760..2560, deck y 640); her bowsprit points east. The
-    masts stand at the yards' middles (fore x 1960, main x 2256), the yards
+    masts stand near the yards' middles (fore x 1968, main x 2256), the yards
     are drawn at their walk lines, the crow's nest's floor is y 304, and the
     signal rope runs from the main upper yard to the warehouse roof (y 416).
     Furled sails hang under the yards, clear of the walk lines."""
@@ -665,9 +665,17 @@ def brig(c, k):
     rope_line(c, [(FOREMAST, 384), (HULL_X1 + 70, 600)], 0.8, (60, 50, 40))
     rope_line(c, [(MAINMAST, 240), (FOREMAST, 384)], 0.8, (60, 50, 40))
     rope_line(c, [(FOREMAST, 384), (HULL_X0 + 10, 600)], 0.8, (60, 50, 40))
-    # The shroud ladder up the main (the room's ladder, x 2240..2272).
-    c.put(c.mask(lambda p: ([p.line([(2232 + 0.5 * j, SHIP_DECK), (2248 + 0.5 * j, 300)], 0.8) for j in (0, 40)],
-                            [p.rect(2234, y, 2276, y + 0.9) for y in np.arange(310, SHIP_DECK, 12)])), (60, 50, 40))
+    # The game draws the ladder rungs inside the shrouds.
+    for mx, top in ((FOREMAST, RIGGING_ROPE - 32), (MAINMAST, 288)):
+        for side in (-1, 1):
+            foot = mx + side * 31
+            rope_line(c, [(foot, SHIP_DECK), (mx + side * 19, top)], 2.4, TIMBER)
+            c.put(c.mask(box(foot - 3, SHIP_DECK - 8, foot + 3, SHIP_DECK)), PLANK_DARK)
+    # The signal rope passes through the foremast landing.
+    deck_edge(c, FOREMAST - 44, FOREMAST + 44, RIGGING_ROPE, PLANK_LIGHT)
+    for side in (-1, 1):
+        rope_line(c, [(FOREMAST + side * 36, RIGGING_ROPE + 4),
+                      (FOREMAST, RIGGING_ROPE + 32)], 4, TIMBER)
     # Yards with furled sails.
     yards = [(1880, 2040, 528), (2160, 2352, 528), (2176, 2336, 416)]
     for x0, x1, y in yards:
