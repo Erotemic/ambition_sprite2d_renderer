@@ -230,6 +230,29 @@ def black_star(c, k):
 
 def cradles(c, k):
     for i, x in enumerate((140, 320, 500)):
+        # A cloth canopy keeps light off the cradle.
+        rim_y = FLOOR - 102
+        height = (60, 72, 54)[i]
+        hood = [
+            (x + 59 * math.cos(math.pi * t / 24), rim_y - height * math.sin(math.pi * t / 24))
+            for t in range(25)
+        ]
+        back = hood + [(x - 59, FLOOR - 40), (x + 59, FLOOR - 40)]
+        c.put(c.mask(lambda p: p.poly(back)), VOID, 0.9)
+        crown = len(hood) // 2
+        for side, edge in ((-1, hood[-2:crown - 1:-1]), (1, hood[1:crown + 1])):
+            drape = [
+                (x, rim_y - height),
+                (x + side * 36, rim_y - height * 0.7),
+                (x + side * 50, rim_y - 14),
+                (x + side * 43, rim_y + 22),
+                (x + side * 59, FLOOR - 40),
+                (x + side * 59, rim_y),
+                *edge,
+            ]
+            c.put(c.mask(lambda p: p.poly(drape)), (29, 27, 36))
+            c.put(c.mask(lambda p: p.line(drape[:5], 1.5)), GREY, 0.68)
+        c.put(c.mask(lambda p: p.line(hood, 2.4)), GREY, 0.75)
         # A crescent rocking on the floor, in white line: the cradle.
         arc = [(x + 60 * math.cos(math.pi * t / 16), FLOOR - 40 + 34 * math.sin(math.pi * t / 16)) for t in range(17)]
         c.put(c.mask(lambda p: p.line(arc, 2.6)), EDGE)
