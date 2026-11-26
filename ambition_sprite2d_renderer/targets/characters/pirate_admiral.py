@@ -5,7 +5,7 @@ from pathlib import Path
 from ._pirate_common import render_pirate_portraits, render_target
 
 ACTOR_METADATA = {
-    "actor": {"character_id": "npc_pirate_admiral", "display_name": "R. Badely"},
+    "actor": {"character_id": "npc_pirate_admiral", "display_name": None},
     "body": {
         "body_plan": "HumanoidBiped",
         "body_kind": "Standard",

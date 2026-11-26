@@ -815,7 +815,8 @@ def build_actor_contract(
 
     ``job_data`` is the flattened CharacterJob-style metadata; ``authoring`` is
     the optional nested override block from YAML or a tack-on target. Both are
-    deliberately loose dictionaries so old configs stay compatible.
+    deliberately loose dictionaries so old configs stay compatible. An explicit
+    null ``actor.display_name`` leaves the name with the game's catalog.
     """
     job_data = dict(job_data or {})
     # Actor metadata now lives with the character authoring file itself:
@@ -836,13 +837,15 @@ def build_actor_contract(
     ]))
     profile = _profile_defaults(stem, target, job_data, tags)
     character_id = explicit_character_id or (catalog_profile.character_id if catalog_profile else None) or _character_id_for(stem, target, None)
-    display_name = (
-        actor_block.get("display_name")
-        or authoring.get("display_name")
-        or job_data.get("name")
-        or (catalog_profile.display_name if catalog_profile else None)
-        or _humanize(stem)
-    )
+    display_name = None
+    if actor_block.get("display_name", "") is not None:
+        display_name = (
+            actor_block.get("display_name")
+            or authoring.get("display_name")
+            or job_data.get("name")
+            or (catalog_profile.display_name if catalog_profile else None)
+            or _humanize(stem)
+        )
 
     body_override = _deep_merge(_as_mapping(profile.get("body")), _as_mapping(authoring.get("body")))
     body_plan = actor_block.get("body_plan") or body_override.get("body_plan") or _derive_body_plan(stem, target, tags, rows)

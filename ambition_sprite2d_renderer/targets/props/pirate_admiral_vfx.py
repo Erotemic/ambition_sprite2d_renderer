@@ -328,7 +328,6 @@ def render(out_dir: str | Path, **opts):
         target_name=TARGET_NAME,
         display_name="Pirate Admiral Detached VFX",
         character_context_id="npc_pirate_admiral",
-        character_context_display="R. Badely",
         rows=ROWS,
         drawers=DRAWERS,
         specs=SPECS,

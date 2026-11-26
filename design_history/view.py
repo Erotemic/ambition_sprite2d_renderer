@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .attribution import attribute, curated
 from .authorship import Blamer, era_generator
-from .characters import era_ids, lineage_targets
+from .characters import CatalogRow, era_ids, lineage_targets
 from .stills import cached_still, cache_state
 from .store import commit_info, git
 
@@ -17,6 +17,7 @@ from .store import commit_info, git
 def lineage_view(
     name: str, spec: dict, *, store: Path | None, cache: Path | None, blamer: Blamer | None,
     current: set[str], ledger: dict | None = None, include_attribution: bool = True,
+    catalog: dict[str, CatalogRow] | None = None,
 ) -> dict:
     """The record of lineage `name`. With no `store`, or an era commit that is
     not in it, the era keeps its commit and label only (`in_store: false`).
@@ -61,9 +62,11 @@ def lineage_view(
                 row["still"] = str(still) if still else None
                 row["render"] = cache_state(cache, sha, row["ids"], era.get("pick", spec.get("pick")))
         eras.append(row)
+    character_id = spec.get("character_id")
+    character = catalog.get(character_id) if character_id and catalog else None
     return {
         "lineage": name,
-        "name": spec.get("name", name),
+        "name": (character.display_name if character else None) or spec.get("name") or character_id or name,
         "summary": spec.get("summary", ""),
         "targets": lineage_targets(spec),
         "current_targets": [t for t in lineage_targets(spec) if t in current],
