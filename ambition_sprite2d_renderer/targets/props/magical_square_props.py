@@ -15,6 +15,7 @@ shapes, stars; no hearts (Jon, 2026-10-11: "the hearts are a bit much").
 - `square_well`: the old well's rim either side of its hole (the hole stays
   open: it is the way down), a little round roof over it on two posts, a
   bucket on its rope.
+- `square_beanstalk`: the plant that supports the ladder to the Heights.
 - `square_house`: a tall round-roofed house under the balcony (the balcony
   is its own, at y 448), a star lamp by its door.
 
@@ -34,6 +35,7 @@ AWNING_Y = 480
 WAND_SHOP = (430, 770)
 BAKERY = (930, 1270)
 WELL = (1600, 1664)
+BEANSTALK_X = 1800
 HOUSE = (1880, 2210)
 BALCONY_Y = 448
 
@@ -147,6 +149,48 @@ def well(c, k):
     c.put(c.mask(lambda p: p.poly([(x0 + 20, FLOOR - 104), (x1 - 20, FLOOR - 104), (x1 - 24, FLOOR - 84), (x0 + 24, FLOOR - 84)])), PINK_DARK)
 
 
+def bean_leaf(c, base, tip):
+    """Draw a leaf and its vein along the line from the stalk to the tip."""
+    x, y = base
+    dx, dy = tip[0] - x, tip[1] - y
+    leaf = [
+        base, (x + 0.32 * dx - 0.25 * dy, y + 0.32 * dy + 0.25 * dx),
+        (x + 0.68 * dx - 0.21 * dy, y + 0.68 * dy + 0.21 * dx), tip,
+        (x + 0.68 * dx + 0.21 * dy, y + 0.68 * dy - 0.21 * dx),
+        (x + 0.32 * dx + 0.18 * dy, y + 0.32 * dy - 0.18 * dx),
+    ]
+    c.put(c.mask(lambda p: p.poly(leaf)), MINT_DARK)
+    c.put(c.mask(lambda p: p.poly(leaf[:4])), MINT)
+    c.put(c.mask(lambda p: p.line([base, tip], 1.5)), scale(MINT_DARK, 0.73))
+
+
+def beanstalk(c, _kit):
+    """Put the stalk behind the ladder. Keep the rungs visible."""
+    x = BEANSTALK_X
+    stem = [(x + 9 * math.sin(y / 46), y) for y in range(0, FLOOR + 1, 8)]
+    shoot = [(x - 4 + 20 * math.sin(y / 49 + 1.7), y) for y in range(0, FLOOR + 1, 8)]
+    stem_dark = scale(MINT_DARK, 0.56)
+    c.put(c.mask(lambda p: p.line(stem, 58)), stem_dark)
+    c.put(c.mask(lambda p: p.line(stem, 48)), MINT_DARK)
+    c.put(c.mask(lambda p: p.line(shoot, 15)), scale(MINT_DARK, 0.77))
+    c.put(c.mask(lambda p: p.line([(sx - 4, y) for sx, y in shoot], 5)), MINT)
+    for y, side, length in (
+        (91, -1, 86), (155, 1, 80), (240, -1, 97), (295, 1, 88),
+        (347, -1, 84), (465, -1, 92), (518, 1, 75), (605, -1, 83),
+    ):
+        joint = (x + side * 14, y)
+        leaf_base = (x + side * 30, y - 8)
+        c.put(c.mask(lambda p: p.line([joint, leaf_base], 6)), stem_dark)
+        bean_leaf(c, leaf_base, (x + side * length, y - 29))
+        if y in (155, 295, 518):
+            c.put(c.mask(lambda p: p.ellipse(leaf_base[0] + 10, y + 6, 9, 16)), MINT_DARK)
+            c.put(c.mask(lambda p: p.ellipse(leaf_base[0] + 8, y + 1, 4, 8)), MINT)
+    c.put(c.mask(lambda p: p.poly([
+        (x - 54, FLOOR), (x - 36, FLOOR - 14), (x - 25, FLOOR - 36),
+        (x + 25, FLOOR - 36), (x + 35, FLOOR - 14), (x + 53, FLOOR),
+    ])), stem_dark)
+
+
 def house(c, k):
     x0, x1 = HOUSE
     c.put(c.mask(lambda p: (p.rect(x0 + 20, 200, x1 - 20, FLOOR), p.ellipse((x0 + x1) / 2, 200, (x1 - x0) / 2 - 20, 70))), LILAC)
@@ -170,6 +214,7 @@ PIECES: Dict[str, Piece] = {
     "square_wand_shop": Piece((WAND_SHOP[0] - 20, 180, WAND_SHOP[1] + 20, FLOOR), wand_shop),
     "square_bakery": Piece((BAKERY[0] - 20, 170, BAKERY[1] + 20, FLOOR), bakery),
     "square_well": Piece((WELL[0] - 60, FLOOR - 230, WELL[1] + 60, FLOOR), well),
+    "square_beanstalk": Piece((1696, 0, 1912, FLOOR), beanstalk),
     "square_house": Piece((HOUSE[0], 110, HOUSE[1], FLOOR), house),
 }
 
