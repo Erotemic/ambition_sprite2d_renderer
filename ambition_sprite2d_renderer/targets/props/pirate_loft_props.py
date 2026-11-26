@@ -29,6 +29,7 @@ W, FLOOR, CEIL = 1024, 384, 32
 FLAG = (24, 22, 26)
 BONE = (236, 230, 214)
 CHALK = (240, 240, 236)
+GALLERY = (352, 960, 160)
 
 
 def skull(c, x, y, s, extra):
@@ -48,6 +49,21 @@ def skull(c, x, y, s, extra):
         c.put(c.mask(lambda p: p.line([(x - s * 0.24, y + s * 0.34), (x, y + s * 0.46), (x + s * 0.24, y + s * 0.34)], 1.2)), FLAG)
 
 
+def rigging_gallery(c):
+    """Draw the deck above the sail and the ties at the ladder."""
+    left, right, top = GALLERY
+    for x in (368, 692, 923):
+        c.put(c.mask(box(x, top + 8, x + 7, FLOOR)), TIMBER)
+        c.put(c.mask(lambda p: p.line([(x + 2, top + 60), (x + 29, top + 13)], 3)), PLANK_DARK)
+    c.put(c.mask(box(left, top, right, top + 11)), TIMBER)
+    c.put(c.mask(box(left, top, right, top + 3)), mix(PLANK, SAIL, 0.42))
+    for x in range(left + 16, right - 10, 37):
+        c.put(c.mask(lambda p: p.ellipse(x, top + 7, 1.5)), ROPE)
+    for x in (923, 961):
+        c.put(c.mask(box(x, top - 21, x + 5, top + 6)), PLANK_DARK)
+        c.put(c.mask(box(x - 1, top - 8, x + 6, top - 5)), ROPE)
+
+
 def room(c, k):
     rng = c.rand("loft")
     wall = c.mask(box(16, CEIL, W - 16, FLOOR))
@@ -62,15 +78,20 @@ def room(c, k):
                                  [p.line([(nx, y), (nx + 120, y)], 0.5) for y in np.arange(CEIL + 70, CEIL + 162, 6)]))
         c.put(grid * net, (60, 64, 58), 0.8)
         c.put(c.mask(lambda p: [p.ellipse(nx + 20 + j * 24, CEIL + 150 + (j % 2) * 4, 3) for j in range(4)]), (220, 140, 60))
+    rigging_gallery(c)
     # The door out (the room's door zone, x 40..88).
     c.put(c.mask(box(34, FLOOR - 104, 94, FLOOR)), TIMBER)
     c.put(c.mask(box(40, FLOOR - 96, 88, FLOOR)), (110, 80, 54))
     c.put(c.mask(lambda p: p.ellipse(80, FLOOR - 50, 2.4)), (200, 170, 90))
     # Bolts of canvas on their shelves.
-    for y in (210, 270):
-        c.put(c.mask(lambda p: p.rect(120, y, 300, y + 6)), TIMBER)
+    for y in (208, 272):
+        c.put(c.mask(box(128, y, 304, y + 7)), TIMBER)
+        c.put(c.mask(box(128, y, 304, y + 2)), mix(PLANK, SAIL, 0.42))
         c.put(c.mask(lambda p: [p.ellipse(x, y - 12, 12, 12) for x in range(134, 296, 26)]), SAIL)
         c.put(c.mask(lambda p: [p.ring(x, y - 12, 6, 1) for x in range(134, 296, 26)]), mix(SAIL, (0, 0, 0), 0.2))
+    c.put(c.mask(box(208, 320, 304, FLOOR)), PLANK_DARK)
+    c.put(c.mask(box(208, 320, 304, 323)), mix(PLANK, SAIL, 0.42))
+    c.put(c.mask(lambda p: p.line([(214, FLOOR - 5), (299, 324)], 3)), ROPE)
     # The great sail spread on the floor, half sewn, its seams chalked.
     sail = c.mask(lambda p: p.poly([(330, FLOOR), (740, FLOOR), (720, FLOOR - 26), (360, FLOOR - 20)]))
     c.put(sail, SAIL)
@@ -88,6 +109,8 @@ def room(c, k):
         c.put(c.mask(lambda p: [p.ellipse(fx + dx, fy - 28, 2) for dx in (-30, 30)]), (200, 60, 50))
         skull(c, fx, fy - 6, 18, extra)
     c.put(c.mask(lambda p: p.poly([(764, 268), (818, 258), (822, 270), (768, 280)])), (220, 60, 50), 0.9)
+    c.put(c.mask(box(348, 290, 772, 321)), TIMBER)
+    c.put(c.mask(box(352, 291, 768, 293)), PLANK)
 
 
 PIECES: Dict[str, Piece] = {
