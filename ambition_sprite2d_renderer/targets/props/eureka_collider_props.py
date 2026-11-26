@@ -5,7 +5,7 @@ detector's cavern at its end.
 Drawn in room coordinates (`_district_props`) on the numbers of
 `tools/ambition_ldtk_tools/specs/eureka/make_specs.py` (`collider`): the
 floor (y 576), the vault (to y 48), the door up (x 40), the detector's
-gallery (x 1500..1760, y 384), walked on.
+gallery (x 1488..1760, y 384).
 
 - `collider_tunnel`: the tunnel's concrete, curving away; the beam pipe
   along it on its stands, a blue magnet every 160, cable trays, warning
@@ -28,7 +28,8 @@ from ._town_kit import box, mix, scale
 from .eureka_props import PAL
 
 W, FLOOR, VAULT = 2000, 576, 48
-GALLERY = (1500, 1760, 384)
+GALLERY = (1488, 1760, 384)
+BEAM_WALKS = ((448, 560, 512), (576, 688, 448), (704, 1408, 384))
 CONCRETE = (150, 150, 146)
 CONCRETE_DARK = (110, 110, 108)
 PIPE = (190, 196, 204)
@@ -76,6 +77,17 @@ def tunnel(c, k):
               ((200, 60, 50), (60, 120, 200), (220, 200, 60))[i])
         c.put(c.mask(lambda p: (p.line([(bx, FLOOR - 34), (bx - 4, FLOOR - 40)], 2), p.line([(bx + 14, FLOOR - 30), (bx + 18, FLOOR - 40)], 2))), (40, 40, 44))
     c.put(c.mask(lambda p: p.rect(240, FLOOR - 8, 410, FLOOR - 4)), CABLE)
+    # The service walks stand clear of the aisle and below the cable trays.
+    for left, right, top in BEAM_WALKS:
+        c.put(c.mask(lambda p: [
+            p.line([(x - 14, top + 9), (x + 8, top + 42), (x + 8, top + 9)], 5)
+            for x in range(left + 27, right - 12, 120)
+        ]), CONCRETE_DARK)
+        c.put(c.mask(box(left, top, right, top + 10)), CABLE)
+        c.put(c.mask(box(left, top, right, top + 3)), PIPE)
+        c.put(c.mask(lambda p: [p.ellipse(x, top + 6, 1.5) for x in range(left + 9, right, 16)]), PIPE)
+        c.put(c.mask(lambda p: (p.rect(left, top + 3, left + 8, top + 10),
+                               p.rect(right - 8, top + 3, right, top + 10))), YELLOW)
     # The detector at the east end, end on: rings in rings.
     cx, cy = 1630, 330
     for i, (r, col) in enumerate(zip((230, 200, 165, 130, 95, 60), DETECTOR)):
@@ -89,7 +101,7 @@ def tunnel(c, k):
     c.put(c.mask(lambda p: [p.rect(x, cy + 200, x + 30, FLOOR) for x in (cx - 160, cx + 130)]), CONCRETE_DARK)
     g0, g1, gy = GALLERY
     c.put(c.mask(box(g0, gy, g1, gy + 10)), (70, 70, 76))
-    c.put(c.mask(lambda p: (p.rect(g0, gy - 30, g1, gy - 27), [p.rect(x, gy - 30, x + 2, gy) for x in range(g0, g1 + 1, 20)])), YELLOW)
+    c.put(c.mask(lambda p: (p.rect(g0 + 20, gy - 30, g1, gy - 27), [p.rect(x, gy - 30, x + 2, gy) for x in range(g0 + 20, g1 + 1, 20)])), YELLOW)
     c.put(c.mask(lambda p: [p.rect(x, gy + 10, x + 6, FLOOR) for x in (g0 + 10, g1 - 16)]), (70, 70, 76))
     c.put(c.mask(lambda p: (p.rect(1800, FLOOR - 50, 1960, FLOOR - 44), p.rect(1806, FLOOR - 44, 1812, FLOOR), p.rect(1948, FLOOR - 44, 1954, FLOOR))), (70, 70, 76))
     c.put(c.mask(lambda p: [p.rect(x, FLOOR - 90, x + 40, FLOOR - 52) for x in (1810, 1858, 1906)]), (20, 30, 40))
