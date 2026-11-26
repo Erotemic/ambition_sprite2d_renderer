@@ -48,22 +48,22 @@
             "rotation_deg": -36.241
           },
           "far_arm_u": {
-            "rotation_deg": -18.057
+            "rotation_deg": -29.831873
           },
           "far_arm_l": {
-            "rotation_deg": -75.159
+            "rotation_deg": -28.215984
           },
           "far_arm_hand": {
-            "rotation_deg": -24.137
+            "rotation_deg": -59.305436
           },
           "near_arm_u": {
-            "rotation_deg": -68.469
+            "rotation_deg": -58.571493
           },
           "near_arm_l": {
-            "rotation_deg": 37.545
+            "rotation_deg": 14.543865
           },
           "near_arm_hand": {
-            "rotation_deg": -46.646
+            "rotation_deg": -33.542686
           },
           "head": {
             "rotation_deg": -14.0
