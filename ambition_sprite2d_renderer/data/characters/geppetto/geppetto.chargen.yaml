@@ -1,5 +1,6 @@
-# Geppetto, the Orchestrator: the GPT parody among the bossofthegame's named
-# agents, after Jon's concept sheet "Geppetto - The Orchestrator"
+# Geppetto: GPT-inspired maker among the bossofthegame's named agents.
+# "Orchestrator" was the concept sheet's working label, not a decided title;
+# source concept sheet: "Geppetto - The Orchestrator"
 # (assets/concept_art/misc/agent-concepts/ in the game repo). The generator
 # draws his body, his brimmed hat, his long cream coat and his magenta scarf;
 # targets/characters/_band_agents_gear.py draws his visor and eyes, the gear
