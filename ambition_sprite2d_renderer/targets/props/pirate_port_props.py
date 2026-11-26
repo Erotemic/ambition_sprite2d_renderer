@@ -31,6 +31,7 @@ import numpy as np
 
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
+from .castle_godwin import lettering
 
 PAL = {
     "stone": (168, 154, 134), "stone_light": (226, 214, 190), "trim": (232, 222, 198), "dark": (40, 44, 52),
@@ -131,15 +132,16 @@ def lantern(c, k, x, y, lit=0.7):
 
 
 def painted_board(c, x0, y0, x1, y1, colour, emblem="anchor"):
-    """A painted board with the emblem of its trade (the room's label says
-    the words): an anchor, a fish, a bottle or a coil of rope."""
+    """Draw a painted board with a trade emblem if one is specified."""
     c.put(c.mask(box(x0, y0, x1, y1)), colour)
     c.put(c.mask(box(x0, y0, x1, y0 + 1.0)), mix(colour, (255, 255, 255), 0.35))
     c.put(c.mask(box(x0, y1 - 1.0, x1, y1)), scale(colour, 0.6))
     c.put(c.mask(lambda p: (p.rect(x0 + 2, y0 + 2, x1 - 2, y0 + 2.6), p.rect(x0 + 2, y1 - 2.6, x1 - 2, y1 - 2))), (226, 196, 120), 0.8)
     cx, cy, r = (x0 + x1) / 2, (y0 + y1) / 2, (y1 - y0) * 0.36
     ink = (240, 222, 170)
-    if emblem == "anchor":
+    if emblem is None:
+        shape = None
+    elif emblem == "anchor":
         shape = lambda p: (p.line([(cx, cy - r), (cx, cy + r)], r * 0.18), p.line([(cx - r * 0.5, cy - r * 0.55), (cx + r * 0.5, cy - r * 0.55)], r * 0.16),
                            p.line([(cx - r * 0.8, cy + r * 0.2), (cx - r * 0.55, cy + r * 0.85), (cx, cy + r), (cx + r * 0.55, cy + r * 0.85), (cx + r * 0.8, cy + r * 0.2)], r * 0.16),
                            p.ring(cx, cy - r * 0.95, r * 0.2, r * 0.12))
@@ -149,7 +151,8 @@ def painted_board(c, x0, y0, x1, y1, colour, emblem="anchor"):
         shape = lambda p: (p.rect(cx - r * 0.35, cy - r * 0.2, cx + r * 0.35, cy + r), p.rect(cx - r * 0.12, cy - r, cx + r * 0.12, cy - r * 0.2))
     else:
         shape = lambda p: [p.ring(cx, cy, r * f, r * 0.12) for f in (0.9, 0.6, 0.3)]
-    c.put(c.mask(shape), ink)
+    if shape is not None:
+        c.put(c.mask(shape), ink)
     for bx in (x0 + 4, x1 - 4):
         c.put(c.mask(lambda p: p.ellipse(bx, cy, 0.9)), (60, 50, 40))
 
@@ -347,11 +350,12 @@ def tavern_front(c, k):
     # The door's surround (the game draws the door itself) and the sign.
     c.put(c.mask(box(1308, g - 112, 1380, g)), TIMBER)
     c.put(c.mask(box(1314, g - 106, 1374, g)), PAL["dark"])
-    painted_board(c, 1250, GALLERY + 20, 1440, GALLERY + 46, (40, 66, 70), emblem="bottle")
+    painted_board(c, 1226, 578, 1462, 606, (40, 66, 70), emblem=None)
+    lettering(c, "THE DROWNED COMPASS", 1344, 586, 12, (240, 222, 170))
     # A compass rose painted on a hanging board.
-    k.sign(1400, GALLERY + 62, 34, 28, NAVY, glyph="circle", tag="tav_sign")
-    lantern(c, k, 1290, GALLERY + 54)
-    lantern(c, k, 1398 + 30, GALLERY + 100, 0.5)
+    k.sign(1414, 632, 26, 22, NAVY, glyph="circle", tag="tav_sign")
+    lantern(c, k, 1290, 616)
+    lantern(c, k, 1398, 616, 0.5)
     gallery_run(c, k, 1100, 1600)
 
 
@@ -631,6 +635,22 @@ def brig(c, k):
         rope_line(c, sag((bx, DECK - 12), (hx, SHIP_DECK + 30), 10), 1.4)
 
 
+def cove_entrance(c, k):
+    """Draw the dockside entrance around the cove door."""
+    x0, x1, eave = 2672, 2792, 600
+    planks(c, k, x0, eave, x1, DECK, SEA_GREEN, step=8, vertical=True, tag="cove_entry")
+    k.hipped(x0, x1, eave, 26, ROOF_SLATE, tiles="slate", overhang=6, tag="cove_entry_roof")
+    k.eave_shade(x0, x1, eave, 8)
+    for x in (x0 + 3, x1 - 3):
+        post(c, x, eave, DECK, 6)
+    c.put(c.mask(box(2714, 662, 2774, DECK)), TIMBER)
+    c.put(c.mask(box(2720, 672, 2768, DECK)), PAL["dark"])
+    painted_board(c, 2678, 612, 2786, 650, (40, 66, 70), emblem=None)
+    lettering(c, "PIRATE COVE", 2732, 618, 9, (240, 222, 170))
+    lettering(c, "CREWS ONLY", 2732, 634, 8, (214, 189, 139))
+    lantern(c, k, 2700, 681)
+
+
 def dock_clutter(c, k):
     """Barrels, a coil of rope and a crate, for the pier."""
     x0, y0, x1, y1 = PIECES["port_dock_clutter"].frame
@@ -678,6 +698,7 @@ PIECES: Dict[str, Piece] = {
     "port_warehouse": Piece((828, 440, 1508, 928), warehouse),
     "port_gantry": Piece((0, 220, 890, 928), gantry),
     "port_brig": Piece((1496, 196, 2640, 772), brig),
+    "port_cove_entrance": Piece((2664, 568, 2800, 768), cove_entrance),
     "port_dock_clutter": Piece((0, 0, 120, 40), dock_clutter),
     # The pickup of the port's problem.
     "port_manifest_page": Piece((0, 0, 24, 24), manifest_page, px=4.0, traits=("pickup",)),
