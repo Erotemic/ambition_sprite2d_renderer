@@ -4,8 +4,8 @@ The same two metal arcs form the halo and the horns. Their sampled centerlines
 and cross sections interpolate continuously; there is no second crown sprite,
 visibility swap, or separate weapon. Art faces right in local actor space.
 
-The pinned windup row must be a held pose (its clock can be global). The
-attack row uses progress over the *entire* lunge, not just its active phase.
+The brain tell holds a halo pose on a global clock. The melee windup and
+attack use the same pose track over the full lunge.
 See Ambition's docs/planning/game/enemy-patterns.md. Keep the durations below
 in sync with the halo_horns_charge action set.
 """
@@ -23,10 +23,10 @@ WINDUP_S, ACTIVE_S, RECOVER_S = 0.60, 0.24, 0.72
 TOTAL_S = WINDUP_S + ACTIVE_S + RECOVER_S
 ROWS = [
     ("idle", 12, 95), ("walk", 12, 75), ("notice", 8, 70),
-    ("windup", 12, 60), ("attack_side", 32, 49),
+    ("brain_windup", 12, 75), ("windup", 24, 25), ("attack_side", 52, 30),
     ("hit", 8, 60), ("death", 14, 85),
 ]
-LOOPS = {"idle", "walk", "notice", "windup"}
+LOOPS = {"idle", "walk", "notice", "brain_windup"}
 SUPER = 3
 INK = "#291a35"
 
@@ -162,17 +162,16 @@ def pose(anim, i, n):
         # Held global-clock row: a raised, startled pose, not a repeating ramp.
         y=108+1.2*math.sin(p); tilt=-7; sy=1.04; blink=0
         anger=.12; flap=-7+4*math.sin(p); ring_tilt=-13+4*math.sin(p)
-    elif anim == "windup":
-        # Hold the threat pose. The windup clock can start on any frame.
-        m=.78+.024*math.sin(p); anger=.86; x=103; y=112+1.3*math.sin(p)
-        tilt=-11+1.6*math.sin(p); sx=.94; sy=1.06
-        flap=-22+4*math.sin(p); reach=-.65; ring_tilt=-8; blink=0
-    elif anim == "attack_side":
-        # Match the held windup at release. Keep the horns through the first
-        # 0.44 seconds of recovery, then close the ring as the body settles.
-        s=t*TOTAL_S
-        hold_end=WINDUP_S+ACTIVE_S+.44
-        m=track(s,[(0,0),(.24,.22),(.46,.75),(WINDUP_S,.78),(.68,1),(hold_end,1),(TOTAL_S,0)])
+    elif anim == "brain_windup":
+        y = 112 + 1.2*math.sin(p)
+        flap = 3*math.sin(p)
+        ring_tilt = -8
+        blink = 0
+    elif anim in {"windup", "attack_side"}:
+        # The startup row and the active row meet on the same pose track.
+        s = i*WINDUP_S/n if anim == "windup" else t*TOTAL_S
+        hold_end=WINDUP_S+ACTIVE_S+.36
+        m=track(s,[(0,0),(.12,.04),(.42,.66),(WINDUP_S,.80),(.69,1),(hold_end,1),(TOTAL_S,0)])
         anger=track(s,[(0,0),(.29,.32),(WINDUP_S,.86),(.68,1),(.94,1),(hold_end,.83),(TOTAL_S,0)])
         tilt=track(s,[(0,-2),(WINDUP_S,-11),(.71,27),(.86,19),(1.06,0),(1.22,5),(TOTAL_S,-2)])
         x=108+track(s,[(0,0),(WINDUP_S,-5),(.70,12),(.84,10),(1.12,0),(TOTAL_S,0)])
@@ -252,17 +251,21 @@ def draw_horn(p, side, m, angle, devil):
     pts,radii=crown_geometry(side,m,angle); ns=normals(pts)
     glow=tint('#ffad40','#ff3635',devil)
     p.line(pts,(*glow[:3],round(mix(mix(90,32,m),100,devil))),8.5,glow=True)
-    ribbon(p,pts,ns,radii,-1,1,tint(tint('#e6a542','#a95b38',m),'#b22439',devil),INK,1.4)
+    ribbon(p,pts,ns,radii,-1,1,tint(tint('#e6a542','#a95b38',m),'#b22439',devil))
+    for edge in (-1, 1):
+        outline = [(x+edge*nx*r,y+edge*ny*r) for (x,y),(nx,ny),r in zip(pts,ns,radii)]
+        p.line(outline, INK, 1.4)
     ribbon(p,pts,ns,radii,-.95,-.35,tint(tint('#a66b29','#70334b',m),'#641d37',devil))
     ribbon(p,pts,ns,radii,-.30,.72,tint(tint('#ffe7a1','#e3a85c',m),'#ee413e',devil))
     ribbon(p,pts,ns,radii,.12,.50,tint(tint('#fff7d4','#ffdb90',m),'#ff9172',devil))
     # Ring seam becomes a sculpted horn root, with ridges growing out of the
     # same surface. Fine ridges are only inked once there is enough material.
-    if m>.32:
+    if m>.20:
+        ridge = smooth((m-.20)/.38)
         for j in (7,14,22,30,38):
             x,y=pts[j]; nx,ny=ns[j]; r=radii[j]
             p.line([(x-nx*r*.75,y-ny*r*.75),(x-nx*r*.1,y-ny*r*.1),
-                    (x+nx*r*.76,y+ny*r*.76)],tint(tint('#ebc27a','#92553e',m),'#961b35',devil),.55+.35*m)
+                    (x+nx*r*.76,y+ny*r*.76)],tint(tint('#ebc27a','#92553e',m),'#961b35',devil),(.55+.35*m)*ridge)
     if m>.64:
         # The widened root acquires a sculpted, dark bronze collar.
         # Its highlights are on the same material strip, not a second horn.
@@ -272,20 +275,7 @@ def draw_horn(p, side, m, angle, devil):
             p.line([(x-nx*r*.84,y-ny*r*.84),(x+nx*r*.84,y+ny*r*.84)],
                    tint(tint('#c58a45','#784057',k),'#681b32',devil),.9+k*.55)
         x,y=pts[3]; nx,ny=ns[3]; r=radii[3]
-        p.line([(x-nx*r*.7,y-ny*r*.7),(x+nx*r*.7,y+ny*r*.7)],tint('#f6ce7d','#ff8268',devil),.8+k*.55)
-
-
-def intact_crown(p, angle):
-    pts=oval_points(3,-64,34,10,angle,112)
-    p.line(pts,(255,194,87,130),10,closed=True,glow=True)
-    p.line(pts,'#442942',8,closed=True)
-    p.line(pts,'#c58933',6.0,closed=True)
-    p.line(pts,'#f4cd76',4.5,closed=True)
-    p.line(pts,'#fff3c1',2.3,closed=True)
-    # Reflected light occupies only one part of the polished ring.
-    p.line(pts[48:82],'#fffdf0',1.8)
-    for x,y in (pts[13],pts[67]):
-        p.oval(x,y,1.35,1.35,'#ffffff',None)
+        p.line([(x-nx*r*.7,y-ny*r*.7),(x+nx*r*.7,y+ny*r*.7)],tint('#f6ce7d','#ff8268',devil),k*1.35)
 
 
 def feather(p, root, length, angle, dark, bright):
@@ -311,10 +301,10 @@ def bat_wing(p, root, flap, devil, near):
     p.shape(wing([(2,2),(-8,-18),(-30,-34),(-49,-32),
                   (-43,-24),(-47,-15),(-61,-8),(-48,-10),(-39,1),(-49,13),
                   (-40,8),(-29,11),(-32,22),(-24,17),(-11,18),(2,2)]),
-            tint('#c691a6' if near else '#9f799c', '#a83848' if near else '#6b2948', devil), w=1.6)
-    p.curve(wing([(1,2),(-13,-12),(-37,-27),(-49,-32)]), '#ee7669' if near else '#bc5266', 1.6)
+            tint('#c691a6' if near else '#9f799c', '#a83848' if near else '#6b2948', devil), w=1.6*devil)
+    p.curve(wing([(1,2),(-13,-12),(-37,-27),(-49,-32)]), '#ee7669' if near else '#bc5266', 1.6*devil)
     for tip in [(-60,-8),(-48,12),(-32,21)]:
-        p.curve(wing([(1,2),(-12,-10),(-27,tip[1]-7),tip]), '#67213e', 1.25)
+        p.curve(wing([(1,2),(-12,-10),(-27,tip[1]-7),tip]), '#67213e', 1.25*devil)
 
 
 def mantle(p, near, flap, anger, devil):
@@ -325,7 +315,7 @@ def mantle(p, near, flap, anger, devil):
             feather(p,(root[0]+j*2,root[1]+j*2.8),(31+3*j)*(1-.84*devil),angle,
                     tint('#b8a0c2' if near else '#867594', '#852943', devil),
                     tint(tint('#eee4e5','#c6a4b4',anger) if near else '#b9a6c6', '#bd4e57', devil))
-    if devil > .08:
+    if devil > 0:
         bat_wing(p, root, flap, devil, near)
     p.oval(root[0]+4,root[1]+1,10,9,tint('#e2cddc' if near else '#aa93b3','#ba4954',devil),angle=-20)
     p.curve([(root[0]-1,root[1]-5),(root[0]-7,root[1]),(root[0]-2,root[1]+5),(root[0]+6,root[1]+7)],
@@ -362,13 +352,13 @@ def pointed_tail(p, devil, phase):
 
     shaft=tail([(0,0),(-13,23),(-40,21),(-50,13+curl),
                 (-59,6+curl),(-61,-6+curl),(-57,-11+curl)])
-    p.curve(shaft,INK,2+4*devil)
+    p.curve(shaft,INK,6*devil)
     p.curve(shaft,'#c54448',4*devil)
-    p.poly(tail([(-57,-10+curl),(-64,-10+curl),(-55,-25+curl),(-49,-9+curl)]),'#e95850',INK,1.2)
+    p.poly(tail([(-57,-10+curl),(-64,-10+curl),(-55,-25+curl),(-49,-9+curl)]),'#e95850',INK,1.2*devil)
 
 
 def body(p, anger, devil, flap, reach, blink, phase, death):
-    if devil > .12:
+    if devil > 0:
         pointed_tail(p, devil, phase)
     mantle(p,False,flap,anger,devil)
     # Four short nerve tendrils. They hang from the creature itself, not from
@@ -463,20 +453,20 @@ def _render_frame(anim, i, n):
     p=Painter(x,y,tilt,sx,sy)
     phase=math.tau*i/max(1,n)
     death=i/max(1,n-1) if anim=='death' else 0.
-    devil=smooth((m-.22)/.56) if anim in {'windup','attack_side'} else 0.
+    devil=smooth((m-.04)/.74) if anim in {'windup','attack_side'} else 0.
     if anim=='attack_side':
         draw_charge_streaks(p, i/max(1,n-1)*TOTAL_S)
     # Far horn occluded by the head; the near root sits in front of it.
-    if m>.002: draw_horn(p,-1,m,angle,devil)
+    draw_horn(p,-1,m,angle,devil)
     body(p,anger,devil,flap,reach,blink,phase,death)
-    if m>.002: draw_horn(p,1,m,angle,devil)
-    else: intact_crown(p,angle)
+    draw_horn(p,1,m,angle,devil)
     # The opening seams emit short, attached glints during the telegraph.
-    if .15<m<.65:
+    seam = smooth((m-.10)/.18)*smooth((.74-m)/.25)
+    if seam > 0:
         for side in (-1,1):
             pts,_=crown_geometry(side,m,angle)
             for xx,yy in (pts[0],pts[-1]):
-                p.line([(xx-1.7,yy),(xx+1.7,yy)],tint('#fff0b1','#ffa486',devil),1.4)
+                p.line([(xx-1.7*seam,yy),(xx+1.7*seam,yy)],tint('#fff0b1','#ffa486',devil),1.4*seam)
     return p.finish(fade)
 
 
