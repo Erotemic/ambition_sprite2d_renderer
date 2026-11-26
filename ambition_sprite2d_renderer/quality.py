@@ -1486,7 +1486,8 @@ def assert_one_manifest_per_page(claims: dict[Path, list[Path]], src: Path) -> N
 
 
 
-def _conversion(inputs: tuple[Path, ...], destination: Path, variant: Variant, kind: str, target=None) -> dict:
+def _conversion(inputs: tuple[Path, ...], destination: Path, variant: Variant, kind: str, target=None,
+                *, published_parents=None) -> dict:
     from ambition_sprite2d_renderer.products import conversion_evidence, parents_of
     from ambition_sprite2d_renderer.provenance import read_record, provenance_root, repo_root
     paths = list(inputs) + [Path(__file__).resolve()]
@@ -1496,10 +1497,12 @@ def _conversion(inputs: tuple[Path, ...], destination: Path, variant: Variant, k
         generation = record.get("generation") or {}
         paths += [repo_root() / row["path"] for row in generation.get("inputs", [])]
         complete = generation.get("complete", False)
+    if published_parents is None:
+        published_parents = json.loads(os.environ.get("AMBITION_ART_PUBLISHED_PARENTS", "{}"))
     return conversion_evidence(paths, {"kind": kind, "tier": variant.suffix,
         "scale": variant.nominal_scale, "minimum": variant.min_frame_px, "parents": parents_of(list(inputs)),
         "source_members": sorted(str(path.resolve()) for path in inputs),
-        "published_parents": json.loads(os.environ.get("AMBITION_ART_PUBLISHED_PARENTS", "{}"))}, complete=complete)
+        "published_parents": published_parents}, complete=complete)
 
 
 def _accept_variant(destination: Path, evidence: dict) -> None:
@@ -1521,7 +1524,7 @@ def _accept_variant(destination: Path, evidence: dict) -> None:
 def generate_sprite_variants(
     asset_root: Path, *, tiers: tuple[Variant, ...] = VARIANTS,
     selectors: tuple[str, ...] = (), force: bool = False, clean: bool = False,
-    clock: PhaseClock | None = None, jobs: int = 1, missing_only: bool = False,
+    clock: PhaseClock | None = None, jobs: int = 1, missing_only: bool = False, loose: bool = False, possibly_stale_only: bool = False,
 ) -> None:
     """Publish complete selected bundles, including every quality representation."""
     import os
@@ -1532,7 +1535,8 @@ def generate_sprite_variants(
              or any(selects(Path(path).stem, selectors) or selects(path, selectors) for path in unit["required"])]
     if selectors and not names:
         raise SystemExit(f"No registered product matches {list(selectors)}")
-    publication.build(None, names if selectors else (), force=force or clean, jobs=jobs, missing_only=missing_only)
+    publication.build(None, names if selectors else (), force=force or clean, jobs=jobs, missing_only=missing_only,
+                      loose=loose, possibly_stale_only=possibly_stale_only)
 
 
 _PAGE_FIELDS = frozenset(("pages", "images", "image", "drawn_from_parts"))
@@ -1589,6 +1593,9 @@ def generate_parallax_variants(
         root = (tier_roots or {}).get(variant.suffix, asset_root)
         return root / "backgrounds" / f"parallax_layers_{variant.suffix}"
 
+    selected_outputs = os.environ.get("AMBITION_QUALITY_OUTPUTS")
+    selected_outputs = json.loads(selected_outputs) if selected_outputs is not None else None
+    source_parents = json.loads(os.environ.get("AMBITION_ART_PUBLISHED_PARENTS", "{}"))
     src = asset_root / "backgrounds" / "parallax_layers"
     if not src.exists():
         print(f"skip missing parallax root: {src}")
@@ -1613,13 +1620,17 @@ def generate_parallax_variants(
         for variant in tiers:
             dst = output_root(variant) / rel
             logical = f"backgrounds/parallax_layers_{variant.suffix}/{rel.as_posix()}"
+            if selected_outputs is not None and logical not in selected_outputs:
+                continue
             source_owner = published.get(f"backgrounds/parallax_layers/{rel.as_posix()}", {}).get("unit")
             # A source bundle owns its tiers. Its producer replaces them together.
             if source_owner and published.get(logical, {}).get("unit") == source_owner:
                 continue
             if missing_only and (dst.is_file() or logical in published):
                 continue
-            evidence = _conversion((png,), dst, variant, "parallax")
+            parent = selected_outputs[logical] if selected_outputs is not None else None
+            parents = {parent: source_parents[parent]} if parent else source_parents
+            evidence = _conversion((png,), dst, variant, "parallax", published_parents=parents)
             if force or not conversion_current(dst.parent, dst.stem, evidence):
                 with clock.phase("parallax png", unit=rel.as_posix()):
                     resize_png(
@@ -1696,6 +1707,8 @@ def main() -> None:
     parser.add_argument("--only-missing", "--missing-only", dest="missing_only", action="store_true",
                         help="keep every published product, including stale products")
     parser.add_argument("--jobs", type=int, default=min(6, max(1, (os.cpu_count() or 2)//2)), help="build on N processes")
+    parser.add_argument("--loose", action="store_true", help="keep sprites stale only through shared inputs")
+    parser.add_argument("--only-possibly-stale", action="store_true", help="publish sprites stale only through shared inputs")
     args = parser.parse_args()
 
     if args.missing_only and (args.force or args.clean):
@@ -1735,6 +1748,8 @@ def main() -> None:
             clock=clock,
             jobs=args.jobs,
             missing_only=args.missing_only,
+            loose=args.loose,
+            possibly_stale_only=args.only_possibly_stale,
         )
     if not args.sprites_only:
         generate_parallax_variants(

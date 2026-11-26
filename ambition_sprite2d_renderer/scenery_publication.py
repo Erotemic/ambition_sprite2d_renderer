@@ -10,6 +10,7 @@ not published at all."""
 from __future__ import annotations
 
 import argparse
+import json
 from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
@@ -19,6 +20,7 @@ import sys
 import tempfile
 
 from . import publication
+from .build_selection import BuildMode
 from .products import describe, Digests
 from .publication_store import Store, identity
 
@@ -78,32 +80,84 @@ def _draw(uid, plan, renderer, snapshot):
     return work, files
 
 
-def build(units, *, missing_only=False, jobs=1):
-    """Draw the pending units, `jobs` at a time (each draw is its own
-    process), accept each into the store, and publish them all at once."""
+def selection(units, store, selected, sources, chain, hashes):
     definitions, warnings = describe({})
-    if not units:
-        units = every_unit(definitions)
-    unknown = set(units) - definitions.keys()
-    if unknown:
+    units = list(dict.fromkeys(units or every_unit(definitions)))
+    unknown = set(units) - set(every_unit(definitions))
+    if unknown or (not units and warnings):
         raise ValueError(f"Unknown scenery products: {sorted(unknown)}. {warnings}")
-    store = Store(publication.store_root())
-    selected = store.selected()
-    pending = []
-    hashes = Digests(publication.RENDERER / ".cache/publication-inputs.json")
-    sources, chain = publication.source_files(), publication.toolchain()
-    for uid in dict.fromkeys(units):
+    count = publication.readers(store.bundle(key)["recipe"] for uid, key in selected["bundles"].items()
+                                if uid.split(":", 1)[0] in SCENERY_KINDS)
+    status = {}
+    for uid in units:
         plan = definitions[uid]
         paths = [plan['root'] + '/' + name for name in plan['required']]
-        present = [name in selected['files'] for name in paths]
         key = selected['bundles'].get(uid)
-        if missing_only and (key or any(present)):
+        if not key:
+            state = 'partial' if any(path in selected['files'] for path in paths) else 'missing'
+            status[uid] = (state, None)
             continue
-        if key and publication.recipe_state(store.bundle(key)['recipe'], sources, chain, hashes)[0] == 'current' and not store.integrity(key):
-            continue
-        pending.append(uid)
+        state, reasons = publication.recipe_state(store.bundle(key)['recipe'], sources, chain, hashes, unit=uid, count=count)
+        defects = store.integrity(key, hashes=hashes)
+        if defects:
+            state = 'partial' if any(defect['code'] == 'missing' for defect in defects) else 'stale'
+            status[uid] = (state, 'direct')
+        else:
+            status[uid] = (state, publication.stale_scope(reasons) if state == 'stale' else None)
+    return definitions, status
+
+
+def publish_scenery(store, replacements, selected, *, missing_only):
+    if missing_only:
+        return store.publish(replacements, selected, only_missing=True)
+    bundles = selected['bundles'] | replacements
+    claimed = {logical for key in replacements.values() for logical, item in store.bundle(key)['files'].items()
+               if item['role'] == 'runtime'}
+    old_owners = {selected['files'][logical]['unit'] for logical in claimed if logical in selected['files']}
+    for owner in sorted(old_owners - replacements.keys()):
+        if owner.startswith('producer:variants:'):
+            # The scene publishes native tiers with its full-size source.
+            del bundles[owner]
+        elif owner == 'producer:backgrounds':
+            key = bundles[owner]
+            legacy = store.bundle(key)
+            files = {logical: (store.root / 'bundles' / key / item['path'], item['role'], item['tier'])
+                     for logical, item in legacy['files'].items()
+                     if item['role'] != 'runtime' or logical not in claimed}
+            if any(role == 'runtime' for _, role, _ in files.values()):
+                bundles[owner] = store.accept(owner, files, legacy['recipe'], parents=legacy['parents'],
+                                              roots=legacy.get('roots'))
+            else:
+                del bundles[owner]
+    return store.publish(bundles, selected, replace=True)
+
+
+def build(units, *, missing_only=False, jobs=1, loose=False, possibly_stale_only=False,
+          force=False, query=None, as_json=False):
+    """Inspect or publish selected scene, terrain, and sky bundles."""
+    mode = BuildMode.from_flags(loose=loose, missing_only=missing_only,
+                                possibly_stale_only=possibly_stale_only, force=force)
+    if query == "check":
+        mode.check()
+    store = Store(publication.store_root())
+    selected = store.selected()
+    hashes = Digests(publication.RENDERER / ".cache/publication-inputs.json")
+    sources, chain = publication.source_files(), publication.toolchain()
+    definitions, status = selection(units, store, selected, sources, chain, hashes)
+    pending = [uid for uid, (state, scope) in status.items() if mode.includes(state, scope)]
+    if query:
+        hashes.save()
+        if as_json:
+            print(json.dumps({'states': {uid: {'state': state, 'scope': scope} for uid, (state, scope) in status.items()},
+                              'would_build': pending}, indent=1))
+        else:
+            for uid, (state, scope) in status.items():
+                label = 'possibly stale' if scope == 'shared' else state
+                print(f"{'*' if uid in pending else ' '} {uid}: {label}")
+        return int(query == 'check' and bool(pending))
     if not pending:
-        print('scenery: no missing products' if missing_only else 'scenery: selected products are current')
+        print('scenery: no selected products need generation')
+        hashes.save()
         return selected
     replacements = {}
     with publication.source_snapshot(sources) as (snapshot, original):
@@ -130,7 +184,7 @@ def build(units, *, missing_only=False, jobs=1):
                 for future in drawn.values():
                     if not future.cancelled() and future.exception() is None:
                         shutil.rmtree(future.result()[0], ignore_errors=True)
-    published = store.publish(replacements, selected, only_missing=missing_only)
+    published = publish_scenery(store, replacements, selected, missing_only=missing_only)
     hashes.save()
     return published
 
@@ -142,15 +196,24 @@ def main(argv=None):
     parser.add_argument('--only-missing', '--missing-only', dest='missing_only', action='store_true',
                         help='keep every published product, stale and partial ones too; with no --theme or --skin, '
                              'select every scene, skin and sky part')
+    parser.add_argument('--loose', action='store_true', help='keep bundles stale only through shared inputs')
+    parser.add_argument('--only-possibly-stale', action='store_true', help='rebuild bundles stale only through shared inputs')
+    parser.add_argument('--force', action='store_true', help='rebuild selected bundles even if current')
+    queries = parser.add_mutually_exclusive_group()
+    queries.add_argument('--plan', action='store_true', help='show what generation would select')
+    queries.add_argument('--check', action='store_true', help='fail when selected bundles are missing or stale')
+    parser.add_argument('--json', action='store_true', help='print the plan or check as JSON')
     parser.add_argument('--jobs', type=int, default=min(6, max(1, (os.cpu_count() or 2) // 2)),
                         help='draws at a time (each is its own process)')
     args = parser.parse_args(argv)
     units = ['theme:' + name for name in args.theme] + ['skin:' + name for name in args.skin]
-    if not units and not args.missing_only:
-        parser.error('select --theme or --skin, or --missing-only')
+    if not units and not any((args.missing_only, args.plan, args.check, args.force, args.loose, args.only_possibly_stale)):
+        parser.error('select --theme or --skin, or pass a build selection or query')
     try:
-        build(units, missing_only=args.missing_only, jobs=args.jobs)
-        return 0
+        result = build(units, missing_only=args.missing_only, jobs=args.jobs, loose=args.loose,
+                       possibly_stale_only=args.only_possibly_stale, force=args.force,
+                       query='check' if args.check else 'plan' if args.plan else None, as_json=args.json)
+        return result if isinstance(result, int) else 0
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print(f'scenery publication: {error}', file=sys.stderr)
         return 1

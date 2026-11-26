@@ -15,6 +15,7 @@ import tempfile
 import time
 
 from . import artifacts
+from .build_selection import BuildMode
 from .publication_store import Store, TIERS, MANAGED_ROOTS, digest, identity, write_json
 
 RENDERER = Path(__file__).resolve().parents[1]
@@ -415,7 +416,7 @@ def pack_parents(report) -> dict[str, str]:
     return owners
 
 
-def build_packs(store: Store, bundles: dict, report, sources: dict, chain: dict, *, force=False) -> dict:
+def build_packs(store: Store, bundles: dict, report, sources: dict, chain: dict, *, mode=BuildMode.DEFAULT) -> dict:
     owners = pack_parents(report)
     parents = {unit: bundles[unit] for unit in set(owners.values()) if unit in bundles}
     if not parents:
@@ -425,10 +426,14 @@ def build_packs(store: Store, bundles: dict, report, sources: dict, chain: dict,
     inputs = {name: digest(path) for name, path in sources.items() if name.endswith(("/authoring/ultrapack.py", "/authoring/packer.py", "/data/pack_plan.yaml", "/publication.py", "/publication_store.py"))}
     # An atlas reads its parents' bundles and the packer, never a listing.
     recipe = {"inputs": inputs, "listings": {}, "toolchain": chain, "quality": True}
-    required = [tier for tier in TIERS if force or "atlas:"+tier not in bundles
-                or store.bundle(bundles["atlas:"+tier])["parents"] != parents
-                or recipe_state(store.bundle(bundles["atlas:"+tier])["recipe"], sources, chain)[0] != "current"
-                or store.integrity(bundles["atlas:"+tier])]
+    def needs_pack(tier):
+        key = bundles.get("atlas:" + tier)
+        if not key or store.bundle(key)["parents"] != parents or store.integrity(key):
+            return True
+        state, reasons = recipe_state(store.bundle(key)["recipe"], sources, chain)
+        return mode.includes(state, stale_scope(reasons))
+
+    required = [tier for tier in TIERS if needs_pack(tier)]
     result = {"atlas:"+tier: bundles["atlas:"+tier] for tier in TIERS if tier not in required}
     if not required:
         return result
@@ -462,16 +467,20 @@ def build_packs(store: Store, bundles: dict, report, sources: dict, chain: dict,
     return result
 
 
-def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=False, missing_only=False) -> dict:
+def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=False,
+          missing_only=False, possibly_stale_only=False) -> dict:
     """Publish the targets of `scope`. A target is rebuilt unless an accepted
     bundle is current. With `loose`, a bundle stale only for shared reasons
     (`stale_scope`) is kept too: it stays possibly stale until a strict build."""
+    mode = BuildMode.from_flags(loose=loose, missing_only=missing_only,
+                                possibly_stale_only=possibly_stale_only, force=force)
     names, report = names_in(scope, requested)
     if report.failures and not requested:
         raise ValueError(f"Target discovery failed: {report.failures}")
     store = Store(store_root())
     selected = store.selected()
-    if not requested and not missing_only:
+    maintain_atlases = not requested and mode not in {BuildMode.MISSING, BuildMode.POSSIBLY_STALE}
+    if maintain_atlases:
         atlas_owners = set(pack_parents(report).values())
         if any("target:"+name in atlas_owners for name in names):
             names = list(dict.fromkeys(names + [unit.removeprefix("target:") for unit in atlas_owners if unit not in selected["bundles"]]))
@@ -501,6 +510,13 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=
         if missing_only and (unit in selected["bundles"] or any(
                 path in selected["files"] for path in definition(report.targets[name])["required"])):
             continue
+        if possibly_stale_only:
+            key = selected["bundles"].get(unit)
+            if not key:
+                continue
+            state, reasons = recipe_state(store.bundle(key)["recipe"], sources, chain, hashes, unit=unit, count=count)
+            if not mode.includes(state, stale_scope(reasons)) or store.integrity(key, hashes=hashes):
+                continue
         candidates = accepted.get(unit, [])
         candidates.sort(key=lambda row: row[0] != selected["bundles"].get(unit))
         reusable = next((key for key, manifest in candidates if not force
@@ -584,12 +600,12 @@ def build(scope=None, requested=(), *, force=False, jobs=1, publish=True, loose=
             if toolchain() != chain:
                 print("art: the rendering toolchain changed during generation; the new bundles are stale", file=sys.stderr)
     candidate = selected["bundles"] | replacements
-    if not requested and not missing_only:
-        replacements.update(build_packs(store, candidate, report, sources, chain, force=force))
+    if maintain_atlases:
+        replacements.update(build_packs(store, candidate, report, sources, chain, mode=mode))
     if not publish:
         return {"exact": True, "bundles": replacements,
                 "files": sorted({logical for key in replacements.values() for logical in store.bundle(key)["files"]})}
-    published = publish_sprites(store, replacements, selected, replace=not requested and not missing_only, only_missing=missing_only,
+    published = publish_sprites(store, replacements, selected, replace=maintain_atlases, only_missing=missing_only,
                                 hashes=hashes)
     # The targets that built are published; the ones that failed keep their
     # previous bundle, and the run reports them.
@@ -662,6 +678,9 @@ def inventory(*, deep=False, requested=None, include_atlases=True) -> dict:
         manifest = store.bundle(key) if key else None
         state, reasons = recipe_state(manifest["recipe"] if manifest else None, sources, chain, hashes, unit=uid, count=count)
         defects = [dict(d, scope="direct") for d in store.integrity(key, hashes=hashes)] if key else [{"code": "missing-bundle", "scope": "direct"}]
+        if manifest and any(selected["bundles"].get(parent) != expected for parent, expected in manifest["parents"].items()):
+            state = "stale"
+            reasons.append({"code": "changed-parent", "scope": "direct"})
         if defects:
             state = "missing" if not key else "stale"
         units[uid] = {"id":uid,"kind":"atlas","root":"sprite_packs/"+tier,"generator":{"id":"ultrapack","family":"ultrapack"},
@@ -799,6 +818,7 @@ def main(argv=None):
     parser.add_argument("--only-missing", "--missing-only", dest="missing_only", action="store_true", help="keep every selected target, including stale and partial products")
     parser.add_argument("--loose", action="store_true",
                         help="rebuild only targets whose own inputs changed; keep those that only shared renderer code made stale")
+    parser.add_argument("--only-possibly-stale", action="store_true", help="rebuild published targets with shared-only staleness")
     parser.add_argument("--resolve-layout", action="store_true")
     parser.add_argument("--adopt-existing", type=Path)
     parser.add_argument("--jobs", type=int, default=min(6, max(1, (os.cpu_count() or 2)//2)))
@@ -807,8 +827,15 @@ def main(argv=None):
     args = parser.parse_args(argv)
     # --target may be repeated or carry several names in one flag; flatten to one list.
     args.target = [name for chunk in args.target for name in chunk]
-    if args.missing_only and args.force:
-        parser.error("--only-missing cannot be combined with --force")
+    try:
+        mode = BuildMode.from_flags(loose=args.loose, missing_only=args.missing_only,
+                                    possibly_stale_only=args.only_possibly_stale, force=args.force)
+        if args.check:
+            mode.check()
+    except ValueError as error:
+        parser.error(str(error))
+    if args.check and args.plan:
+        parser.error("--check and --plan cannot be combined")
     if args.library:
         os.environ["AMBITION_CONTENT_LIBRARY"] = (repo_root() / args.library).resolve().relative_to(repo_root()).as_posix()
     if args.worker:
@@ -823,12 +850,15 @@ def main(argv=None):
         elif args.check:
             names, _ = names_in(args.scope, args.target)
             result = inventory(deep=args.deep, requested=set(names), include_atlases=not args.target)
+            failed = not result["complete"] or any(
+                mode.includes(unit["status"]["state"], unit["status"]["scope"])
+                for unit in result["units"].values()
+            )
             if not args.json:
                 for uid, unit in result["units"].items():
                     scope = unit["status"].get("scope")
                     print(f"{uid}: {unit['status']['state']}" + (" (possibly: only shared code changed)" if scope == "shared" else ""))
-                return int(not result["complete"] or any(u["status"]["state"] != "current" and not (args.loose and u["status"].get("scope") == "shared")
-                                                         for u in result["units"].values()))
+                return int(failed)
         elif args.plan or args.list or args.list_outputs:
             result = plan(args.scope, args.target)
             if args.list:
@@ -837,14 +867,22 @@ def main(argv=None):
             if args.list_outputs:
                 print("\n".join(sorted({p.removeprefix("sprites/") for u in result["units"].values() for p in u["required"]})))
                 return int(not result["complete"])
+            if args.plan:
+                status = inventory(deep=args.deep, requested={unit["target"] for unit in result["units"].values()}, include_atlases=False)
+                result["would_build"] = []
+                for uid, unit in result["units"].items():
+                    unit["status"] = status["units"][uid]["status"]
+                    if mode.includes(unit["status"]["state"], unit["status"]["scope"]):
+                        result["would_build"].append(unit["target"])
         else:
             result = build(args.scope, args.target, force=args.force, jobs=args.jobs,
-                           publish=not args.resolve_layout, loose=args.loose, missing_only=args.missing_only)
+                           publish=not args.resolve_layout, loose=args.loose, missing_only=args.missing_only,
+                           possibly_stale_only=args.only_possibly_stale)
         if not args.json and not any((args.audit, args.adopt_existing, args.check, args.plan, args.resolve_layout)):
             print(f"Published {result['generation']}: {len(result['bundles'])} bundles, {len(result['files'])} runtime files.")
         else:
             print(json.dumps(result, sort_keys=True, indent=1))
-        return int(args.check and (not result["complete"] or any(unit["status"]["state"] != "current" for unit in result["units"].values())))
+        return int(args.check and failed)
     except (ValueError, OSError) as error:
         print(f"art publication: {error}", file=sys.stderr)
         return 1
