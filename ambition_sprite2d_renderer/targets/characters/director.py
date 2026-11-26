@@ -392,7 +392,7 @@ def _render_frame(animation: str, frame_idx: int, frame_count: int):
     return _clip_frames(animation, frame_count)[frame_idx]
 
 
-def _raw_frame(animation: str, frame_idx: int, frame_count: int):
+def _raw_frame(animation: str, frame_idx: int, frame_count: int, **render_options):
     # The shipped sheet still honors each clip's legacy publication cadence.
     # Authored motion itself is normalized against duration_s, so publication
     # samples are converted from absolute seconds explicitly rather than using
@@ -407,8 +407,8 @@ def _raw_frame(animation: str, frame_idx: int, frame_count: int):
     if animation in _doc().frame["plant"]:
         times = [round(i * clip.frame_duration_ms / 1000.0 / max(clip.duration_s, 1e-9), 9) for i in range(frame_count)]
         lift = _doc().plant_offsets(animation, times, padding=_publication_padding())[frame_idx]
-        return _doc().render_planted(animation, normalized, lift, padding=_publication_padding())
-    return _doc().render_at(animation, normalized, padding=_publication_padding())
+        return _doc().render_planted(animation, normalized, lift, padding=_publication_padding(), **render_options)
+    return _doc().render_at(animation, normalized, padding=_publication_padding(), **render_options)
 
 
 def _body_metrics(fw: int, fh: int):

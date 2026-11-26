@@ -118,6 +118,8 @@ class PartFlipbook:
     realize: str = REALIZE_PARTS
     #: Named points per row and frame, in full-resolution pixels from the feet.
     landmarks: Dict[str, List[Dict[str, Tuple[float, float]]]] = field(default_factory=dict)
+    #: Convert frame positions to logical pixels on export. Keep atlas rectangles in texels.
+    texel_scale: int = 1
 
     # -- measurement -----------------------------------------------------------
     def tight_texels(self) -> int:
@@ -157,6 +159,7 @@ class PartFlipbook:
 
     def to_ron(self) -> str:
         assert self.rects, "pack() before to_ron()"
+        texel_scale = self.texel_scale
 
         def num(value: float) -> str:
             text = f"{float(value):.4f}".rstrip("0")
@@ -165,6 +168,10 @@ class PartFlipbook:
         def pair(values) -> str:
             return f"({num(values[0])}, {num(values[1])})"
 
+        def logical(values) -> str:
+            return pair(tuple(value / texel_scale for value in values))
+
+        assert texel_scale >= 1 and all(side % texel_scale == 0 for side in self.frame_size)
         tracks: List[str] = []
         for _duration, frames in self.clips.values():
             for frame in frames:
@@ -177,8 +184,9 @@ class PartFlipbook:
             f"    schema_version: {PART_FLIPBOOK_SCHEMA_VERSION},",
             f'    target: "{self.target}",',
             "    pages: [" + ", ".join(f'"{name}"' for name in self.page_names()) + "],",
-            f"    frame_size: ({self.frame_size[0]}, {self.frame_size[1]}),",
-            f"    feet_pixel: {pair(self.feet)},",
+            *([f"    texel_scale: {num(texel_scale)},"] if texel_scale != 1 else []),
+            f"    frame_size: ({self.frame_size[0] // texel_scale}, {self.frame_size[1] // texel_scale}),",
+            f"    feet_pixel: {logical(self.feet)},",
             f"    placement: {self.placement.capitalize()},",
             *(["    rotation_filter: Bilinear,"] if self.bilinear else []),
             *([f"    realize: {self.realize},"] if self.realize != REALIZE_PARTS else []),
@@ -195,7 +203,7 @@ class PartFlipbook:
         if self.landmarks:
             rows = []
             for row, frames in self.landmarks.items():
-                points = ["{" + ", ".join(f'"{name}": {pair(at)}' for name, at in frame.items()) + "}" for frame in frames]
+                points = ["{" + ", ".join(f'"{name}": {logical(at)}' for name, at in frame.items()) + "}" for frame in frames]
                 rows.append(f'"{row}": [' + ", ".join(points) + "]")
             lines.append("    landmarks: {" + ", ".join(rows) + "},")
         lines.append("    clips: {")
@@ -218,7 +226,7 @@ class PartFlipbook:
                         if tuple(d.tint) != (1.0, 1.0, 1.0) else ""
                     )
                     lines.append(
-                        f"                (part: {d.part}, at: {pair(d.at)}, "
+                        f"                (part: {d.part}, at: {logical(d.at)}, "
                         f"rotation: {num(d.rotation)}, scale: {pair(d.scale)}{track}{opacity}{tint}),"
                     )
                 lines.append("            ],")
@@ -263,6 +271,8 @@ class PartFlipbook:
         pages = [Image.open(ron_path.parent / name).convert("RGBA") for name in re.findall(r'"([^"]+\.png)"', re.search(r"pages: \[([^\]]*)\]", text).group(1))]
         frame_size = tuple(int(v) for v in re.search(r"frame_size: \((\d+), (\d+)\)", text).groups())
         feet = tuple(float(v) for v in re.search(rf"feet_pixel: \({number}, {number}\)", text).groups())
+        density = re.search(rf"texel_scale: {number}", text)
+        texel_scale = int(float(density[1])) if density else 1
         parts: List[PartRaster] = []
         rects: List[Tuple[int, int, int, int, int]] = []
         part_line = re.compile(
@@ -317,7 +327,7 @@ class PartFlipbook:
                 clips[row][1][-1].append(
                     PartDraw(
                         int(part),
-                        (float(ax), float(ay)),
+                        (float(ax) * texel_scale, float(ay) * texel_scale),
                         float(rotation),
                         (float(sx), float(sy)),
                         tracks[int(track)] if track is not None else None,
@@ -331,8 +341,8 @@ class PartFlipbook:
         baked = re.search(r"baked_clips: \[([^\]]*)\]", text)
         return cls(
             target,
-            frame_size,
-            feet,
+            tuple(round(side * texel_scale) for side in frame_size),
+            tuple(value * texel_scale for value in feet),
             parts,
             clips,
             re.findall(r'"([^"]+)"', baked.group(1)) if baked else [],
@@ -343,7 +353,9 @@ class PartFlipbook:
             bilinear,
             frame_opacity,
             (re.search(r"realize: (\w+)", text) or [None, REALIZE_PARTS])[1],
-            landmarks,
+            {row: [{name: tuple(value * texel_scale for value in at) for name, at in frame.items()}
+                   for frame in frames] for row, frames in landmarks.items()},
+            texel_scale,
         )
 
     def draw_frame(

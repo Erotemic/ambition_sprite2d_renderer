@@ -540,15 +540,11 @@ def _eye_point(doc: RigDocument, world, params):
             head.origin[1] + sn * local_x + c * local_y)
 
 
-def _render_body(doc: RigDocument, clip: str, t: float, solved) -> Image.Image:
-    """The rig's frame (``render_at``)."""
-    return doc.render_at(clip, t, solved=solved)
-
-
-def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframes: int, doc: Optional[RigDocument] = None) -> Image.Image:
-    """The frame of ``animation`` (an authored row): the body of ``clip`` posed
-    by ``solved`` at ``t``, between the effects behind and in front of it.
-    ``doc``: the rig it is drawn from (default: the side rig)."""
+def _compose(
+    animation: str, clip: str, t: float, solved, frame_idx: int, nframes: int,
+    doc: Optional[RigDocument] = None, *, scale: int = 1, supersample: Optional[int] = None,
+) -> Image.Image:
+    """Draw the body and its effects."""
     doc = load_doc() if doc is None else doc
     world, params = solved
     # A keyed strike is drawn entirely by the rig (its blade is a part), so it
@@ -619,7 +615,7 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
         else:
             _TELEPORT._place_blink_in_fx(back.rig, root_x, ground_y, K, frame_idx, nframes)
 
-    body = _render_body(doc, clip, t, solved)
+    body = doc.render_at(clip, t, solved=solved, scale=scale, supersample=supersample)
     if effect == "death":
         # The whole body fades as one picture: its parts do not show through
         # each other.
@@ -627,20 +623,23 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
 
     # Through rigdoc's seams, so the part flipbook knows what the frame is made
     # of (`part_flipbook.build_rig_flipbook`).
-    result = Image.new("RGBA", size, (0, 0, 0, 0))
+    result = Image.new("RGBA", body.size, (0, 0, 0, 0))
     for layer in (back.reduced(), body, front.reduced()):
         if layer is not None:
-            rigdoc.composite_canvas(result, layer)
+            if layer.size == body.size:
+                rigdoc.composite_canvas(result, layer)
+            else:
+                rigdoc.composite_scaled_layer(result, layer, scale)
     return result
 
 
-def _render_back(row: str, frame_idx: int, frame_count: int) -> Image.Image:
+def _render_back(row: str, frame_idx: int, frame_count: int, **render_options) -> Image.Image:
     """A frame of a back-view row: the back rig's body, with no effects."""
     doc = load_back_doc()
     t = doc.frame_time(row, frame_idx, frame_count)
-    size = (int(doc.frame["width"]), int(doc.frame["height"]))
-    result = Image.new("RGBA", size, (0, 0, 0, 0))
-    rigdoc.composite_canvas(result, doc.render_at(row, t))
+    frame = doc.render_at(row, t, **render_options)
+    result = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+    rigdoc.composite_canvas(result, frame)
     return result
 
 
@@ -660,7 +659,7 @@ def _other_view(row: str, frame_idx: int, mirrored: bool) -> Optional[Tuple[RigD
     return None
 
 
-def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+def render_frame(animation: str, frame_idx: int, frame_count: int, **render_options) -> Image.Image:
     row, mirrored = _row(animation)
     view = _other_view(row, frame_idx, mirrored)
     if view is not None:
@@ -668,21 +667,22 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
         # stays at the left of the frame (from behind, at the right). It is
         # not mirrored.
         doc, clip, index, count = view
-        result = Image.new("RGBA", (int(doc.frame["width"]), int(doc.frame["height"])), (0, 0, 0, 0))
-        rigdoc.composite_canvas(result, doc.render_at(clip, doc.frame_time(clip, index, count)))
+        frame = doc.render_at(clip, doc.frame_time(clip, index, count), **render_options)
+        result = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+        rigdoc.composite_canvas(result, frame)
         return result
     if row in BACK_ROWS:
         # From behind, the robot is the same picture for each facing: the ear
         # cup stays on its right ear, at the right of the frame. The row of the
         # other facing is thus this picture, and it is not mirrored.
-        return _render_back(row, frame_idx, frame_count)
+        return _render_back(row, frame_idx, frame_count, **render_options)
     if row in PURE_SIDE_ROWS:
         # The pure side view, seen from the robot's other side as every side
         # row is: the picture mirrored, with the head's other ear.
         doc = load_pure_side_doc()
         t = doc.frame_time(row, frame_idx, frame_count)
         world, params = doc.solve(row, t)
-        frame = _compose(row, row, t, (world, _other_side(params) if mirrored else params), frame_idx, frame_count, doc=doc)
+        frame = _compose(row, row, t, (world, _other_side(params) if mirrored else params), frame_idx, frame_count, doc=doc, **render_options)
         return rigdoc.mirrored_canvas(frame) if mirrored else frame
     doc = load_doc()
     # A strike authors its own other-side clip (the blade stays in the hand that
@@ -691,7 +691,7 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
     clip = MIRRORED.format(row) if mirrored and MIRRORED.format(row) in doc.clips else row
     t = doc.frame_time(clip, frame_idx, frame_count)
     world, params = doc.solve(clip, t)
-    frame = _compose(row, clip, t, (world, _other_side(params) if mirrored else params), frame_idx, frame_count)
+    frame = _compose(row, clip, t, (world, _other_side(params) if mirrored else params), frame_idx, frame_count, **render_options)
     # Mirrored about the logical frame's centre, so the published frame is
     # exactly what a flip of the whole frame would place — the runtime keeps
     # the same feet anchor, negated.

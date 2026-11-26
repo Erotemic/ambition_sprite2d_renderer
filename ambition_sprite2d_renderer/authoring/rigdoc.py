@@ -1299,12 +1299,17 @@ class RigDocument:
         lift = self.plant_offsets(clip_name, times, padding=padding)[frame_idx]
         return self.render_planted(clip_name, times[frame_idx], lift, padding=padding)
 
-    def render_planted(self, clip_name: str, t: float, lift: float, *, padding: Optional[RenderPadding] = None) -> Image.Image:
+    def render_planted(
+        self, clip_name: str, t: float, lift: float, *,
+        padding: Optional[RenderPadding] = None,
+        scale: Optional[int] = None,
+        supersample: Optional[int] = None,
+    ) -> Image.Image:
         """``render_at`` with the whole figure ``lift`` base-frame units lower
         (``plant_offsets``): the root, and each IK target with it, so a foot
         that rides an IK target moves with the body instead of bending it."""
         solved = self.solve(clip_name, t, channel_overrides=self.lowered(clip_name, t, lift)) if lift else None
-        return self.render_at(clip_name, t, solved=solved, padding=padding)
+        return self.render_at(clip_name, t, solved=solved, padding=padding, scale=scale, supersample=supersample)
 
     def lowered(self, clip_name: str, t: float, lift: float) -> Dict[str, float]:
         """The channel overrides that move the whole figure of ``clip_name``
