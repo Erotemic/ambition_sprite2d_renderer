@@ -108,6 +108,61 @@ def scaffold(c):
         c.put(c.mask(lambda p: [p.ellipse(x + 4, y + 6, 1.5) for x in posts]), ROCK_DARK)
 
 
+def exposed_skull(c):
+    """Draw the skull in side view. Keep its lower edge above the chest."""
+    crown = [
+        (919, 224), (932, 213), (964, 210), (1000, 203), (1026, 187),
+        (1060, 181), (1092, 186), (1124, 182), (1150, 197), (1168, 216),
+        (1172, 235), (1161, 249), (1137, 254), (1109, 248), (1081, 255),
+        (1048, 248), (1023, 252), (994, 248), (964, 253), (931, 249),
+        (919, 240),
+    ]
+    jaw = [
+        (930, 260), (960, 265), (1005, 268), (1046, 264), (1086, 255),
+        (1127, 244), (1141, 251), (1124, 266), (1083, 274),
+        (1048, 277), (1001, 276), (959, 272), (936, 268),
+    ]
+    matrix = [
+        (910, 224), (924, 204), (990, 195), (1021, 174), (1101, 177),
+        (1143, 173), (1173, 198), (1181, 237), (1157, 263), (1110, 280),
+        (1022, 283), (943, 278), (921, 266), (904, 244),
+    ]
+    c.put(c.mask(lambda p: p.poly(matrix), blur=2), ROCK_DARK, 0.66)
+    teeth = [(936, 8), (948, 10), (962, 9), (977, 7), (991, 8), (1005, 6), (1018, 6)]
+    c.put(c.mask(lambda p: [
+        p.poly([(x - 4, 246), (x + 5, 246), (x + 1, 252 + length)])
+        for x, length in teeth
+    ]), BONE_DARK)
+    lower_bone = c.mask(lambda p: p.poly(jaw))
+    upper_bone = c.mask(lambda p: p.poly(crown))
+    c.put(lower_bone, BONE_DARK)
+    c.put(upper_bone, mix(BONE, STRATA[3], 0.2))
+    c.tone((lower_bone + upper_bone) * (c.noise("skull_grain", 90, 23, 3) - 0.5), 0.5)
+    openings = [
+        [(932, 229), (939, 222), (956, 222), (950, 230), (936, 234)],
+        [(980, 222), (1007, 212), (1023, 209), (1019, 227), (998, 235), (983, 233)],
+        [(1040, 201), (1059, 191), (1076, 198), (1082, 211), (1072, 226),
+         (1056, 230), (1043, 221)],
+        [(1096, 202), (1120, 195), (1132, 207), (1129, 222), (1112, 232),
+         (1100, 225)],
+    ]
+    c.put(c.mask(lambda p: [p.poly(points) for points in openings]), ROCK_DARK)
+    c.put(c.mask(lambda p: [
+        p.line(points[-3:], 2.4) for points in openings
+    ]), BONE_DARK)
+    c.put(c.mask(lambda p: [
+        p.line(crown[:8], 2),
+        p.line([(1026, 243), (1052, 239), (1082, 240), (1101, 235), (1127, 241)], 3),
+        p.line(jaw[:7], 1.6),
+    ]), BONE)
+    fractures = [
+        [(969, 208), (972, 220), (967, 230), (976, 241), (974, 249)],
+        [(1086, 186), (1090, 197), (1087, 215), (1093, 231), (1088, 245)],
+        [(1146, 197), (1142, 213), (1150, 222), (1146, 236), (1154, 251)],
+    ]
+    c.put(c.mask(lambda p: [p.line(points, 1.3) for points in fractures]), BONE_DARK)
+
+
 def beds(c, k):
     rng = c.rand("fossil_beds")
     rock = c.mask(box(16, 16, W - 16, FLOOR))
@@ -143,11 +198,7 @@ def beds(c, k):
     c.put(c.mask(lambda p: p.ellipse(536, 258, 18, 11)), BONE)
     c.put(c.mask(lambda p: p.ellipse(530, 255, 4)), ROCK_DARK)
     # The great skull half out of the wall over the scaffold.
-    sx, sy = 1060, 236
-    c.put(c.mask(lambda p: p.poly([(sx - 120, sy - 20), (sx - 40, sy - 56), (sx + 70, sy - 40), (sx + 110, sy), (sx + 60, sy + 34), (sx - 90, sy + 30)])), BONE)
-    c.put(c.mask(lambda p: (p.ellipse(sx - 40, sy - 14, 18, 14), p.ellipse(sx + 34, sy - 10, 14, 12))), ROCK_DARK)
-    c.put(c.mask(lambda p: [p.poly([(x, sy + 22), (x + 6, sy + 22), (x + 3, sy + 40)]) for x in range(int(sx - 80), int(sx + 60), 14)]), BONE)
-    c.put(c.mask(lambda p: p.line([(sx - 120, sy - 20), (sx - 90, sy + 30)], 3)), BONE_DARK)
+    exposed_skull(c)
     # The survey scaffold (walked on), its string grid over the skull, lamps.
     scaffold(c)
     c.put(c.mask(lambda p: ([p.line([(x, 150), (x, 300)], 0.8) for x in range(940, 1200, 40)], [p.line([(920, y), (1200, y)], 0.8) for y in range(160, 300, 40)])), STRING)
