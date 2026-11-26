@@ -28,6 +28,7 @@ import numpy as np
 
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
+from .pirate_port_props import post
 from .primeval_props import BONE, MOSS, PAL
 from .primeval_tar_props import tapered
 
@@ -48,6 +49,17 @@ CHALK = (236, 236, 228)
 SLATE = (46, 52, 50)
 CANVAS = (214, 196, 150)
 WOOD = (130, 96, 60)
+
+
+def seep_lookout(c, _kit):
+    """Support the lookout from the east bank of the seep."""
+    post(c, 2904, 340, RIDGE_ROAD, 8, WOOD)
+    brace = [(2864, 360), (2904, 406)]
+    c.put(c.mask(lambda p: p.line(brace, 7)), scale(WOOD, 0.72))
+    c.put(c.mask(lambda p: p.line([(2864, 358), (2904, 404)], 2)), WOOD)
+    for y in (359, 404):
+        c.put(c.mask(box(2899, y, 2909, y + 4)), (192, 157, 101))
+    c.put(c.mask(lambda p: p.poly([(2904, 341), (2922, 345), (2904, 350)])), STRING)
 
 
 def sinkhole(c, k):
@@ -179,6 +191,7 @@ def beds(c, k):
 
 PIECES: Dict[str, Piece] = {
     "ridge_sinkhole": Piece((SINKHOLE[0] - 20, RIDGE_ROAD - 70, SINKHOLE[1] + 20, RIDGE_ROAD + 32), sinkhole),
+    "ridge_seep_lookout": Piece((2858, 336, 2924, RIDGE_ROAD), seep_lookout),
     "fossil_beds": Piece((16, 16, W - 16, FLOOR), beds),
 }
 
