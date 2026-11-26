@@ -78,6 +78,7 @@ UNBUILT = ((870, 950, 720), (1390, 1450, 760), (1910, 1990, 700))
 VOID_TOP = 1120
 #: The Site Office.
 OFFICE_FLOOR = 512
+OFFICE_WORKTOP = 432
 
 
 def walk_top(c, x0, x1, y, colour):
@@ -269,16 +270,42 @@ def cranes(c, k):
 # ---------------------------------------------------------------------------
 
 
+def office_wall(c, k):
+    """Timber panels and two windows. The windows show the site."""
+    windows = ((46, 152, 164, 304), (984, 52, 1190, 142))
+    wall = 1 - c.mask(lambda p: [p.rect(*rect) for rect in windows])
+    c.put(wall, (103, 91, 83))
+    for y in range(36, OFFICE_FLOOR, 34):
+        c.put(c.mask(box(0, y, 1280, y + 2)) * wall, (78, 67, 63))
+        c.put(c.mask(box(0, y + 2, 1280, y + 3)) * wall, (125, 109, 96))
+    c.put(c.mask(lambda p: [p.rect(x, 32, x + 14, OFFICE_FLOOR) for x in (28, 174, 900, 1228)]) * wall, WOOD_DARK)
+    c.put(c.mask(box(0, 32, 1280, 44)), WOOD_DARK)
+    c.put(c.mask(box(0, OFFICE_FLOOR - 10, 1280, OFFICE_FLOOR)), WOOD_DARK)
+    for left, top, right, bottom in windows:
+        centre = (left + right) // 2
+        c.put(c.mask(lambda p: (
+            p.rect(left - 6, top - 6, right + 6, top + 5),
+            p.rect(left - 6, top, left + 5, bottom),
+            p.rect(right - 5, top, right + 6, bottom),
+            p.rect(centre - 2, top, centre + 2, bottom),
+            p.rect(left - 10, bottom - 3, right + 10, bottom + 8),
+        )), WOOD_DARK)
+        walk_top(c, left - 10, right + 10, bottom - 3, WOOD)
+
+
 def gauges(c, k):
     """The three gauges of the dimension, on a console: GRAVITY (arrows down
     and up), WEATHER (a cloud and its rain) and LAYERS (a stack of sheets).
     Pipes run up out of them; a tube of liquid beside each."""
     g = OFFICE_FLOOR
-    c.put(c.mask(box(200, 430, 880, g)), STEEL)
-    c.put(c.mask(box(196, 424, 884, 432)), STEEL_LIGHT)
-    c.put(c.mask(lambda p: [p.rect(x, 450, x + 50, 470) for x in (260, 500, 740)]), STEEL_DARK)
+    c.put(c.mask(box(200, OFFICE_WORKTOP, 888, g)), STEEL)
+    c.put(c.mask(box(192, OFFICE_WORKTOP, 896, OFFICE_WORKTOP + 12)), STEEL_DARK)
+    walk_top(c, 192, 896, OFFICE_WORKTOP, STEEL_LIGHT)
     for n, (x, colour) in enumerate(zip((300, 540, 780), LIQUIDS)):
-        c.put(c.mask(lambda p: (p.rect(x - 8, 110, x + 8, 160), p.rect(x - 8, 110, x + 60, 124))), STEEL_DARK)
+        c.put(c.mask(box(x - 96, 450, x + 96, 503)), STEEL_LIGHT)
+        c.put(c.mask(box(x - 92, 454, x + 92, 499)), STEEL)
+        c.put(c.mask(box(x - 24, 461, x + 24, 466)), STEEL_DARK)
+        c.put(c.mask(lambda p: (p.rect(x - 8, 32, x + 8, 177), p.rect(x - 12, 124, x + 12, 136))), STEEL_DARK)
         c.put(c.mask(lambda p: p.ellipse(x, 270, 96, 96)), STEEL_LIGHT)
         c.put(c.mask(lambda p: p.ellipse(x, 270, 84, 84)), DIAL)
         c.put(c.mask(lambda p: p.ring(x, 270, 74, 2)), mix(colour, PAPER, 0.4))
@@ -307,20 +334,26 @@ def backlog(c, k):
     desk under it with the spec on it in a stack, a hard hat beside it."""
     g = OFFICE_FLOOR
     c.put(c.mask(box(940, 170, 1220, 340)), WOOD_DARK)
-    c.put(c.mask(box(946, 176, 1214, 334)), (176, 150, 112))
+    c.put(c.mask(box(946, 176, 1214, 334)), (119, 94, 73))
     rng = c.rand("notes")
     for col in range(6):
-        for row in range(2):
-            x, y = 958 + col * 42 + rng.uniform(-3, 3), 292 + row * 0 + rng.uniform(-4, 4)
-            if row == 1:
-                continue
-            c.put(c.mask(lambda p: p.poly([(x, y), (x + 30, y + rng.uniform(-2, 2)), (x + 30, y + 28), (x, y + 28)])), NOTE, 0.95)
-    c.put(c.mask(box(930, 420, 1230, 432)), WOOD)
-    c.put(c.mask(lambda p: [p.rect(x, 432, x + 10, g) for x in (940, 1210)]), WOOD_DARK)
+        x, y = 958 + col * 42 + rng.uniform(-3, 3), 292 + rng.uniform(-4, 4)
+        tilt = rng.uniform(-2, 2)
+        c.put(c.mask(lambda p: p.poly([(x, y), (x + 30, y + tilt), (x + 30, y + 28), (x, y + 28)])), NOTE, 0.95)
+        c.put(c.mask(lambda p: p.ellipse(x + 15, y + 4, 3)), WOOD_DARK)
+    c.put(c.mask(lambda p: [p.rect(x, OFFICE_WORKTOP, x + 10, g) for x in (954, 1212)]), WOOD_DARK)
+    c.put(c.mask(box(944, OFFICE_WORKTOP, 1232, OFFICE_WORKTOP + 12)), WOOD)
+    walk_top(c, 944, 1232, OFFICE_WORKTOP, WOOD)
     for j in range(9):
-        c.put(c.mask(box(1100 + (j % 2) * 3, 420 - 4 * (j + 1), 1170 + (j % 2) * 3, 420 - 4 * j - 1)), PAPER)
-    c.put(c.mask(box(1100, 382, 1170, 386)), (200, 60, 60))
-    c.put(c.mask(lambda p: (p.poly([(1186, 420), (1222, 420), (1218, 408), (1206, 402), (1192, 408)]), p.rect(1182, 418, 1226, 421))), HAT)
+        band = OFFICE_WORKTOP - 4 * j
+        offset = (j % 2) * 3
+        c.put(c.mask(box(1100 + offset, band - 4, 1170 + offset, band - 1)), PAPER)
+    c.put(c.mask(box(1100, OFFICE_WORKTOP - 38, 1170, OFFICE_WORKTOP - 34)), (200, 60, 60))
+    c.put(c.mask(lambda p: (
+        p.poly([(1186, OFFICE_WORKTOP), (1222, OFFICE_WORKTOP), (1218, OFFICE_WORKTOP - 12),
+                (1206, OFFICE_WORKTOP - 18), (1192, OFFICE_WORKTOP - 12)]),
+        p.rect(1182, OFFICE_WORKTOP - 2, 1226, OFFICE_WORKTOP),
+    )), HAT)
 
 
 #: Every piece: its frame in its room, and how it is drawn.
@@ -334,7 +367,8 @@ PIECES: Dict[str, Piece] = {
     "unfinished_spill": Piece((540, 590, 700, 1136), spill),
     "unfinished_cranes": Piece((680, 24, 2180, 800), cranes),
     # The Site Office.
-    "unfinished_gauges": Piece((180, 100, 900, 512), gauges),
+    "unfinished_office_wall": Piece((0, 0, 1280, 512), office_wall),
+    "unfinished_gauges": Piece((180, 32, 900, 512), gauges),
     "unfinished_backlog": Piece((920, 160, 1240, 512), backlog),
 }
 

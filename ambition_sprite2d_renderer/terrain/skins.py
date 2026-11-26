@@ -212,6 +212,7 @@ SKINS: tuple[Skin, ...] = (
     # scaffold planks for a platform; in the Void, unpainted panels with a
     # hazard edge and a grate.
     Skin("unfinished", "earth", (92, 80, 72), (40, 34, 32), (130, 116, 104), (232, 190, 70), "grass", (110, 132, 96), "roots", "plank"),
+    Skin("unfinished_office", "timber", (112, 85, 70), (48, 38, 34), (160, 128, 102), (232, 190, 70), "deck", (150, 118, 93), "lip", "plank"),
     Skin("unfinished_void", "panel", (56, 60, 76), (20, 22, 30), (98, 102, 122), (150, 170, 210), "hazard", (200, 170, 70), "bolts", "grate"),
     # The Automaton dimension: the Works is cut lavender stone with grass
     # on it and brass in it; the Life field is dark cubes with an amber edge.
