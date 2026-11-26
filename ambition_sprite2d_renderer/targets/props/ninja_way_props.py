@@ -4,7 +4,7 @@ to a stone slab in the gate shrine's floor (shut until the lever under it is
 pulled). A ninja village has one; this one is lived in.
 
 Drawn in room coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/ninja_village/make_specs.py` (`shrine`,
+`ambition_content/generators/ninja_village/make_specs.py` (`shrine`,
 `street`, `hidden_way`): the shrine's floor (y 704, the room's foot 832) and
 its slab (x 1320..1384); the street's ground (y 768, its foot 896) and its
 loose board (x 1000..1064); the way's floor (y 512), its ceiling (to y 48),
@@ -16,14 +16,10 @@ the shaft up to the shrine (x 296..360) and the one up to the street
 - `ninja_shrine_shaft`: the shaft under the slab (seen once it is open).
 - `ninja_street_board`: the loose board in the street and the dark under
   it (the board is a one-way floor: dropped through).
-- `ninja_way_west`: a timbered passage dug in earth; the shaft up under the
-  shrine; a straw dummy, a shuriken target with its stars in it; the
-  nightingale floor (each board's nail drawn, a bird painted on one: it
-  sings); a sleeping mat, a cold bowl of rice, a scroll.
-- `ninja_way_east`: the weapons rack (a kusarigama, kunai, a blowpipe, a
-  grappling hook); sliding panels, one open on a cupboard of disguises (a
-  monk's hat, a rice farmer's, a fake moustache); the shaft up under the
-  street, light through the board's gaps.
+- `ninja_way_west` has the shrine shaft, straw dummy, shuriken target, and
+  nightingale floor. The west gallery looks over the practice floor.
+- `ninja_way_east` has the street shaft and the disguise cupboard. The
+  weapons rack stands on the east gallery.
 
 Animations: ``idle``, 1 frame each. No drop shadows.
 """
@@ -53,6 +49,8 @@ RICE = (244, 242, 236)
 LAMP = (255, 206, 130)
 DAYLIGHT = (250, 244, 220)
 STONE_DARK = (98, 96, 90)
+GALLERY_WEST = ((416, 528, 448), (480, 608, 384), (544, 896, 320))
+GALLERY_EAST = ((1008, 1456, 320), (1408, 1504, 384), (1472, 1568, 448))
 
 
 def slab(c, k):
@@ -109,9 +107,30 @@ def shaft(c, s0, s1, light):
         c.light(c.mask(lambda p: p.poly([(s0, 16), (s1, 16), (s1 + 24, FLOOR), (s0 - 24, FLOOR)]), blur=10), DAYLIGHT, 0.16)
 
 
+def gallery(c, spans, posts):
+    """Draw the treads, deck, and timber supports."""
+    for x, top in posts:
+        c.put(c.mask(box(x, top, x + 12, FLOOR)), TIMBER)
+        c.put(c.mask(box(x + 2, top + 12, x + 5, FLOOR)), scale(CEDAR, 0.85))
+        c.put(c.mask(lambda p: p.poly([(x + 12, top + 8), (x + 46, top + 8),
+                                      (x + 12, top + 42)])), TIMBER)
+        c.put(c.mask(lambda p: p.ellipse(x + 7, top + 26, 2.5)), STEEL)
+    for x0, x1, y in spans:
+        c.put(c.mask(box(x0, y, x1, y + 4)), CEDAR_LIGHT)
+        c.put(c.mask(box(x0, y + 4, x1, y + 13)), CEDAR)
+        c.put(c.mask(box(x0, y + 13, x1, y + 17)), TIMBER)
+        c.put(c.mask(lambda p: [p.rect(x, y + 4, x + 1, y + 12)
+                                for x in range(x0 + 28, x1, 28)]), scale(CEDAR, 0.68))
+    x0, x1, y = next(span for span in spans if span[2] == 320)
+    c.put(c.mask(box(x0 + 18, y - 26, x1 - 18, y - 22)), scale(INDIGO, 0.86))
+    c.put(c.mask(lambda p: [p.rect(x, y - 22, x + 3, y)
+                            for x in range(x0 + 18, x1 - 18, 24)]), scale(INDIGO, 0.8))
+
+
 def west(c, k):
-    passage(c, 16, 960, "way_w")
+    passage(c, 16, 964, "way_w")
     shaft(c, *SHRINE_SHAFT, light=False)
+    gallery(c, GALLERY_WEST, ((430, 448), (498, 384), (570, 320), (758, 320), (838, 320)))
     # The sleeping mat, the cold bowl of rice, chopsticks across it.
     c.put(c.mask(box(60, FLOOR - 8, 250, FLOOR)), STRAW)
     c.put(c.mask(lambda p: [p.rect(x, FLOOR - 8, x + 1, FLOOR) for x in range(64, 250, 8)]), scale(STRAW, 0.8))
@@ -123,11 +142,11 @@ def west(c, k):
     c.put(c.mask(lambda p: [p.rect(126, y, 174, y + 5) for y in (196, 330)]), TIMBER)
     c.put(c.mask(lambda p: [p.rect(146, y, 154, y + 10) for y in range(214, 316, 18)]), (30, 30, 30))
     # The straw dummy, a shuriken target with its stars in it.
-    dx = 460
+    dx = 664
     c.put(c.mask(lambda p: (p.rect(dx - 3, FLOOR - 130, dx + 3, FLOOR), p.ellipse(dx, FLOOR - 140, 14, 16),
                             p.rect(dx - 40, FLOOR - 112, dx + 40, FLOOR - 104), p.poly([(dx - 18, FLOOR - 120), (dx + 18, FLOOR - 120), (dx + 14, FLOOR - 60), (dx - 14, FLOOR - 60)]))), STRAW)
     c.put(c.mask(lambda p: [p.rect(dx - 18, y, dx + 18, y + 2) for y in (FLOOR - 100, FLOOR - 80)]), scale(STRAW, 0.6))
-    tx, ty = 620, 260
+    tx, ty = 664, 238
     c.put(c.mask(lambda p: p.ellipse(tx, ty, 44)), CEDAR_LIGHT)
     c.put(c.mask(lambda p: (p.ring(tx, ty, 30, 4), p.ring(tx, ty, 14, 4))), VERMILION)
     for sx, sy in ((tx - 6, ty + 4), (tx + 20, ty - 18), (tx - 28, ty - 10), (dx + 8, FLOOR - 140)):
@@ -143,16 +162,23 @@ def west(c, k):
 
 def east(c, k):
     passage(c, 960, W - 16, "way_e")
+    c.put(c.mask(box(960, CEIL, 972, FLOOR)), TIMBER)
+    c.put(c.mask(box(960, CEIL, 963, FLOOR)), scale(TIMBER, 0.72))
     shaft(c, *STREET_SHAFT, light=True)
-    # The weapons rack.
+    gallery(c, GALLERY_EAST, ((1032, 320), (1204, 320), (1390, 320), (1432, 384), (1498, 448)))
+    # The rack stands on the east gallery.
     rx = 1120
-    c.put(c.mask(lambda p: (p.rect(rx, 200, rx + 200, 210), p.rect(rx, 330, rx + 200, 340), p.rect(rx + 4, 200, rx + 12, FLOOR), p.rect(rx + 188, 200, rx + 196, FLOOR))), TIMBER)
-    c.put(c.mask(lambda p: (p.line([(rx + 40, 196), (rx + 40, 330)], 3), p.poly([(rx + 40, 196), (rx + 62, 186), (rx + 44, 206)]))), STEEL)
-    c.put(c.mask(lambda p: [p.ring(rx + 40, 340 + j * 10, 4, 1.4) for j in range(8)]), STEEL)
-    c.put(c.mask(lambda p: [p.poly([(x, 214), (x + 4, 214), (x + 2, 250)]) for x in range(rx + 80, rx + 140, 12)]), STEEL)
-    c.put(c.mask(lambda p: p.line([(rx + 160, 196), (rx + 160, 330)], 3)), CEDAR_LIGHT)
-    c.put(c.mask(lambda p: (p.line([(rx + 120, 344), (rx + 120, 400)], 2), p.line([(rx + 120, 400), (rx + 104, 412)], 2),
-                            p.line([(rx + 120, 400), (rx + 136, 412)], 2), p.line([(rx + 120, 400), (rx + 120, 416)], 2))), STEEL)
+    c.put(c.mask(lambda p: (p.rect(rx, 174, rx + 172, 182), p.rect(rx, 268, rx + 172, 278),
+                            p.rect(rx + 4, 174, rx + 12, 320), p.rect(rx + 160, 174, rx + 168, 320))), TIMBER)
+    c.put(c.mask(lambda p: (p.line([(rx + 26, 175), (rx + 26, 267)], 3),
+                            p.poly([(rx + 26, 175), (rx + 48, 164), (rx + 30, 186)]))), STEEL)
+    c.put(c.mask(lambda p: [p.ring(rx + 26, 273 + j * 6, 2.5, 1) for j in range(6)]), STEEL)
+    c.put(c.mask(lambda p: [p.poly([(x, 183), (x + 5, 183), (x + 2, 218)])
+                            for x in range(rx + 58, rx + 120, 14)]), STEEL)
+    c.put(c.mask(lambda p: p.line([(rx + 142, 164), (rx + 142, 269)], 3)), CEDAR_LIGHT)
+    c.put(c.mask(lambda p: (p.line([(rx + 94, 276), (rx + 94, 297)], 2),
+                            p.line([(rx + 94, 297), (rx + 83, 305)], 2),
+                            p.line([(rx + 94, 297), (rx + 105, 305)], 2))), STEEL)
     # Sliding panels, one open on a cupboard of disguises.
     px0 = 1720
     c.put(c.mask(box(px0, 160, px0 + 160, FLOOR)), TIMBER)
@@ -170,7 +196,7 @@ PIECES: Dict[str, Piece] = {
     "ninja_shrine_slab": Piece((SLAB[0], SHRINE_FLOOR, SLAB[1], SHRINE_H), slab),
     "ninja_shrine_shaft": Piece((SLAB[0], SHRINE_FLOOR, SLAB[1], SHRINE_H), shrine_shaft),
     "ninja_street_board": Piece((BOARD[0] - 4, STREET - 10, BOARD[1] + 4, STREET_H), street_board),
-    "ninja_way_west": Piece((16, 16, 960, FLOOR), west),
+    "ninja_way_west": Piece((16, 16, 964, FLOOR), west),
     "ninja_way_east": Piece((960, 16, W - 16, FLOOR), east),
 }
 
