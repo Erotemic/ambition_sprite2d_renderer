@@ -32,11 +32,32 @@ H = 960
 SHELVES = ((0, 520, 896), (660, 1000, 800), (1000, 1300, 704), (1440, 1760, 608), (1760, 2000, 512), (2000, 2200, 416))
 PITS = ((520, 660, 912, 944), (1300, 1440, 752, 784))
 CRATER = (2200, 2384, 448, 480)
+FOOTHOLD = (576, 624, 848)
 BASALT = (58, 52, 54)
 BASALT_LIGHT = (104, 94, 92)
 LAVA = (255, 120, 40)
 LAVA_HOT = (255, 220, 120)
 CRUST = (90, 30, 20)
+
+
+def basalt_foothold(c):
+    """Draw the column in the first fissure. Align its top with the collision."""
+    left, right, top = FOOTHOLD
+    rock = c.mask(lambda p: p.poly([
+        (left, top), (right, top), (right, 905), (right - 6, 921),
+        (right, 944), (left, 944), (left + 3, 923), (left, 902),
+    ]))
+    c.put(rock, BASALT)
+    c.put(rock * c.mask(lambda p: p.poly([
+        (left + 6, top + 4), (right - 19, top + 1), (right - 16, 882),
+        (right - 21, 916), (left + 9, 929), (left + 12, 891),
+    ])), BASALT_LIGHT, 0.50)
+    c.put(rock * c.mask(lambda p: [
+        p.line([(x, top + 7), (x + 3, 885), (x - 2, 924)], 1.7)
+        for x in (left + 9, left + 29, right - 5)
+    ]), scale(BASALT, 0.62))
+    c.light(rock * np.clip((c.y - 881) / 40, 0, 1), LAVA, 0.44)
+    edge_line(c, left, right, top, BASALT_LIGHT, 4)
 
 
 def volcano(c, k):
@@ -63,6 +84,8 @@ def volcano(c, k):
         c.put(lava * np.clip((c.noise(("crust", x0), 6, 2, 2) - 0.55) * 4, 0, 1), CRUST)
         c.put(lava * c.mask(box(x0, top, x1, top + 3)), LAVA_HOT)
         c.light(c.mask(lambda p: p.ellipse((x0 + x1) / 2, top, (x1 - x0) * 0.8, 70), blur=24), LAVA, 0.45)
+    if c.o[0] < FOOTHOLD[0]:
+        basalt_foothold(c)
     # The crater's plume, drifting.
     cx = (CRATER[0] + CRATER[1]) / 2
     for i in range(7):
