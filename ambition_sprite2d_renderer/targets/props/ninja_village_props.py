@@ -399,6 +399,7 @@ def watch_house(c, k):
 
 FOREST_FLOOR = 832
 BRANCH_W, BRANCH_STEP = 320, 384
+GATE_BOUGH = ((2216, 768), (2240, 768), (2344, 788), (2496, 832), (2560, 832))
 
 
 #: The forest's branches walked on: six, stepping down east from y 448 (the
@@ -511,12 +512,31 @@ def cedar(i):
             strands.append([(sx + math.sin(j * 1.3) * 1.2, sy + j * length / 5) for j in range(6)])
         c.put(c.mask(lambda p: [p.line(strand, 0.9) for strand in strands]), mix(MOSS, (196, 196, 168), 0.4), 0.85)
         walk_edge(c, x, x + BRANCH_W, y, mix(BARK, (190, 150, 110), 0.35))
+        if i == BRANCHES - 1:
+            gate_bough(c)
         # Ferns and a stone at the foot.
         for _ in range(8):
             fx = tx + rng.uniform(-80, 60)
             c.put(c.mask(lambda p: p.poly([(fx, FOREST_FLOOR), (fx + rng.uniform(-14, 14), FOREST_FLOOR - rng.uniform(12, 24)), (fx + 4, FOREST_FLOOR)])), mix(MOSS, FOLIAGE_LIGHT, 0.4))
 
     return draw
+
+
+def gate_bough(c):
+    """Draw the bough from the last branch to the trail fork."""
+    underside = [(2536, 832), (2440, 830), (2384, 825), (2320, 816),
+                 (2266, 798), (2216, 790)]
+    bough = c.mask(lambda p: p.poly([*GATE_BOUGH[:-1], *underside]))
+    c.put(bough, BARK)
+    c.tone(bough * (c.noise("gate_bough", 14, 4, 2) - 0.5), 0.28)
+    for drop in (6, 14, 21):
+        c.put(c.mask(lambda p: p.line([(x, y + drop) for x, y in GATE_BOUGH[:-1]], 1.2)) * bough,
+              scale(BARK, 0.72))
+    c.put(c.mask(lambda p: p.line(GATE_BOUGH[:-1], 2.4)) * bough,
+          mix(BARK, (190, 150, 110), 0.48))
+    rng = c.rand("gate_bough")
+    for x, y, w, h in ((2273, 808, 74, 18), (2352, 823, 55, 10), (2428, 826, 40, 6)):
+        needle_cluster(c, rng, x, y, w, h)
 
 
 def fallen_cedar(c, _kit):
@@ -703,7 +723,8 @@ PIECES: Dict[str, Piece] = {
     "village_notice_board": Piece((2186, 660, 2294, 768), notice_board),
     "village_watch_house": Piece((2440, 310, 2816, 768), watch_house),
     # ninja_village_forest
-    **{f"village_cedar_{i}": Piece((branch_at(i)[0] - 40, branch_at(i)[1] - 300, branch_at(i)[0] + BRANCH_W + 80, FOREST_FLOOR), cedar(i)) for i in range(BRANCHES)},
+    **{f"village_cedar_{i}": Piece((branch_at(i)[0] - 40, branch_at(i)[1] - 300, branch_at(i)[0] + BRANCH_W + 80, FOREST_FLOOR), cedar(i)) for i in range(BRANCHES - 1)},
+    "village_cedar_5": Piece((1880, 468, 2584, FOREST_FLOOR), cedar(5)),
     "forest_fallen_cedar": Piece((824, 576, 1472, FOREST_FLOOR), fallen_cedar),
     "village_clan_gatehouse": Piece((2590, 590, 2816, 832), clan_gatehouse),
     # ninja_village_dojo
