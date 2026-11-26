@@ -120,6 +120,15 @@ def gap(c, k):
         c.put(c.mask(lambda p: p.line([(x0 + dx + s * 0.3, f + dy - 4), (x0 + dx + s * 0.3, f + dy - 4 - s * 0.8)], 1.0)), GREY, 0.6)
 
 
+def transfer_step(c, k):
+    outline = [(0, 0), (96, 0), (86, 9), (70, 11), (58, 15), (39, 12), (28, 14), (10, 8)]
+    c.put(c.mask(lambda p: p.poly(outline)), VOID)
+    c.put(c.mask(lambda p: p.poly([(9, 3), (44, 3), (39, 12), (28, 14), (10, 8)])), DIM, 0.48)
+    c.put(c.mask(lambda p: p.poly([(53, 3), (92, 3), (86, 9), (70, 11), (58, 15)])), DIM, 0.7)
+    c.put(c.mask(lambda p: p.line(outline[1:] + outline[:1], 1.2)), GREY)
+    c.put(c.mask(lambda p: p.line(outline[:2], 2)), EDGE)
+
+
 SEAT_X, SEAT_WALK = 960, RING_FLOOR - 290
 
 
@@ -141,6 +150,7 @@ PIECES: Dict[str, Piece] = {
     "coliseum_stand_east": Piece((1880 - STAND_W - 10, STAND_TOP - 40, 1890, RING_FLOOR), stand_east),
     "ring_seat": Piece((SEAT_X - 70, SEAT_WALK - 212, SEAT_X + 70, SEAT_WALK), seat),
     "ledges_gap": Piece((GAP[0] - 44, ROOF_Y, GAP[1] + 44, WASTES_FLOOR + 64), gap),
+    "ledges_transfer_step": Piece((0, 0, 96, 16), transfer_step),
     "wastes_dead_things": Piece((300, WASTES_FLOOR - 340, 2420, WASTES_FLOOR), dead_things, px=1.5),
 }
 
