@@ -515,6 +515,48 @@ def cedar(i):
     return draw
 
 
+def fallen_cedar(c, _kit):
+    """Draw the fallen trunk and the crows' nest."""
+    ridge = [(880, 784), (936, 784), (1408, 640)]
+    trunk = c.mask(lambda p: p.poly(ridge + [
+        (1430, 651), (1380, 671), (1132, 756), (942, 820),
+        (889, 828), (869, 819), (880, 808),
+    ]))
+    c.put(trunk, BARK)
+    c.tone(trunk * (c.noise("fallen_cedar", 24, 6, 3) - 0.5), 0.3)
+    c.put(c.mask(lambda p: p.line(ridge, 3)), mix(BARK, (198, 160, 102), 0.55))
+    c.put(c.mask(lambda p: [
+        p.line([(890, 784 + drop), (942, 788 + drop), (1408, 640 + drop * 0.6)], 1.8)
+        for drop in (8, 16, 24, 32)
+    ]) * trunk, scale(BARK, 0.67))
+    c.put(c.mask(lambda p: p.poly([
+        (880, 784), (887, 792), (883, 803), (892, 816),
+        (881, 826), (869, 819), (880, 808),
+    ])), (167, 126, 83))
+    c.put(c.mask(lambda p: [
+        p.line([start, middle, end], 4)
+        for start, middle, end in (
+            ((889, 806), (860, 807), (836, 826)),
+            ((914, 811), (892, 831), (861, 829)),
+            ((1108, 758), (1120, 779), (1150, 791)),
+            ((1232, 711), (1258, 731), (1278, 725)),
+        )
+    ]), scale(BARK, 0.77))
+    rng = c.rand("fallen_cedar")
+    for x, y, w, h in ((1004, 790, 90, 21), (1157, 763, 55, 20), (1279, 729, 74, 25)):
+        needle_cluster(c, rng, x, y, w, h)
+
+    c.put(c.mask(lambda p: p.poly([
+        (1292, 611), (1320, 600), (1382, 601), (1402, 613),
+        (1380, 636), (1313, 636),
+    ])), scale(BARK, 0.8))
+    c.put(c.mask(lambda p: [
+        p.line([(x, y), (1338, 620), (end, y + 2)], 2)
+        for x, y, end in ((1295, 614, 1391), (1302, 621, 1394),
+                          (1311, 628, 1380), (1298, 607, 1379), (1305, 633, 1373))
+    ]), (172, 123, 72))
+
+
 def clan_gatehouse(c, k):
     """The gatehouse of the Shadow Clan's hall round its door (x 2700..2748):
     black-stained cedar, a roof of dark tiles, a dark curtain with a plain
@@ -635,6 +677,7 @@ PIECES: Dict[str, Piece] = {
     "village_watch_house": Piece((2440, 310, 2816, 768), watch_house),
     # ninja_village_forest
     **{f"village_cedar_{i}": Piece((branch_at(i)[0] - 40, branch_at(i)[1] - 300, branch_at(i)[0] + BRANCH_W + 80, FOREST_FLOOR), cedar(i)) for i in range(BRANCHES)},
+    "forest_fallen_cedar": Piece((824, 576, 1472, FOREST_FLOOR), fallen_cedar),
     "village_clan_gatehouse": Piece((2590, 590, 2816, 832), clan_gatehouse),
     # ninja_village_dojo
     "village_dojo_entry": Piece((16, 32, 528, 512), dojo_entry),
