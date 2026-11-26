@@ -572,8 +572,7 @@ def livery_room(c, k):
 
 
 def refinery_tanks(c, k):
-    """The tank farm on the lower terrace (y 704, x 800..1280) and the pipe
-    rack's catwalk over it (y 576, x 880..1200)."""
+    """Draw the tanks and the walkway to the upper road."""
     g = 704
     tank(c, 812, 960, 470, g, (178, 170, 156), "tank_a")
     tank(c, 1110, 1270, 440, g, (196, 186, 166), "tank_b")
@@ -582,10 +581,17 @@ def refinery_tanks(c, k):
         girder(c, x, 576, g)
     x_brace(c, 884, 1040, 590, g - 6)
     x_brace(c, 1040, 1196, 590, g - 6)
+    supports = ((1196, g), (1280, g), (1376, 666), (1472, 628), (1568, 589))
+    for x, foot in supports[1:]:
+        girder(c, x, 576, foot)
+    c.put(c.mask(lambda p: [
+        p.line([(left, 582), (right, foot - 4)], 3)
+        for (left, _), (right, foot) in zip(supports, supports[1:])
+    ]), STEEL_DARK)
     for y, r, col in ((600, 5, STEEL), (616, 4, (170, 120, 60)), (630, 6, (90, 120, 140))):
         pipe(c, [(790, y), (1290, y)], r, col)
     pipe(c, [(960, 650), (1000, 650), (1000, 560), (1110, 560)], 4, (170, 120, 60))
-    grating(c, 880, 1200, 576)
+    grating(c, 880, 1600, 576)
     # A valve wheel and a gauge.
     c.put(c.mask(lambda p: p.ring(1040, 642, 7, 1.6)), (190, 40, 30))
     c.put(c.mask(lambda p: p.ellipse(950, 616, 5)), (236, 230, 216))
@@ -616,8 +622,6 @@ def cracking_tower(c, k):
     x_brace(c, 1904, 1996, 330, 440)
     grating(c, 1696, 1904, 448)
     grating(c, 1824, 2000, 320)
-    # A ladder up the column (art only: the platforms are the walk).
-    c.put(c.mask(lambda p: ([p.rect(1898, 120, 1900, g), p.rect(1910, 120, 1912, g)], [p.rect(1898, y, 1912, y + 1.4) for y in np.arange(124, g, 10)])), STEEL_DARK)
     pipe(c, [(1846, 520), (1720, 520), (1720, g)], 5, (170, 120, 60))
     c.put(c.mask(lambda p: [p.poly([(x, 572), (x + 10, 572), (x + 5, 566)]) for x in np.arange(1680, 2040, 20)]), HAZARD, 0.8)
 
@@ -731,7 +735,7 @@ PIECES: Dict[str, Piece] = {
     # frontier_livery
     "frontier_livery_room": Piece((16, 32, 1104, 512), livery_room),
     # frontier_refinery
-    "frontier_refinery_tanks": Piece((780, 420, 1300, 704), refinery_tanks),
+    "frontier_refinery_tanks": Piece((780, 420, 1600, 704), refinery_tanks),
     "frontier_cracking_tower": Piece((1660, 0, 2040, 576), cracking_tower),
     # frontier_ore_corral (and the hall's copy)
     "frontier_corral_west": Piece((16, 300, 400, 576), corral_west),
