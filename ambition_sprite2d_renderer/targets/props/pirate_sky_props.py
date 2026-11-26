@@ -32,6 +32,7 @@ from .pirate_port_props import HULL, HULL_BAND, HULL_DARK, PAL, PLANK, PLANK_DAR
 W, DECK = 1280, 720
 PERCH = (80, 272, 480)
 NEST = (960, 1152, 384)
+RIGGING_WALK = ((240, 480), (272, 480), (960, 384), (992, 384))
 DOOR = (592, 688)
 MAST_X = 1056
 BRASS = (206, 160, 76)
@@ -43,6 +44,25 @@ def barrel(c, x, ground, w=30, h=40):
     c.put(m, PLANK)
     c.put(c.mask(lambda p: [p.rect(x - w / 2, y, x + w / 2, y + 2.4) for y in (ground - h + 7, ground - 9)]) * m, IRON)
     c.tone(m * np.clip((c.x - x) / (w / 2), -1, 1), -0.25)
+
+
+def rigging_walk(c):
+    """Draw the walk between the perch and the nest."""
+    _, (left, low), (right, high), _ = RIGGING_WALK
+    c.put(c.mask(lambda p: p.poly([*RIGGING_WALK, *[(x, y + 11) for x, y in reversed(RIGGING_WALK)]])), PLANK)
+    c.put(c.mask(lambda p: p.line(RIGGING_WALK, 2)), PLANK_LIGHT)
+    for x in range(left, right, 16):
+        y = low + (high - low) * (x - left) / (right - left)
+        c.put(c.mask(lambda p: p.rect(x, y + 2, x + 1, y + 10)), PLANK_DARK)
+    posts = [(left + offset, low + (high - low) * offset / (right - left)) for offset in (36, 196, 356, 516, 676)]
+    for x, y in posts:
+        c.put(c.mask(lambda p: p.rect(x, y - 23, x + 3, y + 4)), TIMBER)
+    for (ax, ay), (bx, by) in zip(posts, posts[1:]):
+        c.put(c.mask(lambda p: p.line(sag((ax, ay - 23), (bx, by - 23), 9), 1.5)), ROPE)
+    c.put(c.mask(lambda p: (
+        p.line([(180, 465), (left + 12, 460)], 2.3),
+        p.line([(right - 12, 368), (1040, 355)], 2.3),
+    )), ROPE)
 
 
 def deck(c, k):
@@ -82,6 +102,7 @@ def deck(c, k):
     c.put(c.mask(lambda p: (p.ring(wx, wy, 26, 4), p.ellipse(wx, wy, 6))), PLANK)
     c.put(c.mask(lambda p: [p.line([(wx + 10 * math.cos(t), wy + 10 * math.sin(t)), (wx + 38 * math.cos(t), wy + 38 * math.sin(t))], 3.4) for t in np.linspace(0, 2 * math.pi, 8, endpoint=False)]), PLANK_LIGHT)
     c.put(c.mask(lambda p: [p.ellipse(wx + 40 * math.cos(t), wy + 40 * math.sin(t), 3.6) for t in np.linspace(0, 2 * math.pi, 8, endpoint=False)]), PLANK)
+    rigging_walk(c)
     # The rail round the deck, on stanchions, the gap at the companionway.
     d0, d1 = DOOR
     b = Batch(c)
@@ -117,7 +138,7 @@ def deck(c, k):
     c.put(c.mask(lambda p: p.ellipse(cx + 27, g - 93, 12, 12)), TAR)
     c.put(c.mask(lambda p: (p.rect(cx - 44, g - 26, cx + 20, g - 6), p.ellipse(cx - 32, g - 8, 9), p.ellipse(cx + 8, g - 8, 9))), PLANK_DARK)
     c.put(c.mask(lambda p: [p.ellipse(x, y, 8) for x, y in ((1110, g - 8), (1128, g - 8), (1119, g - 22))]), IRON)
-    for x in (300, 470, 494):
+    for x in (338, 470, 494):
         barrel(c, x, g)
 
 
