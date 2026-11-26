@@ -21,6 +21,7 @@ import numpy as np
 
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
+from .pirate_port_props import deck_edge, planks, post, rope_line, sag
 from .primeval_props import BONE, LEAF, LEAF_LIGHT, MOSS, PAL, TEMPLE_LIGHT, blocks, fern
 
 
@@ -111,7 +112,33 @@ def ranger_hut(c, k):
     c.put(c.mask(lambda p: [p.ellipse(x, g - 24, 7) for x in (156, 168, 180)]), (100, 70, 40))
 
 
+TRAILHEAD_FLOOR = 480
+SURVEY_WALK = (1040, 1456, 384)
+SURVEY_STEPS = ((1024, 1104, 432), (1424, 1536, 432))
+
+
+def survey_walk(c, k):
+    """Draw the ranger's survey walk and its two steps."""
+    left, right, top = SURVEY_WALK
+    wood = (99, 77, 48)
+    for x in (1056, 1170, 1290, 1436):
+        post(c, x, top + 8, TRAILHEAD_FLOOR, 8, wood)
+        c.put(c.mask(lambda p: p.line([(x, top + 43), (x + 22, top + 12)], 4.5)), wood)
+    for x in (1200, 1276, 1352, 1428):
+        post(c, x, top - 21, top, 4, wood)
+    for x in (1200, 1276, 1352):
+        rope_line(c, sag((x, top - 19), (x + 76, top - 19), 5), 2, (154, 123, 78))
+    planks(c, k, left, top, right, top + 14, wood, step=10, vertical=True, tag="survey_walk")
+    deck_edge(c, left, right, top, (165, 141, 87))
+    for left, right, top in SURVEY_STEPS:
+        for x in (left + 7, right - 8):
+            post(c, x, top + 8, TRAILHEAD_FLOOR, 6, wood)
+        planks(c, k, left, top, right, top + 10, wood, step=9, vertical=True, tag=("survey_step", left))
+        deck_edge(c, left, right, top, (165, 141, 87))
+
+
 PIECES: Dict[str, Piece] = {
+    "jungle_survey_walk": Piece((1016, 352, 1544, TRAILHEAD_FLOOR), survey_walk),
     "jungle_ranger_hut": Piece((0, 0, 220, 150), ranger_hut),
     "jungle_fern_clump": Piece((0, 0, 230, 120), fern_clump),
     "jungle_fallen_log": Piece((0, 0, 260, 60), fallen_log),
