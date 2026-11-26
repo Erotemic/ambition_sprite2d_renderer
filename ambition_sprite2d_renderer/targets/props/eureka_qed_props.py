@@ -19,13 +19,11 @@ walk lines that the room places:
   portraits.
 - `qed_studio`: the set. The painted backdrop of Eureka and its tether
   behind the anchor desk (y 584, x 780..960), two pedestal cameras with
-  teleprompters, the lighting grid (y 340, x 600..1580; its ladder at x
-  600..632) with its lamps on the desk, the ON AIR light, and the
+  teleprompters, the lighting grid and its lamps, the ON AIR light, and the
   demonstration area: a Van de Graaff generator, the lab bench (y 592, x
   1320..1520) and a board that says what one horsepower is.
-- `qed_production`: the production room behind its partition: a wall of
-  monitors, the vision mixer (y 600, x 1700..1940), and the weather centre's
-  green wall.
+- `qed_production`: the monitor wall and its service walk, the vision mixer
+  (y 600, x 1700..1940), and the weather centre's green wall.
 
 Animations: ``idle``, 1 frame each. No drop shadows.
 """
@@ -53,7 +51,7 @@ DESK = (180, 330, 600)
 COUCH = (440, 560, 608)
 ANCHOR_DESK = (780, 960, 584)
 GRID = (600, 1580, 340)
-LADDER = (600, 632)
+PRODUCTION_WALK = (1616, 2000, 400)
 BENCH = (1320, 1520, 592)
 CONSOLE = (1700, 1940, 600)
 PARTITION = 1600
@@ -311,7 +309,7 @@ def studio(c, k):
     magnet(c, (a0 + a1) / 2, ay + 26, 9)
     c.put(c.mask(lambda p: (p.rect(a0 + 40, ay - 3, a0 + 70, ay), p.rect(a1 - 50, ay - 14, a1 - 48, ay))), (236, 232, 220))
     c.put(c.mask(lambda p: p.ellipse(a1 - 49, ay - 16, 3)), INK)
-    # The lighting grid, its lamps on the desk and on the bench, its ladder.
+    # The lighting grid and its lamps.
     g0, g1, gy = GRID
     c.put(c.mask(lambda p: (p.rect(g0, gy, g1, gy + 4), p.rect(g0, gy + 14, g1, gy + 17),
                              [p.line([(x, gy + 4), (x + 12, gy + 14), (x + 24, gy + 4)], 1.2) for x in range(g0, g1 - 20, 24)])), CHROME_DARK)
@@ -319,8 +317,7 @@ def studio(c, k):
     c.put(c.mask(lambda p: [p.rect(x - 1, CEILING, x + 1, gy) for x in (g0 + 200, g0 + 600, g1 - 20)]), CHROME_DARK)
     for lx, ax in ((720, 840), (820, 880), (1000, 900), (1380, 1420), (1480, 1420)):
         fresnel(c, lx, gy + 17, ax, ANCHOR_DESK[2] if ax < 1200 else BENCH[2])
-    l0, l1 = LADDER
-    c.put(c.mask(lambda p: (p.rect(l0, gy, l0 + 3, FLOOR), p.rect(l1 - 3, gy, l1, FLOOR), [p.rect(l0, y, l1, y + 2.5) for y in range(gy + 14, FLOOR, 20)])), CHROME)
+    c.put(c.mask(box(g1 - 12, gy + 2, g1, gy + 9)), WARM)
     # The ON AIR light, hung from the ceiling over the set.
     c.put(c.mask(lambda p: [p.rect(x, CEILING, x + 1, 92) for x in (856, 904)]), CHROME_DARK)
     on_air(c, 880, 104, w=70, h=24)
@@ -405,6 +402,15 @@ def production(c, k):
         for i, show in enumerate(row):
             monitor(c, 1660 + i * 74, 220 + r * 58, 64, 48, show)
     c.put(c.mask(box(1660 - 6, 212, 1660 + 4 * 74, 216)), INK)
+    # The walk sits below the monitor wall. Its east opening has a ladder.
+    left, right, top = PRODUCTION_WALK
+    c.put(c.mask(lambda p: [p.line([(x - 14, top + 8), (x + 6, top + 43), (x + 6, top + 8)], 4)
+                           for x in (left + 27, left + 165, 1988)]), CHROME_DARK)
+    c.put(c.mask(box(left, top, right, top + 12)), CHROME_DARK)
+    c.put(c.mask(box(left, top, right, top + 2)), CHROME)
+    c.put(c.mask(lambda p: [p.ellipse(x, top + 7, 1.4) for x in range(left + 10, right, 16)]), CHROME)
+    c.put(c.mask(lambda p: (p.rect(left, top + 2, left + 12, top + 9),
+                           p.rect(1944, top + 2, 1992, top + 9))), WARM)
     # The vision mixer: a long sloped desk of faders and lit buttons, two chairs.
     m0, m1, my = CONSOLE
     c.put(c.mask(lambda p: p.poly([(m0, my), (m1, my), (m1 + 8, FLOOR), (m0 - 8, FLOOR)])), (76, 80, 90))
