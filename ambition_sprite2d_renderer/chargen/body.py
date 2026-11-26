@@ -118,21 +118,27 @@ def build(spec: CharacterSpec) -> Figure:
                                                                                                          "rabbit": 1.05}.get(species, 1.0) * P.neck_r
     chest_rx = 15.2 * k * b.chest * (0.91 if female else 1.0) * P.torso
     chest_rx = min(chest_rx, sh_hw + 1.0 * k)
-    chest_rzf = 10.2 * k * b.chest * (0.95 if female else 1.0)
+    # The male chest is a shallow, broad plane, not a forward peak.
+    # The female rib cage also has a shallow profile; the bust is separate.
+    chest_rzf = (9.35 if female else 9.45) * k * b.chest
     chest_rzb = 9.6 * k * b.chest
-    waist_rx = (13.0 * k * b.waist * (0.86 if female else 1.0) + 2.0 * k * b.belly) * P.torso
+    waist_rx = (13.2 * k * b.waist * (0.86 if female else 1.0) + 2.0 * k * b.belly) * P.torso
     waist_rzf = 8.8 * k * b.waist + 4.5 * k * b.belly
     hip_rx = 15.6 * k * b.hips * (1.08 if female else 1.0) * P.torso
     hip_rzf = 9.4 * k * b.hips + 2.5 * k * b.belly
     hip_rzb = 10.4 * k * b.hips * (1.07 if female else 1.0)
     shoulder_cap = sh_hw + 2.2 * k * limbs
+    # Keep the shoulder width and the joint positions. Use the actual chest
+    # width for the taper through the lower ribs.
+    chest_rx = max(chest_rx, shoulder_cap - 2.8 * k)
+    chest_sq = 2.45 if female else 2.85
     torso_keys = [
         RingKey(y_nb - 0.5, neck_r + 1.2, neck_r + 0.4, neck_r + 1.2, 0.0, -1.0 * k, 2.0),
         RingKey(y_sh - 2.2 * k, sh_hw * 0.74, 7.4 * k, 7.9 * k, 0.0, -1.0 * k, 2.3),
         RingKey(y_sh + 0.6 * k, sh_hw * 0.98, 8.8 * k * b.chest, 8.6 * k * b.chest, 0.0, -0.7 * k, 2.8),
         RingKey(y_sh + 3.2 * k, shoulder_cap, 9.4 * k * b.chest, 9.0 * k * b.chest, 0.0, -0.5 * k, 2.8),
-        RingKey(fig.y_chest, max(chest_rx, shoulder_cap - 2.8 * k), chest_rzf, chest_rzb, 0.0, 0.0, 2.6),
-        RingKey(fig.y_under, (chest_rx + waist_rx) / 2, (chest_rzf + waist_rzf) / 2, (chest_rzb + 8.6 * k) / 2, 0.0, 0.0, 2.5),
+        RingKey(fig.y_chest, chest_rx, chest_rzf, chest_rzb, 0.0, -0.15 * k, chest_sq),
+        RingKey(fig.y_under, 0.58 * chest_rx + 0.42 * waist_rx, 0.56 * chest_rzf + 0.44 * waist_rzf, (chest_rzb + 8.6 * k) / 2, 0.0, 0.0, 0.5 * (chest_sq + 2.3)),
         RingKey(fig.y_waist, waist_rx, waist_rzf, 8.6 * k + 0.8 * k * b.belly, 0.0, 0.2 * k * b.belly, 2.3),
         RingKey(fig.y_hipw, hip_rx, hip_rzf, hip_rzb, 0.0, 0.0, 2.4),
         RingKey(fig.y_crotch, hip_rx * 0.9, hip_rzf * 0.88, hip_rzb * 0.86, 0.0, 0.0, 2.2),
@@ -143,15 +149,14 @@ def build(spec: CharacterSpec) -> Figure:
             return 4.2 * _k * _b * gauss(y, _y, 0.22 * _T) * gauss(wrap180(alpha), 0.0, 55.0)
         bumps.append(belly)
     if female and b.bust > 0.0:
-        # The bust point is high on the chest, a third of the way from the
-        # base of the neck to the waist: a long slope down from the
-        # collarbone to it, and a rounder fall under it.
-        def bust(alpha: float, y: float, _b=b.bust, _k=k, _y=fig.y_nb + 0.34 * (fig.y_waist - fig.y_nb), _T=T) -> float:
+        # The bust has a gradual slope from the collarbone and into the ribs.
+        # A wide angular profile gives one continuous surface in oblique views.
+        def bust(alpha: float, y: float, _b=b.bust, _k=k, _y=fig.y_chest + 0.025 * T, _T=T) -> float:
             al = wrap180(alpha)
-            fall = gauss(y, _y, (0.14 if y < _y else 0.075) * _T)
-            return 3.0 * _k * _b * fall * (gauss(al, 28.0, 22.0) + gauss(al, -28.0, 22.0))
+            fall = gauss(y, _y, (0.17 if y < _y else 0.115) * _T)
+            return 3.0 * _k * _b * fall * (gauss(al, 28.0, 26.0) + gauss(al, -28.0, 26.0))
         bumps.append(bust)
-    fig.torso = Loft(torso_keys, bumps)
+    fig.torso = Loft(torso_keys, bumps, shape_preserving=True)
 
     # ---- neck and head -----------------------------------------------------------------
     fig.skull = skull_loft(fig.model)

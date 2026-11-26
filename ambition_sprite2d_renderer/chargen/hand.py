@@ -104,12 +104,14 @@ def draw_hand_model(ctx: Ctx, side: str, frame, grip: Vec3, k: float, shape: str
     def world(p: Sequence[float]) -> Vec3:
         return add3(O, add3(scale3(u, float(p[0]) * s), add3(scale3(V, float(p[1]) * s), scale3(w, float(p[2]) * s))))
 
-    # The turn about the grip, as before (``draw.draw_hand``).
+    # Match the side-view held-item angle only in turned views, as in
+    # ``draw.draw_hand``. In axial views the grip points into or out of
+    # the screen; rotating that foreshortened axis twists the fist sideways.
     gp = ctx.p(grip)
     ax = ctx.p(add3(grip, v))
     ax = (ax[0] - gp[0], ax[1] - gp[1])
     turn = 0.0
-    if turn_to is not None and math.hypot(*ax) > 0.3:
+    if turn_to is not None and abs(ctx.view.s) > 0.5 and math.hypot(*ax) > 0.3:
         turn = -turn_to - math.degrees(math.atan2(ax[1], ax[0]))
         turn = (turn + 180.0) % 360.0 - 180.0
     cs, sn = math.cos(math.radians(turn)), math.sin(math.radians(turn))

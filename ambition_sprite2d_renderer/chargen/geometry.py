@@ -165,6 +165,32 @@ def catmull(p0: float, p1: float, p2: float, p3: float, t: float) -> float:
     return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
 
 
+def monotone_segment(x0: float, x1: float, x2: float, x3: float,
+                     y0: float, y1: float, y2: float, y3: float, t: float) -> float:
+    """A cubic Hermite segment with slopes in physical height units.
+
+    Use the weighted harmonic mean of the adjacent secants. At an extremum
+    the slope is zero. Repeated end keys use the one-sided secant. Thus a
+    nonuniform sequence of sections has continuous tangents and no overshoot.
+    """
+    h0, h1, h2 = x1 - x0, x2 - x1, x3 - x2
+    if h1 <= 0.0:
+        return y1
+    d1 = (y2 - y1) / h1
+
+    def slope(ha: float, hb: float, da: float, db: float) -> float:
+        if da * db <= 0.0:
+            return 0.0
+        w1, w2 = 2.0 * hb + ha, hb + 2.0 * ha
+        return (w1 + w2) / (w1 / da + w2 / db)
+
+    m1 = slope(h0, h1, (y1 - y0) / h0, d1) if h0 > 0.0 else d1
+    m2 = slope(h1, h2, d1, (y3 - y2) / h2) if h2 > 0.0 else d1
+    t2, t3 = t * t, t * t * t
+    return ((2.0 * t3 - 3.0 * t2 + 1.0) * y1 + (t3 - 2.0 * t2 + t) * h1 * m1
+            + (-2.0 * t3 + 3.0 * t2) * y2 + (t3 - t2) * h1 * m2)
+
+
 # ---- lofts --------------------------------------------------------------------
 
 
@@ -192,6 +218,8 @@ class Loft:
 
     keys: List[RingKey]
     bumps: List[Bump] = field(default_factory=list)
+    #: Use height-aware, shape-preserving interpolation for authored profiles.
+    shape_preserving: bool = False
 
     def __post_init__(self) -> None:
         self.keys = sorted(self.keys, key=lambda k: k.y)
@@ -211,10 +239,10 @@ class Loft:
         if cap_top and self.keys[0].rx < 1e-6:
             k0 = self.keys[0]
             keys[0] = RingKey(k0.y - t, 0.0, 0.0, 0.0, k0.cl, k0.cz, k0.sq)
-        return Loft(keys, list(self.bumps) if bumps else [])
+        return Loft(keys, list(self.bumps) if bumps else [], shape_preserving=self.shape_preserving)
 
     def section(self, y: float) -> RingKey:
-        """The cross-section at ``y`` (Catmull-Rom between keys)."""
+        """The cross-section at ``y`` (interpolate between keys)."""
         ks = self.keys
         if y <= ks[0].y:
             return ks[0]
@@ -234,7 +262,10 @@ class Loft:
         def ch(a: float, b: float, c: float, d: float) -> float:
             # No overshoot past the two keys it lies between: a ring never
             # bulges past the sections an author gave.
-            v = catmull(a, b, c, d, t)
+            if self.shape_preserving:
+                v = monotone_segment(k0.y, k1.y, k2.y, k3.y, a, b, c, d, t)
+            else:
+                v = catmull(a, b, c, d, t)
             return min(max(b, c), max(min(b, c), v))
 
         return RingKey(

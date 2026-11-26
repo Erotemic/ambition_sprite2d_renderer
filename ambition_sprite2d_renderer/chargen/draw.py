@@ -16,8 +16,9 @@ A view is drawn in the style of the spec's family (``family.py``,
 
 The hands are held-item ready: the part ``near_hand`` (``far_hand``) rides a
 grip bone whose pivot is the middle of the fist, and the fist is drawn so
-that, unturned, an item through it points forward and 24 degrees up: the
-contract of the game's posed hand (``posed_hand.rs``, ``ITEM_REST_ANGLE``).
+that, unturned in a side or oblique view, an item through it points forward
+and 24 degrees up: the contract of the game's posed hand (``posed_hand.rs``,
+``ITEM_REST_ANGLE``). Front and back views retain the foreshortened grip.
 """
 
 from __future__ import annotations
@@ -115,15 +116,16 @@ def draw_hand(ctx: Ctx, side: str, shape: str = "") -> List:
         for ang in range(0, 360, 45):
             r = math.radians(ang)
             pts3.append(add3(c, add3(scale3(v, half_v * k * math.cos(r)), scale3(w, half_w * k * math.sin(r)))))
-    # In this view the fist's grip axis must lie exactly ITEM_REST_ANGLE above
-    # forward on screen (the game's contract); turn the drawing about the
-    # grip to make it so.
+    # In the side and oblique views, align the grip axis with the game's
+    # screen-space item angle. In an axial view, forward points into or out
+    # of the screen. Keep the projected hand instead of rotating that
+    # foreshortened axis sideways. The grip point does not move.
     g = grip_point(fig, side)
     gp = ctx.p(g)
     ax = ctx.p(add3(g, v))
     ax = (ax[0] - gp[0], ax[1] - gp[1])
     turn = 0.0
-    if math.hypot(*ax) > 0.3:
+    if abs(ctx.view.s) > 0.5 and math.hypot(*ax) > 0.3:
         turn = -ITEM_REST_ANGLE - math.degrees(math.atan2(ax[1], ax[0]))
         turn = (turn + 180.0) % 360.0 - 180.0
     cs, sn = math.cos(math.radians(turn)), math.sin(math.radians(turn))

@@ -16,6 +16,7 @@ through the rigid skirt.
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from .body import Figure
@@ -65,16 +66,44 @@ def neckline(fig: Figure, kind: str):
     return m
 
 
-def opening(fig: Figure, half: float, lapel: float):
-    """Covered away from a front opening of ``half`` degrees, wider by
-    ``lapel`` at the neck (a V down to the chest)."""
-    T = fig.T
+def opening_edge(fig: Figure, shell: Loft, half: float, lapel: float):
+    """The edge of an open garment in surface angles.
 
-    def m(alpha: float, y: float) -> float:
-        w = half + lapel * (1.0 - smoothstep(fig.y_nb, fig.y_chest + 0.12 * T, y))
-        return (abs(wrap180(alpha)) - w) * 0.2
+    Size the opening in centimetres on the body, not in angles on each ring.
+    The old constant angle made the placket bulge at the chest and narrow at
+    the waist. Use a straight lower placket and a tapered opening at the neck.
+    ``half`` and ``lapel`` select the width from the reference body sections.
+    """
+    waist = fig.torso.section(fig.y_belt)
+    neck = fig.torso.section(fig.y_nb)
+    lower = waist.rx * math.sin(math.radians(half)) ** (2.0 / waist.sq)
+    upper = max(lower, neck.rx * math.sin(math.radians(half + lapel)) ** (2.0 / neck.sq)
+                + 0.055 * fig.k * lapel)
+    end = fig.y_chest + 0.12 * fig.T
 
-    return m
+    @lru_cache(maxsize=512)
+    def angle(y: float, inset: float = 0.0) -> float:
+        width = lerp(upper, lower, smoothstep(fig.y_nb, end, y)) + inset
+        if width <= 0.0:
+            return 0.0
+        # Find the lateral coordinate on this shell, including body bumps.
+        # One solve per height; margin samples reuse the result.
+        lo, hi = 0.0, 90.0
+        center = shell.section(y).cl
+        for _ in range(15):
+            mid = (lo + hi) / 2.0
+            if shell.point(mid, y)[0] - center < width:
+                lo = mid
+            else:
+                hi = mid
+        return (lo + hi) / 2.0
+
+    return angle
+
+
+def opening(edge):
+    """Covered away from the opening on the front of a garment."""
+    return lambda a, y: (abs(wrap180(a)) - edge(y)) * 0.2
 
 
 def skirt_loft(fig: Figure, y_top: float, hem: float, t: float, flare: float) -> Loft:
@@ -301,6 +330,7 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     pt = ctx.new()
     out: List[Part] = []
     lower_margin = None
+    open_lower = False
     if o.outer == "apron":
         bib = fig.y_chest - 0.04 * T
 
@@ -334,21 +364,16 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         half, lapel = {"vest": (6.0, 30.0), "jacket": (9.0, 22.0), "coat": (10.0, 24.0), "cardigan": (11.0, 16.0)}[o.outer]
         if not o.outer_open and o.outer != "vest":
             half, lapel = 0.0, 18.0 if o.outer != "cardigan" else 12.0
-        shaded_region(ctx, pt, shell, top, torso_bottom, col, opening(fig, half, lapel), lit=True)
+        edge = opening_edge(fig, shell, half, lapel)
+        shaded_region(ctx, pt, shell, top, torso_bottom, col, opening(edge), lit=True)
         if o.outer in ("jacket", "coat") and lapel:
-            for sgn in (-1.0, 1.0):
-                pts = [(sgn * (half + lapel * (1.0 - smoothstep(fig.y_nb, fig.y_chest + 0.12 * T, y)) + 7.0), y)
-                       for y in (fig.y_nb + 0.5 + i * (fig.y_chest + 0.1 * T - fig.y_nb) / 6.0 for i in range(7))]
-                for run in surface_line(ctx, shell, pts, out=0.15):
-                    pt.line(run, INK, FINE)
+            _lapels(ctx, pt, shell, edge, col)
         if not o.outer_open and o.outer != "vest":
             _buttons(ctx, pt, shell, [3.0], fig.y_chest, torso_bottom - 0.06 * T, 4 if o.outer != "cardigan" else 5, light(col, 0.35))
         elif o.outer in ("vest", "cardigan"):
             _buttons(ctx, pt, shell, [-(half + 2.5)], fig.y_chest + 0.05 * T, torso_bottom - 0.04 * T, 4, light(col, 0.4))
         open_lower = (o.outer_open or o.outer == "vest") and o.outer != "robe"
-        if open_lower:
-            hw = 6.0 if o.outer == "vest" else 11.0
-            lower_margin = lambda a, y, _w=hw: (abs(wrap180(a)) - _w) * 0.2  # noqa: E731
+        # The lower panels use the same opening width as the torso.
     out.append(Part("torso__outer", "torso", 33.0, pt.els, "Outer", feature=feature))
     if o.outer in ("jacket", "coat", "robe", "cardigan", "field_jacket"):
         out += sleeve_parts(ctx, "outer", feature, 0.97 if o.outer == "robe" else 1.0, 1.0 + (0.9 if o.outer == "robe" else 0.0), col, zmap,
@@ -358,6 +383,8 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         if o.outer != "apron":
             flare += 0.55 * o.outer_flare
         lo = skirt_loft(fig, fig.y_belt, hem, t + 0.6, flare)
+        if open_lower:
+            lower_margin = opening(opening_edge(fig, lo, half, 0.0))
 
         def extra(p: Paint, side: str) -> None:
             if o.outer == "robe":
@@ -369,6 +396,32 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
                           solid=o.outer != "apron")
         out += drape_parts(ctx, "outer", feature, zmap)
     return out
+
+
+def _lapels(ctx: Ctx, pt: Paint, shell: Loft, edge, color: str) -> None:
+    """Draw a folded facing with a wider upper end and a tapered point.
+
+    Measure the facing from the opening in centimetres. Both edges follow
+    the same surface instead of tracing separate, unrelated curves.
+    """
+    fig = ctx.fig
+    top, bottom = fig.y_nb + 0.4, fig.y_chest + 0.12 * fig.T
+    peak = fig.y_sh + 0.055 * fig.T
+
+    def inset(y: float) -> float:
+        if y < peak:
+            return lerp(0.8, 2.7, smoothstep(top, peak, y)) * fig.k
+        return 2.7 * fig.k * (1.0 - smoothstep(peak, bottom, y))
+
+    def facing(a: float, y: float) -> float:
+        al = abs(wrap180(a))
+        return min(al - edge(y), edge(y, inset(y)) - al) * 0.2
+
+    pt.flat(loft_region(ctx.view, shell, top, bottom, facing), shade(color, 0.09))
+    for sign in (-1.0, 1.0):
+        ys = [lerp(top, bottom, i / 12.0) for i in range(13)]
+        for run in surface_line(ctx, shell, [(sign * edge(y, inset(y)), y) for y in ys], out=0.10):
+            pt.line(run, shade(color, 0.45), FINE)
 
 
 def _box(alpha: float, half: float, y0: float, y1: float):
@@ -386,12 +439,13 @@ def _field_jacket(ctx: Ctx, pt: Paint, shell: Loft, bottom: float) -> None:
     col = o.outer_color
     button = o.accent_color
     half, lapel = (9.0, 18.0) if o.outer_open else (0.0, 9.0)
-    front = opening(fig, half, lapel)
+    edge = opening_edge(fig, shell, half, lapel)
+    front = opening(edge)
     shaded_region(ctx, pt, shell, fig.torso.top, bottom, col, front, lit=True)
     _collar(ctx, pt, shell, col)
     if o.outer_open:
         for sgn in (-1.0, 1.0):
-            pts = [(sgn * (half + lapel * (1.0 - smoothstep(fig.y_nb, fig.y_chest + 0.12 * T, y)) + 0.5), y)
+            pts = [(sgn * edge(y, 0.15 * fig.k), y)
                    for y in (lerp(fig.y_nb + 0.5, bottom - 0.5, i / 8.0) for i in range(9))]
             for run in surface_line(ctx, shell, pts, out=0.15):
                 pt.line(run, INK, FINE)
