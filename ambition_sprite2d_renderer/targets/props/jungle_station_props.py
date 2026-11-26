@@ -5,9 +5,8 @@ Drawn in room coordinates (`_district_props`) on the numbers of
 `tools/ambition_ldtk_tools/specs/primeval/tar_pits.py` (`ranger_station`):
 the floor (y 448), the ceiling (to y 32), the door out (x 40).
 
-- `ranger_station_room`: plank walls under a thatch; the door out; the
-  trail's big map (the dotted way from the gate past the run, the rookery,
-  the ridge and the canopy to the tar pits and the mountain); the radio on
+- `ranger_station_room`: plank walls under a thatch; the door out; a
+  map of the trails above and below the ridge; the radio on
   its desk, its microphone and a lamp; specimen shelves (jars of ferns, of
   eggs, and of small things, very annoyed); a cot; the
   lost-property box (one boot, a monocle, an umbrella); a coat peg.
@@ -17,14 +16,12 @@ Animations: ``idle``, 1 frame. No drop shadows.
 
 from __future__ import annotations
 
-import math
 from typing import Dict
 
-import numpy as np
-
 from ._district_props import Piece, targets
-from ._town_kit import box, mix, scale
-from .primeval_props import LEAF, LEAF_LIGHT, PAL
+from ._town_kit import box, scale
+from .castle_godwin import lettering
+from .primeval_props import LEAF_LIGHT, PAL
 
 W, FLOOR, CEIL = 1024, 448, 32
 WOOD = (128, 92, 58)
@@ -36,8 +33,43 @@ GLASS = (200, 226, 220)
 INK = (60, 50, 40)
 
 
+def trail_map(c):
+    """Show the known paths from the station. Omit hidden passages."""
+    c.put(c.mask(box(326, 75, 670, 242)), WOOD_DARK)
+    c.put(c.mask(box(330, 79, 666, 238)), PAPER)
+    c.put(c.mask(lambda p: [
+        p.ellipse(x, y, 1.8) for x in (335, 661) for y in (84, 233)
+    ]), WOOD)
+    trailhead, run, rookery, ridge = (370, 160), (420, 160), (495, 160), (569, 160)
+    treetops, canopy, mountain = (457, 119), (569, 119), (633, 119)
+    fossil_beds, tar_pits = (513, 213), (624, 213)
+    lower_ink = (143, 80, 31)
+    upper_ink = (44, 104, 86)
+    trail_ink = (135, 50, 38)
+    c.put(c.mask(lambda p: p.line([trailhead, run, rookery, ridge], 2.4)), trail_ink)
+    c.put(c.mask(lambda p: (
+        p.line([run, (420, 119), treetops, (495, 119), rookery], 2.4),
+        p.line([ridge, canopy, mountain], 2.4),
+    )), upper_ink)
+    c.put(c.mask(lambda p: p.line([ridge, fossil_beds, tar_pits, ridge], 2.4)), lower_ink)
+    c.put(c.mask(lambda p: p.ring(*trailhead, 8, 1.5)), trail_ink)
+    stops = (
+        (trailhead, "TRAILHEAD", (370, 138), trail_ink),
+        (run, "RUN", (420, 171), trail_ink),
+        (rookery, "ROOKERY", (495, 171), trail_ink),
+        (ridge, "RIDGE", (606, 153), trail_ink),
+        (treetops, "TREETOPS", (457, 104), upper_ink),
+        (canopy, "CANOPY", (569, 104), upper_ink),
+        (mountain, "MOUNTAIN", (633, 104), upper_ink),
+        (fossil_beds, "FOSSIL BEDS", (513, 221), lower_ink),
+        (tar_pits, "TAR PITS", (624, 221), lower_ink),
+    )
+    for (x, y), name, label, colour in stops:
+        c.put(c.mask(lambda p: p.ellipse(x, y, 3.8)), colour)
+        lettering(c, name, *label, 9, INK)
+
+
 def room(c, k):
-    rng = c.rand("station")
     wall = c.mask(box(16, CEIL, W - 16, FLOOR))
     c.put(wall, WOOD)
     c.put(wall * c.mask(lambda p: [p.rect(16, y, W - 16, y + 1.2) for y in range(CEIL + 20, FLOOR, 22)]), WOOD_DARK)
@@ -51,16 +83,7 @@ def room(c, k):
     c.put(c.mask(box(40, FLOOR - 96, 88, FLOOR)), (60, 44, 30))
     c.put(c.mask(lambda p: [p.rect(40, y, 88, y + 2) for y in (FLOOR - 70, FLOOR - 30)]), WOOD_DARK)
     c.put(c.mask(lambda p: p.ellipse(80, FLOOR - 50, 2.4)), (200, 170, 90))
-    # The trail's map: the dotted way, east from the gate to the mountain.
-    c.put(c.mask(box(380, 80, 660, 230)), PAPER)
-    c.put(c.mask(lambda p: p.rect(380, 80, 660, 84)), WOOD_DARK)
-    stops = [(400, 200), (440, 190), (480, 196), (520, 184), (560, 170), (600, 150), (640, 110)]
-    c.put(c.mask(lambda p: [p.ellipse(stops[i][0] + (stops[i + 1][0] - stops[i][0]) * t, stops[i][1] + (stops[i + 1][1] - stops[i][1]) * t, 1.3)
-                            for i in range(len(stops) - 1) for t in np.linspace(0, 1, 6)]), (150, 60, 50))
-    c.put(c.mask(lambda p: [p.ellipse(x, y, 4) for x, y in stops]), INK)
-    c.put(c.mask(lambda p: p.poly([(626, 120), (640, 96), (654, 120)])), (120, 110, 100))
-    c.put(c.mask(lambda p: p.ellipse(640, 94, 6, 3)), (230, 120, 50), 0.8)
-    c.put(c.mask(lambda p: [p.ellipse(560 + rng.uniform(-60, 80), 200 + rng.uniform(-20, 20), 6, 3) for _ in range(10)]), LEAF, 0.6)
+    trail_map(c)
     # The radio desk: the set, its dials, the microphone, a lamp.
     c.put(c.mask(lambda p: (p.rect(700, FLOOR - 44, 880, FLOOR - 38), p.rect(706, FLOOR - 38, 712, FLOOR), p.rect(868, FLOOR - 38, 874, FLOOR))), WOOD_DARK)
     c.put(c.mask(box(720, FLOOR - 96, 810, FLOOR - 44)), (70, 76, 70))
