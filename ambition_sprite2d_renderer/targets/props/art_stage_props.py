@@ -333,6 +333,36 @@ def _east_aisle(c, _kit):
         c.put(c.mask(box(x + 2, 631, x + 28, 633)), trim)
 
 
+def _backstage_costume_rig(c, _kit):
+    frame, brass = (76, 56, 66), (210, 151, 82)
+    for x in (966, 1186):
+        c.put(c.mask(box(x, 445, x + 7, 576)), frame)
+        c.put(c.mask(box(x + 2, 452, x + 4, 572)), brass)
+        c.put(c.mask(box(x - 4, 569, x + 11, 576)), frame)
+    for left, top, right in ((960, 448, 1200), (912, 512, 992), (1136, 512, 1200)):
+        c.put(c.mask(box(left, top + 2, right, top + 12)), frame)
+        c.put(c.mask(box(left, top + 3, right, top + 5)), brass)
+    c.put(c.mask(lambda p: p.line([(966, 549), (928, 522)], 4)), frame)
+    c.put(c.mask(lambda p: p.line([(1191, 550), (1151, 522)], 4)), frame)
+
+    for x, hem, cloth, shade in (
+        (1023, 520, (137, 54, 79), (105, 47, 71)),
+        (1068, 507, (88, 86, 133), (62, 64, 105)),
+        (1111, 524, (63, 117, 112), (51, 85, 89)),
+    ):
+        c.put(c.mask(lambda p: p.line([(x + 4, 461), (x + 4, 465), (x, 469), (x, 474)], 2)), brass)
+        c.put(c.mask(lambda p: p.poly([
+            (x, 473), (x + 11, 478), (x + 19, hem - 2), (x + 7, hem),
+            (x - 17, hem - 3), (x - 11, 478),
+        ])), cloth)
+        c.put(c.mask(lambda p: p.poly([(x + 1, 479), (x + 8, hem - 2), (x + 17, hem - 3)])), shade)
+        c.put(c.mask(lambda p: p.line([(x - 7, 479), (x, 486), (x + 8, 479)], 2)), (234, 209, 175))
+
+    for x, colour in ((1017, (162, 105, 103)), (1042, (115, 125, 165)), (1067, (174, 139, 82))):
+        c.put(c.mask(box(x, 437, x + 20, 448)), colour)
+        c.put(c.mask(box(x, 438, x + 20, 440)), brass)
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -352,6 +382,7 @@ TARGETS.update(targets(
     {
         "art_amphi_pit_walkway": Piece((1288, 864, 1704, 964), _pit_walkway),
         "art_amphi_east_aisle": Piece((2184, 612, 2616, 964), _east_aisle),
+        "art_backstage_costume_rig": Piece((904, 428, 1208, 580), _backstage_costume_rig),
     },
     {},
 ))
