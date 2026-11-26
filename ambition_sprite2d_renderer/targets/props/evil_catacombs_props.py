@@ -85,21 +85,54 @@ def west(c, k):
     c.alpha *= 1.0 - c.mask(box(16, FLOOR - 112, 48, FLOOR))
 
 
+def rubble_step(c, left, right, y):
+    """Draw a shelf of fallen stone."""
+    pile = c.mask(lambda p: p.poly([
+        (left, y), (right, y), (right - 12, y + 20),
+        (right - 29, y + 44), (left + 44, y + 36), (left + 14, y + 17),
+    ]))
+    c.put(pile, (81, 72, 76))
+    c.put(pile * c.mask(lambda p: [p.line([
+        (x, y), (x - 6, y + 11), (x + 8, y + 24), (x + 1, y + 42),
+    ], 2.5) for x in range(left + 20, right, 27)]), STONE_DARK)
+    c.put(c.mask(box(left, y, right, y + 3)), (150, 130, 125))
+
+
+def shrine_walk(c):
+    """Draw the shoring and raised walk beside the shrine."""
+    c.put(c.mask(lambda p: p.arch(1704, 382, 1910, FLOOR)), (26, 21, 24))
+    c.put(c.mask(lambda p: [
+        p.line([(left, y), (right, y)], 11)
+        for left, right, y in ((1440, 1620, 74), (1476, 1728, 388))
+    ]), WOOD)
+    c.put(c.mask(lambda p: [
+        p.line([(x, FLOOR), (x + lean, 78)], 9)
+        for x, lean in ((1380, 75), (1696, -88))
+    ]), WOOD)
+    c.put(c.mask(box(1488, 384, 1728, 398)), WOOD)
+    c.put(c.mask(box(1488, 384, 1728, 386)), (164, 118, 79))
+    c.put(c.mask(lambda p: [
+        p.ellipse(x, 391, 2, 2) for x in range(1498, 1728, 29)
+    ]), (98, 91, 89))
+    rubble_step(c, 1328, 1488, 448)
+    rubble_step(c, 1728, 1920, 384)
+    rubble_step(c, 1920, 2112, 448)
+
+    c.put(c.mask(lambda p: p.arch(1796, 249, 1884, 384)), (24, 20, 22))
+    c.put(c.mask(box(1792, 380, 1888, 385)), (113, 91, 82))
+    c.put(c.mask(lambda p: [
+        p.line([(1856, 380), (1860 + i * 4, 350)], 1.2) for i in range(4)
+    ]), (140, 110, 70))
+    c.light(c.mask(lambda p: p.ellipse(1838, 365, 70, 48), blur=12), CANDLE, 0.6)
+    c.put(c.mask(lambda p: p.rect(1834, 364, 1842, 380)), (230, 220, 200))
+    c.put(c.mask(lambda p: p.ellipse(1838, 359, 2.5, 4)), CANDLE)
+
+
 def east(c, k):
     vault(c, 1280, W - 16)
-    # The fall of rubble, propped with beams.
-    rng = c.rand("catacomb_rubble")
-    c.put(c.mask(lambda p: p.poly([(1380, FLOOR), (1420, FLOOR - 70), (1500, FLOOR - 96), (1580, FLOOR - 60), (1620, FLOOR)])), STONE_DARK)
-    c.put(c.mask(lambda p: [p.ellipse(rng.uniform(1400, 1600), rng.uniform(FLOOR - 80, FLOOR - 10), rng.uniform(8, 18), rng.uniform(6, 12)) for _ in range(14)]), STONE)
-    c.put(c.mask(lambda p: (p.line([(1360, FLOOR), (1440, CEILING + 40)], 8), p.line([(1640, FLOOR), (1560, CEILING + 40)], 8), p.rect(1420, CEILING + 30, 1580, CEILING + 42))), WOOD)
-    # The forgotten shrine: a niche, a guttered candle, a bunch of dry flowers.
-    c.put(c.mask(lambda p: p.arch(1800, 250, 1880, 400)), (24, 20, 22))
-    c.put(c.mask(box(1796, 400, 1884, 412)), STONE_DARK)
-    c.put(c.mask(lambda p: (p.rect(1834, 380, 1842, 400), p.ellipse(1838, 376, 2, 3))), (230, 220, 200))
-    c.light(c.mask(lambda p: p.ellipse(1838, 380, 50, 40), blur=10), CANDLE, 0.3)
-    c.put(c.mask(lambda p: [p.line([(1856, 400), (1860 + i * 4, 370)], 1.2) for i in range(4)]), (140, 110, 70))
     skull_wall(c, 1940, 2340, 150, 420)
     arch(c, 2400, 120, 240)
+    shrine_walk(c)
 
 
 PIECES: Dict[str, Piece] = {
