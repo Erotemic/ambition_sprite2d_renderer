@@ -42,6 +42,8 @@ HATCH = (1376, 1440)
 TREE_X = 1720
 SHAFT_WEST, SHAFT_EAST = (352, 416), (2624, 2688)
 HEAP_X, HEAP_EAST_X = 1250, 2300
+HOLLOW_RIB = ((1016, 512), (1088, 512), (1136, 500), (1192, 476),
+              (1248, 452), (1304, 442), (1348, 442))
 DUNE_A, DUNE_B, DUNE_C = (1200, 1392, 528), (1500, 1692, 448), (2200, 2456, 512)
 CART_X = 520
 LAMP_X = 2940
@@ -209,6 +211,23 @@ def star_heap_east(c, k):
     heap(c, HEAP_EAST_X, 5, 11)
 
 
+def hollow_rib(c, _kit):
+    """Draw the stone ramp above the sleeping stars."""
+    floor = HOLLOW_FLOOR
+    foot = [(1026, 518), (1052, 518), (1049, 541), (1058, floor),
+            (1018, floor), (1030, 549)]
+    support = [(1324, 447), (1348, 442), (1345, 489), (1338, 523),
+               (1345, 552), (1358, floor), (1321, floor), (1329, 551),
+               (1324, 526), (1313, 497)]
+    c.put(c.mask(lambda p: (p.poly(foot), p.poly(support))), scale(VOID_GLOSS, 0.65))
+    underside = [(x, min(floor, y + 12 + i % 3 * 4)) for i, (x, y) in enumerate(HOLLOW_RIB)]
+    c.put(c.mask(lambda p: p.poly([*HOLLOW_RIB, *reversed(underside)])), VOID_GLOSS)
+    c.put(c.mask(lambda p: p.line(HOLLOW_RIB, 2.8)), LILAC)
+    c.put(c.mask(lambda p: [
+        p.line([(x, y + 5), (x + 6, y + 14)], 1.3) for x, y in HOLLOW_RIB[2:-1]
+    ]), scale(VOID_GLOSS, 0.72))
+
+
 def shaft_light(c, x0, x1):
     top, f = HOLLOW_ROOF, HOLLOW_FLOOR
     cx = (x0 + x1) / 2
@@ -336,6 +355,7 @@ PIECES: Dict[str, Piece] = {
     "garden_pipe": Piece((PIPE_X - 44, FLOOR - 100, PIPE_X + 72, FLOOR), pipe),
     "garden_beds": Piece((56, FLOOR - 60, 310, FLOOR), beds),
     "hollow_star_heap": Piece((HEAP_X - 150, HOLLOW_FLOOR - 140, HEAP_X + 150, HOLLOW_FLOOR), star_heap),
+    "hollow_star_rib": Piece((1016, 434, 1366, HOLLOW_FLOOR), hollow_rib),
     "hollow_star_heap_east": Piece((HEAP_EAST_X - 150, HOLLOW_FLOOR - 140, HEAP_EAST_X + 150, HOLLOW_FLOOR), star_heap_east),
     "hollow_shaft_light_west": Piece((SHAFT_WEST[0] - 100, 0, SHAFT_WEST[1] + 100, HOLLOW_FLOOR + 12), shaft_light_west),
     "hollow_shaft_light_east": Piece((SHAFT_EAST[0] - 100, 0, SHAFT_EAST[1] + 100, HOLLOW_FLOOR + 12), shaft_light_east),
