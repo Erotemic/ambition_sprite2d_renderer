@@ -359,6 +359,22 @@ def dojo_front(c, k):
     c.put(c.mask(lambda p: p.rect(1638, eave + 5, 1642, beam + 10)), TIMBER)
 
 
+def dojo_practice(c, k):
+    """Draw the dojo practice platforms and the sign above the door."""
+    for x, top, bottom in ((1470, 704, STREET), (1504, 576, STREET), (1552, 640, STREET),
+                           (1584, 512, STREET), (1648, 512, 582)):
+        post(c, x, top, bottom, 8, CEDAR)
+    for points in ([(1504, 729), (1545, 655)], [(1584, 607), (1648, 573)], [(1480, 588), (1504, 617)]):
+        c.put(c.mask(lambda p: p.line(points, 5)), TIMBER)
+    for left, right, top in ((1456, 1520, 704), (1536, 1600, 640), (1472, 1536, 576), (1568, 1664, 512)):
+        c.put(c.mask(box(left, top, right, top + 10)), TIMBER)
+        walk_edge(c, left, right, top, CEDAR_LIGHT)
+        for x in (left + 7, right - 10):
+            c.put(c.mask(box(x, top + 4, x + 3, top + 10)), VERMILION)
+    c.put(c.mask(box(1615, 623, 1905, 654)), TIMBER)
+    c.put(c.mask(box(1620, 623, 1900, 625)), CEDAR_LIGHT)
+
+
 def storehouse(c, k):
     x0, x1, ridge = ROOFS["storehouse"]
     minka(c, k, x0, x1, ridge, STREET, "store", front="storehouse")
@@ -672,6 +688,7 @@ PIECES: Dict[str, Piece] = {
     "village_house_weaver": Piece((520, 440, 1040, 768), weaver),
     "village_tea_house": Piece((1040, 500, 1520, 768), tea_house),
     "village_dojo_front": Piece((1520, 404, 2000, 768), dojo_front),
+    "village_dojo_practice": Piece((1448, 512, 1912, 768), dojo_practice),
     "village_storehouse": Piece((2000, 376, 2440, 768), storehouse),
     "village_notice_board": Piece((2186, 660, 2294, 768), notice_board),
     "village_watch_house": Piece((2440, 310, 2816, 768), watch_house),
