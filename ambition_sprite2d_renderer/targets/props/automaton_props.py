@@ -551,6 +551,24 @@ def arena_ring(c, k):
         c.light(c.soften(m, 14), CELL, 0.6)
 
 
+def arena_viewing_gallery(c, _kit):
+    for x, foot in ((550, 576), (669, 704), (738, 768)):
+        c.put(c.mask(box(x, 490, x + 8, foot)), CUBE_LIGHT)
+        c.put(c.mask(box(x + 2, 500, x + 4, foot - 7)), CELL, 0.5)
+        c.put(c.mask(box(x - 5, foot - 9, x + 13, foot)), CUBE)
+    c.put(c.mask(box(528, 480, 752, 497)), CUBE)
+    walk_top(c, 528, 752, 480, AMBER)
+    c.put(c.mask(box(541, 456, 742, 479)), CELL, 0.15)
+    c.put(c.mask(box(541, 454, 742, 457)), CUBE_LIGHT)
+    for x in (541, 589, 637, 685, 739):
+        c.put(c.mask(box(x, 456, x + 3, 480)), CUBE_LIGHT)
+    for x in range(551, 741, 18):
+        c.put(c.mask(box(x, 487, x + 5, 492)), CELL)
+    for y in (510, 624, 735):
+        c.put(c.mask(lambda p: p.line([(742, y + 10), (754, y), (780, y)], 4)), CUBE_LIGHT)
+        c.put(c.mask(lambda p: p.ellipse(746, y + 5, 3)), AMBER)
+
+
 def failure_log(c, k):
     """The failure log: a dark board on two posts, a row of dim cells for
     each challenger (a name in the rule's own writing), each ending in a red
@@ -601,6 +619,7 @@ PIECES: Dict[str, Piece] = {
     "automaton_state_table": Piece((1050, 100, 1430, 280), state_table),
     # The Cell-ular Arena.
     "automaton_arena_ring": Piece((816, 560, 1872, 768), arena_ring),
+    "automaton_arena_viewing_gallery": Piece((520, 446, 788, 772), arena_viewing_gallery),
     "automaton_failure_log": Piece((150, 220, 370, 448), failure_log),
 }
 
