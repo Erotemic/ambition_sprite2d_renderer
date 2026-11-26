@@ -666,13 +666,15 @@ def observatory_room(c, k):
 # ---------------------------------------------------------------------------
 
 LAB_W, LAB_FLOOR, LAB_CEILING = 1280, 512, 32
-LAB_CRATE = (200, 296, 432)
+LAB_CRATE = (192, 304, 432)
 LAB_GANTRY_WEST = (320, 560, 352)
 LAB_GANTRY_EAST = (720, 960, 288)
-LAB_BENCH = (1000, 1160, 464)
+LAB_SERVICE_DECKS = ((576, 704, 320), (976, 1056, 352), (1088, 1168, 416))
+LAB_BENCH = (992, 1168, 464)
 COIL_WEST_X, COIL_EAST_X, TOROID_Y = 440, 840, 150
 BRICK = (150, 82, 62)
 IRON = (58, 62, 72)
+IRON_DARK = (37, 40, 49)
 IRON_LIGHT = (120, 128, 142)
 COPPER_WIRE = (196, 118, 64)
 ARC = (196, 220, 255)
@@ -727,7 +729,7 @@ def lab_room(c, k):
     coils with an arc between their toroids, riveted gantries (y 352, 288)
     round them, a Van de Graaff sphere, the crate (y 432), the bench (y 464)
     with a Jacob's ladder and a bulb lit with no wires, the pigeon coops and
-    the director's chalkboard of currents, and his office door."""
+    the director's chalkboard, and the gravity rig."""
     x0, x1 = 16, LAB_W - 16
     g = LAB_FLOOR
     k.ground = g
@@ -790,6 +792,14 @@ def lab_room(c, k):
         c.put(c.mask(lambda p: [p.ellipse(x, gy + 6, 1.3) for x in np.arange(gx0 + 6, gx1, 12)]), IRON_LIGHT)
         c.put(c.mask(lambda p: [p.line([(x, gy + 12), (x + 30, gy + 40)], 1.4) for x in (gx0 + 16, gx1 - 50)]), IRON)
         edge_line(c, gx0, gx1, gy, IRON_LIGHT, 4)
+    for left, right, top in LAB_SERVICE_DECKS:
+        centre = (left + right) // 2
+        c.put(c.mask(lambda p: (
+            p.line([(left + 10, top + 10), (centre, top + 47), (right - 10, top + 10)], 5),
+            p.rect(centre - 6, top + 10, centre + 6, top + 49),
+        )), IRON)
+        edge_line(c, left, right, top, IRON_LIGHT, 12)
+        c.put(c.mask(lambda p: [p.ellipse(x, top + 7, 1.5) for x in np.arange(left + 8, right, 14)]), IRON_DARK)
     # The Van de Graaff sphere by the door.
     vx = 120
     c.put(c.mask(box(vx - 7, g - 110, vx + 7, g - 8)), (200, 170, 120))
@@ -803,12 +813,12 @@ def lab_room(c, k):
     c.put(c.mask(box(cx0_, cy, cx1_, g)), (128, 96, 60))
     c.put(c.mask(lambda p: (p.rect(cx0_, cy, cx1_, cy + 3), p.rect(cx0_, g - 3, cx1_, g), p.line([(cx0_ + 4, g - 4), (cx1_ - 4, cy + 4)], 2.5))), (92, 68, 42))
     c.put(c.mask(lambda p: p.poly([(cx0_ + 52, cy + 14), (cx0_ + 38, cy + 44), (cx0_ + 50, cy + 44), (cx0_ + 42, cy + 70), (cx0_ + 62, cy + 36), (cx0_ + 50, cy + 36)])), (232, 200, 80))
-    edge_line(c, cx0_ - 2, cx1_ + 2, cy, (170, 130, 84), 4)
+    edge_line(c, cx0_, cx1_, cy, (170, 130, 84), 4)
     # The bench (y 464) and its apparatus.
     bx0, bx1, by = LAB_BENCH
     c.put(c.mask(box(bx0, by, bx1, by + 8)), OAK)
     c.put(c.mask(lambda p: (p.rect(bx0 + 6, by + 8, bx0 + 14, g), p.rect(bx1 - 14, by + 8, bx1 - 6, g))), OAK_DARK)
-    edge_line(c, bx0 - 2, bx1 + 2, by, OAK_LIGHT, 4)
+    edge_line(c, bx0, bx1, by, OAK_LIGHT, 4)
     jx = bx0 + 30  # a Jacob's ladder: two rods, a climbing arc
     c.put(c.mask(lambda p: (p.line([(jx - 3, by), (jx - 8, by - 70)], 1.4), p.line([(jx + 3, by), (jx + 8, by - 70)], 1.4))), (200, 200, 210))
     c.put(c.mask(box(jx - 10, by - 6, jx + 10, by)), IRON)
@@ -833,14 +843,20 @@ def lab_room(c, k):
     c.put(c.mask(lambda p: (p.line([(kx0 + 14, ky0 + 88), (kx1 - 14, ky0 + 88)], 1.0), p.line([(kx0 + 30, ky0 + 74), (kx1 - 30, ky0 + 102)], 1.4), p.line([(kx0 + 30, ky0 + 102), (kx1 - 30, ky0 + 74)], 1.4))), CHALK, 0.85)
     c.put(c.mask(lambda p: p.ring(kx0 + 150, ky0 + 18, 6, 0.8)), CHALK, 0.85)
     c.put(c.mask(lambda p: p.line([(kx0 + 146, ky0 + 18), (kx0 + 154, ky0 + 18)], 0.8)), CHALK, 0.85)
-    # The director's office: a door with frosted glass and a lit lamp inside.
-    ox0, ox1 = 1178, 1244
-    c.put(c.mask(box(ox0 - 6, g - 130, ox1 + 6, g)), OAK_DARK)
-    c.put(c.mask(box(ox0, g - 124, ox1, g)), OAK)
-    frost = c.mask(box(ox0 + 8, g - 116, ox1 - 8, g - 66))
-    c.put(frost, (210, 220, 210))
-    c.light(frost, (255, 220, 150), 0.35)
-    c.put(c.mask(lambda p: p.ellipse(ox1 - 10, g - 56, 2.2)), BRASS)
+    # The conduit links the switches. Each arrow points across the room.
+    c.put(c.mask(box(1227, LAB_CEILING + 12, 1239, g - 12)), IRON)
+    c.put(c.mask(box(1229, LAB_CEILING + 12, 1232, g - 12)), BRASS)
+    c.put(c.mask(lambda p: [p.rect(1224, y, 1242, y + 5) for y in range(94, g - 48, 52)]), IRON_LIGHT)
+    for base, direction in ((g, -1), (LAB_CEILING, 1)):
+        lo, hi = sorted((base, base + direction * 74))
+        c.put(c.mask(box(1182, lo, 1248, hi)), IRON)
+        c.put(c.mask(box(1187, lo + 4, 1243, hi - 4)), IRON_DARK)
+        c.put(c.mask(lambda p: (
+            p.rect(1201, min(base + direction * 43, base + direction * 59),
+                   1207, max(base + direction * 43, base + direction * 59)),
+            p.poly([(1194, base + direction * 54), (1214, base + direction * 54),
+                    (1204, base + direction * 65)]),
+        )), GOLD)
     # Cable spools and a coil of cable on the floor.
     for sx_, r in ((660, 26), (700, 18)):
         c.put(c.mask(lambda p: p.ellipse(sx_, g - r, r)), (110, 80, 50))
