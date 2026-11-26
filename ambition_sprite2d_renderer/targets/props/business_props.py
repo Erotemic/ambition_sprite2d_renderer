@@ -432,6 +432,44 @@ def records_desk(c, k):
 
 
 # ---------------------------------------------------------------------------
+def records_catwalk(c, left, right, y):
+    """Draw a steel shelf with wall brackets."""
+    c.put(c.mask(lambda p: [
+        p.poly([(x, y + 10), (x + 27, y + 10), (x, y + 33)])
+        for x in range(left + 12, right - 32, 64)
+    ]), STEEL_DARK)
+    railing(c, left + 4, right - 4, y, h=19, colour=GOLD)
+    c.put(c.mask(box(left, y, right, y + 12)), STEEL_DARK)
+    c.put(c.mask(box(left, y, right, y + 2)), STEEL_LIGHT)
+    c.put(c.mask(lambda p: [
+        p.ellipse(x, y + 7, 1.5) for x in range(left + 10, right - 5, 25)
+    ]), STEEL_LIGHT, 0.8)
+
+
+def records_service_stairs(c, _kit):
+    """Draw the east service steps and the carrier track."""
+    for left, right, y in (
+        (1488, 1616, 896), (1600, 1968, 832), (1936, 2160, 768),
+        (2128, 2544, 704), (2112, 2256, 640),
+    ):
+        records_catwalk(c, left, right, y)
+    c.put(c.mask(box(1520, 548, 2128, 555)), STEEL_DARK)
+    c.put(c.mask(box(1520, 548, 2128, 550)), STEEL_LIGHT)
+    c.put(c.mask(lambda p: [
+        p.rect(x - 3, 530, x + 3, 548) for x in (1530, 1680, 1830, 1980, 2118)
+    ]), STEEL)
+
+
+def records_archive_stairs(c, _kit):
+    """Draw the west shelves from the carrier to the archive."""
+    for left, right, y in (
+        (1040, 1504, 576), (880, 1056, 512), (400, 912, 448),
+        (336, 464, 384), (16, 368, 320),
+    ):
+        records_catwalk(c, left, right, y)
+
+
+# ---------------------------------------------------------------------------
 # The Business College's lecture hall
 # ---------------------------------------------------------------------------
 
@@ -520,6 +558,8 @@ PIECES: Dict[str, Piece] = {
     "business_picket_line": Piece((1690, 480, 2060, 640), picket_line),
     "business_college_front": Piece((2060, 140, 2544, 640), college_front),
     # business_records_processing
+    "business_records_service_stairs": Piece((1488, 530, 2544, 932), records_service_stairs),
+    "business_records_archive_stairs": Piece((16, 300, 1504, 612), records_archive_stairs),
     "business_records_conveyor": Piece((160, 900, 1180, 960), records_conveyor),
     "business_stamp_press": Piece((580, 600, 850, 960), stamp_press),
     "business_shredder": Piece((1250, 800, 1470, 1088), shredder),
