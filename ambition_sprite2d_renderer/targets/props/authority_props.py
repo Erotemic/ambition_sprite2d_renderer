@@ -78,9 +78,11 @@ CONVEYOR = (300, 1120, 984)
 #: Authority Plaza.
 BALCONY = (16, 520, 448)
 PLAZA_STEPS = ((520, 600, 512), (600, 680, 576))
+CLOCK_WALK = (512, 1056, 448)
 PLANTER = (1040, 1360, 576)
 BENCHES = ((940, 1040, 604), (1360, 1460, 604))
 BOUGH = (1120, 1280, 448)
+GARDEN_PERCH = (1280, 1392, 512)
 #: The Manifest Office.
 CHAIRS = (420, 820, 604)
 CABINETS = ((1240, 1400, 512), (1400, 1584, 384))
@@ -384,12 +386,14 @@ def clock_arcade(c, k):
     c.put(c.mask(lambda p: p.poly([(364, top - 50), (436, top - 50), (436, top - 60), (364, top - 56)])), mix(WOOD, (255, 240, 210), 0.3))
     c.put(c.mask(box(380, top - 66, 420, top - 58)), SCREEN_LIGHT, 0.8)
     sign_mark(c, 400, top - 26, 9)
-    # The steps up to it.
+    # Open treads leave space for the street below.
     for x0, x1, y in PLAZA_STEPS:
-        c.put(c.mask(box(x0, y, x1, FLOOR)), STONE)
-        c.tone(c.mask(box(x0, y + 4, x1, FLOOR)), -0.08)
+        c.put(c.mask(box(x0, y, x1, y + 16)), STONE)
+        c.put(c.mask(box(x0, y + 12, x1, y + 16)), STONE_DARK)
         walk_top(c, x0, x1, y, STONE)
-    c.put(c.mask(lambda p: p.line([(680, 576 - 34), (600, 576 - 34), (520, 512 - 34), (b1 - 8, top - 30)], 3)), GOLD)
+        c.put(c.mask(lambda p: p.line([(x0 + 10, y + 36), (x0 + 38, y + 16)], 5)), STEEL_DARK)
+    c.put(c.mask(lambda p: p.line([(680, 576 - 32), (608, 576 - 32),
+                                  (528, 512 - 32), (b1 - 8, top - 30)], 3)), GOLD)
     # The bookstall under the balcony.
     k.awning(80, 300, top + 70, 30, (MAROON, (240, 230, 220)))
     c.put(c.mask(box(84, top + 100, 296, FLOOR)), (100, 70, 50), 0.9)
@@ -399,6 +403,30 @@ def clock_arcade(c, k):
         h = rng.uniform(20, 34)
         c.put(c.mask(box(x, FLOOR - 50 - h, x + 6, FLOOR - 50)), rng.choice([MAROON, NAVY, (70, 110, 80), (200, 160, 80), (150, 140, 130)]))
     banner(c, 160, top + 110, top + 168, 30, MAROON)
+
+
+def clock_walk(c, k):
+    """Draw the raised walk, its open arches, and the garden rail."""
+    x0, x1, top = CLOCK_WALK
+    for left, right in ((x0 + 12, 764), (764, x1 - 14)):
+        cap = top + 17
+        span = c.mask(box(left, cap, right, FLOOR))
+        opening = c.mask(lambda p: p.arch(left + 18, cap + 20, right - 18, FLOOR + 2))
+        wall = np.clip(span - opening, 0, 1)
+        c.put(wall, STONE_DARK)
+        crown = c.mask(lambda p: p.arch(left + 12, cap + 14, right - 12, FLOOR + 2))
+        c.put(np.clip(crown - opening, 0, 1) * span, STONE)
+        c.put(c.mask(lambda p: [p.rect(pier - 5, FLOOR - 20, pier + 18, FLOOR)
+                                for pier in (left + 5, right - 16)]), STONE)
+    c.put(c.mask(box(x0, top, x1, top + 21)), STONE)
+    c.put(c.mask(box(x0, top + 15, x1, top + 21)), STONE_DARK)
+    walk_top(c, x0, x1, top, STONE)
+    c.put(c.mask(box(x0 + 4, top - 32, x1 - 12, top - 28)), GOLD)
+    c.put(c.mask(lambda p: [p.rect(x, top - 30, x + 4, top)
+                            for x in range(x0 + 12, x1 - 10, 24)]), GOLD)
+    for x in (x0 + 110, x1 - 12):
+        c.put(c.mask(box(x - 4, top - 40, x + 4, top)), STEEL_DARK)
+        c.put(c.mask(lambda p: p.ellipse(x, top - 42, 6)), GOLD_LIGHT)
 
 
 def blossom_tree(c, k):
@@ -435,6 +463,12 @@ def blossom_tree(c, k):
     b0, b1, btop = BOUGH
     c.put(c.mask(lambda p: p.line([(b0 - 20, btop + 30), (b0, btop + 6), (b1, btop + 6), (b1 + 24, btop - 10)], 14)), BARK)
     walk_top(c, b0, b1, btop, BARK)
+    # The perch joins the planter to the bough.
+    x0, x1, y = GARDEN_PERCH
+    c.put(c.mask(lambda p: p.line([(x0, ptop), (x0 + 58, y + 12), (x1 - 18, ptop)], 8)), BARK)
+    c.put(c.mask(box(x0, y, x1, y + 14)), WOOD_DARK)
+    c.put(c.mask(box(x0 + 2, y + 4, x1 - 2, y + 10)), WOOD)
+    walk_top(c, x0, x1, y, WOOD)
     # Under it, low hedges in the planter, white flowers.
     hedge = c.mask(lambda p: [p.ellipse(x, ptop - 6, 26, 18) for x in np.arange(p0 + 20, p1, 34)])
     c.put(hedge, LEAF)
@@ -572,6 +606,7 @@ PIECES: Dict[str, Piece] = {
     "authority_baggage_lift_shaft": Piece((1100, 598, 1300, 1016), baggage_lift_shaft),
     "authority_baggage_lift": Piece((0, 0, 176, 52), baggage_lift),
     # Authority Plaza.
+    "authority_clock_walk": Piece((508, 394, 1064, 640), clock_walk),
     "authority_clock_arcade": Piece((0, 140, 700, 640), clock_arcade),
     "authority_blossom_tree": Piece((780, 160, 1640, 640), blossom_tree),
     "authority_notice_board": Piece((1610, 420, 2030, 640), notice_board),
