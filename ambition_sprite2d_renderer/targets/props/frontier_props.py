@@ -387,9 +387,9 @@ def water_tower(c, k):
     post(c, 1080, 432, g, 6)
     post(c, 1560, 432, g, 6)
     board = c.mask(box(1056, 432, 1584, 548))
-    c.put(board, (200, 178, 136))
+    c.put(board, (91, 68, 50))
     c.tone(board * (c.noise("ordinance", 20, 4, 3) - 0.5), 0.2)
-    c.put(c.mask(lambda p: (p.rect(1056, 432, 1584, 435), p.rect(1056, 545, 1584, 548), p.rect(1056, 432, 1059, 548), p.rect(1581, 432, 1584, 548))), PLANK_DARK)
+    c.put(c.mask(lambda p: (p.rect(1056, 432, 1584, 435), p.rect(1056, 545, 1584, 548), p.rect(1056, 432, 1059, 548), p.rect(1581, 432, 1584, 548))), PLANK)
     # A wanted bill nailed on the board's corner, curling.
     c.put(c.mask(lambda p: p.poly([(1592, 470), (1626, 468), (1628, 512), (1594, 514)])), (232, 220, 186))
     c.put(c.mask(lambda p: p.ellipse(1610, 488, 9, 11)), (90, 70, 56), 0.8)
