@@ -50,7 +50,7 @@ def zmap_for(view: View, tucked: bool) -> Dict[str, float]:
     z: Dict[str, float] = {}
     for depth, _side, _sgn in SIDES:
         far = depth == "far"
-        arm = (2.0 if turned else 40.0) if far else 43.0
+        arm = (2.0 if turned else 40.0) if far else (60.0 if turned else 43.0)
         leg = (6.0 if turned else 10.0) if far else 13.0
         # The upper limb paints over the lower one: its round end is the
         # elbow (the knee), and the lower limb's end hides under it.
@@ -340,8 +340,31 @@ def _draw_view(fig: Figure, view: View, canvas: Canvas) -> List[Part]:
     parts = [p for p in parts if p.els]
     names = [p.name for p in parts]
     assert len(names) == len(set(names)), sorted(n for n in names if names.count(n) > 1)
+    # Resolve depth *after* overlays and optional wardrobe parts have been
+    # assembled: a custom hat, glasses, hair or face can exceed the base
+    # head's layer. The whole foreground arm (including the grip and its
+    # prop) moves as a group, retaining its internal paint order.
+    if abs(view.s) > 0.5 or any(p.bone == "near_grip" and p.name == "pole" for p in parts):
+        parts = foreground_arm(parts)
     parts.sort(key=lambda p: p.z)
     return parts
+
+
+def foreground_arm(parts: List[Part]) -> List[Part]:
+    """Keep all near-arm parts above the finished head assembly.
+
+    This is a depth convention for the near-facing art, not a per-part
+    override. Preserve the ordering between sleeve, hand and held item.
+    """
+    def near(p: Part) -> bool:
+        return p.bone.startswith("near_arm_") or p.bone == "near_grip"
+
+    arm = [p.z for p in parts if near(p)]
+    head = [p.z for p in parts if p.bone == "head"]
+    if not arm or not head:
+        return parts
+    offset = max(0.0, max(head) + 1.0 - min(arm))
+    return [replace(p, z=p.z + offset) if near(p) else p for p in parts]
 
 
 def _with_slot(spec, slot: str, kind: str):

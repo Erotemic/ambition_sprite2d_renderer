@@ -160,7 +160,8 @@ def thigh_radius(ctx: Ctx) -> float:
     The rest leg axis is nearly vertical: use the horizontal support radius
     of the elliptical cross-section with the existing round joint caps.
     """
-    return math.hypot(ctx.view.c * ctx.fig.leg_r[0], ctx.view.s * ctx.fig.thigh_depth)
+    depth = getattr(ctx.fig, "thigh_depth", ctx.fig.leg_r[0])
+    return math.hypot(ctx.view.c * ctx.fig.leg_r[0], ctx.view.s * depth)
 
 
 def hip_opening(fig: Figure, *, overlap: float = 0.0) -> Margin:

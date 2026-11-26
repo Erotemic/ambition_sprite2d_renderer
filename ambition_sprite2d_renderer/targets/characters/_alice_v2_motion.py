@@ -33,6 +33,7 @@ from dataclasses import replace
 from typing import Dict, List, Sequence, Tuple
 
 from ...chargen.motion import Clip, Kit, build_library
+from ...chargen.combat_turn import with_combat_turns
 from ...chargen.pose3d import Pose
 
 R, L = "right", "left"
@@ -57,6 +58,8 @@ MOVESET_ROWS: Tuple[str, ...] = (
 #: floor, getting up, stopping or turning (the game's reaction vocabulary,
 #: `body_state_clip`). Posed by the library with her pole in her fist.
 FIGHTER_ROWS: Tuple[str, ...] = (
+    "fight_idle", "fight_walk", "smash_charge",
+    "smash_charge_forward", "smash_charge_up", "smash_charge_down",
     "hit_high", "hit_mid", "hit_low", "hit_air", "launch", "launch_up", "launch_horizontal", "launch_down", "meteor", "tumble",
     "knockdown", "prone", "prone_face_up", "prone_face_down", "prone_damage", "getup", "getup_roll", "getup_attack", "tech",
     "tech_roll", "wall_tech", "ceiling_tech", "ground_bounce", "splat", "grabbed", "grabbed_pummel", "grab_escape", "dizzy",
@@ -130,7 +133,37 @@ def alice_library(fig) -> Dict[str, Clip]:
         base.update(kw)
         return k.pose(**base)
 
+    def staff_stance(fwd=0.40, down=0.42, pitch=12.0, *, lean=8.0, two=TWO, out_=0.09,
+                     pole_=(0.4, 0.65, -0.4), **kw) -> Pose:
+        """Plant the feet with the shared braced stance; aim the pole along
+        its intended sagittal pitch, independent of trunk lean. The weapon
+        direction remains a trunk-space vector for the multiview solver.
+        """
+        base = dict(lean=lean, head=(-0.65 * lean, 0.0), front_toe=4.0, rear_toe=-8.0,
+                    rh=pole(fwd, down, pitch + lean, out_=out_, two=two, pole_=pole_),
+                    lh=k.hand(L, 0.18, 0.36, 0.12, pole=(0.4, 0.65, -0.4)))
+        base.update(kw)
+        return k.braced(**base)
+
+    fight_guard = staff_stance()
     guard = ready()
+
+    # Runtime combat idle/walk were missing from her published rows. Keep
+    # the letter/courier idle for peaceful scenes; never draw her guard as a
+    # fist-fighter with a vertical pole inadvertently following a wrist.
+    add(_seq("fight_idle", 8, 110, True, _cycle([
+        staff_stance(0.40 + 0.02 * math.cos(a), 0.42 + 0.018 * math.sin(a), 12 + 2 * math.sin(a),
+                     weight=0.52 + 0.028 * math.cos(a), drop=0.065 + 0.004 * math.sin(a), lean=8 + math.sin(a),
+                     front_toe=4 + 2 * math.sin(a), rear_toe=-8 - 3 * math.cos(a), rear_lift=max(0.0, 0.01 * math.cos(a)))
+        for a in (0, math.pi/2, math.pi, 3*math.pi/2)]), cat="idle"))
+    add(_seq("fight_walk", 8, 95, True, _cycle([
+        staff_stance(0.42, 0.42, 10 + 2 * math.sin(a), lean=11,
+                     front=0.24 + 0.05 * math.cos(a), rear=-0.24 - 0.05 * math.cos(a),
+                     drop=0.065 - 0.006 * abs(math.sin(a)), weight=0.52 + 0.04 * math.sin(a),
+                     front_lift=max(0.0, -math.sin(a))*0.065, rear_lift=max(0.0, math.sin(a))*0.065,
+                     front_toe=5 + 4 * max(0.0, -math.sin(a)), rear_toe=-8 - 10 * max(0.0, math.sin(a)))
+        for a in (math.tau*i/8 for i in range(8))]), cat="locomotion"))
+
 
     def at_ease(lean=0.0, dy=0.0, head=(0.0, 0.0), item=86.0, fwd=-0.08, **kw) -> Pose:
         """Standing easy, the pole upright in her right fist, at her side."""
@@ -212,61 +245,77 @@ def alice_library(fig) -> Dict[str, Clip]:
         add(_seq(name, frames, ms, False, [(0.0, start), (at[0], wind_), (at[1], _x(hit, fx_trail=1.0, fx_spark=1.0)),
                                            (at[2], _x(follow, fx_spark=0.35)), (1.0, end or start)], cat="attack"))
 
-    # The jab: a quick poke from the guard; a question, not an answer.
-    strike("jab", ready(lean=4.0, rh=pole(0.22, 0.6, 14.0)),
-           ready(root=(0.02, -0.04, 0.0), lean=13.0, rh=pole(0.98, 0.45, 4.0), face="angry"),
-           ready(root=(0.02, -0.04, 0.0), lean=11.0, rh=pole(0.9, 0.48, 6.0)), frames=7, ms=40, at=(0.2, 0.36, 0.55))
-    # The forward tilt: a lunge, the whole length of the pole.
-    lunge = dict(root=(0.07, -0.07, 0.0), lean=20.0, rf=k.foot(R, 0.44, toe=-4), lf=k.foot(L, -0.3, toe=-22), face="angry")
-    strike("attack_side", ready(root=(-0.02, -0.04, 0.0), lean=-4.0, rh=pole(0.12, 0.62, 18.0), rf=k.foot(R, 0.08)),
-           ready(rh=pole(1.0, 0.36, 2.0), **lunge), ready(rh=pole(0.95, 0.42, -6.0), **lunge))
-    # The slash: a diagonal chop from over her head.
-    strike("slash", ready(lean=-8.0, head=(-8.0, 0.0), rh=pole(-0.05, -0.65, 125.0, pole_=(0.5, 0.2, -0.6))),
-           ready(root=(0.04, -0.05, 0.0), lean=18.0, rh=pole(0.85, 0.35, -18.0), rf=k.foot(R, 0.3), face="angry"),
-           ready(root=(0.04, -0.06, 0.0), lean=20.0, rh=pole(0.6, 0.72, -52.0), rf=k.foot(R, 0.3)), ms=66)
-    # The up tilt: the point flicked straight up, a nonce thrown once.
-    strike("attack_up", k.crouch(0.1, lean=10, rh=pole(0.5, 0.72, -15.0), face="angry"),
-           k.pose(root=(0.01, 0.01, 0.0), lean=-8, head=(-20.0, 0.0), rh=pole(0.3, -0.78, 94.0, pole_=(0.5, 0.2, -0.6)),
-                  rf=k.foot(R, 0.06, toe=18), lf=k.foot(L, -0.08), face="angry"),
-           k.pose(lean=-13, head=(-24.0, 0.0), rh=pole(-0.05, -0.86, 122.0, pole_=(0.5, 0.2, -0.6))))
-    # The down tilt: the pole along the floor, at the shins.
-    low = k.crouch(0.2, lean=16, rh=pole(0.5, 0.72, 2.0))
-    strike("attack_down", k.crouch(0.24, lean=18, rh=pole(0.12, 0.62, 30.0), face="angry"),
-           _x(k.crouch(0.3, lean=26, head=(-6.0, 0.0), rh=pole(0.98, 0.86, -12.0), rf=k.foot(R, 0.3), lf=k.foot(L, -0.2, toe=-15), face="angry"),
-              fx_dust=0.8),
-           k.crouch(0.28, lean=24, rh=pole(0.82, 0.9, -20.0)), start=low)
-    # The dash attack: a running lunge that keeps going.
-    add(_seq("dash_attack", 10, 40, False, [(0.0, run_pose(0.0)),
-                                            (0.18, _x(k.crouch(0.1, lean=26, rh=pole(0.2, 0.6, 14.0), face="angry"), fx_speed=0.8)),
-                                            (0.32, _x(ready(root=(0.08, -0.09, 0.0), lean=28, rh=pole(1.0, 0.4, 0.0), rf=k.foot(R, 0.46, toe=-6),
-                                                            lf=k.foot(L, -0.34, 0.08, toe=-30), face="angry"), fx_trail=1.0, fx_spark=1.0, fx_speed=1.0)),
-                                            (0.55, _x(ready(root=(0.08, -0.08, 0.0), lean=24, rh=pole(0.95, 0.5, -10.0), rf=k.foot(R, 0.46)),
-                                                      fx_spark=0.3, fx_dust=0.8)),
-                                            (1.0, guard)], cat="attack"))
+    # Ground strikes: a surveyor's pole is a long reach weapon, not a
+    # sword. A thrust's point stays level as the torso drives forward.
+    strike("jab", staff_stance(0.17, 0.43, 9, lean=1, weight=0.38, drop=0.065, front_toe=4, rear_toe=-12, rear_lift=0.01),
+           staff_stance(0.93, 0.24, 5, lean=12, weight=0.68, drop=0.065, front_toe=7, rear_toe=-20, rear_lift=0.035, face="angry"),
+           staff_stance(0.72, 0.36, 8, lean=9, weight=0.60, front_toe=5, rear_toe=-14, rear_lift=0.02), frames=7, ms=40, start=fight_guard, at=(0.2, 0.36, 0.55))
+    side_base = dict(front=0.32, rear=-0.30, drop=0.10)
+    strike("attack_side", staff_stance(0.10, 0.44, 12, lean=-6, weight=0.30, front_toe=10, rear_toe=-18, rear_lift=0.015, **side_base),
+           staff_stance(0.94, 0.25, 1, lean=20, weight=0.72, front_toe=12, rear_toe=-28, rear_lift=0.045, face="angry", **side_base),
+           staff_stance(0.79, 0.37, 0, lean=23, weight=0.77, front_toe=8, rear_toe=-24, rear_lift=0.035, **side_base), start=fight_guard)
+    strike("slash", staff_stance(-0.08, -0.58, 126, lean=-10, weight=0.34, front_toe=9, rear_toe=-18, rear_lift=0.015, **side_base),
+           staff_stance(0.85, 0.26, -10, lean=18, weight=0.72, front_toe=12, rear_toe=-26, rear_lift=0.04, face="angry", **side_base),
+           staff_stance(0.65, 0.47, -27, lean=22, weight=0.75, front_toe=8, rear_toe=-22, rear_lift=0.03, **side_base), ms=66, start=fight_guard)
+    strike("attack_up", staff_stance(0.25, 0.60, -6, lean=12, drop=0.14, weight=0.36, front_toe=3, rear_toe=-14, rear_lift=0.01, face="angry"),
+           staff_stance(0.35, -0.78, 83, lean=-8, drop=0.052, weight=0.65, front_toe=10, rear_toe=-18, rear_lift=0.05, head=(-18, 0), face="angry", pole_=(0.6, 0.2, -0.6)),
+           staff_stance(0.05, -0.83, 112, lean=-11, drop=0.06, weight=0.60, front_toe=8, rear_toe=-16, rear_lift=0.035, pole_=(0.6, 0.2, -0.6)), start=fight_guard)
+    # Low sweep: the point passes above the floor, rather than digging
+    # into it. The wrist pitch is relative to the leaning trunk.
+    low = staff_stance(0.43, 0.66, 3, lean=14, front=0.31, rear=-0.29, drop=0.14, front_toe=4, rear_toe=-8)
+    strike("attack_down", staff_stance(0.05, 0.49, 17, lean=9, front=0.31, rear=-0.29, drop=0.15, weight=0.34, front_toe=5, rear_toe=-12, rear_lift=0.01, face="angry"),
+           _x(staff_stance(0.87, 0.58, -7, lean=25, front=0.31, rear=-0.29, drop=0.18, weight=0.70, front_toe=10, rear_toe=-18, rear_lift=0.03, face="angry"), fx_dust=0.8),
+           staff_stance(0.70, 0.59, -3, lean=20, front=0.31, rear=-0.29, drop=0.18, weight=0.73, front_toe=8, rear_toe=-14, rear_lift=0.02), start=low)
+    dash_start = staff_stance(0.29, 0.46, 10, lean=20, front=0.16, rear=-0.40, weight=0.46, drop=0.09)
+    add(_seq("dash_attack", 10, 40, False, [(0.0, dash_start),
+        (0.18, _x(staff_stance(0.20, 0.45, 7, lean=22, front=0.35, rear=-0.40, weight=0.4, drop=0.12,
+                                rf=k.foot(R, 0.35, 0.10, 0.055, toe=12), rear_toe=-16, face="angry"), fx_speed=0.8)),
+        (0.32, _x(staff_stance(0.95, 0.20, 0, lean=28, front=0.44, rear=-0.40, weight=0.73, drop=0.14,
+                                front_toe=10, rear_lift=0.06, rear_toe=-20, face="angry"), fx_trail=1.0, fx_spark=1.0, fx_speed=1.0)),
+        (0.55, _x(staff_stance(0.84, 0.34, -3, lean=23, front=0.44, rear=-0.40, weight=0.76, drop=0.14, front_toe=8, rear_toe=-16, rear_lift=0.04), fx_spark=0.3, fx_dust=0.8)),
+        (1.0, fight_guard)], cat="attack"))
 
     # ---- smashes -------------------------------------------------------------------------------
-    coil = _x(ready(root=(-0.03, -0.07, 0.0), lean=-14.0, side=-5.0, rh=pole(-0.38, 0.5, 10.0), rf=k.foot(R, 0.2), lf=k.foot(L, -0.26),
-                    face="angry", vis="e"), fx_charge=0.7)
-    drive = ready(root=(0.1, -0.1, 0.0), lean=28.0, rh=pole(1.0, 0.32, 0.0), rf=k.foot(R, 0.5, toe=-4), lf=k.foot(L, -0.32, toe=-24),
-                  face="angry", vis="a")
-    add(_seq("smash_forward", 10, 54, False, [(0.0, guard), (0.25, coil), (0.32, coil), (0.42, _x(drive, fx_trail=1.0, fx_spark=1.0, fx_burst=1.0)),
-                                              (0.58, _x(replace(drive, lean=30.0), fx_spark=0.4)), (0.8, ready(root=(0.06, -0.08, 0.0), lean=20.0,
-                                                                                                              rh=pole(0.85, 0.5, -10.0))),
-                                              (1.0, guard)], cat="smash"))
-    sup_wind = _x(k.crouch(0.26, lean=22, rh=pole(0.35, 0.8, 160.0, pole_=(0.4, 0.6, -0.5)), face="angry"), fx_charge=0.6)
-    sup_hit = k.pose(root=(0.0, 0.04, 0.0), lean=-6, head=(-26.0, 0.0), rh=pole(0.15, -0.95, 92.0, pole_=(0.6, 0.2, -0.6)),
-                     rf=k.foot(R, 0.0, 0.05, toe=30), lf=k.foot(L, -0.06, 0.08, toe=30), face="angry", vis="a")
-    add(_seq("smash_up", 10, 54, False, [(0.0, guard), (0.28, sup_wind), (0.44, _x(sup_hit, fx_trail=1.0, fx_spark=1.0, fx_burst=1.0)),
-                                         (0.62, _x(k.pose(lean=-12, head=(-22.0, 0.0), rh=pole(-0.2, -0.86, 128.0, pole_=(0.6, 0.2, -0.6))),
-                                                   fx_spark=0.3)), (1.0, guard)], cat="smash"))
-    sd_wind = _x(k.crouch(0.18, lean=8, rh=pole(0.25, 0.3, 75.0), face="angry"), fx_charge=0.6)
-    sd_front = _x(k.crouch(0.32, lean=24, rh=pole(0.95, 0.86, -14.0), rf=k.foot(R, 0.3), lf=k.foot(L, -0.3), face="angry", vis="a"),
+    heavy = dict(front=0.35, rear=-0.34)
+    coil = _x(staff_stance(-0.30, 0.32, 12, lean=-14, side=-5, weight=0.26, drop=0.12,
+                            front_toe=10, rear_toe=-20, rear_lift=0.015,
+                            face="angry", vis="e", **heavy), fx_charge=0.7)
+    drive = staff_stance(0.94, 0.20, 2, lean=25, weight=0.76, drop=0.12, front_toe=12, rear_toe=-30, rear_lift=0.045, face="angry", vis="a", **heavy)
+    drive_follow = staff_stance(0.86, 0.29, -3, lean=29, weight=0.80, drop=0.135, front_toe=8, rear_toe=-24, rear_lift=0.035, face="angry", **heavy)
+    add(_seq("smash_forward", 10, 54, False, [(0.0, fight_guard), (0.25, coil), (0.32, coil),
+        (0.42, _x(drive, fx_trail=1.0, fx_spark=1.0, fx_burst=1.0)),
+        (0.58, _x(drive_follow, fx_spark=0.4)), (0.8, staff_stance(0.60, 0.40, 8, lean=15, weight=0.58, drop=0.09, **heavy)),
+        (1.0, fight_guard)], cat="smash"))
+    upbase = dict(front=0.25, rear=-0.26)
+    sup_wind = _x(staff_stance(0.27, 0.62, 150, lean=18, weight=0.35, drop=0.19, front_toe=3, rear_toe=-16, rear_lift=0.015, face="angry", **upbase), fx_charge=0.6)
+    sup_hit = staff_stance(0.34, -0.85, 87, lean=-9, head=(-22, 0), weight=0.62, drop=0.05,
+                            front_toe=12, rear_toe=-18, rear_lift=0.05,
+                            pole_=(0.6, 0.2, -0.6), face="angry", vis="a", **upbase)
+    sup_follow = staff_stance(0.02, -0.84, 119, lean=-12, head=(-20, 0), weight=0.58, drop=0.065,
+                               front_toe=8, rear_toe=-14, rear_lift=0.035,
+                               pole_=(0.6, 0.2, -0.6), **upbase)
+    add(_seq("smash_up", 10, 54, False, [(0.0, fight_guard), (0.28, sup_wind),
+        (0.44, _x(sup_hit, fx_trail=1.0, fx_spark=1.0, fx_burst=1.0)),
+        (0.62, _x(sup_follow, fx_spark=0.3)), (1.0, fight_guard)], cat="smash"))
+    lowbase = dict(front=0.34, rear=-0.32)
+    sd_wind = _x(staff_stance(0.22, 0.31, 68, lean=6, weight=0.38, drop=0.13, front_toe=6, rear_toe=-14, rear_lift=0.01, face="angry", **lowbase), fx_charge=0.6)
+    sd_front = _x(staff_stance(0.85, 0.52, -5, lean=28, weight=0.71, drop=0.19, front_toe=10, rear_toe=-22, rear_lift=0.035, face="angry", vis="a", **lowbase),
                   fx_trail=1.0, fx_spark=1.0, fx_dust=1.0)
-    sd_back = _x(k.crouch(0.32, lean=6, side=-6, rh=pole(-0.7, 0.64, 186.0, pole_=(0.8, 0.4, -0.3)), rf=k.foot(R, 0.3), lf=k.foot(L, -0.3),
-                          face="angry", vis="a"), fx_trail=1.0, fx_spark=1.0, fx_dust=1.0)
-    add(_seq("smash_down", 11, 51, False, [(0.0, guard), (0.25, sd_wind), (0.4, sd_front), (0.58, sd_back),
-                                           (0.75, _x(k.crouch(0.2, lean=10, rh=pole(-0.2, 0.7, 150.0)), fx_spark=0.2)), (1.0, guard)],
-              cat="smash"))
+    # The rear sweep releases the assisting hand while the near hand
+    # takes the long pole behind her. Its low line stays above the ground.
+    sd_back = _x(staff_stance(-0.10, 0.45, 180, lean=-6, weight=0.30, drop=0.19, two=0.0,
+                              front_toe=8, rear_toe=-16, rear_lift=0.025,
+                              pole_=(0.5, 0.3, -0.6), lh=k.hand(L, 0.46, 0.12, 0.24), face="angry", vis="a", **lowbase),
+                  fx_trail=1.0, fx_spark=1.0, fx_dust=1.0)
+    add(_seq("smash_down", 11, 51, False, [(0.0, fight_guard), (0.25, sd_wind), (0.4, sd_front), (0.58, sd_back), (0.60, sd_back),
+        (0.75, _x(staff_stance(-0.12, 0.43, 148, lean=-4, weight=0.40, drop=0.12, front_toe=6, rear_toe=-12, rear_lift=0.015, **lowbase), fx_spark=0.2)),
+        (1.0, fight_guard)], cat="smash"))
+    for direction, loaded in (("forward", coil), ("up", sup_wind), ("down", sd_wind)):
+        # Charge progress is sampled by the runtime. A held charge has a
+        # small settling motion and ends in the same windup as its release.
+        initial = replace(loaded, root=(loaded.root[0], loaded.root[1] - 0.006*k.H, loaded.root[2]))
+        add(_seq(f"smash_charge_{direction}", 8, 70, False, [(0.0, initial), (0.5, loaded), (1.0, loaded)], cat="smash"))
+    add(_seq("smash_charge", 8, 70, False, out["smash_charge_forward"].keys, cat="smash"))
 
     # ---- aerials -------------------------------------------------------------------------------
     def air(**kw) -> Pose:
@@ -285,19 +334,21 @@ def alice_library(fig) -> Dict[str, Clip]:
                                                           pole_=(0.4, 0.5, -0.6)), rf=k.bfoot(R, 0.35, 0.55), lf=k.bfoot(L, 0.25, 0.6)),
                                                 fx_compass=1.0 if 0 < i < 8 else 0.0)))
     add(_seq("air_neutral", 12, 40, False, [(0.0, hang)] + spin + [(1.0, hang)], cat="aerial"))
-    strike("air_forward", air(lean=-6.0, rh=pole(-0.15, -0.6, 118.0, pole_=(0.5, 0.2, -0.6))),
-           air(lean=14.0, rh=pole(0.95, 0.3, -12.0), face="angry"), air(lean=16.0, rh=pole(0.6, 0.75, -58.0)), frames=8, ms=48,
+    strike("air_forward", air(lean=-14, rh=pole(-0.16, -0.60, 107, pole_=(0.5, 0.2, -0.6)),
+                               rf=k.bfoot(R, 0.42, 0.45), lf=k.bfoot(L, -0.26, 0.80)),
+           air(lean=20, rh=pole(0.92, 0.10, 20), rf=k.bfoot(R, -0.30, 0.82), lf=k.bfoot(L, 0.44, 0.51), face="angry"),
+           air(lean=16, rh=pole(0.66, 0.44, -20), rf=k.bfoot(R, -0.16, 0.78), lf=k.bfoot(L, 0.32, 0.64)), frames=8, ms=48,
            start=hang, end=hang)
-    strike("air_back", air(lean=8.0, rh=pole(0.55, 0.45, 8.0)),
-           air(lean=-12.0, side=-8.0, head=(6.0, 0.0), rh=pole(-0.85, 0.35, 182.0, pole_=(0.8, 0.3, -0.3)), face="angry"),
-           air(lean=-10.0, rh=pole(-0.6, 0.55, 205.0, pole_=(0.8, 0.3, -0.3))), frames=8, ms=50, start=hang, end=hang)
-    strike("air_up", air(rh=pole(0.35, 0.6, -40.0)),
-           air(lean=-8.0, head=(-24.0, 0.0), rh=pole(0.2, -0.95, 92.0, pole_=(0.6, 0.2, -0.6)), face="angry"),
-           air(lean=-10.0, head=(-20.0, 0.0), rh=pole(-0.1, -0.88, 118.0, pole_=(0.6, 0.2, -0.6))), frames=8, ms=46, start=hang, end=hang)
-    strike("air_down", air(lean=-4.0, rh=pole(0.3, -0.35, 70.0), rf=k.bfoot(R, 0.35, 0.5), lf=k.bfoot(L, 0.3, 0.55)),
-           air(lean=10.0, head=(14.0, 0.0), rh=pole(0.3, 0.95, -88.0, pole_=(0.4, 0.5, -0.6)), rf=k.bfoot(R, 0.2, 0.62), lf=k.bfoot(L, 0.1, 0.68),
-               face="angry"),
-           air(lean=8.0, rh=pole(0.32, 0.92, -84.0)), frames=8, ms=50, start=hang, end=hang)
+    strike("air_back", air(lean=14, rh=pole(0.52, 0.30, 22), rf=k.bfoot(R, 0.42, 0.45), lf=k.bfoot(L, -0.12, 0.82)),
+           air(lean=-12, side=-8, head=(6, 0), rh=pole(-0.86, 0.16, 170, two=0.0, pole_=(0.8, 0.3, -0.3)),
+               lh=k.hand(L, 0.52, 0.12, 0.35), rf=k.bfoot(R, 0.34, 0.72), lf=k.bfoot(L, 0.50, 0.54), face="angry"),
+           air(lean=-8, rh=pole(-0.63, 0.44, 183, two=0.0, pole_=(0.8, 0.3, -0.3)), rf=k.bfoot(R, 0.15, 0.65)), frames=8, ms=50, start=hang, end=hang)
+    strike("air_up", air(lean=12, rh=pole(0.30, 0.52, -15), rf=k.bfoot(R, 0.42, 0.50), lf=k.bfoot(L, 0.22, 0.57)),
+           air(lean=-10, head=(-22, 0), rh=pole(0.26, -0.89, 80, pole_=(0.6, 0.2, -0.6)), rf=k.bfoot(R, 0.02, 0.96), lf=k.bfoot(L, -0.21, 0.88), face="angry"),
+           air(lean=-8, head=(-17, 0), rh=pole(0.02, -0.82, 107, pole_=(0.6, 0.2, -0.6)), rf=k.bfoot(R, 0.20, 0.72), lf=k.bfoot(L, -0.13, 0.83)), frames=8, ms=46, start=hang, end=hang)
+    strike("air_down", air(lean=-6, rh=pole(0.26, -0.44, 71), rf=k.bfoot(R, 0.42, 0.37), lf=k.bfoot(L, 0.25, 0.49)),
+           air(lean=12, head=(16, 0), rh=pole(0.32, 0.86, -76, pole_=(0.4, 0.5, -0.6)), rf=k.bfoot(R, -0.24, 0.61), lf=k.bfoot(L, 0.18, 0.68), face="angry"),
+           air(lean=8, rh=pole(0.31, 0.82, -80), rf=k.bfoot(R, -0.12, 0.75), lf=k.bfoot(L, 0.24, 0.55)), frames=8, ms=50, start=hang, end=hang)
 
     # ---- specials ------------------------------------------------------------------------------
     # One-time pad: her hardest blow, used once. She takes a hit while she
@@ -390,7 +441,7 @@ def alice_library(fig) -> Dict[str, Clip]:
     for name in POLE_AWAY:
         c = out[name]
         out[name] = replace(c, keys=[(t, _x(p, prop_staff=0.0)) for t, p in c.keys])
-    return out
+    return with_combat_turns(out, staff=True)
 
 
 __all__ = ["CONTRACT_ROWS", "FIGHTER_ROWS", "MOVESET_ROWS", "POLE_AWAY", "ROWS", "SOLVED_ROWS", "TURN_ROWS", "alice_library"]
