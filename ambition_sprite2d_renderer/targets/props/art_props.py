@@ -329,6 +329,21 @@ def _garden_scaffold(c, _kit):
     c.put(c.mask(lambda p: p.rect(1468, 696, 1508, 704)), (165, 152, 181))
 
 
+def _caverns_cork(c, _kit):
+    x, y = 2928, 928
+    c.put(c.mask(lambda p: p.rect(x, y + 6, x + 48, y + 32)), (37, 23, 75))
+    c.put(c.mask(lambda p: p.rect(x + 4, y + 9, x + 44, y + 31)), (86, 48, 114))
+    c.put(c.mask(lambda p: p.rect(x + 10, y + 15, x + 31, y + 29)), (224, 201, 177))
+    c.put(c.mask(lambda p: p.poly([(x + 21, y + 17), (x + 17, y + 23), (x + 18, y + 26),
+                                 (x + 23, y + 26), (x + 24, y + 23)])), (107, 43, 107))
+    c.put(c.mask(lambda p: p.line([(x + 39, y + 11), (x + 39, y + 26)], 2)), (102, 159, 197))
+    c.put(c.mask(lambda p: p.rect(x, y, x + 48, y + 9)), (196, 139, 100))
+    c.put(c.mask(lambda p: p.rect(x, y, x + 48, y + 2)), (246, 200, 140))
+    c.put(c.mask(lambda p: p.rect(x, y + 7, x + 48, y + 9)), (137, 86, 83))
+    for dx, dy in ((7, 4), (18, 3), (27, 5), (37, 4), (42, 5)):
+        c.put(c.mask(lambda p: p.ellipse(x + dx, y + dy, 1.3, 0.8)), (137, 86, 83))
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -377,4 +392,5 @@ TARGETS.update(targets({
     "art_plaza_open_gallery": Piece((1784, 814, 2216, 962), _plaza_gallery),
     "art_cliffs_fold": Piece((2364, 892, 2596, 928), _cliffs_fold),
     "art_garden_scaffold": Piece((1240, 646, 1528, 964), _garden_scaffold),
+    "art_caverns_cork": Piece((2928, 928, 2976, 960), _caverns_cork),
 }, {}))
