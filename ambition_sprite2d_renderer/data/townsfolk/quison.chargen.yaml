@@ -45,7 +45,7 @@ game:
   identity_kind: original
   concept: Dimensional pantry chef
   gear: [chef_toque, apron_spoon]
-  frame_bottom_padding: 24
+  frame_bottom_padding: 36
   description: >-
     Quison cooks with ingredients brought through the gates. His character takes its starting point
     from the showmanship of Iron Chef and Fukui-san's kitchen commentary. The broad build, cream
