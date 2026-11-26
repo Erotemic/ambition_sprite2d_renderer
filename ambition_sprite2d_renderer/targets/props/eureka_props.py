@@ -355,8 +355,8 @@ def observatory_front(c, k):
 # ---------------------------------------------------------------------------
 
 PO_FLOOR, PO_CEILING = 576, 32
-COUNTER_X0, COUNTER_X1, COUNTER_TOP = 480, 720, 536
-CABINET_X0, CABINET_X1, CABINET_TOP = 820, 980, 480
+COUNTER_X0, COUNTER_X1, COUNTER_TOP = 480, 720, 528
+CABINET_X0, CABINET_X1, CABINET_TOP = 816, 992, 480
 GALLERY_X0, GALLERY = 768, 400
 WAINSCOT = 446
 
@@ -448,10 +448,10 @@ def patent_room(c, k):
                     b.add(RIBBON, 1.0, lambda p, xx=xx, top=floor_y - n * 2.6, bot=floor_y: p.rect(xx + cw / 2 - 0.8, top, xx + cw / 2 + 0.8, bot))
     b.draw()
     c.put(c.mask(lambda p: ([p.rect(px0, y, px1, y + 1.6) for y in np.arange(py0, py1 + 1, ch)], [p.rect(x, py0, x + 1.6, py1) for x in np.arange(px0, px1 + 1, cw)])), OAK)
-    # The counter: panelled oak, its top the walk line (y 536), the
+    # The counter: panelled oak, its top the walk line, the
     # clerk's things on it.
     panels(c, COUNTER_X0, COUNTER_TOP, COUNTER_X1, g, OAK, 4, "po_counter")
-    edge_line(c, COUNTER_X0 - 6, COUNTER_X1 + 6, COUNTER_TOP, OAK_LIGHT, 6)
+    edge_line(c, COUNTER_X0, COUNTER_X1, COUNTER_TOP, OAK_LIGHT, 6)
     # A green-shaded lamp, the in and out trays, the stamp rack and the bell.
     lx = 520
     c.put(c.mask(lambda p: (p.rect(lx - 6, COUNTER_TOP - 3, lx + 6, COUNTER_TOP), p.rect(lx - 0.8, COUNTER_TOP - 22, lx + 0.8, COUNTER_TOP - 3))), BRASS)
@@ -480,7 +480,7 @@ def patent_room(c, k):
             b.add(BRASS, 1.0, lambda p, xx=xx, yy=yy: p.ellipse(xx + 8.5, yy + 9, 2.2, 1.2))
     b.draw()
     c.put(c.mask(box(CABINET_X0, g - 10, CABINET_X1, g)), OAK_DARK)
-    edge_line(c, CABINET_X0 - 4, CABINET_X1 + 4, CABINET_TOP, OAK_LIGHT, 6)
+    edge_line(c, CABINET_X0, CABINET_X1, CABINET_TOP, OAK_LIGHT, 6)
     # The archive gallery (y 400) on brackets, its rail behind the play,
     # and over it the shelves of the archive to the ceiling.
     b = Batch(c)
