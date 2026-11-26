@@ -370,6 +370,29 @@ def _library_stair(c, _kit):
         c.put(c.mask(box(x, 313, x + 3, 336)), timber)
 
 
+def _stacks_ladder_case(c, _kit):
+    timber = (92, 56, 41)
+    edge = (171, 116, 73)
+    brass = (211, 156, 80)
+    for x in (1722, 1878):
+        c.put(c.mask(box(x, 832, x + 8, 960)), timber)
+        c.put(c.mask(box(x + 1, 838, x + 3, 955)), edge)
+        c.put(c.mask(box(x - 3, 950, x + 11, 960)), edge)
+
+    c.put(c.mask(box(1712, 832, 1888, 842)), timber)
+    c.put(c.mask(box(1712, 832, 1888, 834)), brass)
+    c.put(c.mask(box(1730, 874, 1808, 880)), timber)
+    for x, width, height, colour in (
+        (1736, 10, 25, OXBLOOD),
+        (1747, 14, 28, NAVY),
+        (1763, 8, 20, BOTTLE),
+        (1772, 15, 24, LEATHER),
+        (1789, 11, 18, NAVY),
+    ):
+        c.put(c.mask(box(x, 874 - height, x + width, 874)), colour[:3])
+        c.put(c.mask(box(x + 2, 878 - height, x + width - 2, 880 - height)), brass)
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -389,5 +412,9 @@ for _ending in ENDINGS:
         forward=(0.0, -1.0))
 
 TARGETS.update(targets(
-    {"art_library_stair": Piece((552, 300, 1124, 576), _library_stair)}, {},
+    {
+        "art_library_stair": Piece((552, 300, 1124, 576), _library_stair),
+        "art_stacks_ladder_case": Piece((1704, 824, 1896, 964), _stacks_ladder_case),
+    },
+    {},
 ))
