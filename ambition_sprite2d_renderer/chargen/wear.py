@@ -37,6 +37,7 @@ from .drawkit import (
     visible,
 )
 from .family import family_of
+from .garment import TopProfile, fitted_top, outer_shell, top_profile, top_shell
 from .geometry import Loft, Point as Point2, RingKey, Vec3, add3, hull, lerp, loft_region, scale3, smoothstep, sub3, wrap180
 from .svgout import FINE, INK, Paint, light, shade
 
@@ -108,8 +109,8 @@ def opening(edge):
     return lambda a, y: (abs(wrap180(a)) - edge(y)) * 0.2
 
 
-def skirt_loft(fig: Figure, y_top: float, hem: float, t: float, flare: float) -> Loft:
-    tk = fig.torso
+def skirt_loft(fig: Figure, y_top: float, hem: float, t: float, flare: float, *, base: Optional[Loft] = None) -> Loft:
+    tk = fig.torso if base is None else base
     w, h, c = tk.section(y_top), tk.section(fig.y_hipw), tk.section(fig.y_crotch)
     knee = fig.joints["right_knee"]
     leg_x = abs(knee[0]) + fig.leg_r[1] + 1.2
@@ -210,34 +211,71 @@ def drape_parts(ctx: Ctx, slot: str, feature: str, zmap: Dict[str, float]) -> Li
     return out
 
 
+def _limb_fold(ctx: Ctx, pt: Paint, a: Vec3, b: Vec3, r0: float, r1: float,
+               color: str, strength: float, *, at: float = .70) -> None:
+    """A tapered compression fold, in the same bone frame as the cloth.
+
+    The two tones describe a single ridge, rather than outlining every
+    muscle or wrapping a dark ring all the way around the joint.
+    """
+    if strength < .12:
+        return
+    A, B = ctx.p(a), ctx.p(b)
+    dx, dy = B[0]-A[0], B[1]-A[1]
+    length = math.hypot(dx,dy)
+    if length < 1.0:
+        return
+    nx, ny = -dy/length, dx/length
+    if nx < 0.:
+        nx, ny = -nx, -ny
+    def point(t, u):
+        r = lerp(r0,r1,t)
+        return (lerp(A[0],B[0],t)+nx*r*u, lerp(A[1],B[1],t)+ny*r*u)
+    strength = min(1., strength)
+    # Start at a hanging edge, narrowing toward the middle of the limb.
+    pt.flat([[point(at-.14,-.79), point(at-.06,-.30), point(at+.035,.30),
+              point(at+.02,-.22), point(at-.04,-.79)]], shade(color,.12+.12*strength))
+    pt.flat([[point(at+.025,-.73), point(at+.07,-.23), point(at+.10,.20),
+              point(at+.055,-.40)]], light(color,.10+.10*strength))
+
+
 def _sleeve(ctx: Ctx, side: str, piece: str, reach: float, add: float, color: str, *, rolled: bool = False, cuff: bool = False,
-            wide: float = 0.0) -> Paint:
-    """A sleeve over one arm segment, from the shoulder to ``reach`` (0 the
-    shoulder, 1 the wrist)."""
+            wide: float = 0.0, shoulder_backing: Optional[Paint] = None) -> Paint:
+    """Sleeve with a common elbow radius and room through its upper arm.
+
+    The lower sleeve tapers into a cuff. Short sleeve hems remain open;
+    neither a loose sleeve nor a cuff moves the underlying joints.
+    """
     fig = ctx.fig
     j = fig.joints
     S, E, W = (j[f"{side}_{n}"] for n in ("shoulder", "elbow", "wrist"))
     rs, re, rw = fig.arm_r
     ua, fa = math.dist(S, E), math.dist(E, W)
     total = ua + fa
+    shoulder = rs * .86 + .88 * add
+    elbow = re + add + .40 * wide
+    wrist = rw + max(.32 * fig.k, .63 * add) + .15 * wide
     pt = ctx.new()
     if piece == "upper":
-        a, b, r0, r1, f0, f1 = S, E, rs * 0.86, re, 0.0, ua / total
+        a, b, r0, r1, f0, f1 = S, E, shoulder, elbow, 0.0, ua / total
     else:
-        a, b, r0, r1, f0, f1 = E, W, re * 0.97, rw, ua / total, 1.0
+        a, b, r0, r1, f0, f1 = E, W, elbow, wrist, ua / total, 1.0
     if reach <= f0:
         return pt
     tt = min(1.0, (reach - f0) / (f1 - f0))
     aa, bb = segment(a, b, 0.0, tt)
-    rr1 = lerp(r0, r1, tt) + add + (wide if piece == "lower" else 0.0)
+    rr1 = lerp(r0, r1, tt)
+    if tt < 1.0:
+        rr1 += .30 * wide
     joint = tt >= 1.0 and piece == "upper"
-    tube3(ctx, pt, aa, bb, r0 + add * (0.55 if piece == "upper" else 1.0), rr1, color, round_b=joint, joint_b=joint)
-    if rolled and tt < 1.0:
-        ca, cb = segment(a, b, max(0.0, tt - 0.16), tt)
-        tube3(ctx, pt, ca, cb, lerp(r0, r1, tt - 0.16) + add + 0.5, rr1 + 0.5, light(color, 0.12), band=False, round_a=False, round_b=False)
-    elif cuff and tt >= 1.0 and piece == "lower":
-        ca, cb = segment(a, b, 0.84, 1.0)
-        tube3(ctx, pt, ca, cb, lerp(r0, r1, 0.84) + add + 0.25, rr1 + 0.25, shade(color, 0.12), band=False, round_a=False, round_b=False)
+    tube3(ctx, pt, aa, bb, r0, rr1, color, round_b=joint, joint_b=joint,
+          shoulder_backing=shoulder_backing, crease=.55)
+    if add > .55 * fig.k:
+        _limb_fold(ctx, pt, aa, bb, r0, rr1, color, (add-.4*fig.k)/(1.8*fig.k), at=.68 if piece=="upper" else .81)
+    if (rolled and tt < 1.0) or (cuff and tt >= 1.0 and piece == "lower"):
+        ca, cb = segment(a, b, max(0.0, tt - .13), tt)
+        tube3(ctx, pt, ca, cb, lerp(r0, r1, max(0., tt-.13)) + .30, rr1+.30,
+              light(color, .12) if rolled else shade(color, .10), band=False, round_a=False, round_b=False)
     return pt
 
 
@@ -245,15 +283,73 @@ def sleeve_parts(ctx: Ctx, slot: str, feature: str, reach: float, add: float, co
     out = []
     for depth, side, _sgn in SIDES:
         for piece, seg in (("upper", "arm_u"), ("lower", "arm_l")):
-            pt = _sleeve(ctx, side, piece, reach, add, color, **kw)
-            p = _part(f"{depth}_{seg}__{slot}", f"{depth}_{seg}", zmap[f"{depth}_{seg}"] + LAYER[slot], pt, f"Sleeve - {depth} {piece}",
-                      feature)
+            name = f"{depth}_{seg}__{slot}"
+            # The far arm in a turned view is already behind the torso.
+            # Near shoulders (both in front/back views) get a split cap.
+            split = piece == "upper" and zmap[f"{depth}_{seg}"] > zmap["torso"]
+            backing = ctx.new() if split else None
+            pt = _sleeve(ctx, side, piece, reach, add, color, shoulder_backing=backing, **kw)
+            p = _part(name, f"{depth}_{seg}", zmap[f"{depth}_{seg}"] + LAYER[slot], pt, f"Sleeve - {depth} {piece}", feature)
             if p:
                 out.append(p)
+            if p and backing and backing.els:
+                out.append(Part(name+"_backing", p.bone, zmap["torso"]-.5+LAYER[slot], backing.els,
+                                p.label+" - silhouette", feature=feature, backing_for=name))
     return out
 
 
 # ---- the top ----------------------------------------------------------------------------------
+
+
+def _cloth_fold(ctx: Ctx, pt: Paint, shell: Loft, y0: float, y1: float,
+                a0: float, a1: float, width: float, color: str, strength: float) -> None:
+    """Tapered fold on a common 3D surface, projected in every view."""
+    # A fold starts and ends at a point. Break runs near the silhouette
+    # rather than painting on the other side of the cloth.
+    left, right, highlight = [], [], []
+    def flush():
+        if len(left) >= 3:
+            pt.flat([left + list(reversed(right))], shade(color, .12+.10*strength), smooth=False)
+            pt.flat([right + list(reversed(highlight))], light(color, .08+.10*strength), smooth=False)
+        left.clear(); right.clear(); highlight.clear()
+    for i in range(13):
+        t = i/12
+        a = lerp(a0,a1,t) + 3.5*math.sin(math.pi*t)
+        y = lerp(y0,y1,t)
+        w = width*math.sin(math.pi*t)**.85
+        if min(ctx.view.facing(a-w),ctx.view.facing(a+w*1.3)) < .12:
+            flush()
+            continue
+        left.append(ctx.p(shell.point(a-w,y)))
+        right.append(ctx.p(shell.point(a+.10*w,y)))
+        highlight.append(ctx.p(shell.point(a+1.05*w,y)))
+    flush()
+
+
+def _top_folds(ctx: Ctx, pt: Paint, shell: Loft, profile: TopProfile, hem: float, col: str) -> None:
+    fig = ctx.fig
+    o = fig.spec.outfit
+    T = fig.T
+    loose = min(1., max(0., (profile.waist/fig.k-.45)/3.2))
+    if loose < .10:
+        return
+    gathered = ctx.plan["tucked"] or (o.top=="tunic" and "belt" in o.accessories)
+    end = min(hem-.015*T, fig.y_belt-.012*T) if gathered else hem-.024*T
+    for side in (-1,1):
+        sign = side * ctx.view.lateral
+        # Fabric hangs from under the arm, not from the middle of a pec.
+        _cloth_fold(ctx,pt,shell,fig.y_under-.08*T,end,sign*65,sign*(33 if gathered else 58),
+                    5.0+2.6*loose,col,loose)
+        _cloth_fold(ctx,pt,shell,fig.y_under+.06*T,end-.018*T,sign*128,sign*(153 if gathered else 133),
+                    4.5+3.0*loose,col,loose)
+        if loose > .42:
+            _cloth_fold(ctx,pt,shell,fig.y_waist-.07*T,end,sign*28,sign*(15 if gathered else 26),
+                        3.0+2.0*loose,col,loose*.8)
+    if not gathered and o.top != "sweater":
+        # A restrained hem stitch follows the same loose surface.
+        y = hem-.025*T
+        for run in surface_line(ctx,shell,[(a,y) for a in range(-180,181,5)],thresh=.18):
+            pt.line(run,shade(col,.24),FINE*.70)
 
 
 def top_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
@@ -261,7 +357,7 @@ def top_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     feature = f"top:{o.top}"
     T = fig.T
     pt = ctx.new()
-    shirt = fig.torso.shell(0.3)
+    profile, shirt = fitted_top(ctx)
     top = fig.torso.top
     lower = o.top == "tunic" and not plan["tucked"]
     # The body of the top covers the torso down to its hem or the crotch
@@ -269,7 +365,9 @@ def top_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     # between the top and what hangs from it.
     hem = min(plan["top_hem"], fig.y_crotch)
     neck = neckline(fig, o.neckline)
-    shaded_region(ctx, pt, shirt, top, hem, o.top_color, all_of(neck, between(top - 1, hem)), lit=True)
+    mask = all_of(neck, between(top - 1, hem))
+    shaded_region(ctx, pt, shirt, top, hem, o.top_color, mask, lit=True)
+    _top_folds(ctx, pt, shirt, profile, hem, o.top_color)
     if o.top == "sweater":
         rib = shade(o.top_color, 0.12)
         pt.flat(loft_region(ctx.view, shirt, top, fig.y_nb + 1.6, all_of(neck, between(fig.y_nb + 0.2, fig.y_nb + 1.6))), rib)
@@ -283,10 +381,11 @@ def top_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     reach = {"short": 0.3 if o.top != "tshirt" else 0.28, "long": 1.0, "rolled": 0.62}[o.sleeves]
     if o.top == "sweater":
         reach = max(reach, 0.62)
-    out += sleeve_parts(ctx, "top", feature, reach, 0.45 + (0.25 if o.top == "sweater" else 0.0), o.top_color, zmap,
-                        rolled=o.sleeves == "rolled")
+    out += sleeve_parts(ctx, "top", feature, reach, profile.sleeve_add, o.top_color, zmap,
+                        rolled=o.sleeves == "rolled", cuff=o.top in ("shirt", "blouse", "sweater"), wide=profile.sleeve_wide)
     if lower:
-        tk = skirt_loft(fig, fig.y_belt, plan["top_hem"], 0.9, 1.08)
+        flare = min(1.22, 1.03 + profile.hem_flare * 0.22)
+        tk = skirt_loft(fig, fig.y_belt, plan["top_hem"], .25*fig.k, flare, base=shirt)
         out += lobe_parts(ctx, "top", feature, tk, fig.y_belt, plan["top_hem"], o.top_color, z=(21.0, 21.5))
         out += drape_parts(ctx, "top", feature, zmap)
     return out
@@ -325,7 +424,7 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     feature = f"outer:{o.outer}"
     T = fig.T
     t = plan["outer_t"]
-    shell = fig.torso.shell(t)
+    shell = outer_shell(ctx)
     col = o.outer_color
     top = fig.torso.top
     hem = plan["outer_hem"]
@@ -379,13 +478,16 @@ def outer_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         # The lower panels use the same opening width as the torso.
     out.append(Part("torso__outer", "torso", 33.0, pt.els, "Outer", feature=feature))
     if o.outer in ("jacket", "coat", "robe", "cardigan", "field_jacket"):
-        out += sleeve_parts(ctx, "outer", feature, 0.97 if o.outer == "robe" else 1.0, 1.0 + (0.9 if o.outer == "robe" else 0.0), col, zmap,
-                            cuff=o.outer in ("coat", "jacket", "field_jacket"), wide=2.0 if o.outer == "robe" else 0.0)
+        profile, _ = fitted_top(ctx)
+        add = max(1.0 + (0.9 if o.outer == "robe" else 0.0), profile.sleeve_add + .65*fig.k)
+        wide = max(2.0 if o.outer == "robe" else 0.0, profile.sleeve_wide + .30*fig.k)
+        out += sleeve_parts(ctx, "outer", feature, 0.97 if o.outer == "robe" else 1.0, add, col, zmap,
+                            cuff=o.outer in ("coat", "jacket", "field_jacket"), wide=wide)
     if hem > torso_bottom + 0.02 * T:
         flare = {"robe": 1.3, "coat": 1.2, "apron": 1.0, "cardigan": 1.1, "jacket": 1.05, "vest": 1.0}.get(o.outer, 1.1)
         if o.outer != "apron":
             flare += 0.55 * o.outer_flare
-        lo = skirt_loft(fig, fig.y_belt, hem, t + 0.6, flare)
+        lo = skirt_loft(fig, fig.y_belt, hem, .55*fig.k, flare, base=shell)
         if open_lower:
             lower_margin = opening(opening_edge(fig, lo, half, 0.0))
 
@@ -544,11 +646,12 @@ def legwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
             # cloth gathered in a round fold where the boot (or the ankle)
             # takes it in.
             pu = ctx.new()
-            tube3(ctx, pu, Hp, K, rt + 1.6, rk * 1.05 + 2.6, col, joint_b=True)
+            tube3(ctx, pu, Hp, K, rt + 1.6, max(rk * 1.05 + 2.6, rc + 2.4), col, joint_b=True, crease=.5)
+            _limb_fold(ctx, pu, Hp, K, rt+1.6, max(rk*1.05+2.6, rc+2.4), col, .8, at=.81)
             pl = ctx.new()
             gather = 0.42 if o.shoes == "boots" else 0.86
             aa, bb = segment(K, A, 0.0, gather)
-            tube3(ctx, pl, aa, bb, rc + 2.4, lerp(rc, ra, gather) + 3.4, col, round_b=True)
+            tube3(ctx, pl, aa, bb, max(rk*1.05 + 2.6, rc+2.4), lerp(rc, ra, gather) + 3.4, col, round_b=True)
             if gather < 1.0:
                 ca, cb = segment(K, A, gather, 1.0)
                 tube3(ctx, pl, ca, cb, lerp(rc, ra, gather) + 0.8, ra + 0.9, col, round_a=False, round_b=False, band=False)
@@ -556,9 +659,10 @@ def legwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
             pl.line([ctx.p(fa), ctx.p(fb)], shade(col, 0.35), FINE)
         elif o.bottom == "trousers":
             pu = ctx.new()
-            tube3(ctx, pu, Hp, K, rt + 0.5, rk * 1.05 + 0.6, col, joint_b=True)
+            tube3(ctx, pu, Hp, K, rt + 0.5, max(rk * 1.05 + .6, rc+.6), col, joint_b=True, crease=.5)
+            _limb_fold(ctx, pu, Hp, K, rt+.5, max(rk*1.05+.6, rc+.6), col, .25, at=.83)
             pl = ctx.new()
-            tube3(ctx, pl, K, A, rc + 0.6, ra + 0.9, col, round_b=False)
+            tube3(ctx, pl, K, A, max(rk*1.05 + .6, rc+.6), ra + .9, col, round_b=False)
         elif o.bottom == "shorts":
             pu = ctx.new()
             aa, bb = segment(Hp, K, 0.0, 0.72)
@@ -670,26 +774,27 @@ def accessory_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     fig, o, plan = ctx.fig, ctx.fig.spec.outfit, ctx.plan
     out: List[Part] = []
     T = fig.T
+    _, shirt = fitted_top(ctx)
     if "belt" in o.accessories:
         pt = ctx.new()
         if plan["tucked"] or o.top == "tunic":
             if plan["tucked"]:
-                _belt(ctx, pt, fig.torso.shell(0.6), fig.y_belt + 0.01 * T)
+                _belt(ctx, pt, fig.torso.shell(1.0), fig.y_belt + 0.01 * T)
                 out.append(Part("pelvis__belt", "pelvis", zmap["pelvis"] + LAYER["acc"], pt.els, "Belt", feature="acc:belt"))
             else:
-                _belt(ctx, pt, fig.torso.shell(1.3), fig.y_belt)
+                _belt(ctx, pt, shirt.shell(.30), fig.y_belt)
                 out.append(Part("torso__belt", "torso", 33.2, pt.els, "Belt", feature="acc:belt"))
         else:
-            _belt(ctx, pt, fig.torso.shell(0.55), fig.y_belt)
+            _belt(ctx, pt, shirt.shell(.30), fig.y_belt)
             out.append(Part("torso__belt", "torso", zmap["torso"] + LAYER["acc"], pt.els, "Belt", feature="acc:belt"))
     if "suspenders" in o.accessories:
         pt = ctx.new()
-        pt.flat(loft_region(ctx.view, fig.torso.shell(0.4), fig.torso.top, fig.y_belt + 0.06 * T, bands([22.0, -22.0, 158.0, -158.0], 3.4)),
+        pt.flat(loft_region(ctx.view, shirt.shell(.16), fig.torso.top, fig.y_belt + 0.06 * T, bands([22.0, -22.0, 158.0, -158.0], 3.4)),
                 o.accent_color)
         out.append(Part("torso__suspenders", "torso", zmap["torso"] + LAYER["top"] + 0.05, pt.els, "Suspenders", feature="acc:suspenders"))
     if "necklace" in o.accessories:
         pt = ctx.new()
-        shell = fig.torso.shell(0.35)
+        shell = shirt.shell(.13)
         pts = [(a, fig.y_nb + 0.6 + 0.07 * T * math.cos(math.radians(a * 1.3))) for a in range(-60, 61, 6)]
         for run in surface_line(ctx, shell, pts, out=0.25):
             pt.line(run, o.accent_color, 0.35)
@@ -704,7 +809,7 @@ def accessory_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         nk = fig.neck.keys[-1]
         ring = Loft([RingKey(fig.y_nb - 2.6, nk.rx + 1.6, nk.rzf + 1.6, nk.rzb + 1.6, 0.0, -1.2),
                      RingKey(fig.y_nb + 1.4, nk.rx + 3.0, nk.rzf + 2.6, nk.rzb + 2.2, 0.0, -0.6)])
-        ends = fig.torso.shell(1.4)
+        ends = outer_shell(ctx).shell(.50)
         shaded_region(ctx, pt, ends, fig.y_nb, fig.y_chest + 0.12 * T, col, lambda a, y: (7.0 - abs(wrap180(a) + 19.0)) * 0.3)
         shaded_region(ctx, pt, ends.shell(0.3), fig.y_nb, fig.y_chest + 0.02 * T, shade(col, 0.1), lambda a, y: (6.0 - abs(wrap180(a) + 7.0)) * 0.3)
         shaded_region(ctx, pt, ring, ring.top, ring.bottom, col)
@@ -717,7 +822,7 @@ def accessory_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         out += _obi(ctx, zmap)
     if "dog_tags" in o.accessories:
         pt = ctx.new()
-        shell = fig.torso.shell(0.35)
+        shell = shirt.shell(.13)
         pts = [(a, fig.y_nb + 0.4 + 0.11 * T * math.cos(math.radians(a * 1.4)) ** 2) for a in range(-60, 61, 6)]
         for run in surface_line(ctx, shell, pts, out=0.25):
             pt.line(run, "#a9aaa5", 0.28)
@@ -739,7 +844,7 @@ def _bow_tie(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     if not visible(ctx, 0.0, 0.1):
         return []
     col = o.accent_color
-    c = fig.torso.shell(0.9).point(0.0, fig.y_nb + 0.6 + 0.045 * fig.T, 0.0)
+    c = fitted_top(ctx)[1].shell(.6).point(0.0, fig.y_nb + 0.6 + 0.045 * fig.T, 0.0)
     pt = ctx.new()
     for sgn in (-1.0, 1.0):
         wing = [(0.5, -0.6, 0.3), (3.2, -1.7, -0.2), (2.8, 0.0, -0.3), (3.2, 1.7, -0.2), (0.5, 0.6, 0.3)]
@@ -758,8 +863,7 @@ def _webbing(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     fig, o, plan = ctx.fig, ctx.fig.spec.outfit, ctx.plan
     T, k = fig.T, fig.k
     web = UNIFORM["webbing"]
-    t = (plan["outer_t"] if o.outer != "none" else 0.45) + 0.7
-    shell = fig.torso.shell(t)
+    shell = outer_shell(ctx).shell(.7)
     y = fig.y_belt + 0.015 * T
     w = 0.04 * T
     pt = ctx.new()
@@ -1002,8 +1106,7 @@ def _obi(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     is its own part, under the body when the back is turned away."""
     fig, o, plan = ctx.fig, ctx.fig.spec.outfit, ctx.plan
     T = fig.T
-    t = (plan["outer_t"] if o.outer != "none" else 0.45) + 0.7
-    shell = fig.torso.shell(t)
+    shell = outer_shell(ctx).shell(.7)
     col = o.obi_color or o.accent_color
     trim = trim_of(o)
     cord = o.accent_color if o.obi_color else trim

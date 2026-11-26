@@ -55,6 +55,9 @@ def schema() -> Dict[str, Any]:
         "overlays": available(),
         "bounds": {k: list(v) for k, v in S.BOUNDS.items()},
         "choices": {k: list(v) for k, v in S.CHOICES.items()},
+        # Optional fields are deliberately omitted from persisted specs at
+        # their defaults. The editor must still show and edit those fields.
+        "optional_defaults": {f"{section}.{name}": value for (section, name), value in S.OPTIONAL_DEFAULTS.items()},
         "colors": list(S.COLORS),
         "optional_colors": list(S.OPTIONAL_COLORS),
         "accessories": list(S.ACCESSORIES),

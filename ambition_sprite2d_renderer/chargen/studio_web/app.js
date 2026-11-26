@@ -37,7 +37,8 @@
   }
 
   // ---- the spec ------------------------------------------------------------------------
-  const get = (dotted) => dotted.split(".").reduce((o, k) => (o == null ? o : o[k]), spec);
+  const get = (dotted) => dotted.split(".").reduce((o, k) => (o == null ? o : o[k]), spec)
+    ?? S?.optional_defaults?.[dotted];
   function set(dotted, value) {
     const keys = dotted.split("."), last = keys.pop();
     let o = spec;
@@ -125,7 +126,8 @@
     const open = new Set([...document.querySelectorAll(".editor details[open]")].map((d) => d.dataset.s));
     if (!open.size) ["body", "face"].forEach((s) => open.add(s));
     const sections = SECTIONS.map((sec) => {
-      const names = Object.keys(spec[sec]).filter((n) => !(sec === "head" && n === "species"));
+      const optional = Object.keys(S.optional_defaults || {}).filter((key) => key.startsWith(sec + ".")).map((key) => key.split(".")[1]);
+      const names = [...new Set([...Object.keys(spec[sec]), ...optional])].filter((n) => !(sec === "head" && n === "species"));
       const off = names.map((n) => `${sec}.${n}`).filter((d) => !visible(d));
       const note = off.length ? `<p class="hidden-note" title="${esc(off.map((d) => `${d.split(".")[1]}: ${why(d)}`).join("\n"))}">${off.length} hidden: ${esc(off.map((d) => d.split(".")[1]).join(", "))}</p>` : "";
       return `<details data-s="${sec}"${open.has(sec) ? " open" : ""}><summary>${sec}${off.length ? ` <span class="n">(${off.length} hidden)</span>` : ""}</summary>${names.map((n) => control(`${sec}.${n}`)).join("")}${note}</details>`;

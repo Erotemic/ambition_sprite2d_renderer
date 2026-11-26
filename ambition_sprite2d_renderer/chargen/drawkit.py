@@ -108,21 +108,42 @@ def shaded_region(ctx: Ctx, pt: Paint, loft: Loft, y0: float, y1: float, color: 
 
 
 def tube3(ctx: Ctx, pt: Paint, a: Vec3, b: Vec3, r0: float, r1: float, color: str, *, band: bool = True,
-          round_a: bool = True, round_b: bool = True, joint_b: bool = False) -> None:
+          round_a: bool = True, round_b: bool = True, joint_b: bool = False,
+          shoulder_backing: Optional[Paint] = None, crease: float = 1.0) -> None:
     """A limb tube between 3D points. ``joint_b``: the B end is a joint the
     next limb (drawn UNDER this one) continues from: its cap gets a thin
     crease instead of a full outline, so an elbow or a knee reads as one
     limb bending, not two tubes stacked."""
     A, B = ctx.p(a), ctx.p(b)
     st = style()
-    if joint_b and round_a:
+    if shoulder_backing is not None and round_a:
+        # The proximal cap is outlined behind the torso, but filled on the
+        # moving sleeve. Outside the torso its silhouette stays inked; over
+        # the torso the shoulder reads as an ordinary cloth seam. The distal
+        # cap and the long edges stay on the arm, above the torso.
+        n = 10
+        full = tube(A, B, r0, r1, round_a=True, round_b=round_b, n=n)
+        split = n + 1 if round_b else 2
+        b_arc, a_arc = full[:split], full[split:]
+        shoulder_backing.line(a_arc, INK, 2 * st.outline, smooth=False, fixed=True)
+        if joint_b:
+            pt.line([a_arc[-1], b_arc[0]], INK, 2 * st.outline, smooth=False, fixed=True)
+            pt.line([b_arc[-1], a_arc[0]], INK, 2 * st.outline, smooth=False, fixed=True)
+        else:
+            pt.line([a_arc[-1], *b_arc, a_arc[0]], INK, 2 * st.outline, smooth=False, fixed=True)
+        pt.flat([full], color)
+        pt.line(a_arc[2:-2], shade(color, 0.27), FINE * .85)
+        if joint_b and crease > 0.0:
+            pt.line(b_arc[2:-2], shade(color, 0.25), FINE * .65 * crease)
+    elif joint_b and round_a:
         n = 10
         full = capsule(A, B, r0, r1, n)
         b_arc, a_arc = full[: n + 1], full[n + 1:]
         open_path = [b_arc[-1]] + a_arc + [b_arc[0]]
         pt.line(open_path, INK, 2 * st.outline, smooth=False, fixed=True)
         pt.flat([full], color)
-        pt.line(b_arc[2:-2], shade(color, 0.45), FINE * 0.8)
+        if crease > 0.0:
+            pt.line(b_arc[2:-2], shade(color, 0.45 if crease == 1.0 else 0.26), FINE * 0.8 * crease)
     else:
         pt.region([tube(A, B, r0, r1, round_a=round_a, round_b=round_b)], color)
     if band:
