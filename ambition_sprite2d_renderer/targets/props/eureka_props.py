@@ -522,6 +522,7 @@ PLATFORM_X0, PLATFORM_X1, PLATFORM = 320, 800, 320
 #: The stair up the wall: each tread's left x and its top (the room's ledges).
 TREADS = tuple((x, OBS_FLOOR - 80 * (i + 1)) for i, x in enumerate((240, 480, 720, 960, 720, 480, 240)))
 TREAD_W = 160
+VIEWING_STAIR = ((1120, 1264, 640), (1008, 1152, 560), (928, 1072, 480), (848, 992, 400))
 SLIT_X0, SLIT_X1 = 600, 690
 
 
@@ -571,7 +572,7 @@ def observatory_room(c, k):
         c.put(c.mask(box(ex - (14 if sgn < 0 else 0), 0, ex + (0 if sgn < 0 else 14), 306)), (64, 72, 104))
         c.put(c.mask(box(ex - (14 if sgn < 0 else 0), 0, ex - (12 if sgn < 0 else -2), 306)), (100, 110, 150))
     # Wall pieces: the golden record, the pale blue dot, a star chart, the bookcase.
-    gx, gy = 1190, 640
+    gx, gy = 1198, 590
     c.put(c.mask(box(gx - 46, gy - 46, gx + 46, gy + 46)), OAK_DARK)
     c.put(c.mask(box(gx - 42, gy - 42, gx + 42, gy + 42)), (20, 22, 30))
     c.put(c.mask(lambda p: p.ellipse(gx, gy, 34)), GOLD)
@@ -579,7 +580,7 @@ def observatory_room(c, k):
     c.put(c.mask(lambda p: p.ellipse(gx, gy, 9)), mix(GOLD, (255, 255, 230), 0.4))
     c.put(c.mask(lambda p: (p.ring(gx, gy, 4.5, 0.6), [p.line([(gx, gy), (gx + 7 * math.cos(a), gy + 7 * math.sin(a))], 0.4) for a in np.linspace(0, math.tau, 8)[:-1]])), scale(GOLD, 0.6))
     c.put(c.mask(lambda p: p.poly([(gx - 30, gy - 30), (gx - 10, gy - 34), (gx - 34, gy - 10)])), (255, 255, 255), 0.25)
-    dx, dy = 1190, 450
+    dx, dy = 1158, 420
     c.put(c.mask(box(dx - 36, dy - 50, dx + 36, dy + 50)), OAK_DARK)
     c.put(c.mask(box(dx - 32, dy - 46, dx + 32, dy + 46)), (12, 12, 18))
     beams = c.mask(lambda p: [p.poly([(dx - 32 + o, dy - 46), (dx - 22 + o, dy - 46), (dx + 10 + o, dy + 46), (dx + o, dy + 46)]) for o in (-8, 12, 30)])
@@ -654,6 +655,17 @@ def observatory_room(c, k):
             c.put(c.mask(lambda p: p.rect(lx - 4, ty + 7, lx + 4, ty + 11)), (40, 40, 46))
             c.put(c.mask(lambda p: p.ellipse(lx, ty + 12, 2.6, 1.6)), RED_LAMP)
             c.light(c.mask(lambda p: p.ellipse(lx, ty + 26, 40, 22), blur=14), RED_LAMP, 0.22)
+    # The east balcony joins the spiral. Its stair follows the exhibits.
+    for left, right, top in VIEWING_STAIR:
+        c.put(c.mask(lambda p: [
+            p.line([(x - 13, top + 10), (x + 7, top + 43), (x + 7, top + 10)], 4)
+            for x in (left + 25, right - 28)
+        ]), (77, 84, 105))
+        edge_line(c, left, right, top, (162, 171, 192), 10)
+        end = min(right - 12, 1224)
+        c.put(c.mask(lambda p: (p.rect(left + 12, top - 24, end, top - 22),
+                               [p.rect(x, top - 24, x + 1.5, top) for x in range(left + 12, end, 24)])), BRASS, 0.7)
+        c.put(c.mask(lambda p: p.ellipse(left + 12, top + 14, 3, 2)), RED_LAMP)
     # The door out (its zone x 40..88): a frame of brass rivets.
     c.put(c.mask(box(32, g - 110, 96, g)), (64, 70, 96))
     c.put(c.mask(lambda p: [p.ellipse(x, y, 1.6) for x in (36, 92) for y in np.arange(g - 104, g, 12)]), BRASS)
