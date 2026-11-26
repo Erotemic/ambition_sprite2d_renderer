@@ -15,6 +15,8 @@ drawn from its ``base`` and ``seed``) with one more section, ``game``:
 * ``gear`` (optional): things it carries or wears that the generator has
   no slot for, by name (:data:`._townsfolk_gear.GEAR`: a laser sword, a
   wizard's hat), drawn in every view with its body.
+* ``frame_bottom_padding`` (optional): extra rig pixels below the ground line
+  for poses that bring the art past the standard frame.
 
 The target id is the file name. A new resident is a new file: this module
 registers each file it finds.
@@ -87,7 +89,7 @@ def _rigs(path: Path, spec: CharacterSpec, grip: str, out_dir: Path) -> Tuple[di
     if rigs is None or not all(Path(rig).is_file() for some in rigs for rig in some.values()):
         _, game = load(path)
         with extras.using(*gear_parts(game.get("gear", []))):
-            files = write_character(spec, out_dir, grip=grip)
+            files = write_character(spec, out_dir, grip=grip, frame_bottom_padding=game.get("frame_bottom_padding", 0))
         rigs = (files.rigs, files.mirrored_rigs)
         _WRITTEN[key] = rigs
     return rigs

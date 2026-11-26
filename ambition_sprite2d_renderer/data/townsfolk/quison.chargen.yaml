@@ -1,0 +1,53 @@
+schema: ambition-chargen-v1
+name: Chef Quison
+base: heavy_male
+seed: 4231
+family: crew
+body:
+  height_cm: 171
+  shoulders: 1.12
+  chest: 1.14
+  waist: 1.23
+  belly: 0.27
+  age: 0.56
+face:
+  eye_shape: hooded
+  brow: arched
+  nose: broad
+  mouth: smile
+  jaw: wide
+hair:
+  style: side_part
+  facial: mustache
+  volume: 0.23
+palette:
+  skin: '#ba805d'
+  hair: '#302320'
+  eyes: '#513e34'
+outfit:
+  top: shirt
+  sleeves: rolled
+  neckline: collar
+  top_fit: regular
+  top_color: '#eee4ce'
+  outer: apron
+  outer_length: knee
+  outer_color: '#23726b'
+  bottom: trousers
+  bottom_color: '#343238'
+  shoes: shoes
+  shoe_color: '#3a2a25'
+  hat: none
+  accessories: [scarf]
+  accent_color: '#bd592e'
+game:
+  character_id: npc_quison
+  identity_kind: original
+  concept: Dimensional pantry chef
+  gear: [chef_toque, apron_spoon]
+  frame_bottom_padding: 24
+  description: >-
+    Quison cooks with ingredients brought through the gates. His character takes its starting point
+    from the showmanship of Iron Chef and Fukui-san's kitchen commentary. The broad build, cream
+    toque, teal apron and tasting spoon are Quison's own design, with the feel of a working cook
+    who takes unfamiliar ingredients in stride.
