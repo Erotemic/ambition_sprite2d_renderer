@@ -8,7 +8,7 @@ floor (y 608), the lookout ledges (y 384, x 320..512; y 320, x 720..912).
   the night sea (the backdrop shows through it), dripping stalactites, the
   Jolly Roger, lanterns on chains, the wanted board.
 - `cove_ledges`: the two lookouts, rope-lashed plank scaffolds on posts, and
-  the ladder from the right one up the rock to the sky hatch (y 224..320).
+  the ladder from the floor to the right lookout and the skyship door.
 - `cove_doorways`: the stair passage to the hub (x 56), the timber tunnel to
   the port's docks (x 808), the scorched mouth to the arena (x 1180).
 - `cove_dressing`: a beached longboat, the quartermaster's treasure heap,
@@ -103,7 +103,7 @@ def cove_cave(c, k):
 
 
 def cove_ledges(c, k):
-    """The two lookouts and the ladder to the sky hatch."""
+    """Draw the lookout decks and mark the skyship door."""
     for x0, x1, y in (LEDGE_L, LEDGE_R):
         for px in (x0 + 14, x1 - 14):
             post(c, px, y + 5, FLOOR, 7, TIMBER)
@@ -118,15 +118,18 @@ def cove_ledges(c, k):
         rope_line(c, sag((x0, y - 26), (x1, y - 26), 6), 1.1)
         for px in (x0 + 2, x1 - 2):
             post(c, px, y - 30, y, 3, TIMBER)
-    # The ladder from the right lookout up the rock to the hatch, and the
-    # hatch itself: a trapdoor in the roof with the sky over it.
-    lx = HATCH_X
-    for side in (-12, 12):
-        c.put(c.mask(box(lx + side - 2, 16, lx + side + 2, LEDGE_R[2])), PLANK_DARK)
-    c.put(c.mask(lambda p: [p.rect(lx - 12, y, lx + 12, y + 3) for y in np.arange(36, LEDGE_R[2], 18)]), PLANK)
-    hatch = c.mask(box(lx - 26, 8, lx + 26, 26))
-    c.put(hatch, PLANK_DARK)
-    c.light(c.mask(box(lx - 22, 10, lx + 22, 22)), (150, 190, 230), 0.4)
+    # Put the ladder ties outside the game-drawn rungs.
+    for x in (748, 788):
+        for y in (325, 590):
+            c.put(c.mask(box(x - 3, y, x + 3, y + 12)), PLANK_DARK)
+        rope_line(c, [(x, 332), (x, 600)], 1.4, ROPE)
+    # A pennant with a sail marks the door on the upper deck.
+    pennant = c.mask(lambda p: p.poly([(HATCH_X - 23, 188), (HATCH_X + 23, 188),
+                                      (HATCH_X + 23, 215), (HATCH_X, 210), (HATCH_X - 23, 215)]))
+    c.put(pennant, (49, 91, 114))
+    c.put(c.mask(lambda p: p.poly([(HATCH_X - 9, 204), (HATCH_X + 7, 204),
+                                  (HATCH_X + 3, 193)])), (231, 219, 177))
+    rope_line(c, [(HATCH_X - 24, 187), (HATCH_X + 24, 187)], 2, ROPE)
 
 
 def cove_doorways(c, k):
