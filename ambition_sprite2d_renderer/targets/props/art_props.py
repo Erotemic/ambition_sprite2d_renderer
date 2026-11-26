@@ -34,6 +34,7 @@ from typing import Callable, Dict, List, Tuple
 
 from ...authoring.sheet_build import build_sheet
 from ..characters import _art_cast_kit as K
+from ._district_props import Piece, targets
 from . import _held_prop_common as hp
 
 #: Each primary: its colour, its light, its dark, and the shape of its stencil.
@@ -262,6 +263,34 @@ def _draw_pots():
     return f.finish(width=1.6)
 
 
+def _plaza_gallery(c, _kit):
+    wood, dark, light = (158, 94, 68), (89, 53, 83), (229, 164, 108)
+    for x, y, right, posts in (
+        (1792, 912, 1888, (1806, 1874)),
+        (1952, 864, 2208, (1972, 2158)),
+    ):
+        for post in posts:
+            c.put(c.mask(lambda p: p.rect(post, y + 8, post + 9, 960)), wood)
+            c.put(c.mask(lambda p: p.rect(post + 6, y + 8, post + 9, 960)), dark)
+        c.put(c.mask(lambda p: p.rect(x, y, right, y + 14)), wood)
+        c.put(c.mask(lambda p: p.rect(x, y, right, y + 3)), light)
+        c.put(c.mask(lambda p: p.rect(x, y + 10, right, y + 14)), dark)
+        for seam in range(x + 25, right - 8, 27):
+            c.put(c.mask(lambda p: p.line([(seam, y + 5), (seam - 7, y + 9)], 1.5)), light)
+
+    for x, sky, hills in (
+        (2025, (249, 218, 172), (169, 98, 175)),
+        (2094, (191, 230, 233), (89, 166, 162)),
+    ):
+        c.put(c.mask(lambda p: p.rect(x - 4, 818, x + 49, 858)), dark)
+        c.put(c.mask(lambda p: p.rect(x - 2, 820, x + 47, 856)), light)
+        c.put(c.mask(lambda p: p.rect(x + 2, 824, x + 43, 852)), sky)
+        c.put(c.mask(lambda p: p.poly([(x + 2, 852), (x + 14, 835), (x + 28, 847),
+                                     (x + 39, 831), (x + 43, 837), (x + 43, 852)])), hills)
+        c.put(c.mask(lambda p: p.ellipse(x + 25, 831, 4)), (253, 241, 190))
+        c.put(c.mask(lambda p: p.rect(x + 19, 858, x + 23, 864)), dark)
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -306,3 +335,4 @@ TARGETS["art_palette_lift"] = _publisher("art_palette_lift", "Palette Lift", STI
 TARGETS["art_easel"] = _publisher("art_easel", "Easel", STILL, EASEL_FRAME, lambda anim, i, n: _draw_easel(), {"foot": (64.0, 176.0)}, "Scenery", ["prop", "scenery", "art"])
 TARGETS["art_giant_crayon"] = _publisher("art_giant_crayon", "Giant Crayon", STILL, CRAYON_FRAME, lambda anim, i, n: _draw_crayon(), {"foot": (32.0, 256.0)}, "Scenery", ["prop", "scenery", "art"])
 TARGETS["art_paint_pots"] = _publisher("art_paint_pots", "Paint Pots", STILL, POTS_FRAME, lambda anim, i, n: _draw_pots(), {"foot": (72.0, 96.0)}, "Scenery", ["prop", "scenery", "art"])
+TARGETS.update(targets({"art_plaza_open_gallery": Piece((1784, 814, 2216, 962), _plaza_gallery)}, {}))
