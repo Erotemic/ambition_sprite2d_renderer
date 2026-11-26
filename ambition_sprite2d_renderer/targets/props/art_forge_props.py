@@ -31,6 +31,8 @@ import random
 from typing import Dict, List, Tuple
 
 from ..characters import _art_cast_kit as K
+from ._district_props import Piece, targets
+from ._town_kit import box
 from .art_props import _publisher
 
 STILL: List[Tuple[str, int, int]] = [("idle", 1, 1000)]
@@ -467,6 +469,37 @@ def _draw_crane(anim: str, i: int, n: int):
     return f.finish(outline=OUTLINE, width=1.6)
 
 
+def _firing_racks(c, _kit):
+    beam, light, shadow = (91, 68, 70), (152, 101, 73), (58, 44, 51)
+    for x in (1166, 1965):
+        c.put(c.mask(box(x, 696, x + 8, 960)), beam)
+        c.put(c.mask(box(x + 1, 704, x + 3, 949)), light)
+        c.put(c.mask(box(x - 6, 948, x + 14, 960)), shadow)
+    c.put(c.mask(box(1152, 688, 1984, 704)), beam)
+    c.put(c.mask(box(1152, 689, 1984, 692)), light)
+    c.put(c.mask(box(1152, 700, 1984, 704)), shadow)
+
+    for left, top, right in (
+        (1152, 896, 1280), (1312, 832, 1456), (1488, 800, 1664),
+        (1664, 848, 1824), (1856, 896, 1984),
+    ):
+        for x in (left + 14, right - 14):
+            c.put(c.mask(box(x - 1, 702, x + 2, top + 3)), light)
+            c.put(c.mask(lambda p: p.ring(x, 700, 5, 2)), BRASS_DARK[:3])
+            c.put(c.mask(lambda p: p.ring(x, top - 5, 5, 2)), BRASS_DARK[:3])
+        c.put(c.mask(box(left, top + 1, right, top + 16)), shadow)
+        c.put(c.mask(box(left + 2, top + 3, right - 2, top + 10)), COPPER_DARK[:3])
+        for x in range(left + 10, right - 5, 20):
+            c.put(c.mask(lambda p: p.ellipse(x, top + 7, 1.5)), BRASS[:3])
+
+    for x, y in ((1380, 849), (1562, 817), (1748, 865)):
+        c.put(c.mask(lambda p: p.poly([
+            (x - 10, y), (x + 10, y), (x + 14, y + 9),
+            (x + 9, y + 22), (x - 9, y + 22), (x - 14, y + 9),
+        ])), CLAY_SHADE[:3])
+        c.put(c.mask(box(x - 10, y + 4, x + 10, y + 7)), CLAY_LIGHT[:3])
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -481,3 +514,7 @@ TARGETS: Dict[str, dict] = {
                                  ["prop", "scenery", "art"]),
     "art_crane": _publisher("art_crane", "Crane", LOOP, CRANE_FRAME, _draw_crane, {"foot": (96.0, 320.0)}, "Scenery", ["prop", "scenery", "art"]),
 }
+
+TARGETS.update(targets(
+    {"art_forge_firing_racks": Piece((1144, 680, 1992, 964), _firing_racks)}, {},
+))
