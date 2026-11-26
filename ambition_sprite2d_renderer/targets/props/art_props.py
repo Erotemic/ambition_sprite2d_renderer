@@ -344,6 +344,28 @@ def _caverns_cork(c, _kit):
         c.put(c.mask(lambda p: p.ellipse(x + dx, y + dy, 1.3, 0.8)), (137, 86, 83))
 
 
+def _gallery_staging(c, _kit):
+    wood, shade, light = (167, 112, 91), (99, 65, 99), (228, 178, 127)
+    decks = (
+        (416, 528, 528), (512, 480, 688), (688, 448, 816),
+        (832, 416, 1008), (1072, 480, 1216), (1184, 528, 1296),
+    )
+    for left, top, right in decks:
+        for x, direction in ((left + 13, 1), (right - 17, -1)):
+            c.put(c.mask(lambda p: p.rect(x, top + 10, x + 5, 576)), wood)
+            c.put(c.mask(lambda p: p.line([(x, top + 31), (x + direction * 21, top + 11)], 4)), shade)
+        c.put(c.mask(lambda p: p.rect(left, top, right, top + 14)), wood)
+        c.put(c.mask(lambda p: p.rect(left, top, right, top + 3)), light)
+        c.put(c.mask(lambda p: p.rect(left, top + 10, right, top + 14)), shade)
+
+    for x, y, colour in ((553, 454, (203, 131, 170)), (869, 390, (104, 177, 186)),
+                         (1108, 454, (232, 179, 95))):
+        c.put(c.mask(lambda p: p.rect(x, y, x + 57, y + 24)), shade)
+        c.put(c.mask(lambda p: p.rect(x + 3, y + 3, x + 54, y + 21)), (245, 228, 203))
+        path = [(x + 10, y + 16), (x + 20, y + 9), (x + 29, y + 12), (x + 39, y + 7), (x + 49, y + 11)]
+        c.put(c.mask(lambda p: p.line(path, 3.0)), colour)
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -393,4 +415,5 @@ TARGETS.update(targets({
     "art_cliffs_fold": Piece((2364, 892, 2596, 928), _cliffs_fold),
     "art_garden_scaffold": Piece((1240, 646, 1528, 964), _garden_scaffold),
     "art_caverns_cork": Piece((2928, 928, 2976, 960), _caverns_cork),
+    "art_gallery_staging": Piece((408, 384, 1304, 580), _gallery_staging),
 }, {}))
