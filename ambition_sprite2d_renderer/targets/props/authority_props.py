@@ -85,7 +85,9 @@ BOUGH = (1120, 1280, 448)
 GARDEN_PERCH = (1280, 1392, 512)
 #: The Manifest Office.
 CHAIRS = (420, 820, 604)
+SORTING_COUNTER = (896, 1232, 560)
 CABINETS = ((1240, 1400, 512), (1400, 1584, 384))
+FILE_TRAY = (1312, 1392, 448)
 
 
 # ---------------------------------------------------------------------------
@@ -550,17 +552,19 @@ def office_counter(c, k):
     walk_top(c, x0, x1, y, NAVY)
     # The counter: wood, a pane of glass on it, a slot in the glass.
     k0, k1 = 900, 1220
-    c.put(c.mask(box(k0, g - 80, k1, g)), WOOD)
+    sx0, sx1, counter_top = SORTING_COUNTER
+    c.put(c.mask(box(k0, counter_top, k1, g)), WOOD)
     c.put(c.mask(lambda p: [p.rect(xx, g - 70, xx + 70, g - 10) for xx in (k0 + 20, k0 + 125, k0 + 230)]), WOOD_DARK, 0.45)
-    c.put(c.mask(box(k0 - 6, g - 86, k1 + 6, g - 78)), mix(WOOD, (255, 240, 210), 0.3))
-    glass = c.mask(box(k0, g - 200, k1, g - 86)) - c.mask(box(1040, g - 110, 1100, g - 86))
+    c.put(c.mask(box(sx0, counter_top, sx1, counter_top + 8)), mix(WOOD, (255, 240, 210), 0.3))
+    walk_top(c, sx0, sx1, counter_top, WOOD)
+    glass = c.mask(box(k0, g - 200, k1, counter_top)) - c.mask(box(1040, g - 110, 1100, counter_top))
     c.put(np.clip(glass, 0, 1), GLASS, 0.3)
-    c.put(c.mask(lambda p: [p.rect(xx, g - 200, xx + 4, g - 86) for xx in (k0, 1060, k1 - 4)]), STEEL_DARK)
+    c.put(c.mask(lambda p: [p.rect(xx, g - 200, xx + 4, counter_top) for xx in (k0, 1060, k1 - 4)]), STEEL_DARK)
     # The great stamp, on the counter, and what it has stamped.
     sx = 1160
-    c.put(c.mask(lambda p: (p.rect(sx - 26, g - 104, sx + 26, g - 86), p.rect(sx - 8, g - 140, sx + 8, g - 104), p.ellipse(sx, g - 146, 18, 12))), (120, 30, 40))
-    c.put(c.mask(box(sx - 30, g - 90, sx + 30, g - 86)), RED)
-    c.put(c.mask(lambda p: [p.rect(xx, g - 92, xx + 40, g - 87) for xx in (k0 + 40, k0 + 90)]), PAPER)
+    c.put(c.mask(lambda p: (p.rect(sx - 26, counter_top - 18, sx + 26, counter_top), p.rect(sx - 8, counter_top - 54, sx + 8, counter_top - 18), p.ellipse(sx, counter_top - 60, 18, 12))), (120, 30, 40))
+    c.put(c.mask(box(sx - 30, counter_top - 4, sx + 30, counter_top)), RED)
+    c.put(c.mask(lambda p: [p.rect(xx, counter_top - 6, xx + 40, counter_top - 1) for xx in (k0 + 40, k0 + 90)]), PAPER)
     # Pigeonholes on the wall behind.
     for row in range(4):
         for col in range(8):
@@ -592,6 +596,13 @@ def filing_cabinets(c, k):
         # One drawer pulled out, papers spilling.
         c.put(c.mask(box(x0 - 18, top + 42, x0 + 30, top + 70)), (150, 156, 170))
         c.put(c.mask(lambda p: [p.rect(x0 - 14 + i * 6, top + 34 - i * 2, x0 + 4 + i * 6, top + 44) for i in range(4)]), PAPER)
+    # The open tray projects from the cabinet above the first step.
+    x0, x1, top = FILE_TRAY
+    c.put(c.mask(box(x0, top, x1, top + 15)), STEEL_DARK)
+    c.put(c.mask(box(x0 + 2, top + 5, x1 - 2, top + 11)), STEEL_LIGHT)
+    c.put(c.mask(box(x0 + 24, top + 8, x1 - 24, top + 12)), GOLD)
+    c.put(c.mask(lambda p: p.line([(x0 + 12, top + 15), (x1, top + 41)], 5)), STEEL)
+    walk_top(c, x0, x1, top, STEEL_LIGHT)
 
 
 #: Every piece: its frame in its room, and how it is drawn.
