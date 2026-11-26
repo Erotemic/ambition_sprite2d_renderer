@@ -18,9 +18,10 @@ from dataclasses import replace
 from typing import Callable, Dict, List, Sequence, Tuple
 
 from ...chargen.draw import ITEM_REST_ANGLE, grip_point
-from ...chargen.drawkit import Ctx, Part, shaded_region
+from ...chargen.drawkit import Ctx, Part, shaded_region, surface_line, visible
 from ...chargen.geometry import Loft, RingKey
 from ...chargen.svgout import FINE, shade
+from ...chargen.wear import outer_shell
 from . import _western_gear as _western
 
 Point = Tuple[float, float]
@@ -132,6 +133,74 @@ def wizard_hat(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     return [Part("wizard_hat", "head", 58.0, pt.els, "Wizard's hat")]
 
 
+def chef_toque(ctx: Ctx, _zmap: Dict[str, float]) -> List[Part]:
+    """A brimless linen toque with a folded band and a pleated crown."""
+    fig = ctx.fig
+    hh = fig.hh
+    sit = fig.crown + 0.24 * hh
+    base = fig.skull.section(sit)
+    padding = 0.065 * hh
+    rx, front, back = base.rx + padding, base.rzf + padding, base.rzb + padding
+
+    def ring(height: float, width: float, rake: float = 0.0) -> RingKey:
+        return RingKey(sit - height * hh, rx * width, front * width, back * width,
+                       base.cl, base.cz - rake * hh)
+
+    def pleat(angle: float, y: float) -> float:
+        strength = min(1.0, max(0.0, (sit - y - 0.13 * hh) / (0.28 * hh)))
+        return 0.055 * hh * strength * (0.5 + 0.5 * math.cos(math.radians(8 * angle))) ** 2
+
+    crown = Loft([ring(0.81, 0.20, 0.05), ring(0.77, 0.68, 0.05), ring(0.66, 1.10, 0.05),
+                  ring(0.37, 1.08, 0.025), ring(0.14, 0.98), ring(0.0, 1.0)], [pleat])
+    pt = ctx.new()
+    linen = "#f4e9d0"
+    shaded_region(ctx, pt, crown, crown.top, crown.bottom, linen, lit=True)
+    for angle in range(-158, 180, 45):
+        fold = [(angle, sit - height * hh) for height in (0.21, 0.35, 0.50, 0.62)]
+        for run in surface_line(ctx, crown, fold, out=0.05, thresh=0.24):
+            pt.line(run, "#b1a58f", FINE * 0.85, smooth=True)
+
+    band = Loft([ring(0.16, 1.018), ring(0.03, 1.025), ring(-0.01, 0.993)])
+    shaded_region(ctx, pt, band, band.top, band.bottom, "#ded2b9", lit=True)
+    for run in surface_line(ctx, band, [(a, sit - 0.045 * hh) for a in range(-180, 181, 10)], out=0.05):
+        pt.line(run, "#f8eed9", FINE * 0.75, smooth=True)
+    return [Part("chef_toque", "head", 58.0, pt.els, "Pleated chef's toque")]
+
+
+def apron_spoon(ctx: Ctx, _zmap: Dict[str, float]) -> List[Part]:
+    """A canvas patch pocket with a tasting spoon tucked inside."""
+    fig = ctx.fig
+    shell = outer_shell(ctx)
+    pocket_top = fig.y_under + 0.085 * fig.T
+    pocket_bottom = fig.y_belt - 0.025 * fig.T
+    cloth = fig.spec.outfit.outer_color
+    pt = ctx.new()
+
+    if visible(ctx, 12.0, 0.22):
+        # The pocket covers the spoon handle; both follow the apron.
+        def at(angle: float, offset: float) -> Point:
+            return ctx.p(shell.point(angle, pocket_top + offset * fig.T, 0.55))
+
+        pt.region([[at(5.0, 0.04), at(10.0, -0.105), at(14.0, -0.105), at(9.0, 0.04)]],
+                  "#a3663e", outline=FINE)
+        bowl = [[at(12.0 + 8.5 * math.cos(t), -0.142 + 0.048 * math.sin(t))
+                 for t in (i * math.tau / 16 for i in range(16))]]
+        pt.region(bowl, "#ca8d56", outline=FINE)
+        pt.line([at(8.0, -0.16), at(11.0, -0.17), at(15.0, -0.155)], "#efd09a", FINE * 0.8, smooth=True)
+
+    pocket = shell.shell(0.42)
+
+    def margin(angle: float, y: float) -> float:
+        half_width = 24.0 - 5.0 * (y - pocket_top) / (pocket_bottom - pocket_top)
+        return (half_width - abs(angle)) * 0.2
+
+    shaded_region(ctx, pt, pocket, pocket_top, pocket_bottom, shade(cloth, 0.14), margin, lit=True)
+    stitches = [(angle, pocket_top + 0.018 * fig.T) for angle in range(-18, 19, 6)]
+    for run in surface_line(ctx, pocket, stitches, out=0.1, thresh=0.25):
+        pt.line(run, "#c6b393", FINE * 0.65, smooth=True)
+    return [Part("apron_spoon", "torso", 33.25, pt.els, "Apron pocket and tasting spoon")]
+
+
 HELM = "#9aa3ad"
 
 
@@ -162,6 +231,8 @@ GEAR: Dict[str, Callable[[Ctx, Dict[str, float]], List[Part]]] = {
     "laser_sword": laser_sword,
     "calculator": calculator,
     "wizard_hat": wizard_hat,
+    "chef_toque": chef_toque,
+    "apron_spoon": apron_spoon,
     "head_torch": head_torch,
     "cowboy_hat": _western.cowboy_hat,
     "muzzle_cage": _western.muzzle_cage,

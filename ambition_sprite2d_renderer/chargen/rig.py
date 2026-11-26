@@ -280,12 +280,14 @@ def _head_on_neck(fig: Figure, view: View, doc: dict) -> List[dict]:
 
 
 def build_rigs(spec: CharacterSpec, svg_path: Path, rig_dir: Path, views: Sequence[View] = VIEWS, *, clips=None,
-               grip: str = "blade", clips_of: Optional[Mapping[str, Path]] = None) -> Dict[str, Path]:
+               grip: str = "blade", clips_of: Optional[Mapping[str, Path]] = None,
+               frame_bottom_padding: int = 0) -> Dict[str, Path]:
     """One ``.rig.json`` per view, bound to ``svg_path``, with its clips
     (``clips(fig, view, doc) -> {name: clip}``; the motion library by
     default, its item clips posed for the grip class ``grip``).
     ``clips_of``: rigs by view key whose clips and published views these
-    take as they are (the mirrored figure's, on the same skeleton)."""
+    take as they are (the mirrored figure's, on the same skeleton).
+    ``frame_bottom_padding`` adds canvas space below the planted ground line."""
     rig_dir = Path(rig_dir)
     rig_dir.mkdir(parents=True, exist_ok=True)
     fig, drawn = draw_views(spec, views)
@@ -301,6 +303,7 @@ def build_rigs(spec: CharacterSpec, svg_path: Path, rig_dir: Path, views: Sequen
     out: Dict[str, Path] = {}
     for dv in drawn:
         doc = view_document(spec, fig, dv, svg_path, rig_dir)
+        doc["frame"]["height"] += frame_bottom_padding
         if clips_of is not None:
             twin = json.loads(Path(clips_of[dv.view.key]).read_text(encoding="utf8"))
             doc["clips"] = twin["clips"]
@@ -337,24 +340,28 @@ class CharacterFiles:
     mirrored_rigs: Dict[str, Path] = field(default_factory=dict)
 
 
-def write_character(spec: CharacterSpec, out_dir: Path, *, rigs: bool = True, grip: str = "blade") -> CharacterFiles:
+def write_character(spec: CharacterSpec, out_dir: Path, *, rigs: bool = True, grip: str = "blade",
+                    frame_bottom_padding: int = 0) -> CharacterFiles:
     """``<out>/<slug>.chargen.json``, ``<slug>.svg`` and, when ``rigs``, one
     ``<slug>_<view>.rig.json`` per view (item clips posed for ``grip``); for
     a one-sided character, the mirrored figure's SVG and rigs too."""
+    if frame_bottom_padding < 0:
+        raise ValueError("frame_bottom_padding cannot be negative")
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     name = slug(spec.name)
     spec_path = spec.save(out_dir / f"{name}.chargen.json")
     svg_path = out_dir / f"{name}.svg"
     svg_path.write_text(character_svg(spec), encoding="utf8")
-    rig_paths = build_rigs(spec, svg_path, out_dir, grip=grip) if rigs else {}
+    rig_paths = build_rigs(spec, svg_path, out_dir, grip=grip, frame_bottom_padding=frame_bottom_padding) if rigs else {}
     mirrored: Dict[str, Path] = {}
     if one_sided(spec):
         views = mirrored_views()
         mirrored_svg = out_dir / f"{name}.mirrored.svg"
         mirrored_svg.write_text(character_svg(spec, views), encoding="utf8")
         if rigs:
-            mirrored = build_rigs(spec, mirrored_svg, out_dir, views, grip=grip, clips_of=rig_paths)
+            mirrored = build_rigs(spec, mirrored_svg, out_dir, views, grip=grip, clips_of=rig_paths,
+                                  frame_bottom_padding=frame_bottom_padding)
     return CharacterFiles(spec_path, svg_path, rig_paths, mirrored)
 
 
