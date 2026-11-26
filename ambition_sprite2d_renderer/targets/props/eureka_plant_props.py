@@ -22,8 +22,8 @@ first lab's floor (y 512), vault (to y 48).
 - `plant_bricked_door`: an old doorway bricked over, LAB 0 over it in
   faded paint, cracked (the look of a breakable wall: hit it).
 - `first_lab_room`: where the institute began: a kitchen table for a bench,
-  a kettle, a blackboard of one equation crossed out and rewritten, the first
-  coil in a jam jar, a camp bed, a sign: DO NOT THROW AWAY.
+  a kettle, coil diagrams on a blackboard, the first coil in a jam jar,
+  a camp bed and a sample cabinet.
 
 Animations: ``idle``, 1 frame each. No drop shadows.
 """
@@ -36,6 +36,7 @@ import numpy as np
 
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
+from .castle_godwin import lettering
 from .eureka_props import BOARD, CHALK, COPPER, COPPER_DARK, OAK, OAK_DARK, PAL, PAPER
 
 STREET, QUAD_H = 768, 896
@@ -208,26 +209,51 @@ def first_lab(c, k):
     # A bulb on its flex, lit.
     c.put(c.mask(lambda p: (p.line([(320, LAB_CEIL), (320, 140)], 1.2), p.ellipse(320, 148, 7, 9))), (255, 236, 180))
     c.light(c.mask(lambda p: p.ellipse(320, 200, 260, 200), blur=30), (255, 230, 170), 0.25)
-    # The blackboard: one equation, crossed out and rewritten.
+    # The lower diagram adds a core to the coil.
     c.put(c.mask(box(80, 150, 300, 290)), OAK_DARK)
     c.put(c.mask(box(88, 158, 292, 282)), BOARD)
-    c.put(c.mask(lambda p: [p.rect(104 + i * 14, 180, 112 + i * 14, 192) for i in range(10)]), CHALK)
-    c.put(c.mask(lambda p: p.line([(98, 196), (250, 176)], 2)), CHALK)
-    c.put(c.mask(lambda p: [p.rect(104 + i * 14, 222, 112 + i * 14, 234) for i in range(9)]), CHALK)
-    c.put(c.mask(lambda p: p.line([(100, 246), (240, 246)], 1.6)), CHALK)
-    # The kitchen table for a bench; the kettle; the first coil in its jam jar.
+    for y in (194, 244):
+        c.put(c.mask(lambda p: (
+            p.line([(108, y), (256, y)], 1.1),
+            [p.line([(x - 5, y + 12), (x - 5, y - 10), (x, y - 16),
+                     (x + 5, y - 10), (x + 5, y + 12), (x - 5, y + 12)], 1.2)
+             for x in range(148, 229, 16)],
+        )), CHALK, 0.85)
+    c.put(c.mask(lambda p: p.line([(127, 210), (236, 173)], 2)), (211, 137, 117))
+    c.put(c.mask(lambda p: (p.line([(132, 225), (240, 225)], 1.6),
+                           p.line([(132, 261), (240, 261)], 1.6))), CHALK)
+
     g = LAB_FLOOR
-    c.put(c.mask(lambda p: (p.rect(330, g - 70, 560, g - 62), p.rect(340, g - 62, 348, g), p.rect(542, g - 62, 550, g))), OAK)
-    c.put(c.mask(lambda p: (p.ellipse(370, g - 84, 16, 14), p.line([(384, g - 88), (398, g - 98)], 3))), IRON_LIGHT)
-    c.put(c.mask(lambda p: p.rect(460, g - 110, 500, g - 70)), (190, 220, 230), 0.45)
-    c.put(c.mask(lambda p: [p.ring(480, y, 12, 1.6) for y in range(g - 104, g - 74, 4)]), COPPER)
-    c.put(c.mask(lambda p: p.rect(456, g - 114, 504, g - 108)), RED)
-    # The camp bed.
-    c.put(c.mask(lambda p: (p.rect(60, g - 34, 240, g - 26), p.line([(70, g), (90, g - 30)], 3), p.line([(230, g), (210, g - 30)], 3))), (110, 120, 90))
-    c.put(c.mask(lambda p: p.ellipse(80, g - 40, 22, 8)), PAPER)
-    # DO NOT THROW AWAY.
+    # The bench holds the kettle and the coil in its jar.
+    left, right, top = 352, 560, 448
+    c.put(c.mask(lambda p: (p.rect(left, top, right, top + 8),
+                           p.rect(left + 10, top + 8, left + 18, g),
+                           p.rect(right - 18, top + 8, right - 10, g))), OAK)
+    c.put(c.mask(box(left, top, right, top + 2)), mix(OAK, PAPER, 0.35))
+    c.put(c.mask(lambda p: (p.ellipse(386, top - 14, 16, 14),
+                           p.line([(399, top - 17), (414, top - 28)], 3))), IRON_LIGHT)
+    c.put(c.mask(box(460, top - 40, 500, top)), (190, 220, 230), 0.45)
+    c.put(c.mask(lambda p: [p.ring(480, y, 12, 1.6) for y in range(top - 34, top - 4, 4)]), COPPER)
+    c.put(c.mask(box(456, top - 44, 504, top - 38)), RED)
+
+    left, right, top = 240, 336, 416
+    c.put(c.mask(box(left, top, right, g)), OAK_DARK)
+    for y in range(top + 12, g - 20, 24):
+        c.put(c.mask(box(left + 8, y, right - 8, y + 18)), OAK)
+        c.put(c.mask(box(left + 42, y + 7, right - 42, y + 10)), IRON_LIGHT)
+    c.put(c.mask(box(left, top, right, top + 3)), mix(OAK, PAPER, 0.35))
+
+    left, right, top = 64, 224, 480
+    c.put(c.mask(lambda p: (p.rect(left, top, right, top + 8),
+                           p.line([(left + 10, g), (left + 28, top + 5)], 2),
+                           p.line([(right - 10, g), (right - 28, top + 5)], 2))), (110, 120, 90))
+    c.put(c.mask(lambda p: p.ellipse(left + 20, top - 4, 20, 6)), PAPER)
+
+    # The east exit opens into a short passage.
+    c.put(c.mask(box(580, g - 108, LAB_W - 16, g)), OAK_DARK)
+    c.put(c.mask(box(588, g - 100, LAB_W - 16, g)), (56, 49, 44))
     c.put(c.mask(box(400, 200, 560, 240)), PAPER)
-    c.put(c.mask(lambda p: [p.rect(x, 214, x + 8, 226) for x in range(410, 552, 12)]), RED)
+    lettering(c, "DO NOT THROW AWAY", 480, 215, 10, RED)
 
 
 PIECES: Dict[str, Piece] = {
