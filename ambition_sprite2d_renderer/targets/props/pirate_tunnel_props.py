@@ -37,7 +37,7 @@ import numpy as np
 
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
-from .pirate_cellars_props import BRICK, BRICK_DARK, MORTAR, STONE, STONE_DARK, LAMP, barrel
+from .pirate_cellars_props import BRICK, BRICK_DARK, COPPER, LAMP, MORTAR, STONE, STONE_DARK, barrel
 from .pirate_port_props import PAL, PLANK, PLANK_DARK, ROPE, SAIL, TIMBER
 
 STREET, WATERFRONT_H = 768, 896
@@ -222,37 +222,59 @@ def freight_carrier(c, k):
     c.put(c.mask(lambda p: [p.ellipse(x, 174, 2) for x in (14, 43, 80, 117, 146)]), IRON_LIGHT)
 
 
+def coin_pile(c):
+    """Draw the top of the pile at the height of the walk line."""
+    top = [(112, 576), (144, 576), (200, 552), (244, 520), (280, 496),
+           (384, 496), (436, 532), (496, 576)]
+    heap = c.mask(lambda p: p.poly(top))
+    c.put(heap, GOLD_DARK)
+    c.tone(heap * (c.noise("coin_pile", 17, 8, 3) - 0.5), 0.4)
+    rng = c.rand("hoard_coins")
+    for color in (GOLD, mix(GOLD, LAMP, 0.35), scale(GOLD_DARK, 0.75)):
+        coins = [(rng.uniform(112, 496), rng.uniform(496, 580), rng.uniform(2.0, 5.3), rng.uniform(0.9, 2.6))
+                 for _ in range(460)]
+        c.put(heap * c.mask(lambda p: [p.ellipse(*coin) for coin in coins]), color, 0.76)
+    c.put(c.mask(lambda p: p.line(top, 2)) * heap, GOLD)
+
+
 def hoard(c, k):
     bricks(c, 16, HOARD_W - 16, CEIL, FLOOR, "hoard")
     lantern(c, 260, 160)
-    # Coin heaped.
-    heap = c.mask(lambda p: p.poly([(60, FLOOR), (180, FLOOR - 120), (300, FLOOR - 150), (420, FLOOR - 60), (470, FLOOR)]))
-    c.put(heap, GOLD)
-    c.put(heap * c.mask(lambda p: [p.ellipse(x, y, 5, 2.4) for x in range(60, 470, 11) for y in range(FLOOR - 150, FLOOR, 9)]), GOLD_DARK, 0.7)
-    c.light(heap, GOLD, 0.25)
-    # The figurehead, leaning; the painting of somebody's grandmother.
-    c.put(c.mask(lambda p: (p.ellipse(110, 250, 22, 26), p.poly([(92, 270), (128, 270), (150, 420), (80, 420)]))), (210, 170, 130))
-    c.put(c.mask(lambda p: p.poly([(88, 230), (134, 230), (140, 300), (82, 300)])), (120, 70, 40), 0.9)
-    c.put(c.mask(lambda p: p.ellipse(110, 254, 18, 22)), (230, 196, 160))
+    c.put(c.mask(box(16, 480, 84, FLOOR)), TIMBER)
+    c.put(c.mask(box(16, 490, 66, FLOOR)), (39, 30, 32))
+    c.put(c.mask(lambda p: p.line([(20, 481), (81, 481), (81, FLOOR)], 3)), PLANK)
+    # The figurehead rests in a timber cradle.
+    c.put(c.mask(box(91, 549, 145, FLOOR)), TIMBER)
+    c.put(c.mask(lambda p: p.poly([(100, 460), (135, 460), (143, 553), (95, 553)])), (166, 117, 77))
+    c.put(c.mask(lambda p: p.poly([(98, 428), (134, 425), (142, 478), (93, 477)])), (104, 61, 41))
+    c.put(c.mask(lambda p: p.ellipse(116, 449, 15, 21)), (206, 158, 112))
+    c.put(c.mask(lambda p: p.poly([(111, 472), (130, 480), (136, 543), (110, 527)])), COPPER)
+    # The painting hangs from the wall.
+    c.put(c.mask(lambda p: p.line([(320, 152), (350, 127), (380, 152)], 2)), ROPE)
     c.put(c.mask(box(300, 150, 400, 270)), GOLD_DARK)
     c.put(c.mask(box(310, 160, 390, 260)), (70, 90, 110))
     c.put(c.mask(lambda p: (p.ellipse(350, 200, 22, 26), p.poly([(316, 260), (384, 260), (370, 220), (330, 220)]))), (200, 170, 150))
     c.put(c.mask(lambda p: p.ellipse(350, 180, 24, 14)), (230, 230, 236))
     c.put(c.mask(lambda p: [p.ring(x, 204, 6, 1.4) for x in (340, 360)]), (40, 40, 40))
-    # Candlesticks; a crown on a skull.
-    c.put(c.mask(lambda p: [p.rect(x, FLOOR - 190, x + 6, FLOOR - 140) for x in (226, 380)]), GOLD)
-    c.light(c.mask(lambda p: [p.ellipse(x + 3, FLOOR - 196, 30, 30) for x in (226, 380)], blur=8), LAMP, 0.3)
-    c.put(c.mask(lambda p: p.ellipse(300, FLOOR - 166, 16, 14)), BONE)
-    c.put(c.mask(lambda p: [p.ellipse(300 + dx, FLOOR - 168, 3.4, 3) for dx in (-6, 6)]), (30, 24, 24))
-    c.put(c.mask(lambda p: p.poly([(284, FLOOR - 176), (288, FLOOR - 196), (294, FLOOR - 184), (300, FLOOR - 200), (306, FLOOR - 184), (312, FLOOR - 196), (316, FLOOR - 176)])), GOLD)
-    # The last smuggler, sat against where the chest stands, keeping it.
-    sx = 440
-    c.put(c.mask(lambda p: (p.ellipse(sx, FLOOR - 92, 11, 12), p.line([(sx, FLOOR - 80), (sx - 4, FLOOR - 36)], 5),
-                            p.line([(sx - 4, FLOOR - 36), (sx - 34, FLOOR - 30), (sx - 40, FLOOR)], 4),
-                            p.line([(sx - 2, FLOOR - 64), (sx - 26, FLOOR - 50)], 3))), BONE)
-    c.put(c.mask(lambda p: [p.ellipse(sx + dx, FLOOR - 94, 2.4, 2.8) for dx in (-4, 4)]), (30, 24, 24))
-    c.put(c.mask(lambda p: p.poly([(sx - 16, FLOOR - 100), (sx + 16, FLOOR - 100), (sx + 8, FLOOR - 112), (sx - 8, FLOOR - 112)])), (40, 30, 30))
-    c.put(c.mask(lambda p: p.rect(sx - 20, FLOOR - 101, sx + 20, FLOOR - 98)), (40, 30, 30))
+    c.put(c.mask(box(93, 329, 419, 361)), TIMBER)
+    c.put(c.mask(box(97, 329, 415, 332)), PLANK)
+    coin_pile(c)
+    # The crown and candles rest on the pile.
+    for x, y in ((226, 533), (449, 542)):
+        c.put(c.mask(box(x - 6, y - 3, x + 7, y)), GOLD_DARK)
+        c.put(c.mask(box(x - 2, y - 29, x + 3, y - 3)), BONE)
+        c.put(c.mask(lambda p: p.ellipse(x, y - 32, 2.3, 5)), LAMP)
+        c.light(c.mask(lambda p: p.ellipse(x, y - 32, 22), blur=8), LAMP, 0.26)
+    c.put(c.mask(lambda p: p.ellipse(261, 496, 13, 13)), BONE)
+    c.put(c.mask(lambda p: [p.ellipse(261 + dx, 495, 2.7, 2.8) for dx in (-5, 5)]), (30, 24, 24))
+    c.put(c.mask(lambda p: p.poly([(247, 488), (248, 474), (255, 481), (261, 471),
+                                  (267, 481), (274, 474), (275, 488)])), GOLD)
+    # The smuggler sits beside the chest.
+    c.put(c.mask(lambda p: (p.ellipse(403, 459, 11, 12), p.line([(403, 470), (400, 501)], 5),
+                            p.line([(400, 501), (417, 504), (432, 529)], 4),
+                            p.line([(401, 480), (377, 486)], 3))), BONE)
+    c.put(c.mask(lambda p: [p.ellipse(403 + dx, 458, 2.4, 2.8) for dx in (-4, 4)]), (30, 24, 24))
+    c.put(c.mask(lambda p: p.poly([(384, 454), (423, 454), (413, 442), (394, 442)])), (40, 30, 30))
 
 
 PIECES: Dict[str, Piece] = {
