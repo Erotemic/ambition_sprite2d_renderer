@@ -112,6 +112,33 @@ def ranger_hut(c, k):
     c.put(c.mask(lambda p: [p.ellipse(x, g - 24, 7) for x in (156, 168, 180)]), (100, 70, 40))
 
 
+RUN_SPINE = ((2200, 368), (2224, 368), (2312, 352), (2416, 336),
+             (2496, 344), (2560, 368), (2592, 368))
+
+
+def run_rib_walk(c, k):
+    """Draw the exposed spine between the two ledges."""
+    ground = 480
+    shade = scale(BONE, 0.68)
+    for x, top, reach in ((2248, 364, 24), (2290, 356, 34), (2332, 349, 46),
+                          (2374, 342, 46), (2416, 336, 49), (2458, 340, 46),
+                          (2500, 346, 36), (2542, 361, 29)):
+        arc = [(x + reach * (1 - math.cos(t)) * 0.5, top + (ground - top) * math.sin(t * 0.5))
+               for t in np.linspace(0, math.pi, 16)]
+        c.put(c.mask(lambda p: p.line(arc, 7)), shade)
+        c.put(c.mask(lambda p: p.line([(px - 2, py) for px, py in arc], 3)), BONE)
+        c.put(c.mask(lambda p: p.ellipse(x + reach, ground - 2, 10, 2)), MOSS)
+    underside = [(x, y + 13) for x, y in reversed(RUN_SPINE)]
+    bone = c.mask(lambda p: p.poly([*RUN_SPINE, *underside]))
+    c.put(bone, shade)
+    c.tone(bone * (c.noise("run_spine", 9, 2, 2) - 0.5), 0.3)
+    c.put(c.mask(lambda p: p.line(RUN_SPINE, 4)) * bone, BONE)
+    for a, b in zip(RUN_SPINE[1:-1], RUN_SPINE[2:]):
+        c.put(c.mask(lambda p: p.line([(a[0], a[1] + 8), (b[0], b[1] + 6)], 2)), scale(BONE, 0.8))
+    fern(c, 2270, ground, 44, "west_ribs")
+    fern(c, 2584, ground, 36, "east_ribs")
+
+
 TRAILHEAD_FLOOR = 480
 SURVEY_WALK = (1040, 1456, 384)
 SURVEY_STEPS = ((1024, 1104, 432), (1424, 1536, 432))
@@ -139,6 +166,7 @@ def survey_walk(c, k):
 
 PIECES: Dict[str, Piece] = {
     "jungle_survey_walk": Piece((1016, 352, 1544, TRAILHEAD_FLOOR), survey_walk),
+    "jungle_run_rib_walk": Piece((2192, 320, 2624, 480), run_rib_walk),
     "jungle_ranger_hut": Piece((0, 0, 220, 150), ranger_hut),
     "jungle_fern_clump": Piece((0, 0, 230, 120), fern_clump),
     "jungle_fallen_log": Piece((0, 0, 260, 60), fallen_log),
