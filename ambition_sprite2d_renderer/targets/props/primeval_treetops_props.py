@@ -196,6 +196,12 @@ def west(c, k):
     # The notebook left open on a crate on the deck.
     c.put(c.mask(box(x1 - 90, y - 30, x1 - 50, y)), PLANK_DARK)
     c.put(c.mask(lambda p: p.poly([(x1 - 96, y - 30), (x1 - 70, y - 34), (x1 - 44, y - 30), (x1 - 70, y - 28)])), PAPER)
+    # Bolt the supply ladder to the deck at its east end.
+    c.put(c.mask(box(521, y, 560, y + 14)), BARK_DARK)
+    c.put(c.mask(lambda p: [p.ellipse(x, y + 7, 2.3) for x in (524, 555)]), ROPE)
+    c.put(c.mask(lambda p: p.line([(527, G - 3), (491, G - 3), (491, G - 21)], 2.5)), ROPE)
+    c.put(c.mask(box(473, G - 21, 508, G)), PLANK_DARK)
+    c.put(c.mask(box(473, G - 21, 508, G - 18)), PLANK)
     for x0, x1, y in PLATFORMS[1:3]:
         platform(c, x0, x1, y)
     lianas(c, (600, 990, 1010, 1380), 120, rng)
