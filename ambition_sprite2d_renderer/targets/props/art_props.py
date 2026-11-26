@@ -291,6 +291,21 @@ def _plaza_gallery(c, _kit):
         c.put(c.mask(lambda p: p.rect(x + 19, 858, x + 23, 864)), dark)
 
 
+def _cliffs_fold(c, _kit):
+    ink = (82, 81, 108)
+    edge = [(2368, 896), (2592, 896), (2580, 910), (2564, 908), (2546, 919),
+            (2506, 915), (2474, 922), (2434, 914), (2400, 919), (2380, 907)]
+    c.put(c.mask(lambda p: p.poly(edge)), (234, 222, 191))
+    c.put(c.mask(lambda p: p.poly([(2368, 896), (2486, 896), (2474, 922), (2434, 914),
+                                 (2400, 919), (2380, 907)])), (252, 245, 219))
+    c.put(c.mask(lambda p: p.poly([(2525, 896), (2592, 896), (2580, 910), (2564, 908),
+                                 (2546, 919)])), (192, 220, 226))
+    c.put(c.mask(lambda p: p.line(edge + edge[:1], 1.5)), ink)
+    c.put(c.mask(lambda p: p.line([(2486, 896), (2474, 922)], 1.6)), (166, 144, 127))
+    c.put(c.mask(lambda p: [p.line([(x, 902), (x + 10, 911)], 1) for x in range(2392, 2465, 12)]), (138, 163, 187))
+    c.put(c.mask(lambda p: p.line([(2498, 903), (2514, 908), (2532, 908)], 1.2)), (138, 163, 187))
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -335,4 +350,7 @@ TARGETS["art_palette_lift"] = _publisher("art_palette_lift", "Palette Lift", STI
 TARGETS["art_easel"] = _publisher("art_easel", "Easel", STILL, EASEL_FRAME, lambda anim, i, n: _draw_easel(), {"foot": (64.0, 176.0)}, "Scenery", ["prop", "scenery", "art"])
 TARGETS["art_giant_crayon"] = _publisher("art_giant_crayon", "Giant Crayon", STILL, CRAYON_FRAME, lambda anim, i, n: _draw_crayon(), {"foot": (32.0, 256.0)}, "Scenery", ["prop", "scenery", "art"])
 TARGETS["art_paint_pots"] = _publisher("art_paint_pots", "Paint Pots", STILL, POTS_FRAME, lambda anim, i, n: _draw_pots(), {"foot": (72.0, 96.0)}, "Scenery", ["prop", "scenery", "art"])
-TARGETS.update(targets({"art_plaza_open_gallery": Piece((1784, 814, 2216, 962), _plaza_gallery)}, {}))
+TARGETS.update(targets({
+    "art_plaza_open_gallery": Piece((1784, 814, 2216, 962), _plaza_gallery),
+    "art_cliffs_fold": Piece((2364, 892, 2596, 928), _cliffs_fold),
+}, {}))
