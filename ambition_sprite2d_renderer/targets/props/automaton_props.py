@@ -355,6 +355,33 @@ def tower_balcony(c, _kit):
 # ---------------------------------------------------------------------------
 
 
+def life_relay_ramp(c, _kit):
+    deck = [
+        (1408, 896), (1456, 896), (1488, 884), (1512, 866),
+        (1972, 484), (1992, 462), (2008, 448), (2064, 448),
+    ]
+    for x, top in ((1552, 833), (1704, 707), (1856, 581)):
+        c.put(c.mask(box(x, top + 9, x + 8, 896)), CUBE_LIGHT)
+        c.put(c.mask(box(x + 2, top + 15, x + 4, 888)), CELL, 0.55)
+        c.put(c.mask(box(x - 5, 888, x + 13, 896)), CUBE)
+    base = [(x, min(y + 14, 896)) for x, y in reversed(deck)]
+    c.put(c.mask(lambda p: p.poly(deck + base)), CUBE)
+    c.put(c.mask(lambda p: p.line([(x, y + 2) for x, y in deck], 3)), CELL)
+    c.put(c.mask(lambda p: p.line([(x, y + 5) for x, y in deck], 1)), CUBE_LIGHT)
+
+    x0, y0 = deck[3]
+    x1, y1 = deck[4]
+    for x in range(x0 + 20, x1, 44):
+        y = y0 + (x - x0) * (y1 - y0) / (x1 - x0)
+        c.put(c.mask(box(x, y + 8, x + 4, y + 12)), CELL)
+    c.put(c.mask(box(1278, 786, 1442, 803)), CUBE_LIGHT)
+    c.put(c.mask(box(1278, 800, 1442, 804)), CELL)
+    for x in (1278, 1438):
+        c.put(c.mask(box(x, 799, x + 4, 896)), CUBE_LIGHT)
+        for y in (819, 849, 879):
+            c.put(c.mask(box(x, y, x + 4, y + 4)), CELL)
+
+
 def still_life(c, k):
     """The block: the smallest still life, two by two cells, on a plinth.
     Each of its cells has three live neighbours, so none of them dies."""
@@ -567,6 +594,7 @@ PIECES: Dict[str, Piece] = {
     # The Life field.
     "automaton_still_life": Piece((1170, 760, 1300, 896), still_life),
     "automaton_sierpinski_panel": Piece((2060, 120, 2380, 448), sierpinski_panel),
+    "automaton_life_relay_ramp": Piece((1270, 438, 2072, 900), life_relay_ramp),
     # The Tape Room.
     "automaton_tape": Piece((60, 250, 1540, 512), tape),
     "automaton_tape_landings": Piece((208, 257, 1568, 512), tape_landings),
