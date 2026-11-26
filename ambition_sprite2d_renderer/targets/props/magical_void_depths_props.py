@@ -154,13 +154,16 @@ def exhibits(c, k):
     c.put(c.mask(lambda q: q.ring(x, top - 52, 40, 2.4)), EDGE)
     c.put(c.mask(lambda q: [q.line([(x, top - 52), (x + 38 * math.cos(a), top - 52 + 38 * math.sin(a))], 1.8) for a in (0.3, 1.35, 2.4, 3.45, 4.5, 5.55)]), EDGE)
     c.put(c.mask(lambda q: q.ring(x, top - 52, 6, 1.8)), EDGE)
-    # 3. A crescent, from the Star Bakery.
+    # Draw the crescent with two arcs that meet at the tips.
     x = 1440
     plinth(c, x)
-    c.put(c.mask(lambda q: q.ellipse(x, top - 50, 36)), EDGE)
-    c.put(c.mask(lambda q: q.ellipse(x, top - 50, 33)), VOID)
-    c.put(c.mask(lambda q: q.ellipse(x + 18, top - 58, 32)), VOID)
-    c.put(c.mask(lambda q: q.ring(x + 18, top - 58, 32, 0.01)), VOID)
+    cy = top - 50
+    outer_angles = [math.pi * (1 + i / 6) / 3 for i in range(25)]
+    inner_angles = [math.pi * (1 / 2 + i / 16) for i in range(17)]
+    outer_arc = [(x + 36 * math.cos(a), cy + 36 * math.sin(a)) for a in outer_angles]
+    tip_height = 36 * math.sin(math.pi / 3)
+    inner_arc = [(x + 18 + 18 * math.cos(a), cy - tip_height * math.sin(a)) for a in inner_angles]
+    c.put(c.mask(lambda q: q.line(outer_arc + inner_arc, 2.4)), EDGE)
     # 4. A wand, bent (Wanda never got it back).
     x = 1640
     plinth(c, x)
@@ -175,6 +178,11 @@ def exhibits(c, k):
     for a, b in ((520, 760), (760, 1040), (1340, 1540), (1540, 1720)):
         pts = [(a + (b - a) * t / 12, FLOOR - 48 + 16 * math.sin(math.pi * t / 12)) for t in range(13)]
         c.put(c.mask(lambda q: q.line(pts, 1.8)), EDGE, 0.8)
+    # Put a low stone border on each side of the descent.
+    left, right = GALLERY_HOLE
+    for a, b in ((left - 26, left), (right, right + 26)):
+        c.put(c.mask(box(a, FLOOR - 9, b, FLOOR)), VOID)
+        c.put(c.mask(lambda p: p.line([(a, FLOOR - 9), (b, FLOOR - 9), (b, FLOOR)], 2)), EDGE)
 
 
 def cascade(c, k):
