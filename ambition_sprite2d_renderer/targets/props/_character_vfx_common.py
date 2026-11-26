@@ -354,7 +354,6 @@ def publish_catalog(
     target_name: str,
     display_name: str,
     character_context_id: str,
-    character_context_display: str | None = None,
     rows: Sequence[tuple[str, int, int]],
     drawers: Mapping[str, FrameDrawer],
     specs: Mapping[str, dict],
@@ -454,16 +453,13 @@ def publish_catalog(
             ],
         }
 
-    character_context = {"character_id": character_context_id}
-    if character_context_display is not None:
-        character_context["display_name"] = character_context_display
     authoring_doc = {
         "schema": "ambition.sprite_character_vfx_authoring",
         "schema_version": 1,
         "target": target_name,
         "status": "authoring_hints_not_yet_runtime_contract",
         "scope": "detached_character_vfx",
-        "character_context": character_context,
+        "character_context": {"character_id": character_context_id},
         "coordinate_space": "logical frame pixels; runtime manifest anchors are translated through auto-crop/trim",
         "author_owned_fields": [
             "animation timing",

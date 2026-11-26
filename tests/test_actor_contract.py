@@ -205,7 +205,7 @@ def test_contract_derives_runtime_fields_from_body_metrics_without_requiring_han
     assert "melee origin socket" not in ron
 
 
-def test_catalog_defaults_enrich_actor_contract_when_available(tmp_path: Path):
+def test_a_standalone_sprite_gets_an_art_label_and_review_defaults():
     from ambition_sprite2d_renderer.authoring.actor_contract import build_actor_contract, to_ron
 
     manifest = {
@@ -240,7 +240,8 @@ def test_catalog_defaults_enrich_actor_contract_when_available(tmp_path: Path):
         )
     )
     assert 'character_id: "npc_erdish"' in ron
-    assert 'display_name: Some("Erdish")' in ron
+    assert 'art_label: Some("Erdish")' in ron
+    assert "display_name:" not in ron
     assert 'default_preset: Some("patrol_peaceful")' in ron
     assert 'default_preset: Some("peaceful")' in ron
 
@@ -255,10 +256,10 @@ def test_actor_sidecar_can_leave_the_name_with_the_character_catalog():
         sheet_manifest="subject_spritesheet.ron",
         manifest={"rows": []},
         job_data={"name": "An authored fallback"},
-        authoring={"actor": {"character_id": "npc_subject", "display_name": None}},
+        authoring={"actor": {"character_id": "npc_subject", "art_label": None}},
     ))
     assert 'character_id: "npc_subject"' in ron
-    assert "display_name: None" in ron
+    assert "art_label: None" in ron
     assert "An authored fallback" not in ron
 
 

@@ -215,7 +215,6 @@ def render(out_dir: str | Path, **opts):
         target_name=TARGET_NAME,
         display_name="Projectile Polygon Charge VFX",
         character_context_id="projectile_polygon",
-        character_context_display="Projectile Polygon",
         rows=ROWS,
         drawers=DRAWERS,
         specs=SPECS,

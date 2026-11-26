@@ -923,7 +923,6 @@ def _authoring_document() -> dict:
         "target":TARGET_NAME,
         "character_context":{
             "character_id":"smash_george_booul",
-            "display_name":"George Booul / George Boo'l",
             "parody":"George Boole as a classic bedsheet ghost; boo is the pun",
             "visual_language":"binary TRUE/FALSE logic plus restrained spectral comedy",
         },

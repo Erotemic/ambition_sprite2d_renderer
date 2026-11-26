@@ -865,7 +865,10 @@ def _authoring_document() -> dict:
         "schema_version": 1,
         "target": TARGET_NAME,
         "status": "authoring_hints_not_yet_runtime_contract",
-        "character_context": "Oiler: Euler-inspired practical gate mechanic; curves, tolerances, bearings, oil, brass/steel instrumentation.",
+        "character_context": {
+            "character_id": "npc_oiler",
+            "design_notes": "Euler-inspired gate mechanic. Curves, tolerances, bearings, oil, and brass and steel instruments.",
+        },
         "auto_registration": {
             "mechanism": "public module under targets/props exporting render",
             "central_registry_edit_required": False,

@@ -396,7 +396,6 @@ def render(out_dir: str | Path, **opts):
         target_name=TARGET_NAME,
         display_name="Giant GNU blow VFX",
         character_context_id="npc_giant_gnu",
-        character_context_display="Giant GNU",
         rows=ROWS,
         drawers=DRAWERS,
         specs=SPECS,

@@ -415,7 +415,6 @@ def render(out_dir: str | Path, **opts):
         target_name=TARGET_NAME,
         display_name="Perfect Cellular Automaton Detached VFX",
         character_context_id="perfect_cellular_automaton",
-        character_context_display="Perfect Cellular Automaton",
         rows=ROWS,
         drawers=DRAWERS,
         specs=SPECS,
