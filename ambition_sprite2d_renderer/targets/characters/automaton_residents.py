@@ -12,8 +12,8 @@ machine. Its lens reads the cell and its stamp writes it. Five lamps on
 the top of the carriage show the current state. Violet enamel and lime
 indicators match the Busy Beaver's colours.
 
-Rows: ``idle``, ``talk``, ``hit`` and ``death`` (it sits, or stops, and its
-lights go out). Nothing here is writing.
+Rows: ``idle``, ``talk``, ``hit`` and ``death``. The Head reads and stamps tape
+while it talks. Its indicator lights go out when it stops.
 """
 
 from __future__ import annotations
