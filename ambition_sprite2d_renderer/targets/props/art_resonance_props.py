@@ -387,6 +387,30 @@ def _tuning_lift_rails(c, _kit):
             c.put(c.mask(lambda p: p.ellipse(x, y - 1, 3)), SOUND[:3])
 
 
+def _concert_organ_case(c, _kit):
+    case, inset, trim = (48, 41, 67), (27, 31, 55), (153, 109, 64)
+    c.put(c.mask(box(1040, 32, 1248, 384)), case)
+    c.put(c.mask(box(1050, 49, 1238, 370)), inset)
+    for x in (1044, 1243):
+        c.put(c.mask(box(x, 42, x + 2, 376)), trim)
+    for y in (45, 262, 307, 373):
+        c.put(c.mask(box(1042, y, 1246, y + 2)), trim)
+
+    for x, top in ((1080, 71), (1144, 106), (1208, 141)):
+        c.put(c.mask(box(x - 25, 56, x + 25, 257)), case)
+        c.put(c.mask(box(x - 20, 59, x + 20, 252)), inset)
+        c.put(c.mask(lambda p: p.arch(x - 13, top, x + 13, 245)), BRASS_DARK[:3])
+        c.put(c.mask(box(x - 9, top + 14, x + 9, 242)), BRASS[:3])
+        c.put(c.mask(box(x - 6, top + 16, x - 3, 241)), BRASS_LIGHT[:3])
+        c.put(c.mask(box(x - 8, 220, x + 8, 229)), inset)
+        c.put(c.mask(box(x - 12, 245, x + 12, 250)), trim)
+
+        for offset in (-9, 0, 9):
+            c.put(c.mask(box(x + offset - 2, 317, x + offset + 2, 384)), trim)
+        c.put(c.mask(box(x - 18, 363, x + 18, 373)), case)
+        c.put(c.mask(box(x - 18, 363, x + 18, 365)), BRASS[:3])
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -407,5 +431,9 @@ TARGETS["art_tuning_lift"] = _publisher(
     "Scenery", ["prop", "platform", "art", "music"],
 )
 TARGETS.update(targets(
-    {"art_tuning_lift_rails": Piece((2044, 404, 2164, 964), _tuning_lift_rails)}, {},
+    {
+        "art_tuning_lift_rails": Piece((2044, 404, 2164, 964), _tuning_lift_rails),
+        "art_concert_organ_case": Piece((1032, 24, 1256, 388), _concert_organ_case),
+    },
+    {},
 ))
