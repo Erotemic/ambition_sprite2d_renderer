@@ -27,7 +27,7 @@ from typing import Dict
 
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
-from .magical_square_props import CREAM, GOLD, GOLD_DARK, PINK, PINK_DARK, PINK_LIGHT, star
+from .magical_square_props import CREAM, GOLD, PINK, PINK_DARK, PINK_LIGHT, star
 
 KEEP_FLOOR = 640
 STAIR_W = (480, 544)
@@ -42,7 +42,7 @@ BRIDGE_FLOOR = 576
 SPAN = (760, 1800)
 PIT_FLOOR = 632
 SWITCH_X = 1900
-TABLE_X = 1060
+TABLE_X = 1434
 
 STONE = (78, 62, 104)
 STONE_DARK = (54, 42, 76)
@@ -203,14 +203,16 @@ def tea_table(c, k):
     c.put(c.mask(box(x - 40, f - 44, x + 40, f - 38)), WOOD)
     for lx in (x - 32, x + 28):
         c.put(c.mask(box(lx, f - 38, lx + 4, f)), WOOD_DARK)
-    # A cloth, a pot, a cup on its saucer, a book face down.
+    # Set two cups beside the pot.
     c.put(c.mask(lambda p: p.poly([(x - 42, f - 44), (x + 42, f - 44), (x + 38, f - 30), (x - 38, f - 30)])), CREAM)
     c.put(c.mask(lambda p: [p.ellipse(x, f - 37, 3) for x in range(int(x - 34), int(x + 36), 10)]), PINK_LIGHT)
     void(c, lambda p, inset=0.0: (p.ellipse(x - 18, f - 56, 12 - inset, 11 - inset), p.rect(x - 34 + inset, f - 60 + inset, x - 28, f - 56 - inset)), 1.2)
     c.put(c.mask(lambda p: p.ellipse(x + 10, f - 45, 9, 2.5)), CREAM)
     c.put(c.mask(lambda p: p.poly([(x + 4, f - 54), (x + 16, f - 54), (x + 14, f - 46), (x + 6, f - 46)])), CREAM)
     c.put(c.mask(lambda p: p.ring(x + 18, f - 50, 3, 1.2)), CREAM)
-    c.put(c.mask(lambda p: p.poly([(x + 22, f - 46), (x + 38, f - 48), (x + 38, f - 44), (x + 22, f - 44)])), GOLD_DARK)
+    c.put(c.mask(lambda p: p.ellipse(x + 29, f - 45, 9, 2.5)), CREAM)
+    c.put(c.mask(lambda p: p.poly([(x + 23, f - 52), (x + 35, f - 52), (x + 33, f - 46), (x + 25, f - 46)])), PINK_LIGHT)
+    c.put(c.mask(lambda p: p.ring(x + 36, f - 49, 2.8, 1.1)), PINK_LIGHT)
 
 
 PIECES: Dict[str, Piece] = {
