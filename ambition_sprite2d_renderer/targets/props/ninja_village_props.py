@@ -170,52 +170,40 @@ SHRINE_FLOOR, TERRACE = 704, 448
 
 
 def shrine_stair(c, k):
-    """The stone stair (treads at y 640, 576, 512) and the torii terrace (its
-    kerb the walk line, y 448, x 1192..1600). The terrace is a stone bridge
-    on one pier at the stair: under its arch the low road goes on east at
-    floor level, open from the floor to y 560."""
-    g = SHRINE_FLOOR
-    band_bottom, arch_low = 520, 560
-    pier = (1192, 1228)
+    """Draw the steps and terrace above the open lower road."""
+    treads = ((960, 1056, 640), (1040, 1136, 576), (1120, 1216, 512), (1184, 1600, TERRACE))
+    profile = [(960, 640), (1040, 640), (1040, 576), (1120, 576), (1120, 512),
+               (1184, 512), (1184, TERRACE), (1600, TERRACE)]
+    arch = [(960, 650), (1018, 653), (1056, 648), (1120, 612), (1208, 574),
+            (1290, 550), (1376, 540), (1460, 545), (1536, 558), (1600, 578)]
     rng = c.rand("terrace_wall")
+    face = c.mask(lambda p: p.poly([*profile, *reversed(arch)]))
+    c.put(face, scale(STONE, 0.79))
+    for row, y in enumerate(range(TERRACE + 4, 656, 16)):
+        for x in range(942 + (row % 2) * 18, 1600, 38):
+            block = c.mask(box(x + 1, y + 1, x + 37, y + 15))
+            c.put(block * face, scale(STONE, rng.uniform(0.88, 1.08)))
+    arch_x, arch_y = zip(*arch)
+    for x in range(1000, 1600, 22):
+        y = np.interp(x, arch_x, arch_y)
+        joint = c.mask(lambda p: p.line([(x - 5, y - 10), (x, y)], 1.4))
+        c.put(joint * face, scale(STONE, 0.65))
+    rim = c.mask(lambda p: p.line(arch, 4))
+    c.put(rim * face, scale(STONE, 0.58))
+    c.tone(face * (c.noise("bridge", 10, 6, 3) - 0.5), 0.13)
+    for left, right, top in treads:
+        walk_edge(c, left, right, top, STONE)
 
-    def stones(m, x0, x1, y0, y1, tag):
-        c.put(m, scale(STONE, 0.86))
-        blocks = c.mask(lambda p: [p.rect(x + rng.uniform(0.4, 1.2), y + 0.6, x + rng.uniform(26, 40), y + 15.4)
-                                   for y in np.arange(y0 + 4, y1, 16) for x in np.arange(x0 + (y % 32) * 0.7, x1, 38)])
-        c.put(blocks * m, STONE)
-        c.tone(m * (c.noise((tag, "n"), 20, 10, 3) - 0.5), 0.18)
 
-    # The bridge: a band of dressed stone whose underside is a shallow arch,
-    # from the pier east to the room's edge (the bridge goes on).
-    span0, span1 = pier[1], 1600
-    def underside(x):
-        """The arch's underside: y 560 at the pier and the room's edge, 520
-        in the middle."""
-        u = (x - span0) / (span1 - span0)
-        return band_bottom + (arch_low - band_bottom) * 4 * (u - 0.5) ** 2
-
-    band = c.mask(lambda p: p.poly([(span0, TERRACE), (span1, TERRACE), *[(x, underside(x)) for x in np.linspace(span1, span0, 48)]]))
-    stones(band, span0, span1, TERRACE, arch_low, "band")
-    # The voussoirs along the arch's underside, and its shade.
-    c.put(c.mask(lambda p: p.line([(x, underside(x)) for x in np.linspace(span0, span1, 48)], 3.0)), scale(STONE, 0.62))
-    c.tone(band * np.clip((c.y - TERRACE) / (arch_low - TERRACE), 0, 1), -0.18)
-    # The pier at the stair, down to the floor.
-    pm = c.mask(box(pier[0], TERRACE, pier[1], g))
-    stones(pm, pier[0], pier[1], TERRACE, g, "pier")
-    c.tone(pm * np.clip((c.x - pier[0]) / (pier[1] - pier[0]), 0, 1), -0.2)
-    c.put(c.mask(lambda p: [p.ellipse(rng.uniform(span0, span1), rng.uniform(TERRACE + 12, band_bottom - 4), rng.uniform(6, 14), rng.uniform(2, 3.5)) for _ in range(8)]), MOSS, 0.6)
-    # Ivy hanging from the arch, short of the road.
-    for x in np.arange(span0 + 30, span1, 70):
-        top = underside(x)
-        c.put(c.mask(lambda p: p.line([(x, top), (x + rng.uniform(-3, 3), top + rng.uniform(10, 24))], 1.6)), MOSS, 0.85)
-    walk_edge(c, 1192, 1600, TERRACE, STONE)
-    for i, (sx, top) in enumerate(((960, 640), (1040, 576), (1120, 512))):
-        m = c.mask(box(sx, top, sx + 96, g))
-        c.put(m, STONE)
-        c.tone(m * (c.noise(("step", i), 4, 6, 3) - 0.5), 0.18)
-        c.tone(m * np.clip((c.y - top) / (g - top), 0, 1), -0.15)
-        walk_edge(c, sx, sx + 96, top, mix(STONE, (230, 226, 210), 0.3))
+def shrine_wayfinding(c, k):
+    """Mark the terrace stairs and the road beneath them."""
+    for x in (1396, 1532):
+        post(c, x, 645, SHRINE_FLOOR, 5)
+    for left, right, top in ((1020, 1196, 591), (1388, 1548, 621)):
+        c.put(c.mask(box(left, top, right, top + 28)), TIMBER)
+        c.put(c.mask(box(left + 3, top + 2, right - 3, top + 4)), CEDAR_LIGHT)
+    c.put(c.mask(lambda p: p.poly([(1030, 609), (1037, 600), (1044, 609)])), PAPER)
+    c.put(c.mask(lambda p: p.poly([(1529, 629), (1538, 635), (1529, 641)])), PAPER)
 
 
 def torii(c, k):
@@ -680,6 +668,7 @@ def dojo_exam(c, k):
 PIECES: Dict[str, Piece] = {
     # ninja_village_gate_shrine
     "village_shrine_stair": Piece((950, 440, 1600, 704), shrine_stair),
+    "village_shrine_wayfinding": Piece((1016, 588, 1552, 704), shrine_wayfinding),
     "village_torii": Piece((1180, 280, 1360, 448), torii),
     "village_shrine_hall": Piece((1330, 280, 1600, 448), shrine_hall),
     "village_shrine_small_things": Piece((530, 540, 940, 704), shrine_small_things),
