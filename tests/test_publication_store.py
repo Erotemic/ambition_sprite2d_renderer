@@ -52,6 +52,23 @@ def test_every_member_is_checked_and_old_bundles_keep_their_bytes(tmp_path):
     assert store.integrity(second) == [{"code": "changed-output", "path": "sprites/one.png"}]
 
 
+@pytest.mark.parametrize("missing", [False, True])
+def test_accept_restores_a_damaged_member_at_its_selected_path(tmp_path, missing):
+    store = Store(tmp_path / "store")
+    key = bundle(store, tmp_path, "one")
+    selected = store.publish({"one": key}, None)
+    member = store.paths()["sprites/one.png"]
+    if missing:
+        member.unlink()
+    else:
+        member.write_bytes(b"damage")
+
+    assert bundle(store, tmp_path, "one") == key
+    assert store.selected() == selected
+    assert member.read_bytes() == b"pixels"
+    assert store.audit() == {}
+
+
 def test_a_focused_publication_does_not_read_old_payloads_and_audit_does(tmp_path, monkeypatch):
     """Selecting one new unit reads accepted manifests, not the selected bytes:
     a damaged member of an old bundle does not stop it, and the explicit
