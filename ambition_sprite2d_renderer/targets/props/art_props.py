@@ -306,6 +306,29 @@ def _cliffs_fold(c, _kit):
     c.put(c.mask(lambda p: p.line([(2498, 903), (2514, 908), (2532, 908)], 1.2)), (138, 163, 187))
 
 
+def _garden_scaffold(c, _kit):
+    timber, shadow, rim = (158, 103, 97), (102, 75, 101), (222, 168, 129)
+    for x, y in ((1268, 768), (1364, 704), (1492, 704)):
+        c.put(c.mask(lambda p: p.rect(x, y + 8, x + 9, 960)), timber)
+        c.put(c.mask(lambda p: p.rect(x + 6, y + 8, x + 9, 960)), shadow)
+    c.put(c.mask(lambda p: p.line([(1276, 916), (1369, 855)], 6)), timber)
+    c.put(c.mask(lambda p: p.line([(1371, 864), (1496, 937)], 6)), timber)
+    c.put(c.mask(lambda p: p.line([(1371, 803), (1496, 733)], 6)), timber)
+    for x, y, width in ((1248, 896, 128), (1376, 832, 128), (1248, 768, 128), (1360, 704, 160)):
+        c.put(c.mask(lambda p: p.rect(x, y, x + width, y + 12)), timber)
+        c.put(c.mask(lambda p: p.rect(x, y, x + width, y + 3)), rim)
+        c.put(c.mask(lambda p: p.rect(x, y + 9, x + width, y + 12)), shadow)
+        c.put(c.mask(lambda p: [p.ellipse(x + dx, y + 7, 1.7) for dx in (11, width - 11)]), shadow)
+
+    stone = [(1473, 696), (1477, 682), (1471, 671), (1474, 661), (1484, 651),
+             (1502, 655), (1510, 666), (1506, 678), (1498, 684), (1503, 696)]
+    c.put(c.mask(lambda p: p.poly(stone)), (216, 211, 221))
+    c.put(c.mask(lambda p: p.line(stone + stone[:1], 1.4)), (116, 104, 132))
+    c.put(c.mask(lambda p: p.poly([(1492, 653), (1502, 655), (1510, 666),
+                                 (1506, 678), (1498, 684), (1503, 696), (1493, 696)])), (185, 172, 198))
+    c.put(c.mask(lambda p: p.rect(1468, 696, 1508, 704)), (165, 152, 181))
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -353,4 +376,5 @@ TARGETS["art_paint_pots"] = _publisher("art_paint_pots", "Paint Pots", STILL, PO
 TARGETS.update(targets({
     "art_plaza_open_gallery": Piece((1784, 814, 2216, 962), _plaza_gallery),
     "art_cliffs_fold": Piece((2364, 892, 2596, 928), _cliffs_fold),
+    "art_garden_scaffold": Piece((1240, 646, 1528, 964), _garden_scaffold),
 }, {}))
