@@ -41,6 +41,7 @@ AFT = (1320, 1480, 520)
 BOW = (1760, 2300, 672)
 STUMP = (1960, 2060, 440)
 EAST_ROCKS = (2380, 2544, 640)
+SPAR = ((1456, 608), (1488, 608), (1760, 672), (1784, 672))
 SAND = (206, 186, 140)
 ROCK = (92, 96, 96)
 LAMP = (255, 214, 140)
@@ -99,8 +100,7 @@ def wreck(c, k):
     edge_line(c, s0, AFT[0], sd, PLANK, 5)
     # The broken end of the stern, splintered, toward the gap.
     c.put(c.mask(lambda p: p.poly([(s1, sd - 10), (s1 + 8, sd + 20), (s1 - 6, sd + 50), (s1 + 10, sd + 90), (s1, BED)])), HULL_DARK)
-    # The main mast fallen across the gap, its torn sail.
-    c.put(c.mask(lambda p: p.line([(s1 - 60, sd - 6), (BOW[0] + 120, BOW[2] + 40)], 12)), (112, 80, 52))
+    # The torn sail hangs under the top edge of the fallen mast.
     sail = c.mask(lambda p: p.poly([(s1 - 20, sd - 4), (s1 + 140, sd + 30), (s1 + 120, SEA + 10), (s1 + 40, SEA - 10), (s1, sd + 60)]))
     c.put(sail, SAIL, 0.9)
     c.put(sail * c.mask(lambda p: [p.line([(s1 + 10 + i * 20, sd + 10 + i * 4), (s1 + 20 + i * 18, SEA)], 0.8) for i in range(6)]), (180, 170, 150))
@@ -111,6 +111,16 @@ def wreck(c, k):
     c.put(bow * c.mask(lambda p: [p.rect(b0 - 10, y, b1 + 30, y + 1.2) for y in range(bd + 12, BED, 14)]), HULL_DARK)
     c.put(bow * c.mask(box(b0 - 10, bd + 30, b1 + 30, bd + 38)), HULL_BAND)
     edge_line(c, b0, b1, bd, PLANK, 5)
+    _, (spar_left, spar_top), (spar_right, spar_bottom), _ = SPAR
+    beam = c.mask(lambda p: p.poly([*SPAR, (1784, 686), (spar_right, 686),
+                                  (spar_left, spar_top + 18), (1448, spar_top + 18)]))
+    c.put(beam, PLANK)
+    c.tone(beam * (c.noise("fallen_mast", 4, 1, 2) - 0.5), 0.2)
+    c.put(c.mask(lambda p: p.line([(x, y + 8) for x, y in SPAR], 2)), PLANK_DARK)
+    for x in (1502, 1526, 1706, 1730):
+        y = spar_top + (x - spar_left) * (spar_bottom - spar_top) / (spar_right - spar_left)
+        c.put(c.mask(lambda p: p.line([(x, y + 1), (x - 5, y + 14)], 2.8)), ROPE)
+    c.put(c.mask(lambda p: p.line(SPAR, 1.8)) * beam, PLANK_LIGHT)
     c.put(c.mask(lambda p: p.line([(b1 + 10, bd - 30), (b1 + 120, bd - 130)], 8)), (112, 80, 52))
     lx, ly = b1 + 28, bd - 30
     lion = c.mask(lambda p: (p.ellipse(lx, ly, 16, 18), p.ellipse(lx + 10, ly + 2, 10, 8)))
