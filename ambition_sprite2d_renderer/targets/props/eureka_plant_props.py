@@ -45,6 +45,9 @@ SHAFT = (720, 784)
 #: The walks (x0, x1, y): the upper catwalk, the step, the lower catwalk,
 #: the boilers' tops.
 WALKS = ((16, 1500, 400), (1540, 1700, 528), (900, 2240, 656), (1080, 1280, 800), (1760, 1960, 800))
+RETURN_STEPS = ((1440, 1536, 464), (1728, 1824, 592))
+UPPER_RAIL_OPENING = (728, 776)
+LOWER_RAIL_OPENING = (2104, 2152)
 DOOR = (16, 48, FLOOR - 112)
 LAB_W, LAB_FLOOR, LAB_CEIL = 640, 512, 48
 BRICK = (150, 92, 70)
@@ -78,10 +81,12 @@ def vault(c, x0, x1):
     c.put(c.mask(lambda p: [p.ellipse(x, CEIL - 6, 2.4) for x in range(int(x0) + 10, int(x1), 24)]), RIVET)
 
 
-def catwalk(c, x0, x1, y):
+def catwalk(c, x0, x1, y, opening=None):
     c.put(c.mask(box(x0, y, x1, y + 8)), IRON)
     c.put(c.mask(lambda p: [p.rect(x, y + 1, x + 10, y + 7) for x in range(int(x0) + 4, int(x1) - 10, 14)]), (36, 38, 42))
-    c.put(c.mask(lambda p: (p.rect(x0, y - 34, x1, y - 31), *[p.rect(x, y - 34, x + 3, y) for x in range(int(x0), int(x1), 80)])), IRON_LIGHT)
+    rails = ((x0, x1),) if opening is None else ((x0, opening[0]), (opening[1], x1))
+    c.put(c.mask(lambda p: ([(p.rect(a, y - 34, b, y - 31), p.rect(b - 3, y - 34, b, y)) for a, b in rails],
+                           [p.rect(x, y - 34, x + 3, y) for a, b in rails for x in range(a, b, 80)])), IRON_LIGHT)
     c.put(c.mask(lambda p: [p.line([(x, y + 8), (x + 30, y + 40)], 3) for x in range(int(x0) + 40, int(x1) - 30, 240)]), IRON)
 
 
@@ -132,8 +137,12 @@ def walks(c):
     b1, b2 = WALKS[3], WALKS[4]
     boiler(c, b1[0], b1[1], b1[2], "b1", red=False)
     boiler(c, b2[0], b2[1], b2[2], "b2", red=True)
-    for walk in WALKS[:3]:
-        catwalk(c, *walk)
+    catwalk(c, *WALKS[0], opening=UPPER_RAIL_OPENING)
+    catwalk(c, *WALKS[1])
+    catwalk(c, *WALKS[2], opening=LOWER_RAIL_OPENING)
+    for left, right, top in RETURN_STEPS:
+        catwalk(c, left, right, top)
+        c.put(c.mask(box(left, top, right, top + 2)), RIVET)
 
 
 def boiler(c, x0, x1, top, seed, red):
