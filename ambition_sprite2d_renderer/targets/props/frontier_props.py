@@ -16,12 +16,12 @@ them together.
   porch roofs are at y 496 over a boardwalk at y 608.
 - The Wet Whistle: its back bar, the balcony (y 352) and the stair landing
   (y 432), the piano on the stage.
-- The livery: the stalls, the hayloft (y 384) and its ladder rung (y 448).
+- The livery: the stalls, the hayloft (y 384), and the crate and bale steps (y 448).
 - The refinery: the tank farm and its pipe rack (y 576), the cracking tower
   and its platforms (y 448, 320).
 - The Ore Corral: the catwalks over the docks (y 384), the ore chutes and
   the fence along the back of the yard.
-- The mesa top: the lookout's shelter and its bench.
+- The mesa top: the survey decks and the lookout shelter.
 
 Animations: ``idle``, 1 frame each.
 """
@@ -698,14 +698,26 @@ def corral_fence(c, k):
 
 
 def lookout_post(c, k):
-    """The mesa top (y 384): a lean-to shelter with a bench, a spyglass on a
-    tripod, a flag on a pole."""
+    """Survey decks on the slope and a shelter with a bench on the summit."""
+    for x0, x1, deck in ((272, 400, 448), (448, 592, 384), (640, 816, 320)):
+        for x in (x0 + 12, x1 - 12):
+            ground = 512 - 0.4 * min(max(x - 480, 0), 320)
+            post(c, x, deck + 5, ground, 7, TIMBER)
+        left_ground = 512 - 0.4 * min(max(x0 + 12 - 480, 0), 320)
+        c.put(c.mask(lambda p: p.line([(x0 + 12, left_ground - 8), (x1 - 12, deck + 9)], 4)), PLANK_DARK)
+        c.put(c.mask(box(x0, deck + 4, x1, deck + 11)), PLANK_DARK)
+        deck_edge(c, x0, x1, deck, PLANK_LIGHT)
+    for x in (668, 720, 772):
+        post(c, x, 290, 320, 5, TIMBER)
+    rope_line(c, [(668, 294), (720, 294), (772, 294)], 3, PLANK_DARK)
+
     g = 384
     k.ground = g
-    for x in (950, 1100):
-        post(c, x, 280, g, 7)
-    c.put(c.mask(lambda p: p.line([(930, 286), (1120, 270)], 8)), TIMBER)
-    tin_roof(c, 924, 262, 1126, 280, "lookout_roof")
+    for x in (908, 1096):
+        post(c, x, 279, g, 7)
+    c.put(c.mask(box(896, 285, 1104, 291)), TIMBER)
+    tin_roof(c, 880, 272, 1120, 286, "lookout_roof")
+    c.put(c.mask(box(880, 272, 1120, 273.2)), STEEL_LIGHT)
     # The bench.
     c.put(c.mask(box(960, g - 30, 1090, g - 24)), PLANK_LIGHT)
     for x in (968, 1080):
@@ -748,7 +760,7 @@ PIECES: Dict[str, Piece] = {
     "frontier_corral_east": Piece((1200, 300, 1584, 576), corral_east),
     "frontier_corral_fence": Piece((280, 280, 1320, 576), corral_fence),
     # frontier_saddle_lookout
-    "frontier_lookout_post": Piece((900, 180, 1560, 384), lookout_post),
+    "frontier_lookout_post": Piece((256, 180, 1560, 512), lookout_post),
 }
 
 TARGETS = targets(PIECES, PAL)
