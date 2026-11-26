@@ -500,6 +500,38 @@ def _firing_racks(c, _kit):
         c.put(c.mask(box(x - 10, y + 4, x + 10, y + 7)), CLAY_LIGHT[:3])
 
 
+def _loom_drying_rack(c, _kit):
+    wood, shade, edge = (129, 82, 59), (82, 54, 51), (204, 136, 81)
+    for x, top in ((708, 356), (1104, 452), (1240, 480), (1392, 480), (1500, 528)):
+        c.put(c.mask(box(x, top + 5, x + 7, 576)), shade)
+        c.put(c.mask(box(x + 1, top + 8, x + 3, 570)), wood)
+        c.put(c.mask(box(x - 3, 568, x + 10, 576)), wood)
+
+    deck = [
+        (676, 352), (688, 352), (714, 356), (1184, 471),
+        (1214, 478), (1232, 480), (1248, 480),
+    ]
+    bottom = [(x, y + 10) for x, y in reversed(deck)]
+    c.put(c.mask(lambda p: p.poly(deck + bottom)), wood)
+    c.put(c.mask(lambda p: p.line([(x, y + 2) for x, y in deck], 2)), edge)
+    c.put(c.mask(box(1232, 483, 1440, 490)), wood)
+    c.put(c.mask(box(1440, 530, 1536, 540)), shade)
+    c.put(c.mask(box(1440, 532, 1536, 535)), edge)
+
+    for x, y, cloth, trim in (
+        (766, 374, (119, 59, 98), (223, 139, 123)),
+        (1048, 443, (49, 110, 100), (118, 189, 157)),
+    ):
+        c.put(c.mask(lambda p: p.poly([
+            (x, y), (x + 59, y + 15), (x + 59, y + 60),
+            (x + 34, y + 67), (x, y + 55),
+        ])), cloth)
+        for dy in (23, 31, 46):
+            c.put(c.mask(lambda p: p.line([(x + 3, y + dy), (x + 56, y + dy + 15)], 2)), trim)
+        for dx, dy in ((10, 54), (22, 58), (34, 63), (46, 59)):
+            c.put(c.mask(box(x + dx, y + dy, x + dx + 2, y + dy + 7)), trim)
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -516,5 +548,9 @@ TARGETS: Dict[str, dict] = {
 }
 
 TARGETS.update(targets(
-    {"art_forge_firing_racks": Piece((1144, 680, 1992, 964), _firing_racks)}, {},
+    {
+        "art_forge_firing_racks": Piece((1144, 680, 1992, 964), _firing_racks),
+        "art_loom_drying_rack": Piece((668, 344, 1544, 580), _loom_drying_rack),
+    },
+    {},
 ))
