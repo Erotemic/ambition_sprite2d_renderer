@@ -27,7 +27,7 @@ import numpy as np
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
 from .eureka_props import Batch, edge_line
-from .pirate_port_props import HULL, HULL_BAND, HULL_DARK, PAL, PLANK, PLANK_DARK, PLANK_LIGHT, RED_PAINT, ROPE, SAIL, TAR, TIMBER, planks, sag
+from .pirate_port_props import HULL, HULL_BAND, HULL_DARK, PAL, PLANK, PLANK_DARK, PLANK_LIGHT, RED_PAINT, ROPE, SAIL, TAR, TIMBER, lantern, planks, post, sag
 
 W, DECK = 1280, 720
 PERCH = (80, 272, 480)
@@ -142,8 +142,31 @@ def deck(c, k):
         barrel(c, x, g)
 
 
+SHORE_FLOOR = 736
+SHORE_BOARDING = (600, 720, 660)
+
+
+def shore_mooring(c, k):
+    """Draw the mooring below the shark's boarding span."""
+    left, right, top = SHORE_BOARDING
+    ground = SHORE_FLOOR
+    planks(c, k, left - 18, ground - 8, right + 18, ground, PLANK_DARK, step=12,
+           vertical=True, tag="shore_mooring")
+    for x, direction in ((left - 18, 1), (right + 18, -1)):
+        post(c, x, top - 2, ground, 8, TIMBER)
+        c.put(c.mask(box(x - 7, top - 5, x + 7, top + 1)), PLANK_LIGHT)
+        c.put(c.mask(lambda p: p.line([(x, ground - 22), (x, ground - 38),
+                                      (x + direction * 18, ground - 38)], 2.5)), IRON)
+        lantern(c, k, x + direction * 18, ground - 39, 0.65)
+    c.put(c.mask(lambda p: (
+        p.line([(left + 20, ground - 2), (right - 20, ground - 2)], 2.5),
+        p.line([(654, ground - 5), (660, ground - 10), (666, ground - 5)], 2.5),
+    )), BRASS)
+
+
 PIECES: Dict[str, Piece] = {
     "sky_lookout_deck": Piece((0, 190, W, 768), deck),
+    "mockingbird_shore_mooring": Piece((568, 648, 752, SHORE_FLOOR), shore_mooring),
 }
 
 TARGETS = targets(PIECES, PAL)
