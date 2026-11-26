@@ -44,10 +44,10 @@ def _render(job: tuple[str, str]) -> tuple:
     return theme, layer, image, read_record.recorded() or [], read_record.directories()
 
 
-def _render_all(themes: list[str]) -> dict[str, dict[str, Image.Image]]:
+def _render_all(themes: list[str], workers: int = MAX_JOBS) -> dict[str, dict[str, Image.Image]]:
     jobs = [(theme, layer) for theme in themes for layer in scenes.LAYERS]
     out: dict[str, dict[str, Image.Image]] = {theme: {} for theme in themes}
-    with ProcessPoolExecutor(max_workers=min(MAX_JOBS, len(jobs))) as pool:
+    with ProcessPoolExecutor(max_workers=min(workers, len(jobs))) as pool:
         from .. import read_record
         for theme, layer, image, files, directories in pool.map(_render, jobs):
             read_record.merge(files, directories)
@@ -95,6 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     draw = sub.add_parser("draw", help="publish the layers of each scene")
     draw.add_argument("--out-dir", type=Path, required=True)
+    draw.add_argument("--jobs", type=int, default=MAX_JOBS)
     draw.add_argument("themes", nargs="*")
     preview = sub.add_parser("preview", help="one picture of what the game shows of each scene")
     preview.add_argument("out", type=Path)
@@ -125,10 +126,13 @@ def main(argv: list[str] | None = None) -> int:
         print(args.out)
         return 0
     themes = _themes(args.themes)
-    rendered = _render_all(themes)
     if args.command == "draw":
+        if args.jobs < 1:
+            draw.error("--jobs must be positive")
         args.out_dir.mkdir(parents=True, exist_ok=True)
-        for theme, layers in rendered.items():
+        for theme in themes:
+            # Release each scene before the next scene renders.
+            layers = _render_all([theme], args.jobs)[theme]
             for layer, image in layers.items():
                 path = args.out_dir / f"{theme}_{layer}.png"
                 if image is None:
@@ -140,8 +144,10 @@ def main(argv: list[str] | None = None) -> int:
             path = args.out_dir / f"{theme}_flat.png"
             scenes.flat(layers).save(path)
             print(path)
+            del layers, image
         plan(args.out_dir, themes).write()
         return 0
+    rendered = _render_all(themes)
     cameras = [float(part) for part in args.cameras.split(",")]
     w, h = 1280, 720
     sheet = Image.new("RGB", (w * len(cameras), h * len(themes)))
