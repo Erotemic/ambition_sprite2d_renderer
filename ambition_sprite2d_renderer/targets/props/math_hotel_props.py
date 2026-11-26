@@ -10,8 +10,7 @@ Drawn in each room's coordinates (`_district_props`) on the numbers of
 - `math_hotel_lobby_room`: the lobby (1280 x 576, floor y 512): the front
   desk (its top y 464) with the bell and the register, the key rack behind
   it whose rows of hooks run off to a point and never end, a chandelier, the
-  lift with its dial (the last mark on it is an infinity), a stair going up,
-  palms, an armchair.
+  lift with its dial, the ballroom door, and the passage to the rooms.
 - `math_hotel_corridor_room`: the corridor (1600 x 448, floor y 384), which
   goes on: patterned paper, a runner, a door every 240 with a brass plate,
   sconces, a room-service trolley, a do-not-disturb card.
@@ -28,6 +27,7 @@ import numpy as np
 
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
+from .castle_godwin import lettering
 from .eureka_props import Batch, edge_line, panels, pendant
 from .math_town_terraces import PAL, WALK
 
@@ -112,6 +112,47 @@ def key_rack(c, x0, y0, x1, y1):
     c.put(c.mask(lambda p: p.ellipse(vx, vy, 3)), GOLD)
 
 
+def lobby_plaque(c, cx, y, width, text):
+    """Draw a brass nameplate with dark letters."""
+    x0, x1 = cx - width / 2, cx + width / 2
+    c.put(c.mask(box(x0, y, x1, y + 21)), BRASS)
+    c.put(c.mask(box(x0 + 2, y + 2, x1 - 2, y + 19)), CREAM)
+    lettering(c, text, cx, y + 6, 9, WOOD_DARK)
+
+
+def ballroom_entry(c, floor):
+    """Draw the pair of ballroom doors."""
+    c.put(c.mask(lambda p: p.arch(275, floor - 126, 373, floor)), BRASS)
+    c.put(c.mask(lambda p: p.arch(279, floor - 122, 369, floor)), WOOD_DARK)
+    for x0, x1 in ((283, 322), (326, 365)):
+        c.put(c.mask(box(x0, floor - 100, x1, floor - 3)), CLARET)
+        c.put(c.mask(lambda p: p.arch(x0 + 5, floor - 95, x1 - 5, floor - 38)), GOLD)
+        c.put(c.mask(lambda p: p.arch(x0 + 7, floor - 93, x1 - 7, floor - 40)), PAPER)
+    c.put(c.mask(lambda p: (p.ellipse(317, floor - 33, 2.6), p.ellipse(331, floor - 33, 2.6))), GOLD)
+    lobby_plaque(c, 324, floor - 156, 104, "BALLROOM")
+
+
+def rooms_passage(c, floor, edge):
+    """Draw the open passage at the east edge of the lobby."""
+    c.put(c.mask(box(1092, floor - 116, edge, floor)), BRASS)
+    c.put(c.mask(box(1098, floor - 110, edge, floor)), WOOD_DARK)
+    c.put(c.mask(lambda p: p.poly([
+        (1098, floor - 110), (1156, floor - 88), (edge, floor - 88), (edge, floor - 110),
+    ])), WOOD)
+    c.put(c.mask(lambda p: p.poly([
+        (1098, floor), (1156, floor - 18), (edge, floor - 18), (edge, floor),
+    ])), (149, 104, 74))
+    c.put(c.mask(lambda p: p.poly([
+        (1107, floor), (1162, floor - 12), (edge, floor - 12), (edge, floor),
+    ])), CLARET)
+    for x, top in ((1118, floor - 94), (1172, floor - 85), (1225, floor - 85)):
+        c.put(c.mask(box(x - 2, top, x + 2, top + 14)), GOLD)
+        c.light(c.mask(lambda p: p.ellipse(x, top + 7, 8), blur=7), (255, 215, 130), 0.6)
+    lobby_plaque(c, 1176, floor - 146, 92, "ROOMS")
+    c.put(c.mask(lambda p: p.line([(1230, floor - 137), (1246, floor - 137)], 1.8)), GOLD)
+    c.put(c.mask(lambda p: p.poly([(1246, floor - 142), (1252, floor - 137), (1246, floor - 132)])), GOLD)
+
+
 def lobby_room(c, k):
     """The lobby."""
     x0, x1, g = 16, LOBBY_W - 16, LOBBY_FLOOR
@@ -125,11 +166,19 @@ def lobby_room(c, k):
     c.put(c.mask(box(x0, LOBBY_CEILING + 18, x1, LOBBY_CEILING + 22)), GOLD)
     # The door back to the street (its zone x 40..88).
     c.put(c.mask(lambda p: p.arch(32, g - 120, 96, g)), BRASS)
-    c.put(c.mask(lambda p: p.arch(38, g - 114, 90, g)), (60, 40, 30))
-    c.light(c.mask(lambda p: p.arch(38, g - 114, 90, g)), (200, 220, 255), 0.25)
+    c.put(c.mask(lambda p: p.arch(38, g - 114, 90, g)), WOOD_DARK)
+    c.put(c.mask(lambda p: p.arch(44, g - 108, 84, g - 23)), (81, 104, 123))
+    c.put(c.mask(box(62, g - 107, 66, g - 23)), WOOD_DARK)
+    c.put(c.mask(box(44, g - 66, 84, g - 62)), WOOD_DARK)
+    c.put(c.mask(lambda p: p.ellipse(77, g - 42, 3)), GOLD)
+    c.put(c.mask(box(40, g - 10, 88, g - 4)), BRASS)
+    lobby_plaque(c, 64, g - 146, 84, "STREET")
+    ballroom_entry(c, g)
     # The key rack behind the desk, and the desk.
     key_rack(c, 460, 150, 840, 330)
     infinity(c, 650, 128, 22, GOLD, 2.0)
+    lobby_plaque(c, 584, 68, 120, "NO VACANCY")
+    lobby_plaque(c, 716, 68, 120, "VACANCY")
     panels(c, DESK_X0, DESK_TOP, DESK_X1, g, WOOD_LIGHT, 4, "desk")
     edge_line(c, DESK_X0 - 8, DESK_X1 + 8, DESK_TOP, (210, 160, 110), 6)
     bx = DESK_X0 + 40
@@ -149,11 +198,8 @@ def lobby_room(c, k):
     c.put(c.mask(lambda p: [p.ellipse(dcx + 18 * math.cos(a), dcy + 18 * math.sin(a), 1.2) for a in np.linspace(math.pi, 2 * math.pi, 7)[:-1]]), (60, 50, 40))
     infinity(c, dcx + 18, dcy, 3.2, (60, 50, 40), 0.9)
     c.put(c.mask(lambda p: p.line([(dcx, dcy), (dcx + 16, dcy - 2)], 1.4)), CLARET)
-    # A stair up beside it (the floors above are not this room's).
-    sx0 = 1060
-    c.put(c.mask(lambda p: [p.rect(sx0 + i * 14, g - (i + 1) * 14, x1, g - i * 14) for i in range(14)]), WOOD)
-    c.put(c.mask(lambda p: [p.rect(sx0 + i * 14, g - (i + 1) * 14, sx0 + i * 14 + 14, g - (i + 1) * 14 + 2) for i in range(14)]), WOOD_LIGHT)
-    c.put(c.mask(lambda p: p.line([(sx0 + 6, g - 40), (sx0 + 200, g - 236)], 2.4)), BRASS)
+    lobby_plaque(c, dcx, dcy - 56, 70, "LIFT")
+    rooms_passage(c, g, x1)
     # A chandelier, palms, an armchair and a rug.
     cx, cy = 300, LOBBY_CEILING + 70
     c.put(c.mask(box(cx - 0.8, LOBBY_CEILING + 22, cx + 0.8, cy)), BRASS)
@@ -168,7 +214,7 @@ def lobby_room(c, k):
             L = rng.uniform(40, 70)
             pts = [(px + L * t * math.cos(a), g - 30 + L * t * math.sin(a) + 14 * t * t) for t in np.linspace(0, 1, 10)]
             c.put(c.mask(lambda p: p.line(pts, 3.2)), (60, 120, 60))
-    ax = 300
+    ax = 430
     c.put(c.mask(lambda p: (p.rect(ax - 30, g - 38, ax + 30, g - 18), p.rect(ax - 34, g - 70, ax - 22, g - 18), p.rect(ax + 22, g - 70, ax + 34, g - 18), p.rect(ax - 28, g - 80, ax + 28, g - 36))), CLARET)
     c.put(c.mask(lambda p: [p.rect(x - 2, g - 18, x + 2, g) for x in (ax - 26, ax + 26)]), WOOD_DARK)
     c.put(c.mask(lambda p: p.ellipse(640, g - 1, 220, 4)), CLARET, 0.8)
