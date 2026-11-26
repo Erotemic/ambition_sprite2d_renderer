@@ -514,6 +514,32 @@ def pilings(c, x0, x1, step=48):
         c.put(c.mask(box(x - 4, DECK + 30, x + 4, DECK + 34)), (50, 70, 60), 0.6)
 
 
+def east_pier_supports(c, _kit):
+    """Draw the pilings and braces beneath the brig."""
+    hatch_left, hatch_right = 2560, 2624
+    for left, right in ((1616, hatch_left), (hatch_right, 2816)):
+        pilings(c, left, right, step=56)
+        c.put(c.mask(box(left, DECK + 26, right, DECK + 37)), PLANK_DARK)
+        c.put(c.mask(lambda p: [
+            p.line([(x, DECK + 33), (x + 55, SEA_FLOOR - 20)], 7)
+            for x in range(left + 8, right - 55, 112)
+        ]), TIMBER)
+    c.put(c.mask(box(hatch_left, DECK, hatch_right, DECK + 8)), PLANK_DARK)
+    c.put(c.mask(lambda p: [
+        p.rect(x, DECK, x + 3, DECK + 8)
+        for x in range(hatch_left + 4, hatch_right, 8)
+    ]), PLANK_LIGHT)
+
+
+def swim_landing(c, _kit):
+    """Mark the ladder at the edge of a pier."""
+    post(c, 12, 6, 58, 7, PLANK_DARK)
+    c.put(c.mask(box(8, 7, 16, 34)), (45, 125, 115))
+    c.put(c.mask(lambda p: [p.rect(8, y, 16, y + 4) for y in (12, 24)]), (230, 219, 191))
+    c.put(c.mask(box(5, 4, 19, 8)), PLANK_LIGHT)
+    c.put(c.mask(lambda p: p.ring(12, 31, 4, 1.5)), (214, 167, 82))
+
+
 def warehouse(c, k):
     """The bonded warehouse on the middle span of the pier, its flat roof
     the walk line (y 448, x 864..1504)."""
@@ -697,6 +723,8 @@ PIECES: Dict[str, Piece] = {
     # pirate_port_docks
     "port_warehouse": Piece((828, 440, 1508, 928), warehouse),
     "port_gantry": Piece((0, 220, 890, 928), gantry),
+    "port_east_pier_supports": Piece((1616, 768, 2816, 928), east_pier_supports),
+    "port_swim_landing": Piece((0, 0, 32, 64), swim_landing),
     "port_brig": Piece((1496, 196, 2640, 772), brig),
     "port_cove_entrance": Piece((2664, 568, 2800, 768), cove_entrance),
     "port_dock_clutter": Piece((0, 0, 120, 40), dock_clutter),
