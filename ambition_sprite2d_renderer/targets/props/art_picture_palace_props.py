@@ -34,6 +34,8 @@ from typing import Dict, List, Tuple
 
 from ..characters import _art_cast_kit as K
 from ..characters import _picture_palace_kit as M
+from ._district_props import Piece, targets
+from ._town_kit import box
 from .art_props import _publisher
 
 STILL: List[Tuple[str, int, int]] = [("idle", 1, 1000)]
@@ -372,6 +374,62 @@ def _draw_clapper():
     return f.finish(width=1.6)
 
 
+def _palace_catwalk(c, _kit):
+    rail, edge, dark = (65, 57, 71), (145, 113, 103), (49, 43, 57)
+    for x, top in ((361, 400), (822, 400), (949, 368), (1405, 368), (1471, 400), (1674, 400)):
+        c.put(c.mask(box(x, top + 6, x + 6, 576)), rail)
+        c.put(c.mask(box(x + 1, top + 12, x + 3, 568)), edge)
+        c.put(c.mask(box(x - 4, 569, x + 10, 576)), dark)
+
+    for left, top, right, colour in (
+        (320, 400, 864, (228, 157, 100)),
+        (896, 368, 1424, (214, 191, 140)),
+        (1456, 400, 1680, (159, 166, 211)),
+    ):
+        c.put(c.mask(box(left, top + 2, right, top + 14)), dark)
+        c.put(c.mask(box(left + 7, top - 27, right - 7, top - 24)), rail)
+        c.put(c.mask(box(left + 7, top - 27, right - 7, top - 26)), edge)
+        for x in range(left + 20, right - 12, 40):
+            c.put(c.mask(box(x, top - 25, x + 3, top + 3)), rail)
+            c.put(c.mask(box(x - 4, top + 8, x + 7, top + 10)), colour)
+
+    for x, y, colour in ((564, 410, (236, 167, 111)), (1188, 378, (221, 205, 158)),
+                         (1584, 410, (162, 171, 220))):
+        c.put(c.mask(lambda p: p.poly([
+            (x - 8, y + 12), (x + 8, y + 12), (x + 88, 575), (x - 88, 575),
+        ])), colour, 0.14)
+        c.put(c.mask(box(x - 11, y, x + 11, y + 12)), dark)
+        c.put(c.mask(box(x - 7, y + 9, x + 7, y + 12)), colour)
+
+
+def _palace_orbital_flat(c, _kit):
+    wall, edge, inset = (67, 69, 91), (151, 153, 173), (38, 42, 64)
+    c.put(c.mask(box(1696, 222, 2112, 576)), wall)
+    c.put(c.mask(box(1705, 228, 2103, 237)), edge)
+    c.put(c.mask(box(1705, 553, 2103, 564)), inset)
+    for x in (1711, 2097):
+        c.put(c.mask(box(x, 237, x + 5, 551)), edge)
+    c.put(c.mask(lambda p: p.ellipse(1906, 371, 166, 105)), inset)
+    c.put(c.mask(lambda p: p.ellipse(1906, 371, 159, 98)), edge)
+    c.put(c.mask(lambda p: p.ellipse(1906, 371, 151, 90)), (31, 41, 78))
+    for x, y, size in ((1776, 362, 2), (1822, 319, 1.5), (1843, 349, 2),
+                       (1879, 301, 1.5), (1891, 430, 2.5), (2019, 355, 2),
+                       (2038, 374, 1.5), (1801, 395, 1), (1990, 418, 2)):
+        c.put(c.mask(lambda p: p.ellipse(x, y, size)), (199, 203, 222))
+    c.put(c.mask(lambda p: p.ellipse(1944, 363, 57)), (101, 155, 189))
+    c.put(c.mask(lambda p: p.ellipse(1949, 366, 50)), (61, 107, 153))
+    c.put(c.mask(lambda p: p.poly([
+        (1904, 355), (1922, 328), (1947, 320), (1967, 335),
+        (1932, 352), (1938, 369), (1914, 376),
+    ])), (117, 160, 149))
+    c.put(c.mask(lambda p: p.poly([
+        (1969, 367), (1986, 355), (1992, 374), (1985, 388),
+        (1966, 398), (1952, 390), (1961, 383),
+    ])), (101, 143, 145))
+    for x in range(1732, 2087, 30):
+        c.put(c.mask(box(x, 543, x + 18, 545)), edge)
+
+
 DRAW = {
     "art_film_camera": lambda anim, i, n: _draw_camera(),
     "art_directors_chair": lambda anim, i, n: _draw_chair(),
@@ -401,3 +459,11 @@ TARGETS: Dict[str, dict] = {
     "art_clapperboard": _publisher("art_clapperboard", "Clapperboard", STILL, CLAPPER_FRAME, DRAW["art_clapperboard"], {"foot": (64.0, 160.0)},
                                    "Scenery", SCENERY),
 }
+
+TARGETS.update(targets(
+    {
+        "art_picture_catwalk": Piece((312, 332, 1692, 580), _palace_catwalk),
+        "art_picture_orbital_flat": Piece((1688, 214, 2120, 580), _palace_orbital_flat),
+    },
+    {},
+))
