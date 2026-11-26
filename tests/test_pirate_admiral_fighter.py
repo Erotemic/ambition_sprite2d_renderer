@@ -1,4 +1,4 @@
-"""The Pirate Admiral's fighter body language (``_pirate_admiral_fighter``):
+"""R. Badely's fighter body language (``_pirate_admiral_fighter``):
 every fighter category resolves to a row of his, each row is its own pose,
 bodies lie on the floor, and nothing leaves the sheet frame."""
 
