@@ -17,7 +17,7 @@ generator's; change them together.
   it, the shredder in its pit (x 1280 to 1440), the clerk's desk on the
   high catwalk (y 448).
 - The Business College's lecture hall (floor y 576): the board, the
-  lectern's stage (y 544), the tiers of desks (y 528, 480, 432, 384).
+  lectern's stage, the desks and the aisle under the tiers.
 
 Also ``business_folder_carrier``, the look of the hanging carriage that
 carries folders over the shredder: a platform look (`platform_looks.ron`),
@@ -87,7 +87,7 @@ DESK_WALK = 448
 #: The lecture hall.
 HALL_FLOOR = 576
 STAGE = 544
-TIERS = ((720, 528), (880, 480), (1040, 432), (1200, 384))
+TIERS = ((720, 880, 512), (880, 1040, 480), (1040, 1200, 432), (1200, 1584, 384))
 
 CARRIER_FRAME = (320, 96)
 CARRIER_SPAN = (16.0, 304.0)
@@ -477,7 +477,7 @@ def records_archive_stairs(c, _kit):
 def lecture_room(c, k):
     """The lecture hall: panelled walls, tall windows, a whiteboard with a
     chart that only goes up, a lectern on its stage (y 544), the front of a
-    row of desks on each tier (y 528, 480, 432, 384), a clock."""
+    row of desks on each tier, a clock and an aisle under the seats."""
     g = HALL_FLOOR
     k.wall(16, 32, 1584, g, (186, 160, 136), "plaster", "lecture wall")
     # Panelling to the dado, in the warm wood of an old college.
@@ -504,17 +504,21 @@ def lecture_room(c, k):
     c.put(lect, WOOD_DARK)
     c.put(c.mask(box(408, STAGE - 66, 482, STAGE - 58)), WOOD_LIGHT)
     c.put(c.mask(lambda p: p.poly([(438, STAGE - 44), (452, STAGE - 44), (450, STAGE - 30), (445, STAGE - 26), (440, STAGE - 30)])), GOLD)
-    # The fronts of the desks on each tier.
-    for k, (x0, top) in enumerate(TIERS):
-        # The riser of the tier, solid down to the floor, its lit nosing.
-        riser = c.mask(box(x0, top, 1584, g))
-        c.put(riser, scale(WOOD_DARK, 1.0 + 0.12 * k))
-        c.put(c.mask(box(x0, top, 1584, top + 3)), WOOD_LIGHT)
-        c.put(c.mask(box(x0, top, x0 + 4, g)), scale(WOOD_DARK, 0.7))
-        # The desk on it, its front and its legs.
-        c.put(c.mask(box(x0 + 40, top - 26, 1584, top - 22)), WOOD_LIGHT)
-        c.put(c.mask(box(x0 + 46, top - 22, 1584, top - 8)), scale(WOOD, 0.9))
-        c.put(c.mask(lambda p: [p.rect(x, top - 8, x + 3, top) for x in np.arange(x0 + 50, 1584, 80)]), WOOD_DARK)
+    # The aisle runs between the supports. The lamps mark its floor.
+    for left, right, top in TIERS:
+        c.put(c.mask(box(left, top + 12, right, g)), scale(WOOD_DARK, 0.84))
+        c.put(c.mask(box(left, g - 5, right, g)), WOOD_LIGHT)
+        c.put(c.mask(lambda p: [p.rect(x, top + 10, x + 7, g) for x in (left + 12, right - 18)]), WOOD)
+        centre = (left + right) // 2
+        c.put(c.mask(box(centre - 12, g - 39, centre + 12, g - 33)), LAMP)
+        c.light(c.mask(lambda p: p.ellipse(centre, g - 29, 31, 18), blur=9), LAMP, 0.27)
+        c.put(c.mask(box(left, top, right, top + 12)), WOOD)
+        c.put(c.mask(box(left, top, right, top + 3)), WOOD_LIGHT)
+        # The back row leaves space for the ladder.
+        desk_end = min(right - 12, 1500)
+        c.put(c.mask(box(left + 36, top - 26, desk_end, top - 22)), WOOD_LIGHT)
+        c.put(c.mask(box(left + 42, top - 22, desk_end, top - 8)), scale(WOOD, 0.9))
+        c.put(c.mask(lambda p: [p.rect(x, top - 8, x + 3, top) for x in range(left + 46, desk_end, 72)]), WOOD_DARK)
     banner(c, 120, 60, 260, w=30)
     banner(c, 1540, 60, 260, w=30)
 
