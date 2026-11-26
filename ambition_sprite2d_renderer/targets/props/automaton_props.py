@@ -41,6 +41,7 @@ from ..characters import _art_cast_kit as K
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
 from .art_props import _publisher
+from .castle_godwin import lettering
 
 PAL = {
     "stone": (176, 160, 196), "stone_light": (214, 204, 230), "trim": (214, 170, 92), "dark": (40, 32, 52),
@@ -93,6 +94,10 @@ ROOM_FLOOR = 512
 SPOOLS = ((150, 330), (1450, 330))
 TAPE_Y = (306, 354)
 TABLE = (1060, 110, 1420, 270)
+TAPE_LANDINGS = (
+    (224, 448, 112), (288, 384, 128), (368, 320, 144),
+    (1136, 320, 240), (1344, 384, 144), (1424, 448, 128),
+)
 
 #: The Cell-ular Arena.
 GALLERY = (0, 448, 448)
@@ -426,6 +431,32 @@ def state_table(c, k):
 
 
 # ---------------------------------------------------------------------------
+def tape_landings(c, _kit):
+    """Draw the steps, end platforms and carriage guide."""
+    c.put(c.mask(box(510, 350, 1138, 364)), IRON)
+    c.put(c.mask(box(510, 352, 1138, 356)), STEEL_LIGHT)
+    c.put(c.mask(lambda p: [p.rect(x, 356, x + 3, 363) for x in range(524, 1136, 32)]), BRASS_DARK)
+    for x, y, width in TAPE_LANDINGS:
+        end = x + width
+        c.put(c.mask(lambda p: p.poly([(x + 12, y + 12), (end - 12, y + 12),
+                                      (end - 26, y + 35), (x + 26, y + 35)])), IRON)
+        c.put(c.mask(box(x, y, end, y + 15)), STEEL)
+        c.put(c.mask(box(x, y, end, y + 3)), STEEL_LIGHT)
+        for stud in (x + 9, end - 9):
+            c.put(c.mask(lambda p: p.ellipse(stud, y + 9, 2.5)), BRASS)
+    for x, direction in ((396, 1), (1348, -1)):
+        c.put(c.mask(box(x - 5, 345, x + 5, ROOM_FLOOR - 14)), IRON)
+        c.put(c.mask(box(x - 3, 345, x, ROOM_FLOOR - 14)), STEEL_LIGHT)
+        c.put(c.mask(box(x - 10, ROOM_FLOOR - 18, x + 10, ROOM_FLOOR - 12)), STEEL)
+        c.put(c.mask(lambda p: p.line([(x, 399), (x + direction * 55, 336)], 5)), BRASS_DARK)
+    for x, title in ((442, "INSPECT"), (1332, "STATES")):
+        c.put(c.mask(box(x - 56, 273, x + 56, 296)), IRON)
+        c.put(c.mask(box(x - 54, 294, x + 54, 296)), BRASS)
+        c.put(c.mask(box(x - 2, 296, x + 2, 320)), STEEL)
+        lettering(c, title, x, 280, 9, CREAM)
+
+
+# ---------------------------------------------------------------------------
 # The Cell-ular Arena
 # ---------------------------------------------------------------------------
 
@@ -511,6 +542,7 @@ PIECES: Dict[str, Piece] = {
     "automaton_sierpinski_panel": Piece((2060, 120, 2380, 448), sierpinski_panel),
     # The Tape Room.
     "automaton_tape": Piece((60, 250, 1540, 512), tape),
+    "automaton_tape_landings": Piece((208, 257, 1568, 512), tape_landings),
     "automaton_state_table": Piece((1050, 100, 1430, 280), state_table),
     # The Cell-ular Arena.
     "automaton_arena_ring": Piece((816, 560, 1872, 768), arena_ring),
@@ -544,5 +576,26 @@ def _draw_glider_lift(i: int):
 TARGETS["automaton_glider_lift"] = _publisher(
     "automaton_glider_lift", "Glider Lift", [("idle", 4, 220)], LIFT_FRAME, lambda anim, i, n: _draw_glider_lift(i),
     {"top": ((LIFT_SPAN[0] + LIFT_SPAN[1]) / 2.0, LIFT_TOP)}, "Scenery", ["prop", "platform", "automaton"])
+
+def tape_carriage(_anim, _index, _count):
+    """Draw the carriage deck above the rollers and the read lamps."""
+    f = K.Frame((304, 96))
+    f.poly([(8, 18), (296, 18), (282, 54), (22, 54)], IRON + (255,))
+    f.poly([(8, 18), (296, 18), (296, 26), (8, 26)], BRASS_LIGHT + (255,))
+    f.poly([(34, 29), (270, 29), (265, 47), (39, 47)], STEEL + (255,))
+    for x in (42, 262):
+        f.dot(x, 70, 18, IRON + (255,))
+        f.dot(x, 70, 12, BRASS_DARK + (255,))
+        f.dot(x, 70, 4, STEEL_LIGHT + (255,))
+    for x, colour in ((136, LIME), (152, AMBER), (168, CELL)):
+        f.dot(x, 38, 5, colour + (255,))
+    return f.finish(outline=IRON + (255,), width=1.0, glow_blur=2.0)
+
+
+TARGETS["automaton_tape_carriage"] = _publisher(
+    "automaton_tape_carriage", "Inspection Carriage", [("idle", 1, 600)], (304, 96), tape_carriage,
+    {"top": (152.0, 18.0)}, "Scenery", ["prop", "platform", "automaton"],
+)
+
 
 __all__ = ["PAL", "PIECES", "TARGETS"]
