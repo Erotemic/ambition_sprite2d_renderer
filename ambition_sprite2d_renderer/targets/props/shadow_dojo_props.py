@@ -2,11 +2,11 @@
 between the village forest and the Mockingbird's arena.
 
 Drawn in the room's coordinates (`_district_props`): the floor (y 608), the
-two rafters walked on (y 384, x 320..512; y 320, x 736..928), the doors (to
+practice floor (y 512, x 384..672), the doors (to
 the hub x 56, to the village forest x 720, to the arena x 1180).
 
 - `shadow_dojo_hall`: dark timber posts and beams, lit shoji screens between
-  them, the rafters as balconies on brackets, racks of practice swords and
+  them, the practice floor and steps, racks of practice swords and
   staffs, a gong, a shrine with a bonsai, paper lanterns, a hanging scroll
   of brush strokes, and the scroll the Mockingbird "corrected": bird
   footprints across its kata, feathers by the arena's door.
@@ -29,7 +29,8 @@ from .eureka_props import Batch, edge_line
 from .ninja_village_props import PAL
 
 W, FLOOR = 1280, 608
-RAFTERS = ((320, 512, 384), (736, 928, 320))
+PRACTICE_FLOOR = (384, 672, 512)
+STEPS = ((288, 384, 560), (672, 720, 560))
 TIMBER = (44, 30, 24)
 TIMBER_LIGHT = (96, 66, 46)
 PAPER = (238, 226, 196)
@@ -64,9 +65,9 @@ def scroll(c, x, top, h, tag, footprints=False):
             c.put(c.mask(lambda p: [p.line([(fx, fy), (fx + 4 * math.cos(a), fy - 4 * math.sin(a))], 0.9) for a in (math.radians(60), math.radians(90), math.radians(120), math.radians(270))]), (90, 90, 100))
 
 
-def rack(c, x, kind):
-    c.put(c.mask(lambda p: (p.rect(x - 2, FLOOR - 120, x + 2, FLOOR), p.rect(x + 74, FLOOR - 120, x + 78, FLOOR))), TIMBER)
-    for y in (FLOOR - 104, FLOOR - 70, FLOOR - 36):
+def rack(c, x, kind, ground=FLOOR):
+    c.put(c.mask(lambda p: (p.rect(x - 2, ground - 120, x + 2, ground), p.rect(x + 74, ground - 120, x + 78, ground))), TIMBER)
+    for y in (ground - 104, ground - 70, ground - 36):
         c.put(c.mask(box(x - 4, y, x + 80, y + 4)), TIMBER_LIGHT)
         if kind == "swords":
             c.put(c.mask(lambda p: p.line([(x + 22, y - 4.5), (x + 76, y - 6)], 2.0)), (210, 212, 220))
@@ -76,11 +77,27 @@ def rack(c, x, kind):
             c.put(c.mask(lambda p: p.line([(x - 8, y - 3), (x + 88, y - 3)], 3.0)), (210, 170, 110))
 
 
+def practice_floor(c):
+    """Draw the practice floor and the steps at its two ends."""
+    left, right, top = PRACTICE_FLOOR
+    for x in (left + 16, (left + right) / 2, right - 16):
+        c.put(c.mask(box(x - 5, top + 10, x + 5, FLOOR)), TIMBER)
+        c.put(c.mask(lambda p: p.line([(x, top + 46), (x + 24, top + 12)], 5)), TIMBER)
+    c.put(c.mask(box(left, top, right, top + 19)), TIMBER_LIGHT)
+    edge_line(c, left, right, top, TATAMI, 4)
+    c.put(c.mask(lambda p: [p.rect(x, top, x + 2, top + 5) for x in range(left + 32, right, 48)]), (97, 98, 64))
+    c.put(c.mask(box(left, top + 16, right, top + 19)), TIMBER)
+    for left, right, top in STEPS:
+        c.put(c.mask(box(left, top, right, top + 12)), TIMBER_LIGHT)
+        c.put(c.mask(lambda p: [p.rect(x, top + 12, x + 7, FLOOR) for x in (left + 8, right - 14)]), TIMBER)
+        edge_line(c, left, right, top, (145, 111, 74), 3)
+
+
 def hall(c, k):
     g = FLOOR
     back = c.mask(box(0, 0, W, g))
     c.put(back, (30, 22, 20))
-    # Posts and beams, shoji between them (low ones; the rafters cross high).
+    # Put the shoji between the posts.
     posts = list(range(0, W + 1, 160))
     for a, b in zip(posts, posts[1:]):
         shoji(c, a + 10, 180, b - 10, g - 80, 0.45)
@@ -95,15 +112,10 @@ def hall(c, k):
     c.put(c.mask(box(0, g - 80, W, g)), (60, 42, 32))
     c.put(c.mask(box(0, g - 6, W, g)), TATAMI)
     c.put(c.mask(lambda p: [p.rect(x, g - 6, x + 3, g) for x in range(0, W, 96)]), (60, 60, 40))
-    # The rafters as balconies on brackets, the walk lines light.
-    for x0, x1, y in RAFTERS:
-        c.put(c.mask(box(x0, y, x1, y + 14)), TIMBER)
-        edge_line(c, x0, x1, y, TIMBER_LIGHT, 4)
-        c.put(c.mask(lambda p: [p.poly([(x, y + 14), (x + 6, y + 14), (x + 24 * (1 if x < (x0 + x1) / 2 else -1) + 3, y + 46), (x + 24 * (1 if x < (x0 + x1) / 2 else -1) - 3, y + 46)]) for x in (x0 + 10, x1 - 16)]), TIMBER)
-        c.put(c.mask(lambda p: (p.rect(x0, y - 26, x1, y - 23), [p.rect(x, y - 26, x + 2, y) for x in np.arange(x0 + 2, x1, 24)])), TIMBER_LIGHT, 0.9)
+    practice_floor(c)
     # Racks, the gong, the shrine.
     rack(c, 150, "swords")
-    rack(c, 560, "staffs")
+    rack(c, 410, "staffs", ground=PRACTICE_FLOOR[2])
     gx, gy = 1000, 300
     c.put(c.mask(lambda p: (p.rect(gx - 50, gy - 60, gx - 44, g), p.rect(gx + 44, gy - 60, gx + 50, g), p.rect(gx - 56, gy - 66, gx + 56, gy - 58))), TIMBER)
     gong = c.mask(lambda p: p.ellipse(gx, gy + 10, 36))
@@ -119,7 +131,7 @@ def hall(c, k):
     c.put(c.mask(lambda p: p.line(trunk, 3)), (70, 50, 36))
     c.put(c.mask(lambda p: [p.ellipse(sx + dx, g - dy, rx, 6) for dx, dy, rx in ((-14, 98, 14), (10, 110, 12), (-4, 122, 13))]), (60, 110, 60))
     # Scrolls: one of brush strokes, and the one the Mockingbird corrected.
-    scroll(c, 260, 196, 140, "kata")
+    scroll(c, 582, 300, 140, "kata")
     scroll(c, 1100, 196, 140, "mocked", footprints=True)
     # Paper lanterns.
     for lx in (80, 400, 700, 1180):
