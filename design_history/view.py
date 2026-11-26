@@ -66,6 +66,7 @@ def lineage_view(
     character = catalog.get(character_id) if character_id and catalog else None
     return {
         "lineage": name,
+        "character_id": character_id,
         "name": (character.display_name if character else None) or spec.get("name") or character_id or name,
         "summary": spec.get("summary", ""),
         "targets": lineage_targets(spec),

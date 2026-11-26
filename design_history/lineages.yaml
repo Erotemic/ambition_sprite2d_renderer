@@ -5,6 +5,8 @@
 # that commit's own code (see README.md). Edit this file when a design changes
 # or a lineage's identity is clarified; never copy old art or code beside it.
 #
+# `character_id` uses the cast name for one character.
+# `name` titles a group or a history with no cast row.
 # `ids`    target ids to try at each commit, newest name first (names changed)
 # `paths`  regexes over renderer-relative paths; a commit touching one is a
 #          candidate for `survey`
@@ -14,7 +16,7 @@
 #          `tall: [super_mary_o_tall, mary_o_v2_tall]`
 lineages:
   alice:
-    name: Alice
+    character_id: npc_alice
     ids: [alice, alice_cryptographer]
     paths: ['alice']
     summary: "from a jointed-puppet placeholder to an SVG-rigged courier"
@@ -46,7 +48,7 @@ lineages:
         label: "v2: chargen body, the old face, bag and letters"
         note: "Character generator body and poses (cast family), the GPT 6 face, bright teal lapels. Current design."
   bob:
-    name: Bob
+    character_id: npc_bob
     ids: [bob, bob_engineer]
     paths: ['(^|/)bob', '_bob_']
     summary: "engineer: from a jointed-puppet placeholder to a bearded SVG-rigged fighter"
@@ -68,7 +70,7 @@ lineages:
         label: "Redrawn as an SVG-rigged fighter"
         note: "Current design."
   noether:
-    name: Emmy Noether
+    character_id: npc_emmy_noether
     ids: [noether]
     paths: ['noether']
     summary: "Emmy: pixel-art puppet to a glowing SVG-rigged fighter"
@@ -130,7 +132,7 @@ lineages:
         label: "v0, redrawn as rig pieces"
         note: "The robot, boss, ninja, sandbag and toon families are drawn as pieces; this is the old robot, not v3."
   viking_warrior:
-    name: Viking warrior
+    character_id: npc_viking_warrior
     ids: [viking_warrior]
     paths: ['viking']
     summary: "jointed paper puppet to a rigged character, 2026"
@@ -143,7 +145,7 @@ lineages:
         label: "Redrawn as rigs"
         note: "The four vikings redrawn (Oct 4). Current design."
   viking_shieldmaiden:
-    name: Viking shieldmaiden
+    character_id: npc_viking_shieldmaiden
     ids: [viking_shieldmaiden]
     paths: ['viking']
     summary: "jointed paper puppet to a rigged character, 2026"
@@ -156,7 +158,7 @@ lineages:
         label: "Redrawn as rigs"
         note: "The four vikings redrawn (Oct 4). Current design."
   viking_heavy_warrior:
-    name: Viking heavy warrior
+    character_id: npc_viking_heavy_warrior
     ids: [viking_heavy_warrior]
     paths: ['viking']
     summary: "jointed paper puppet to a rigged character, 2026"
@@ -169,7 +171,7 @@ lineages:
         label: "Redrawn as rigs"
         note: "The four vikings redrawn (Oct 4). Current design."
   viking_heavy_shieldmaiden:
-    name: Viking heavy shieldmaiden
+    character_id: npc_viking_heavy_shieldmaiden
     ids: [viking_heavy_shieldmaiden]
     paths: ['viking']
     summary: "jointed paper puppet to a rigged character, 2026"
@@ -182,7 +184,7 @@ lineages:
         label: "Redrawn as rigs"
         note: "The four vikings redrawn (Oct 4). Current design."
   mockingbird:
-    name: Mockingbird
+    character_id: npc_mockingbird_boss
     ids: [mockingbird_boss]
     paths: ['mockingbird']
     summary: "a long grey flier to a rocket-and-rotor songbird"
@@ -206,7 +208,7 @@ lineages:
         label: "Hooded skull head"
         note: "Current design."
   raptor_stalker:
-    name: Raptor stalker
+    character_id: npc_raptor_stalker
     ids: [raptor_stalker]
     paths: ['raptor']
     summary: "a green faceted raptor to a feathered SVG-rigged one"
@@ -297,7 +299,7 @@ lineages:
         label: "Redrawn with his fight poses"
         note: "A smooth, outlined redraw. Claude Opus 5.5 declared."
   gnu_ton_scholar_rig:
-    name: The scholar (GNU-ton), as an SVG rig
+    character_id: npc_gnu_ton
     continues: gnu_ton_scholar
     current_products:
       - sprites/gnu_ton_scholar_fighter_spritesheet.ron
@@ -317,7 +319,7 @@ lineages:
         label: "An old, stern man in a full wig"
         note: "Jon chose it from a sheet of five: the long wig, the older face, the neck clear. Claude Opus 5.5 declared."
   burning_flying_shark:
-    name: Burning flying shark
+    character_id: npc_burning_flying_shark
     ids: [burning_flying_shark]
     paths: ['shark']
     summary: "a grey shark with a fire fin, then an SVG rig wreathed in fire, then a great white that burns along its whole back"
@@ -354,7 +356,7 @@ lineages:
     ids: [boss_chest]
     paths: ['chest']
   oiler:
-    name: Oiler
+    character_id: npc_oiler
     ids: [oiler]
     paths: ['oiler']
     summary: "several different Oilers before the multiview SVG rig"
@@ -375,7 +377,7 @@ lineages:
         label: "Euler after the 1753 pastel"
         note: "Redesigned with Jon over seven rounds: rumpled silk cap, teal banyan over the workshop clothes, the failing right eye in every view (left-facing views drawn, not flipped), eight faces."
   pirate_raider:
-    name: Pirate Raider
+    character_id: npc_pirate_raider
     ids: [pirate_raider]
     paths: ['_pirate_common', '_pirate_rig', 'pirate_raider']
     summary: "one of five pirates on one thin body, then a character of his own"
@@ -387,7 +389,7 @@ lineages:
         label: "Five characters"
         note: "Full bodies, a look for each pirate, the head on the chest, each pose made again. Jon: redo them completely, the posing too. Claude Opus 5.5 declared."
   imperfect_cellular_automaton:
-    name: Imperfect Cellular Automaton
+    character_id: imperfect_cellular_automaton
     ids: [imperfect_cellular_automaton]
     paths: ['imperfect_cellular_automaton']
     summary: "a boxy robot in two halves, then a hunched creature with a tail in the same two halves"
@@ -423,7 +425,7 @@ lineages:
         label: "A heap of gradient goo"
         note: "Mismatched eyes, a third eye, too many teeth, a hand with seven fingers, a stock picture, sparkles. Jon: rework the art. Claude Opus 5.5 declared."
   synthetic_friend:
-    name: Synthetic Friend
+    character_id: npc_synthetic_friend
     ids: [synthetic_friend]
     paths: ['ai_era_enemies', 'synthetic_friend', '_ai_era_kit']
     summary: "a portrait card with a bald face, then a toy robot whose smile is a plate"
@@ -435,7 +437,7 @@ lineages:
         label: "A toy robot with a plate for a smile"
         note: "A hug for an attack; the plate slips when it is struck. Jon: rework the art. Claude Opus 5.5 declared."
   spaghetti_event:
-    name: Spaghetti Event
+    character_id: npc_spaghetti_event
     ids: [spaghetti_event]
     paths: ['ai_era_enemies', 'spaghetti_event', '_ai_era_kit']
     summary: "a brown noodle crab, then a twirl of spaghetti on a fork"
@@ -447,7 +449,7 @@ lineages:
         label: "A twirl of spaghetti on a fork"
         note: "Meatballs for eyes, a noodle whip with an arrowhead, a loop that an arrowhead goes round. Jon: rework the art. Claude Opus 5.5 declared."
   helpful_liar:
-    name: Helpful Liar
+    character_id: npc_helpful_liar
     ids: [helpful_liar]
     paths: ['ai_era_enemies', 'helpful_liar', '_ai_era_kit']
     summary: "a kiosk screen on a wheeled stand, then a help-desk robot whose nose grows"
@@ -459,7 +461,7 @@ lineages:
         label: "A help-desk robot with a wooden nose"
         note: "One wheel, a 'verified' badge, crossed fingers behind its back; it shoots its nose. Jon: rework the art. Claude Opus 5.5 declared."
   agent_swarm:
-    name: Agent Swarm
+    character_id: npc_agent_swarm
     ids: [agent_swarm]
     paths: ['ai_era_enemies', 'agent_swarm', '_ai_era_kit']
     summary: "a planner orb with tool drones, then seven of one small robot and the lines between them"
@@ -471,7 +473,7 @@ lineages:
         label: "Seven agents and the lines between them"
         note: "No leader: an arrowhead to walk, a spear to attack, two of them always voting. Jon: rework the art. Claude Opus 5.5 declared."
   hand_saint:
-    name: Hand Saint
+    character_id: npc_hand_saint
     ids: [hand_saint]
     paths: ['ai_era_enemies', 'hand_saint', '_ai_era_kit']
     summary: "a floating palm idol in a robe, then an icon whose head is an open hand"
@@ -483,7 +485,7 @@ lineages:
         label: "An icon whose head is a hand"
         note: "Seven fingers, two thumbs, an eye in the palm, a halo; it stands on two more hands. Jon: it needs a redesigned sprite. Claude Opus 5.5 declared."
   ramen_nujan:
-    name: Ramen-nujan
+    character_id: npc_ramen_nujan
     ids: [ramen_nujan]
     paths: ['ramen_nujan', '_ai_era_kit', '_solo_shape_rig']
     summary: "a front-facing scholar in an aubergine coat, then a round young dreamer with a noodle scarf, then the same man grown up"
@@ -498,7 +500,7 @@ lineages:
         label: "A grown man, five heads tall"
         note: "The same coat, scarf and poses on a taller body with a small head: neat parted hair and no standing lock, small eyes, no blush. Jon of the era before: too cutesy, too much like Astro Boy, and he did not like the hair. Claude Opus 5.5 declared."
   erdish:
-    name: Erdish
+    character_id: npc_erdish
     ids: [erdish, erdish_scholar]
     paths: ['erdish', '_ai_era_kit']
     summary: "a stiff puppet in a slate jacket with round glasses, then a gaunt grey-haired rig that reads as Paul Erdos"
@@ -510,7 +512,7 @@ lineages:
         label: "A rig, and the man himself"
         note: "Iron-grey hair on top of his head, square black glasses, a grey suit, an open collar, socks in sandals; chalk mathematics. Jon: please redo the erdish sprite; and of the drafts, he had no beard, and he must read as Paul Erdos and not as Bernie Sanders. Claude Opus 5.5 declared."
   willson:
-    name: Willson
+    character_id: willson
     ids: [willson]
     paths: ['willson', '_ai_era_kit', '_solo_shape_rig']
     summary: "an angular pelican on a teal bicycle, then a round one with glasses on a red bicycle"
@@ -522,7 +524,7 @@ lineages:
         label: "Round pelican, red bicycle"
         note: "Glasses, a deep pouch, a track stand at rest; the W bag kept. Jon: a revised sprite, a pelican on a bicycle, keep the bag with a W. Claude Opus 5.5 declared."
   girdle:
-    name: Girdle
+    character_id: npc_girdle
     ids: [girdle]
     paths: ['girdle', '_person_rig']
     summary: "a first design, then a person of the shared rig: a cream suit and round glasses, his hands behind his back; he reads as Kurt Goedel"
@@ -534,7 +536,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A cream suit and round glasses, his hands behind his back; he reads as Kurt Goedel. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
   neil_ongras_turfson:
-    name: Neil Ongras Turfson
+    character_id: npc_neil_ongras_turfson
     ids: [neil_ongras_turfson]
     paths: ['neil_ongras_turfson', '_person_rig']
     summary: "a first design, then a person of the shared rig: tall and upright with a moustache and a star waistcoat"
@@ -546,7 +548,7 @@ lineages:
         label: "A person of the shared rig"
         note: "Tall and upright with a moustache and a star waistcoat. Jon: he should stand up straight and be very slightly more portly. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
   m_leblanc:
-    name: M. LeBlanc
+    character_id: npc_leblanc
     ids: [m_leblanc]
     paths: ['m_leblanc', '_person_rig']
     summary: "a first design, then a person of the shared rig: an Empire gown, a green sash and shawl, her hair up"
@@ -558,7 +560,7 @@ lineages:
         label: "A person of the shared rig"
         note: "An Empire gown, a green sash and shawl, her hair up. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
   python_goras:
-    name: Python Goras
+    character_id: npc_python_goras
     ids: [python_goras]
     paths: ['python_goras', '_person_rig']
     summary: "a first design, then a person of the shared rig: a chiton, a beard, a headband, and a live python"
@@ -570,7 +572,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A chiton, a beard, a headband, and a live python. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
   galwah:
-    name: Galwah
+    character_id: npc_galwah
     ids: [galwah]
     paths: ['galwah', '_person_rig']
     summary: "a first design, then a person of the shared rig: a young man of 1832 in a green coat"
@@ -582,7 +584,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A young man of 1832 in a green coat. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
   marie_curry:
-    name: Marie Curry
+    character_id: npc_marie_curry
     ids: [marie_curry]
     paths: ['marie_curry', '_person_rig']
     summary: "a first design, then a person of the shared rig: a dark dress, her hair up, a glow in her hands"
@@ -594,7 +596,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A dark dress, her hair up, a glow in her hands. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
   leib_knives:
-    name: Leib Knives
+    character_id: npc_leib_knives
     ids: [leib_knives]
     paths: ['leib_knives', '_person_rig']
     summary: "a first design, then a person of the shared rig: a great wig and a long red coat; his knives are in his hands only in their rows"
@@ -606,7 +608,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A great wig and a long red coat; his knives are in his hands only in their rows. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
   craig:
-    name: Craig
+    character_id: npc_craig
     ids: [craig]
     paths: ['crypto_crew', '_person_rig']
     summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
@@ -618,7 +620,7 @@ lineages:
         label: "A person of the shared rig"
         note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
   eve:
-    name: Eve
+    character_id: npc_eve
     ids: [eve]
     # `eve_eavesdropper` was the generator of the target `eve` (its config named it), not a target id.
     paths: ['crypto_crew', '_person_rig', '(_toon_presets|configs/review)/eve\.', 'eve_eavesdropper']
@@ -631,7 +633,7 @@ lineages:
         label: "A person of the shared rig"
         note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
   judy:
-    name: Judy
+    character_id: npc_judy
     ids: [judy]
     paths: ['crypto_crew', '_person_rig']
     summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
@@ -643,7 +645,7 @@ lineages:
         label: "A person of the shared rig"
         note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
   mallory:
-    name: Mallory
+    character_id: npc_mallory
     ids: [mallory]
     # `mallory_interceptor` was the generator of the target `mallory` (its config named it), not a target id.
     paths: ['crypto_crew', '_person_rig', '(_toon_presets|configs/review)/mallory\.', 'mallory_interceptor']
@@ -656,7 +658,7 @@ lineages:
         label: "A person of the shared rig"
         note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
   olivia:
-    name: Olivia
+    character_id: npc_olivia
     ids: [olivia]
     paths: ['crypto_crew', '_person_rig']
     summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
@@ -668,7 +670,7 @@ lineages:
         label: "A person of the shared rig"
         note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
   peggy:
-    name: Peggy
+    character_id: npc_peggy
     ids: [peggy]
     paths: ['crypto_crew', '_person_rig']
     summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
@@ -680,7 +682,7 @@ lineages:
         label: "A person of the shared rig"
         note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
   sybil:
-    name: Sybil
+    character_id: npc_sybil
     ids: [sybil]
     paths: ['crypto_crew', '_person_rig']
     summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
@@ -692,7 +694,7 @@ lineages:
         label: "A person of the shared rig"
         note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
   trent:
-    name: Trent
+    character_id: npc_trent
     ids: [trent]
     # `trent_elder` was the generator of the target `trent` (its config named it), not a target id.
     paths: ['crypto_crew', '_person_rig', '(_toon_presets|configs/review)/trent\.', 'trent_elder']
@@ -705,7 +707,7 @@ lineages:
         label: "A person of the shared rig"
         note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
   trudy:
-    name: Trudy
+    character_id: npc_trudy
     ids: [trudy]
     paths: ['crypto_crew', '_person_rig']
     summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
@@ -717,7 +719,7 @@ lineages:
         label: "A person of the shared rig"
         note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
   victor:
-    name: Victor
+    character_id: npc_victor
     ids: [victor]
     paths: ['crypto_crew', '_person_rig']
     summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
@@ -729,7 +731,7 @@ lineages:
         label: "A person of the shared rig"
         note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
   walter:
-    name: Walter
+    character_id: npc_walter
     ids: [walter]
     paths: ['crypto_crew', '_person_rig']
     summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
@@ -741,7 +743,7 @@ lineages:
         label: "A person of the shared rig"
         note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
   jeff_hinter:
-    name: Jeff Hinter
+    character_id: npc_jeff_hinter
     ids: [jeff_hinter]
     paths: ['jeff_hinter', '_jeff_hinter_base', '_person_rig']
     summary: "an old man with white hair and glasses, then the man when he was young; his armor is the same man in a surface fitted to him"
@@ -756,7 +758,7 @@ lineages:
         label: "The young man"
         note: "A mop of dark hair going grey, no glasses, a blue jumper, a straight back and a flat chest. Jon: Hinter needs to be less like an old man; no humped back. Claude Opus 5.5 declared."
   jeff_hinter_armored:
-    name: Jeff Hinter (Armored)
+    character_id: npc_jeff_hinter_armored
     ids: [jeff_hinter_armored]
     paths: ['jeff_hinter_armored', 'jeff_hinter', '_jeff_hinter_base']
     summary: "plates on the old painter's man, then the young man of the other sheet in cyber armor that a manifold fits to him"
@@ -768,7 +770,7 @@ lineages:
         label: "The other side of the same man"
         note: "The person of jeff_hinter in dark plates with a lit circuit; the change is a surface that closes on his outline. Jon: two sides of the same character; a manifold shrinkwrapping to fit his body; more cyber-techno. Claude Opus 5.5 declared."
   mami_marzakhani:
-    name: Mami Marzakhani
+    character_id: npc_mami_marzakhani
     # Named `mary_marzakhani` until 174813c5fa (2026-07-20).
     ids: [mami_marzakhani, mary_marzakhani]
     paths: ['mami_marzakhani', 'mary_marzakhani', '_person_rig']
@@ -781,7 +783,7 @@ lineages:
         label: "A person of the shared rig"
         note: "Short dark hair, a garnet jacket; she reads as a woman. Claude Opus 5.5 declared."
   anne_druid:
-    name: Anne Druid
+    character_id: npc_anne_druid
     ids: [anne_druid]
     paths: ['anne_druid', '_person_rig']
     summary: "a first design, then a person of the shared rig: a druid of a high fantasy"
@@ -793,7 +795,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A druid of a high fantasy: a circlet of leaves with antlers, a moss-green robe with a leaf hem, a cloak lined with the night sky, a staff. Jon: Anne Druid needs to read as a high fantasy druid; and she needs a modest bust. Claude Opus 5.5 declared."
   davy_hylbert:
-    name: Davy Hylbert
+    character_id: npc_davy_hylbert
     ids: [davy_hylbert]
     paths: ['davy_hylbert', '_person_rig']
     summary: "a first design, then a person of the shared rig: a pale summer hat, round glasses, a white beard, a blue three-piece suit"
@@ -805,7 +807,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A pale summer hat, round glasses, a white beard, a blue three-piece suit. Claude Opus 5.5 declared."
   pipi_tau:
-    name: Pipi Tau
+    character_id: npc_pipi_tau
     ids: [pipi_tau]
     paths: ['pipi_tau', '_person_rig']
     summary: "a first design, then a person of the shared rig: side-swept black hair, rectangular glasses, a teal jacket"
@@ -817,7 +819,7 @@ lineages:
         label: "A person of the shared rig"
         note: "Side-swept black hair, rectangular glasses, a teal jacket. Claude Opus 5.5 declared."
   paradox_barber:
-    name: The Paradox Barber
+    character_id: npc_paradox_barber
     ids: [paradox_barber]
     paths: ['paradox_barber', '_person_rig']
     summary: "a first design, then a person of the shared rig: a tall thin barber in an apron with the stripes of the pole; lather on his cheek and a beard on his chin"
@@ -829,7 +831,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A tall thin barber in an apron with the stripes of the pole; lather on his cheek and a beard on his chin. Claude Opus 5.5 declared."
   data_lovelace:
-    name: Data Lovelace
+    character_id: npc_data_lovelace
     ids: [data_lovelace]
     paths: ['data_lovelace', '_person_rig']
     summary: "a first design, then a person of the shared rig: a Victorian automaton lady"
@@ -841,7 +843,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A Victorian automaton lady: an enamel face, cast copper hair, brass hoops, a hem of punched card. Claude Opus 5.5 declared."
   georg_canter:
-    name: Georg Canter
+    character_id: npc_georg_canter
     ids: [georg_canter]
     paths: ['georg_canter', '_person_rig']
     summary: "a first design, then a person of the shared rig: a bearded professor of the 1880s on a bay horse, a blanket of sets inside sets"
@@ -853,7 +855,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A bearded professor of the 1880s on a bay horse, a blanket of sets inside sets. Claude Opus 5.5 declared."
   admiral_grass_hopper:
-    name: Admiral Grass Hopper
+    character_id: npc_admiral_grass_hopper
     ids: [admiral_grass_hopper]
     paths: ['admiral_grass_hopper', '_person_rig']
     summary: "a first design, then a person of the shared rig: a small old grasshopper lady in admiral's blues, her knees behind her"
@@ -865,7 +867,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A small old grasshopper lady in admiral's blues, her knees behind her. Claude Opus 5.5 declared."
   joseph_furrier:
-    name: Joseph Furrier
+    character_id: npc_joseph_furrier
     ids: [joseph_furrier]
     paths: ['joseph_furrier', '_person_rig']
     summary: "a first design, then a person of the shared rig: a man of fifty in a great blanket with fur at each edge, his nose pink with the cold"
@@ -877,7 +879,7 @@ lineages:
         label: "A person of the shared rig"
         note: "A man of fifty in a great blanket with fur at each edge, his nose pink with the cold. Claude Opus 5.5 declared."
   ninja_heavy:
-    name: Ninja Heavy
+    character_id: npc_ninja_heavy
     ids: [ninja_heavy]
     paths: ['ninja_heavy']
     summary: "an oni mask in lamellar armor, then a wrestler of the dojo clad in black; two more heavies show their eyes"
@@ -897,7 +899,7 @@ lineages:
         label: "Ninja Wrestler"
         note: "A Look of the heavy, beside him: his first draft's bare arms and chest and straw rope, with the eye band. Claude Opus 5.5 declared."
   ninja_shadow_duelist:
-    name: Shadow Duelist
+    character_id: npc_ninja_shadow_duelist
     ids: [ninja_shadow_duelist]
     paths: ['ninja_shadow_duelist', 'ninja_side', '_person_rig']
     summary: "a doll of grey capsules with red lamps for eyes, then a lean swordsman of the dojo clad in black; two more blades show their eyes"
@@ -917,7 +919,7 @@ lineages:
         label: "Blue Scarf Duelist"
         note: "A Look of the duelist, beside him: the eye band, blue where the dojo has red, a straight blade with a square guard. Claude Opus 5.5 declared."
   ninja_shadow_oni_leader:
-    name: Shadow Oni Leader
+    character_id: npc_ninja_shadow_oni_leader
     ids: [ninja_shadow_oni_leader]
     paths: ['ninja_shadow_oni_leader', 'ninja_side', 'configs/ninja_leader\.yaml', '_person_rig']
     summary: "the duelist's doll of grey capsules with horns and a banner, then a warlord in a horned helmet and a mask of bone"
@@ -929,7 +931,7 @@ lineages:
         label: "The warlord"
         note: "On the shared rig, from the picture Jon gave: horns red inside, a mask of bone with red eyes, laced armour in black and blue with a long skirt, a great sword planted in front of him. Claude Opus 5.5 declared."
   puppy_slug:
-    name: Puppy Slug
+    character_id: npc_puppy_slug
     ids: [puppy_slug]
     paths: ['(^|/)puppy_slug\.py', '_ai_era_kit']
     summary: "a brown worm with a flat dog face at each end, then a plump slug with the head of a puppy and a second face on its back"
@@ -941,7 +943,7 @@ lineages:
         label: "The puppyslug"
         note: "On the paint box of the cast: the head of a puppy, the eye stalks of a slug, fur that goes over into wet green skin, a face asleep on its back and two eyes in its flank. Claude Opus 5.5 declared."
   general:
-    name: General
+    character_id: npc_general
     ids: [absurd_general]
     paths: ['absurd_general']
     summary: "a preset of the toon template, then a box of a coat on stick legs under an officer's cap"
@@ -953,7 +955,7 @@ lineages:
         label: "Box coat, stick legs, a chest of medals"
         note: "An SVG rig of his own. Jon gave a cartoon general as inspiration, not to copy; he refused the tall leaning hat of the first draft for a normal officer's cap, and asked for more medals. Claude Opus 5.5 declared."
   hunny_horror_boss:
-    name: Hunny Horror
+    character_id: npc_hunny_horror_boss
     ids: [hunny_horror_boss]
     paths: ['hunny_horror']
     summary: "a front-facing SVG part rig of a blob bear in a red shirt, then a stuffed teddy seen from the side that turns into a monster when it attacks"
@@ -965,7 +967,7 @@ lineages:
         label: "The teddy that turns"
         note: "On the paint box of the cast, each limb one piece. No shirt (Jon: the red shirt is not public domain), no scars; sweet at rest, bristling, glowing and all teeth when it attacks or is angry. Claude Opus 5.5 declared."
   fascist_enforcer:
-    name: Fascist Enforcer
+    character_id: npc_fascist_enforcer
     ids: [fascist_enforcer]
     # Until 2026-05-28 the id drew the raid enforcer's first look; those files
     # are not paths here. One commit (dcb0e493c3) still matches: it added
@@ -980,7 +982,7 @@ lineages:
         label: "A soldier of the person rig"
         note: "Peaked cap, grey-green tunic, breeches, jackboots, black gloves, a red armband with the faction's invented cog. Jon: we are going to need to redo the art for the fascist enforcer. Claude Opus 5.5 declared."
   goblin:
-    name: Goblin
+    character_id: goblin
     ids: [goblin]
     paths: ['goblin_side', '_goblin_look', '_goblin_moves', '_goblin_motion']
     summary: "a crude egg on beaded capsule limbs, then the same goblin's skeleton and moves under parts drawn once each, in twelve looks"
@@ -992,7 +994,7 @@ lineages:
         label: "Parts on the old skeleton"
         note: "A neck, ears, hands and clawed feet; one ink silhouette under a cel-shaded fill; the purple loincloth and magenta eye kept. Jon chose it as the Smash goblin and kept the raider and squat looks as its skins. Claude Opus 5.5 declared."
   goblin_brute:
-    name: Goblin Brute
+    character_id: npc_goblin_brute
     ids: [goblin_brute_hammer]
     paths: ['goblin_side', '_goblin_look', 'goblin_brute_hammer']
     summary: "the goblin's crude body at the goblin's size with spikes floating over its head, then a hunched heavy drawn a third bigger"
@@ -1004,7 +1006,7 @@ lineages:
         label: "The heavy"
         note: "A barrel of a body under a small low head, tusks, an iron cap with one horn, a pauldron and harness, an iron maul; 1.32x the goblin. Jon: the heavy should be larger than the normal goblin. Claude Opus 5.5 declared."
   goblin_cantina_chieftain:
-    name: Fretjaw, Cantina Chieftain
+    character_id: npc_goblin_cantina_chieftain
     ids: [goblin_cantina_chieftain]
     paths: ['goblin_side', '_goblin_look', 'music_factions']
     summary: "the crude goblin with a spiked crown and a banner, then a cantina host of his own"
@@ -1016,7 +1018,7 @@ lineages:
         label: "The cantina host"
         note: "Jowls, a droopy nose, a moustache and a gold tooth; a crown of bottle caps, a gold earring; an open orange waistcoat over a shirt with rolled sleeves, a bar apron, a brass-banded mallet. Jon: Fretjaw needs unique art, on a similar rig. Claude Opus 5.5 declared."
   weird_hermit:
-    name: Weird Hermit
+    character_id: npc_weird_hermit
     ids: [weird_hermit]
     paths: ['weird_hermit']
     summary: "a blocky faceted hermit with a tiny arm and a potato body, then the same hermit as a cel-shaded SVG rig"
@@ -1028,7 +1030,7 @@ lineages:
         label: "The sun-baked hermit"
         note: "A red rag knotted behind, wiry grey hair and moustache, ribs and a pot belly, patched green shorts on a rope belt, long fingers; he sneezes a green curse. Jon chose B of three. Claude Opus 5.5 declared."
   tech_bro_disruptor:
-    name: Chadwick Disruptor III
+    character_id: npc_tech_bro_disruptor
     ids: [tech_bro_disruptor]
     paths: ['tech_bro_disruptor', 'music_factions', 'robot_side']
     summary: "the robot template in the Tech-Bros' colours, then a gadget robot of his own in a fleece vest"
@@ -1040,7 +1042,7 @@ lineages:
         label: "The founder-bot"
         note: "A white gadget robot with a smug neon visor, an earbud, a quilted fleece vest, a lanyard and badge, always on his phone. Jon: Chadwick is a robot; use variant A. Claude Opus 5.5 declared."
   mantis_lancer:
-    name: Mantis Lancer
+    character_id: npc_mantis_lancer
     ids: [mantis_lancer]
     paths: ['mantis_lancer']
     summary: "a procedural insectoid lancer, then a slender conehead mantis as a cel-shaded SVG rig"
@@ -1052,7 +1054,7 @@ lineages:
         label: "The conehead"
         note: "A slender green conehead mantis on four legs, the red crest as its head cone, raptorial blades. Jon chose A of three; B lacquered lancer and C dead-leaf kept. Claude Opus 5.5 declared."
   ghoul_skulker:
-    name: Ghoul Skulker
+    character_id: npc_ghoul_skulker
     ids: [ghoul_skulker]
     paths: ['ghoul_skulker']
     summary: "a procedural ghoul, then a stitched corpse in a burial shroud as a cel-shaded SVG rig"
@@ -1064,7 +1066,7 @@ lineages:
         label: "The shrouded corpse"
         note: "A grey stitched corpse hunched under a burial shroud, long arms and claws. Jon chose B of three; A and C kept. Claude Opus 5.5 declared."
   pirate_cutlass_viper:
-    name: Cutlass Viper
+    character_id: npc_pirate_cutlass_viper
     ids: [pirate_cutlass_viper]
     paths: ['pirate_cutlass_viper']
     summary: "a procedural front-and-profile pirate, then the same viper redrawn as a side-view SVG rig"
@@ -1076,7 +1078,7 @@ lineages:
         label: "The viper redrawn"
         note: "Tricorn over a red bandana, plum bodice, blue breeches, a cutlass; side view, the left rows mirrored. Jon chose A of three; B and C kept. Claude Opus 5.5 declared."
   dark_lord:
-    name: Dark Lord
+    character_id: npc_dark_lord
     ids: [dark_lord]
     paths: ['dark_lord']
     summary: "a procedural dark lord, then the Iron Tyrant as a cel-shaded SVG rig"
@@ -1088,7 +1090,7 @@ lineages:
         label: "The Iron Tyrant"
         note: "A spiked crown helm with a red visor slit, black plate, a crimson-lined cape, a rune halberd. Jon chose A of three; B Sorcerer-King and C Warlord kept as possible skins. Claude Opus 5.5 declared."
   creator:
-    name: The Creator
+    character_id: npc_creator
     ids: [creator]
     paths: ['creator']
     summary: "a procedural creator, then a silver-bearded man in a long navy coat as a cel-shaded SVG rig"
@@ -1100,7 +1102,7 @@ lineages:
         label: "The mantle"
         note: "A long navy coat, violet scarf, silver hair and beard, a pendant, a tablet; one hand in his pocket. Jon chose B of three; A lab coat and C tinkerer kept. Claude Opus 5.5 declared."
   president_portrait:
-    name: President Portrait
+    character_id: npc_president_portrait
     ids: [president_portrait]
     paths: ['president_portrait']
     summary: "a flat-shaded portrait president, then the Continental general as a cel-shaded SVG rig"
@@ -1112,7 +1114,7 @@ lineages:
         label: "The Continental general"
         note: "Blue and buff, gold epaulettes, the pale-blue riband, riding boots, his hand on his sword; he presents a proclamation and swears on a book. Jon chose B of three. Claude Opus 5.5 declared."
   colonial_statesman:
-    name: Colonial Statesman
+    character_id: npc_colonial_statesman
     ids: [colonial_statesman]
     paths: ['colonial_statesman']
     summary: "a charcoal recolour of the president's front-facing body, then a Federalist orator in profile as a cel-shaded SVG rig"
@@ -1136,7 +1138,7 @@ lineages:
         label: "Three sentinels"
         note: "The Gradient Sentinel (the fallback), the Clockwork Warden (gear halo, clock heart, pendulum) and the Hooded Sentinel (Mode Collapse). Jon: all three are good, each to a different boss. Claude Opus 5.5 declared."
   hypatia_prime:
-    name: Hypatia Prime
+    character_id: npc_hypatia_prime
     ids: [hypatia_prime]
     paths: ['hypatia_prime']
     summary: "a procedural scholar, then an old woman in space armour over the Alexandrian drape, a cel-shaded SVG rig"
@@ -1148,7 +1150,7 @@ lineages:
         label: "Prime"
         note: "Silver crown braid and lit circlet, a lined face, plate over a blue himation and ivory chiton, Greek-key circuitry, an armillary ring on her back and an armillary tech-lance. Jon first chose A (a literal Alexandrian Hypatia, kept), then asked for an old woman in future armour. Claude Opus 5.5 declared."
   genghis_can:
-    name: Genghis Can
+    character_id: npc_genghis_can
     ids: [genghis_can]
     paths: ['genghis_can', '_genghis_pair', 'genghis_pair']
     summary: "a procedural conqueror in red lamellar, then Genghis Khan in a winter deel and a fox-fur hat, pointing the way"
@@ -1161,7 +1163,7 @@ lineages:
         label: "Steppe"
         note: "Look C of three: a teal winter deel crossed to the right, an orange sash, a quiver, the fox-fur flaps tied up; he stands tall and points the way. Jon asked for a redesign of the pair (2026-10-23); look C was decided after round 1. Claude Opus 5.5 declared."
   genghis_cant:
-    name: Genghis Can't
+    character_id: npc_genghis_cant
     ids: [genghis_cant]
     paths: ['genghis_cant', '_genghis_pair', 'genghis_pair']
     summary: "a procedural conqueror in slate lamellar, then Genghis Khan in a winter deel and a fox-fur hat, cupping his chin"
@@ -1174,7 +1176,7 @@ lineages:
         label: "Steppe"
         note: "Look C of three: a maroon winter deel, a slate sash, a quiver, the fox-fur flaps down; he stoops, greyer, and cups his chin. Jon asked for a redesign of the pair (2026-10-23); look C was decided after round 1. Claude Opus 5.5 declared."
   pulse_voyager_captain:
-    name: Captain Pulse
+    character_id: npc_pulse_voyager_captain
     ids: [pulse_voyager_captain]
     paths: ['pulse_voyager_captain', 'music_factions', 'robot_side']
     summary: "the robot template in the Pulse Voyagers' colours, then Claude's own redesign of the v2 robot as an SVG rig"
@@ -1186,7 +1188,7 @@ lineages:
         label: "The voyager captain"
         note: "The v2 robot rebuilt as white shell plates over a dark jointed suit: box head, dark visor, oval cyan eyes, one rigid antenna; a navy hull with a comet badge, gold shoulder boards, winglets, a comet trail. Jon asked what Claude would do redesigning the main character, then to use it on the Captain. Claude Opus 5.5 declared."
   news_board:
-    name: News Board
+    character_id: npc_news_board
     ids: [news_board]
     paths: ['news_board']
     summary: "a purple corporate cork board, then the Drain Market's own board of planks on drain pipes with a PA horn for a voice"
@@ -1199,7 +1201,7 @@ lineages:
         label: "The Drain Market board"
         note: "A new target beside the old one: planks on two drain pipes under a pitched tin roof, notices whose news is pictures, a PA horn that kicks when it talks. Jon saw three looks and did not pick; A was cast because the board stands in the Drain Market. Claude Opus 5.5 declared."
   carl_runga:
-    name: Carl Runga
+    character_id: npc_carl_runga
     ids: [carl_runga]
     paths: ['carl_runga', 'runge_kutta']
     summary: "a procedural numerical operator in a heavy apron, then Carl Runge as a Goettingen professor, an SVG rig"
@@ -1212,7 +1214,7 @@ lineages:
         label: "The Goettingen professor"
         note: "Bald dome, full grizzled beard, a black frock coat over a wine waistcoat and watch chain; 183 cm and heavy. Look A of three; Jon did not pick and asked for the new art in the game. Claude Opus 5.5 declared."
   martin_cutta:
-    name: Martin Cutta
+    character_id: npc_martin_cutta
     ids: [martin_cutta]
     paths: ['martin_cutta', 'runge_kutta']
     summary: "a procedural numerical operator, then Martin Kutta as the coefficient clerk, an SVG rig"
@@ -1225,7 +1227,7 @@ lineages:
         label: "The coefficient clerk"
         note: "Upright, dark hair and a moustache, a dove-grey lounge suit with a high collar, pince-nez on a cord, the green ledger of coefficients; 173 cm. Look A of three. Claude Opus 5.5 declared."
   paul_diracula:
-    name: Paul Diracula
+    character_id: npc_paul_diracula
     ids: [paul_diracula]
     paths: ['paul_diracula']
     summary: "a procedural gothic scientist, then Dirac's lean face and side parting on Lugosi's Count, an SVG rig"
@@ -1239,7 +1241,7 @@ lineages:
         label: "The Count"
         note: "A new target beside the old one: a black tailcoat and white tie, the psi medallion, an opera cape lined in crimson; Dirac's long face and side parting under a small widow's peak. Jon saw three looks and did not pick; A was cast when he asked for the art in the game. Claude Opus 5.5 declared."
   architect:
-    name: Architect
+    character_id: npc_architect
     ids: [architect]
     paths: ['architect']
     summary: "a purple toon in a long coat with a blueprint, then a modernist in a dark suit with the roll of drawings under his arm"
@@ -1253,7 +1255,7 @@ lineages:
         label: "The modernist"
         note: "A new target beside the old one, a side-view SVG rig: a dark suit, round glasses, a violet bow tie, a pencil behind the ear, the roll of drawings under his arm. Jon saw three looks and did not pick; A was cast. Claude Opus 5.5 declared."
   manifest_clerk:
-    name: Manifest Clerk
+    character_id: npc_manifest_clerk
     ids: [manifest_clerk]
     paths: ['manifest_clerk']
     summary: "the Architect's sheet worn as a placeholder, then an old registrar with the fanfold manifest"
@@ -1262,7 +1264,7 @@ lineages:
         label: "The registrar"
         note: "His first art of his own (he wore the Architect's sheet): a stooped old clerk in a long cardigan coat, half-moon glasses, black oversleeves, the fanfold manifest from his fist to a heap on the floor. Jon saw three looks and did not pick; C was cast. Claude Opus 5.5 declared."
   vault_keeper:
-    name: Vault Keeper
+    character_id: npc_vault_keeper
     ids: [vault_keeper]
     paths: ['vault_keeper']
     summary: "a toon keeper, then the keeper of the vault in a wine-red robe with the key-headed staff"
@@ -1276,7 +1278,7 @@ lineages:
         label: "The keeper of the vault"
         note: "A new target beside the old one, a side-view SVG rig: a wine-red robe, bald, a black beard, a gold earring, the key-headed vault staff, a combination dial on a chain. Jon saw three looks and did not pick; C was cast. Claude Opus 5.5 declared."
   merchant_prototype:
-    name: Merchant Prototype
+    character_id: npc_merchant_prototype
     ids: [merchant_prototype]
     paths: ['merchant_prototype']
     summary: "a toon merchant, then a travelling pedlar with the whole shop on her back"
@@ -1290,7 +1292,7 @@ lineages:
         label: "The travelling pedlar"
         note: "A new target beside the old one, a side-view SVG rig: a pack frame with an axe, a bomb and a health cell, a polka-dot headscarf, gold hoops, a shawl, an apron over a blue skirt. Jon saw three looks and did not pick; B was cast. Claude Opus 5.5 declared."
   general_hero:
-    name: General Hero
+    character_id: npc_general_hero
     ids: [general_hero]
     paths: ['general_hero']
     summary: "the toon rig's generic sword hero, then a knight come back from the war, standing watch on his sword"
@@ -1304,7 +1306,7 @@ lineages:
         label: "The knight who came back"
         note: "A new target beside the old one, a side-view SVG rig: a breastplate over a blue gambeson, a blue cape, a blond beard, his medals, both hands on his planted sword; he cuts two-handed and raises it to the sky. Jon saw three looks and did not pick; B was cast. Claude Opus 5.5 declared."
   dividing_mite:
-    name: Dividing Mite
+    character_id: npc_dividing_mite
     ids: [dividing_mite]
     paths: ['dividing_mite', 'mites_art', 'mite_v2']
     summary: "a white robot-toon biped with a sword, then a teal cell halfway through dividing on eight legs, an SVG rig"
@@ -1318,7 +1320,7 @@ lineages:
         label: "The twin-core cell"
         note: "A new target beside the old one: two teal lobes with a nucleus, a feeler and four legs each, cinched by a cleavage ring; in death the lobes pull apart. Jon saw three looks and did not pick; A was cast when he asked for the art in the game. Claude Opus 5.5 declared."
   exploding_mite:
-    name: Exploding Mite
+    character_id: npc_exploding_mite
     ids: [exploding_mite]
     paths: ['exploding_mite', 'mites_art', 'mite_v2']
     summary: "a robot-toon biped with a sword, then a round bomb with a lit fuse on eight legs, an SVG rig"
@@ -1337,7 +1339,7 @@ lineages:
     # `stochastic_parrot` draws. Before its 2026-10-05 redraw the v2 target was a
     # procedural macaw (014c056581, Jul 16) that looks almost the same as the
     # first parrot; it is not a major redesign, so it is not an era.
-    name: Stochastic Parrot
+    character_id: stochastic_parrot
     ids: [stochastic_parrot]
     paths: ['stochastic_parrot', 'rigbuild/bird\.py']
     summary: "a procedural parrot, then a scarlet macaw as an SVG rig"
@@ -1358,7 +1360,7 @@ lineages:
     # `mary_o_v2` came first (a2e104aea9, 2026-08-03); the authored SVG replaced it.
     # The cosmic form arrived in R1 2fd0172 (2026-10-11; Claude Opus 5.5 declared).
     # `super_mary_o_cosmic_quasar` is her pickup (a prop), not a form.
-    name: Mary-O
+    character_id: mary_o
     ids: [super_mary_o]
     paths: ['characters/super_mary_o\.py', 'super_mary_o_common', '(characters|assets)/_?mary_o_v2']
     summary: "the original Super Mary-O, then a v2 that Jon drew by hand"
@@ -1376,7 +1378,7 @@ lineages:
         label: "v2: drawn by Jon by hand"
         note: "Her authored SVG becomes the source of her sprites. Jon drew it; the commit is an agent's (Claude Opus 5 declared)."
   sanic:
-    name: Sanic
+    character_id: sanic
     ids: [sanic]
     paths: ['characters/sanic\.py']
     summary: "a procedural side-view Sanic, then the meme's MS Paint picture drawn as SVG parts"
@@ -1392,7 +1394,7 @@ lineages:
         label: "The MS Paint meme, as SVG parts"
         note: "Redrawn after the reference Jon gave (2026-10-25), with a top-speed `sprint` row; Claude Opus 5.5 declared."
   wolfenstein:
-    name: Wolfenstein
+    character_id: npc_wolfenstein_boss
     ids: [wolfenstein]
     paths: ['characters/wolfenstein', '_evil_faction']
     forms:
@@ -1400,28 +1402,28 @@ lineages:
     eras: []
   clockwork_warden:
     # Until 2026-10-18 this boss wore the generic `boss` look (see `sentinel_bosses`).
-    name: The Clockwork Warden
+    character_id: npc_clockwork_warden
     ids: [clockwork_warden_boss]
     paths: ['clockwork_warden', '/_sentinel_boss\.py', 'sentinel_boss_rigs', 'svg_art/sentinel_boss_art']
     eras: []
   mode_collapse:
     # Until 2026-10-18 this boss wore the generic `boss` look (see `sentinel_bosses`).
-    name: Mode Collapse (the Hooded Sentinel)
+    character_id: npc_mode_collapse
     ids: [hooded_sentinel_boss]
     paths: ['hooded_sentinel', '/_sentinel_boss\.py', 'sentinel_boss_rigs', 'svg_art/sentinel_boss_art']
     eras: []
   flying_spaghetti_monster:
-    name: Flying Spaghetti Monster
+    character_id: npc_flying_spaghetti_monster_boss
     ids: [flying_spaghetti_monster_boss]
     paths: ['flying_spaghetti_monster', '_solo_shape_rig']
     eras: []
   fsm_noodling:
-    name: Noodling
+    character_id: npc_fsm_noodling
     ids: [fsm_noodling]
     paths: ['fsm_noodling', '_solo_shape_rig']
     eras: []
   smirking_behemoth:
-    name: Smirking Behemoth
+    character_id: npc_smirking_behemoth_boss
     ids: [smirking_behemoth_boss]
     paths: ['smirking_behemoth']
     eras: []
@@ -1432,50 +1434,50 @@ lineages:
     eras: []
   pointed_polygon:
     # Named `fighting_polygon_sword` until 69ad36f2eb (2026-08-20).
-    name: Pointed Polygon
+    character_id: pointed_polygon
     ids: [pointed_polygon, fighting_polygon_sword]
     paths: ['(characters|rigged|review)/(pointed_polygon|fighting_polygon_sword)', 'humanoid/fighting_polygon_v1']
     eras: []
   pugnacious_polygon:
     # Named `fighting_polygon_brawler` until 69ad36f2eb (2026-08-20).
-    name: Pugnacious Polygon
+    character_id: pugnacious_polygon
     ids: [pugnacious_polygon, fighting_polygon_brawler]
     paths: ['(characters|rigged|review)/(pugnacious_polygon|fighting_polygon_brawler)', 'humanoid/fighting_brawler_v1']
     eras: []
   projectile_polygon:
-    name: Projectile Polygon
+    character_id: projectile_polygon
     ids: [projectile_polygon]
     paths: ['(characters|rigged)/projectile_polygon', 'humanoid/projectile_beast_v1']
     eras: []
   director:
     # Named `author` until 1694b068c0 (2026-09-18).
-    name: The Director
+    character_id: director
     ids: [director, author]
     paths: ['characters/(director|author)[/.]', 'rigbuild/(build|pen|sidearm|sword)_(director|author)\.py', 'humanoid/(director|author)_', 'assets/(director|author)-rig', '_authored_swing_fighter']
     eras: []
   officer:
-    name: The Officer
+    character_id: officer
     ids: [officer]
     paths: ['characters/officer[/.]', 'rigbuild/build_officer', 'humanoid/officer_', 'assets/officer\.svg', '_authored_swing_fighter']
     eras: []
   medic:
-    name: The Medic
+    character_id: medic
     ids: [medic]
     paths: ['characters/medic[/.]', 'rigbuild/build_medic', 'humanoid/medic_', 'assets/medic\.svg', '_authored_swing_fighter']
     eras: []
   performer:
     # Named `actor` until aa768e69bf (2026-08-29).
-    name: The Performer
+    character_id: performer
     ids: [performer, actor]
     paths: ['characters/(performer|actor)[/.]', 'rigbuild/build_(performer|actor)\.py', 'humanoid/(performer|actor)_stage', 'assets/performer\.svg', '_authored_swing_fighter']
     eras: []
   patent_clerk:
-    name: Patent Clerk
+    character_id: special_patent_clerk
     ids: [patent_clerk]
     paths: ['(characters|rigged)/patent_clerk']
     eras: []
   george_booul:
-    name: George Booul
+    character_id: smash_george_booul
     ids: [george_booul]
     paths: ['characters/george_booul']
     summary: "a rigid bedsheet with tabs for hands, then a sheet posed as cloth"
@@ -1487,93 +1489,93 @@ lineages:
         label: "Cloth on a bent spine"
         note: "Jon: redo the sprite work and posing. The dome leads, the hem trails, a fist under each corner pulls the cloth; eight views. Claude Opus 5.5 declared."
   le_beast:
-    name: Le Beast
+    character_id: npc_le_beast
     ids: [le_beast]
     paths: ['characters/le_beast']
     eras: []
   perfect_cellular_automaton:
     # The catalog keeps the perfect and the imperfect one apart, so two lineages.
-    name: Perfect Cellular Automaton
+    character_id: perfect_cellular_automaton
     ids: [perfect_cellular_automaton]
     paths: ['(characters|rigged)/(perfect_cellular_automaton|pca_)', 'assets/perfect-cellular-automaton/', 'svg_art/pca_']
     eras: []
   bear_mauler:
-    name: Bear Mauler
+    character_id: npc_bear_mauler
     ids: [bear_mauler]
     paths: ['bear_mauler']
     eras: []
   busy_beaver:
-    name: Busy Beaver
+    character_id: npc_busy_beaver
     ids: [busy_beaver]
     paths: ['busy_beaver', '_solo_shape_rig']
     eras: []
   carl_stargan:
-    name: Carl Stargan
+    character_id: npc_carl_stargan
     ids: [carl_stargan]
     paths: ['carl_stargan']
     eras: []
   charley_beagle:
-    name: Charley Beagle
+    character_id: npc_charley_beagle_svg
     ids: [charley_beagle_svg]
     paths: ['charley_beagle']
     eras: []
   companion_dog:
-    name: Companion Dog
+    character_id: npc_companion_dog
     ids: [companion_dog]
     paths: ['companion_dog']
     eras: []
   dog_bezoar:
-    name: Bezoar
+    character_id: npc_dog_bezoar
     ids: [dog_bezoar]
     paths: ['dog_bezoar', '_house_dog', 'house_dogs_art']
     eras: []
   dog_honey:
-    name: Honey
+    character_id: npc_dog_honey
     ids: [dog_honey]
     paths: ['dog_honey', '_house_dog', 'house_dogs_art']
     eras: []
   dog_roadie:
-    name: Roadie
+    character_id: npc_dog_roadie
     ids: [dog_roadie]
     paths: ['dog_roadie', '_house_dog', 'house_dogs_art']
     eras: []
   evil_attack_hound:
-    name: Attack Hound
+    character_id: npc_evil_attack_hound
     ids: [evil_attack_hound]
     paths: ['evil_attack_hound', '_evil_faction']
     eras: []
   evil_failed_prototype:
-    name: Failed Prototype
+    character_id: npc_evil_failed_prototype
     ids: [evil_failed_prototype]
     paths: ['evil_failed_prototype', '_evil_faction']
     eras: []
   evil_heavy:
-    name: Iron Trooper
+    character_id: npc_evil_heavy
     ids: [evil_heavy]
     paths: ['evil_heavy', '_evil_faction', '_person_rig']
     eras: []
   evil_spectral_wolf:
-    name: Spectral Wolf
+    character_id: npc_evil_spectral_wolf
     ids: [evil_spectral_wolf]
     paths: ['evil_spectral_wolf']
     eras: []
   evil_zombie:
-    name: Risen Conscript
+    character_id: npc_evil_zombie
     ids: [evil_zombie]
     paths: ['evil_zombie', '_evil_faction', '_person_rig']
     eras: []
   evil_zombie_crawler:
-    name: Crawling Conscript
+    character_id: npc_evil_zombie_crawler
     ids: [evil_zombie_crawler]
     paths: ['evil_zombie_crawler', 'evil_zombie\.', '_evil_faction', '_person_rig']
     eras: []
   fascist_swordsman:
-    name: Fascist Swordsman
+    character_id: npc_fascist_swordsman
     ids: [fascist_swordsman]
     paths: ['fascist_swordsman', '_fascist_armed', 'characters/fascist_enforcer\.', '_person_rig']
     eras: []
   fascist_clubman:
-    name: Fascist Clubman
+    character_id: npc_fascist_clubman
     ids: [fascist_clubman]
     paths: ['fascist_clubman', '_fascist_armed', 'characters/fascist_enforcer\.', '_person_rig']
     eras: []
@@ -1583,62 +1585,62 @@ lineages:
     paths: ['kernel_guide', '_pirate_common', '_pirate_rig']
     eras: []
   niels_boar:
-    name: Niels Boar
+    character_id: npc_niels_boar
     ids: [niels_boar]
     paths: ['niels_boar', '_solo_shape_rig']
     eras: []
   ninja_kagero:
-    name: Kagero
+    character_id: npc_ninja_kagero
     ids: [ninja_kagero]
     paths: ['ninja_kagero', '_person_rig']
     eras: []
   richard_duckling:
-    name: Richard Duckling
+    character_id: npc_richard_duckling
     ids: [richard_duckling]
     paths: ['richard_duckling']
     eras: []
   searchlight_crawler:
-    name: Searchlight Crawler
+    character_id: npc_searchlight_crawler
     ids: [searchlight_crawler]
     paths: ['searchlight_crawler']
     eras: []
   shock_warden:
-    name: Shock Warden
+    character_id: npc_shock_warden
     ids: [shock_warden]
     paths: ['shock_warden']
     eras: []
   smart_house:
-    name: Smart House
+    character_id: npc_smart_house
     ids: [smart_house]
     paths: ['smart_house']
     eras: []
   snake_plant:
-    name: Snake Plant
+    character_id: snake_plant
     ids: [snake_plant]
     paths: ['snake_plant']
     eras: []
   snakes_on_a_cartesian_plane:
-    name: Snakes on a Cartesian Plane
+    character_id: npc_snakes_on_a_cartesian_plane
     ids: [snakes_on_a_cartesian_plane]
     paths: ['snakes_on_a_cartesian_plane', '_snakes_on_planes_common']
     eras: []
   snakes_on_a_paper_plane:
-    name: Snakes on a Paper Plane
+    character_id: npc_snakes_on_a_paper_plane
     ids: [snakes_on_a_paper_plane]
     paths: ['snakes_on_a_paper_plane', '_snakes_on_planes_common']
     eras: []
   solid_snake:
-    name: Solid Snake
+    character_id: solid_snake
     ids: [solid_snake]
     paths: ['solid_snake']
     eras: []
   vera_ruin:
-    name: Vera Ruin
+    character_id: npc_vera_ruin
     ids: [vera_ruin]
     paths: ['vera_ruin', '_solo_shape_rig']
     eras: []
   void_lizard:
-    name: Void Lizard
+    character_id: void_lizard
     ids: [void_lizard]
     paths: ['void_lizard']
     eras: []
@@ -1648,22 +1650,22 @@ lineages:
     paths: ['void_star']
     eras: []
   yuclid:
-    name: Yuclid
+    character_id: npc_yuclid
     ids: [yuclid]
     paths: ['yuclid']
     eras: []
   puppy_slug_velvet:
-    name: Velvet Puppy Slug
+    character_id: npc_puppy_slug_velvet
     ids: [puppy_slug_velvet]
     paths: ['puppy_slug_velvet']
     eras: []
   bad_apple:
-    name: Bad Apple
+    character_id: bad_apple
     ids: [bad_apple]
     paths: ['bad_apple', '_apple_enemy_family']
     eras: []
   gravity_apple:
-    name: Gravity Apple
+    character_id: gravity_apple
     ids: [gravity_apple]
     paths: ['gravity_apple', '_apple_enemy_family']
     eras: []
@@ -1675,23 +1677,23 @@ lineages:
   sandbag:
     # The infinite sandbag draws this sheet too. The two `sandbag_*_review`
     # sheets are review sheets, not looks of the character.
-    name: Sandbag
+    character_id: sandbag
     ids: [sandbag]
     paths: ['sandbag(?!_(armored|full)_review)']
     eras: []
   puppy_slug_variant2:
     # Another drawing of a puppy slug; the catalog keeps it as its own character.
-    name: Puppy Slug Variant2
+    character_id: npc_puppy_slug_variant2
     ids: [puppy_slug_variant2]
     paths: ['ai_era_enemies', 'puppy_slug_variant2']
     eras: []
   steel_man:
-    name: The Steel Man
+    character_id: npc_steel_man
     ids: [steel_man]
     paths: ['steel_man', 'steel_and_straw']
     eras: []
   straw_man:
-    name: The Straw Man
+    character_id: npc_straw_man
     ids: [straw_man]
     paths: ['straw_man']
     eras: []
@@ -1701,18 +1703,18 @@ lineages:
     paths: ['_pirate_common', '_pirate_rig', '(targets|characters)/_?pirate_admiral(_moves)?\.py']
     eras: []
   pirate_lookout:
-    name: Pirate Lookout
+    character_id: npc_pirate_lookout
     ids: [pirate_lookout]
     paths: ['_pirate_common', '_pirate_rig', '(targets|characters)/pirate_lookout\.py']
     eras: []
   pirate_navigator:
-    name: Pirate Navigator
+    character_id: npc_pirate_navigator
     ids: [pirate_navigator]
     paths: ['_pirate_common', '_pirate_rig', '(targets|characters)/pirate_navigator\.py']
     eras: []
   pirate_quartermaster:
     # Named `pirate_corsair` until 13b9c28358 (2026-05-21).
-    name: Pirate Quartermaster
+    character_id: npc_pirate_quartermaster
     ids: [pirate_quartermaster, pirate_corsair]
     paths: ['_pirate_common', '_pirate_rig', '(targets|characters)/pirate_(quartermaster|corsair)\.py']
     eras: []
@@ -1720,7 +1722,7 @@ lineages:
     # Named `fascist_enforcer` until 6aa2985a90 (2026-05-28). That id was later
     # given to another character (the `fascist_enforcer` lineage), so it is a
     # fallback only, and only the old files are paths here.
-    name: Raid Enforcer
+    character_id: npc_raid_enforcer
     ids: [raid_enforcer, fascist_enforcer]
     paths: ['raid_enforcer', '_toon_presets/fascist_enforcer', 'configs/fascist_enforcer\.yaml']
     eras: []
@@ -1730,97 +1732,97 @@ lineages:
     paths: ['african_swallow', 'swallows_art']
     eras: []
   european_swallow:
-    name: European Swallow
+    character_id: european_swallow
     ids: [european_swallow]
     paths: ['european_swallow', 'swallows_art']
     eras: []
   cassowary:
-    name: Cassowary Solver
+    character_id: cassowary
     ids: [cassowary]
     paths: ['cassowary']
     eras: []
   chicken:
-    name: Game Chicken (Male)
+    character_id: chicken
     ids: [chicken]
     paths: ['chicken(?!_hen)']
     eras: []
   chicken_hen:
-    name: Game Chicken (Female)
+    character_id: chicken_hen
     ids: [chicken_hen]
     paths: ['chicken_hen']
     eras: []
   emu:
-    name: Emu-lator
+    character_id: emu
     ids: [emu]
     paths: ['(^|/)emu[/._]']
     eras: []
   kiwi:
-    name: Kiwi Solver
+    character_id: kiwi
     ids: [kiwi]
     paths: ['(^|/)kiwi[/._]']
     eras: []
   ostrich:
-    name: Ostrich Algorithm (Male)
+    character_id: ostrich
     ids: [ostrich]
     paths: ['ostrich(?!_hen)']
     eras: []
   ostrich_hen:
-    name: Ostrich Algorithm (Female)
+    character_id: ostrich_hen
     ids: [ostrich_hen]
     paths: ['ostrich_hen']
     eras: []
   owl:
-    name: Ontology Owl
+    character_id: owl
     ids: [owl]
     paths: ['(^|/)(build_)?owl[/._]']
     eras: []
   penguin:
-    name: Open-Source Penguin
+    character_id: penguin
     ids: [penguin]
     paths: ['penguin']
     eras: []
   shoebill:
-    name: Lazy Shoebill
+    character_id: shoebill
     ids: [shoebill]
     paths: ['shoebill']
     eras: []
   vulture:
-    name: Vulture Capitalist
+    character_id: vulture
     ids: [vulture]
     paths: ['vulture']
     eras: []
   compsognathus:
-    name: CompSci-gnathus
+    character_id: compsognathus
     ids: [compsognathus]
     paths: ['compsognathus']
     eras: []
   dilophosaurus:
-    name: Dial-up Dilophosaurus
+    character_id: dilophosaurus
     ids: [dilophosaurus]
     paths: ['dilophosaurus']
     eras: []
   pachycephalosaurus:
-    name: Patchy-cephalosaurus
+    character_id: pachycephalosaurus
     ids: [pachycephalosaurus]
     paths: ['pachycephalosaurus']
     eras: []
   triceratops:
-    name: Try-ceratops
+    character_id: triceratops
     ids: [triceratops]
     paths: ['triceratops']
     eras: []
   goblin_raider:
-    name: Goblin (Raider)
+    character_id: goblin_raider
     ids: [goblin_raider]
     paths: ['goblin_raider', 'goblin_side', '_goblin_look']
     eras: []
   goblin_squat:
-    name: Goblin (Squat)
+    character_id: goblin_squat
     ids: [goblin_squat]
     paths: ['goblin_squat', 'goblin_side', '_goblin_look']
     eras: []
   goblin_bruiser_club:
-    name: Goblin Bruiser
+    character_id: npc_goblin_bruiser
     ids: [goblin_bruiser_club]
     paths: ['goblin_bruiser_club', 'goblin_side', '_goblin_look']
     eras: []
@@ -1855,7 +1857,7 @@ lineages:
     paths: ['ranged_skirmisher', 'goblin_side', '_goblin_look']
     eras: []
   goblin_cantina_bard:
-    name: Cantina Bard
+    character_id: npc_goblin_cantina_bard
     ids: [goblin_cantina_bard]
     paths: ['music_factions', 'goblin_side', '_goblin_look']
     eras: []
@@ -1940,144 +1942,144 @@ lineages:
     paths: ['configs/(review/)?robot_runner\.yaml', 'robot_side']
     eras: []
   armsmith_odile:
-    name: Odile
+    character_id: npc_armsmith_odile
     ids: [armsmith_odile]
     paths: ['townsfolk/armsmith_odile\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   village_nagisa:
     # The gator geisha example (2026-10-24), then a resident; named Nagisa the
     # Gatekeeper by Jon (2026-10-25).
-    name: Nagisa the Gatekeeper
+    character_id: npc_village_nagisa
     ids: [village_nagisa]
     paths: ['(townsfolk|chargen_examples)/(gator_geisha|village_nagisa)\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   port_agnes:
-    name: Agnes
+    character_id: npc_port_agnes
     ids: [port_agnes]
     paths: ['townsfolk/port_agnes\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   port_bram:
-    name: Bram
+    character_id: npc_port_bram
     ids: [port_bram]
     paths: ['townsfolk/port_bram\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   port_ines:
-    name: Ines
+    character_id: npc_port_ines
     ids: [port_ines]
     paths: ['townsfolk/port_ines\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   port_jory:
-    name: Jory
+    character_id: npc_port_jory
     ids: [port_jory]
     paths: ['townsfolk/port_jory\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   port_tomas:
-    name: Tomas
+    character_id: npc_port_tomas
     ids: [port_tomas]
     paths: ['townsfolk/port_tomas\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   port_wren:
-    name: Lark
+    character_id: npc_port_wren
     ids: [port_wren]
     paths: ['townsfolk/port_wren\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   station_lindqvist:
-    name: Bo Lindqvist
+    character_id: npc_station_lindqvist
     ids: [station_lindqvist]
     paths: ['townsfolk/station_lindqvist\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   station_okafor:
-    name: Officer Okafor
+    character_id: npc_station_okafor
     ids: [station_okafor]
     paths: ['townsfolk/station_okafor\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   station_pell:
-    name: Gus Pell
+    character_id: npc_station_pell
     ids: [station_pell]
     paths: ['townsfolk/station_pell\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   station_rahimi:
-    name: Hamid Rahimi
+    character_id: npc_station_rahimi
     ids: [station_rahimi]
     paths: ['townsfolk/station_rahimi\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   station_reyes:
-    name: Captain Reyes
+    character_id: npc_station_reyes
     ids: [station_reyes]
     paths: ['townsfolk/station_reyes\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   station_wen:
-    name: Wen Liang
+    character_id: npc_station_wen
     ids: [station_wen]
     paths: ['townsfolk/station_wen\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   tower_bankole:
-    name: Corporal Bankole
+    character_id: npc_tower_bankole
     ids: [tower_bankole]
     paths: ['townsfolk/tower_bankole\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   tower_brandt:
-    name: Major Brandt
+    character_id: npc_tower_brandt
     ids: [tower_brandt]
     paths: ['townsfolk/tower_brandt\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   tower_dorsey:
-    name: Private Dorsey
+    character_id: npc_tower_dorsey
     ids: [tower_dorsey]
     paths: ['townsfolk/tower_dorsey\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   tower_granger:
-    name: Quartermaster Granger
+    character_id: npc_tower_granger
     ids: [tower_granger]
     paths: ['townsfolk/tower_granger\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   tower_ruiz:
-    name: Corporal Ruiz
+    character_id: npc_tower_ruiz
     ids: [tower_ruiz]
     paths: ['townsfolk/tower_ruiz\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   tower_tanaka:
-    name: Private Tanaka
+    character_id: npc_tower_tanaka
     ids: [tower_tanaka]
     paths: ['townsfolk/tower_tanaka\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   tower_voss:
-    name: Drill Sergeant Casey
+    character_id: npc_tower_voss
     ids: [tower_voss]
     paths: ['townsfolk/tower_voss\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   village_daichi:
-    name: Daichi
+    character_id: npc_village_daichi
     ids: [village_daichi]
     paths: ['townsfolk/village_daichi\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   village_hayashi:
-    name: Sensei Hayashi
+    character_id: npc_village_hayashi
     ids: [village_hayashi]
     paths: ['townsfolk/village_hayashi\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   village_kenji:
-    name: Kenji
+    character_id: npc_village_kenji
     ids: [village_kenji]
     paths: ['townsfolk/village_kenji\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   village_ren:
-    name: Ren
+    character_id: npc_village_ren
     ids: [village_ren]
     paths: ['townsfolk/village_ren\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   village_sato:
-    name: Sato
+    character_id: npc_village_sato
     ids: [village_sato]
     paths: ['townsfolk/village_sato\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   village_ume:
-    name: Ume
+    character_id: npc_village_ume
     ids: [village_ume]
     paths: ['townsfolk/village_ume\.chargen', 'characters/townsfolk\.py', '(^|/)chargen/']
     eras: []
   marshal_gallus:
-    name: Marshal Gallus
+    character_id: npc_marshal_gallus
     ids: [marshal_gallus, marshal_gallus_v1]
     paths: ['marshal_gallus']
     summary: "the Frontier's boss: from a robot rooster with a steam whistle to a rooster-headed lawman in a duster"
