@@ -39,15 +39,13 @@ ACTOR_METADATA = {
     "authoring_description": (
         "The halo and horns effects are positive and negative spillovers from an overall "
         "impression or individual trait to judgments of other attributes. This fictional "
-        "neural cherub wears a single gilded crown which physically splits, thickens and "
-        "curls into horns as it attacks, then closes into a halo again. Its face and body "
-        "remain the same creature throughout. This is a visual metaphor, not a claim that "
-        "the biases themselves imply benevolence or malice."
+        "neural cherub wears a gilded crown that splits and curls into red horns. "
+        "Its feathers spread into bat wings, and an arrow-tipped tail unfurls. "
+        "The same creature returns to its halo form after the charge."
     ),
     "gameplay_description": (
-        "A hovering melee enemy. Its split, trembling halo telegraphs a horn-first aerial "
-        "lunge. The horns reform into a halo during recovery. Ordinary Aerial/Lunge "
-        "behavior; no new reputation or damage rules."
+        "A hovering melee enemy. It exposes its fangs and holds a devil pose before "
+        "it lunges horns first. The devil form stays visible as it slows down."
     ),
     "animation_bindings": {
         "default": {"animation": "idle", "events": []},
@@ -96,7 +94,7 @@ def oval_points(x, y, rx, ry, angle=0, n=64):
 
 
 def rgb(h):
-    return tuple(int(h[i:i+2], 16) for i in (1,3,5))
+    return tuple(int(h[i:i+2], 16) for i in (1,3,5)) if isinstance(h, str) else h[:3]
 
 
 def tint(a, b, t):
@@ -165,25 +163,24 @@ def pose(anim, i, n):
         y=108+1.2*math.sin(p); tilt=-7; sy=1.04; blink=0
         anger=.12; flap=-7+4*math.sin(p); ring_tilt=-13+4*math.sin(p)
     elif anim == "windup":
-        # A nearly circular crown with visible seams; any sampled frame is
-        # compatible with the start of the attack row's active phase.
-        m=.31+.025*math.sin(p); anger=.45; x=103; y=112+1.1*math.sin(p)
-        tilt=-9+1.6*math.sin(p); sx=.94; sy=1.05
-        flap=-20+4*math.sin(p); reach=-.65; ring_tilt=-8; blink=0
+        # Hold the threat pose. The windup clock can start on any frame.
+        m=.78+.024*math.sin(p); anger=.86; x=103; y=112+1.3*math.sin(p)
+        tilt=-11+1.6*math.sin(p); sx=.94; sy=1.06
+        flap=-22+4*math.sin(p); reach=-.65; ring_tilt=-8; blink=0
     elif anim == "attack_side":
-        # Absolute move time; the runtime skips the startup frames if pinned.
-        # At release, the first active frame is close to the windup silhouette;
-        # the sharp final horn extension coincides with the live charge.
+        # Match the held windup at release. Keep the horns through the first
+        # 0.44 seconds of recovery, then close the ring as the body settles.
         s=t*TOTAL_S
-        m=track(s,[(0,0),(.24,.05),(.44,.25),(.60,.33),(.69,1),(.84,1),(1.06,.72),(1.30,.12),(TOTAL_S,0)])
-        anger=track(s,[(0,0),(.40,.40),(.60,.45),(.69,1),(.90,1),(1.34,.05),(TOTAL_S,0)])
-        tilt=track(s,[(0,-2),(.60,-9),(.72,25),(.88,22),(1.14,5),(TOTAL_S,-2)])
-        x=108+track(s,[(0,0),(.60,-5),(.73,10),(.88,9),(1.14,3),(TOTAL_S,0)])
-        y=112+track(s,[(0,0),(.60,0),(.75,-4),(.89,1),(1.16,5),(TOTAL_S,0)])
-        sx=track(s,[(0,1),(.60,.94),(.73,1.10),(.91,1.05),(TOTAL_S,1)])
-        sy=track(s,[(0,1),(.60,1.05),(.73,.91),(.91,.96),(TOTAL_S,1)])
-        flap=track(s,[(0,0),(.60,-20),(.72,22),(.90,19),(1.16,-8),(TOTAL_S,0)])
-        reach=track(s,[(0,0),(.60,-.65),(.73,-1),(.96,-.65),(TOTAL_S,0)])
+        hold_end=WINDUP_S+ACTIVE_S+.44
+        m=track(s,[(0,0),(.24,.22),(.46,.75),(WINDUP_S,.78),(.68,1),(hold_end,1),(TOTAL_S,0)])
+        anger=track(s,[(0,0),(.29,.32),(WINDUP_S,.86),(.68,1),(.94,1),(hold_end,.83),(TOTAL_S,0)])
+        tilt=track(s,[(0,-2),(WINDUP_S,-11),(.71,27),(.86,19),(1.06,0),(1.22,5),(TOTAL_S,-2)])
+        x=108+track(s,[(0,0),(WINDUP_S,-5),(.70,12),(.84,10),(1.12,0),(TOTAL_S,0)])
+        y=112+track(s,[(0,0),(WINDUP_S,0),(.71,-5),(.88,4),(1.12,1),(TOTAL_S,0)])
+        sx=track(s,[(0,1),(WINDUP_S,.94),(.71,1.13),(.91,1.02),(TOTAL_S,1)])
+        sy=track(s,[(0,1),(WINDUP_S,1.06),(.71,.89),(.91,.99),(TOTAL_S,1)])
+        flap=track(s,[(0,0),(WINDUP_S,-22),(.72,22),(.89,11),(1.10,-13),(hold_end,-7),(TOTAL_S,0)])
+        reach=track(s,[(0,0),(WINDUP_S,-.65),(.70,-1),(.86,-.8),(1.09,.24),(hold_end,.12),(TOTAL_S,0)])
         ring_tilt=-8; blink=0
     elif anim == "hit":
         k=math.sin(math.pi*t); x-=8*k; y+=3*k; tilt=-2-18*k
@@ -251,22 +248,21 @@ def ribbon(p, points, ns, radii, low, high, color, edge=None, w=1):
     p.poly(boundary(low)+boundary(high)[::-1],color,edge,w)
 
 
-def draw_horn(p, side, m, angle):
+def draw_horn(p, side, m, angle, devil):
     pts,radii=crown_geometry(side,m,angle); ns=normals(pts)
-    # Keep the same warm metal material through the transformation. The
-    # illuminated edge travels along the arc as it rotates toward the viewer.
-    p.line(pts,(255,173,64,round(mix(90,32,m))),8.5,glow=True)
-    ribbon(p,pts,ns,radii,-1,1,tint('#e6a542','#a95b38',m),INK,1.4)
-    ribbon(p,pts,ns,radii,-.95,-.35,tint('#a66b29','#70334b',m))
-    ribbon(p,pts,ns,radii,-.30,.72,tint('#ffe7a1','#e3a85c',m))
-    ribbon(p,pts,ns,radii,.12,.50,tint('#fff7d4','#ffdb90',m))
+    glow=tint('#ffad40','#ff3635',devil)
+    p.line(pts,(*glow[:3],round(mix(mix(90,32,m),100,devil))),8.5,glow=True)
+    ribbon(p,pts,ns,radii,-1,1,tint(tint('#e6a542','#a95b38',m),'#b22439',devil),INK,1.4)
+    ribbon(p,pts,ns,radii,-.95,-.35,tint(tint('#a66b29','#70334b',m),'#641d37',devil))
+    ribbon(p,pts,ns,radii,-.30,.72,tint(tint('#ffe7a1','#e3a85c',m),'#ee413e',devil))
+    ribbon(p,pts,ns,radii,.12,.50,tint(tint('#fff7d4','#ffdb90',m),'#ff9172',devil))
     # Ring seam becomes a sculpted horn root, with ridges growing out of the
     # same surface. Fine ridges are only inked once there is enough material.
     if m>.32:
         for j in (7,14,22,30,38):
             x,y=pts[j]; nx,ny=ns[j]; r=radii[j]
             p.line([(x-nx*r*.75,y-ny*r*.75),(x-nx*r*.1,y-ny*r*.1),
-                    (x+nx*r*.76,y+ny*r*.76)],tint('#ebc27a','#92553e',m),.55+.35*m)
+                    (x+nx*r*.76,y+ny*r*.76)],tint(tint('#ebc27a','#92553e',m),'#961b35',devil),.55+.35*m)
     if m>.64:
         # The widened root acquires a sculpted, dark bronze collar.
         # Its highlights are on the same material strip, not a second horn.
@@ -274,9 +270,9 @@ def draw_horn(p, side, m, angle):
         for j in (2,5):
             x,y=pts[j]; nx,ny=ns[j]; r=radii[j]
             p.line([(x-nx*r*.84,y-ny*r*.84),(x+nx*r*.84,y+ny*r*.84)],
-                   tint('#c58a45','#784057',k),.9+k*.55)
+                   tint(tint('#c58a45','#784057',k),'#681b32',devil),.9+k*.55)
         x,y=pts[3]; nx,ny=ns[3]; r=radii[3]
-        p.line([(x-nx*r*.7,y-ny*r*.7),(x+nx*r*.7,y+ny*r*.7)],'#f6ce7d',.8+k*.55)
+        p.line([(x-nx*r*.7,y-ny*r*.7),(x+nx*r*.7,y+ny*r*.7)],tint('#f6ce7d','#ff8268',devil),.8+k*.55)
 
 
 def intact_crown(p, angle):
@@ -304,19 +300,39 @@ def feather(p, root, length, angle, dark, bright):
     p.curve([q(k) for k in [(4,0),(l*.36,-1),(l*.64,1),(l*.86,0)]],dark,1.1)
 
 
-def mantle(p, near, flap, anger):
-    # A compact fan of three articulated feather-like neural plates.
+def bat_wing(p, root, flap, devil, near):
+    angle = math.radians(-flap * .65 + (0 if near else 14))
+    c, s = math.cos(angle), math.sin(angle)
+    span = devil * (1 if near else .76)
+
+    def wing(points):
+        return [(root[0] + span*(x*c-y*s), root[1] + span*(x*s+y*c)) for x, y in points]
+
+    p.shape(wing([(2,2),(-8,-18),(-30,-34),(-49,-32),
+                  (-43,-24),(-47,-15),(-61,-8),(-48,-10),(-39,1),(-49,13),
+                  (-40,8),(-29,11),(-32,22),(-24,17),(-11,18),(2,2)]),
+            tint('#c691a6' if near else '#9f799c', '#a83848' if near else '#6b2948', devil), w=1.6)
+    p.curve(wing([(1,2),(-13,-12),(-37,-27),(-49,-32)]), '#ee7669' if near else '#bc5266', 1.6)
+    for tip in [(-60,-8),(-48,12),(-32,21)]:
+        p.curve(wing([(1,2),(-12,-10),(-27,tip[1]-7),tip]), '#67213e', 1.25)
+
+
+def mantle(p, near, flap, anger, devil):
     root=(-27,6) if near else (-27,-2)
-    for j in range(4):
-        angle=196-12*j+flap*.8-12*anger+(5 if near else -9)
-        feather(p,(root[0]+j*2,root[1]+j*2.8),31+3*j,angle,
-                '#b8a0c2' if near else '#867594',
-                tint('#eee4e5','#c6a4b4',anger) if near else '#b9a6c6')
-    p.oval(root[0]+4,root[1]+1,10,9,'#e2cddc' if near else '#aa93b3',angle=-20)
-    p.curve([(root[0]-1,root[1]-5),(root[0]-7,root[1]),(root[0]-2,root[1]+5),(root[0]+6,root[1]+7)],'#ac8baa',1.2)
+    if devil < .97:
+        for j in range(4):
+            angle=196-12*j+flap*.8-12*anger+(5 if near else -9)
+            feather(p,(root[0]+j*2,root[1]+j*2.8),(31+3*j)*(1-.84*devil),angle,
+                    tint('#b8a0c2' if near else '#867594', '#852943', devil),
+                    tint(tint('#eee4e5','#c6a4b4',anger) if near else '#b9a6c6', '#bd4e57', devil))
+    if devil > .08:
+        bat_wing(p, root, flap, devil, near)
+    p.oval(root[0]+4,root[1]+1,10,9,tint('#e2cddc' if near else '#aa93b3','#ba4954',devil),angle=-20)
+    p.curve([(root[0]-1,root[1]-5),(root[0]-7,root[1]),(root[0]-2,root[1]+5),(root[0]+6,root[1]+7)],
+            tint('#ac8baa','#78273f',devil),1.2)
 
 
-def eye(p, x, y, rx, anger, blink, far=False):
+def eye(p, x, y, rx, anger, blink, devil, far=False):
     # Large, friendly eyes acquire a sharp upper lid, without swapping faces.
     ry=rx*(.92-.29*anger)*(1-.94*blink)
     if ry<1.3:
@@ -325,21 +341,36 @@ def eye(p, x, y, rx, anger, blink, far=False):
     lean=3.8*anger*(1 if far else -1)
     top=[(x-rx,y+lean*.5),(x-rx*.48,y-ry-lean),(x+rx*.42,y-ry+lean),(x+rx,y+lean*.2)]
     bottom=[(x+rx,y+lean*.2),(x+rx*.52,y+ry),(x-rx*.54,y+ry),(x-rx,y+lean*.5)]
-    p.shape(top+bottom[1:],'#fff4e5', '#65415a',1.35)
+    p.shape(top+bottom[1:],tint('#fff4e5','#ffcf75',devil),tint('#65415a','#501c32',devil),1.35+devil*.6)
     px=x+rx*.21; py=y+.3
-    p.oval(px,py,rx*.43,min(ry*.74,rx*.61),tint('#735879','#9a414a',anger),None)
-    p.oval(px+.3,py,rx*.23,min(ry*.55,rx*.48),'#352038',None)
+    p.oval(px,py,rx*.43,min(ry*.74,rx*.61),tint(tint('#735879','#9a414a',anger),'#d65b30',devil),None)
+    p.oval(px+.3,py,rx*(.23-.10*devil),min(ry*(.55+.22*devil),rx*.48),'#352038',None)
     p.oval(px-rx*.15,py-ry*.23,rx*.13,max(.35,ry*.16),'#ffffff',None)
     if anger>.15:
         p.curve([(x-rx-.5,y-ry*.56-lean*.3),(x-rx*.38,y-ry-lean),(x+rx*.52,y-ry+lean),(x+rx+1,y-ry*.30+lean*.4)],'#704056',1.1+anger*.9)
     # The brow changes continuously from a soft arch to an inward slant.
     p.curve([(x-rx*.78,y-ry-2-lean*.6),(x-rx*.3,y-ry-5-lean),
              (x+rx*.38,y-ry-5+lean),(x+rx*.8,y-ry-2+lean*.6)],
-            tint('#cfa99b','#8a4960',anger),1.2+anger*.45)
+            tint(tint('#cfa99b','#8a4960',anger),'#681c2e',devil),1.2+anger*.45+devil*1.2)
 
 
-def body(p, anger, m, flap, reach, blink, phase, death):
-    mantle(p,False,flap,anger)
+def pointed_tail(p, devil, phase):
+    root=(-16,26)
+    curl=5*math.sin(phase)
+    def tail(points):
+        return [(root[0]+x*devil, root[1]+y*devil) for x, y in points]
+
+    shaft=tail([(0,0),(-13,23),(-40,21),(-50,13+curl),
+                (-59,6+curl),(-61,-6+curl),(-57,-11+curl)])
+    p.curve(shaft,INK,2+4*devil)
+    p.curve(shaft,'#c54448',4*devil)
+    p.poly(tail([(-57,-10+curl),(-64,-10+curl),(-55,-25+curl),(-49,-9+curl)]),'#e95850',INK,1.2)
+
+
+def body(p, anger, devil, flap, reach, blink, phase, death):
+    if devil > .12:
+        pointed_tail(p, devil, phase)
+    mantle(p,False,flap,anger,devil)
     # Four short nerve tendrils. They hang from the creature itself, not from
     # a shadow or environment-dependent ground plane.
     for j in range(4):
@@ -349,56 +380,60 @@ def body(p, anger, m, flap, reach, blink, phase, death):
         p.oval(x+wave-1,37-2*abs(j-1.5),1,1.2,'#ffd1c5',None)
     # Compact pear-shaped neural core: dark contour, flesh volume, folds.
     p.shape([(-31,-5),(-42,11),(-34,33),(-12,35),(6,42),(31,30),(34,11),
-             (37,-9),(21,-27),(0,-26),(-15,-27),(-27,-18),(-31,-5)],'#a9517d',w=2.1)
+             (37,-9),(21,-27),(0,-26),(-15,-27),(-27,-18),(-31,-5)],tint('#a9517d','#91223b',devil),w=2.1)
     p.shape([(-28,3),(-31,-10),(-13,-21),(7,-18),(24,-18),(29,4),(23,19),
-             (17,33),(-14,33),(-25,24),(-32,17),(-33,10),(-28,3)],'#d884a0',None)
+             (17,33),(-14,33),(-25,24),(-32,17),(-33,10),(-28,3)],tint('#d884a0','#cb373e',devil),None)
     p.shape([(-32,15),(-27,29),(-13,32),(4,32),(19,34),(27,25),(31,18),
-             (22,39),(-15,43),(-30,27),(-34,23),(-34,18),(-32,15)],'#8b3e71',None)
+             (22,39),(-15,43),(-30,27),(-34,23),(-34,18),(-32,15)],tint('#8b3e71','#7e213a',devil),None)
     for pts in [[(-25,2),(-19,14),(-8,-1),(-4,9)], [(-20,21),(-14,30),(-8,19),(0,24)],
                 [(2,8),(5,18),(15,14),(20,20)], [(-5,31),(2,28),(4,23),(10,25)]]:
-        p.curve(pts,'#964671',2.0)
-    mantle(p,True,flap,anger)
+        p.curve(pts,tint('#964671','#9b2539',devil),2.0)
+    mantle(p,True,flap,anger,devil)
     # Gilded shoulder / collar and exposed neck tissue anchor the face.
     p.shape([(-24,-12),(-18,-22),(14,-23),(29,-13),(36,-6),(29,10),(15,15),
-             (-4,21),(-25,12),(-28,3),(-29,-3),(-28,-9),(-24,-12)],'#a9663f',w=2)
+             (-4,21),(-25,12),(-28,3),(-29,-3),(-28,-9),(-24,-12)],tint('#a9663f','#8b2940',devil),w=2)
     p.shape([(-23,-12),(-12,-19),(13,-20),(28,-11),(31,-4),(25,6),(14,10),
-             (-3,16),(-22,7),(-24,1),(-27,-3),(-26,-9),(-23,-12)],'#eac88d',None)
-    p.curve([(-25,-1),(-11,13),(15,17),(29,-4)],'#fff0c7',1.5)
+             (-3,16),(-22,7),(-24,1),(-27,-3),(-26,-9),(-23,-12)],tint('#eac88d','#e46551',devil),None)
+    p.curve([(-25,-1),(-11,13),(15,17),(29,-4)],tint('#fff0c7','#f9946e',devil),1.5)
     # A continuous organic/chitin head rather than a removable mask.
     # Horn roots end on the upper brow, behind its brow ridges.
     p.shape([(-25,-22),(-28,-40),(-12,-48),(6,-45),(23,-48),(36,-34),(37,-17),
              (38,-4),(24,8),(8,11),(-7,15),(-25,4),(-29,-8),(-30,-15),(-28,-19),(-25,-22)],
-            tint('#f5e6d7','#e5adba',anger*.65),w=2.2)
+            tint(tint('#f5e6d7','#e5adba',anger*.65),'#ed514b',devil),w=2.2)
     p.shape([(19,-43),(33,-38),(38,-27),(36,-15),(37,-5),(27,6),(12,10),
              (24,1),(27,-10),(25,-19),(26,-28),(24,-37),(19,-43)],
-            tint('#d3b8c8','#be748d',anger*.8),None)
+            tint(tint('#d3b8c8','#be748d',anger*.8),'#af3044',devil),None)
     p.shape([(-23,-27),(-24,-37),(-12,-43),(2,-43),(5,-39),(-8,-34),(-14,-27),
-             (-18,-24),(-21,-23),(-23,-27)],'#fff6e4',None)
+             (-18,-24),(-21,-23),(-23,-27)],tint('#fff6e4','#ff8068',devil),None)
     # Tiny gilded diamond and seams that echo the ring's material.
-    p.poly([(-3,-37),(2,-43),(7,-37),(2,-31)],'#c58a43','#9d6549',1.0)
-    p.poly([(0,-37),(2,-40),(4,-37),(2,-34)],'#ffe6aa',None)
-    p.curve([(-24,-20),(-24,-31),(-17,-36),(-10,-36)],'#d1a58a',1.3)
-    p.curve([(25,-39),(31,-34),(33,-29),(33,-24)],'#b8839d',1.25)
+    p.poly([(-3,-37),(2,-43),(7,-37),(2,-31)],tint('#c58a43','#ac3042',devil),tint('#9d6549','#75273b',devil),1.0)
+    p.poly([(0,-37),(2,-40),(4,-37),(2,-34)],tint('#ffe6aa','#ffa56e',devil),None)
+    p.curve([(-24,-20),(-24,-31),(-17,-36),(-10,-36)],tint('#d1a58a','#d44949',devil),1.3)
+    p.curve([(25,-39),(31,-34),(33,-29),(33,-24)],tint('#b8839d','#852b43',devil),1.25)
     # Broad cheekbones, a small nose and eyes that stay legible at game scale.
-    eye(p,-7,-21,8.5,anger,blink,True)
-    eye(p,17,-20,9.8,anger,blink,False)
-    p.oval(-13,-8,5.7,2.6,tint('#edb3ae','#df859a',anger),None,angle=-12)
-    p.oval(28,-7,4.7,2.5,tint('#edb3ae','#d67d92',anger),None,angle=-18)
-    p.curve([(4,-19),(8,-16),(6,-12),(10,-12)],'#bb8798',1.4)
+    eye(p,-7,-21,8.5,anger,blink,devil,True)
+    eye(p,17,-20,9.8,anger,blink,devil,False)
+    p.oval(-13,-8,5.7,2.6,tint(tint('#edb3ae','#df859a',anger),'#cf3444',devil),None,angle=-12)
+    p.oval(28,-7,4.7,2.5,tint(tint('#edb3ae','#d67d92',anger),'#9f2d40',devil),None,angle=-18)
+    p.curve([(4,-19),(8,-16),(6,-12),(10,-12)],tint('#bb8798','#a22d3f',devil),1.4)
     # The smile opens continuously, preserving the same mouth corners.
     k=smooth((anger-.06)/.94)
     if k<.035:
         p.curve([(-1,-5),(5,2),(13,2),(20,-5)],'#91596d',2.0)
         p.curve([(5,3),(8,4),(12,4),(15,2)],'#d2a0a6',1)
     else:
-        top=mix(2,-8,k); lower=mix(2,12,k)
-        p.shape([(-1,-5),(5,top),(14,top),(20,-5),
-                 (23,lower),(1,lower),(-1,-5)],'#4d284a','#693651',1.4)
+        top=mix(2,-8,k); lower=mix(2,12,k)+4*devil
+        left=-1-5*devil; right=20+4*devil
+        p.shape([(left,-5),(5,top),(14,top),(right,-5),
+                 (right+3,lower),(left+2,lower),(left,-5)],tint('#4d284a','#421526',devil),'#693651',1.4)
         if k>.28:
             teeth=smooth((k-.28)/.72)
             for j in range(4):
                 x=1+4.6*j; base=mix(-1.1,-5.2,k)
-                p.poly([(x,base),(x+3.6,base),(x+1.8,base+4.1*teeth)],'#fff0d4',None)
+                if j in (0,3):
+                    x += (j-1.5)*devil*2
+                tooth=4.1*teeth + (5*devil if j in (0,3) else 0)
+                p.poly([(x,base),(x+3.6+devil,base),(x+1.8+.4*devil,base+tooth)],'#fff0d4',None)
             if k>.72:
                 p.poly([(6,5.2),(8,2.5),(10,6.0)],'#ffe0c8',None)
                 p.poly([(14,6.0),(16,2.8),(18,5.0)],'#ffe0c8',None)
@@ -406,12 +441,21 @@ def body(p, anger, m, flap, reach, blink, phase, death):
             p.curve([(3,lower*.57),(7,lower*.82),(14,lower*.82),(18,lower*.57)],'#e17e92',1.1)
     # Two small arms unfold, then tuck under the chin during the charge.
     hx=14+14*max(0,reach)-5*max(0,-reach); hy=17-7*max(0,-reach)
-    p.limb([(-14,10),(-8,20),(hx,hy)],'#c36f92',8)
-    p.limb([(-14,9),(-7,17),(hx,hy-1)],'#e6a0b1',5.1)
-    p.oval(hx,hy,5.4,4.8,'#f1b9bc',INK,1.4)
-    p.line([(hx-1,hy-2),(hx-1,hy+2)],'#b66e8b',.9)
-    p.limb([(29,10),(32+5*max(0,reach),17),(22+6*reach,hy+1)],'#d282a1',6)
-    p.oval(22+6*reach,hy+1,4.4,4.0,'#efadb9',INK,1.25)
+    p.limb([(-14,10),(-8,20),(hx,hy)],tint('#c36f92','#a53346',devil),8)
+    p.limb([(-14,9),(-7,17),(hx,hy-1)],tint('#e6a0b1','#dc534e',devil),5.1)
+    p.oval(hx,hy,5.4,4.8,tint('#f1b9bc','#f57860',devil),INK,1.4)
+    p.line([(hx-1,hy-2),(hx-1,hy+2)],tint('#b66e8b','#a33842',devil),.9)
+    p.limb([(29,10),(32+5*max(0,reach),17),(22+6*reach,hy+1)],tint('#d282a1','#b83f4b',devil),6)
+    p.oval(22+6*reach,hy+1,4.4,4.0,tint('#efadb9','#e96354',devil),INK,1.25)
+
+
+def draw_charge_streaks(p, time):
+    pulse=track(time,[(WINDUP_S,0),(.69,1),(.78,.8),(.92,0)])
+    if not pulse:
+        return
+    for x,y,length in [(-58,-17,34),(-52,9,43),(-39,28,27)]:
+        p.poly([(x-length*pulse,y),(x,y-2.4*pulse),(x+7,y),(x-5,y+1.4*pulse)],
+               (252,119,92,round(215*pulse)),None)
 
 
 def _render_frame(anim, i, n):
@@ -419,17 +463,20 @@ def _render_frame(anim, i, n):
     p=Painter(x,y,tilt,sx,sy)
     phase=math.tau*i/max(1,n)
     death=i/max(1,n-1) if anim=='death' else 0.
+    devil=smooth((m-.22)/.56) if anim in {'windup','attack_side'} else 0.
+    if anim=='attack_side':
+        draw_charge_streaks(p, i/max(1,n-1)*TOTAL_S)
     # Far horn occluded by the head; the near root sits in front of it.
-    if m>.002: draw_horn(p,-1,m,angle)
-    body(p,anger,m,flap,reach,blink,phase,death)
-    if m>.002: draw_horn(p,1,m,angle)
+    if m>.002: draw_horn(p,-1,m,angle,devil)
+    body(p,anger,devil,flap,reach,blink,phase,death)
+    if m>.002: draw_horn(p,1,m,angle,devil)
     else: intact_crown(p,angle)
     # The opening seams emit short, attached glints during the telegraph.
     if .15<m<.65:
         for side in (-1,1):
             pts,_=crown_geometry(side,m,angle)
             for xx,yy in (pts[0],pts[-1]):
-                p.line([(xx-1.7,yy),(xx+1.7,yy)],'#fff0b1',1.4)
+                p.line([(xx-1.7,yy),(xx+1.7,yy)],tint('#fff0b1','#ffa486',devil),1.4)
     return p.finish(fade)
 
 
