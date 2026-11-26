@@ -285,6 +285,20 @@ def dunes(c, k):
     dune(c, *DUNE_B)
 
 
+def spring_crates(c, _kit):
+    """Draw the cargo step below the star spring."""
+    bottom = FLOOR
+    c.put(c.mask(box(784, 576, 872, bottom)), WOOD_DARK)
+    for x0, x1 in ((784, 831), (832, 872)):
+        c.put(c.mask(box(x0 + 2, 580, x1 - 2, bottom - 4)), WOOD)
+        c.put(c.mask(lambda p: [
+            p.line([(x0 + 4, y), (x1 - 4, y)], 1.2) for y in (589, 604, 620)
+        ]), WOOD_DARK)
+        c.put(c.mask(lambda p: p.line([(x0 + 5, 586), (x1 - 6, bottom - 7)], 5)), SAND_DARK)
+    c.put(c.mask(box(784, 576, 872, 579)), SAND_LIGHT)
+    star(c, 851, 604, 9, GOLD)
+
+
 def dune_far(c, k):
     dune(c, *DUNE_C)
 
@@ -361,6 +375,7 @@ PIECES: Dict[str, Piece] = {
     "hollow_shaft_light_east": Piece((SHAFT_EAST[0] - 100, 0, SHAFT_EAST[1] + 100, HOLLOW_FLOOR + 12), shaft_light_east),
     "hollow_star_roots": Piece((ROOTS[0], HOLLOW_ROOF, ROOTS[1], HOLLOW_ROOF + 120), star_roots),
     "road_dunes": Piece((DUNE_A[0] - 120, DUNE_B[2] - 4, DUNE_B[1] + 120, FLOOR), dunes),
+    "road_spring_crates": Piece((780, 572, 876, FLOOR), spring_crates),
     "road_dune_far": Piece((DUNE_C[0] - 120, DUNE_C[2] - 4, DUNE_C[1] + 120, FLOOR), dune_far),
     "road_cart": Piece((CART_X - 140, FLOOR - 90, CART_X + 140, FLOOR), cart),
     "road_lamp": Piece((LAMP_X - 40, FLOOR - 190, LAMP_X + 60, FLOOR), lamp),
