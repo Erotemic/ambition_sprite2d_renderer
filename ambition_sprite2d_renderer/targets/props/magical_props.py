@@ -112,6 +112,21 @@ def hill_high(c, k):
     flower(c, x1 + 40, FLOOR - 12, GOLD)
 
 
+def moon_step(c, _kit):
+    """Draw a floating stone. Put its walking surface at y 4."""
+    stone = c.mask(lambda p: p.poly([
+        (2, 4), (82, 4), (78, 15), (67, 23), (55, 27), (35, 28),
+        (20, 24), (8, 15),
+    ]))
+    c.put(stone, LILAC_DARK)
+    c.put(stone * c.mask(lambda p: p.poly([
+        (4, 4), (79, 4), (65, 14), (41, 18), (20, 14),
+    ])), LILAC)
+    c.put(c.mask(box(2, 4, 82, 7)), CREAM)
+    star(c, 42, 16, 6.5, GOLD, 0.2)
+    c.put(c.mask(lambda p: [p.ellipse(x, 14, 1.8) for x in (27, 57)]), MINT)
+
+
 def hatch(c, k):
     x0, x1 = HATCH
     # The boards across the hole (you stand on them; down drops you through).
@@ -314,6 +329,7 @@ def pipe(c, k):
 
 PIECES: Dict[str, Piece] = {
     "garden_hill_low": Piece((STEP_LOW[0] - 80, STEP_LOW[2] - 4, STEP_LOW[1] + 80, FLOOR), hill_low),
+    "garden_moon_step": Piece((0, 0, 84, 32), moon_step),
     "garden_hill_high": Piece((STEP_HIGH[0] - 80, STEP_HIGH[2] - 4, STEP_HIGH[1] + 80, FLOOR), hill_high),
     "garden_hatch": Piece((HATCH[0] - 64, FLOOR - 92, HATCH[1] + 28, FLOOR + 12), hatch),
     "garden_star_tree": Piece((TREE_X - 190, FLOOR - 400, TREE_X + 190, FLOOR), star_tree),
