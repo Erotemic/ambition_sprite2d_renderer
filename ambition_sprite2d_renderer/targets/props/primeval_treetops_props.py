@@ -110,6 +110,62 @@ def crown(c, x, top, rng):
     c.put(c.mask(lambda p: [p.ellipse(x + rng.uniform(-80, 80), top - rng.uniform(10, 50), rng.uniform(20, 40), rng.uniform(10, 18)) for _ in range(5)]), LEAF_LIGHT, 0.8)
 
 
+def canopy_west_tree(c, _kit):
+    """Draw the branch steps to the west perches in Primeval Canopy."""
+    trunk = [
+        (493, 672), (521, 646), (527, 598), (516, 554), (529, 516),
+        (557, 471), (591, 431), (609, 384), (623, 379), (623, 432),
+        (595, 482), (568, 527), (553, 571), (564, 621), (578, 646),
+        (618, 672), (579, 672), (548, 655), (524, 672),
+    ]
+    branches = (
+        [(264, 616), (384, 616), (437, 609), (527, 579), (548, 581),
+         (546, 606), (462, 631), (398, 643), (320, 637), (276, 626)],
+        [(335, 565), (415, 564), (489, 567), (530, 540), (552, 554),
+         (510, 589), (459, 591), (389, 579), (346, 576)],
+        [(448, 504), (544, 504), (561, 486), (578, 496), (561, 522),
+         (528, 530), (484, 522), (456, 513)],
+        [(575, 454), (619, 445), (664, 454), (722, 455), (741, 450),
+         (726, 469), (674, 475), (625, 471), (590, 496)],
+    )
+    wood = c.mask(lambda p: (p.poly(trunk), [p.poly(branch) for branch in branches]))
+    bark(c, wood, "canopy_west_tree")
+    c.put(wood * c.mask(lambda p: [
+        p.line(vein, 2.6) for vein in (
+            [(522, 665), (538, 620), (536, 577), (543, 532), (572, 480), (611, 422)],
+            [(312, 627), (377, 632), (429, 624), (491, 605), (527, 592)],
+            [(461, 514), (500, 514), (529, 520), (552, 510)],
+            [(606, 459), (644, 461), (679, 467), (724, 462)],
+        )
+    ]), BARK_LIGHT, 0.7)
+    c.put(c.mask(lambda p: [
+        p.line([(x0, y + 1), (x1, y + 1)], 2) for x0, x1, y in (
+            (264, 384, 616), (448, 544, 504),
+        )
+    ]), MOSS)
+    rng = c.rand("canopy_west_leaves")
+    clusters = (
+        (587, 388, 36, 15), (622, 372, 55, 24), (661, 379, 50, 15),
+        (697, 400, 45, 15), (638, 399, 47, 16), (560, 409, 33, 12),
+    )
+    silhouettes = []
+    sprays = []
+    for x, y, rx, ry in clusters:
+        outline = []
+        for angle in np.linspace(0, math.tau, 20, endpoint=False):
+            tip = rng.uniform(0.76, 1.14)
+            outline.append((x + rx * tip * math.cos(angle), y + ry * tip * math.sin(angle)))
+        silhouettes.append(outline)
+        for t in np.linspace(-0.72, 0.72, 7):
+            base = (x + t * rx, y - ry * rng.uniform(0.15, 0.42))
+            dx = rng.uniform(-8, 8)
+            sprays.append([base, (base[0] + dx, base[1] - ry * 0.5)])
+    foliage = c.mask(lambda p: [p.poly(outline) for outline in silhouettes])
+    c.put(foliage, LEAF_DARK)
+    c.put(foliage * c.noise("canopy_west_crown", 32, 29, 3), LEAF)
+    c.put(foliage * c.mask(lambda p: [p.line(spray, 5.5) for spray in sprays]), LEAF_LIGHT, 0.50)
+
+
 def west(c, k):
     rng = c.rand("treetops_w")
     for x, top in ((420, 330), (800, 270), (1200, 330)):
@@ -173,6 +229,7 @@ def east(c, k):
 
 PIECES: Dict[str, Piece] = {
     "run_great_tree": Piece((TREE[0] - 120, 0, TREE[1] + 130, RUN_FLOOR), great_tree),
+    "canopy_west_tree": Piece((252, 340, 756, 672), canopy_west_tree),
     "treetops_west": Piece((16, 60, 1440, H), west),
     "treetops_east": Piece((1440, 60, W - 16, H), east),
 }
