@@ -872,7 +872,8 @@ def lab_room(c, k):
 RANGE_W, RANGE_FLOOR = 2816, 704
 GANTRY = ((680, 820, 624), (760, 900, 544), (680, 820, 464), (760, 900, 384))
 ROCKET_X = 960
-BUNKER = (1700, 1960, 576)
+BUNKER = (1696, 1968, 576)
+BUNKER_STEPS = ((1568, 1680), (1984, 2096))
 TOWER = ((2280, 2400, 560), (2320, 2440, 416))
 CONCRETE = (176, 172, 160)
 HAZARD = (236, 190, 40)
@@ -920,19 +921,34 @@ def range_rocket(c, k):
 
 
 def range_bunker(c, k):
-    """The blast bunker: thick concrete, its roof walked on, a slit window."""
+    """The blast shelter has a clear passage below its concrete roof."""
     g = RANGE_FLOOR
     x0, x1, top = BUNKER
-    m = c.mask(lambda p: p.poly([(x0 - 20, g), (x0, top), (x1, top), (x1 + 20, g)]))
+    soffit = top + 32
+    c.put(c.mask(box(x0, soffit, x1, g)), (63, 65, 63))
+    c.put(c.mask(box(x0, soffit, x1, soffit + 12)), (39, 43, 43))
+    c.put(c.mask(box(x0, g - 8, x1, g)), (105, 103, 91))
+    for x in (x0 + 20, x1 - 20):
+        c.put(c.mask(box(x - 5, soffit, x + 5, g)), (89, 89, 82))
+        c.put(c.mask(box(x - 3, soffit + 15, x + 3, soffit + 20)), (249, 219, 151))
+        c.light(c.mask(lambda p: p.ellipse(x, soffit + 22, 25, 26), blur=8), (242, 205, 126), 0.35)
+    arrow_x = (x0 + x1) // 2
+    c.put(c.mask(lambda p: (
+        p.line([(arrow_x - 36, g - 40), (arrow_x + 36, g - 40)], 3),
+        p.line([(arrow_x - 26, g - 48), (arrow_x - 36, g - 40), (arrow_x - 26, g - 32)], 3),
+        p.line([(arrow_x + 26, g - 48), (arrow_x + 36, g - 40), (arrow_x + 26, g - 32)], 3),
+    )), (179, 171, 136))
+    m = c.mask(box(x0, top, x1, soffit))
     c.put(m, CONCRETE)
     c.tone(m * (c.noise("bunker", 10, 4, 3) - 0.5), 0.25)
-    c.put(c.mask(lambda p: [p.rect(x, top + 4, x + 1, g) for x in np.arange(x0 + 40, x1, 60)]), scale(CONCRETE, 0.8), 0.6)
-    c.put(c.mask(box(x0 + 60, top + 30, x1 - 60, top + 42)), (20, 24, 28))
-    c.light(c.mask(box(x0 + 64, top + 32, x1 - 64, top + 40)), (120, 220, 140), 0.4)
+    c.put(c.mask(box(x0 + 6, top + 5, x1 - 6, soffit - 8)), (53, 55, 54))
+    hazard_band(c, x0, soffit - 8, x1, soffit)
     edge_line(c, x0, x1, top, (200, 196, 184), 5)
-    hazard_band(c, x0 + 20, g - 26, x0 + 70, g - 4)
-    # Scorch on its face from the rocket's side.
-    c.tone(m * np.clip(1 - (c.x - x0 + 20) / 80, 0, 1), -0.35)
+    for left, right in BUNKER_STEPS:
+        for x in (left + 12, right - 22):
+            c.put(c.mask(box(x, g - 54, x + 10, g)), (83, 84, 86))
+        edge_line(c, left, right, g - 64, (142, 145, 146), 12)
+        hazard_band(c, left, g - 57, right, g - 52)
 
 
 def range_tower(c, k):
@@ -975,7 +991,7 @@ PIECES: Dict[str, Piece] = {
     "eureka_lab_room": Piece((16, LAB_CEILING, LAB_W - 16, LAB_FLOOR), lab_room),
     # Out of town: the Test Range.
     "eureka_range_rocket": Piece((660, 140, 1100, RANGE_FLOOR), range_rocket),
-    "eureka_range_bunker": Piece((1670, 560, 1990, RANGE_FLOOR), range_bunker),
+    "eureka_range_bunker": Piece((1552, 560, 2112, RANGE_FLOOR), range_bunker),
     # One drawing of the range's furniture, in two frames (a frame is at most
     # a sheet's page wide): the tower's end, and the field west of the bunker.
     "eureka_range_tower": Piece((1960, 270, 2700, RANGE_FLOOR), range_tower),
