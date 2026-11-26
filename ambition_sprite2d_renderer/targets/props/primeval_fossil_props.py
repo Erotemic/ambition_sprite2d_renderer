@@ -2,11 +2,9 @@
 ridge road, down a sinkhole in it: the rock the trail stands on, cut open,
 its layers and what is in them.
 
-Drawn in room coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/primeval/tar_pits.py` (`fossil_beds`): the
-ridge's road (y 480) and its sinkhole (x 1400..1464); the beds' floor (y
-576), their roof (to y 64), the shaft (x 400..464), the survey scaffold
-(walked on: x 900..1220 at y 432, x 980..1140 at y 320).
+Positions match the ridge and fossil beds in `dinosaur.ldtk`.
+The lower scaffold crosses the east end of the excavation. The upper
+deck gives access to the skull.
 
 - `ridge_sinkhole`: the hole in the ridge road, roots round its lip (its
   ladder is the room's `Climbable`, which the engine draws).
@@ -37,7 +35,8 @@ RIDGE_ROAD = 480
 SINKHOLE = (1400, 1464)
 W, FLOOR, ROOF = 1600, 576, 64
 SHAFT = (400, 464)
-SCAFFOLD = ((900, 1220, 432), (980, 1140, 320))
+LOWER_DECK = (896, 1536, 432)
+UPPER_DECK = (976, 1152, 320)
 STRATA = ((160, 120, 92), (186, 150, 108), (140, 104, 82), (204, 176, 128), (120, 96, 80), (176, 140, 104), (150, 118, 96))
 ROCK_DARK = (70, 56, 46)
 ROOT = (96, 70, 46)
@@ -77,6 +76,24 @@ def trilobite(c, x, y, s):
     c.put(c.mask(lambda p: p.ellipse(x, y - s * 0.75, s * 0.6, s * 0.32)), scale(SHELL, 0.85))
     c.put(c.mask(lambda p: [p.rect(x - s * 0.55, yy, x + s * 0.55, yy + 0.8) for yy in np.arange(y - s * 0.5, y + s, s * 0.22)]), scale(SHELL, 0.6))
     c.put(c.mask(lambda p: p.rect(x - s * 0.12, y - s * 0.6, x + s * 0.12, y + s)), scale(SHELL, 0.72))
+
+
+def scaffold(c):
+    """Draw the decks, the uprights, and the braces."""
+    lower_left, lower_right, lower_y = LOWER_DECK
+    upper_left, upper_right, upper_y = UPPER_DECK
+    for x0, x1, y, base, posts in (
+        (lower_left, lower_right, lower_y, FLOOR, (900, 984, 1140, 1328, 1524)),
+        (upper_left, upper_right, upper_y, lower_y, (984, 1140)),
+    ):
+        c.put(c.mask(lambda p: [p.rect(x, y, x + 8, base) for x in posts]), WOOD)
+        c.put(c.mask(lambda p: [
+            p.line([(left + 8, y + 12), (right + 4, base - 8)], 5)
+            for left, right in zip(posts, posts[1:])
+        ]), scale(WOOD, 0.8))
+        c.put(c.mask(box(x0, y, x1, y + 10)), WOOD)
+        c.put(c.mask(box(x0, y, x1, y + 2)), mix(WOOD, CANVAS, 0.55))
+        c.put(c.mask(lambda p: [p.ellipse(x + 4, y + 6, 1.5) for x in posts]), ROCK_DARK)
 
 
 def beds(c, k):
@@ -120,10 +137,7 @@ def beds(c, k):
     c.put(c.mask(lambda p: [p.poly([(x, sy + 22), (x + 6, sy + 22), (x + 3, sy + 40)]) for x in range(int(sx - 80), int(sx + 60), 14)]), BONE)
     c.put(c.mask(lambda p: p.line([(sx - 120, sy - 20), (sx - 90, sy + 30)], 3)), BONE_DARK)
     # The survey scaffold (walked on), its string grid over the skull, lamps.
-    for x0, x1, y in SCAFFOLD:
-        c.put(c.mask(box(x0, y, x1, y + 8)), WOOD)
-        c.put(c.mask(lambda p: [p.rect(x, y + 8, x + 6, FLOOR) for x in (x0 + 8, x1 - 14)]), WOOD)
-        c.put(c.mask(lambda p: p.line([(x0 + 10, y + 10), (x1 - 12, FLOOR - 4)], 2)), WOOD)
+    scaffold(c)
     c.put(c.mask(lambda p: ([p.line([(x, 150), (x, 300)], 0.8) for x in range(940, 1200, 40)], [p.line([(920, y), (1200, y)], 0.8) for y in range(160, 300, 40)])), STRING)
     for lx in (930, 1190):
         c.put(c.mask(lambda p: p.ellipse(lx, 140, 6, 8)), LAMP)
