@@ -70,6 +70,7 @@ LIQUIDS = ((120, 160, 190), (200, 170, 90), (150, 120, 170))
 FLOOR = 640
 DECKS = (512, 384)
 SCAFFOLD = (1800, 2040)
+SCAFFOLD_STEPS = ((1648, 1760, 576), (2032, 2144, 448), (2128, 2240, 512), (2208, 2320, 576))
 #: The Draft.
 SLABS = ((700, 860, 640), (960, 1120, 576), (1220, 1380, 640), (1740, 1900, 640), (2000, 2160, 576))
 PAINTER = (1460, 1640, 560)
@@ -199,6 +200,21 @@ def scaffold(c, k):
     c.put(c.mask(lambda p: p.ellipse(x1 - 2, DECKS[0] + 24, 5)), STEEL_DARK)
     c.light(c.mask(lambda p: p.ellipse(x1 - 2, DECKS[0] + 34, 40, 30), blur=12), LAMP, 0.4)
 
+    for left, right, top in SCAFFOLD_STEPS:
+        post_a, post_b = left + 14, right - 14
+        c.put(c.mask(lambda p: (
+            p.line([(post_a, top + 12), (post_b, FLOOR - 5)], 3),
+            p.line([(post_b, top + 12), (post_a, FLOOR - 5)], 3),
+        )), STEEL_LIGHT)
+        c.put(c.mask(lambda p: [
+            (p.rect(x - 3, top + 10, x + 3, FLOOR - 4), p.rect(x - 8, FLOOR - 4, x + 8, FLOOR))
+            for x in (post_a, post_b)
+        ]), STEEL)
+        c.put(c.mask(box(left, top, right, top + 12)), WOOD)
+        stripes(c, left, top + 7, left + 16, top + 12)
+        stripes(c, right - 16, top + 7, right, top + 12)
+        walk_top(c, left, right, top, WOOD)
+
 
 # ---------------------------------------------------------------------------
 # The Draft
@@ -313,7 +329,7 @@ PIECES: Dict[str, Piece] = {
     "unfinished_site_cabin": Piece((580, 440, 900, 640), site_cabin),
     "unfinished_survey_post": Piece((920, 520, 1140, 640), survey_post),
     "unfinished_half_trees": Piece((1170, 330, 1700, 640), half_trees),
-    "unfinished_scaffold": Piece((1780, 330, 2060, 640), scaffold),
+    "unfinished_scaffold": Piece((1632, 330, 2336, 640), scaffold),
     # The Draft.
     "unfinished_spill": Piece((540, 590, 700, 1136), spill),
     "unfinished_cranes": Piece((680, 24, 2180, 800), cranes),
