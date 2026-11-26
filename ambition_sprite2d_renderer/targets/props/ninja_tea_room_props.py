@@ -4,7 +4,7 @@ room on the ground, the guest rooms up the step chest.
 Drawn in room coordinates (`_district_props`) on the numbers of
 `tools/ambition_ldtk_tools/specs/ninja_village/make_specs.py`
 (`tea_room`): the floor (y 448), the ceiling (to y 32), the door (x 40),
-the step chest's treads (STEPS: x0, x1, top) and the loft's floor (x 560..
+the step chest's treads (STEPS: x0, x1, top) and the loft's floor (x 592..
 1008, y 256), all walked on.
 
 - `tea_room`: plaster and dark timber; a raised floor of tatami; low
@@ -12,7 +12,8 @@ the step chest's treads (STEPS: x0, x1, top) and the loft's floor (x 560..
   the menu of wooden plaques; the alcove with a scroll and one flower; the
   sliding door out; the step chest (a stair of drawers) up to the loft; up
   there, two guest rooms behind sliding panels, one with its futon laid
-  out and, under it, a child's pair of straw sandals.
+  out and, under it, a child's pair of straw sandals. Tsuru has a
+  medicine case in the other room.
 
 Everyday village things, drawn with care: no costume and no joke at the
 culture's cost. Animations: ``idle``, 1 frame each. No drop shadows.
@@ -29,7 +30,7 @@ from ._town_kit import box, mix, scale
 from .ninja_village_props import CEDAR, CEDAR_LIGHT, INDIGO, PAL, PAPER, PLASTER, SHOJI, TIMBER, VERMILION, paper_lantern, post, walk_edge
 
 W, FLOOR, CEILING = 1024, 448, 32
-LOFT = (560, 1008, 256)
+LOFT = (592, 1008, 256)
 #: The step chest's treads (x0, x1, top), up from the floor to the loft.
 STEPS = ((432, 464, 416), (464, 496, 384), (496, 528, 352), (528, 560, 320), (560, 592, 288))
 TATAMI = (196, 186, 124)
@@ -41,6 +42,32 @@ def tatami(c, x0, x1, y):
     c.put(c.mask(box(x0, y, x1, y + 8)), TATAMI)
     c.put(c.mask(lambda p: [p.rect(x, y, x + 3, y + 8) for x in np.arange(x0, x1, 90)]), TATAMI_EDGE)
     c.put(c.mask(box(x0, y, x1, y + 1.2)), mix(TATAMI, (255, 250, 220), 0.4))
+
+
+def medicine_room(c, loft):
+    """Draw the open screen and Tsuru's medicine case."""
+    top = CEILING + 40
+    c.put(c.mask(box(800, top, 842, loft)), SHOJI)
+    c.put(c.mask(lambda p: (
+        p.rect(814, top, 815.4, loft),
+        p.rect(828, top, 829.4, loft),
+        p.rect(840, top, 842, loft),
+        [p.rect(800, y, 842, y + 1.4) for y in range(top + 14, loft, 22)],
+    )), CEDAR)
+    c.put(c.mask(box(842, top, 990, top + 5)), TIMBER)
+    c.put(c.mask(box(984, top, 990, loft)), TIMBER)
+    c.put(c.mask(box(908, loft - 8, 984, loft)), INDIGO)
+    c.put(c.mask(box(922, loft - 48, 968, loft - 7)), CEDAR)
+    c.put(c.mask(box(921, loft - 48, 969, loft - 44)), CEDAR_LIGHT)
+    for y in (loft - 36, loft - 23, loft - 10):
+        c.put(c.mask(lambda p: (p.rect(926, y - 6, 964, y), p.rect(944, y - 6, 946, y))), TIMBER)
+        c.put(c.mask(lambda p: (p.ellipse(936, y - 3, 1.6), p.ellipse(954, y - 3, 1.6))), (201, 171, 103))
+    c.put(c.mask(lambda p: (
+        p.ellipse(934, loft - 53, 5, 5), p.ellipse(947, loft - 54, 5, 6),
+        p.rect(930, loft - 59, 938, loft - 56), p.rect(943, loft - 61, 951, loft - 58),
+    )), (83, 114, 104))
+    c.put(c.mask(lambda p: p.poly([(953, loft - 48), (963, loft - 48),
+                                  (965, loft - 56), (957, loft - 56)])), PAPER)
 
 
 def room(c, k):
@@ -67,10 +94,7 @@ def room(c, k):
     for sx in (746, 756):
         c.put(c.mask(lambda p: p.ellipse(sx, loft - 2, 4, 2)), (200, 176, 110))
         c.put(c.mask(lambda p: p.line([(sx - 2, loft - 3), (sx, loft - 1), (sx + 2, loft - 3)], 0.8)), VERMILION)
-    # Room two: its panels shut, a lantern by them.
-    c.put(c.mask(box(800, CEILING + 40, 990, loft)), SHOJI)
-    c.put(c.mask(lambda p: ([p.rect(x, CEILING + 40, x + 1.4, loft) for x in np.arange(800, 990, 15)], [p.rect(800, y, 990, y + 1.4) for y in np.arange(CEILING + 52, loft, 22)])), CEDAR)
-    c.light(c.mask(box(800, CEILING + 40, 990, loft), blur=8), (255, 230, 180), 0.2)
+    medicine_room(c, loft)
     # The step chest: a stair of drawers, each tread walked on.
     for x0, x1, top in STEPS:
         c.put(c.mask(box(x0, top, x1, g)), CEDAR)
