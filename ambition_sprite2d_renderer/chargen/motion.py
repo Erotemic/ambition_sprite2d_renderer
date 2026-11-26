@@ -26,6 +26,7 @@ from dataclasses import dataclass, replace
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from .body import Figure
+from .combat_turn import Turn, with_combat_turns
 from .face import brows_part, eyes_part, face_channels, mouth_part
 from .geometry import View
 from .pose3d import ITEM_REST, Foot, Hand, Pose, RestFrame, ViewSolver, blend
@@ -43,6 +44,8 @@ class Clip:
     #: The view the sprite sheet draws this row from.
     view: str = "side"
     category: str = "misc"
+    #: Optional body-yaw choreography, sampled from the existing drawn views.
+    turn: Turn = ()
 
 
 # ---- the vocabulary of poses -----------------------------------------------------------------
@@ -84,9 +87,9 @@ class Kit:
             it = (sgn * item_out, -math.sin(r), math.cos(r))
         return Hand(at, p, wrist, it, two_hand)
 
-    def foot(self, side: str, fwd: float = 0.0, lift: float = 0.0, out: float = 0.0, toe: float = 0.0, *, pole: Vec = (0.0, 0.0, 1.0)) -> Foot:
+    def foot(self, side: str, fwd: float = 0.0, lift: float = 0.0, out: float = 0.0, toe: float = 0.0, *, pole: Vec = (0.0, 0.0, 1.0), roll: float = 0.0) -> Foot:
         sgn = -1.0 if side == "right" else 1.0
-        return Foot((sgn * out * self.L, -lift * self.L, fwd * self.L), toe, (sgn * pole[0], pole[1], pole[2]))
+        return Foot((sgn * out * self.L, -lift * self.L, fwd * self.L), toe, (sgn * pole[0], pole[1], pole[2]), roll=roll)
 
     def bfoot(self, side: str, fwd: float, down: float, out: float = 0.05, toe: float = 0.0, *, pole: Vec = (0.0, 0.0, 1.0)) -> Foot:
         sgn = -1.0 if side == "right" else 1.0
@@ -123,6 +126,32 @@ class Kit:
                     rh=self.hand("right", 0.45, 0.45, 0.08, pole=(0.4, 0.6, -0.4)),
                     lh=self.hand("left", 0.3, 0.5, 0.12, pole=(0.4, 0.6, -0.4)),
                     rf=self.foot("right", 0.12, 0.0, 0.03), lf=self.foot("left", -0.12, 0.0, 0.03), face="determined")
+        base.update(kw)
+        return self.pose(**base)
+
+    def braced(self, *, front: float = 0.24, rear: float = -0.24,
+               weight: float = 0.52, drop: float = 0.065, spread: float = 0.055,
+               front_lift: float = 0.0, rear_lift: float = 0.0,
+               front_toe: float = 0.0, rear_toe: float = 0.0, **kw) -> Pose:
+        """A fighting pose on a staggered base, using the existing foot IK.
+
+        ``front``/``rear`` and lifts are in leg lengths, ``drop`` is in body
+        heights. ``weight`` places the pelvis between the two ankle targets
+        (0 rear, 1 front); it is an authored weight-transfer cue, not a
+        dynamic balance solver. Keep the ankle offsets unchanged between
+        loaded and striking keys for a planted blow. To step, author a lift
+        before moving the ankle. Braced feet author sole contact for
+        fixed-stage turns; override a foot with ``foot(..., roll=0)`` to
+        lift it into a step. The guard's hands can be replaced by any
+        fighter, including a weapon grip. No joint math lives here.
+        """
+        root_z = (rear + (front - rear) * weight) * self.L / self.H
+        base = dict(root=(root_z, -drop, 0.0), lean=8.0, head=(-6.0, 0.0),
+                    rh=self.hand("right", 0.50, 0.20, 0.12, pole=(0.45, 0.75, -0.4)),
+                    lh=self.hand("left", 0.25, 0.05, 0.15, pole=(0.45, 0.75, -0.4)),
+                    rf=self.foot("right", front, front_lift, spread, toe=front_toe, roll=1.0),
+                    lf=self.foot("left", rear, rear_lift, spread, toe=rear_toe, roll=1.0),
+                    face="determined")
         base.update(kw)
         return self.pose(**base)
 
@@ -308,21 +337,19 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
     # stands and closes in like this between swings.
     def fight_pose(ph: float) -> Pose:
         c, s = math.cos(ph), math.sin(ph)
-        return k.guard(root=(0.0, -0.045 - 0.006 * (1 + s), 0.0), lean=8.0 + 1.5 * s, head=(-4.0 - 1.0 * s, 0.0),
-                       rf=k.foot(R, 0.18, 0.0, 0.03), lf=k.foot(Lf, -0.18, 0.0, 0.03, toe=-6),
-                       rh=k.hand(R, 0.45 + 0.02 * c, 0.45 + 0.02 * s, 0.08, pole=(0.4, 0.6, -0.4)),
-                       lh=k.hand(Lf, 0.3 - 0.02 * c, 0.5 + 0.02 * s, 0.12, pole=(0.4, 0.6, -0.4)))
+        return k.braced(weight=0.52 + 0.035 * c, drop=0.065 + 0.006 * s,
+                        lean=9.0 + 2.0 * s, head=(-6.0 - 1.0 * s, 0.0),
+                        rh=k.hand(R, 0.50 + 0.025 * c, 0.20 + 0.02 * s, 0.12, pole=(0.45, 0.75, -0.4)),
+                        lh=k.hand(Lf, 0.25 - 0.025 * c, 0.05 + 0.02 * s, 0.15, pole=(0.45, 0.75, -0.4)))
 
-    # The guard's shuffle keeps the idle guard's base: feet as far apart as
-    # in `fight_pose`, sliding together. Closer, a long shoe's sole touched
-    # the other's on the ground row, and the parts could not replay it.
+    # Small staggered steps, with a separate lift for each foot. Feet do
+    # not cross; the same hand guard carries through the shuffle.
     def fight_step(ph: float) -> Pose:
         c, s = math.cos(ph), math.sin(ph)
-        return k.guard(root=(0.0, -0.04 + 0.008 * abs(c), 0.0), lean=10.0, head=(-5.0, 0.0),
-                       rf=k.foot(R, 0.18 + 0.06 * c, max(0.0, -s) * 0.06, 0.03),
-                       lf=k.foot(Lf, -0.18 + 0.06 * c, max(0.0, s) * 0.06, 0.03),
-                       rh=k.hand(R, 0.47 + 0.03 * c, 0.45, 0.08, pole=(0.4, 0.6, -0.4)),
-                       lh=k.hand(Lf, 0.32 - 0.03 * c, 0.5, 0.12, pole=(0.4, 0.6, -0.4)))
+        return k.braced(front=0.24 + 0.055 * c, rear=-0.24 - 0.055 * c,
+                        weight=0.52 + 0.05 * s, drop=0.065 - 0.008 * abs(s),
+                        front_lift=max(0.0, -s) * 0.065, rear_lift=max(0.0, s) * 0.065,
+                        lean=10.0, head=(-7.0, 0.0))
 
     add(_seq("fight_idle", 8, 110, True, _cycle([fight_pose(2 * math.pi * i / 4) for i in range(4)]), cat="idle"))
     add(_seq("fight_walk", 8, 95, True, _cycle([fight_step(2 * math.pi * i / 8) for i in range(8)]), cat="locomotion"))
@@ -507,66 +534,108 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
                                                           rf=k.bfoot(R, 0.45, 0.5), lf=k.bfoot(Lf, 0.4, 0.55), face="determined"), apex]), cat="defense"))
 
     # ---- strikes ------------------------------------------------------------------------------
-    def strike(name: str, wind: Pose, hit: Pose, follow: Pose, frames: int = 8, ms: int = 60, cat: str = "attack", start: Pose = guard,
+    combat_guard = k.braced(front=0.25, rear=-0.26, weight=0.50, drop=0.07, front_toe=4, rear_toe=-8, head=(-4, 0))
+
+    def strike(name: str, wind: Pose, hit: Pose, follow: Pose, frames: int = 8, ms: int = 60, cat: str = "attack", start: Pose = combat_guard,
                end: Optional[Pose] = None) -> None:
         add(_seq(name, frames, ms, False, [(0.0, start), (0.28, wind), (0.45, hit), (0.62, follow), (1.0, end or start)], cat=cat))
 
-    jab_hit = k.guard(root=(0.02, -0.04, 0), lean=12, rh=k.hand(R, 0.98, 0.0, 0.0, pole=(0.3, 0.8, -0.2), wrist=0), face="angry")
-    strike("jab", k.guard(lean=4, rh=k.hand(R, 0.2, 0.35, 0.05, pole=(0.4, 0.7, -0.4))), jab_hit,
-           k.guard(root=(0.02, -0.04, 0), lean=10, rh=k.hand(R, 0.85, 0.05, 0.0, pole=(0.3, 0.8, -0.2))), frames=6, ms=40)
-    strike("jab_2", k.guard(lean=0, side=-4, lh=k.hand(Lf, 0.15, 0.4, 0.05)),
-           k.guard(root=(0.03, -0.04, 0), lean=14, side=6, lh=k.hand(Lf, 0.98, 0.02, -0.1, pole=(0.3, 0.8, -0.2)), face="angry"),
-           k.guard(root=(0.03, -0.04, 0), lean=12, lh=k.hand(Lf, 0.8, 0.1, -0.05)), frames=6, ms=40)
-    kick_hit = k.guard(root=(0.0, -0.01, 0), lean=-14, rf=k.bfoot(R, 0.9, 0.3, 0.02, toe=-20), lf=k.foot(Lf, -0.1),
-                       rh=k.hand(R, -0.1, 0.5, 0.3), lh=k.hand(Lf, 0.3, 0.4, 0.3), face="angry")
-    strike("jab_3", k.guard(lean=4, rf=k.bfoot(R, 0.35, 0.55)), kick_hit, k.guard(lean=-6, rf=k.bfoot(R, 0.6, 0.55)), frames=8, ms=45)
-    strike("punch", k.guard(lean=0, rh=k.hand(R, -0.1, 0.4, 0.15)), jab_hit, k.guard(lean=10, rh=k.hand(R, 0.8, 0.1, 0.0)), frames=6, ms=45)
-    side_wind = k.guard(lean=-8, side=-4, head=(-2, 0), rh=k.hand(R, -0.45, 0.25, 0.3, pole=(0.9, -0.1, -0.3), wrist=-40),
-                        rf=k.foot(R, 0.05), lf=k.foot(Lf, -0.2), face="angry")
-    side_hit = k.guard(root=(0.04, -0.05, 0), lean=18, rh=k.hand(R, 0.9, 0.15, 0.1, pole=(0.3, 0.8, -0.2), wrist=3), rf=k.foot(R, 0.28),
-                       lf=k.foot(Lf, -0.15, toe=-10), face="angry")
-    side_follow = k.guard(root=(0.04, -0.05, 0), lean=20, rh=k.hand(R, 0.55, 0.55, -0.15, pole=(0.3, 0.8, -0.2), wrist=23), rf=k.foot(R, 0.28),
-                          lf=k.foot(Lf, -0.15, toe=-10))
+    # Keep the free hand at cheek height. Small punches transfer weight
+    # without resetting the feet, and heavy blows use a broader base.
+    jab_wind = k.braced(weight=0.40, drop=0.068, lean=2, front_toe=4, rear_toe=-12, rear_lift=0.01,
+                        rh=k.hand(R, 0.18, 0.16, 0.15, pole=(0.45, 0.75, -0.4)))
+    jab_hit = k.braced(weight=0.68, drop=0.065, lean=12, head=(-9, 0), front_toe=7, rear_toe=-18, rear_lift=0.03,
+                       rh=k.hand(R, 0.94, -0.12, 0.08, pole=(0.3, 0.8, -0.2)), face="angry")
+    jab_follow = k.braced(weight=0.64, drop=0.065, lean=9, head=(-7, 0), front_toe=5, rear_toe=-14, rear_lift=0.02,
+                          rh=k.hand(R, 0.73, 0.02, 0.10, pole=(0.3, 0.8, -0.2)), face="angry")
+    strike("jab", jab_wind, jab_hit, jab_follow, frames=6, ms=40)
+    jab2_hit = k.braced(weight=0.72, drop=0.075, lean=16, side=5, head=(-10, 0), front_toe=7, rear_toe=-16, rear_lift=0.03,
+                        rh=k.hand(R, 0.23, 0.08, 0.12), lh=k.hand(Lf, 0.94, -0.12, 0.02, pole=(0.3, 0.8, -0.2)), face="angry")
+    strike("jab_2", k.braced(weight=0.36, lean=-3, side=-5, front_toe=2, rear_toe=-10, lh=k.hand(Lf, -0.1, 0.12, 0.16)),
+           jab2_hit, replace(jab2_hit, hands={**jab2_hit.hands, Lf: k.hand(Lf, 0.72, 0.08, 0.1)}), frames=6, ms=40)
+    kick_wind = k.braced(weight=0.12, drop=0.09, lean=-5, rear_toe=-12, rear_lift=0.015, rf=k.bfoot(R, 0.25, 0.48),
+                         rh=k.hand(R, 0.15, 0.12, 0.3), lh=k.hand(Lf, 0.45, 0.15, 0.25))
+    kick_hit = k.braced(weight=0.15, drop=0.065, lean=-23, head=(17, 0), rf=k.bfoot(R, 0.91, 0.20, 0.04, toe=-12),
+                        rh=k.hand(R, -0.15, 0.42, 0.35), lh=k.hand(Lf, 0.45, 0.12, 0.3), face="angry")
+    strike("jab_3", kick_wind, kick_hit, replace(kick_wind, lean=-10), frames=8, ms=45)
+    strike("punch", jab_wind, jab_hit, replace(jab_hit, hands={**jab_hit.hands, R: k.hand(R, 0.62, 0.12, 0.13)}), frames=6, ms=45)
+    side_wind = k.braced(front=0.29, rear=-0.26, weight=0.32, drop=0.085, lean=-8, side=-5, head=(6, 0),
+                         front_toe=9, rear_toe=-18, rear_lift=0.015,
+                         rh=k.hand(R, -0.38, 0.12, 0.28, pole=(0.9, 0.1, -0.3), wrist=-25), face="angry")
+    side_hit = k.braced(front=0.29, rear=-0.26, weight=0.72, drop=0.085, lean=20, head=(-13, 0),
+                        front_toe=10, rear_toe=-28, rear_lift=0.045,
+                        rh=k.hand(R, 0.94, -0.05, 0.02, pole=(0.3, 0.8, -0.2)),
+                        lh=k.hand(Lf, 0.08, 0.15, 0.18), face="angry")
+    side_follow = k.braced(front=0.29, rear=-0.26, weight=0.78, drop=0.095, lean=23, head=(-12, 0),
+                           front_toe=8, rear_toe=-24, rear_lift=0.035,
+                           rh=k.hand(R, 0.66, 0.44, -0.08, wrist=12), lh=k.hand(Lf, 0.20, 0.02, 0.18))
     strike("attack_side", side_wind, side_hit, side_follow)
     strike("attack", side_wind, side_hit, side_follow)
     strike("slash", side_wind, side_hit, side_follow, ms=75)
-    up_wind = k.crouch(0.1, lean=10, rh=k.hand(R, 0.3, 0.8, 0.15, wrist=13), face="angry")
-    up_hit = k.pose(root=(0.01, 0.01, 0), lean=-8, head=(-20, 0), rh=k.hand(R, 0.25, -0.95, 0.05, pole=(0.5, 0.2, -0.6), wrist=-32),
-                    lh=k.hand(Lf, 0.1, 0.6, 0.3), rf=k.foot(R, 0.06, toe=20), lf=k.foot(Lf, -0.06), face="angry")
-    up_follow = k.pose(lean=-14, head=(-24, 0), rh=k.hand(R, -0.25, -0.85, 0.05, pole=(0.5, 0.2, -0.6), wrist=-40), lh=k.hand(Lf, 0.1, 0.6, 0.3))
+    # Uppercut: the fist travels from the waist past the chin to overhead;
+    # the knees drive upward while both ankles stay on the ground.
+    up_wind = k.braced(weight=0.35, drop=0.14, lean=15, head=(-8, 0), front_toe=3, rear_toe=-14, rear_lift=0.01,
+                       rh=k.hand(R, -0.08, 0.66, 0.20), face="angry")
+    up_hit = k.braced(weight=0.60, drop=0.045, lean=-9, head=(-18, 0), front_toe=10, rear_toe=-18, rear_lift=0.05,
+                      rh=k.hand(R, 0.34, -0.86, 0.08, pole=(0.6, 0.2, -0.6)),
+                      lh=k.hand(Lf, 0.26, 0.28, 0.18), face="angry")
+    up_follow = k.braced(weight=0.62, drop=0.055, lean=-12, head=(-14, 0), front_toe=8, rear_toe=-16, rear_lift=0.035,
+                         rh=k.hand(R, 0.04, -0.91, 0.20, pole=(0.6, 0.2, -0.6)), lh=k.hand(Lf, 0.3, 0.3, 0.2))
     strike("attack_up", up_wind, up_hit, up_follow)
-    down_wind = k.crouch(0.24, lean=20, rh=k.hand(R, -0.3, 0.3, 0.3, wrist=-20), face="angry")
-    down_hit = k.crouch(0.3, lean=28, head=(-6, 0), rh=k.hand(R, 0.85, 0.75, 0.1, pole=(0.3, 0.8, -0.2), wrist=10), lh=k.hand(Lf, 0.0, 0.7, 0.4),
-                        rf=k.foot(R, 0.3), lf=k.foot(Lf, -0.2, toe=-15), face="angry")
-    strike("attack_down", down_wind, down_hit, k.crouch(0.28, lean=26, rh=k.hand(R, 0.6, 0.8, -0.1, wrist=16)), start=k.crouch(0.18))
-    add(_seq("smash_charge", 8, 70, True, _cycle([
-        k.guard(root=(-0.02, -0.07, 0), lean=-12, side=-6, rh=k.hand(R, -0.6, 0.15, 0.35, wrist=-40), lh=k.hand(Lf, 0.45, 0.35, 0.2),
-                rf=k.foot(R, 0.2), lf=k.foot(Lf, -0.25), face="angry", vis="e"),
-        k.guard(root=(-0.02, -0.08, 0), lean=-13, side=-6, rh=k.hand(R, -0.62, 0.12, 0.36, wrist=-40), lh=k.hand(Lf, 0.45, 0.33, 0.2),
-                rf=k.foot(R, 0.2), lf=k.foot(Lf, -0.25), face="angry", vis="e")]), cat="smash"))
-    smash_wind = out["smash_charge"].keys[0][1]
-    smash_hit = k.guard(root=(0.08, -0.08, 0), lean=26, side=6, head=(-8, 0), rh=k.hand(R, 0.98, 0.1, 0.0, pole=(0.3, 0.8, -0.2), wrist=1),
-                        lh=k.hand(Lf, -0.3, 0.5, 0.3), rf=k.foot(R, 0.42, toe=-5), lf=k.foot(Lf, -0.25, toe=-20), face="angry", vis="a")
-    smash_follow = replace(smash_hit, lean=30, hands={**smash_hit.hands, "right": k.hand(R, 0.6, 0.65, -0.2, wrist=26)})
-    add(_seq("smash_forward", 10, 70, False, [(0.0, guard), (0.3, smash_wind), (0.45, smash_hit), (0.6, smash_follow), (0.8, smash_follow),
-                                              (1.0, guard)], cat="smash"))
-    sup_wind = k.crouch(0.26, lean=24, rh=k.hand(R, 0.4, 0.85, 0.2), lh=k.hand(Lf, 0.35, 0.85, 0.25), face="angry")
-    sup_hit = k.pose(root=(0, 0.04, 0), lean=-6, head=(-26, 0), rh=k.hand(R, 0.15, -0.98, 0.15, pole=(0.6, 0.2, -0.6), wrist=-30),
-                     lh=k.hand(Lf, 0.1, -0.95, 0.2, pole=(0.6, 0.2, -0.6)), rf=k.foot(R, 0.0, 0.05, toe=30), lf=k.foot(Lf, -0.05, 0.08, toe=30), face="angry",
-                     vis="a")
-    add(_seq("smash_up", 10, 67, False, [(0.0, guard), (0.3, sup_wind), (0.5, sup_hit), (0.7, sup_hit), (1.0, guard)], cat="smash"))
-    sdn_wind = k.pose(root=(0, -0.02, 0), lean=-10, head=(-18, 0), rh=k.hand(R, 0.0, -0.95, 0.3, pole=(0.6, 0.2, -0.6)),
-                      lh=k.hand(Lf, -0.05, -0.92, 0.32, pole=(0.6, 0.2, -0.6)), face="angry")
-    sdn_hit = k.crouch(0.3, lean=40, head=(-10, 0), rh=k.hand(R, 0.75, 0.9, 0.35, wrist=20), lh=k.hand(Lf, 0.7, 0.9, 0.4),
-                       rf=k.foot(R, 0.28), lf=k.foot(Lf, -0.28), face="angry", vis="a")
-    add(_seq("smash_down", 10, 68, False, [(0.0, guard), (0.3, sdn_wind), (0.5, sdn_hit), (0.7, sdn_hit), (1.0, guard)], cat="smash"))
-    for d in ("forward", "up", "down"):
-        add(_seq(f"smash_charge_{d}", 8, 70, True, out["smash_charge"].keys, cat="smash"))
-    dash_hit = k.guard(root=(0.1, -0.12, 0), lean=30, head=(-14, 0), rh=k.hand(R, 0.9, 0.3, 0.1, wrist=0), lh=k.hand(Lf, 0.8, 0.35, 0.15),
-                       rf=k.foot(R, 0.45), lf=k.foot(Lf, -0.4, 0.15, toe=-20), face="angry", vis="a")
-    add(_seq("dash_attack", 10, 42, False, _even([run_pose(0.0), dash_hit, dash_hit, k.crouch(0.12), guard]), cat="attack"))
+    down_start = k.braced(front=0.30, rear=-0.28, drop=0.13, lean=18, front_toe=4, rear_toe=-8)
+    down_wind = k.braced(front=0.30, rear=-0.28, weight=0.35, drop=0.15, lean=11, front_toe=5, rear_toe=-12, rear_lift=0.01,
+                         rh=k.hand(R, -0.25, 0.35, 0.27, wrist=-16), face="angry")
+    down_hit = k.braced(front=0.30, rear=-0.28, weight=0.71, drop=0.20, lean=30, head=(-8, 0), front_toe=10, rear_toe=-18, rear_lift=0.03,
+                        rh=k.hand(R, 0.82, 0.43, 0.12, pole=(0.4, 0.7, -0.3)), lh=k.hand(Lf, -0.12, 0.35, 0.32), face="angry")
+    strike("attack_down", down_wind, down_hit, replace(down_hit, lean=23, hands={**down_hit.hands, R: k.hand(R, 0.64, 0.54, 0.1)}), start=down_start)
+
+    # A separate loaded pose for each smash direction. The three release
+    # clips have matching windups, not three copies of a forward charge.
+    smash_wind = k.braced(front=0.34, rear=-0.34, weight=0.26, drop=0.115, lean=-15, side=-5, head=(9, 0),
+                          front_toe=10, rear_toe=-20, rear_lift=0.015,
+                          rh=k.hand(R, -0.43, 0.12, 0.35, pole=(0.8, 0.2, -0.4), wrist=-20),
+                          lh=k.hand(Lf, 0.46, -0.16, 0.10), face="angry", vis="e")
+    smash_hit = k.braced(front=0.34, rear=-0.34, weight=0.76, drop=0.115, lean=24, side=5, head=(-13, 0),
+                         front_toe=12, rear_toe=-30, rear_lift=0.045,
+                         rh=k.hand(R, 0.95, -0.12, 0.04, pole=(0.3, 0.8, -0.2)),
+                         lh=k.hand(Lf, 0.18, -0.12, 0.20), face="angry", vis="a")
+    smash_follow = k.braced(front=0.34, rear=-0.34, weight=0.81, drop=0.135, lean=30, head=(-14, 0),
+                            front_toe=8, rear_toe=-24, rear_lift=0.035,
+                            rh=k.hand(R, 0.71, 0.29, -0.16, wrist=12), lh=k.hand(Lf, 0.21, -0.08, 0.20))
+    add(_seq("smash_forward", 10, 70, False, [(0.0, combat_guard), (0.3, smash_wind), (0.45, smash_hit), (0.6, smash_follow),
+                                              (0.8, k.braced(front=0.34, rear=-0.34, weight=0.56, drop=0.09)), (1.0, combat_guard)], cat="smash"))
+    sup_wind = k.braced(front=0.24, rear=-0.25, weight=0.37, drop=0.19, lean=19, head=(-10, 0), front_toe=3, rear_toe=-16, rear_lift=0.015,
+                        rh=k.hand(R, 0.0, 0.76, 0.20), lh=k.hand(Lf, 0.22, 0.5, 0.23), face="angry")
+    sup_hit = k.braced(front=0.24, rear=-0.25, weight=0.62, drop=0.045, lean=-13, head=(-23, 0), front_toe=12, rear_toe=-18, rear_lift=0.05,
+                       rh=k.hand(R, 0.38, -0.86, 0.12, pole=(0.6, 0.2, -0.6)),
+                       lh=k.hand(Lf, 0.50, -0.73, 0.23, pole=(0.6, 0.2, -0.6)), face="angry", vis="a")
+    sup_follow = k.braced(front=0.24, rear=-0.25, weight=0.57, drop=0.06, lean=-8, head=(-15, 0), front_toe=8, rear_toe=-14, rear_lift=0.035,
+                          rh=k.hand(R, -0.10, -0.86, 0.18, pole=(0.6, 0.2, -0.6)), lh=k.hand(Lf, 0.2, -0.28, 0.22))
+    add(_seq("smash_up", 10, 67, False, [(0.0, combat_guard), (0.3, sup_wind), (0.5, sup_hit), (0.7, sup_follow), (1.0, combat_guard)], cat="smash"))
+    sdn_wind = k.braced(front=0.32, rear=-0.30, weight=0.40, drop=0.065, lean=-13, head=(-8, 0), front_toe=6, rear_toe=-14, rear_lift=0.01,
+                        rh=k.hand(R, -0.12, -0.90, 0.22, pole=(0.6, 0.2, -0.6)), lh=k.hand(Lf, 0.12, -0.85, 0.30, pole=(0.6, 0.2, -0.6)), face="angry")
+    sdn_hit = k.braced(front=0.32, rear=-0.30, weight=0.68, drop=0.20, lean=35, head=(-7, 0), front_toe=10, rear_toe=-22, rear_lift=0.035,
+                       rh=k.hand(R, 0.73, 0.49, 0.16), lh=k.hand(Lf, 0.66, 0.56, 0.25), face="angry", vis="a")
+    sdn_follow = k.braced(front=0.32, rear=-0.30, weight=0.62, drop=0.18, lean=24, head=(-6, 0), front_toe=8, rear_toe=-16, rear_lift=0.025,
+                          rh=k.hand(R, 0.44, 0.74, 0.22), lh=k.hand(Lf, 0.38, 0.72, 0.27))
+    add(_seq("smash_down", 10, 68, False, [(0.0, combat_guard), (0.3, sdn_wind), (0.5, sdn_hit), (0.7, sdn_follow), (1.0, combat_guard)], cat="smash"))
+    for d, wind in (("forward", smash_wind), ("up", sup_wind), ("down", sdn_wind)):
+        add(_seq(f"smash_charge_{d}", 8, 70, True, _cycle([wind, replace(wind, root=(wind.root[0], wind.root[1] + 0.005 * k.H, wind.root[2]), lean=wind.lean + 1.0)]), cat="smash"))
+    add(_seq("smash_charge", 8, 70, True, out["smash_charge_forward"].keys, cat="smash"))
+    dash_hit = k.braced(front=0.44, rear=-0.40, weight=0.72, drop=0.14, lean=29, head=(-14, 0),
+                        front_toe=10, rear_lift=0.06, rear_toe=-20, rh=k.hand(R, 0.91, 0.06, 0.10),
+                        lh=k.hand(Lf, 0.76, 0.20, 0.17), face="angry", vis="a")
+    dash_follow = k.braced(front=0.44, rear=-0.40, weight=0.77, drop=0.15, lean=26, head=(-10, 0), front_toe=8, rear_toe=-16, rear_lift=0.04,
+                           rh=k.hand(R, 0.60, 0.42, 0.1), lh=k.hand(Lf, 0.20, 0.30, 0.24))
+    dash_start = k.braced(front=0.16, rear=-0.40, weight=0.46, drop=0.09, lean=22,
+                          rh=k.hand(R, -0.12, 0.40, 0.18), lh=k.hand(Lf, 0.36, 0.16, 0.12))
+    dash_step = k.braced(front=0.30, rear=-0.40, weight=0.48, drop=0.10, lean=26,
+                         rf=k.foot(R, 0.30, 0.10, 0.055, toe=12), rear_toe=-12,
+                         rh=k.hand(R, 0.26, 0.29, 0.20), lh=k.hand(Lf, 0.48, 0.14, 0.14))
+    add(_seq("dash_attack", 10, 42, False, [(0., dash_start), (.12, dash_step), (.25, dash_hit),
+            (.50, dash_follow), (.75, k.braced(drop=0.12)), (1., combat_guard)], cat="attack"))
     add(_seq("stomp", 6, 70, False, _even([k.pose(rf=k.bfoot(R, 0.3, 0.55), lean=-6, face="angry"),
-                                           k.crouch(0.08, rf=k.foot(R, 0.3), face="angry"), guard]), cat="attack"))
+                                           k.braced(front=0.30, drop=0.10, weight=0.68, face="angry"), combat_guard]), cat="attack"))
 
     # ---- aerials ------------------------------------------------------------------------------
     nair_keys = [(0.0, apex), (0.2, k.air(spin=40, rf=k.bfoot(R, 0.45, 0.6), lf=k.bfoot(Lf, -0.45, 0.6), rh=k.hand(R, 0.6, 0.1, 0.4),
@@ -574,19 +643,22 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
                  (0.45, k.air(spin=200, rf=k.bfoot(R, 0.6, 0.5), lf=k.bfoot(Lf, -0.6, 0.5), rh=k.hand(R, 0.6, 0.0, 0.5), lh=k.hand(Lf, -0.6, 0.0, 0.5),
                               face="angry")), (0.75, k.air(spin=355)), (1.0, apex)]
     add(_seq("air_neutral", 8, 60, False, nair_keys, cat="aerial"))
-    add(_seq("air_forward", 10, 44, False, [(0.0, apex), (0.15, k.air(lean=-6, rh=k.hand(R, 0.45, -0.55, 0.15, wrist=-20), face="angry")), (0.3, k.air(lean=-16, rh=k.hand(R, -0.3, -0.85, 0.15, pole=(0.5, 0.2, -0.6), wrist=-40),
-                                                                    face="angry")),
-                                            (0.5, k.air(lean=26, rh=k.hand(R, 0.95, 0.3, 0.05, wrist=8), face="angry")),
-                                            (0.7, k.air(lean=24, rh=k.hand(R, 0.5, 0.75, -0.1, wrist=26))), (1.0, apex)], cat="aerial"))
-    add(_seq("air_back", 7, 62, False, [(0.0, apex), (0.3, k.air(lean=20, rf=k.bfoot(R, 0.35, 0.4), face="angry")),
-                                         (0.5, k.air(lean=34, head=(16, 0), rf=k.bfoot(R, -0.85, 0.35, toe=10), lf=k.bfoot(Lf, 0.2, 0.7), face="angry")),
-                                         (0.7, k.air(lean=28, rf=k.bfoot(R, -0.6, 0.55))), (1.0, apex)], cat="aerial"))
-    add(_seq("air_up", 7, 62, False, [(0.0, apex), (0.3, k.air(lean=20, face="angry")),
-                                       (0.55, k.air(spin=-150, rf=k.bfoot(R, 0.7, -0.1), lf=k.bfoot(Lf, 0.0, 0.6), face="angry")),
-                                       (0.8, k.air(spin=-330)), (1.0, apex)], cat="aerial"))
-    add(_seq("air_down", 7, 70, False, [(0.0, apex), (0.3, k.air(lean=-12, rf=k.bfoot(R, 0.4, 0.4), lf=k.bfoot(Lf, 0.35, 0.45), face="angry")),
-                                         (0.55, k.air(lean=6, rf=k.bfoot(R, 0.05, 1.0, toe=-35), lf=k.bfoot(Lf, -0.02, 1.0, toe=-35),
-                                                      rh=k.hand(R, 0.2, -0.5, 0.45), lh=k.hand(Lf, 0.1, -0.5, 0.5), face="angry", vis="o")),
+    add(_seq("air_forward", 10, 44, False, [(0.0, apex), (0.15, k.air(lean=-6, rh=k.hand(R, 0.45, -0.55, 0.15), rf=k.bfoot(R, 0.42, 0.57), lf=k.bfoot(Lf, -0.23, 0.82), face="angry")),
+                                            (0.3, k.air(lean=-16, rh=k.hand(R, -0.35, -0.76, 0.18, pole=(0.5, 0.2, -0.6)), rf=k.bfoot(R, 0.35, 0.48), lf=k.bfoot(Lf, -0.30, 0.79), face="angry")),
+                                            (0.5, k.air(lean=23, rh=k.hand(R, 0.94, -0.12, 0.08), lh=k.hand(Lf, -0.40, 0.25, 0.35),
+                                                        rf=k.bfoot(R, -0.35, 0.82), lf=k.bfoot(Lf, 0.48, 0.47), face="angry")),
+                                            (0.7, k.air(lean=18, rh=k.hand(R, 0.66, 0.45, -0.05), rf=k.bfoot(R, -0.22, 0.80), lf=k.bfoot(Lf, 0.32, 0.63))), (1.0, apex)], cat="aerial"))
+    add(_seq("air_back", 7, 62, False, [(0.0, apex), (0.3, k.air(lean=18, rf=k.bfoot(R, 0.42, 0.35), lf=k.bfoot(Lf, 0.05, 0.72), face="angry")),
+                                         (0.5, k.air(lean=38, head=(8, 0), rf=k.bfoot(R, -0.90, 0.24, toe=12), lf=k.bfoot(Lf, 0.25, 0.53),
+                                                     rh=k.hand(R, 0.48, 0.0, 0.45), lh=k.hand(Lf, 0.40, 0.40, 0.35), face="angry")),
+                                         (0.7, k.air(lean=23, rf=k.bfoot(R, -0.60, 0.48), lf=k.bfoot(Lf, 0.18, 0.66))), (1.0, apex)], cat="aerial"))
+    add(_seq("air_up", 7, 62, False, [(0.0, apex), (0.3, k.air(spin=-32, lean=-8, rf=k.bfoot(R, 0.48, 0.48), lf=k.bfoot(Lf, 0.12, 0.62), face="angry")),
+                                       (0.55, k.air(root=(0, 0.14, 0), spin=-142, lean=8, rf=k.bfoot(R, -0.30, 0.94, toe=-8), lf=k.bfoot(Lf, 0.32, 0.52),
+                                                    rh=k.hand(R, 0.38, 0.60, 0.26), lh=k.hand(Lf, 0.22, 0.68, 0.35), face="angry")),
+                                       (0.8, k.air(root=(0, 0.10, 0), spin=-265, rf=k.bfoot(R, 0.32, 0.59), lf=k.bfoot(Lf, 0.2, 0.61))), (1.0, apex)], cat="aerial"))
+    add(_seq("air_down", 7, 70, False, [(0.0, apex), (0.3, k.air(lean=-12, rf=k.bfoot(R, 0.42, 0.35), lf=k.bfoot(Lf, 0.32, 0.47), face="angry")),
+                                         (0.55, k.air(lean=9, rf=k.bfoot(R, 0.07, 0.97, toe=-25), lf=k.bfoot(Lf, -0.16, 0.90, toe=-22),
+                                                      rh=k.hand(R, 0.05, -0.70, 0.42), lh=k.hand(Lf, -0.10, -0.64, 0.42), face="angry", vis="o")),
                                          (1.0, apex)], cat="aerial"))
 
     # ---- specials and ranged -----------------------------------------------------------
@@ -828,7 +900,7 @@ def build_library(fig: Figure, grip: str = "blade") -> Dict[str, Clip]:
     add(_seq("petted", 6, 120, True, _cycle([k.pose(head=(10, 8), face="happy"), k.pose(head=(12, 10), face="happy", blink=1.0)]), view="front_3q",
               cat="social"))
     add(_seq("bark", 4, 80, False, _even([stand, k.pose(lean=8, head=(-8, 0), face="angry", vis="a"), stand]), view="front_3q", cat="social"))
-    return out
+    return with_combat_turns(out)
 
 
 #: The view the sprite sheet draws a row from, when the clip does not say.
@@ -849,7 +921,7 @@ def pose_at(clip: Clip, t: float, rest: RestFrame) -> Pose:
         if t <= t1:
             u = (t - t0) / max(1e-9, t1 - t0)
             u = u * u * (3 - 2 * u)
-            return blend(a, b, u, rest)
+            return blend(a, b, u, rest, item_arc=bool(clip.turn))
     return keys[-1][1]
 
 
@@ -866,7 +938,9 @@ MAX_TURN_PER_FRAME = 112.0
 
 def _solve_frames(clip: Clip, solver: ViewSolver) -> List[dict]:
     solver.reset()
-    frames = [solver.solve(pose_at(clip, t, solver.rest)) for t in _frame_times(clip)]
+    stage = bool(clip.turn) and solver.view.key in ("side", "front_3q", "back_3q")
+    frames = [solver.solve(pose_at(clip, t, solver.rest), stage=stage)
+              for t in _frame_times(clip)]
     # A leg keeps one bend through a clip (its knee does not flip sides as
     # the foot passes under the hip): the side most frames clearly want. An
     # arm's side is read from its drawn elbow, frame by frame.
@@ -994,7 +1068,10 @@ def solve_clip(clip: Clip, solver: ViewSolver) -> dict:
         else:
             ease = "linear" if name.endswith(("_bend", "_vis")) else "smooth"
             channels[name] = (loop_keys(vals, ease=ease) if clip.loop else shot(vals, ease=ease))
-    return {"loop": clip.loop, "frames": clip.frames, "duration_ms": clip.ms, "channels": channels}
+    result = {"loop": clip.loop, "frames": clip.frames, "duration_ms": clip.ms, "channels": channels}
+    if clip.turn:
+        result["publish_turn"] = [list(key) for key in clip.turn]
+    return result
 
 
 def _world(pre: str, frame: dict, solver: ViewSolver) -> Tuple[float, float]:

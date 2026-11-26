@@ -25,6 +25,7 @@ from ..authoring import rigdoc
 from ..authoring.svg_parts import _svg_to_png_bytes
 from ..core.draw import blending_draw, font
 from .geometry import VIEW_BY_KEY, VIEWS, View
+from .combat_turn import view_at
 from .rig import UNIT, slug, view_svg, write_character
 from .spec import CharacterSpec
 
@@ -344,7 +345,11 @@ class RiggedCharacter:
                 im = other[view].render_frame("idle", 0, int(other[view].clips["idle"]["frames"]))
                 return rigdoc.mirrored_canvas(im)
             return docs[view].render_frame("idle", 0, int(docs[view].clips["idle"]["frames"]))
-        return docs[self.views[animation]].render_frame(animation, frame_idx, frame_count)
+        default = self.views[animation]
+        base = docs[default]
+        t = base.frame_time(animation, frame_idx, frame_count)
+        key = view_at(base.clips[animation], t, default, [k for k, doc in docs.items() if animation in doc.clips])
+        return docs[key].render_frame(animation, frame_idx, frame_count)
 
 
 def posed_sheet(rigs: Dict[str, Path], out: Path, *, rows: Optional[Sequence[str]] = None, scale: float = 1.0) -> Path:

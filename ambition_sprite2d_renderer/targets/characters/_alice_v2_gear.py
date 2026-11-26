@@ -35,6 +35,7 @@ from dataclasses import replace
 from typing import Dict, List, Tuple
 
 from ...chargen.draw import ITEM_REST_ANGLE, grip_point
+from ...chargen.overlay import cell_key, load
 from ...chargen.drawkit import Ctx, Part, shaded_region, surface_line, tube3
 from ...chargen.geometry import Loft, RingKey, add3, column_bands, ellipse3, hull, interp_knots, lerp, loft_region, norm3, scale3, smoothstep, sub3, wrap180
 from ...chargen.svgout import FINE, light, mix, shade, style, using
@@ -541,7 +542,14 @@ def _lapel_parts(ctx: Ctx, shell: Loft, edge) -> List[Part]:
             roll = [(sgn * (interp_knots(u, LAPEL_INNER) + 2.5), lerp(y0, y1, u)) for u in (0.02, 0.15, 0.3, 0.45, 0.6)]
             for run in surface_line(ctx, shell, roll, out=0.55, thresh=0.1):
                 pt.line(run, light(LAPEL, 0.35), 0.35 * k, smooth=True)
-        if pt.els:
+        # A replacement overlay can author lapels even in a view where
+        # the projected procedural lapel is completely occluded.
+        owned = False
+        if fig.spec.overlay:
+            cells = load(fig.spec.overlay).cells
+            groups = cells.get(cell_key(ctx.view.key, ctx.view.mirrored), cells.get(ctx.view.key, []))
+            owned = any(g.part == "coat_lapels" and g.mode == "replace" for g in groups)
+        if pt.els or owned:
             out.append(Part("coat_lapels", "torso", 33.07, pt.els, "Coat Lapels", feature="acc:coat_lapels"))
         # The collar, turned up round the back of the neck from lapel to lapel.
         nk = fig.neck.keys[-1]

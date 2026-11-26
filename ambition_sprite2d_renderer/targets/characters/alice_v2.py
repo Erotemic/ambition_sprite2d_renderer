@@ -47,6 +47,7 @@ from ...authoring.sheet_build import build_sheet
 from ...chargen import extras
 from ...chargen.body import build as build_figure
 from ...chargen.geometry import VIEWS
+from ...chargen.combat_turn import view_at
 from ...chargen.motion import solve_clip
 from ...chargen.pose3d import ViewSolver
 from ...chargen.rig import CELL_H, CELL_W, PX_PER_CM, build_rigs, character_svg, slug
@@ -307,7 +308,7 @@ def _pole_shown(params) -> bool:
     return params.get("prop.staff", 1.0) > 0.5
 
 
-def _samples(doc: RigDocument, animation: str, t: float, frame_count: int, steps: int = 6, span: float = 1.0):
+def _samples(doc: RigDocument, rig_path: str, animation: str, t: float, frame_count: int, steps: int = 6, span: float = 1.0, *, select=None):
     """The near grip's world over the frame interval before ``t``, oldest
     first (for a swing's smear and its hit volume)."""
     clip = doc.clips.get(animation) or {}
@@ -319,20 +320,21 @@ def _samples(doc: RigDocument, animation: str, t: float, frame_count: int, steps
         tk = t - dt * k / steps
         if tk < 0.0:
             continue
-        world, params = doc.solve(animation, tk)
+        sample_doc, sample_path = select(tk) if select is not None else (doc, rig_path)
+        world, params = sample_doc.solve(animation, tk)
         if _pole_shown(params):
-            out.append(world["near_grip"])
+            out.append((world["near_grip"], _pole_local(sample_path)))
     return out
 
 
-def _trail(canvas: FxCanvas, grips, pole: Dict[str, Point], strength: float) -> None:
+def _trail(canvas: FxCanvas, grips, strength: float) -> None:
     """The smear the pole's point swept since the last frame: a teal band
     from where the point was to where it is, faded toward where it was, its
     edge gold. It ends at the point; nothing is drawn ahead of it."""
     if len(grips) < 2:
         return
-    outer = [g.to_world(pole["tip"]) for g in grips]
-    inner = [g.to_world(pole["inner"]) for g in grips]
+    outer = [g.to_world(pole["tip"]) for g, pole in grips]
+    inner = [g.to_world(pole["inner"]) for g, pole in grips]
     span = sum(math.dist(a, b) for a, b in zip(outer, outer[1:]))
     if span < 4.0:
         return
@@ -344,7 +346,7 @@ def _trail(canvas: FxCanvas, grips, pole: Dict[str, Point], strength: float) -> 
     canvas.line(outer[n // 2:], (242, 200, 110, int(230 * min(1.0, strength))), 0.9)
 
 
-def _effects(doc: RigDocument, rig_path: str, animation: str, frame_count: int):
+def _effects(doc: RigDocument, rig_path: str, animation: str, frame_count: int, *, select=None):
     pole = _pole_local(rig_path)
 
     def body(world) -> Point:
@@ -357,7 +359,7 @@ def _effects(doc: RigDocument, rig_path: str, animation: str, frame_count: int):
     def behind(canvas: FxCanvas, t: float, world, params) -> None:
         trail = params.get("fx.trail", 0.0)
         if trail > 0.02 and _pole_shown(params):
-            _trail(canvas, _samples(doc, animation, t, frame_count), pole, trail)
+            _trail(canvas, _samples(doc, rig_path, animation, t, frame_count, select=select), trail)
         shield = params.get("fx.shield", 0.0)
         if shield > 0.02:
             _place(canvas, "shield", body(world), 0.85 * shield)
@@ -436,6 +438,11 @@ class AliceSheet:
         key = view or self.views.get(row, "side")
         return self.docs[key], self.paths[key]
 
+    def doc_at(self, row: str, t: float) -> Tuple[RigDocument, str]:
+        default = self.views.get(row, "side")
+        key = view_at(self.docs[default].clips[row], t, default, [k for k, doc in self.docs.items() if row in doc.clips])
+        return self.doc_of(row, key)
+
     def rows(self) -> List[Tuple[str, int, int]]:
         out = []
         for name in self.names:
@@ -458,8 +465,11 @@ class AliceSheet:
             turn_view, mirrored = COMPOSED[animation][frame_idx % len(COMPOSED[animation])]
             im = self.render_frame("idle", 0, int(self.docs[turn_view].clips["idle"]["frames"]), view=turn_view)
             return mirrored_canvas(im) if mirrored else im
-        doc, path = self.doc_of(animation, view)
-        behind, front = _effects(doc, path, animation, frame_count)
+        base, _ = self.doc_of(animation, view)
+        t = base.frame_time(animation, frame_idx, frame_count)
+        select = None if view is not None else lambda u: self.doc_at(animation, u)
+        doc, path = select(t) if select is not None else self.doc_of(animation, view)
+        behind, front = _effects(doc, path, animation, frame_count, select=select)
         return compose_rig_frame(doc, animation, frame_idx, frame_count, behind=behind, front=front, fx_pieces=True)
 
 
@@ -503,20 +513,23 @@ def attack_hitboxes(sheet: AliceSheet) -> Dict[str, dict]:
         doc, path = sheet.doc_of(name)
         if bool(doc.clips[name].get("loop", True)):
             continue
-        pole = _pole_local(path)
         k = int(doc.frame.get("render_scale", 1))
         r = 2.2 * CM
-        hull_local = [(p[0] + dx, p[1] + dy) for p in (pole["tip"], pole["mid"]) for dx, dy in ((r, r), (r, -r), (-r, r), (-r, -r))]
         active, points = [], []
         for i in range(frames):
             t = doc.frame_time(name, i, frames)
-            world, params = doc.solve(name, t)
+            frame_doc, frame_path = sheet.doc_at(name, t)
+            world, params = frame_doc.solve(name, t)
             if not _pole_shown(params) or max(params.get(f, 0.0) for f in _STRIKE_FX) < 0.5:
                 continue
             span = 1.0 if active and active[-1] == i - 1 else 0.3
             active.append(i)
-            for g in _samples(doc, name, t, frames, steps=4, span=span) or [world["near_grip"]]:
-                points += [g.to_world(p) for p in hull_local]
+            samples = _samples(frame_doc, frame_path, name, t, frames, steps=4, span=span,
+                               select=lambda u: sheet.doc_at(name, u))
+            for g, pole in samples or [(world["near_grip"], _pole_local(frame_path))]:
+                local = [(p[0] + dx, p[1] + dy) for p in (pole["tip"], pole["mid"])
+                         for dx, dy in ((r, r), (r, -r), (-r, r), (-r, -r))]
+                points += [g.to_world(p) for p in local]
         if not active:
             continue
         poly = [(round(x * k, 2), round(y * k, 2)) for x, y in _hull(points)]

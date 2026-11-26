@@ -32,7 +32,7 @@ from typing import Dict, Mapping, Optional, Tuple
 
 from .body import Figure
 from .draw import hand_channels
-from .geometry import Vec3, View, add3, norm3, scale3, sub3
+from .geometry import VIEW_BY_KEY, Vec3, View, add3, norm3, scale3, sub3
 
 #: An unturned hand part holds an item this many degrees above forward
 #: (the game's ``posed_hand.rs`` ITEM_REST_ANGLE).
@@ -74,6 +74,9 @@ class Foot:
     #: True: the offset is from the HIP (the foot moves with the body, in the
     #: air); False: from the rest ankle on the ground.
     body: bool = False
+    #: Authored sole-contact weight for fixed-stage turns. 1: pivot about
+    #: the shoe's support point; 0: use the ankle target as authored.
+    roll: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -123,7 +126,7 @@ def _arc(a: Vec3, b: Vec3, t: float) -> Vec3:
     return scale3(u, _lerp(ra, rb, t))
 
 
-def blend(a: Pose, b: Pose, t: float, rest: "RestFrame") -> Pose:
+def blend(a: Pose, b: Pose, t: float, rest: "RestFrame", *, item_arc: bool = False) -> Pose:
     """The pose ``t`` of the way from ``a`` to ``b``. A hand or foot one pose
     leaves out is at rest there."""
     hands = {}
@@ -133,7 +136,7 @@ def blend(a: Pose, b: Pose, t: float, rest: "RestFrame") -> Pose:
         item = None
         if ha.item is not None or hb.item is not None:
             ia, ib = ha.item or hb.item, hb.item or ha.item
-            item = norm3(_lerp3(ia, ib, t))
+            item = norm3(_arc(ia, ib, t) if item_arc else _lerp3(ia, ib, t))
         hands[side] = Hand(_arc(ha.at, hb.at, t), norm3(_lerp3(ha.pole, hb.pole, t)), _lerp(ha.wrist, hb.wrist, t), item,
                            _lerp(ha.two_hand, hb.two_hand, t))
     feet = {}
@@ -143,7 +146,7 @@ def blend(a: Pose, b: Pose, t: float, rest: "RestFrame") -> Pose:
         if fa.body != fb.body:
             # From planted to in the air: express both from the hip.
             fa, fb = rest.foot_from_hip(side, fa), rest.foot_from_hip(side, fb)
-        feet[side] = Foot(_arc(fa.at, fb.at, t) if fa.body else _lerp3(fa.at, fb.at, t), _lerp(fa.toe, fb.toe, t), norm3(_lerp3(fa.pole, fb.pole, t)), fa.body)
+        feet[side] = Foot(_arc(fa.at, fb.at, t) if fa.body else _lerp3(fa.at, fb.at, t), _lerp(fa.toe, fb.toe, t), norm3(_lerp3(fa.pole, fb.pole, t)), fa.body, _lerp(fa.roll, fb.roll, t))
     face = {k: _lerp(a.face.get(k, 0.0), b.face.get(k, 0.0), t) for k in set(a.face) | set(b.face)}
     extra = {k: _lerp(a.extra.get(k, 0.0), b.extra.get(k, 0.0), t) for k in set(a.extra) | set(b.extra)}
     return Pose(
@@ -298,7 +301,7 @@ class ViewSolver:
         """Screen cm (``View.project``) -> channel px from (center_x, ground_y)."""
         return ((p_cm[0] - self.hip_c[0]) * self.px, p_cm[1] * self.px)
 
-    def body_channels(self, pose: Pose) -> Dict[str, float]:
+    def body_channels(self, pose: Pose, *, stage: bool = False) -> Dict[str, float]:
         v = self.view
         s, c = v.s, v.c
         out = {
@@ -306,7 +309,8 @@ class ViewSolver:
             "torso": pose.lean * s + pose.side * c,
             "head": max(-self.head_turn, min(self.head_turn, pose.head[0] * s + pose.head[1] * c)),
         }
-        rx, ry = v.project(pose.root)[0], pose.root[1]
+        stage_view = VIEW_BY_KEY["side"] if stage else v
+        rx, ry = stage_view.project(pose.root)[0], pose.root[1]
         out["root_x"] = rx * self.px
         out["root_y"] = ry * self.px
         return out
@@ -333,9 +337,29 @@ class ViewSolver:
             p = (p[0] + w * 0.45 * math.cos(r), p[1] + w * 0.45 * math.sin(r))
         return math.degrees(math.atan2(p[1], p[0]))
 
-    def solve(self, pose: Pose) -> Dict[str, float]:
+    def _roll_contact(self, side: str, target: Point, pitch: float, ground: float) -> Point:
+        """Keep the lowest projected shoe-sole point on the stage floor.
+
+        Rotation is about the ankle in the rig; compensate translation so
+        the shoe rolls around its support point instead of floating. Use the
+        same shoe geometry as the art. This is a pose-authoring constraint,
+        not a second IK solver.
+        """
+        from .wear import foot_points
+        depth = "near" if side == "right" else "far"
+        rest_pitch = float(self.legs[f"{depth}_foot"]["rest_pitch"])
+        delta = _wrap(pitch - rest_pitch)
+        sole, _, _ = foot_points(self.fig, side, 1.14 if self.fig.spec.outfit.shoe_style == "chunky" else 1.0)
+        ankle = self.view.project(self.fig.joints[f"{side}_ankle"])
+        points = [tuple((a-b)*self.px for a, b in zip(self.view.project(q), ankle)) for q in sole]
+        rotated = [_rot2(p, delta) for p in points]
+        i = max(range(len(points)), key=lambda i: rotated[i][1])
+        return (target[0] + points[i][0] - rotated[i][0], ground - rotated[i][1])
+
+    def solve(self, pose: Pose, *, stage: bool = False) -> Dict[str, float]:
         v = self.view
-        body = self.body_channels(pose)
+        stage_view = VIEW_BY_KEY["side"] if stage else v
+        body = self.body_channels(pose, stage=stage)
         out = dict(body)
         world = self._probe_world(body)
         cx, gy = float(self.frame["center_x"]), float(self.frame["ground_y"])
@@ -465,7 +489,27 @@ class ViewSolver:
                 # A planted ankle stays in world space while the hip moves with the body.
                 H3 = add3(H3, pose.root)
                 A3 = add3(A0, foot.at)
-                tgt = (cx + self.to_frame(v.project(A3))[0], gy + self.to_frame(v.project(A3))[1])
+                if stage:
+                    hip_center = tuple((j["right_hip"][i] + j["left_hip"][i]) / 2 for i in range(3))
+                    x, y = stage_view.project(A3)
+                    tgt = (cx + (x - stage_view.project(hip_center)[0]) * self.px, gy + y * self.px)
+                else:
+                    tgt = (cx + self.to_frame(v.project(A3))[0], gy + self.to_frame(v.project(A3))[1])
+            toe_rest = sub3(j[f"{side}_toe"], A0)
+            r = math.radians(-foot.toe)
+            toe = (toe_rest[0], toe_rest[1] * math.cos(r) - toe_rest[2] * math.sin(r), toe_rest[1] * math.sin(r) + toe_rest[2] * math.cos(r))
+            tv = v.project(toe)
+            t0 = v.project((0.0, 0.0, 0.0))
+            tdir = (tv[0] - t0[0], tv[1] - t0[1])
+            if foot.body:
+                tdir = _rot2(tdir, body["pelvis"])
+            pitch = _angle(tdir) if math.hypot(*tdir) > 0.2 else float(leg["rest_pitch"])
+            if stage and not foot.body and foot.roll and self.fig.spec.outfit.shoes != "geta":
+                # Contact is authored, never inferred from an arbitrary lift
+                # threshold. An unweighted swing foot follows its ankle;
+                # a rolling support foot stays in contact with the floor.
+                contact = self._roll_contact(side, tgt, pitch, gy)
+                tgt = tuple(_lerp(a, b, foot.roll) for a, b in zip(tgt, contact))
             ankle_h = float(self.frame.get("ankle_h", 0.0))
             hip2 = world[leg["upper"]].origin
             l1, l2 = self.bone_len[leg["upper"]], self.bone_len[leg["lower"]]
@@ -482,18 +526,7 @@ class ViewSolver:
             out[f"{fpre}_x"] = tgt[0] - cx
             out[f"{fpre}_lift"] = (gy - ankle_h) - tgt[1]
             out[f"{fpre}_bend"] = bend
-            toe_rest = sub3(j[f"{side}_toe"], A0)
-            r = math.radians(-foot.toe)
-            toe = (toe_rest[0], toe_rest[1] * math.cos(r) - toe_rest[2] * math.sin(r), toe_rest[1] * math.sin(r) + toe_rest[2] * math.cos(r))
-            tv = v.project(toe)
-            t0 = v.project((0.0, 0.0, 0.0))
-            tdir = (tv[0] - t0[0], tv[1] - t0[1])
-            if foot.body:
-                tdir = _rot2(tdir, body["pelvis"])
-            if math.hypot(*tdir) > 0.2:
-                out[f"{fpre}_pitch"] = _angle(tdir)
-            else:
-                out[f"{fpre}_pitch"] = float(leg["rest_pitch"])
+            out[f"{fpre}_pitch"] = pitch
         out.update(pose.face)
         extra = dict(pose.extra)
         for depth, side in SIDES:

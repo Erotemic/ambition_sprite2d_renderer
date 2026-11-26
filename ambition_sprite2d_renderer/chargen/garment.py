@@ -46,9 +46,10 @@ _TOP_DEFAULTS = {"tshirt": "regular", "shirt": "regular", "blouse": "relaxed",
 def top_profile(fig: Figure, ctx: Ctx) -> TopProfile:
     """Resolve the author's fit preset and continuous extra-ease control."""
     o = fig.spec.outfit
-    fit = _TOP_DEFAULTS[o.top] if o.top_fit == "auto" else o.top_fit
+    top_fit = getattr(o, "top_fit", "auto")
+    fit = _TOP_DEFAULTS[o.top] if top_fit == "auto" else top_fit
     base = _TOP_PROFILES[fit]
-    extra = o.top_bagginess
+    extra = getattr(o, "top_bagginess", 0.0)
     scale = fig.k * {"tshirt": .92, "shirt": 1., "blouse": 1., "sweater": 1.16, "tunic": 1.08}[o.top]
     # The extra control deliberately affects the body and sleeves much more
     # than the collar. It does not move the shoulder, elbow or wrist pivots.
@@ -72,7 +73,7 @@ class GarmentLoft(Loft):
     """
     def __init__(self, heights: Sequence[float], section: Callable[[float], RingKey], bumps=()):
         self._profile_section = lru_cache(maxsize=1024)(section)
-        super().__init__([self._profile_section(y) for y in heights], list(bumps), shape_preserving=True)
+        super().__init__([self._profile_section(y) for y in heights], list(bumps))
 
     def section(self, y: float) -> RingKey:
         return self._profile_section(max(self.top, min(self.bottom, y)))
