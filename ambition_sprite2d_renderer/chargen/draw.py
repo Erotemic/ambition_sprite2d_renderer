@@ -28,7 +28,7 @@ from dataclasses import replace
 from typing import Dict, List, Tuple
 
 from .body import Figure
-from .drawkit import SIDES, Ctx, Part, make_ctx, shaded_region, tube3
+from .drawkit import SIDES, Ctx, Part, hip_opening, make_ctx, shaded_region, thigh_radius, tube3
 from .geometry import Point, Vec3, View, add3, capsule_band, hull, loft_region, norm3, scale3, sub3, wrap180
 from .family import family_of
 from .svgout import FINE, Canvas, using
@@ -224,11 +224,8 @@ def body_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     out.append(Part("torso", "torso", zmap["torso"], pt.els, "Torso"))
     pt = ctx.new()
 
-    def crotch(a: float, y: float) -> float:
-        al = abs(wrap180(a))
-        return (fig.y_crotch - 0.07 * T * abs(math.sin(math.radians(al))) ** 0.8) - y
-
-    shaded_region(ctx, pt, fig.torso.shell(0.15), fig.y_belt - 0.02 * T, fig.y_crotch, UNDERWEAR, crotch)
+    shaded_region(ctx, pt, fig.torso.shell(0.15), fig.y_belt - 0.02 * T, fig.y_crotch,
+                  UNDERWEAR, hip_opening(fig, overlap=-0.9 * fig.k))
     out.append(Part("pelvis", "pelvis", zmap["pelvis"], pt.els, "Pelvis"))
     pt = ctx.new()
     nk = fig.neck
@@ -249,7 +246,7 @@ def body_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
     out.append(Part("neck_upper", "head", NECK_UPPER_Z, pt.els, "Neck - Upper (turns with the head)"))
     j = fig.joints
     rs, re, rw = fig.arm_r
-    rt, rk, rc, ra = fig.leg_r
+    _, rk, rc, ra = fig.leg_r
     for depth, side, _sgn in SIDES:
         S, E, W = j[f"{side}_shoulder"], j[f"{side}_elbow"], j[f"{side}_wrist"]
         pu = ctx.new()
@@ -261,7 +258,7 @@ def body_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         out += hand_parts(ctx, depth, side, zmap)
         Hp, K, A = j[f"{side}_hip"], j[f"{side}_knee"], j[f"{side}_ankle"]
         tu = ctx.new()
-        tube3(ctx, tu, Hp, K, rt, rk * 1.05, ctx.skin, joint_b=True)
+        tube3(ctx, tu, Hp, K, thigh_radius(ctx), rk * 1.05, ctx.skin, joint_b=True)
         out.append(Part(f"{depth}_leg_u", f"{depth}_leg_u", zmap[f"{depth}_leg_u"], tu.els, f"Thigh - {depth.title()}"))
         tl = ctx.new()
         tube3(ctx, tl, K, A, rc, ra, ctx.skin)

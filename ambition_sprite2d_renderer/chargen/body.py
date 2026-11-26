@@ -64,6 +64,8 @@ class Figure:
     #: Radii: shoulder, elbow, wrist; thigh top, knee, calf, ankle.
     arm_r: Tuple[float, float, float] = (4.0, 3.2, 2.5)
     leg_r: Tuple[float, float, float, float] = (7.0, 4.8, 5.0, 3.3)
+    #: Sagittal half-depth of the upper thigh root, in cm.
+    thigh_depth: float = 7.0
     #: Face anchors, as heights on the head (``fy``) and angles: the head
     #: model's layout.
     face: Dict[str, float] = field(default_factory=dict)
@@ -127,6 +129,17 @@ def build(spec: CharacterSpec) -> Figure:
     hip_rx = 15.6 * k * b.hips * (1.08 if female else 1.0) * P.torso
     hip_rzf = 9.4 * k * b.hips + 2.5 * k * b.belly
     hip_rzb = 10.4 * k * b.hips * (1.07 if female else 1.0)
+    # The upper thigh has an oval rather than circular cross-section.
+    # Match its sagittal depth to the lower pelvis, within the proportions
+    # of the leg. Preserve the joint positions and the knee dimensions.
+    rt = 7.4 * k * limbs * (1.04 if female else 1.0) * P.leg_r[0]
+    hip_l = 8.4 * k * b.hips * (1.05 if female else 1.0)
+    fig.thigh_depth = min(1.35 * rt, max(0.85 * rt, 0.88 * (hip_rzf + hip_rzb) / 2.0))
+    # The seat transitions into the two thigh roots. Keep the authored
+    # maximum hip width; taper the lower seat toward the leg geometry.
+    seat_rx = min(hip_rx, max(0.82 * hip_rx, hip_l + 0.80 * rt))
+    seat_rzf = min(hip_rzf, max(0.72 * hip_rzf, 0.87 * fig.thigh_depth + 0.3 * k))
+    seat_rzb = min(hip_rzb, max(0.72 * hip_rzb, 0.87 * fig.thigh_depth - 0.3 * k))
     shoulder_cap = sh_hw + 2.2 * k * limbs
     # Keep the shoulder width and the joint positions. Use the actual chest
     # width for the taper through the lower ribs.
@@ -141,7 +154,7 @@ def build(spec: CharacterSpec) -> Figure:
         RingKey(fig.y_under, 0.58 * chest_rx + 0.42 * waist_rx, 0.56 * chest_rzf + 0.44 * waist_rzf, (chest_rzb + 8.6 * k) / 2, 0.0, 0.0, 0.5 * (chest_sq + 2.3)),
         RingKey(fig.y_waist, waist_rx, waist_rzf, 8.6 * k + 0.8 * k * b.belly, 0.0, 0.2 * k * b.belly, 2.3),
         RingKey(fig.y_hipw, hip_rx, hip_rzf, hip_rzb, 0.0, 0.0, 2.4),
-        RingKey(fig.y_crotch, hip_rx * 0.9, hip_rzf * 0.88, hip_rzb * 0.86, 0.0, 0.0, 2.2),
+        RingKey(fig.y_crotch, seat_rx, seat_rzf, seat_rzb, 0.0, 0.0, 2.0),
     ]
     bumps = []
     if b.belly > 0.0:
@@ -180,12 +193,11 @@ def build(spec: CharacterSpec) -> Figure:
     ma = 1.0 if female else 1.07
     ar, lr = P.arm_r, P.leg_r
     fig.arm_r = (4.5 * k * limbs * ma * ar[0], 3.5 * k * limbs * ma * ar[1], 2.5 * k * limbs * ma * ar[2])
-    fig.leg_r = (7.4 * k * limbs * (1.04 if female else 1.0) * lr[0], 4.8 * k * limbs * lr[1], 5.1 * k * limbs * lr[2], 3.3 * k * limbs * lr[3])
+    fig.leg_r = (rt, 4.8 * k * limbs * lr[1], 5.1 * k * limbs * lr[2], 3.3 * k * limbs * lr[3])
     ua = 0.172 * H * b.arms * P.arms
     fa = 0.150 * H * b.arms * P.arms
     hand = 0.104 * H
     ankle_h = 0.045 * H
-    hip_l = 8.4 * k * b.hips * (1.05 if female else 1.0)
     foot = 0.15 * H * P.foot[0]
     j: Dict[str, Vec3] = {
         "waist": (0.0, fig.y_waist, 0.0),

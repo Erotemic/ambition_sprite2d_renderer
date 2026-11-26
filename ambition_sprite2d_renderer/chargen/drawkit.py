@@ -32,6 +32,9 @@ class Part:
     opacity: Optional[str] = None
     opacity_default: Optional[int] = None
     feature: Optional[str] = None
+    # An authored outline behind other articulated parts. Replacing its
+    # parent with hand-drawn art must also remove this generated backing.
+    backing_for: Optional[str] = None
 
 
 @dataclass
@@ -128,6 +131,27 @@ def tube3(ctx: Ctx, pt: Paint, a: Vec3, b: Vec3, r0: float, r1: float, color: st
             pt.flat([capsule_band(A, B, r0, r1, 2.0 * st.rim * min(r0, r1), side="right")], mix(color, "#fffaf0", st.rim_mix))
         elif sheen(ctx, color):
             pt.flat([capsule_band(A, B, r0, r1, 0.16 * min(r0, r1), side="right")], mix(color, "#fffaf0", 0.18))
+
+
+def thigh_radius(ctx: Ctx) -> float:
+    """Projected transverse radius of the oval upper-thigh root.
+
+    The rest leg axis is nearly vertical: use the horizontal support radius
+    of the elliptical cross-section with the existing round joint caps.
+    """
+    return math.hypot(ctx.view.c * ctx.fig.leg_r[0], ctx.view.s * ctx.fig.thigh_depth)
+
+
+def hip_opening(fig: Figure, *, overlap: float = 0.0) -> Margin:
+    """The saddle-shaped bottom of a pelvis panel, above each leg.
+
+    ``overlap`` is a height allowance in cm, not a change to the skeleton.
+    Legwear extends farther than its underlayer to hide its seam.
+    """
+    def margin(a: float, y: float) -> float:
+        lift = 0.07 * fig.T * math.sin(math.radians(a)) ** 2
+        return fig.y_crotch - lift + overlap - y
+    return margin
 
 
 def segment(a: Vec3, b: Vec3, t0: float, t1: float) -> Tuple[Vec3, Vec3]:

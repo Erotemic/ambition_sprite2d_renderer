@@ -326,6 +326,7 @@ def apply(fig: Figure, view: View, canvas: Canvas, parts: Sequence[Part], joints
         groups = ov.cells.get(view.key, [])
     by_name = {p.name: i for i, p in enumerate(parts)}
     out = list(parts)
+    replaced = set()
     for g in groups:
         where = f"overlay {name}, view {view.key}, part {g.part}"
         if g.part not in by_name:
@@ -348,9 +349,12 @@ def apply(fig: Figure, view: View, canvas: Canvas, parts: Sequence[Part], joints
         target = out[i]
         if g.mode == "replace":
             out[i] = replace(target, els=els)
+            replaced.add(target.name)
         else:
             out.append(replace(target, name=f"{target.name}__overlay", z=target.z + 0.01, els=els, label=f"{target.label} (overlay)"))
-    return out
+    # A complete replacement owns the silhouette as well as its foreground
+    # fill. Do not leave a procedurally generated backing under that artwork.
+    return [p for p in out if p.backing_for not in replaced]
 
 
 __all__ = ["FIGURES", "MEASURES", "MODES", "OVERLAYS", "Overlay", "apply", "available", "cell_key", "load", "one_sided", "parse", "parse_d", "path_of"]

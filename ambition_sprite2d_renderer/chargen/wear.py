@@ -28,9 +28,11 @@ from .drawkit import (
     bands,
     between,
     half_of,
+    hip_opening,
     segment,
     shaded_region,
     surface_line,
+    thigh_radius,
     tube3,
     visible,
 )
@@ -184,7 +186,8 @@ def drape_parts(ctx: Ctx, slot: str, feature: str, zmap: Dict[str, float]) -> Li
     fig = ctx.fig
     out = []
     j = fig.joints
-    rt, rk, rc, ra = fig.leg_r
+    _, rk, rc, ra = fig.leg_r
+    rt = thigh_radius(ctx)
     for depth, side, _sgn in SIDES:
         Hp, K, A = j[f"{side}_hip"], j[f"{side}_knee"], j[f"{side}_ankle"]
         pt = ctx.new()
@@ -514,13 +517,17 @@ def legwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         # halves on the legs, so the skirt must cover all of it.
         shaded_region(ctx, pt, shell, y0, fig.y_crotch, col)
     else:
-        def crotch(a: float, y: float) -> float:
-            al = abs(wrap180(a))
-            # Leg holes: the crotch is low at the front and back, high at the sides.
-            lift = 0.07 * T * abs(math.sin(math.radians(al))) ** 0.8
-            return (fig.y_crotch - lift) - y
-
-        shaded_region(ctx, pt, shell, y0, fig.y_crotch, col, crotch)
+        # Ink the pelvis behind the thighs, then paint its fill over their
+        # round hip caps. Overlapping edges cease to look like briefs, while
+        # an exposed edge is still inked when a leg swings out of the way.
+        # Both passes ride the same pelvis bone and wardrobe feature.
+        shell = fig.torso.shell(0.8)
+        opening_margin = hip_opening(fig)
+        backing = ctx.new()
+        backing.region(loft_region(ctx.view, shell, y0, fig.y_crotch, opening_margin), col)
+        out.append(Part("pelvis__legwear_backing", "pelvis", min(zmap["far_leg_l"], zmap["near_leg_l"]) - 0.1,
+                        backing.els, "Legwear - silhouette", feature=feature, backing_for="pelvis__legwear"))
+        shaded_region(ctx, pt, shell, y0, fig.y_crotch, col, opening_margin, ink=False)
         if o.bottom == "trousers" and visible(ctx, 0.0, 0.3):
             for run in surface_line(ctx, shell, [(0.0, fig.y_belt + 0.05 * T), (0.0, fig.y_crotch - 0.02 * T)], out=0.1, thresh=0.3):
                 pt.line(run, shade(col, 0.35), FINE)
@@ -528,7 +535,8 @@ def legwear_parts(ctx: Ctx, zmap: Dict[str, float]) -> List[Part]:
         pt.region(loft_region(ctx.view, shell.shell(0.1), fig.y_belt - 0.03 * T, fig.y_belt + 0.035 * T), shade(col, 0.1), outline=FINE * 0.8)
     out.append(Part("pelvis__legwear", "pelvis", zmap["pelvis"] + LAYER["legwear"], pt.els, "Legwear", feature=feature))
     j = fig.joints
-    rt, rk, rc, ra = fig.leg_r
+    _, rk, rc, ra = fig.leg_r
+    rt = thigh_radius(ctx)
     for depth, side, _sgn in SIDES:
         Hp, K, A = j[f"{side}_hip"], j[f"{side}_knee"], j[f"{side}_ankle"]
         if o.bottom == "trousers" and o.fit == "baggy":
