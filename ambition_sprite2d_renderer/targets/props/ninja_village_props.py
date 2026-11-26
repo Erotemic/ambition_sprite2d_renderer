@@ -664,6 +664,27 @@ def dojo_exam(c, k):
     c.put(c.mask(lambda p: p.ellipse(1490, g - 130, 26, 23)), (228, 212, 172))
 
 
+def dojo_exam_markers(c, k):
+    """Draw the exam notice, threshold, and steps to the beam."""
+    g = DOJO_FLOOR
+    c.put(c.mask(box(502, 344, 710, 406)), TIMBER)
+    c.put(c.mask(box(506, 346, 706, 349)), CEDAR_LIGHT)
+    c.put(c.mask(box(518, 373, 694, 374)), CEDAR)
+    c.put(c.mask(box(640, g - 6, 704, g)), VERMILION)
+    for x in (640, 704):
+        c.put(c.mask(box(x - 2, g - 45, x + 2, g)), CEDAR)
+        c.put(c.mask(box(x - 2, g - 45, x + 2, g - 41)), PAPER)
+    c.put(c.mask(box(422, g - 100, 466, g - 39)), TIMBER)
+    c.put(c.mask(lambda p: p.poly([(429, g - 53), (434, g - 84), (452, g - 84), (460, g - 53)])), PAL["brass"])
+    c.put(c.mask(lambda p: p.line([(444, g - 84), (444, g - 95)], 3)), CEDAR_LIGHT)
+    for left, right in ((912, 1008), (1312, 1392)):
+        for x in (left + 10, right - 10):
+            post(c, x, 448, g, 8, CEDAR)
+        c.put(c.mask(lambda p: p.line([(left + 10, g - 8), (right - 10, 457)], 4)), TIMBER)
+        c.put(c.mask(box(left, 448, right, 458)), CEDAR)
+        walk_edge(c, left, right, 448, CEDAR_LIGHT)
+
+
 #: Every piece: its frame in its room, and how it is drawn.
 PIECES: Dict[str, Piece] = {
     # ninja_village_gate_shrine
@@ -688,6 +709,7 @@ PIECES: Dict[str, Piece] = {
     # ninja_village_dojo
     "village_dojo_entry": Piece((16, 32, 528, 512), dojo_entry),
     "village_dojo_exam": Piece((528, 32, 1584, 512), dojo_exam),
+    "village_dojo_exam_markers": Piece((408, 336, 1400, 512), dojo_exam_markers),
 }
 
 TARGETS = targets(PIECES, PAL)
