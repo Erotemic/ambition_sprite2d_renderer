@@ -10,14 +10,9 @@ hood. The hood of the king cobra is long and narrow, not round like the
 hood of other cobras. The people of Angkor carved the naga, a great snake
 with a spread hood, on the walls and the bridges of their temples.
 
-It slithers on the ground with its head low. When it sees you it rears up
-and spreads its hood (the notice row). Its windup draws its head back and
-it sways; its strike throws the head forward and down with the mouth open,
-and the mouth shuts at the end. A hit makes it pull its head back. At its
-death it falls out of its rear and lies flat, and it fades.
-
-The frame is 128 by 128 px: the body box is 48 by 48 world units, and the
-cobra faces right.
+It rests in a coil with its hood partly open. When it notices a target, it
+rises and spreads the hood. It folds its neck back to wind up, strikes with
+open jaws, and draws back into the coil.
 """
 
 from __future__ import annotations
@@ -26,41 +21,48 @@ import math
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
+from ...authoring.sheet_build import build_sheet
+from ...core.measure import body_metrics_for_box
 from . import _art_cast_kit as K
 from . import _history_africa_kit as H
 
 TARGET_NAME = "king_cobra"
-FRAME_SIZE = (128, 128)
-ROWS = K.ENEMY_ROWS
-#: Nothing is drawn nearer the edge of the frame than this.
+FRAME_SIZE = (160, 144)
+WINDUP_S, ACTIVE_S, RECOVERY_S = .55, .15, .60
+TOTAL_S = WINDUP_S + ACTIVE_S + RECOVERY_S
+ROWS = [("idle", 8, 120), ("walk", 12, 75), ("notice", 8, 85),
+        ("windup", 8, 85), ("attack_side", 26, 50), ("hit", 6, 70), ("death", 12, 90)]
 MARGIN = 6.0
-GROUND = 120.0
+GROUND = 132.0
+# The body is the resting coil and raised neck. The tail, open hood, and
+# extended jaws do not change the scale of the same creature.
+BODY_BOX = (30, 37, 108, int(GROUND)+1)
 
 ACTOR_METADATA = K.enemy_metadata(
     TARGET_NAME, "King Cobra", "Serpentine", "Standard", "Medium", "Walk", ["snake", "cobra", "hood", "strike"],
     "The king cobra of the History dimension's room of Angkor: a long olive-brown snake with pale cross-bands, a large "
-    "round head and a long narrow hood. It slithers low on the ground. When it sees you it rears up high and spreads "
-    "its hood, draws its head back, and strikes forward and down with its mouth open.",
+    "head and a long hood with a pale barred throat. It rests in a coil with the hood partly open. It spreads the hood "
+    "and draws its head back before it bites.",
 )
 ACTOR_METADATA["tags"] = ["enemy", "history", "angkor"]
 
-HIDE = (112, 100, 58, 255)
-HIDE_SHADE = (80, 70, 40, 255)
-HIDE_LIGHT = (148, 134, 84, 255)
-TAIL = (64, 56, 36, 255)
-BAND = (214, 204, 150, 255)
-BELLY = (226, 208, 146, 255)
-THROAT_BAR = (92, 78, 44, 255)
-MOUTH = (204, 120, 116, 255)
+HIDE = (91, 104, 60, 255)
+HIDE_SHADE = (51, 63, 46, 255)
+HIDE_LIGHT = (151, 154, 94, 255)
+TAIL = (47, 52, 38, 255)
+BAND = (207, 185, 112, 255)
+BELLY = (243, 216, 140, 255)
+THROAT_BAR = (84, 67, 44, 255)
+MOUTH = (150, 63, 63, 255)
 FANG = (246, 240, 220, 255)
 TONGUE = (40, 30, 32, 255)
 EYE = (40, 28, 18, 255)
 DUST = (196, 176, 140, 255)
 
 #: The width of the body at its thickest, in px.
-BODY_W = 12.0
+BODY_W = 13.0
 #: The scale of the head. The head of a king cobra is large.
-HEAD = 1.2
+HEAD = 1.39
 
 Point = Tuple[float, float]
 
@@ -68,16 +70,14 @@ Point = Tuple[float, float]
 # head. Each pose has the same number of points, so that a row can go from
 # one pose to the next. The last number is the angle of the head (degrees,
 # down is plus).
-FLAT_ON_GROUND = ([(12.0, 114.0), (21.0, 113.5), (29.0, 113.5), (39.0, 113.5), (49.0, 113.5), (59.0, 113.5), (67.0, 113.5), (74.0, 113.0),
-                   (80.0, 111.5), (85.0, 109.5), (89.0, 107.5), (92.0, 106.5)], -4.0)
-REARED = ([(14.0, 114.5), (25.0, 114.0), (36.0, 114.0), (46.0, 113.5), (55.0, 112.0), (62.0, 107.0), (65.0, 97.0), (64.0, 84.0), (61.0, 70.0),
-           (61.0, 56.0), (64.0, 45.0), (70.0, 38.0)], 6.0)
-STRIKE = ([(14.0, 114.5), (25.0, 114.0), (36.0, 114.0), (46.0, 113.5), (55.0, 112.0), (63.0, 108.0), (70.0, 102.0), (77.0, 96.0), (84.0, 91.0),
-           (90.0, 88.0), (95.0, 86.5), (100.0, 86.0)], 18.0)
-RECOIL = ([(14.0, 114.5), (25.0, 114.0), (36.0, 114.0), (46.0, 113.5), (53.0, 112.0), (57.0, 106.0), (57.0, 96.0), (53.0, 84.0), (50.0, 72.0),
-           (50.0, 60.0), (53.0, 51.0), (58.0, 46.0)], -24.0)
-DEAD = ([(11.0, 114.5), (21.0, 114.5), (31.0, 114.5), (41.0, 114.5), (50.0, 114.5), (59.0, 114.5), (67.0, 114.5), (74.0, 114.5), (80.0, 114.5),
-         (85.0, 114.5), (89.0, 114.8), (92.0, 115.0)], 4.0)
+COIL = [(24,118), (37,111), (57,111), (78,113), (96,119), (92,124), (70,125), (52,123), (48,116)]
+READY = (COIL + [(57,104), (65,89), (64,73), (59,60), (62,48), (70,41)], 2.0)
+REARED = (COIL + [(55,101), (66,85), (65,67), (62,52), (64,39), (69,31)], 5.0)
+RECOIL = (COIL + [(54,101), (62,85), (57,67), (51,54), (55,41), (62,35)], -13.0)
+CRUISE = ([(10,118),(23,121),(35,118),(49,111),(69,111),(85,119),(75,125),(62,123),(55,114),
+           (59,102),(72,92),(82,81),(88,70),(95,63),(103,62)], 8.0)
+STRIKE = (COIL + [(62,111), (76,102), (88,86), (101,71), (114,63), (127,67)], 19.0)
+DEAD = (COIL + [(56,115), (65,119), (76,124), (91,125), (104,125), (116,125)], 2.0)
 
 
 def _blend(a, b, k: float):
@@ -153,54 +153,50 @@ def _render_frame(anim: str, i: int, n: int):
     t = K.phase(i, n, anim in K.LOOPS)
     cyc = math.tau * t
     f = K.Frame(FRAME_SIZE)
-    pose = FLAT_ON_GROUND
-    hood, gape, tongue, eyes, alarm = 0.0, 0.0, 0.0, "open", False
-    hump, sway, fade, snap, speed, sink = 0.0, 0.0, 1.0, False, 0.0, 0.0
+    pose = READY
+    hood, gape, tongue, eyes = .72, 0.0, 0.0, "open"
+    hump, sway, fade, snap, speed = 0.0, 0.0, 1.0, False, 0.0
     if anim == "idle":
-        # It lies low and still; its head bobs and its tongue flicks.
-        pts, ang = FLAT_ON_GROUND
-        pose = ([(x, y - (0.8 * math.sin(cyc) if k >= 9 else 0.0)) for k, (x, y) in enumerate(pts)], ang + 2.0 * math.sin(cyc))
-        tongue = 1.0 if i in (2, 3) else 0.0
-        eyes = "open"
+        sway = math.sin(cyc)*.65
+        hood += .03*math.sin(cyc)
+        tongue = 1.0 if i in (4,5) else 0.0
     elif anim == "walk":
-        # It slithers: a wave goes back along the body from the head to the tail.
+        pose = CRUISE
+        hood = .43
         hump = 1.0
-        pts, ang = FLAT_ON_GROUND
-        pose = ([(x, y - (0.8 * math.sin(cyc * 2.0) if k >= 10 else 0.0)) for k, (x, y) in enumerate(pts)], ang)
-        tongue = 1.0 if i in (5,) else 0.0
+        sway = .65*math.sin(2*cyc)
     elif anim == "notice":
-        # It rears up and its hood spreads.
-        k = _smooth(min(1.0, t * 1.35))
-        pose = _blend(FLAT_ON_GROUND, REARED, k)
-        hood, eyes, alarm = k, "wide", True
-        tongue = 1.0 if i in (2, 3) else 0.0
+        # The held notice pose rises and breathes without folding its hood.
+        pose = _blend(READY, REARED, .86+.13*math.sin(cyc))
+        hood, eyes = .96+.04*math.sin(cyc), "wide"
+        tongue = 1.0 if i in (3,4) else 0.0
     elif anim == "windup":
-        # The head goes back and the reared body sways.
-        pose = _blend(REARED, RECOIL, 0.35 + 0.12 * math.sin(cyc))
-        hood, eyes, gape = 1.0, "narrow", 10.0 + 4.0 * math.sin(cyc)
-        sway = math.sin(cyc)
+        pose = _blend(REARED, RECOIL, .84+.1*math.sin(cyc))
+        hood, eyes, gape = 1.0, "narrow", 10.0+2.0*math.sin(cyc)
     elif anim == "attack_side":
-        # The strike: the head goes back (0), forward and down with the mouth
-        # open (1..2), the mouth shuts (3), and the head comes back up (4..5).
-        k = [0.45, 0.5, 1.0, 1.0, 0.55, 0.15][i]
-        pose = _blend(REARED, RECOIL, k) if i == 0 else _blend(REARED, STRIKE, k)
-        gape = [12.0, 30.0, 34.0, 0.0, 0.0, 4.0][i]
-        hood, eyes = [1.0, 0.9, 0.8, 0.8, 0.9, 1.0][i], "narrow"
-        snap, speed = i == 3, [0.0, 0.6, 1.0, 0.7, 0.3, 0.0][i]
+        time = t*TOTAL_S
+        finish = WINDUP_S+ACTIVE_S
+        extension = _smooth((time-WINDUP_S)/.085)*(1-_smooth((time-finish)/.29))
+        draw_back = _smooth(time/WINDUP_S)*(1-_smooth((time-.82)/.43))
+        pose = _blend(_blend(READY, RECOIL, .84*draw_back), STRIKE, extension)
+        close = _smooth((time-.67)/.075)
+        gape = (10*draw_back + 34*extension)*(1-close)
+        hood, eyes = .72+.28*draw_back-.17*extension, "narrow"
+        snap, speed = .69 < time < .76, extension
     elif anim == "hit":
         k = math.sin(math.pi * (i + 1) / (n + 1))
-        pose = _blend(REARED, RECOIL, k)
-        hood, eyes, gape = 1.0 - 0.5 * k, "shut", 10.0 * k
+        pose = _blend(READY, RECOIL, k)
+        hood, eyes, gape = .76-.25*k, "shut", 11.0*k
     elif anim == "death":
         sink = _smooth(min(1.0, t * 1.4))
-        pose = _blend(REARED, DEAD, sink)
+        pose = _blend(READY, DEAD, sink)
         hood, eyes, gape = 1.0 - sink, "shut", 8.0 * sink
         fade = 1.0 - max(0.0, t - 0.7) / 0.3
 
     ctrl, head_angle = pose
     if sway:
         # The sway moves the reared neck, more at the top than at the bottom.
-        ctrl = [(x + sway * 2.0 * max(0.0, (k - 6) / 5.0), y) for k, (x, y) in enumerate(ctrl)]
+        ctrl = [(x + sway*2.6*max(0.0,(k-8)/6.0), y) for k, (x,y) in enumerate(ctrl)]
     pts = _spine(ctrl)
     total = len(pts) - 1
     if hump:
@@ -246,31 +242,34 @@ def _render_frame(anim: str, i: int, n: int):
     # The back half is olive with a dark edge; the front half is the pale
     # throat with two dark bars across it.
     if hood > 0.05:
-        a, b = total - 36, total
+        a, b = max(0,total-52), total-2
         back, front = [], []
         for k in range(a, b + 1):
             u = (k - a) / float(b - a)
-            # Widest a little above its middle, and still wide beside the
-            # back of the head.
-            shape = _smooth(u / 0.55) if u < 0.55 else 1.0 - 0.5 * _smooth((u - 0.55) / 0.45)
-            hw = widths[k] * 0.5 + hood * 8.0 * shape
+            # The flare has long sides and rounded shoulders below the head.
+            shape = _smooth(u/.52) if u < .52 else 1.0-.66*_smooth((u-.70)/.30)
+            hw = widths[k]*.5 + hood*18.5*shape
             (x, y), (nx, ny) = pts[k], nrm[k]
-            back.append((x - nx * hw, y - ny * hw))
-            front.append((x + nx * hw, y + ny * hw))
+            back.append((x-nx*hw*.92,y-ny*hw*.92))
+            front.append((x+nx*hw*1.20,y+ny*hw*1.20))
         mid = pts[a:b + 1]
         f.poly(back + front[::-1], HIDE)
-        # The dark edge of the back half, and the pale chevron in it.
-        rim = [((px * 0.3 + bx * 0.7), (py * 0.3 + by * 0.7)) for (px, py), (bx, by) in zip(mid, back)]
-        f.poly(back + rim[::-1], HIDE_SHADE, body=False)
-        if hood > 0.4:
-            chevron = [((px * 0.55 + bx * 0.45), (py * 0.55 + by * 0.45)) for (px, py), (bx, by) in zip(mid, back)]
-            f.ink(chevron[4:-6], 1.2, BAND)
-        throat = [((px * 0.15 + fx * 0.85), (py * 0.15 + fy * 0.85)) for (px, py), (fx, fy) in zip(mid, front)]
-        f.poly(mid + throat[::-1], BELLY, body=False)
-        if hood > 0.4:
-            for u in (0.3, 0.55):
-                k = int(u * (b - a))
-                f.ink([mid[k], throat[k]], 2.0, THROAT_BAR)
+        def panel(edge, fraction):
+            return [(x+(ex-x)*fraction,y+(ey-y)*fraction) for (x,y),(ex,ey) in zip(mid,edge)]
+        f.poly(back + panel(back,.72)[::-1],HIDE_SHADE,body=False)
+        f.ink(panel(back,.63)[7:-3],1.4,BAND)
+        far_throat, near_throat = panel(back,.16), panel(front,.85)
+        f.poly(far_throat + near_throat[::-1], BELLY, body=False)
+        f.poly(panel(front,.49) + near_throat[::-1], _mix(BELLY, BAND, .62), body=False)
+        f.ink(panel(front,.93)[8:-3],1.3,HIDE_LIGHT)
+        if hood > .32:
+            for u in (.34,.52,.70):
+                k = int(u*(b-a))
+                bend = mid[min(k+3,len(mid)-1)]
+                f.ink([far_throat[k],bend,near_throat[k]],2.35,THROAT_BAR)
+            # Short belly scutes continue toward the jaw.
+            for k in range(int((b-a)*.76),b-a,4):
+                f.ink([mid[k],near_throat[k]],.8,BAND)
     else:
         # The throat is pale when the hood is shut.
         _strip(f, pts, nrm, widths, 0.25, 0.4, BELLY, False, start=total - 22)
@@ -298,16 +297,17 @@ def _render_frame(anim: str, i: int, n: int):
     f.ink(D([(1.0, 1.7), (14.6, 1.7)]), 0.7, HIDE_SHADE)
     if gape > 8.0:
         # The fangs are short, at the front of the upper jaw.
-        for x in (11.0, 12.6):
-            f.poly(D([(x - 0.6, 1.6), (x + 0.6, 1.6), (x, 3.6)]), FANG, body=False)
+        for x in (10.5,13.0):
+            f.poly(D([(x-1.0,1.5),(x+.6,1.5),(x+.1,4.7),(x-.8,5.5)]), FANG, body=False)
     f.dot(*D([(13.8, -1.0)])[0], 0.6, EYE)
     ex, ey = D([(9.0, -1.8)])[0]
     if eyes == "shut":
         f.ink([(ex - 1.8, ey), (ex + 1.8, ey + 0.3)], 1.0, EYE)
     else:
         r = 1.9 if eyes == "wide" else (1.4 if eyes == "narrow" else 1.6)
-        f.ellipse(ex, ey, r, r, EYE, body=False)
-        f.dot(ex - 0.5, ey - 0.5, 0.45, (240, 230, 200, 255))
+        f.ellipse(ex, ey, r+.65, r+.4, (220,174,66,255), body=False)
+        f.dot(ex+.35,ey,.9,EYE)
+        f.dot(ex-.5,ey-.65,.45,(250,235,189,255))
         if eyes == "narrow":
             f.ink(D([(7.0, -4.0), (11.6, -2.8)]), 1.1, HIDE_SHADE)
     if tongue:
@@ -328,13 +328,15 @@ def _render_frame(anim: str, i: int, n: int):
             f.ink([(bx + 1.5, by + k * 4.0), (min(FRAME_SIZE[0] - MARGIN - 1.0, bx + 6.0), by + k * 6.5)], 1.3, K.alpha(K.WHITE, 0.95))
     if anim == "death" and t > 0.3:
         H.dust(f, 60.0, GROUND - 1.0, min(1.0, (t - 0.3) * 2.0), f"king cobra death {i}", spread=1.4, colour=DUST)
-    if alarm:
-        H.alarm_mark(f, min(FRAME_SIZE[0] - MARGIN - 4.0, hx + 24.0), MARGIN + 13.0)
     return f.finish(outline=H.SEPIA_INK, width=1.7, fade=fade)
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
-    return K.render_target(TARGET_NAME, ROWS, _render_frame, FRAME_SIZE, ACTOR_METADATA, out_dir, **opts)
+    outputs = build_sheet(target=TARGET_NAME, rows=ROWS, render_fn=_render_frame, out_dir=Path(out_dir),
+                          frame_size=opts.get("frame_size", FRAME_SIZE), auto_crop=False, actor_metadata=ACTOR_METADATA,
+                          body_metrics_fn=lambda width,height: body_metrics_for_box(BODY_BOX,width,height),
+                          pose_bodies="authored", animation_key_map={name:name for name,_,_ in ROWS})
+    return [outputs[key] for key in ("spritesheet", "yaml", "ron", "actor", "preview", "canonical", "canonical_transparent")]
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}

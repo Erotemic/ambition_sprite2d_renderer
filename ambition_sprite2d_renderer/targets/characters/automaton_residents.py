@@ -8,10 +8,9 @@ and die as he breathes (a blinker steps through them at rest). His head is a
 cube with a visor and two cyan eyes; an antenna with a cell on it.
 
 **The Head**, of the Tape Room: the read/write head of the Busy Beaver's
-machine. A carriage on four small wheels with a round lens in front that
-reads the cell under it, a stamp under the lens that writes, and on its back
-a row of five state lamps (A to E), one lit: the state it is in. It wears
-the Busy Beaver's colours, lime and purple.
+machine. Its lens reads the cell and its stamp writes it. Five lamps on
+the top of the carriage show the current state. Violet enamel and lime
+indicators match the Busy Beaver's colours.
 
 Rows: ``idle``, ``talk``, ``hit`` and ``death`` (it sits, or stops, and its
 lights go out). Nothing here is writing.
@@ -39,14 +38,16 @@ AMBER = (255, 184, 70, 255)
 VISOR = (14, 16, 34, 255)
 
 # The Head.
-BODY = (96, 84, 130, 255)
-BODY_LIGHT = (140, 126, 178, 255)
-TRIM = (108, 75, 176, 255)
-LIME = (184, 240, 60, 255)
-LIME_OFF = (60, 70, 50, 255)
-LENS = (150, 230, 240, 255)
-STEEL = (70, 72, 84, 255)
-INK = (24, 22, 30, 255)
+BODY = (111, 67, 153, 255)
+BODY_LIGHT = (176, 126, 209, 255)
+BODY_DARK = (61, 37, 99, 255)
+TRIM = (219, 164, 96, 255)
+ENAMEL = (240, 224, 178, 255)
+LIME = (197, 247, 96, 255)
+LIME_OFF = (69, 86, 66, 255)
+LENS = (137, 232, 215, 255)
+STEEL = (101, 103, 134, 255)
+INK = (30, 21, 45, 255)
 
 
 # ---------------------------------------------------------------------------
@@ -141,69 +142,125 @@ def _moore(anim: str, i: int, n: int):
 # The Head
 # ---------------------------------------------------------------------------
 
-HEAD_FRAME = (96, 96)
+HEAD_FRAME = (160, 126)
+HEAD_GROUND = 116.0
+STATE_LETTERS = (
+    ("010", "101", "111", "101"),
+    ("110", "101", "110", "111"),
+    ("011", "100", "100", "011"),
+    ("110", "101", "101", "110"),
+    ("111", "110", "100", "111"),
+)
+
+
+def _block_letter(f, turn, x, y, pixels, colour, unit):
+    for row, line in enumerate(pixels):
+        for column, pixel in enumerate(line):
+            if pixel == "1":
+                a, b = x + column*unit, y + row*unit
+                f.poly(turn([(a,b), (a+unit,b), (a+unit,b+unit), (a,b+unit)]), colour, body=False)
 
 
 def _head(anim: str, i: int, n: int):
     t = K.phase(i, n, anim in LOOPS)
     cyc = math.tau * t
     f = K.Frame(HEAD_FRAME)
-    ground = 92.0
-    cx = 46.0
-    bob, tilt, lights, stamp, state = 0.0, 0.0, 1.0, 0.0, i % 5
-    look = 0.0
+    bob, tilt, lights, stamp, state = 0.0, 0.0, 1.0, 0.0, 2
+    look = 2.8 * math.sin(cyc)
     if anim == "idle":
-        look = 2.0 * math.sin(cyc)
-        bob = 0.5 * math.sin(cyc * 2.0)
+        bob = 0.65 * math.sin(cyc)
     elif anim == "talk":
-        stamp = abs(math.sin(cyc * 1.5))
-        state = (i // 2) % 5
+        stamp = max(0.0, math.sin(cyc - .7))**2
+        look = -2.6*stamp
+        state = 3 if i >= n//2 else 2
     elif anim == "hit":
-        tilt = -10.0
-        state = -1 if i % 2 else 2
+        tilt = -9.0 * math.sin(math.pi * (i+1)/(n+1))
+        lights = .18 if i == 1 else .75
+        look = -3.8
     elif anim == "death":
-        tilt = 6.0 * min(1.0, t * 2.0)
-        lights = max(0.0, 1.0 - t * 1.4)
+        tilt = 7.0 * min(1.0, t * 2.0)
+        bob = 3.0*t
+        lights = max(0.0, 1.0 - t * 1.6)
         state = 4
-    base = ground - 10.0 + bob
 
     def turn(pts):
-        return K.turn(pts, cx, ground, tilt)
+        return K.turn([(x, y+bob) for x, y in pts], 80.0, 97.0, tilt)
 
-    # The wheels and the axle frame.
-    for wx in (cx - 22.0, cx - 8.0, cx + 8.0, cx + 22.0):
-        f.ellipse(*turn([(wx, ground - 5.0)])[0], 5.0, 5.0, STEEL)
-        f.dot(*turn([(wx, ground - 5.0)])[0], 1.4, BODY_LIGHT)
-    f.poly(turn([(cx - 28.0, base - 2.0), (cx + 28.0, base - 2.0), (cx + 28.0, base + 2.0), (cx - 28.0, base + 2.0)]), TRIM)
-    # The carriage: a box with a sloped front.
-    box = [(cx - 26.0, base - 40.0), (cx + 16.0, base - 40.0), (cx + 28.0, base - 28.0), (cx + 28.0, base - 2.0), (cx - 26.0, base - 2.0)]
-    f.poly(turn(box), BODY)
-    f.poly(turn([(cx - 26.0, base - 40.0), (cx + 16.0, base - 40.0), (cx + 14.0, base - 35.0), (cx - 24.0, base - 35.0)]), BODY_LIGHT, body=False)
-    # Purple trim on the corners, rivets.
-    for x, y in ((cx - 22.0, base - 6.0), (cx - 22.0, base - 32.0), (cx + 22.0, base - 6.0)):
-        f.dot(*turn([(x, y)])[0], 1.3, TRIM)
-    # The state lamps on its back: five, one lit.
+    def panel(pts, colour, body=True):
+        f.poly(turn(pts), colour, body=body)
+
+    def rim(x, y, rx, ry, colour, body=True):
+        f.poly(turn(K.ellipse_points(x,y,rx,ry)), colour, body=body)
+
+    def seam(pts, w, colour):
+        f.ink(turn(pts), w, colour)
+
+    # Flanged wheels share the axle. Only the sprung chassis rocks.
+    for x, inset, r in [(56,11,7), (106,11,7), (43,8,8), (100,8,8)]:
+        y = HEAD_GROUND-inset
+        f.ellipse(x,y,r+2,r,INK)
+        f.ellipse(x,y,r-1,r-2,STEEL,body=False)
+        f.ellipse(x,y,r-4,r-4,TRIM,body=False)
+        f.ink([(x-2,y),(x+2,y)],1.3,INK)
+    panel([(31,89),(112,88),(126,93),(123,102),(37,104),(30,100)], BODY_DARK)
+    panel([(34,97),(109,96),(105,101),(39,102)],TRIM,False)
+
+    # Separate the enamel shell, side plate, and forward lens carriage.
+    panel([(29,54),(44,43),(100,43),(115,51),(119,82),(105,96),(35,96),(26,87)], BODY)
+    panel([(29,54),(44,43),(100,43),(115,51),(108,61),(35,62),(26,68)], ENAMEL,False)
+    panel([(43,45),(100,45),(109,51),(35,55)], (255,242,202,255),False)
+    panel([(26,77),(35,86),(109,86),(113,92),(106,97),(35,97),(26,87)],BODY_DARK,False)
+    panel([(32,63),(40,61),(92,61),(101,66),(98,86),(40,86),(32,78)],BODY_DARK,False)
+    seam([(35,63),(92,63),(98,67)],1.4,TRIM)
+
+    # Behind the glass, the punched tape advances one cell.
+    panel([(39,66),(85,66),(90,70),(88,80),(39,80)],INK,False)
+    phase_shift = 2.0 * stamp
     for k in range(5):
-        lx, ly = turn([(cx - 20.0 + k * 7.0, base - 46.0)])[0]
-        on = k == state and lights > 0.0
-        f.ellipse(lx, ly, 2.6, 2.6, LIME if on else LIME_OFF)
+        x = 42 + 9*k - phase_shift
+        if k == 2:
+            panel([(x-1,68),(x+7,68),(x+7,78),(x-1,78)],LIME_OFF,False)
+        number = ((k + state) % 2) if k != 2 else int(stamp > .48 or state == 3)
+        pattern = ("010", "110", "010", "111") if number else ("111", "101", "101", "111")
+        _block_letter(f, turn, x, 69, pattern, K.shade(LIME if k == 2 else ENAMEL, .38+.62*lights), 1.8)
+    for x, y in [(37,60),(38,87),(92,62),(96,85)]:
+        rim(x,y,1.5,1.5,TRIM,False)
+        seam([(x-.8,y),(x+.8,y)],.65,INK)
+
+    # Five labelled cells. One recess glows to show the current state.
+    panel([(36,46),(44,33),(99,33),(106,44),(101,53),(43,53)],BODY_DARK)
+    panel([(39,45),(46,35),(98,35),(103,43),(99,49),(43,49)],STEEL,False)
+    for k in range(5):
+        x = 45 + k*10.5
+        on = lights if k == state else 0.0
+        panel([(x,38),(x+8,38),(x+8,47),(x,47)],K.shade(LIME, .28+.72*on),False)
+        _block_letter(f, turn, x+1.7, 39.6, STATE_LETTERS[k], INK if on>.55 else ENAMEL, 1.55)
         if on:
-            f.glow(lx, ly, 6.0, K.alpha(LIME, 0.6 * lights))
-    f.poly(turn([(cx - 24.0, base - 42.0), (cx + 12.0, base - 42.0), (cx + 12.0, base - 40.0), (cx - 24.0, base - 40.0)]), TRIM)
-    # The lens that reads, in front, looking about.
-    lx, ly = turn([(cx + 16.0, base - 20.0)])[0]
-    f.ellipse(lx, ly, 10.0, 10.0, STEEL)
-    f.ellipse(lx, ly, 7.5, 7.5, INK, body=False)
-    if lights > 0.0:
-        f.ellipse(lx + look, ly, 4.5, 4.5, LENS, body=False)
-        f.dot(lx + look + 1.5, ly - 1.5, 1.2, (240, 255, 255, 255))
-        f.glow(lx + look, ly, 9.0, K.alpha(LENS, 0.35 * lights))
-    # The stamp that writes, under the lens.
-    sx, sy = turn([(cx + 6.0, base)])[0]
-    drop = 6.0 * stamp
-    f.limb([(sx, sy - 2.0), (sx, sy + 2.0 + drop)], 2.2, STEEL)
-    f.poly([(sx - 4.0, sy + 2.0 + drop), (sx + 4.0, sy + 2.0 + drop), (sx + 4.0, sy + 5.0 + drop), (sx - 4.0, sy + 5.0 + drop)], LIME if lights > 0.0 else LIME_OFF)
-    return f.finish(outline=K.shade(INK, 1.0), width=1.3, glow_blur=2.0)
+            f.glow(*turn([(x+4,42)])[0],8.5,K.alpha(LIME,.44*on))
+
+    # The right-hand lens swivels in a bronze gimbal above the stamp.
+    height = 68.0 + .45*look
+    panel([(100,53),(117,49),(128,53),(129,83),(119,92),(104,85)],BODY_DARK)
+    rim(119, height, 19, 20, INK)
+    rim(121, height, 16, 17, TRIM,False)
+    rim(122, height, 12.8, 14, INK,False)
+    rim(123, height, 11, 12, K.shade(LENS,.28+.45*lights),False)
+    rim(124+look, height+1.8*stamp, 6.2, 8.8, K.shade(LENS,.22+.78*lights),False)
+    if lights:
+        rim(126+look,height+2*stamp,2.8,5,INK,False)
+        rim(124+look,height-4,2.4,2.1,ENAMEL,False)
+        f.glow(*turn([(124+look,height)])[0],13,K.alpha(LENS,.5*lights))
+    seam([(105,57),(109,53),(115,50)],1.8,ENAMEL)
+
+    drop=8*stamp
+    panel([(117,84),(131,84),(134,92),(132,96),(118,96),(115,91)],STEEL)
+    panel([(120,93),(128,93),(130,101+drop),(120,101+drop)],ENAMEL)
+    seam([(123,94),(124,101+drop)],2.0,INK)
+    panel([(116,101+drop),(132,101+drop),(134,105+drop),(117,106+drop)],BODY_DARK)
+    seam([(118,104+drop),(131,104+drop)],1.5,K.shade(LIME,.28+.72*lights))
+    if stamp>.6:
+        f.glow(*turn([(125,104+drop)])[0],6,K.alpha(LIME,.55*stamp))
+    return f.finish(outline=INK, width=1.55, glow_blur=2.2)
 
 
 # ---------------------------------------------------------------------------
@@ -231,7 +288,7 @@ TARGETS = {
     "automaton_head": _target(
         "automaton_head", "npc_automaton_head", "The Head", HEAD_FRAME, _head, "Wheeled",
         ["automaton", "turing_machine", "tape"],
-        "The read/write head of the Busy Beaver's machine: a violet carriage on four wheels, a lens in front that reads, "
-        "a stamp under it that writes, and five state lamps on its back, one lit lime.",
+        "The read/write head of the Busy Beaver's machine. Its lens scans the tape. Its piston lowers the stamp, and "
+        "the tape cell and state lamp change after it writes.",
     ),
 }
