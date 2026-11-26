@@ -265,9 +265,11 @@ def cmd_character(args) -> int:
     for view in views:
         print(f"{view['name']} [{view['lineage']}] — found via {view['found_via']}")
         print(f"  targets: {', '.join(view['targets'])} (current: {', '.join(view['current_targets']) or 'none'})")
-        catalog = sorted({row for t in view["targets"] for row in join.target_rows.get(t, [])})
+        catalog = {row for target in view["targets"] for row in join.target_rows.get(target, [])}
+        if view["character_id"]:
+            catalog.add(view["character_id"])
         if catalog:
-            print(f"  catalog: {', '.join(catalog)}")
+            print(f"  catalog: {', '.join(sorted(catalog))}")
         for era in view["eras"]:
             date = era.get("date", "")[:10]
             print(f"  - {date or '?':10s} {era['commit']:12s} {era.get('target') or '/'.join(era['ids'])}: {era['label']}")

@@ -214,6 +214,7 @@ class Join:
     rows: dict[str, CatalogRow]             # catalog id -> row
     row_targets: dict[str, list[str]]       # catalog id -> targets that draw it
     target_rows: dict[str, list[str]]       # target -> catalog ids
+    titled_by: dict[str, list[str]]        # catalog id -> lineages named by it
 
     def find(self, name: str) -> list[tuple[str, str]]:
         """The lineages of `name` (a lineage, a target or a catalog id), each
@@ -226,6 +227,8 @@ class Join:
 
         if name in self.lineages:
             add(name, "lineage name")
+        for lineage in self.titled_by.get(name, []):
+            add(lineage, f"catalog {name}")
         for lineage in self.targets.get(name, []):
             add(lineage, f"target {name}")
         for target in self.row_targets.get(name, []):
@@ -256,7 +259,11 @@ def join(lineages: dict, repo: Path | None = None) -> Join:
     for ident, targets in row_targets.items():
         for target in targets:
             target_rows.setdefault(target, []).append(ident)
-    return Join(lineages, by_target(lineages), rows, row_targets, target_rows)
+    titled_by: dict[str, list[str]] = {}
+    for name, spec in lineages.items():
+        if ident := spec.get("character_id"):
+            titled_by.setdefault(ident, []).append(name)
+    return Join(lineages, by_target(lineages), rows, row_targets, target_rows, titled_by)
 
 
 def versioned_pairs(targets: set[str]) -> list[tuple[str, str]]:
