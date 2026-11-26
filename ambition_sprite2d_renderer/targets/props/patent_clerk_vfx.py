@@ -293,7 +293,6 @@ def render(out_dir: str | Path, **opts):
         target_name=TARGET_NAME,
         display_name="Patent Clerk Detached VFX",
         character_context_id="special_patent_clerk",
-        character_context_display="Patent Clerk",
         rows=ROWS,
         drawers=DRAWERS,
         specs=SPECS,

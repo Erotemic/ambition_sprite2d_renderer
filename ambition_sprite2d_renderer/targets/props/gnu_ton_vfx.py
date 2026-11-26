@@ -156,7 +156,6 @@ def render(out_dir: str | Path, **opts):
         target_name=TARGET_NAME,
         display_name="GNU-ton Detached VFX",
         character_context_id="npc_gnu_ton",
-        character_context_display="GNU-ton",
         rows=ROWS,
         drawers=DRAWERS,
         specs=SPECS,

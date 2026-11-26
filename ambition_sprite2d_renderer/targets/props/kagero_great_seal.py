@@ -235,7 +235,6 @@ def render(out_dir: str | Path, **opts):
         target_name=TARGET_NAME,
         display_name="Kagero's great seal VFX",
         character_context_id="npc_ninja_kagero",
-        character_context_display="Kagero",
         rows=ROWS,
         drawers=DRAWERS,
         specs=SPECS,

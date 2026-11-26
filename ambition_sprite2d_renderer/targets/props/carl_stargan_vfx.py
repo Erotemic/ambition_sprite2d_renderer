@@ -290,7 +290,6 @@ def render(out_dir: str | Path, **opts):
         target_name=TARGET_NAME,
         display_name="Carl Stargan Detached VFX",
         character_context_id="npc_carl_stargan",
-        character_context_display="Carl Stargan",
         rows=ROWS,
         drawers=DRAWERS,
         specs=SPECS,
