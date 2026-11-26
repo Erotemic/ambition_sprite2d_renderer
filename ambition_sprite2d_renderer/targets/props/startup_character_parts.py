@@ -39,7 +39,7 @@ def render(out_dir, **_opts):
     pad_x, pad_y, _, _ = robot.PUBLISH_PADDING
     return _publish(
         out_dir, "director_closeup", director._doc().rows(), director._raw_frame,
-        {"idle", "talk", "interact", "item_hold"}, (director_feet["x"], director_feet["y"]),
+        {"idle", "talk", "receive_low", "item_hold"}, (director_feet["x"], director_feet["y"]),
         texel_scale=16,
     ) + _publish(
         out_dir, "player_robot_v3_closeup", robot.ROWS, robot.render_frame,
