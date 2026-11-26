@@ -705,10 +705,44 @@ def manifest_page(c, k):
 
 
 #: Every piece: its frame in its room, and how it is drawn.
+def plaza_loading_walk(c, k):
+    """Draw the hoist guides and the loading walk to the balcony."""
+    for x in (681, 785):
+        c.put(c.mask(box(x, 351, x + 7, PLAZA_FLOOR)), TIMBER)
+        c.put(c.mask(box(x - 3, 687, x + 10, PLAZA_FLOOR)), PLANK_DARK)
+        for y in (383, 481, 577, 635):
+            c.put(c.mask(box(x - 1, y, x + 8, y + 3)), ROPE)
+    c.put(c.mask(box(670, 346, 803, 356)), TIMBER)
+    for x in (710, 768):
+        c.put(c.mask(lambda p: p.ring(x, 363, 9, 3)), TIMBER)
+        c.put(c.mask(box(x - 1, 368, x + 1, 645)), ROPE, 0.64)
+    for left, right, top in ((800, 1008, 480), (1056, 1200, 448)):
+        for x in (left + 13, right - 22):
+            c.put(c.mask(box(x, top + 10, x + 6, top + 83)), TIMBER)
+            c.put(c.mask(lambda p: p.line([(x + 2, top + 64), (x + 35, top + 12)], 3)), PLANK_DARK)
+        c.put(c.mask(box(left, top, right, top + 14)), TIMBER)
+        c.put(c.mask(box(left, top, right, top + 3)), mix(PLANK, SAIL, 0.48))
+        for x in range(left + 12, right - 8, 30):
+            c.put(c.mask(lambda p: p.ellipse(x, top + 8, 1.6)), ROPE)
+    c.put(c.mask(box(486, 543, 914, 573)), TIMBER)
+    c.put(c.mask(box(491, 544, 909, 546)), PLANK)
+
+
+def plaza_cargo_sling(c, k):
+    """Draw the freight sling at its standing surface."""
+    c.put(c.mask(box(8, 12, 104, 24)), TIMBER)
+    c.put(c.mask(box(8, 12, 104, 16)), mix(PLANK, SAIL, 0.48))
+    c.put(c.mask(lambda p: p.poly([(10, 23), (102, 23), (94, 34), (18, 34)])), PLANK_DARK)
+    for x in (19, 93):
+        c.put(c.mask(lambda p: p.line([(x - 5, 7), (x, 13), (x, 30)], 3)), ROPE)
+
+
 PIECES: Dict[str, Piece] = {
     # pirate_port_gate_plaza
     "port_harbour_house": Piece((990, 120, 1600, 704), harbour_house),
     "port_freight_booth": Piece((520, 560, 850, 704), freight_booth),
+    "port_plaza_loading_walk": Piece((480, 340, 1216, 704), plaza_loading_walk),
+    "port_plaza_cargo_sling": Piece((0, 0, 112, 44), plaza_cargo_sling),
     "port_lamp_post": Piece((0, 600, 32, 704), lamp_post),
     # pirate_port_waterfront
     "port_waterfront_west": Piece((0, 160, 580, 768), waterfront_west),
