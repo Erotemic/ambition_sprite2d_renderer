@@ -30,6 +30,8 @@ import random
 from typing import Dict, List, Tuple
 
 from ..characters import _art_cast_kit as K
+from ._district_props import Piece, targets
+from ._town_kit import box
 from .art_props import _publisher
 
 Point = Tuple[float, float]
@@ -336,6 +338,39 @@ def _draw_door(ending: str):
 
 
 # ---------------------------------------------------------------------------
+# Library of Endings.
+# ---------------------------------------------------------------------------
+
+def _library_stair(c, _kit):
+    """Support the shelves and balcony on the west side of the doors."""
+    timber = (94, 57, 41)
+    trim = (169, 116, 73)
+    brass = (184, 130, 62)
+    for x, top in ((565, 384), (650, 384), (680, 336), (790, 448), (1108, 336)):
+        c.put(c.mask(box(x, top + 5, x + 7, 576)), timber)
+        c.put(c.mask(box(x + 1, top + 5, x + 2, 576)), trim)
+
+    # The lower shelves hold short rows of books.
+    for left, right, top, colours in (
+        (570, 650, 512, ((91, 53, 66), (82, 104, 83), (135, 77, 48))),
+        (686, 787, 448, ((75, 92, 124), (132, 72, 61), (107, 91, 115))),
+        (570, 650, 384, ((120, 78, 54), (86, 104, 76), (70, 88, 115))),
+    ):
+        shelf = top + 46
+        c.put(c.mask(box(left, shelf, right, shelf + 6)), timber)
+        for offset, width, height, colour in zip((5, 17, 31), (11, 13, 10), (24, 30, 21), colours):
+            x = left + offset
+            c.put(c.mask(box(x, shelf - height, x + width, shelf)), colour)
+            c.put(c.mask(box(x + 2, shelf - height + 5, x + width - 2, shelf - height + 7)), brass)
+
+    # The rail is behind the walk surface. The left end is open at the stair.
+    c.put(c.mask(box(704, 308, 1120, 313)), timber)
+    c.put(c.mask(box(704, 308, 1120, 309)), trim)
+    for x in range(704, 1110, 26):
+        c.put(c.mask(box(x, 313, x + 3, 336)), timber)
+
+
+# ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
 
@@ -352,3 +387,7 @@ for _ending in ENDINGS:
         f"art_ending_door_{_ending}", f"{_ending.title()} Ending Door", STILL, DOOR_FRAME,
         (lambda e: lambda anim, i, n: _draw_door(e))(_ending), {"foot": (48.0, 384.0)}, "Door", ["prop", "door", "lock", "art", "stacks"],
         forward=(0.0, -1.0))
+
+TARGETS.update(targets(
+    {"art_library_stair": Piece((552, 300, 1124, 576), _library_stair)}, {},
+))
