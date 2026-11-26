@@ -4,9 +4,9 @@ everyone who passes is an opponent.
 
 Drawn in room coordinates (`_district_props`) on the numbers of
 `tools/ambition_ldtk_tools/specs/ninja_pass/make_specs.py`: the ground (y
-832), the gorge (x 900..1400, its stream from y 880, its bed at 944), the
-rope bridge over it (y 832), the stepping stone out of it (x 1340..1390,
-y 880), the bamboo lookout's platforms (x 1540..1700: y 704 and 576).
+832), the gorge (x 900..1400, its stream from y 912, its bed at 944), the
+rope bridge (y 832), the ford stones, and the bamboo lookout's platforms
+(x 1540..1700, y 704 and 576).
 
 - `pass_bamboo`: a grove of bamboo, culms in three greens, leaves in
   sprays.
@@ -37,8 +37,10 @@ from .ninja_village_props import MOSS, PAL, STONE, TIMBER, VERMILION
 
 W, FLOOR = 2400, 832
 GORGE = (900, 1400)
-STREAM, BED = 880, 944
+STREAM, BED = 912, 944
+WATER_START = 960
 STEP = (1340, 1390, 880)
+FORD = ((960, 1056, 896), (1104, 1200, 912), (1248, 1328, 896))
 LOOKOUT = (1540, 1700, (704, 576))
 BAMBOO = ((96, 140, 70), (122, 160, 84), (78, 116, 60))
 LEAF = (90, 138, 72)
@@ -71,6 +73,16 @@ def bamboo(c, k):
     c.put(c.mask(lambda p: [p.line(s, 1.2) for s in sprays[::3]]), mix(LEAF, (255, 255, 220), 0.3))
 
 
+def ford_stone(c, left, right, top):
+    """Draw each top at its landing height."""
+    c.put(c.mask(lambda p: p.poly([(left, top), (right, top), (right - 4, top + 10),
+                                  (right - 12, BED), (left + 11, BED), (left + 4, top + 13)])), ROCK_DARK)
+    c.put(c.mask(lambda p: p.poly([(left, top), (right, top), (right - 4, top + 10),
+                                  (left + 15, top + 19), (left + 4, top + 10)])), ROCK)
+    c.put(c.mask(box(left, top, right, top + 3)), MOSS)
+    c.put(c.mask(box(left + 5, top, right - 5, top + 1)), (196, 200, 170))
+
+
 def bridge(c, k):
     g0, g1 = GORGE
     # The gorge's walls of rock, the stream at its foot.
@@ -79,13 +91,14 @@ def bridge(c, k):
         c.put(wall, ROCK)
         c.tone(wall * (c.noise(("gorge", x0), 4, 10, 3) - 0.5), 0.35)
     c.put(c.mask(box(g0 + 10, FLOOR, g1 - 10, STREAM)), (40, 46, 42), 0.6)
-    water = c.mask(box(g0 + 10, STREAM, g1 - 10, BED))
+    c.put(c.mask(lambda p: p.poly([(912, BED), (912, BED - 10), (936, BED - 7),
+                                  (960, BED - 3), (960, BED)])), ROCK_DARK)
+    water = c.mask(box(WATER_START, STREAM, g1 - 10, BED))
     c.put(water, WATER, 0.85)
     c.tone(water * np.clip((c.y - STREAM) / 60, 0, 1), -0.35)
-    c.put(c.mask(lambda p: [p.ellipse(x, STREAM + 1, 16, 1.2) for x in range(g0 + 40, g1 - 30, 70)]), (230, 240, 245), 0.7)
-    s0, s1, sy = STEP
-    c.put(c.mask(lambda p: p.ellipse((s0 + s1) / 2, sy + 8, (s1 - s0) / 2 + 4, 10)), ROCK)
-    c.put(c.mask(lambda p: p.ellipse((s0 + s1) / 2, sy + 2, (s1 - s0) / 2, 3)), MOSS)
+    c.put(c.mask(lambda p: [p.ellipse(x, STREAM + 1, 16, 1.2) for x in range(WATER_START + 24, g1 - 30, 70)]), (230, 240, 245), 0.7)
+    for left, right, top in (*FORD, STEP):
+        ford_stone(c, left, right, top)
     # The rope bridge: planks hung from two ropes, posts at each end.
     planks = c.mask(lambda p: [p.rect(x, FLOOR - 1, x + 14, FLOOR + 5) for x in range(g0 - 10, g1 + 10, 18)])
     c.put(planks, PLANK)
@@ -95,6 +108,11 @@ def bridge(c, k):
         pts = [(g0 - 20 + t * (g1 - g0 + 40), FLOOR - h + 10 * math.sin(t * math.pi)) for t in np.linspace(0, 1, 30)]
         c.put(c.mask(lambda p: p.line(pts, 2.0)), ROPE)
     c.put(c.mask(lambda p: [p.line([(x, FLOOR - 26 + 10 * math.sin((x - g0 + 20) / (g1 - g0 + 40) * math.pi)), (x, FLOOR)], 1.0) for x in range(g0, g1, 36)]), ROPE)
+    c.put(c.mask(box(914, 792, 919, 824)), TIMBER)
+    c.put(c.mask(box(986, 792, 991, 824)), TIMBER)
+    c.put(c.mask(box(906, 773, 1002, 801)), TIMBER)
+    c.put(c.mask(box(910, 774, 998, 776)), PLANK)
+    c.put(c.mask(lambda p: p.poly([(920, 781), (934, 781), (927, 791)])), ROPE)
 
 
 def lookout(c, k):
