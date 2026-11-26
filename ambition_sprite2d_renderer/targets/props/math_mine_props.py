@@ -23,16 +23,15 @@ from __future__ import annotations
 import math
 from typing import Dict
 
-import numpy as np
-
 from ._district_props import Piece, targets
-from ._town_kit import box, mix, scale
+from ._town_kit import box, mix
 from .math_town_terraces import PAL
 
 W, H = 1600, 640
 FLOOR, CEIL = 576, 64
 SHAFT = (96, 160)
 TWIST = (1380, 1560)
+SWITCH_CENTER = 1492
 ROCK = (86, 76, 70)
 ROCK_DARK = (58, 50, 46)
 ROCK_LIGHT = (120, 106, 94)
@@ -50,6 +49,58 @@ def cart(c, x, y, up):
     c.put(body * c.mask(lambda p: [p.rect(x - 34, yy, x + 34, yy + 2) for yy in (y - s * 22, y - s * 32)]), (80, 70, 60))
     c.put(c.mask(lambda p: [p.ellipse(x + dx, y - s * 7, 7) for dx in (-18, 18)]), (50, 48, 52))
     c.put(c.mask(lambda p: [p.ellipse(x + dx + rx, y - s * 46 + ry, 7, 5) for dx in (-16, 0, 16) for rx, ry in ((0, 0),)]), (190, 160, 90))
+
+
+def track(c):
+    """Draw one track from the floor to the ceiling."""
+    start, outer = TWIST
+    low, high = FLOOR - 8, CEIL + 8
+    center = [(16, low)]
+    rails = [[(16, low + offset)] for offset in (-5, 5)]
+    ties = [(x, low, 0, 1) for x in range(30, start, 28)]
+    for step in range(65):
+        t = step / 64
+        x = start + (outer - start) * math.sin(math.pi * t)
+        y = low + (high - low) * t * t * (3 - 2 * t)
+        dx = (outer - start) * math.pi * math.cos(math.pi * t)
+        dy = (high - low) * 6 * t * (1 - t)
+        length = math.hypot(dx, dy)
+        roll = math.cos(math.pi * t)
+        nx, ny = -dy / length * roll, dx / length * roll
+        center.append((x, y))
+        for rail, offset in zip(rails, (-5, 5)):
+            rail.append((x + nx * offset, y + ny * offset))
+        if step % 3 == 0:
+            ties.append((x, y, nx, ny))
+    center.append((16, high))
+    for rail, offset in zip(rails, (-5, 5)):
+        rail.append((16, high + offset))
+    ties.extend((x, high, 0, 1) for x in range(30, start, 28))
+
+    c.put(c.mask(lambda p: p.line(center, 17)), ROCK_DARK)
+    c.put(c.mask(lambda p: [
+        p.line([(x - 11 * nx, y - 11 * ny), (x + 11 * nx, y + 11 * ny)], 4)
+        for x, y, nx, ny in ties
+    ]), TIMBER)
+    c.put(c.mask(lambda p: [p.line(rail, 3) for rail in rails]), RAIL)
+
+
+def switch_mounts(c):
+    """Draw the same mount behind each switch."""
+    x = SWITCH_CENTER
+    for surface, up in ((FLOOR, 1), (CEIL, -1)):
+        c.light(c.mask(lambda p: p.ellipse(x, surface - 24 * up, 44, 32), blur=14), LAMP, 0.22)
+        c.put(c.mask(lambda p: p.poly([
+            (x - 22, surface), (x + 22, surface),
+            (x + 17, surface - 38 * up), (x - 17, surface - 38 * up),
+        ])), TIMBER_DARK)
+        c.put(c.mask(lambda p: p.line([
+            (x - 22, surface), (x - 17, surface - 38 * up),
+            (x + 17, surface - 38 * up), (x + 22, surface),
+        ], 2.5)), (206, 165, 91))
+        c.put(c.mask(lambda p: [
+            p.ellipse(x + shift, surface - 32 * up, 1.8) for shift in (-12, 12)
+        ]), RAIL)
 
 
 def tunnel(c, k):
@@ -85,24 +136,8 @@ def tunnel(c, k):
         c.put(c.mask(lambda p: p.rect(x - 1, CEIL + 10 if i % 2 == 0 else y, x + 1, y if i % 2 == 0 else FLOOR)), (60, 60, 64))
         c.put(c.mask(lambda p: p.rect(x - 6, y - 8, x + 6, y + 8)), LAMP)
         c.light(c.mask(lambda p: p.ellipse(x, y, 70, 50), blur=20), LAMP, 0.3)
-    # The rails along the floor, up the back wall in a half twist, and back
-    # along the ceiling.
-    t0, t1 = TWIST
-    for off in (-4, 4):
-        c.put(c.mask(lambda p: p.rect(16, FLOOR - 4 + off * 0.5, t0, FLOOR - 2 + off * 0.5)), RAIL)
-        c.put(c.mask(lambda p: p.rect(16, CEIL + 2 - off * 0.5, t0, CEIL + 4 - off * 0.5)), RAIL)
-    pts_a, pts_b = [], []
-    for t in np.linspace(0, 1, 40):
-        x = t0 + (t1 - t0) * math.sin(t * math.pi)
-        y = FLOOR - (FLOOR - CEIL) * t
-        twist = math.cos(t * math.pi) * 8
-        pts_a.append((x, y - twist))
-        pts_b.append((x, y + twist))
-    c.put(c.mask(lambda p: (p.line(pts_a, 3), p.line(pts_b, 3))), RAIL)
-    c.put(c.mask(lambda p: [p.line([pts_a[i], pts_b[i]], 2.4) for i in range(0, 40, 3)]), TIMBER_DARK)
-    c.light(c.mask(lambda p: p.line(pts_a, 8), blur=8), (180, 200, 255), 0.2)
-    # Sleepers along both runs.
-    c.put(c.mask(lambda p: ([p.rect(x, FLOOR - 3, x + 18, FLOOR) for x in range(30, t0, 34)], [p.rect(x, CEIL, x + 18, CEIL + 3) for x in range(30, t0, 34)])), TIMBER_DARK)
+    track(c)
+    switch_mounts(c)
     # A cart on the floor; another, the same way up to whoever is on the
     # ceiling, hung there.
     cart(c, 760, FLOOR - 2, True)
