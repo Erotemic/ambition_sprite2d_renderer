@@ -92,6 +92,31 @@ def barrel(c, x, y, r):
     c.put(c.mask(lambda p: p.ellipse(x, y, r * 0.14)), TIMBER)
 
 
+def cargo_route(c):
+    """Draw crate tops and inspection decks at their landing heights."""
+    for left, right, top, bottom in ((704, 784, 512, FLOOR), (784, 864, 512, FLOOR), (736, 832, 448, 512)):
+        crate = c.mask(box(left, top, right, bottom))
+        c.put(crate, PLANK)
+        c.put(crate * c.mask(lambda p: (p.line([(left, top), (right, bottom)], 2.4),
+                                        p.line([(right, top), (left, bottom)], 2.4))), PLANK_DARK)
+        c.put(crate * c.mask(lambda p: p.rect(left, bottom - 4, right, bottom)), PLANK_DARK)
+        c.put(c.mask(box(left, top, right, top + 3)), mix(PLANK, SAIL, 0.32))
+        x = (left + right) / 2
+        c.put(c.mask(box(x - 9, top + 22, x + 10, top + 40)), SAIL)
+        c.put(c.mask(lambda p: p.line([(x, top + 22), (x, top + 14)], 0.8)), ROPE)
+
+    for left, right, top in ((1168, 1296, 432), (1344, 1504, 480)):
+        for x in (left + 10, right - 16):
+            c.put(c.mask(box(x, top + 10, x + 6, top + 63)), TIMBER)
+            c.put(c.mask(lambda p: p.line([(x, top + 53), (x + 28, top + 12)], 3)), PLANK_DARK)
+        c.put(c.mask(box(left, top, right, top + 13)), TIMBER)
+        c.put(c.mask(box(left, top, right, top + 4)), mix(PLANK, SAIL, 0.32))
+        c.put(c.mask(lambda p: [p.ellipse(x, top + 8, 1.7) for x in range(left + 9, right - 6, 25)]), COPPER)
+
+    c.put(c.mask(box(346, 376, 674, 407)), TIMBER)
+    c.put(c.mask(box(350, 376, 670, 379)), PLANK)
+
+
 def vault(c, k):
     rng = c.rand("cellars")
     wall = c.mask(box(16, CEIL, W - 16, FLOOR))
@@ -139,17 +164,6 @@ def vault(c, k):
     for row, y in enumerate((FLOOR - 22, FLOOR - 66)):
         for x in np.arange(x0 + 32 + row * 0, x1 - 20, 46):
             barrel(c, x, y, 21)
-
-    # Crates, their customs tags left blank.
-    for (cx0, cy0, cx1) in ((700, FLOOR - 64, 780), (786, FLOOR - 64, 866), (730, FLOOR - 120, 830)):
-        cy1 = cy0 + 56 if cy0 < FLOOR - 64 else FLOOR
-        cm = c.mask(box(cx0, cy0, cx1, cy1))
-        c.put(cm, PLANK)
-        c.put(cm * c.mask(lambda p: (p.line([(cx0, cy0), (cx1, cy1)], 2.4), p.line([(cx1, cy0), (cx0, cy1)], 2.4))), PLANK_DARK)
-        c.put(cm * c.mask(lambda p: (p.rect(cx0, cy0, cx1, cy0 + 4), p.rect(cx0, cy1 - 4, cx1, cy1))), PLANK_DARK)
-        c.put(c.mask(lambda p: p.ring((cx0 + cx1) / 2, cy0 + 18, 4, 1)), (70, 70, 76))
-        c.put(c.mask(lambda p: p.rect((cx0 + cx1) / 2 - 12, cy0 + 22, (cx0 + cx1) / 2 + 12, cy0 + 38)), SAIL)
-        c.put(c.mask(lambda p: p.line([((cx0 + cx1) / 2, cy0 + 22), ((cx0 + cx1) / 2, cy0 + 14)], 0.8)), ROPE)
 
     # A crate of undeclared chickens: slats, straw, heads through the slats.
     hx0, hx1, hy = 520, 650, FLOOR - 70
@@ -209,6 +223,7 @@ def vault(c, k):
     c.put(c.mask(lambda p: [p.rect(ax - 70 + i * 17, FLOOR - 7 - (i % 3) * 3, ax - 56 + i * 17, FLOOR - (i % 3) * 3) for i in range(8)]), BRICK)
     c.put(c.mask(lambda p: [p.line([(ax + 70 + i * 3, FLOOR), (ax + 54 + i * 3, FLOOR - 60)], 2) for i in range(0, 30, 10)]), (60, 60, 64))
     c.put(c.mask(lambda p: p.line([(ax + 52, FLOOR - 58), (ax + 82, FLOOR - 58)], 2)), (60, 60, 64))
+    cargo_route(c)
 
 
 PIECES: Dict[str, Piece] = {
