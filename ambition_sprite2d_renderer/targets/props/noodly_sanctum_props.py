@@ -34,8 +34,8 @@ def apse(c):
     c.put(c.mask(box(451, 716, 509, 720)), GOLD, 0.72)
 
 
-def balcony(c, left, right, low_left, low_right):
-    """Draw a balcony above its step."""
+def balcony(c, left, right):
+    """Draw a balcony and its supports."""
     for x in (left + 12, right - 25):
         c.put(c.mask(box(x, 599, x + 13, FLOOR)), STONE)
         c.put(c.mask(box(x + 2, 602, x + 5, FLOOR)), MORTAR)
@@ -45,11 +45,6 @@ def balcony(c, left, right, low_left, low_right):
     c.put(c.mask(box(left, 596, right, 604)), ENAMEL)
     c.put(c.mask(box(left, 604, right, 610)), MORTAR)
     c.put(c.mask(lambda p: [p.ellipse(x, 600, 2) for x in range(left + 14, right - 8, 24)]), GOLD)
-    for x in (low_left + 10, low_right - 17):
-        c.put(c.mask(box(x, 681, x + 7, FLOOR)), MORTAR)
-    c.put(c.mask(box(low_left, 672, low_right, 676)), GOLD)
-    c.put(c.mask(box(low_left, 676, low_right, 684)), ENAMEL)
-    c.put(c.mask(box(low_left + 4, 684, low_right - 4, 689)), MORTAR)
 
 
 def window(c, x):
@@ -72,8 +67,8 @@ def sanctum(c, k):
     apse(c)
     window(c, 116)
     window(c, 844)
-    balcony(c, 96, 288, 48, 128)
-    balcony(c, 672, 864, 832, 912)
+    balcony(c, 96, 288)
+    balcony(c, 672, 864)
     for x in (277, 683):
         c.put(c.mask(box(x - 4, 533, x + 4, 560)), MORTAR)
         c.put(c.mask(box(x - 8, 548, x + 8, 561)), BRONZE)
