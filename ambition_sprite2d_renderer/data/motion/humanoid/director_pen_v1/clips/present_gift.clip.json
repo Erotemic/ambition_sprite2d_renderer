@@ -1,0 +1,41 @@
+{
+  "schema": "ambition-clip-v1",
+  "id": "present_gift",
+  "loop": false,
+  "duration_s": 0.1,
+  "sampling": {
+    "frame_count": 1,
+    "frame_duration_ms": 100
+  },
+  "pose_keys": [
+    {
+      "at_s": 0.0,
+      "frame": 0,
+      "state": {
+        "bones": {
+          "head": {
+            "rotation_deg": 4
+          },
+          "far_arm_u": {
+            "rotation_deg": -6.683813
+          },
+          "far_arm_l": {
+            "rotation_deg": -48.733427
+          },
+          "far_arm_hand": {
+            "rotation_deg": -28.936053
+          },
+          "near_arm_u": {
+            "rotation_deg": -40.328755
+          },
+          "near_arm_l": {
+            "rotation_deg": 311.167065
+          },
+          "near_arm_hand": {
+            "rotation_deg": -310.408624
+          }
+        }
+      }
+    }
+  ]
+}
