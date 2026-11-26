@@ -27,13 +27,15 @@ import numpy as np
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
 from .eureka_props import edge_line
-from .pirate_port_props import PAL, PLANK, PLANK_DARK, TIMBER
+from .pirate_port_props import PAL, PLANK, PLANK_DARK, PLANK_LIGHT, SEA_GREEN, TIMBER, barrel, deck_edge, post
 
 G = 960
 TOWER = (900, 1100, 940, 1060)
 GALLERY = (860, 1140, 400)
 #: The stair inside the tower: landings zigzagging up (x0, x1, y).
 LANDINGS = ((930, 1000, 880), (1000, 1070, 800), (935, 1005, 720), (995, 1065, 640), (940, 1010, 560), (990, 1060, 480))
+OIL_STEP = (1120, 1216, 896)
+WATCH_DECK = (1152, 1520, 832)
 RED = (190, 50, 44)
 WHITE = (236, 232, 222)
 INSIDE = (60, 52, 50)
@@ -47,6 +49,27 @@ def tower_x(y):
     b0, b1, t0, t1 = TOWER
     f = (G - y) / (G - GALLERY[2])
     return b0 + (t0 - b0) * f, b1 + (t1 - b1) * f
+
+
+def watch_deck(c):
+    """Draw the open oil deck and its lower platform."""
+    left, right, top = WATCH_DECK
+    for x in (1172, 1328, 1500):
+        post(c, x, top, G, 8, TIMBER)
+        c.put(c.mask(lambda p: p.line([(x, top + 42), (x + 20, top + 8)], 4)), TIMBER)
+    c.put(c.mask(lambda p: (
+        p.rect(left + 14, top - 26, right - 12, top - 23),
+        [p.rect(x, top - 23, x + 3, top) for x in range(left + 14, right - 12, 26)],
+    )), (56, 77, 75))
+    c.put(c.mask(box(left, top, right, top + 12)), SEA_GREEN)
+    deck_edge(c, left, right, top, (107, 156, 141))
+    barrel(c, 1246, top, 12, 28)
+    barrel(c, 1280, top, 14, 32)
+    left, right, top = OIL_STEP
+    for x in (1130, 1205):
+        post(c, x, top, G, 6, TIMBER)
+    c.put(c.mask(box(left, top, right, top + 10)), PLANK)
+    deck_edge(c, left, right, top, PLANK_LIGHT)
 
 
 def lighthouse(c, k):
@@ -86,6 +109,7 @@ def lighthouse(c, k):
     beams = c.mask(lambda p: (p.poly([(1026, gy - 70), (1026, gy - 40), (1560, gy - 10), (1560, gy - 140)]), p.poly([(974, gy - 70), (974, gy - 40), (440, gy - 10), (440, gy - 140)])), blur=14)
     c.put(beams * np.clip(1 - np.abs(c.x - 1000) / 560, 0, 1), LAMP, 0.3)
     c.light(c.mask(lambda p: p.ellipse(1000, gy - 55, 80), blur=24), LAMP, 0.5)
+    watch_deck(c)
 
 
 def cottage(c, k):
