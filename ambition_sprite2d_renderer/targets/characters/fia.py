@@ -38,12 +38,17 @@ The change happens inside a swirl of the void (Jon, 2026-11-25: "more like
 jeff hinter's transform where it wraps around her, or maybe it sort of
 'wooshes' around her like a swirl, almost like cosmic maryo"). Black ribbons
 edged in white spiral up from her feet and close on her outline, as Jeff
-Hinter's surface does. At their tightest she is all void (:func:`shroud`, as
-he is all light at his lock), and her regions change under it. Then the
-ribbons unwind up and off her, flinging the void's diamonds, and she stands
-in the new look. The swirl is effect layers composited around the hybrid
-rig's frame (``rigdoc.composite_layer``): behind her, the shroud over her,
-and in front of her.
+Hinter's surface does, and the void fills her from the feet up behind them
+(:func:`shroud`). Her regions change only while she is all void, so no
+change shows; then the swirl and the void fade where they are (a swirl that
+flew up and away would leave the frame). The void letting go of her
+(:data:`LEAVING`) is its taking played backwards: the swirl fades in on the
+void's look, the void drains from her head down as the ribbons unwind to her
+feet, and she stands as Fia.
+
+The swirl is effect layers composited around the hybrid rig's frame
+(``rigdoc.composite_layer``): behind her, the shroud over her, and in front
+of her.
 """
 
 from __future__ import annotations
@@ -56,7 +61,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import yaml
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from ...authoring import rigdoc
 from ...chargen.overlay import path_of as overlay_path
@@ -81,11 +86,16 @@ REGIONS = ("hands", "arms", "legs", "body", "head")
 TRANSFORM_FRAMES = 18
 TRANSFORM_FRAME_MS = 75
 #: The span of the row (0..1) over which her regions change, one after
-#: another, under the swirl at its tightest.
-CHANGE_SPAN = (0.3, 0.62)
+#: another, while the void covers all of her (:func:`shroud_reach` is 1 from
+#: 0.38 to 0.64).
+CHANGE_SPAN = (0.4, 0.6)
 #: How much swirl each change has: the void's first touch is a gust, its
-#: embrace a whirlwind, and its letting go between the two.
-SWIRL_STRENGTH = {"fia_touched": 0.6, "fia_void": 1.0, "fia": 0.85}
+#: embrace (and so its letting go, the embrace played backwards) a
+#: whirlwind.
+SWIRL_STRENGTH = {"fia_touched": 0.6, "fia_void": 1.0, "fia": 1.0}
+#: The looks whose transform row is the void letting go: the row plays the
+#: change backwards, so the swirl turns and travels the other way.
+LEAVING = frozenset({"fia"})
 #: The view and pose the change is drawn in: her idle's.
 TRANSFORM_VIEW = "front_3q"
 TRANSFORM_POSE = "idle"
@@ -178,8 +188,14 @@ def _ramp(u: float, a: float, b: float) -> float:
 
 
 def changed_regions(u: float) -> int:
-    """How many regions show the arriving look at ``u`` of the row."""
+    """How many regions show the arriving look at ``u`` of the change."""
     return round(5 * _ramp(u, *CHANGE_SPAN))
+
+
+def shroud_reach(u: float) -> Tuple[float, float]:
+    """The void over her at ``u``: how far up her it has filled (0..1, just
+    behind the ribbons' climb) and how opaque it is (it fades with them)."""
+    return _ramp(u, 0.1, 0.38), 1.0 - _ramp(u, 0.64, 0.88)
 
 
 #: Swirl colours: the void's black, edged in its white.
@@ -222,25 +238,24 @@ class Silhouette:
 def _ribbon_runs(sil: Silhouette, u: float, strength: float, phase: float):
     """One ribbon of the swirl at ``u``: runs of (points, widths, in front)
     along a helix that rises up her, closes on her outline, spins, and at the
-    end unwinds outward and up and is gone."""
+    end thins away where it is."""
     H = sil.height
-    rise = _ramp(u, 0.02, 0.42)  # how far up her the ribbon has climbed
-    close = _ramp(u, 0.05, 0.4)  # how near her outline it is
-    leave = _ramp(u, 0.62, 0.9)  # it lets go of her and flies off, from her feet up
+    rise = _ramp(u, 0.02, 0.36)  # how far up her the ribbon has climbed
+    close = _ramp(u, 0.04, 0.34)  # how near her outline it is
+    fade = _ramp(u, 0.64, 0.94)  # it thins to nothing, in place
     spin = 2.0 * math.pi * (3.4 * u + 2.2 * u * u)
     turns = 1.7
     appear = _ramp(u, 0.0, 0.16)  # the first frame is her as she was
-    thick = H * (0.022 + 0.022 * strength) * (1.0 - leave) * appear
-    pad = H * (0.16 * (1.0 - close) + 0.015 + 0.12 * leave)
-    lift = H * 0.3 * leave
+    thick = H * (0.022 + 0.022 * strength) * (1.0 - fade) * appear
+    pad = H * (0.16 * (1.0 - close) + 0.015 + 0.03 * fade)
     span = 0.25 + 0.75 * rise
     points, widths, fronts = [], [], []
     m = 72
     for j in range(m + 1):
         s = j / m
         # The ribbon runs from its tail low on her to its head up at its reach.
-        h = span * (leave + (1.0 - leave) * s)
-        y = sil.bottom - h * H * 1.02 - lift
+        h = span * s
+        y = sil.bottom - h * H * 1.02
         theta = phase + spin + turns * 2.0 * math.pi * s
         r = sil.half_at(y) + pad
         x = sil.cx + r * math.sin(theta)
@@ -303,33 +318,44 @@ def swirl_layers(sil: Silhouette, size: Tuple[int, int], u: float, strength: flo
         for pts, ws, f in runs:
             if f == front_layer:
                 draw.polygon(_band(pts, ws, 0.0, k), fill=SWIRL_CORE)
-    # The void's diamonds ride the heads of the ribbons, and are flung off
-    # when it lets go.
-    leave = _ramp(u, 0.62, 0.9)
-    if 0.08 < u < 0.9:
+    # The void's diamonds circle her with the ribbons, each showing once the
+    # ribbons have climbed to it, and shrink away as they fade.
+    fade = _ramp(u, 0.64, 0.94)
+    reach = sil.bottom - sil.height * 1.02 * (0.25 + 0.75 * _ramp(u, 0.02, 0.36))
+    if 0.08 < u < 0.94:
         n_d = 4 + int(4 * strength)
         for i in range(n_d):
             a = 2.0 * math.pi * (i / n_d) + 2.0 * math.pi * 2.6 * u
             h = sil.top + sil.height * (0.15 + 0.7 * ((i * 0.618) % 1.0))
-            r = sil.half_at(h) + sil.height * (0.06 + 0.25 * leave + 0.12 * (1.0 - _ramp(u, 0.05, 0.4)))
-            x, y = sil.cx + r * math.sin(a), h + r * 0.24 * math.cos(a) - sil.height * 0.3 * leave
-            size_d = sil.height * (0.018 + 0.01 * ((i * 0.37) % 1.0)) * (1.0 - leave)
+            if h < reach:
+                continue
+            r = sil.half_at(h) + sil.height * (0.06 + 0.12 * (1.0 - _ramp(u, 0.04, 0.34)))
+            x, y = sil.cx + r * math.sin(a), h + r * 0.24 * math.cos(a)
+            size_d = sil.height * (0.018 + 0.01 * ((i * 0.37) % 1.0)) * (1.0 - fade)
+            if size_d < 0.4:
+                continue
             _diamond(df if math.cos(a) > 0 else db, x, y, size_d + rim, k, SWIRL_CORE)
             _diamond(df if math.cos(a) > 0 else db, x, y, size_d, k, SWIRL_RIM)
     return back.resize(size, Image.LANCZOS), front.resize(size, Image.LANCZOS)
 
 
-def shroud(sil: Silhouette, frame: Image.Image, amount: float) -> Image.Image:
-    """Her outline filled with the void's black and edged in white, at
-    ``amount``: at the swirl's tightest she is all of it, as Jeff Hinter is
-    all light at his lock, and her look changes under it."""
+def shroud(sil: Silhouette, frame: Image.Image, filled: float, amount: float) -> Image.Image:
+    """Her outline filled with the void's black and edged in white, from her
+    feet up to ``filled`` of her height (with a soft edge), at ``amount``:
+    filled and opaque she is all of it, as Jeff Hinter is all light at his
+    lock, and her look changes under it."""
     rim = max(2, int(sil.height * 0.01) | 1)
+    edge = sil.height * 0.1
+    line = sil.bottom - filled * (sil.height + edge)
+    ramp = [int(255 * amount * max(0.0, min(1.0, (y - line) / edge + 1.0))) for y in range(frame.height)]
+    cover = Image.new("L", (1, frame.height))
+    cover.putdata(ramp)
+    cover = cover.resize(frame.size, Image.NEAREST)
     alpha = frame.getchannel("A")
-    grown = alpha.filter(ImageFilter.MaxFilter(rim))
     out = Image.new("RGBA", frame.size, SWIRL_RIM[:3] + (0,))
-    out.putalpha(grown.point(lambda a: int(a * amount)))
+    out.putalpha(ImageChops.multiply(alpha.filter(ImageFilter.MaxFilter(rim)), cover))
     core = Image.new("RGBA", frame.size, SWIRL_CORE[:3] + (0,))
-    core.putalpha(alpha.filter(ImageFilter.MinFilter(rim)).point(lambda a: int(a * amount)))
+    core.putalpha(ImageChops.multiply(alpha.filter(ImageFilter.MinFilter(rim)), cover))
     out.alpha_composite(core)
     return out
 
@@ -346,6 +372,7 @@ class FiaSheet(RiggedCharacter):
         self.transform = RigDocument.load(transform_rig)
         self.order = tuple(order)
         self.strength = SWIRL_STRENGTH.get(target, 1.0)
+        self.leaving = target in LEAVING
         self._sil: Dict[int, Silhouette] = {}
 
     def rows(self) -> List[Tuple[str, int, int]]:
@@ -360,7 +387,14 @@ class FiaSheet(RiggedCharacter):
         if animation != "transform":
             return super().render_frame(animation, frame_idx, frame_count)
         u = (frame_idx % TRANSFORM_FRAMES) / (TRANSFORM_FRAMES - 1)
-        changed = changed_regions(u)
+        if self.leaving:
+            # The void's taking, backwards: at ``u`` she is as the taking
+            # has her at ``1 - u``, with the regions it has not reached yet
+            # already hers again.
+            u = 1.0 - u
+            changed = len(REGIONS) - changed_regions(u)
+        else:
+            changed = changed_regions(u)
         body = self._body(changed)
         if changed not in self._sil:
             self._sil[changed] = Silhouette(body)
@@ -369,9 +403,9 @@ class FiaSheet(RiggedCharacter):
         canvas = Image.new("RGBA", body.size, (0, 0, 0, 0))
         rigdoc.composite_layer(canvas, back, (0, 0), name="swirl_back")
         rigdoc.composite_canvas(canvas, body, (0, 0))
-        amount = self.strength * 0.92 * min(_ramp(u, 0.26, 0.4), 1.0 - _ramp(u, 0.56, 0.7))
-        if amount > 0.01:
-            rigdoc.composite_layer(canvas, shroud(sil, body, amount), (0, 0), name="swirl_shroud")
+        filled, amount = shroud_reach(u)
+        if filled > 0.0 and amount > 0.01:
+            rigdoc.composite_layer(canvas, shroud(sil, body, filled, amount), (0, 0), name="swirl_shroud")
         rigdoc.composite_layer(canvas, front, (0, 0), name="swirl_front")
         return canvas
 
@@ -428,7 +462,7 @@ def _make(target: str):
         other_rigs = _rigs(other, out_dir / f"_{other}_rigs")
         transform_rig = hybrid_rig(other_rigs[TRANSFORM_VIEW], rigs[TRANSFORM_VIEW], TRANSFORM_VIEW, out_dir / "_transform")
         # The void takes her from the hands; giving her back, it lets go of the head first.
-        order = tuple(reversed(REGIONS)) if target == "fia" else REGIONS
+        order = tuple(reversed(REGIONS)) if target in LEAVING else REGIONS
         sheet = FiaSheet(rigs, PUBLISH_ROWS, transform_rig, order, target)
         frame_transform: dict = {}
         outputs = build_sheet(
