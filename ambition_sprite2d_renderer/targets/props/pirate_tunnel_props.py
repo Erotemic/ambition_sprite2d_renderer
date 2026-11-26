@@ -4,7 +4,7 @@ to the drain in the waterfront's street; behind a plank wall at its east
 end, the hoard.
 
 Drawn in room coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/pirate_port/make_specs.py` (`waterfront`,
+`ambition_content/generators/pirate_port/make_specs.py` (`waterfront`,
 `tunnel`, `hoard`): the waterfront's street (y 768, the room's foot 896) and
 its drain (x 1696..1760); the tunnel's floor (y 576), vault (to y 64), the
 drain's shaft (x 1696..1760; its ladder the engine's); the hoard's floor and
@@ -20,6 +20,8 @@ vault the tunnel's.
 - `tunnel_east`: the drain's shaft up in its fall of street light, the
   lever by it; the smugglers' chalk tally of runs (and of near things);
   the plank wall at the end, a draught and a light through its gaps.
+- `tunnel_freight_cut` has the flooded channel, loading docks, and cable.
+- `pirate_tunnel_freight_carrier` moves along the cable.
 - `hoard_room`: the hoard behind the planks: coin heaped, a figurehead, a
   painting of somebody's grandmother, candlesticks, a crown on a skull;
   the last smuggler, sat against the chest, who kept it.
@@ -51,6 +53,10 @@ BONE = (226, 216, 190)
 CHALK = (236, 232, 220)
 DAYLIGHT = (250, 244, 220)
 PARROT = (60, 170, 80)
+CUT = (688, 1344)
+BED = 704
+DOCK_TOP = 544
+LOADING_DOCKS = ((624, 752), (1280, 1440))
 
 
 def bricks(c, x0, x1, top, g, seed):
@@ -109,7 +115,7 @@ def drain_grate(c, k):
 
 def west(c, k):
     bricks(c, 16, 1024, CEIL, FLOOR, "tunnel_w")
-    rails(c, 16, 1024)
+    rails(c, 16, CUT[0])
     ribs(c, 16, 1024)
     for x in (200, 620, 980):
         lantern(c, x, 200)
@@ -143,7 +149,7 @@ def west(c, k):
 
 def east(c, k):
     bricks(c, 1024, W - 16, CEIL, FLOOR, "tunnel_e")
-    rails(c, 1024, 1600)
+    rails(c, CUT[1], 1600)
     ribs(c, 1024, 1700)
     # Barrels and crates waiting by the shaft for a quiet night.
     for x in (1380, 1426):
@@ -174,6 +180,46 @@ def east(c, k):
     c.put(c.mask(lambda p: [p.rect(px0, y + 30, W - 16, y + 36) for y in range(CEIL + 4, FLOOR, 36)]), (24, 18, 16))
     c.light(c.mask(lambda p: [p.rect(px0 + 10, y + 31, W - 26, y + 34) for y in range(CEIL + 4, FLOOR, 72)]), GOLD, 0.6)
     c.put(c.mask(lambda p: [p.line([(px0 - 6, y), (px0 - 40, y - 6)], 1) for y in (300, 380, 460)]), (200, 200, 200), 0.35)
+
+
+def freight_cut(c, k):
+    """Draw the flooded brick cut and both loading docks."""
+    left, right = CUT
+    wet = c.mask(box(left, FLOOR, right, BED))
+    c.paint(wet, c.ramp([(FLOOR, (67, 112, 113)), (BED, (28, 57, 65))]))
+    c.put(wet * c.mask(lambda p: [p.rect(left, y, right, y + 1) for y in range(FLOOR + 16, BED, 16)]),
+          (26, 53, 58), 0.52)
+    c.put(wet * c.mask(lambda p: [p.rect(x, y, x + 2, y + 16)
+                                  for y in range(FLOOR, BED, 16)
+                                  for x in range(left + (y // 16 % 2) * 16, right, 32)]), (26, 53, 58), 0.48)
+    c.put(c.mask(box(left, FLOOR, right, FLOOR + 2)), (133, 186, 180), 0.65)
+    c.put(c.mask(lambda p: [p.line([(x, FLOOR + 5), (x + 26, FLOOR + 5)], 1)
+                            for x in range(left + 46, right - 40, 79)]), (158, 194, 175), 0.4)
+    for x in (644, 1412):
+        c.put(c.mask(box(x, 384, x + 14, FLOOR)), TIMBER)
+        c.put(c.mask(box(x - 7, 393, x + 21, 414)), IRON)
+        c.put(c.mask(lambda p: p.ellipse(x + 7, 403, 7)), IRON_LIGHT)
+    c.put(c.mask(box(651, 399, 1419, 403)), IRON)
+    c.put(c.mask(box(651, 399, 1419, 400)), IRON_LIGHT)
+    for x0, x1 in LOADING_DOCKS:
+        c.put(c.mask(box(x0, DOCK_TOP, x1, DOCK_TOP + 4)), mix(PLANK, SAIL, 0.28))
+        c.put(c.mask(box(x0, DOCK_TOP + 4, x1, DOCK_TOP + 16)), PLANK)
+        c.put(c.mask(box(x0, DOCK_TOP + 16, x1, DOCK_TOP + 20)), IRON)
+        c.put(c.mask(lambda p: [p.rect(x, DOCK_TOP + 4, x + 2, DOCK_TOP + 16)
+                                for x in range(x0 + 32, x1, 32)]), PLANK_DARK)
+
+
+def freight_carrier(c, k):
+    """Draw the pulley, cables, and cargo deck."""
+    for x, foot in ((34, 18), (126, 142)):
+        c.put(c.mask(lambda p: p.ellipse(x, 20, 9)), IRON)
+        c.put(c.mask(lambda p: p.ellipse(x, 20, 4)), IRON_LIGHT)
+        c.put(c.mask(lambda p: p.line([(x, 27), (foot, 164)], 2.4)), ROPE)
+        c.put(c.mask(box(foot - 3, 158, foot + 3, 169)), IRON)
+    c.put(c.mask(box(8, 164, 152, 169)), mix(PLANK, SAIL, 0.28))
+    c.put(c.mask(box(8, 169, 152, 180)), PLANK)
+    c.put(c.mask(box(8, 180, 152, 183)), IRON)
+    c.put(c.mask(lambda p: [p.ellipse(x, 174, 2) for x in (14, 43, 80, 117, 146)]), IRON_LIGHT)
 
 
 def hoard(c, k):
@@ -214,6 +260,8 @@ PIECES: Dict[str, Piece] = {
     "port_drain_grate": Piece((DRAIN[0], STREET, DRAIN[1], WATERFRONT_H), drain_grate),
     "tunnel_west": Piece((16, 16, 1024, FLOOR), west),
     "tunnel_east": Piece((1024, 16, W - 16, FLOOR), east),
+    "tunnel_freight_cut": Piece((624, 380, 1440, BED), freight_cut),
+    "pirate_tunnel_freight_carrier": Piece((0, 0, 160, 184), freight_carrier),
     "hoard_room": Piece((16, 16, HOARD_W - 16, FLOOR), hoard),
 }
 
