@@ -34,6 +34,10 @@ STAIR_W = (480, 544)
 BANNER_X = 760
 BANNER_TOP = 96
 STATUE_X = 1310
+KEEP_GALLERY_RAMPS = (
+    ((1464, 352), (1472, 352), (1496, 366), (1592, 444), (1632, 472), (1656, 480), (1672, 480)),
+    ((1744, 480), (1760, 480), (1784, 494), (1850, 536), (1920, 576), (1960, 576)),
+)
 BRIDGE_FLOOR = 576
 SPAN = (760, 1800)
 PIT_FLOOR = 632
@@ -95,6 +99,24 @@ def gate(c, k):
     c.put(c.mask(box(x0 + 44, 318, x1 - 44, 324)), IRON)
     # Over the arch, the void has put its own sign: the lizard.
     lizard(c, (x0 + x1) / 2, 228, 90)
+
+
+def keep_gallery_ramps(c, _kit):
+    """Draw the stone ramps that join the east and central galleries."""
+    for points in KEEP_GALLERY_RAMPS:
+        underside = [(x, y + 16) for x, y in reversed(points)]
+        rail = [(x, y - 23) for x, y in points]
+        c.put(c.mask(lambda p: p.line(rail, 2.2)), IRON_LIGHT)
+        c.put(c.mask(lambda p: [
+            p.line([(x, y - 24), (x, y + 6)], 3.4) for x, y in points
+        ]), IRON)
+        c.put(c.mask(lambda p: p.poly([*points, *underside])), STONE)
+        c.put(c.mask(lambda p: p.line(points, 3.2)), STONE_LIGHT)
+        c.put(c.mask(lambda p: p.line(underside, 2.6)), STONE_DARK)
+    c.put(c.mask(lambda p: p.poly([
+        (1914, 587), (1938, 587), (1933, 633), (1942, KEEP_FLOOR),
+        (1908, KEEP_FLOOR), (1917, 629),
+    ])), STONE_DARK)
 
 
 def banner(c, k):
@@ -195,6 +217,7 @@ PIECES: Dict[str, Piece] = {
     "keep_gate": Piece((0, 150, 200, KEEP_FLOOR), gate),
     "keep_banner": Piece((BANNER_X - 64, BANNER_TOP - 14, BANNER_X + 64, BANNER_TOP + 236), banner),
     "keep_star_statue": Piece((STATUE_X - 90, KEEP_FLOOR - 240, STATUE_X + 90, KEEP_FLOOR), star_statue),
+    "keep_gallery_ramps": Piece((1460, 321, 1966, KEEP_FLOOR), keep_gallery_ramps),
     "keep_stair": Piece((STAIR_W[0] - 32, KEEP_FLOOR - 76, STAIR_W[1] + 32, KEEP_FLOOR), stair),
     "bridge_span": Piece((SPAN[0] - 10, BRIDGE_FLOOR - 70, SPAN[1] + 10, PIT_FLOOR + 8), span),
     "bridge_switch": Piece((SWITCH_X - 110, BRIDGE_FLOOR - 64, SWITCH_X + 36, BRIDGE_FLOOR), switch),
