@@ -75,8 +75,8 @@ BOARD = (232, 236, 236)
 
 #: Founders' Plaza (`make_specs.py`).
 PLAZA_FLOOR = 640
-AWNING = 520
-BALCONY = 392
+AWNING = 512
+BALCONY = 384
 RIM = 592
 PEDESTAL = 528
 DOORWAY = (2276, 2332)
@@ -183,11 +183,9 @@ def stack_of_paper(c, x, foot, n, w=26, tag="stack"):
 
 
 def cafe_front(c, k):
-    """The Bottom Line, the café of the plaza: a shop front of glass under a
-    striped awning (its top the walk at y 520), the floor over it with a
-    balcony (y 392) at its east end, tables out front."""
+    """Draw the café and the approaches to its balcony."""
     g = PLAZA_FLOOR
-    x0, x1 = 620, 1180
+    x0, x1 = 620, 1184
     k.wall(x0, 300, x1, g, STONE, "limestone", "cafe")
     cornice(c, x0, x1, 300)
     # The upper floor's windows, and its balcony with a door onto it.
@@ -195,9 +193,14 @@ def cafe_front(c, k):
         window(c, x, 330, x + 46, 420, lit=True, arch=True)
     c.put(c.mask(box(1010, 300 + 26, 1062, BALCONY)), mix(LAMP, WOOD, 0.4))
     c.put(c.mask(box(1014, 330, 1058, BALCONY)), WOOD)
-    c.put(c.mask(box(960, BALCONY, 1180, BALCONY + 10)), STONE_LIGHT)
-    c.put(c.mask(box(960, BALCONY + 10, 1180, BALCONY + 14)), STONE_DARK)
-    railing(c, 962, 1178, BALCONY)
+    c.put(c.mask(box(960, BALCONY, x1, BALCONY + 10)), STONE_LIGHT)
+    c.put(c.mask(box(960, BALCONY + 10, x1, BALCONY + 14)), STONE_DARK)
+    railing(c, 962, x1 - 2, BALCONY)
+    c.put(c.mask(box(864, 448, 1008, 456)), STONE_LIGHT)
+    c.put(c.mask(box(868, 456, 1004, 466)), STONE_DARK)
+    for x in (882, 972):
+        c.put(c.mask(box(x, 436, x + 22, 448)), WOOD)
+        c.put(c.mask(lambda p: p.ellipse(x + 11, 434, 10, 6)), (81, 110, 66))
     # A string course over the shop.
     c.put(c.mask(box(x0, AWNING - 30, x1, AWNING - 24)), STONE_LIGHT)
     # The shop front: glass, the door, lamps.
@@ -210,11 +213,21 @@ def cafe_front(c, k):
     # Shelves of cups and a counter seen through the glass.
     c.put(c.mask(lambda p: [p.rect(670, y, 970, y + 2) for y in (AWNING + 54, AWNING + 76)]), WOOD_DARK, 0.6)
     c.put(c.mask(lambda p: [p.ellipse(x, AWNING + 50, 3, 3.5) for x in np.arange(680, 960, 14)]), CREAM, 0.7)
-    awning(c, 640, 1000, AWNING)
+    awning(c, 640, 1008, AWNING)
     # The east bay: a pier of stone with a lamp.
     c.put(c.mask(box(1010, AWNING - 20, 1170, g)), scale(STONE, 0.92))
     window(c, 1040, AWNING + 10, 1140, g - 30, lit=False)
     c.light(c.mask(lambda p: p.ellipse(1000, AWNING + 50, 30, 30), blur=8), LAMP, 0.4)
+    for x, top in ((1152, 464), (1168, 528)):
+        c.put(c.mask(lambda p: p.poly([(1180, top + 9), (x + 72, top + 9),
+                                      (1180, top + 35)])), STEEL_DARK)
+        c.put(c.mask(box(x, top, x + 80, top + 3)), STEEL_LIGHT)
+        c.put(c.mask(box(x, top + 3, x + 80, top + 10)), STEEL)
+        railing(c, 1186, x + 78, top, h=18, colour=STEEL_DARK)
+    c.put(c.mask(box(554, 583, 562, g)), STEEL_DARK)
+    c.put(c.mask(box(606, 583, 614, g)), STEEL_DARK)
+    c.put(c.mask(box(544, 576, 624, 580)), WOOD_LIGHT)
+    c.put(c.mask(box(544, 580, 624, 587)), WOOD)
     # Tables and chairs out front, a coffee on one.
     for tx in (700, 860):
         c.put(c.mask(lambda p: (p.ellipse(tx, g - 26, 18, 3), p.rect(tx - 1.5, g - 26, tx + 1.5, g - 2), p.rect(tx - 9, g - 3, tx + 9, g))), STEEL_DARK)
@@ -557,7 +570,7 @@ def _draw_carrier():
 #: Every piece: its frame in its room, and how it is drawn.
 PIECES: Dict[str, Piece] = {
     # business_founders_plaza
-    "business_cafe_front": Piece((600, 290, 1200, 640), cafe_front),
+    "business_cafe_front": Piece((528, 290, 1264, 640), cafe_front),
     "business_founder_statue": Piece((1260, 300, 1620, 640), founder_statue),
     "business_picket_line": Piece((1690, 480, 2060, 640), picket_line),
     "business_college_front": Piece((2060, 140, 2544, 640), college_front),
