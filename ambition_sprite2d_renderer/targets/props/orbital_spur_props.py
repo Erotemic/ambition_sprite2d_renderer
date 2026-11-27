@@ -1,22 +1,4 @@
-"""The damaged spur of the orbital station (`orbital_station_damaged_spur`,
-the Science dimension): "live cables, no air, no crew".
-
-Drawn in room coordinates (`_district_props`) on the level's own numbers
-(edited in place: `tools/ambition_ldtk_tools/specs/scenery_overlay.py`): the
-deck (y 832) and its three holes (x 560..688, 1200..1360, 1760..1888, their
-pits live), the buckled bulkhead (x 896..1072, y 64..592; the way under it
-y 592..832), the crew's cache (x 2280), the breaker (x 2400).
-
-- `spur_west`, `spur_east`: one drawing in two frames (a frame is at most a
-  sheet's page wide). A hull breach on the stars, its plates peeled back and
-  frosted; the deck torn up at each hole, the cables severed over it and
-  arcing; the bulkhead buckled, its blast door jammed up (the way under it is clear); red emergency lamps
-  under the ceiling; the crew's mess left as it was (a table tipped, trays,
-  a mug, a wall calendar stopped on a day); a hand-painted sign of the
-  crew's that the room's label reads.
-
-Animations: ``idle``, 1 frame each. No drop shadows.
-"""
+"""Draw the damaged spur from the entry at the east to the west cache."""
 
 from __future__ import annotations
 
@@ -31,9 +13,9 @@ from .eureka_props import Batch, stars
 from .orbital_station import AMBER, CYAN, HULL, HULL_DARK, RED, STEEL, STEEL_DARK, STEEL_LIGHT, plate
 
 FLOOR, CEILING = 832, 64
-HOLES = ((560, 688), (1200, 1360), (1760, 1888))
-BULKHEAD = (896, 1072, 592)
-BREACH = (300, 160, 520, 440)
+HOLES = ((672, 800), (1200, 1360), (1872, 2000))
+BULKHEAD = (1504, 1664, 608)
+BREACH = (2040, 160, 2260, 440)
 PAL = {"stone": HULL, "stone_light": STEEL_LIGHT, "dark": STEEL_DARK, "lamp": AMBER}
 ARC = (190, 220, 255)
 FROST = (220, 236, 246)
@@ -85,22 +67,22 @@ def spur(c, k):
             arc = bolt(rng, (x, y + 2), (x + rng.uniform(-30, 30), FLOOR + 20))
             c.light(c.mask(lambda p: p.line(arc, 6), blur=5), ARC, 0.6)
             c.put(c.mask(lambda p: p.line(arc, 1.4)), (250, 252, 255))
-    # The bulkhead: buckled plate, its blast door jammed half shut.
+    # The damaged bulkhead leaves space to pass below it.
     k0, k1, kb = BULKHEAD
     plate(c, k0, CEILING, k1, kb, STEEL, "bulkhead", seams=22)
     c.put(c.mask(lambda p: p.poly([(k0, kb - 120), (k1, kb - 150), (k1, kb - 110), (k0, kb - 90)])), STEEL_DARK)
     c.put(c.mask(lambda p: [p.rect(x, kb - 14, x + 16, kb) for x in range(k0, k1, 32)]), AMBER)
     c.put(c.mask(lambda p: p.line([(k0, kb), (k1, kb)], 2)), STEEL_LIGHT)
     # The crew's mess by their cache: a table tipped, trays, a mug, a calendar.
-    tx = 2120
+    tx = 324
     c.put(c.mask(lambda p: (p.poly([(tx, FLOOR), (tx + 10, FLOOR), (tx + 70, FLOOR - 60), (tx + 60, FLOOR - 66)]), p.rect(tx + 40, FLOOR - 10, tx + 110, FLOOR - 4))), STEEL_LIGHT)
-    c.put(c.mask(lambda p: [p.poly([(x, FLOOR), (x + 22, FLOOR), (x + 20, FLOOR - 3), (x + 2, FLOOR - 3)]) for x in (2190, 2216)]), (196, 120, 60))
-    c.put(c.mask(lambda p: (p.rect(2244, FLOOR - 10, 2254, FLOOR), p.ring(2257, FLOOR - 5, 3, 1.2))), (230, 230, 236))
-    c.put(c.mask(box(2160, 560, 2210, 620)), (236, 232, 220))
-    c.put(c.mask(box(2160, 560, 2210, 572)), RED)
-    c.put(c.mask(lambda p: [p.rect(2164 + (i % 7) * 6.5, 576 + (i // 7) * 8, 2168 + (i % 7) * 6.5, 580 + (i // 7) * 8) for i in range(28)]), (120, 120, 130))
-    c.put(c.mask(lambda p: p.ring(2164 + 3 * 6.5 + 2, 576 + 2 * 8 + 2, 4, 1.2)), RED)
-    c.light(c.mask(lambda p: p.ellipse(2400, 790, 40), blur=10), CYAN, 0.25)
+    c.put(c.mask(lambda p: [p.poly([(x, FLOOR), (x + 22, FLOOR), (x + 20, FLOOR - 3), (x + 2, FLOOR - 3)]) for x in (394, 420)]), (196, 120, 60))
+    c.put(c.mask(lambda p: (p.rect(448, FLOOR - 10, 458, FLOOR), p.ring(461, FLOOR - 5, 3, 1.2))), (230, 230, 236))
+    c.put(c.mask(box(364, 560, 414, 620)), (236, 232, 220))
+    c.put(c.mask(box(364, 560, 414, 572)), RED)
+    c.put(c.mask(lambda p: [p.rect(368 + (i % 7) * 6.5, 576 + (i // 7) * 8, 372 + (i % 7) * 6.5, 580 + (i // 7) * 8) for i in range(28)]), (120, 120, 130))
+    c.put(c.mask(lambda p: p.ring(368 + 3 * 6.5 + 2, 576 + 2 * 8 + 2, 4, 1.2)), RED)
+    c.light(c.mask(lambda p: p.ellipse(148, 790, 40), blur=10), CYAN, 0.25)
 
 
 PIECES: Dict[str, Piece] = {
