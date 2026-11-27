@@ -200,14 +200,18 @@ def complaints(c, k):
     c.put(wall * c.mask(lambda p: [p.rect(16, y, COMPLAINTS_W - 16, y + 1) for y in range(CEILING + 30, g, 30)]), (100, 98, 84), 0.6)
     c.put(c.mask(box(16, g - 60, COMPLAINTS_W - 16, g)), (80, 70, 60))
     # The counter: two windows, both shuttered, CLOSED on each.
-    c.put(c.mask(box(420, g - 70, 900, g)), WOOD_DARK)
-    edge_line(c, 414, 906, g - 72, WOOD_LIGHT, 4)
+    c.put(c.mask(box(416, 320, 880, g)), WOOD_DARK)
+    c.put(c.mask(box(437, 331, 869, 371)), (48, 35, 30))
+    c.put(c.mask(lambda p: [p.ellipse(x, y, 1.7) for x in (442, 864) for y in (336, 366)]), (171, 135, 89))
+    edge_line(c, 416, 880, 320, WOOD_LIGHT, 3)
     for wx in (470, 690):
         c.put(c.mask(box(wx, 120, wx + 160, g - 76)), (40, 36, 40))
         c.put(c.mask(lambda p: [p.rect(wx + 4, y, wx + 156, y + 4) for y in range(124, int(g - 80), 8)]), (140, 136, 130))
         c.put(c.mask(box(wx + 40, 196, wx + 120, 222)), RED)
         c.put(c.mask(lambda p: [p.rect(wx + 48 + i * 14, 205, wx + 56 + i * 14, 213) for i in range(5)]), (236, 228, 210))
     # The ticket machine and NOW SERVING: 3.
+    c.put(c.mask(box(253, 279, 379, 309)), (53, 50, 43))
+    c.put(c.mask(box(314, 309, 318, 325)), IRON)
     c.put(c.mask(lambda p: (p.rect(314, g - 44, 318, g), p.rect(304, g - 4, 328, g), p.rect(306, g - 62, 326, g - 44), p.ellipse(316, g - 62, 10, 4))), RED)
     c.put(c.mask(box(312, g - 52, 320, g - 48)), (236, 228, 210))
     c.put(c.mask(lambda p: p.poly([(318, g - 50), (326, g - 46), (324, g - 40), (316, g - 44)])), (236, 228, 210))
@@ -217,11 +221,17 @@ def complaints(c, k):
     for x in range(80, 280, 46):
         c.put(c.mask(lambda p: (p.rect(x, g - 30, x + 30, g - 26), p.rect(x + 26, g - 56, x + 30, g - 26), p.rect(x + 2, g - 26, x + 5, g), p.rect(x + 25, g - 26, x + 28, g))), (90, 96, 110))
     rng = c.rand("forms")
-    for i in range(40):
-        x, y = rng.uniform(910, 940), g - 6 - i * 5
-        c.put(c.mask(lambda p: p.rect(x - 14, y, x + 14, y + 4)), (226, 214, 180))
-    # The suggestions box on its post, padlocked.
-    c.put(c.mask(lambda p: (p.rect(377, g - 34, 383, g), p.rect(368, g - 4, 392, g))), WOOD_DARK)
+    c.put(c.mask(box(898, 210, 932, 351)), WOOD_DARK)
+    for i in range(26):
+        x, y = rng.uniform(910, 921), 345 - i * 5
+        c.put(c.mask(lambda p: p.rect(x - 10, y, x + 10, y + 4)), (226, 214, 180))
+    for x0, x1 in ((368, 416), (880, 944)):
+        c.put(c.mask(box(x0, 352, x1, g)), WOOD)
+        c.put(c.mask(lambda p: p.line([(x0 + 5, g - 4), (x1 - 6, 357)], 3)), WOOD_LIGHT)
+        edge_line(c, x0, x1, 352, WOOD_LIGHT, 2)
+    # The suggestions box stands on the west crate.
+    c.put(c.mask(box(380, 272, 386, 320)), WOOD_DARK)
+    c.put(c.mask(box(332, 239, 436, 274)), (53, 50, 43))
     c.put(c.mask(box(360, g - 64, 400, g - 34)), WOOD)
     c.put(c.mask(box(372, g - 66, 388, g - 62)), (20, 20, 20))
     c.put(c.mask(lambda p: (p.line([(360, g - 49), (400, g - 49)], 2), p.ring(380, g - 38, 5, 2))), (160, 160, 170))
