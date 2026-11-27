@@ -2,11 +2,7 @@
 of town, west of the Searchlight Moor: where the castle grows its
 vegetables. Evil needs its greens.
 
-Drawn in room coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/evil_moor/make_specs.py` (`allotments`):
-the ground (y 656); the raised beds, walked on (BEDS: x0, x1, top); the
-water butt (x 860..900, top 592) and the greenhouse's roof (x 470..850,
-y 512), walked on; the gardener's fence (x 380).
+Use the room dimensions in `evil_moor/make_specs.py`.
 
 - `allotment_west`: the gardener's shed (tools on the wall, seed packets,
   a mug), the fence and its gate, the greenhouse (whitewashed panes, a
@@ -23,7 +19,6 @@ moor. Animations: ``idle``, 1 frame each. No drop shadows.
 
 from __future__ import annotations
 
-import math
 from typing import Dict
 
 import numpy as np
@@ -31,7 +26,7 @@ import numpy as np
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
 from .eureka_props import Batch, edge_line
-from .evil_forest_props import NEAR_BLACK, PAL, RIM, rim
+from .evil_forest_props import NEAR_BLACK, PAL, rim
 
 FLOOR = 656
 BEDS = ((960, 1160, 624), (1240, 1440, 624), (1520, 1720, 624))
@@ -46,6 +41,23 @@ PUMPKIN = (200, 90, 30)
 GLOW = (255, 170, 60)
 CABBAGE = (90, 70, 110)
 GLASS = (150, 150, 140)
+WOOD = (91, 61, 43)
+EDGE = (164, 117, 72)
+
+
+def rack(c, x0, x1, y, posts):
+    for x in posts:
+        c.put(c.mask(box(x, y + 13, x + 6, FLOOR)), TIMBER)
+        c.put(c.mask(lambda p: p.line([(x + 3, y + 41), (x + 25, y + 13)], 4)), TIMBER)
+    c.put(c.mask(box(x0, y, x1, y + 16)), WOOD)
+    c.put(c.mask(box(x0, y, x1, y + 4)), EDGE)
+    c.put(c.mask(lambda p: [p.ellipse(x, y + 9, 1.4) for x in range(x0 + 10, x1, 26)]), TIMBER)
+
+
+def notice(c, x0, x1, y0, y1):
+    c.put(c.mask(box(x0, y0, x1, y1)), WOOD)
+    c.put(c.mask(box(x0 + 4, y0 + 4, x1 - 4, y1 - 4)), (45, 33, 29))
+    c.put(c.mask(lambda p: [p.ellipse(x, y0 + 9, 1.6) for x in (x0 + 9, x1 - 9)]), EDGE)
 
 
 def west(c, k):
@@ -86,6 +98,14 @@ def west(c, k):
     c.put(butt * c.mask(lambda p: [p.rect(bx0, y, bx1, y + 3) for y in (btop + 10, g - 16)]), (70, 66, 66))
     edge_line(c, bx0, bx1, btop, (90, 60, 50), 3)
     rim(c, butt)
+    c.put(c.mask(box(151, 620, 217, g)), WOOD)
+    c.put(c.mask(lambda p: [p.rect(x, 620, x + 2, g) for x in (164, 183, 201)]), TIMBER)
+    rack(c, 144, 224, 608, ())
+    rack(c, 192, 272, 544, (207, 251))
+    rack(c, 352, 448, 544, (368, 417))
+    rack(c, 912, 992, 560, (921, 969))
+    c.put(c.mask(lambda p: [p.rect(x, 463, x + 5, 544) for x in (238, 397)]), TIMBER)
+    notice(c, 208, 468, 409, 475)
 
 
 def pumpkin(b, x, g, r):
@@ -157,9 +177,21 @@ def beds(c, k):
     c.put(c.mask(lambda p: [p.line([(1464 + i * 8, g - 52), (1468 + i * 8, g - 40)], 1) for i in range(4)]), (110, 150, 70))
     c.put(c.mask(lambda p: (p.ellipse(1488, g - 60, 6), p.poly([(1485, g - 56), (1482, g - 44), (1487, g - 48)]), p.poly([(1491, g - 56), (1494, g - 44), (1489, g - 48)]))), (180, 30, 40))
     c.put(c.mask(lambda p: p.ellipse(1488, g - 60, 2.4)), (240, 200, 90))
+    posts = (1031, 1178, 1291, 1440, 1578, 1718)
+    c.put(c.mask(lambda p: p.line([(1008, 572), (1144, 584), (1280, 575), (1420, 590),
+                                  (1578, 575), (1655, 583), (1744, 572)], 2.4)), LEAF)
+    c.put(c.mask(lambda p: [p.ellipse(x, 576 + j % 4 * 3, 7, 4) for j, x in enumerate(range(1013, 1744, 19))]), LEAF_LIGHT)
+    rack(c, 1008, 1744, 560, posts)
+    rack(c, 1760, 1856, 608, (1776, 1827))
+    c.put(c.mask(lambda p: [p.rect(x, y, x + 5, 560)
+                            for x, y in ((1204, 494), (1325, 494), (1387, 476),
+                                         (1538, 476), (1570, 481), (1727, 481))]), TIMBER)
+    notice(c, 1158, 1378, 465, 501)
+    notice(c, 1378, 1550, 421, 484)
+    notice(c, 1558, 1786, 448, 488)
 
 PIECES: Dict[str, Piece] = {
-    "allotment_west": Piece((40, 480, 920, FLOOR), west),
+    "allotment_west": Piece((40, 400, 1008, FLOOR), west),
     "allotment_beds": Piece((940, 420, 1960, FLOOR), beds),
 }
 
