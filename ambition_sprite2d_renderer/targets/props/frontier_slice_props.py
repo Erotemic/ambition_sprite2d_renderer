@@ -850,21 +850,30 @@ def yard_tracks(c, k):
 
 
 def tipple_road(c, k):
-    """The tipple road: its deck along the line from (496, 1408) up to
-    (2340, 640), on timber bents down to the yard; the tipple at the top (its
-    floor y 640, x 2340..2400), a loading chute over the far track."""
+    """The tipple road, its inspection landing, and the upper loading chute."""
     k.ground = LOW
-    x0, y0, x1, y1 = 496, LOW, 2340, HIGH
-    slope = (y1 - y0) / (x1 - x0)
-    for x in np.arange(x0 + 120, x1, 160):
-        y = y0 + (x - x0) * slope
-        post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
-        if LOW - y > 160:
-            x_brace(c, x - 70, x + 10, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
-    c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
-    c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
-    c.put(c.mask(lambda p: [p.rect(x, y0 + (x - x0) * slope - 26, x + 3, y0 + (x - x0) * slope) for x in np.arange(x0 + 40, x1, 60)]), TIMBER)
-    c.put(c.mask(lambda p: p.line([(x0, y0 - 24), (x1, y1 - 24)], 2.0)), TIMBER)
+    for x0, y0, x1, y1 in ((496, LOW, 1424, 1024), (1456, 1024, 2384, HIGH)):
+        slope = (y1 - y0) / (x1 - x0)
+        for x in np.arange(x0 + 120, x1, 160):
+            y = y0 + (x - x0) * slope
+            post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
+            if LOW - y > 160:
+                x_brace(c, x - 70, x + 10, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
+        c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
+        c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
+        c.put(c.mask(lambda p: [p.rect(x, y0 + (x - x0) * slope - 26, x + 3, y0 + (x - x0) * slope)
+                                for x in np.arange(x0 + 20, x1, 60)]), TIMBER)
+        c.put(c.mask(lambda p: p.line([(x0, y0 - 24), (x1, y1 - 24)], 2.0)), TIMBER)
+    # The ladder stands in the gap between the parked ore cars.
+    for x in (1416, 1464):
+        girder(c, x, 1024, LOW, 7)
+    for y in (1060, 1220):
+        x_brace(c, 1416, 1464, y, y + 135, STEEL_DARK, 2.8)
+    c.put(c.mask(lambda p: p.line([(1576, 978), (1586, 1098)], 5)), STEEL_DARK)
+    grating(c, 1424, 1456, 1024, rail=False)
+    grating(c, 1456, 1600, 1088)
+    for x, y in ((1416, 1374), (1464, 988)):
+        lamp_glow(c, x, y, 22, 0.32)
     # The tipple: a tall shed on legs, its chute down to the track.
     m = c.mask(box(2200, 360, 2400, HIGH))
     siding(c, 2200, 360, 2400, HIGH, (110, 90, 74), "tipple")
@@ -874,7 +883,7 @@ def tipple_road(c, k):
         post(c, x, HIGH, LOW, 10, TIMBER)
     x_brace(c, 2210, 2390, HIGH + 20, LOW - 20, scale(TIMBER, 0.8), 3.0)
     c.put(c.mask(lambda p: p.poly([(2220, HIGH + 10), (2260, HIGH + 10), (2160, LOW - 200), (2130, LOW - 200)])), (90, 80, 72))
-    deck_edge(c, 2340, 2400, HIGH, PLANK_LIGHT)
+    deck_edge(c, 2384, 2400, HIGH, PLANK_LIGHT)
     c.tone(m * 0, 0)
 
 
