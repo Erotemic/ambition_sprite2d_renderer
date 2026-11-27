@@ -71,19 +71,46 @@ def room(c, k):
     c.put(c.mask(lambda p: p.poly([(16, 80), (60, 80), (110, 120), (80, 132)])), IRON)
     c.put(c.mask(lambda p: p.poly([(70, 120), (120, 120), (130, 140), (64, 140)])), IRON_LIGHT)
     rng = c.rand("suggestions")
-    heap = c.mask(lambda p: p.poly([(40, g), (80, g - 60), (130, g - 72), (180, g - 50), (210, g)]))
+    heap = c.mask(lambda p: p.poly([(40, g), (80, g - 56), (130, g - 60), (180, g - 47), (210, g)]))
     c.put(heap * c.mask(box(16, 140, 230, g)), PAPER)
     c.put(c.mask(lambda p: [p.rect(x, y, x + 18, y + 12) for x, y in ((rng.uniform(50, 190), rng.uniform(g - 64, g - 14)) for _ in range(22))]),
           mix(PAPER, (120, 110, 90), 0.3))
     c.put(c.mask(lambda p: [p.rect(x + 3, y + 3, x + 15, y + 4) for x, y in ((rng.uniform(50, 190), rng.uniform(g - 60, g - 12)) for _ in range(14))]), (90, 80, 70))
     # The jailer's desk: its ring of keys, its stamp, a lamp.
-    d0, d1 = 540, 690
+    d0, d1 = 544, 688
     c.put(c.mask(lambda p: (p.rect(d0, g - 48, d1, g - 40), p.rect(d0 + 8, g - 40, d0 + 14, g), p.rect(d1 - 14, g - 40, d1 - 8, g))), WOOD)
     c.put(c.mask(lambda p: p.ring(d0 + 40, g - 56, 9, 2)), IRON_LIGHT)
     c.put(c.mask(lambda p: [p.line([(d0 + 40 + dx, g - 50), (d0 + 42 + dx, g - 38)], 1.6) for dx in (-6, -2, 3, 7)]), IRON_LIGHT)
     c.put(c.mask(lambda p: (p.rect(d0 + 80, g - 58, d0 + 90, g - 48), p.ellipse(d0 + 85, g - 60, 6, 3))), RED)
     c.put(c.mask(lambda p: (p.rect(d1 - 40, g - 70, d1 - 26, g - 48), p.poly([(d1 - 46, g - 70), (d1 - 20, g - 70), (d1 - 33, g - 82)]))), IRON)
     c.light(c.mask(lambda p: p.ellipse(d1 - 33, g - 60, 60, 40), blur=12), LAMP, 0.3)
+    filing_walk(c)
+
+
+def filing_walk(c):
+    """Draw the filing shelves and the boards for the room's signs."""
+    c.put(c.mask(lambda p: (
+        p.rect(35, 68, 171, 130),
+        p.rect(446, 110, 594, 146),
+        p.rect(445, 272, 699, 330),
+    )), WOOD_DARK)
+    c.put(c.mask(lambda p: [
+        p.ellipse(x, y, 1.6) for x, y in ((42, 76), (164, 76), (452, 116), (588, 116), (452, 278), (692, 278))
+    ]), (159, 128, 83))
+    c.put(c.mask(box(96, 448, 160, FLOOR)), WOOD)
+    c.put(c.mask(lambda p: p.line([(100, 507), (156, 456)], 3)), (146, 102, 67))
+    c.put(c.mask(box(96, 448, 160, 450)), (164, 130, 92))
+    c.put(c.mask(lambda p: [
+        p.line([(x - 10, 411), (x, 435), (x + 10, 411)], 3)
+        for x in (246, 354, 461, 542)
+    ]), IRON)
+    c.put(c.mask(box(224, 400, 560, 412)), WOOD_DARK)
+    c.put(c.mask(box(224, 400, 560, 402)), (166, 129, 91))
+    c.put(c.mask(lambda p: [
+        p.rect(x, 399 - 4 * (i + 1), x + width, 401 - 4 * (i + 1))
+        for x, width, count in ((272, 28, 5), (379, 44, 8), (508, 30, 4))
+        for i in range(count)
+    ]), PAPER)
 
 
 PIECES: Dict[str, Piece] = {
