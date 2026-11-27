@@ -745,23 +745,17 @@ def ore_car(c, k):
 
 
 def rustler(c, k):
-    """The Rustler, the outlaw engine at the head of the Number 9: its tender
-    (y 528, x 908..1308) with grapple arms folded over it and the water
-    hatch (y 480, x 1180..1290); the cab (roof y 432, x 1308..1548); the
-    boiler (y 512, x 1548..2160) with its steam dome (y 464) and sand dome
-    (y 472), the smokestack (y 384, x 2040..2100) blowing back; the
-    smokebox's headlamp eye, a red bandana of paint over it; the pilot beam
-    (y 608, x 2160..2400) and a cowcatcher like a grin of teeth."""
+    """The Rustler, with an open footplate below the cab roof."""
     k.ground = RAIL
     # The tender.
-    t = c.mask(box(908, 528, 1308, UNDER))
+    t = c.mask(box(896, 528, 1312, UNDER))
     c.put(t, RUSTLER_BLACK)
-    c.put(c.mask(lambda p: [p.rect(x, 528, x + 3, UNDER) for x in np.arange(930, 1308, 60)]), (60, 58, 62))
-    c.put(c.mask(box(908, 600, 1308, 612)), RUSTLER_RED)
-    deck_edge(c, 908, 1308, 528, (110, 106, 110))
+    c.put(c.mask(lambda p: [p.rect(x, 528, x + 3, UNDER) for x in np.arange(930, 1312, 60)]), (60, 58, 62))
+    c.put(c.mask(box(896, 600, 1312, 612)), RUSTLER_RED)
+    deck_edge(c, 896, 1312, 528, (110, 106, 110))
     c.put(c.mask(lambda p: [p.ellipse(x, 524, 16, 6) for x in np.arange(930, 1170, 26)]), (40, 38, 40))
-    c.put(c.mask(box(1180, 480, 1290, 528)), (70, 68, 74))
-    deck_edge(c, 1180, 1290, 480, (140, 136, 140))
+    c.put(c.mask(box(1184, 480, 1296, 528)), (70, 68, 74))
+    deck_edge(c, 1184, 1296, 480, (140, 136, 140))
     # The grapple arms: two jointed booms reaching back over the train.
     for base_x, reach in ((960, 180), (1060, 240)):
         pts = [(base_x, 528), (base_x - 40, 420), (base_x - reach, 450), (base_x - reach - 20, 500)]
@@ -769,29 +763,41 @@ def rustler(c, k):
         c.put(c.mask(lambda p: p.line(pts, 4)), (130, 124, 120))
         hx, hy = pts[-1]
         c.put(c.mask(lambda p: p.line([(hx, hy), (hx, hy + 22), (hx - 6, hy + 30), (hx - 14, hy + 26), (hx - 14, hy + 18)], 4)), STEEL_LIGHT)
-    # The cab.
-    cab = c.mask(box(1308, 432, 1548, UNDER))
-    c.put(cab, RUSTLER_BLACK)
-    c.put(c.mask(box(1300, 424, 1556, 440)), (60, 56, 60))
-    deck_edge(c, 1300, 1556, 432, (140, 136, 140))
-    for cx in (1380, 1480):
-        k.window(cx, 470, 50, 46, "rect", lit=0.7, frame=(200, 160, 80), tag=("cab_w", cx))
-    c.light(c.mask(box(1330, 520, 1530, 600), blur=20), SLAG_GLOW, 0.35)
-    c.put(c.mask(box(1308, 600, 1548, 612)), RUSTLER_RED)
+    # The firebox and controls behind the footplate.
+    c.put(c.mask(box(1312, 432, 1552, UNDER)), RUSTLER_BLACK)
+    c.put(c.mask(lambda p: p.poly([(1312, 448), (1552, 448), (1552, 512), (1504, 528), (1312, 528)])), (64, 56, 58))
+    c.put(c.mask(box(1312, 432, 1552, 448)), (60, 56, 60))
+    deck_edge(c, 1312, 1552, 432, (140, 136, 140))
+    for x in (1320, 1538):
+        girder(c, x, 448, 520, 6)
+    c.put(c.mask(box(1352, 482, 1410, 527)), (46, 34, 34))
+    c.put(c.mask(lambda p: p.ellipse(1381, 507, 17, 13)), (168, 69, 34))
+    c.put(c.mask(lambda p: p.ellipse(1381, 509, 10, 8)), (255, 149, 58))
+    c.light(c.mask(lambda p: p.ellipse(1381, 499, 48, 28), blur=14), SLAG_GLOW, 0.35)
+    for x in (1450, 1474, 1498):
+        c.put(c.mask(lambda p: p.ellipse(x, 466, 6)), BRASS)
+        c.put(c.mask(lambda p: p.ellipse(x, 466, 3)), (204, 185, 145))
+    pipe(c, [(1450, 474), (1450, 502), (1498, 502), (1498, 474)], 2, BRASS)
+    deck_edge(c, 1312, 1504, 528, STEEL_LIGHT)
+    c.put(c.mask(lambda p: p.line([(1504, 528), (1552, 512)], 2)), STEEL_LIGHT)
+    c.put(c.mask(box(1312, 600, 1552, 612)), RUSTLER_RED)
+    for x in (1560, 1608):
+        girder(c, x, 470, 512, 5)
+    grating(c, 1552, 1616, 464, rail=False)
     # The boiler, its bands, the domes and the stack.
-    b = c.mask(box(1548, 512, 2160, UNDER - 20))
+    b = c.mask(box(1552, 512, 2160, UNDER - 20))
     c.put(b, (44, 42, 46))
     c.tone(b * np.clip((c.y - 560) / 50, -1, 1), -0.3)
     c.light(b * np.clip(1 - np.abs(c.y - 526) / 8, 0, 1), (200, 200, 210), 0.3)
     c.put(c.mask(lambda p: [p.rect(x, 512, x + 6, UNDER - 20) for x in np.arange(1600, 2160, 110)]), BRASS)
-    deck_edge(c, 1548, 2160, 512, (130, 128, 134))
+    deck_edge(c, 1552, 2160, 512, (130, 128, 134))
     for x0, x1, top in ((1700, 1780, 464), (1880, 1940, 472)):
         c.put(c.mask(lambda p: (p.rect(x0, top + 6, x1, 512), p.ellipse((x0 + x1) / 2, top + 6, (x1 - x0) / 2, 8))), BRASS)
         deck_edge(c, x0, x1, top, (240, 210, 140))
     c.put(c.mask(lambda p: (p.rect(2040, 392, 2100, 512), p.rect(2030, 384, 2110, 400))), (40, 38, 42))
     deck_edge(c, 2030, 2110, 384, (110, 108, 112))
     smoke = c.mask(lambda p: [p.ellipse(2070 - i * 70, 360 - i * 10 - (i % 2) * 8, 30 + i * 10, 18 + i * 5) for i in range(10)], blur=6)
-    c.put(smoke, (90, 86, 86), 0.7)
+    c.put(smoke * np.clip((c.x - 1320) / 480.0, 0, 1), (90, 86, 86), 0.7)
     # The smokebox front: a headlamp like an eye, a bandana of red paint.
     c.put(c.mask(box(2100, 512, 2160, UNDER - 20)), (30, 30, 34))
     c.put(c.mask(lambda p: p.poly([(2060, 530), (2160, 530), (2160, 556), (2110, 548), (2060, 552)])), RUSTLER_RED)
@@ -1040,7 +1046,7 @@ PIECES: Dict[str, Piece] = {
     "frontier_freight_track_head": Piece((0, 700, 2400, 752), lambda c, k: track(c, 2400), px=1.0),
     "frontier_flat_car_2_end": Piece((0, 530, 320, 720), flat_car(0, 300, [(180, 260, 544)], "flat2e", open_west=True)),
     "frontier_box_car_4": Piece((350, 470, 858, 720), box_car(364, 844, 480, BOXCAR_RED, "box4")),
-    "frontier_rustler": Piece((720, 300, 2400, 720), rustler, px=1.0),
+    "frontier_rustler": Piece((720, 168, 2400, 720), rustler, px=1.0),
     # The loose crates (moving platforms' pictures).
     "frontier_loose_crate": Piece((0, 0, 64, 64), loose_crate),
     # frontier_clinker_yard
