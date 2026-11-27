@@ -934,5 +934,5 @@ def spec_distance(a: CharacterSpec, b: CharacterSpec) -> float:
 
 __all__ = [
     "BASES", "BOUNDS", "Base", "CRESTS", "FACE_MARKS", "SCUTE_ROWS", "Body", "CHOICES", "CharacterSpec", "Face", "HEAD_KNOB_DEFAULTS", "Hair", "Outfit", "Palette", "SCHEMA",
-    "SPECIES_KNOBS", "check", "complete", "crowd", "generate", "spec_distance", "spec_vector", "validate",
+    "SPECIES_KNOBS", "TOP_FITS", "check", "complete", "crowd", "generate", "spec_distance", "spec_vector", "validate",
 ]

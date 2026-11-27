@@ -232,25 +232,27 @@ def corridor_room(c, k):
     panels(c, x0, g - 90, x1, g, WOOD, 20, "corr_wainscot")
     c.put(c.mask(box(x0, CORR_CEILING, x1, CORR_CEILING + 14)), WOOD_DARK)
     c.put(c.mask(box(x0, g - 4, x1, g)), CLARET)
-    # The doors, each with a brass plate (its number is the room's label).
-    for dx in CORR_DOORS:
-        c.put(c.mask(box(dx - 30, g - 132, dx + 30, g)), WOOD_DARK)
-        door = c.mask(box(dx - 24, g - 126, dx + 24, g))
-        c.put(door, WOOD)
-        c.put(c.mask(lambda p: (p.rect(dx - 18, g - 118, dx + 18, g - 70), p.rect(dx - 18, g - 60, dx + 18, g - 10))) * door, WOOD_LIGHT, 0.35)
-        c.put(c.mask(lambda p: p.ellipse(dx + 16, g - 62, 2.4)), BRASS)
-        c.put(c.mask(box(dx - 12, g - 146, dx + 12, g - 136)), BRASS)
-    # Sconces between the doors.
+    # The spectral entrance and the brass frames for the room numbers.
+    for i, dx in enumerate(CORR_DOORS):
+        if i == 1:
+            c.put(c.mask(box(dx - 30, g - 132, dx + 30, g)), WOOD_DARK)
+            door = c.mask(box(dx - 24, g - 126, dx + 24, g))
+            c.put(door, WOOD)
+            c.put(c.mask(lambda p: (p.rect(dx - 18, g - 118, dx + 18, g - 70), p.rect(dx - 18, g - 60, dx + 18, g - 10))) * door, WOOD_LIGHT, 0.35)
+            c.put(c.mask(lambda p: p.ellipse(dx + 16, g - 62, 2.4)), BRASS)
+        c.put(c.mask(box(dx - 32, g - 188, dx + 32, g - 148)), BRASS)
+        c.put(c.mask(box(dx - 29, g - 185, dx + 29, g - 151)), WOOD_DARK)
+    c.put(c.mask(box(x1 - 148, g - 144, x1 - 20, g - 104)), BRASS)
+    c.put(c.mask(box(x1 - 145, g - 141, x1 - 23, g - 107)), WOOD_DARK)
+    # Sconces between the room numbers.
     for sx in [d + 120 for d in CORR_DOORS[:-1]]:
         c.put(c.mask(lambda p: (p.rect(sx - 1, CORR_CEILING + 90, sx + 1, CORR_CEILING + 110), p.poly([(sx - 7, CORR_CEILING + 90), (sx + 7, CORR_CEILING + 90), (sx + 4, CORR_CEILING + 78), (sx - 4, CORR_CEILING + 78)]))), BRASS)
         c.light(c.mask(lambda p: p.ellipse(sx, CORR_CEILING + 84, 30, 34), blur=10), (255, 220, 160), 0.45)
-    # A room-service trolley and a do-not-disturb card.
+    # A room-service trolley.
     tx = CORR_DOORS[2] + 70
     c.put(c.mask(lambda p: (p.rect(tx - 26, g - 36, tx + 26, g - 32), p.rect(tx - 26, g - 12, tx + 26, g - 9), p.rect(tx - 24, g - 36, tx - 22, g - 4), p.rect(tx + 22, g - 36, tx + 24, g - 4))), (200, 200, 210))
     c.put(c.mask(lambda p: (p.ellipse(tx - 6, g - 40, 12, 7), p.ellipse(tx + 14, g - 39, 4, 3))), (220, 220, 230))
     c.put(c.mask(lambda p: [p.ellipse(x, g - 3, 3) for x in (tx - 22, tx + 22)]), (40, 40, 44))
-    dd = CORR_DOORS[4]
-    c.put(c.mask(lambda p: (p.rect(dd + 12, g - 76, dd + 22, g - 54), p.ring(dd + 17, g - 78, 3, 0.8))), (240, 220, 120))
 
 
 # The lift's shaft (640 x 1600): the car runs at x 320..448; the landing's top

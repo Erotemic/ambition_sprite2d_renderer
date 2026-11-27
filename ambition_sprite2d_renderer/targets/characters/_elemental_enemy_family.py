@@ -1,4 +1,4 @@
-"""Four material-specific monsters, with shared clip timing and publication.
+"""Material-specific monsters, with shared clip timing and publication.
 
 All contours are authored in sprite pixels; the earth elemental uses the
 canonical two-bone IK and surface gait. The other three are deforming flows,
@@ -57,6 +57,10 @@ class Pose:
 def rows(spec):
     w,a,r = spec.timing
     locomotion = [('idle',24,53),('walk',24,50),('run',24,37)] if spec.floating else [('idle',16,80),('walk',16,75),('run',16,55)]
+    if spec.element=='lightning':
+        return locomotion + [('notice',8,70),('aim',max(10,round(w*30)),round(w*1000/max(10,round(w*30)))),
+            ('windup',max(10,round(w*30)),round(w*1000/max(10,round(w*30)))),
+            ('shoot',6,30),('hit',8,65),('death',18,70),('death_idle',6,180)]
     return locomotion + [('notice',8,70),
             ('windup',max(10,round(w*25)),40),
             ('attack_side',max(24,round((w+a+r)*30)),33),
@@ -72,9 +76,13 @@ def _choreography(spec, anim, i, n):
     if anim=='notice':
         u=track(t,[(0,0),(.48,1),(1,1)])
         return Pose(t,0.,lean=-4*u,ready=.32*u)
-    if anim=='windup':
+    if anim in ('windup','aim'):
         u=track(t,[(0,0),(.78,1),(1,1)])
         return Pose(t,0.,lean=-12*u,x=-7*u,y=-5*u,ready=u)
+    if anim=='shoot' and spec.element=='lightning':
+        u=track(t,[(0,1),(.22,.94),(.72,.20),(1,0)])
+        hit=track(t,[(0,1),(.36,.72),(1,0)])
+        return Pose(t,0.,lean=-12*u,x=-7*u,y=-5*u,ready=u,strike=hit,recover=1-u)
     if anim=='attack_side':
         w,a,r=spec.timing; A=w/(w+a+r); B=(w+a)/(w+a+r)
         # This row is sampled at whole-move progress in the game's melee path.
@@ -101,8 +109,8 @@ def pose(spec, anim, i, n):
     # Independent material clock. Use integral turns on cyclic clips and
     # match the windup endpoint to the whole-move attack row's active boundary.
     # The action envelope is still the existing catalog timing; the flow never
-    # determines when a hit occurs. Fire runs faster than wind or water.
-    turns = 2 if spec.element == 'fire' else 1
+    # determines when a hit occurs. Fire and lightning run faster than wind or water.
+    turns = 2 if spec.element in ('fire', 'lightning') else 1
     t = q.t
     if anim == 'attack_side':
         w, a, r = spec.timing
@@ -158,6 +166,11 @@ def fluid_transform(q, *, origin=(CX,154.), material='air'):
             bend+=envelope*(8*math.sin(p-y*.052)+2.7*math.sin(2*p-y*.09))
             dx=x*(1+.08*math.sin(p-y*.041)*envelope)
             dy=y+envelope*(4.5*math.sin(p-y*.055+1.2))
+        elif material=='lightning':
+            envelope=min(1.,abs(y+36)/88.)
+            bend+=envelope*(6.5*math.sin(2*p-y*.09)+3.3*math.sin(3*p+y*.05))
+            dx=x*(1+.035*math.sin(2*p+y*.07)*envelope)+3.6*math.sin(3*p+y*.11)*envelope
+            dy=y+envelope*(2.3*math.sin(2*p+y*.06)+1.2*math.sin(4*p-y*.09))
         else:
             envelope=min(1.,abs(y+48)/83.)
             bend+=envelope*(8*math.sin(p-y*.067)+2.4*math.sin(2*p+y*.038))
@@ -367,6 +380,19 @@ def _water(c,q):
     stroke(c,P,(-38,-25),[((-23,-44),(-12,-44),(-4,-41)),((5,-35),(8,-26),(3,-18))],ice,3.2)
     stroke(c,P,(-28,13),[((-17,32),(-4,37),(-2,53))],ice,2.5)
     stroke(c,P,(28,47),[((40,62),(25,78),(5,80))],ice,3.)
+    # Long fin-like arm forms a breaking lateral wave. Paint it before the
+    # face so the expression stays readable and the arm reads as a shoulder
+    # and fore-fin, not a mask passing in front of the head.
+    ex=71+54*h-12*r+3*f*(1-h); ey=6-38*r+12*h+6*roll*(1-h)
+    shape(c,P,(13,9),[((26,-10),(ex-34,ey-24-10*h),(ex-10,ey-19-15*h)),
+          ((ex+14,ey-17-14*h),(ex+20,ey-5),(ex+8,ey+8+7*h)),
+          ((ex+4,ey-4),(ex-8,ey-5),(ex-12,ey+2)),
+          ((ex-18,ey+12),(35,36),(17,30)),((7,24),(7,16),(13,9))],blue,edge,1.8)
+    shape(c,P,(20,7),[((36,-2),(ex-28,ey-18-8*h),(ex-7,ey-13-11*h)),
+          ((ex+9,ey-11-11*h),(ex+14,ey-5),(ex+8,ey+2+5*h)),
+          ((ex+1,ey-1),(ex-6,ey-3),(ex-11,ey+0)),((ex-20,ey+5),(36,18),(20,18)),
+          ((18,14),(18,10),(20,7))],teal,None)
+    stroke(c,P,(31,2),[((ex-32,ey-17-9*h),(ex+1,ey-17-12*h),(ex+10,ey-5))],foam,3.5)
     # A serpentine head and projecting jaw grow out of the current. The
     # single visible eye is under a hard brow, unlike the other elementals.
     shape(c,P,(-8,-34),[((7,-51),(32,-49),(45,-37)),((55,-34),(56,-21),(67,-18)),
@@ -394,18 +420,6 @@ def _water(c,q):
         stroke(c,P,b,[(b,mix(b,a,.75),a)],ice,1.1+1.6*k)
         if j%2==0:c.oval(P(a[0]+5,a[1]-2),2.5*k,3.2*k,foam,None)
     stroke(c,P,(-13,3),[((-3,17),(14,20),(17,33))],deep,2.5)
-    # Long fin-like arm forms a breaking lateral wave. Its curl is open at
-    # the end and its entire mass remains connected to the body.
-    ex=75+58*h-15*r+4*f*(1-h); ey=1-42*r+15*h+8*roll*(1-h)
-    shape(c,P,(17,7),[((31,-14),(ex-36,ey-29-12*h),(ex-8,ey-22-18*h)),
-          ((ex+20,ey-20-18*h),(ex+26,ey-6),(ex+10,ey+8+8*h)),
-          ((ex+6,ey-6),(ex-8,ey-8),(ex-12,ey+1)),
-          ((ex-17,ey+13),(37,38),(18,32)),((6,26),(8,17),(17,7))],blue,edge,2.)
-    shape(c,P,(25,5),[((42,-5),(ex-30,ey-22-10*h),(ex-5,ey-16-14*h)),
-          ((ex+13,ey-13-14*h),(ex+18,ey-6),(ex+10,ey+3+6*h)),
-          ((ex+3,ey-2),(ex-6,ey-5),(ex-12,ey-1)),((ex-22,ey+4),(40,20),(25,18)),
-          ((21,15),(21,10),(25,5))],teal,None)
-    stroke(c,P,(37,0),[((ex-34,ey-21-11*h),(ex+4,ey-21-15*h),(ex+12,ey-5))],foam,4.)
     # Foam flows along the base and rolls off the crest. The drops are
     # baked sprites, with a simple stylized parabolic path and no hitboxes.
     stroke(c,P,(-53,84),[((-27,92),(4,91),(22,83))],foam,3.4)
@@ -428,6 +442,183 @@ def _water(c,q):
         for j in range(5):
             x=ex+8+j*4; y=ey-17-j*6
             c.oval(P(x,y),2.6,4.2,ice,edge,.7,35)
+
+
+def _lightning(c,q):
+    """A creature made of branching electrical discharges, not solid armor.
+
+    The existing Brainstorm channel sampler supplies every crooked line.
+    A shallow hierarchy adds progressively shorter, thinner channels at
+    actual vertices of their parent. Wolfenstein's white-core/blue-corona
+    treatment is the visual precedent. No runtime hit geometry comes from
+    these filaments, and there is no baked travelling projectile.
+    """
+    from .brainstorm import lightning_points
+    from PIL import ImageFilter
+
+    P=fluid_transform(q,origin=(CX,152.),material='lightning')
+    p=q.cycle; r=q.ready; h=q.strike
+    a=math.sin(p); b=math.sin(2*p+1.1); k=math.sin(3*p-.6)
+    navy='#15253e'; indigo='#254774'; blue='#407dcb'; cyan='#81ddff'
+    white='#ecfcff'; hot='#fff8d5'
+    channels=[]
+
+    def poly(points,fill,edge=None,width=1.5):
+        c.poly([P(*v) for v in points],fill,edge,width)
+
+    def stroke(points,fill,width):
+        c.line([P(*v) for v in points],fill,width)
+
+    def grow(start,end,seed,width,depth,*,branch_scale=.40,bias=0):
+        """A multi-scale tree with coherent, periodic jitter and fixed roots."""
+        length=math.dist(start,end)
+        if length<5 or width<.43:return
+        n=max(3,min(9,round(length/10)))
+        amp=min(14.,length*.16)
+        trunk=lightning_points(start,end,seed,amp,n,p)
+        # Refinement on the long pieces adds short angular steps without
+        # replacing the canonical channel sampler or moving fork roots.
+        refined=[trunk[0]]
+        for j,(lo,hi) in enumerate(zip(trunk,trunk[1:])):
+            if math.dist(lo,hi)>14:
+                refined.extend(lightning_points(lo,hi,seed*31+j,min(3.2,math.dist(lo,hi)*.15),3,p)[1:])
+            else:refined.append(hi)
+        # Reject off-canvas tips rather than clipping an electric effect.
+        # Parent branches remain present; no clipping mask breaks them.
+        if any(not (8<=x<=FRAME_SIZE[0]-8 and 8<=y<=FRAME_SIZE[1]-8) for x,y in (P(*v) for v in refined)):
+            return
+        shimmer=.82+.18*math.sin(2*p+seed*1.73)
+        channels.append((refined,width*shimmer))
+        if depth<=0:return
+        for j,fraction in enumerate((.33,.67)):
+            idx=max(1,min(len(trunk)-2,round(fraction*(len(trunk)-1))))
+            root=trunk[idx]
+            dx,dy=sub(trunk[idx+1],trunk[idx-1]); ang=math.degrees(math.atan2(dy,dx))
+            side=1 if (seed+j)%2 else -1
+            # Children are asymmetric and each child can fork again.
+            reach=length*branch_scale*(.80+.13*j+.08*math.sin(p+seed+j))
+            angle=ang+side*(43+12*math.sin(seed*2.1+j)+6*math.sin(p+j))+bias
+            tip=add(root,polar(reach,angle))
+            grow(root,tip,seed*13+17+j,width*(.54 if j else .62),depth-1,branch_scale=.53)
+
+    # An open, tapering column of current replaces the old chunky torso.
+    # The shoulder and chest paths all originate on the same backbone.
+    neck=(9,-35); heart=(1,6); waist=(-11+5*a,48); tail=(9+11*a,104+4*b)
+    grow(neck,heart,14,10.0,2)
+    grow(heart,waist,21,8.4,2)
+    grow(waist,tail,32,6.3,2)
+    # Secondary current loops give the torso mass without filling all the
+    # negative space between its limbs.
+    grow((-39,-22),(-24,19),34,3.4,2)
+    grow((-24,19),waist,35,3.0,1)
+    grow((39,-23),(27,22),36,3.4,2)
+    grow((27,22),waist,38,3.0,1)
+    grow((-15,12),(-39+9*b,75),37,2.5,2)
+    grow((17,17),(34+9*a,65),42,2.9,2)
+    grow(waist,(-30+8*a,98),46,2.6,2)
+    # Spread upper branches into the shape of a powerful, hunched spirit.
+    back=(-76-5*r+6*a,-14-24*r+6*b)
+    grow(heart,(-39,-22),51,6.4,2)
+    grow((-39,-22),back,55,4.5,2)
+    grow(back,(-99+6*a,-37-14*r+4*b),58,3.0,2)
+    grow(back,(-98+5*b,10-12*r),61,2.7,2)
+    grow(back,(-71+4*a,26-12*r),67,2.4,1)
+    grow(heart,(39,-23),71,6.2,2)
+    grow((-35,-25),(-58,-70+5*k),74,2.8,2)
+    grow((30,-22),(64,-62+6*b),79,2.8,2)
+    # The crown is a forked discharge with large empty spaces between tines.
+    for j,(root,end,w) in enumerate([
+        ((-18,-66),(-56+5*a,-99+3*b),3.8),
+        ((-9,-70),(-22+5*b,-122+3*a),4.1),
+        ((12,-72),(10+5*a,-122+3*k),4.0),
+        ((30,-66),(52+6*k,-106+4*a),3.7),
+        ((39,-53),(70+4*a,-78+5*b),2.8),
+    ]):
+        grow(root,end,83+j*7,w,2,branch_scale=.36)
+    # A casting arm made of current rather than a blue forearm. Preserve
+    # the former release anchor and its aim-to-shoot continuity.
+    tip=(89+8*r+4*a*(1-r),-7-12*r+5*b*(1-r))
+    elbow=(62+5*r,-25+7*b*(1-r))
+    grow((39,-23),elbow,123,5.1,2)
+    grow(elbow,tip,129,4.8,2)
+    for j,(dx,dy) in enumerate(((13,-28),(29,-14),(27,12),(9,28))):
+        reach=(1-.44*r)
+        end=(tip[0]+dx*reach,tip[1]+dy*(1-.32*r))
+        grow(tip,end,137+j*9,2.8 if j in (0,1) else 2.1,1)
+    # Charge feeds converge on the claw, then vanish on release.
+    if r>.08:
+        for j,(dx,dy) in enumerate(((-17,-23),(12,-21),(-16,19))):
+            extent=.45+.55*r
+            root=(tip[0]+dx*extent,tip[1]+dy*extent)
+            grow(root,tip,171+j*3,1.0+1.6*r,1,branch_scale=.31)
+    # Short discharge flare, not a second projectile travelling on a sheet.
+    if h>.02:
+        for j,(dx,dy) in enumerate(((35,0),(23,-14),(22,17))):
+            grow(tip,(tip[0]+dx*h,tip[1]+dy*h),181+j*7,3.6*h+1.,1)
+    # Tiny outward sparks with a continuous periodic lifetime. These use
+    # the same channel geometry and do not change the body/collision box.
+    for j in range(8):
+        f=(p/math.tau+j/8)%1.; life=_life(f)
+        if life<.10:continue
+        side=-1 if j%2==0 else 1
+        x=side*(66+22*f)+7*math.sin(math.tau*f+j)
+        y=54-117*f
+        if side>0 and -84<y<-30:x=max(x,83.)
+        grow((x,y),(x+side*10*life,y-8*life),203+j,1.6*life,0)
+
+    # A soft corona behind *all* paths, then sharp blue rims and white-hot
+    # centers. The nested strokes emulate Wolfenstein's arc art at a larger
+    # scale; only the low-alpha outer corona is blurred.
+    glow=Canvas(FRAME_SIZE,super_scale=c.s)
+    for pts,w in channels:
+        glow.line([P(*v) for v in pts],(44,124,255,round(65+min(w,7)*7)),w+4.2)
+    c.image.alpha_composite(glow.image.filter(ImageFilter.GaussianBlur(2.0*c.s)))
+    # Small, dark field around the core creates visual contrast on bright
+    # backgrounds while the edges of the monster remain open and branched.
+    poly([(-38,-24),(-14,-40),(15,-32),(37,-22),(29,-5),(36,6),
+          (13,14),(15,33),(-9,48),(-20,28),(-32,22),(-25,8),(-39,-2)],(22,41,78,155))
+    poly([(-28,-17),(-8,-30),(19,-22),(29,-10),(16,3),(22,13),
+          (2,30),(-15,16),(-24,5),(-16,-3)],(42,77,125,205))
+    # All coronas go down before any core. Crossing forks remain bright
+    # instead of covering the primary current with blue paint.
+    # Thin tertiary channels retain blue edges instead of competing with
+    # the main white-hot leader. Taper each discharge toward its tip.
+    for pts,w in channels:
+        stroke(pts,blue,w+min(2.8,w*.75))
+    for pts,w in channels:
+        mid=max(1,len(pts)//2)
+        stroke(pts[:mid+1],cyan,w+min(1.2,w*.45))
+        stroke(pts[mid:],cyan,max(.6,w*.64))
+    for pts,w in channels:
+        mid=max(1,len(pts)//2)
+        col=hot if w>6 else (white if w>1.6 else cyan)
+        stroke(pts[:mid+1],col,max(.48,w*.72))
+        stroke(pts[mid:],white if w>3 else cyan,max(.42,w*.35))
+    # Dark, recessed face: a small pocket in the storm, not a helmet.
+    # Its eyes stay readable even while branches cross the head's edges.
+    poly([(-30,-61),(-19,-73),(-5,-70),(2,-78),(19,-73),(34,-72),(47,-59),
+          (39,-44),(32,-39),(26,-28),(10,-33),(4,-29),(-6,-38),(-23,-44)],navy,indigo,1.6)
+    poly([(-28,-60),(-16,-69),(2,-73),(19,-69),(34,-67),(45,-58),
+          (34,-61),(22,-58),(4,-63),(-10,-59)],indigo)
+    # Luminous slits, asymmetry and a hard angular brow imply expression.
+    poly([(-17,-60),(4,-54),(5,-48),(-12,-51)],cyan)
+    poly([(14,-55),(35,-63),(30,-51),(15,-48)],cyan)
+    poly([(-14,-58),(2,-54),(2,-51),(-11,-53)],hot)
+    poly([(17,-54),(32,-60),(28,-54),(17,-51)],hot)
+    poly([(5,-44),(11,-52),(18,-45),(15,-40),(8,-40)],indigo)
+    stroke([(-3,-39),(7,-42),(16,-38),(25,-42),(31,-39)],blue,1.2)
+    stroke([(-29,-59),(-21,-66),(-15,-65),(-9,-70)],cyan,2.0)
+    stroke([(32,-69),(38,-63),(45,-59)],cyan,2.0)
+    # Bright nodes are concentrated at the chest and release point; a
+    # subtle cyclic pulse avoids uniform, always-on white across the body.
+    def node(at,size):
+        x,y=at
+        poly([(x,y-size),(x+size*.55,y-size*.22),(x+size,y),
+              (x+size*.22,y+size*.32),(x,y+size),(x-size*.28,y+size*.28),
+              (x-size,y),(x-size*.32,y-size*.25)],cyan)
+        c.disk(P(x,y),size*.36,hot,None)
+    node(heart,5.8+1.2*a+3*r)
+    node(tip,3.1+8*r+4*h)
 
 
 # Earth is the only rigid-limbed member of the family. All four limbs use
@@ -541,14 +732,19 @@ def _earth(c,q):
 
 def render_frame(spec,anim,i,n):
     q=pose(spec,anim,i,n); c=Canvas(FRAME_SIZE)
-    painters={'air':_air,'fire':_fire,'water':_water,'earth':_earth}
+    painters={'air':_air,'fire':_fire,'water':_water,'earth':_earth,'lightning':_lightning}
     painters[spec.element](c,q)
     im=c.finish()
     if spec.floating and q.death:
         # Air disperses; flame extinguishes; water collapses and drains.
         # The rest pose is deliberately transparent, not a toppled humanoid.
         u=q.death
-        sx,sy={'air':(1+.32*u,1-.35*u),'fire':(1-.42*u,1-.64*u),'water':(1+.26*u,1-.82*u)}[spec.element]
+        sx,sy={
+            'air':(1+.32*u,1-.35*u),
+            'fire':(1-.42*u,1-.64*u),
+            'water':(1+.26*u,1-.82*u),
+            'lightning':(1+.18*u,1-.78*u),
+        }[spec.element]
         # Resample around the same body anchor; preserve transparent canvas.
         from PIL import Image
         center=(CX,154.)
@@ -560,7 +756,7 @@ def render_frame(spec,anim,i,n):
 def metadata(spec):
     traits=['enemy','fantasy',*spec.traits]
     w,a,r=spec.timing; total=w+a+r
-    return {'actor':{'character_id':spec.target,'display_name':spec.display_name},
+    result={'actor':{'character_id':spec.target,'display_name':spec.display_name},
             'body':{'body_plan':'Floating' if spec.floating else 'Biped','body_kind':spec.body_kind,
                     'mass_class':spec.mass_class,'locomotion_hint':'Fly' if spec.floating else 'Walk','traits':traits},
             'actions':{'default_preset':spec.attack_preset},
@@ -572,6 +768,12 @@ def metadata(spec):
                'action.melee.primary':{'animation':'attack_side','events':[
                    {'t':w/total,'event':'hitbox_active_start','source':spec.target+'.attack'},
                    {'t':(w+a)/total,'event':'hitbox_active_end','source':spec.target+'.attack'}]}}}
+    if spec.element=='lightning':
+        bindings=result['animation_bindings']
+        del bindings['action.melee.primary']
+        bindings['action.ranged.primary']={'animation':'shoot','events':[
+            {'t':0.,'event':'projectile_release','source':spec.target+'.arc'}]}
+    return result
 
 
 def publish_spec(spec,out_dir: str|Path,**opts):
@@ -579,5 +781,6 @@ def publish_spec(spec,out_dir: str|Path,**opts):
     out=build_sheet(target=spec.target,rows=clips,render_fn=lambda a,i,n:render_frame(spec,a,i,n),
                     out_dir=Path(out_dir),frame_size=FRAME_SIZE,auto_crop=False,actor_metadata=metadata(spec),
                     body_metrics_fn=lambda w,h:body_metrics_for_box(spec.box,w,h),
-                    animation_key_map={a:a for a,_,_ in clips},sits_on_ground=not spec.floating)
+                    animation_key_map={a:a for a,_,_ in clips},sits_on_ground=not spec.floating,
+                    pose_bodies='authored' if spec.element=='lightning' else 'art')
     return [out[k] for k in ('spritesheet','yaml','ron','actor','preview','canonical','canonical_transparent')]

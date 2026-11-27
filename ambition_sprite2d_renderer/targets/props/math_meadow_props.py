@@ -39,7 +39,6 @@ BOARD_DARK = (104, 76, 46)
 SOIL = (110, 82, 58)
 GREEN = (96, 150, 80)
 GREEN_DARK = (66, 112, 60)
-GOLD = (236, 190, 60)
 SPIRAL = (200, 80, 60)
 PLASTER = (236, 226, 200)
 ROOF = (168, 84, 58)
@@ -61,15 +60,14 @@ def rabbit(c, x, y, s=1.0):
 
 
 def farm(c, k):
-    # The cottage: plaster, a red roof, a green door, a window.
+    # The cottage has a red roof and two windows.
     x0, x1, top = 120, 420, 520
     c.put(c.mask(box(x0, top, x1, FLOOR)), PLASTER)
     c.put(c.mask(lambda p: p.poly([(x0 - 20, top + 4), ((x0 + x1) / 2, top - 90), (x1 + 20, top + 4)])), ROOF)
     c.put(c.mask(lambda p: [p.line([(x, top + 4), ((x0 + x1) / 2, top - 90)], 1) for x in range(x0 - 10, x1 + 20, 22)]), scale(ROOF, 0.75))
-    c.put(c.mask(box(300, FLOOR - 96, 352, FLOOR)), GREEN_DARK)
-    c.put(c.mask(lambda p: p.ellipse(342, FLOOR - 48, 2.4)), GOLD)
-    c.put(c.mask(box(160, 570, 240, 630)), (130, 170, 200))
-    c.put(c.mask(lambda p: (p.rect(198, 570, 202, 630), p.rect(160, 598, 240, 602))), PLASTER)
+    for left in (160, 300):
+        c.put(c.mask(box(left, 570, left + 80, 630)), (130, 170, 200))
+        c.put(c.mask(lambda p: (p.rect(left + 38, 570, left + 42, 630), p.rect(left, 598, left + 80, 602))), PLASTER)
     # The fence along the farm.
     c.put(c.mask(lambda p: [p.rect(x, FLOOR - 44, x + 6, FLOOR) for x in range(440, 860, 40)]), BOARD)
     c.put(c.mask(lambda p: [p.rect(440, y, 860, y + 5) for y in (FLOOR - 36, FLOOR - 18)]), BOARD)

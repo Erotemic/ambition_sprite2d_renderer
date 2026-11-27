@@ -4,7 +4,7 @@ the Math dimension, a vaulted undercroft (its parallax draws the vault).
 Drawn in room coordinates (`_district_props`) on the numbers of
 `tools/ambition_ldtk_tools/specs/math_town/make_specs.py` (`gate_hall`): the
 floor (y 704), the galleries (y 512: x 64..416 and 1184..1536), the gate's
-cradle in the middle (x 560..1040), the door up to the town (x 1488).
+cradle in the middle (x 560..1040), and the ladder to town (x 1536..1568).
 
 - `math_hall_west`: the Manifest Office's booth (shuttered, an abacus in its
   window, closed for recounting) and, up on the west gallery, the customs
@@ -12,7 +12,7 @@ cradle in the middle (x 560..1040), the door up to the town (x 1488).
   turnstile).
 - `math_hall_east`: the departures board over the east gallery, every
   destination a glyph and the infinity service cancelled in red; a porter's
-  cart of trunks by the door (a hatbox strapped with a Moebius band).
+  cart of trunks by the ladder (a hatbox strapped with a Moebius band).
 - `math_hall_lamps`: lamps under the vault: polyhedra (a cube, an
   octahedron, an icosahedron) on chains, and banners of pi, sigma and
   infinity between them.
@@ -123,7 +123,7 @@ def east(c, k):
     x0, x1, y = GALLERY_E
     departures(c, x0 + 20, y - 190, x1 - 20, y - 96)
     c.put(c.mask(lambda p: [p.rect(x, y - 260, x + 2, y - 196) for x in (x0 + 60, x1 - 62)]), IRON)
-    # The porter's cart of trunks, west of the door.
+    # The porter's cart is west of the ladder.
     cx0, cx1 = 1360, 1470
     c.put(c.mask(lambda p: (p.rect(cx0, g - 22, cx1, g - 14), p.rect(cx1 - 4, g - 70, cx1, g - 14))), IRON)
     c.put(c.mask(lambda p: [p.ellipse(x, g - 8, 8) for x in (cx0 + 14, cx1 - 14)]), (30, 30, 34))
