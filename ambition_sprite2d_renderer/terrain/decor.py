@@ -5032,6 +5032,8 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "hobford": ((wheat_sheaf, milk_pail, crop_crate, firewood_cord, flowers, standing_stone), _palette((34, 30, 22), (136, 130, 118), (196, 190, 174), (128, 92, 58), (96, 98, 100), (96, 150, 64), (226, 110, 96), (255, 220, 140))),
     # The woods: ferns, mushrooms on a log, bushes and stones under the trees.
     "hobford_woods": ((fern, log_mushrooms, bush, moss_stone, grass_tuft, fern), _palette((20, 22, 16), (92, 96, 84), (150, 152, 136), (100, 72, 48), (70, 70, 64), (70, 124, 56), (220, 180, 90), (255, 214, 130))),
+    "mine_cut": ((moss_stone, barrel, moss_stone, oil_can, crate, moss_stone), _palette((25, 39, 44), (59, 81, 86), (111, 136, 131), (69, 83, 82), (69, 94, 96), (60, 92, 87), (164, 112, 61), (225, 182, 108))),
+    "mine_lode": ((moss_stone, moss_stone, oil_can, moss_stone, crate, moss_stone), _palette((24, 39, 47), (51, 79, 88), (101, 145, 148), (59, 86, 91), (66, 96, 101), (59, 94, 92), (140, 128, 82), (190, 211, 161))),
     "barrow_vault": ((moss_stone, barrel, moss_stone, oil_can, crate, moss_stone), _palette((31, 29, 24), (93, 83, 66), (151, 133, 105), (83, 59, 42), (63, 65, 64), (65, 89, 69), (195, 140, 70), (228, 178, 114))),
     # The workshop: crates, a barrel, an oil can, gears, rolled drawings, an anvil.
     "creator_workshop": ((crate, barrel, oil_can, gear_wheel, blueprint_rolls, anvil), _palette((30, 22, 16), (120, 110, 98), (180, 170, 150), (130, 94, 60), (110, 112, 116), (90, 120, 70), (200, 90, 60), (255, 210, 140))),

@@ -1,0 +1,30 @@
+schema: ambition-chargen-v1
+name: Farah
+base: slim_female
+seed: 403
+body:
+  height_cm: 160
+  age: 0.47
+hair:
+  style: ponytail
+palette:
+  skin: '#ad744d'
+  hair: '#31231b'
+outfit:
+  top: shirt
+  sleeves: long
+  neckline: collar
+  top_color: '#8bb0a7'
+  outer: cardigan
+  outer_length: hip
+  outer_color: '#435770'
+  bottom: trousers
+  bottom_color: '#434049'
+  shoes: boots
+  hat: none
+  hat_color: '#435770'
+  accessories:
+  - glasses
+game:
+  character_id: npc_mine_geologist
+  description: "Farah studies the seams and the sounds that come through them."

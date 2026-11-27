@@ -1,0 +1,30 @@
+schema: ambition-chargen-v1
+name: Inez
+base: average_female
+seed: 401
+body:
+  height_cm: 171
+  age: 0.68
+hair:
+  style: bun
+palette:
+  skin: '#805036'
+  hair: '#353032'
+outfit:
+  top: shirt
+  sleeves: long
+  neckline: collar
+  top_color: '#c6ac7c'
+  outer: jacket
+  outer_length: hip
+  outer_color: '#ab6331'
+  bottom: trousers
+  bottom_color: '#303e47'
+  shoes: boots
+  hat: cap
+  hat_color: '#ad701c'
+  accessories:
+  - belt
+game:
+  character_id: npc_mine_foreman
+  description: "Inez oversees the mine shifts. She keeps the deep crew on the payroll while she checks the cavern."

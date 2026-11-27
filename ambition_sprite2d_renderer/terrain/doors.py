@@ -2876,6 +2876,8 @@ DOORS: dict[str, tuple[Draw, dict]] = {
     "hobford": (plank, _colours((150, 140, 120), (70, 104, 82), (34, 28, 22), (196, 160, 80), (255, 222, 160))),
     # The woods: a door of rough planks, as on a woodman's hut.
     "hobford_woods": (plank, _colours((86, 66, 46), (120, 92, 62), (30, 22, 16), (160, 130, 70), (255, 214, 150))),
+    "mine_cut": (plank, _colours((56, 70, 75), (88, 113, 116), (27, 36, 39), (157, 118, 71), (232, 182, 98))),
+    "mine_lode": (plank, _colours((55, 68, 76), (80, 109, 116), (31, 43, 51), (120, 142, 136), (179, 218, 190))),
     "barrow_vault": (plank, _colours((60, 48, 38), (92, 73, 51), (31, 30, 27), (145, 121, 76), (234, 178, 101))),
     # The barn: a door of red-painted boards.
     "creator_workshop": (plank, _colours((92, 64, 44), (150, 58, 44), (34, 22, 16), (220, 186, 120), (255, 222, 160))),

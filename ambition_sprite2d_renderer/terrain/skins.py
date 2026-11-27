@@ -155,6 +155,8 @@ SKINS: tuple[Skin, ...] = (
     Skin("hobford", "earth", (104, 80, 56), (44, 32, 22), (152, 122, 86), (236, 214, 130), "grass", (108, 160, 72), "roots", "plank"),
     # The woods past the village: darker soil and moss under the trees.
     Skin("hobford_woods", "earth", (76, 58, 42), (28, 20, 14), (122, 96, 68), (220, 200, 120), "grass", (72, 122, 58), "roots", "plank"),
+    Skin("mine_cut", "block", (79, 96, 97), (30, 40, 44), (122, 167, 165), (214, 161, 83), "edge", (102, 134, 133), "lip", "slab"),
+    Skin("mine_lode", "rock", (64, 89, 94), (29, 50, 62), (119, 155, 147), (149, 216, 195), "rim", (113, 153, 147), "roots", "slab"),
     Skin("barrow_vault", "block", (109, 101, 83), (39, 37, 33), (152, 136, 106), (208, 163, 89), "edge", (136, 124, 98), "lip", "slab"),
     # The Creator's workshop, a barn: floorboards, with planks for the loft.
     Skin("creator_workshop", "timber", (124, 90, 60), (52, 36, 24), (172, 130, 88), (232, 188, 112), "deck", (178, 138, 94), "lip", "plank"),
