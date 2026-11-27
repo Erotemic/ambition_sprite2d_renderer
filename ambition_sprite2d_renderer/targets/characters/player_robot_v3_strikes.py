@@ -773,11 +773,228 @@ def crescent_sweep(body: RigBody) -> List[Key]:
     ]
 
 
+def _stab(at: float, rise: float, *, ease: str = "out") -> Key:
+    """One needle stab of a flurry: the arm and blade one straight line along
+    ``rise`` (world degrees, negative up), the body thrown in behind it."""
+    return Key(at=at, near=(rise + 2.0, rise, rise), far=(168.0, 158.0), torso=30.0, head=-8.0,
+               lunge=12.0, drop=7.0, squash=1.03, shoulder=9.0,
+               feet={"near": (-9.0, 3.0, 25.0), "far": (10.0, 0.0, -4.0)}, turn="profile",
+               squint=0.5, ease=ease, face="fierce")
+
+
+def _drawn(at: float, *, ease: str = "in") -> Key:
+    """A flurry's stab drawn back to the hip between two stabs, the blade still
+    on its line: the next stab has somewhere to come from."""
+    return Key(at=at, near=(120.0, 150.0, 4.0), far=(150.0, 130.0), torso=24.0, head=-6.0,
+               lunge=8.0, drop=7.0, squash=0.98, shoulder=4.0,
+               feet={"near": (-6.0, 2.0, 15.0), "far": (8.0, 0.0, -2.0)}, turn="profile",
+               squint=0.5, ease=ease, face="fierce")
+
+
+def lunge_flurry(body: RigBody) -> List[Key]:
+    """Stance II's needle flurry: two stabs a lap, high then low, lapping while
+    Attack is held, then a full push-out thrust. 0.56 s; the lap is 0.03-0.15
+    (stabs at 0.03 and 0.09), the push-out is A 0.20-0.27.
+
+    The lap rewinds the move clock to 0.03, so the pose there and at 0.15
+    meet: both are drawn back."""
+    d = 0.56
+    return [
+        _drawn(0.0, ease="smooth"),
+        _drawn(0.02 / d),
+        _stab(0.045 / d, -18.0),
+        _drawn(0.075 / d, ease="smooth"),
+        _stab(0.10 / d, 24.0),
+        _drawn(0.14 / d, ease="smooth"),
+        # The push-out: further back, then the whole body behind the point.
+        Key(at=0.19 / d, near=(150.0, 172.0, -2.0), far=(35.0, 15.0), torso=14.0, head=-4.0,
+            lunge=-1.0, drop=5.0, squash=0.95, shoulder=-3.0, feet={"far": (2.0, 0.0, 0.0)},
+            turn="open", squint=0.35, ease="in", face="fierce"),
+        Key(at=0.215 / d, near=(2.0, 0.0, 0.0), far=(172.0, 165.0), torso=36.0, head=-12.0,
+            lunge=16.0, drop=8.0, squash=1.06, shoulder=10.0,
+            feet={"near": (-12.0, 4.0, 30.0), "far": (11.0, 0.0, -6.0)}, turn="profile",
+            squint=0.55, ease="out", face="strain"),
+        Key(at=0.29 / d, near=(4.0, 2.0, 1.0), far=(170.0, 160.0), torso=34.0, head=-10.0,
+            lunge=16.0, drop=8.0, squash=1.0, shoulder=10.0,
+            feet={"near": (-12.0, 4.0, 30.0), "far": (11.0, 0.0, -6.0)}, turn="profile",
+            squint=0.4, face="fierce"),
+        Key(at=0.42 / d, near=(55.0, 55.0, 30.0), far=(120.0, 110.0), torso=14.0, head=-2.0,
+            lunge=8.0, drop=4.0, shoulder=4.0, feet={"far": (6.0, 0.0, 0.0)}, blade=0.3),
+        rest(body, 1.0),
+    ]
+
+
+def lunge_corkscrew(body: RigBody) -> List[Key]:
+    """Stance II's up: a corkscrew drill straight up. The blade points at the
+    sky the whole time and the chest turns back and forth under it, once a
+    pulse, so the drill reads as a spin. 0.50 s; pulses at 0.06, 0.12 and 0.18,
+    the throw at A 0.24-0.30."""
+    d = 0.5
+    up = {"near": (0.0, 1.5, 14.0), "far": (0.0, 1.5, 14.0)}
+
+    def twist(at: float, chest: str, wrist: float, head: float, *, ease: str = "out") -> Key:
+        return Key(at=at, near=(-92.0, -94.0, -90.0 + wrist), far=(150.0, 140.0), torso=-6.0,
+                   head=head, drop=-1.0, squash=1.06, shoulder=3.0 if chest == "profile" else -3.0,
+                   feet=up, turn=chest, squint=0.45, ease=ease, face="fierce")
+
+    return [
+        rest(body, 0.0),
+        # Sunk, the blade low in front and pointing up already.
+        Key(at=0.045 / d, near=(40.0, -30.0, -80.0), far=(120.0, 110.0), torso=8.0, head=2.0,
+            drop=6.0, squash=0.93, shoulder=-2.0, turn="open", squint=0.3, ease="in",
+            face="fierce"),
+        twist(0.07 / d, "profile", 4.0, -18.0),
+        twist(0.10 / d, "open", -4.0, -20.0, ease="linear"),
+        twist(0.13 / d, "profile", 4.0, -22.0, ease="linear"),
+        twist(0.16 / d, "open", -4.0, -24.0, ease="linear"),
+        twist(0.19 / d, "profile", 4.0, -26.0, ease="linear"),
+        # The throw: the whole body up onto its toes behind the point.
+        Key(at=0.25 / d, near=(-96.0, -98.0, -94.0), far=(165.0, 160.0), torso=-10.0, head=-30.0,
+            drop=-4.0, squash=1.1, shoulder=4.0,
+            feet={"near": (0.0, 3.0, 22.0), "far": (0.0, 3.0, 22.0)}, turn="profile", squint=0.55,
+            ease="out", face="strain"),
+        Key(at=0.31 / d, near=(-98.0, -100.0, -96.0), far=(160.0, 155.0), torso=-9.0, head=-26.0,
+            drop=-3.0, squash=1.06, shoulder=4.0, feet=up, turn="profile", squint=0.4,
+            face="fierce"),
+        Key(at=0.40 / d, near=(-150.0, -165.0, -170.0), far=(120.0, 130.0), torso=-6.0, head=-12.0,
+            drop=1.0, turn="open", blade=0.3),
+        rest(body, 1.0),
+    ]
+
+
+def crescent_return(body: RigBody) -> List[Key]:
+    """Stance III's second step, level: the arc back down, from high in front
+    down through the target to low in front. It begins where the arc left the
+    blade. 0.44 s, A 0.06-0.13."""
+    d = 0.44
+    step = {"far": (9.0, 0.0, 0.0)}
+    return [
+        Key(at=0.0, near=(40.0, 42.0, 48.0), far=(115.0, 110.0), torso=10.0, head=4.0, lunge=5.0,
+            drop=3.0, shoulder=4.0, feet={"far": (5.0, 0.0, 0.0)}),
+        # Up and over, high in front.
+        Key(at=0.05 / d, near=(-70.0, -78.0, -95.0), far=(70.0, 50.0), torso=-6.0, head=-6.0,
+            lunge=2.0, drop=1.0, squash=1.04, shoulder=-3.0, turn="open", squint=0.3, ease="in"),
+        # Down through the front on a straight arm.
+        Key(at=0.09 / d, near=(-6.0, -8.0, -4.0), far=(160.0, 140.0), torso=16.0, head=4.0,
+            lunge=8.0, drop=4.0, squash=1.02, shoulder=8.0, feet=step, turn="profile",
+            squint=0.4, ease="out"),
+        Key(at=0.13 / d, near=(48.0, 52.0, 62.0), far=(165.0, 150.0), torso=22.0, head=6.0,
+            lunge=9.0, drop=6.0, squash=0.96, shoulder=8.0, feet=step, turn="profile", squint=0.3),
+        Key(at=0.22 / d, near=(70.0, 75.0, 60.0), far=(115.0, 110.0), torso=10.0, head=3.0,
+            lunge=5.0, drop=3.0, shoulder=3.0, feet={"far": (5.0, 0.0, 0.0)}, blade=0.2),
+        rest(body, 1.0),
+    ]
+
+
+def crescent_rise(body: RigBody) -> List[Key]:
+    """Stance III's second step, up: a rising arc from low behind, up through
+    the front to high in front, the body coming up with it. 0.44 s,
+    A 0.06-0.13."""
+    d = 0.44
+    return [
+        Key(at=0.0, near=(40.0, 42.0, 48.0), far=(115.0, 110.0), torso=10.0, head=4.0, lunge=5.0,
+            drop=3.0, shoulder=4.0, feet={"far": (5.0, 0.0, 0.0)}),
+        # Low and behind, the body sunk: -200 so the cut goes UNDER to the front.
+        Key(at=0.05 / d, near=(150.0, 160.0, 165.0), far=(40.0, 15.0), torso=6.0, head=2.0,
+            lunge=-2.0, drop=7.0, squash=0.93, shoulder=-4.0, feet={"far": (2.0, 0.0, 0.0)},
+            turn="open", squint=0.35, ease="in"),
+        Key(at=0.09 / d, near=(30.0, 20.0, 0.0), far=(150.0, 130.0), torso=12.0, head=-4.0,
+            lunge=6.0, drop=2.0, squash=1.04, shoulder=7.0, feet={"far": (8.0, 0.0, 0.0)},
+            turn="profile", squint=0.4, ease="out"),
+        Key(at=0.13 / d, near=(-40.0, -55.0, -62.0), far=(165.0, 150.0), torso=4.0, head=-14.0,
+            lunge=7.0, drop=-1.5, squash=1.06, shoulder=7.0,
+            feet={"near": (0.0, 1.5, 14.0), "far": (8.0, 1.5, 14.0)}, turn="profile", squint=0.3),
+        Key(at=0.22 / d, near=(-20.0, -35.0, -40.0), far=(120.0, 110.0), torso=4.0, head=-6.0,
+            lunge=5.0, drop=1.0, shoulder=3.0, feet={"far": (6.0, 0.0, 0.0)}, blade=0.2),
+        rest(body, 1.0),
+    ]
+
+
+def crescent_dip(body: RigBody) -> List[Key]:
+    """Stance III's second step, down: a low arc at the shins, the body sunk
+    into a long step so the tip runs along the floor far out. 0.44 s,
+    A 0.06-0.13."""
+    d = 0.44
+    long_step = {"near": (-8.0, 2.0, 20.0), "far": (14.0, 0.0, 0.0)}
+    return [
+        Key(at=0.0, near=(40.0, 42.0, 48.0), far=(115.0, 110.0), torso=10.0, head=4.0, lunge=5.0,
+            drop=3.0, shoulder=4.0, feet={"far": (5.0, 0.0, 0.0)}),
+        # Behind at the hip, low.
+        Key(at=0.05 / d, near=(135.0, 150.0, 172.0), far=(50.0, 25.0), torso=14.0, head=0.0,
+            lunge=-1.0, drop=9.0, squash=0.92, shoulder=-4.0, feet={"far": (3.0, 0.0, 0.0)},
+            turn="open", squint=0.35, ease="in"),
+        # Along the floor on a straight arm.
+        Key(at=0.09 / d, near=(42.0, 40.0, 30.0), far=(160.0, 140.0), torso=26.0, head=6.0,
+            lunge=11.0, drop=12.0, squash=0.95, shoulder=8.0, feet=long_step, turn="profile",
+            squint=0.45, ease="out"),
+        Key(at=0.13 / d, near=(34.0, 30.0, 12.0), far=(165.0, 150.0), torso=28.0, head=6.0,
+            lunge=12.0, drop=12.0, squash=0.94, shoulder=8.0, feet=long_step, turn="profile",
+            squint=0.35),
+        Key(at=0.24 / d, near=(80.0, 85.0, 50.0), far=(115.0, 110.0), torso=14.0, head=3.0,
+            lunge=7.0, drop=7.0, shoulder=3.0, feet={"far": (8.0, 0.0, 0.0)}, blade=0.2),
+        rest(body, 1.0),
+    ]
+
+
+def crescent_rise_finish(body: RigBody) -> List[Key]:
+    """Stance III's third step, up: the overhead launcher. From low in front,
+    the blade goes straight up and on over the head to behind, the body
+    stretched onto its toes after it. 0.52 s, A 0.08-0.17."""
+    d = 0.52
+    toes = {"near": (0.0, 3.0, 22.0), "far": (0.0, 3.0, 22.0)}
+    return [
+        Key(at=0.0, near=(-20.0, -35.0, -40.0), far=(120.0, 110.0), torso=4.0, head=-6.0,
+            lunge=5.0, drop=1.0, shoulder=3.0, feet={"far": (6.0, 0.0, 0.0)}),
+        Key(at=0.07 / d, near=(60.0, 45.0, 20.0), far=(120.0, 110.0), torso=10.0, head=4.0,
+            lunge=4.0, drop=8.0, squash=0.9, squint=0.4, ease="in", face="strain"),
+        Key(at=0.12 / d, near=(-92.0, -96.0, -90.0), far=(160.0, 160.0), torso=-10.0, head=-30.0,
+            drop=-4.0, squash=1.1, shoulder=3.0, feet=toes, turn="open", squint=0.55, ease="out",
+            face="fierce"),
+        Key(at=0.17 / d, near=(-150.0, -165.0, -172.0), far=(130.0, 140.0), torso=-14.0,
+            head=-32.0, drop=-2.0, squash=1.04, feet=toes, turn="open", squint=0.35,
+            face="fierce"),
+        Key(at=0.3 / d, near=(-170.0, 160.0, 150.0), far=(90.0, 95.0), torso=-6.0, head=-12.0,
+            drop=1.0, blade=0.0),
+        rest(body, 1.0),
+    ]
+
+
+def crescent_flurry(body: RigBody) -> List[Key]:
+    """Stance III's third step, down: four quick stabs, alternately high and
+    low, then a low tip cut that throws. 0.62 s; stabs at 0.05, 0.11, 0.17 and
+    0.23, the cut at A 0.31-0.38."""
+    d = 0.62
+    keys = [rest(body, 0.0), _drawn(0.035 / d)]
+    for i, at in enumerate((0.05, 0.11, 0.17, 0.23)):
+        keys.append(_stab((at + 0.012) / d, -16.0 if i % 2 == 0 else 22.0))
+        keys.append(_drawn((at + 0.045) / d, ease="smooth"))
+    keys += [
+        # Behind at the hip, low, then along the floor.
+        Key(at=0.3 / d, near=(135.0, 150.0, 172.0), far=(50.0, 25.0), torso=14.0, head=0.0,
+            lunge=2.0, drop=9.0, squash=0.92, shoulder=-4.0, feet={"far": (5.0, 0.0, 0.0)},
+            turn="open", squint=0.4, ease="in", face="strain"),
+        Key(at=0.34 / d, near=(42.0, 40.0, 30.0), far=(160.0, 140.0), torso=26.0, head=6.0,
+            lunge=13.0, drop=11.0, squash=0.95, shoulder=8.0,
+            feet={"near": (-8.0, 2.0, 20.0), "far": (14.0, 0.0, 0.0)}, turn="profile",
+            squint=0.5, ease="out", face="fierce"),
+        Key(at=0.38 / d, near=(34.0, 30.0, 12.0), far=(165.0, 150.0), torso=28.0, head=6.0,
+            lunge=13.0, drop=11.0, squash=0.94, shoulder=8.0,
+            feet={"near": (-8.0, 2.0, 20.0), "far": (14.0, 0.0, 0.0)}, turn="profile",
+            squint=0.35, face="fierce"),
+        Key(at=0.5 / d, near=(80.0, 85.0, 50.0), far=(115.0, 110.0), torso=14.0, head=3.0,
+            lunge=7.0, drop=6.0, shoulder=3.0, feet={"far": (8.0, 0.0, 0.0)}, blade=0.2),
+        rest(body, 1.0),
+    ]
+    return keys
+
+
 #: How strongly the sheet smears each frame of a stance row as the dash is
 #: smeared (`player_robot_v3._smear_layers`): the lunges, while they carry.
 STRIKE_SMEAR: Dict[str, Tuple[float, ...]] = {
     "lunge_thrust": (0.0, 0.35, 0.95, 0.8, 0.35, 0.1, 0.0),
     "lunge_plunge": (0.0, 0.3, 0.9, 0.95, 0.8, 0.4, 0.0),
+    # The push-out after the lap (16 frames of 35 ms: it carries from 0.20).
+    "lunge_flurry": (0.0,) * 5 + (0.2, 0.9, 0.85, 0.5, 0.2) + (0.0,) * 6,
 }
 
 
@@ -1156,6 +1373,13 @@ STRIKES: Dict[str, Callable[[RigBody], List[Key]]] = {
     "lunge_plunge": lunge_plunge,
     "crescent_arc": crescent_arc,
     "crescent_sweep": crescent_sweep,
+    "lunge_flurry": lunge_flurry,
+    "lunge_corkscrew": lunge_corkscrew,
+    "crescent_return": crescent_return,
+    "crescent_rise": crescent_rise,
+    "crescent_dip": crescent_dip,
+    "crescent_rise_finish": crescent_rise_finish,
+    "crescent_flurry": crescent_flurry,
     "shoot": shoot,
     "aim": aim,
     "eye_laser": eye_laser,

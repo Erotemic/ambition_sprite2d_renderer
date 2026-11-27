@@ -200,6 +200,15 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("lunge_plunge", 7, 63),
     ("crescent_arc", 7, 66),
     ("crescent_sweep", 8, 72),
+    # The second pass (STANCE-POLISH): the flurries are 35-40 ms a frame so
+    # each stab of a lap is its own frame.
+    ("lunge_flurry", 16, 35),
+    ("lunge_corkscrew", 10, 50),
+    ("crescent_return", 7, 63),
+    ("crescent_rise", 7, 63),
+    ("crescent_dip", 7, 63),
+    ("crescent_rise_finish", 8, 65),
+    ("crescent_flurry", 16, 39),
     # Presentation / interaction and retained Ambition rows.
     ("taunt", 10, 90),
     ("entrance", 8, 72),
