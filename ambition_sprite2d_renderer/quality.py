@@ -1261,6 +1261,8 @@ def build_parts_variant(ron_src: Path, ron_dst: Path, variant: Variant) -> int:
     factor = effective_scale(records, variant)
     root = RonParser(ron_src.read_text()).parse()
     assert isinstance(root, Struct), f"{ron_src} is not a part flipbook"
+    density = root.get("texel_scale")
+    texel_scale = float(density.raw) if isinstance(density, Num) else 1.0
     page_names = [item.value for item in root.get("pages").items]
     sources = [Image.open(ron_src.parent / name).convert("RGBA") for name in page_names]
     resampling = resampling_for_variant(variant)
@@ -1287,7 +1289,7 @@ def build_parts_variant(ron_src: Path, ron_dst: Path, variant: Variant) -> int:
     names = _page_image_names(page_names[0], len(packed.pages))
     _set_list_field(root, "pages", [Str(name) for name in names])
     root.fields = [(k, v) for k, v in root.fields if k != "texel_scale"]
-    root.fields.insert(1, ("texel_scale", Num(repr(factor))))
+    root.fields.insert(1, ("texel_scale", Num(repr(texel_scale * factor))))
     # ⛔ THE DRAWS ARE NOT COPIED. They are sheet pixels and have no tier; the
     # runtime takes them from the full-resolution table
     # (`RiggedSpriteAsset::for_tier`), which reads only a tier's parts, pages
