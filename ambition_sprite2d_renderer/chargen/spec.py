@@ -79,7 +79,7 @@ HATS = ("none", "cap", "flat_cap", "brimmed", "beanie", "headscarf", "top_hat", 
         "campaign")
 #: ``obi``: the wide sash of a kimono, knotted at the back (``outfit.obi_knot``).
 ACCESSORIES = ("glasses", "scarf", "belt", "necklace", "suspenders", "webbing", "dog_tags", "obi", "bow_tie")
-SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator", "finch", "rabbit", "bear", "ram", "owl")
+SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator", "finch", "rabbit", "bear", "ram", "owl", "kangaroo")
 EAR_STYLES = ("default", "floppy", "pointed")
 #: A dog's coat marking, in its second colour (the hair colour): a dark
 #: ``mask`` over the muzzle and round the eyes, a white ``blaze`` up the middle
@@ -203,11 +203,11 @@ class Head:
     #: Dog: the step from the brow down to the muzzle, 1 as drawn; less runs
     #: the forehead into the muzzle (a hound), more domes it (a boxer).
     stop: float = 1.0
-    #: Dog: the breadth of the skull.
+    #: The width of the skull.
     skull: float = 1.0
     #: Dog: how far the upper lip (the flews) hangs over the jaw, 0 tight.
     flews: float = 0.0
-    #: Dog: the ear's length.
+    #: The length of the ear.
     ear_length: float = 1.0
     #: Dog: a floppy ear folded forward (a button ear), a pointed ear's tip
     #: tipped over; 0 is the plain ear.
@@ -432,6 +432,7 @@ SPECIES_KNOBS: Dict[str, Tuple[str, ...]] = {
     "bear": ("ear_size",),
     "ram": ("horns", "horn_style", "beard"),
     "owl": ("ear_tufts", "disc"),
+    "kangaroo": ("skull", "ear_length"),
 }
 HEAD_KNOB_DEFAULTS: Dict[str, Any] = {f.name: f.default for f in fields(Head) if f.name not in ("species", "muzzle", "ears")}
 #: Fields added after the first records: a record writes one only when it is

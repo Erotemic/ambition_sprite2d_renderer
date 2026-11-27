@@ -13,6 +13,7 @@ MUZZLES = {
     "bear": ((8, -8), (17, -5), (20, 2), (17, 9), (5, 8)),
     "ram": ((6, -7), (13, 0), (17, 7), (11, 12), (3, 8)),
     "alligator": ((4, -5), (24, -5), (26, 0), (22, 5), (2, 7)),
+    "kangaroo": ((5, -8), (13, -4), (21, 2), (16, 7), (4, 7)),
 }
 
 BEAKS = {
@@ -74,6 +75,7 @@ def paint(canvas, species, center, palette=bones.FLASH):
         "rabbit": [(-15, -4), (-13, -11), (-8, -15), (0, -14), (7, -10)],
         "bear": [(-17, -5), (-15, -12), (-9, -17), (1, -17), (9, -12)],
         "alligator": [(-16, -3), (-15, -8), (-9, -11), (-2, -10), (2, -12), (6, -9)],
+        "kangaroo": [(-15, -5), (-12, -11), (-7, -14), (0, -13), (6, -10)],
     }.get(species, [(-16, -5), (-13, -11), (-8, -15), (0, -15), (6, -11)])
     poly([*crown, *jaw, (0, 10), (-7, 10), (-13, 5)], p.bone, p.ink, 1.3)
     poly([crown[0], (-10, -1), (-5, 5), (-7, 10), (-13, 5)], p.shade)
@@ -84,7 +86,7 @@ def paint(canvas, species, center, palette=bones.FLASH):
     line([(-10, crown[1][1] + 1), (-4, crown[2][1] + 2), (2, crown[2][1] + 3)], p.light, 1.15)
     line([(-6, 2), (-2, 3), (3, 0)], p.light, 1.2)
 
-    if species == "rabbit":
+    if species in ("rabbit", "kangaroo"):
         poly([(tip_x - 3, tip_y + 1), (tip_x, tip_y + 1),
               (tip_x - 1, tip_y + 8), (tip_x - 4, tip_y + 7)], p.light, p.ink, 0.85)
     else:
