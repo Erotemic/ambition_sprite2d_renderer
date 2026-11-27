@@ -149,7 +149,7 @@ def cottage(c, k):
     for cx in (340, 410):
         k.window(cx, ROOF + 30, 22, 24, shutters=DOOR_GREEN, flowers=(214, 70, 80), tag=f"cottage_win{cx}")
     thatch(c, x0, x1, ROOF, ROOF - 70, "cottage_thatch")
-    k.chimney(500, ROOF - 30, 14, 40, LIMESTONE_WARM, smoke=(236, 236, 236), tag="cottage_chim")
+    k.chimney(500, ROOF - 12, 14, 58, LIMESTONE_WARM, smoke=(236, 236, 236), tag="cottage_chim")
     porch(c, 260, 340, x0, "cottage")
     bench(c, 268, 296, G - 18)
 
@@ -203,8 +203,8 @@ def inn(c, k):
         k.window(cx, ROOF + 8, 20, 22, lit=0.3, tag=f"inn_up{cx}")
     k.hipped(x0, x1, ROOF, 54, SLATE, tiles="slate", overhang=10, tag="inn_roof")
     walk_edge(c, x0 - 10, x1 + 10, ROOF, scale(SLATE, 0.8))
-    k.chimney(1530, ROOF - 40, 16, 50, LIMESTONE_WARM, smoke=(236, 236, 236), tag="inn_chim")
-    k.chimney(1760, ROOF - 40, 16, 50, LIMESTONE_WARM, tag="inn_chim2")
+    k.chimney(1530, ROOF - 18, 16, 72, LIMESTONE_WARM, smoke=(236, 236, 236), tag="inn_chim")
+    k.chimney(1760, ROOF - 18, 16, 72, LIMESTONE_WARM, tag="inn_chim2")
     porch(c, 1460, 1540, x0, "inn")
     # Barrels by the bar's door.
     for bx in (1606, 1620):
