@@ -7,7 +7,7 @@ added, a mechanical keyboard slung across his waist (``director_boss``,
 derived by ``scripts/svg_art/director_boss_art.py``). It names his clips by
 the boss slots the game's ``boss_sheets.ron`` reads (``rest``,
 ``floor_slam``, ``side_sweep``, ``spike_halo``, ``hit``, ``death``, in that
-order, then ``talk`` and his four microphone rows).
+order, then his recovery, walk, talk, and microphone rows).
 
 The game's design: ``docs/planning/game/final-boss.md``. He stands on the
 shoulders of Full Stack (``full_stack_giant``).
@@ -42,7 +42,7 @@ _FIGHTER = _Director("director_boss")
 #: Each boss slot and the Director's clip that plays it. He counts the band
 #: in with his hand raised (`smash_up`), brings it down for the keystroke
 #: rain (`smash_down`), and sweeps it for the backspace (`smash_forward`);
-#: the pen of those clips is not drawn here. Beaten, he goes down, and stays down.
+#: the pen of those clips is not drawn here.
 BOSS_ROWS = (
     ("rest", "idle"),
     ("floor_slam", "smash_down"),
@@ -50,6 +50,8 @@ BOSS_ROWS = (
     ("spike_halo", "smash_up"),
     ("hit", "hit"),
     ("death", "knockdown"),
+    ("getup", "getup"),
+    ("walk", "walk"),
     ("talk", "talk"),
     # The band's vocals are his alone: the microphone in his far hand
     # (`director_boss_art.py`). He sings the riff, points the mic out at
