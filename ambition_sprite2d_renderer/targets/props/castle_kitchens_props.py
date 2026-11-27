@@ -92,19 +92,19 @@ def room(c, k):
             c.put(c.mask(lambda p: (p.rect(x - 1, 312, x + 1, 334), p.ellipse(x, 336, 4, 3))), (150, 150, 160))
     # Shelves of jars, sacks of turnips under them.
     b = Batch(c)
-    for y in (380, 420):
+    for y in (384, 420):
         b.add(WOOD, 1.0, box(300, y, 470, y + 4))
         for j, x in enumerate(range(308, 464, 13)):
             col = ((150, 70, 60), (90, 120, 70), (200, 170, 90), (110, 90, 130))[(j + y) % 4]
             b.add(col, 0.9, box(x, y - 14 + (j % 3) * 2, x + 8, y))
             b.add((200, 196, 186), 1.0, box(x - 0.5, y - 15 + (j % 3) * 2, x + 8.5, y - 13 + (j % 3) * 2))
     b.draw()
-    for x in (330, 380):
+    for x in (297, 324):
         sack = c.mask(lambda p: p.poly([(x - 16, g), (x + 16, g), (x + 14, g - 26), (x + 4, g - 34), (x - 4, g - 34), (x - 14, g - 26)]))
         c.put(sack, (170, 150, 110))
         c.tone(sack * np.clip((c.x - x) / 16, -1, 1), -0.2)
-    c.put(c.mask(lambda p: [p.ellipse(x, g - 35, 4) for x in (325, 334, 382)]), (170, 110, 150))
-    c.put(c.mask(lambda p: [p.line([(x, g - 38), (x + 2, g - 45)], 1.4) for x in (325, 334, 382)]), (90, 140, 70))
+    c.put(c.mask(lambda p: [p.ellipse(x, g - 35, 4) for x in (293, 301, 324)]), (170, 110, 150))
+    c.put(c.mask(lambda p: [p.line([(x, g - 38), (x + 2, g - 45)], 1.4) for x in (293, 301, 324)]), (90, 140, 70))
     # The night porter's nook: a desk with the visitors' book, a lantern, the key board.
     d = g - 34
     c.put(c.mask(lambda p: (p.rect(150, d, 250, d + 5), p.rect(156, d + 5, 162, g), p.rect(238, d + 5, 244, g))), WOOD)
@@ -122,18 +122,16 @@ def room(c, k):
     c.put(c.mask(lambda p: [p.rect(x0, g - 18, x1, g - 14) for x0, x1 in ((t0 - 10, t0 + 120), (t0 + 170, t1 + 10))]), WOOD_DARK)
     for x in (t0 + 40, t0 + 90, t1 - 60):
         c.put(c.mask(lambda p: (p.rect(x - 4, g - 42, x + 4, g - 32), p.line([(x + 4, g - 40), (x + 7, g - 37), (x + 4, g - 34)], 1.4))), (200, 196, 186))
-    nb0, nb1 = t0 + 30, t1 - 30
-    c.put(c.mask(box(nb0, 380, nb1, 456)), (120, 90, 60))
-    c.put(c.mask(box(nb0 + 3, 383, nb1 - 3, 453)), (160, 130, 90))
+    nb0, nb1 = t0 + 8, t1 - 8
+    c.put(c.mask(box(nb0, 397, nb1, 464)), (132, 98, 67))
+    c.put(c.mask(box(nb0 + 3, 400, nb1 - 3, 461)), (91, 64, 42))
     rng = c.rand("notices")
-    for i in range(10):
-        x, y = nb0 + 10 + (i % 5) * 34 + rng.uniform(-3, 3), 388 + (i // 5) * 32 + rng.uniform(-2, 2)
-        c.put(c.mask(box(x, y, x + 24, y + 28)), PAPER)
-        c.put(c.mask(lambda p: [p.rect(x + 3, yy, x + 21 - rng.uniform(0, 8), yy + 0.8) for yy in np.arange(y + 5, y + 26, 4)]), (100, 96, 90))
+    for x, y in ((nb0 + 8, 432), (nb0 + 24, 437), (nb1 - 26, 401)):
+        c.put(c.mask(box(x, y, x + 16, y + 21)), PAPER)
+        c.put(c.mask(lambda p: [p.rect(x + 2, yy, x + 14 - rng.uniform(0, 6), yy + 0.8) for yy in np.arange(y + 5, y + 19, 4)]), (100, 96, 90))
         c.put(c.mask(lambda p: p.ellipse(x + 12, y + 1.5, 1.8)), RED)
-    # The guild's badge: a fist round a mug, on red.
-    bx, by = nb1 - 24, 418
-    c.put(c.mask(lambda p: p.ellipse(bx, by, 14)), RED)
+    bx, by = nb1 - 16, 444
+    c.put(c.mask(lambda p: p.ellipse(bx, by, 10)), RED)
     c.put(c.mask(lambda p: (p.rect(bx - 5, by - 6, bx + 3, by + 6), p.ring(bx + 6, by, 3.5, 1.5))), (236, 228, 210))
     # Hams and strings of onions hung from the vault over the table.
     for x, drop in ((900, 300), (1000, 280), (1100, 310)):
@@ -163,6 +161,31 @@ def room(c, k):
     # A mouse hole, and its trap, sprung and empty.
     c.put(c.mask(lambda p: p.ellipse(1100, g, 10, 12)) * (c.y < g), (14, 10, 12))
     c.put(c.mask(lambda p: (p.rect(1060, g - 4, 1084, g), p.line([(1062, g - 4), (1078, g - 10)], 1.4))), WOOD_LIGHT)
+    pantry_walk(c)
+
+
+def pantry_walk(c):
+    """Draw the pantry steps, the service walks, and the menu board."""
+    c.put(c.mask(box(467, 231, 853, 267)), WOOD)
+    c.put(c.mask(box(471, 235, 849, 263)), (45, 43, 38))
+    for x0, x1 in ((336, 448), (1168, 1248)):
+        c.put(c.mask(box(x0, 448, x1, FLOOR)), WOOD)
+        c.put(c.mask(lambda p: [
+            p.rect(x, 450, x + 2, FLOOR) for x in range(x0 + 15, x1 - 6, 16)
+        ]), WOOD_DARK)
+        c.put(c.mask(lambda p: (
+            p.line([(x0 + 5, 505), (x1 - 5, 458)], 4),
+            p.rect(x0, 450, x1, 455),
+        )), WOOD_LIGHT)
+        edge_line(c, x0, x1, 448, (172, 130, 86), 2)
+    for x0, x1, y in ((352, 480, 384), (496, 864, 352), (880, 1168, 384)):
+        beam = IRON if y == 352 else WOOD_DARK
+        c.put(c.mask(lambda p: [
+            p.line([(x - 12, y + 12), (x, y + 37), (x + 12, y + 12)], 3)
+            for x in range(x0 + 20, x1 - 17, 92)
+        ]), beam)
+        c.put(c.mask(box(x0, y, x1, y + 12)), beam)
+        edge_line(c, x0, x1, y, (172, 132, 94), 2)
 
 
 #: The Complaints Department (`castle_godwin_complaints`): its floor,
