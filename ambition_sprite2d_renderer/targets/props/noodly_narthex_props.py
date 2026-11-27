@@ -30,9 +30,6 @@ def doors(c):
     door_frame(c, 224, GOLD)
     c.put(c.mask(lambda p: p.line([(213, 346), (219, 346), (219, 342), (225, 342),
                                   (225, 337), (231, 337), (231, 333), (235, 333)], 2)), GOLD)
-    door_frame(c, 888, CREAM)
-    c.put(c.mask(lambda p: p.arch(879, 332, 897, 347)), CREAM)
-    c.put(c.mask(lambda p: p.arch(882, 335, 894, 348)), SHADOW)
 
 
 def welcome(c):

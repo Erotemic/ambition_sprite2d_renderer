@@ -62,7 +62,7 @@ def colander(c, x, y, color):
 
 
 def nave(c, kit):
-    for x, floor in ((88, 416), (88, 736), (1512, 416), (1512, 736), (1528, 992)):
+    for x, floor in ((88, 416), (88, 736), (1512, 416), (1512, 736)):
         alcove(c, x, floor)
     sign(c, 406, 154, 275, 224, GOLD, bell)
     sign(c, 406, 474, 275, 544, WATER, wheel)

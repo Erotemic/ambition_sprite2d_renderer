@@ -16,11 +16,12 @@ SODA = (133, 196, 164)
 
 def hermitage(c):
     """Frame the hermit's place at the first spring."""
-    c.put(c.mask(box(200, 332, 462, FLOOR)), STONE)
-    c.put(c.mask(box(211, 342, 451, FLOOR)), WOOD)
+    for x in (208, 444):
+        c.put(c.mask(box(x, 332, x + 12, FLOOR)), SHADE)
+        c.put(c.mask(box(x, 332, x + 4, FLOOR)), WOOD)
+        c.put(c.mask(box(x - 3, FLOOR - 12, x + 15, FLOOR)), STONE)
     c.put(c.mask(lambda p: p.poly([(184, 336), (240, 299), (428, 299), (478, 336)])), SHADE)
     c.put(c.mask(box(184, 332, 478, 338)), COPPER)
-    c.put(c.mask(lambda p: p.arch(276, 393, 388, FLOOR)), SHADE)
     c.put(c.mask(box(181, 356, 479, 385)), SHADE)
     c.put(c.mask(box(185, 356, 475, 359)), GOLD)
 

@@ -68,7 +68,10 @@ def pilgrim_inn(c):
         c.put(c.mask(lambda p: p.arch(x + 6, 420, x + 50, 454)), WOOD)
         c.put(c.mask(box(x + 25, 425, x + 29, 454)), COPPER)
     c.put(c.mask(box(1370, 473, 1630, 494)), CLOTH)
-    c.put(c.mask(lambda p: p.arch(1468, 499, 1532, FLOOR)), WALNUT)
+    c.put(c.mask(box(1456, 506, 1544, 550)), WALNUT)
+    c.put(c.mask(box(1462, 512, 1538, 544)), GOLD)
+    c.put(c.mask(box(1497, 512, 1503, 544)), WOOD)
+    c.put(c.mask(box(1462, 526, 1538, 530)), WOOD)
     c.put(c.mask(box(1368, 566, 1633, FLOOR)), WALNUT)
     cap(c, 1360, 1640, 384, CLOTH)
 
