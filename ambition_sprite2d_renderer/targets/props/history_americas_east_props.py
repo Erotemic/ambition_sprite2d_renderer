@@ -24,8 +24,7 @@ not a copy of one real artefact.
 - ``history_ballcourt_gate``: the look of a `LockWall` of 32 by 128 world
   units, drawn at 3 to 1: a gate of carved stone with a ballplayer in
   relief, a yoke at the waist, hitting the ball with the hip.
-- ``history_bohio``: scenery, a round Taino house of cane walls under a
-  cone of thatch.
+- ``history_bohio``: the rear of a Taino house with cane walls and a thatch roof.
 - ``history_dugout_canoe``: the look of a sweeping platform (a
   `MovingPlatform` whose ``visual`` it is): a long canoe hollowed from one
   tree, with paddlers' seats. The top of its sides is the platform
@@ -620,11 +619,6 @@ def _draw_bohio(anim: str, i: int, n: int):
     f.poly(_rect(cx + 50.0, wall_top - 6.0, cx + 88.0, foot), K.alpha(CANE_DARK, 0.35), body=False)
     for y in (wall_top + 26.0, wall_top + 62.0):
         f.poly(_rect(cx - 88.0, y, cx + 88.0, y + 3.0), CANE_DARK, body=False)
-    # The door: a dark opening with a cotton curtain tied back.
-    f.poly([(cx - 18.0, foot), (cx - 18.0, wall_top + 18.0), (cx - 12.0, wall_top + 10.0), (cx + 12.0, wall_top + 10.0), (cx + 18.0, wall_top + 18.0),
-            (cx + 18.0, foot)], (52, 40, 32, 255))
-    f.poly([(cx - 18.0, wall_top + 14.0), (cx - 6.0, wall_top + 14.0), (cx - 14.0, wall_top + 50.0), (cx - 18.0, foot - 4.0)], COTTON)
-    f.ink([(cx - 16.0, wall_top + 50.0), (cx - 12.0, wall_top + 48.0)], 1.4, BIXA)
     # The roof: a tall cone of thatch, its eaves wide, a knot at the top.
     apex = (cx, 16.0)
     eave_l, eave_r = (cx - 118.0, wall_top + 6.0), (cx + 118.0, wall_top + 6.0)
