@@ -635,24 +635,36 @@ def box_car(x0, x1, top, colour, tag):
     return draw
 
 
-def loading_car(x0, x1, gangway_end, colour, tag, spare_wheels=False):
+def loading_car(x0, x1, gangway_end, colour, tag, roof=480, load="crates"):
     """A box car with an open passage between its roof and deck."""
     def draw(c, k):
         k.ground = RAIL
-        car_body(c, x0, x1, 480, colour, tag)
-        back = planks(c, None, x0, 496, x1, 608, scale(colour, 0.48), step=12.0, vertical=True, tag=(tag, "back"))
-        c.tone(back * np.clip((c.y - 496) / 112.0, 0, 1), 0.2)
+        ceiling = roof + 16
+        car_body(c, x0, x1, roof, colour, tag)
+        back = planks(c, None, x0, ceiling, x1, 608, scale(colour, 0.48), step=12.0, vertical=True, tag=(tag, "back"))
+        c.tone(back * np.clip((c.y - ceiling) / (608 - ceiling), 0, 1), 0.2)
         for x in (x0 + 4, x0 + 128, x1 - 128, x1 - 4):
-            post(c, x, 496, 608, 5, scale(colour, 0.65))
-        c.put(c.mask(box(x0, 496, x1, 503)), scale(colour, 0.32))
-        if spare_wheels:
+            post(c, x, ceiling, 608, 5, scale(colour, 0.65))
+        c.put(c.mask(box(x0, ceiling, x1, ceiling + 7)), scale(colour, 0.32))
+        if load == "wheels":
             for offset, radius in ((90, 24), (146, 16), (340, 31), (390, 20)):
                 gear(c, x0 + offset, 602 - radius, radius, 12, scale(STEEL, 0.65))
+        elif load == "ore":
+            for offset, width, height in ((52, 46, 36), (100, 42, 31), (312, 64, 42), (372, 45, 32)):
+                x = x0 + offset
+                top = 608 - height
+                mid = x + width * 0.46
+                sack = c.mask(lambda p: p.poly([(x + 5, 608), (x, 602), (x + 3, 590), (mid - 8, top + 7),
+                                                (mid - 9, top), (mid + 9, top), (mid + 7, top + 7),
+                                                (x + width - 3, 589), (x + width, 602), (x + width - 5, 608)]))
+                c.put(sack, (137, 116, 83))
+                c.tone(sack * np.clip((c.x - mid) / width, -1, 1), -0.3)
+                c.put(c.mask(lambda p: p.line([(mid - 8, top + 7), (mid + 7, top + 7)], 2)), PLANK_DARK)
         else:
             for left, right, top in ((40, 110, 563), (112, 168, 578), (340, 420, 556)):
                 crate(c, x0 + left, top, x0 + right, 608, scale(PLANK, 0.78))
         for x in (x0 + 205, x1 - 205):
-            lamp_glow(c, x, 509, 26, 0.2)
+            lamp_glow(c, x, ceiling + 13, 26, 0.2)
         deck_edge(c, x0, x1, 608, PLANK_LIGHT)
         car_lettering(c, x0 + 36, 626, 5)
         wheels(c, x0, x1, tag=tag)
@@ -712,24 +724,24 @@ def tank_car(c, k):
 
 
 def ore_car(c, k):
-    """The open ore car: its end walls (y 560, x 968..992 and 1424..1448),
-    the ore heaped inside to y 624, the hopper doors under it."""
+    """An open ore car with a gangway to the sorting car."""
     k.ground = RAIL
-    x0, x1 = 968, 1448
+    x0, x1 = 960, 1456
     m = c.mask(lambda p: p.poly([(x0, 560), (x1, 560), (x1, UNDER), (x0 + 0, UNDER)]))
     plates_like = c.mask(box(x0, 560, x1, UNDER))
     c.put(plates_like, ORE_GREY)
     c.put(c.mask(lambda p: [p.rect(x, 560, x + 3, UNDER) for x in np.arange(x0 + 30, x1, 50)]), scale(ORE_GREY, 0.7))
     c.tone(m * (c.noise("ore car", 8, 2, 3) - 0.5), 0.3)
-    # The near side is cut down to show the ore: its top at 600.
-    c.alpha[:] = np.where((c.y < 600) & (c.x > x0 + 24) & (c.x < x1 - 24) & (c.y >= 560), 0, c.alpha)
+    # The near side ends at the height of the ore bed.
+    c.alpha[:] = np.where((c.y < 624) & (c.x > x0 + 32) & (c.x < x1 - 32) & (c.y >= 560), 0, c.alpha)
     rng = c.rand("ore")
     c.put(c.mask(lambda p: [p.ellipse(rng.uniform(x0 + 30, x1 - 30), 624 - rng.uniform(0, 30), rng.uniform(10, 22), rng.uniform(6, 12)) for _ in range(40)]), (78, 74, 80))
     c.put(c.mask(lambda p: [p.ellipse(rng.uniform(x0 + 30, x1 - 30), 610 - rng.uniform(0, 16), 3) for _ in range(20)]), (190, 170, 120))
-    deck_edge(c, x0, x0 + 24, 560, STEEL_LIGHT)
-    deck_edge(c, x1 - 24, x1, 560, STEEL_LIGHT)
-    deck_edge(c, x0 + 24, x1 - 24, 600, scale(STEEL_LIGHT, 0.85))
+    deck_edge(c, x0, x0 + 32, 560, STEEL_LIGHT)
+    deck_edge(c, x1 - 32, x1, 560, STEEL_LIGHT)
+    deck_edge(c, x0 + 32, x1 - 32, 624, scale(STEEL_LIGHT, 0.85))
     wheels(c, x0, x1, tag="ore")
+    freight_gangway(c, 1456, 1504)
 
 
 def rustler(c, k):
@@ -1015,15 +1027,15 @@ PIECES: Dict[str, Piece] = {
     "frontier_freight_track_tail": Piece((0, 700, 2400, 752), lambda c, k: track(c, 2400), px=1.0),
     "frontier_caboose": Piece((10, 400, 552, 720), caboose),
     "frontier_box_car_1": Piece((530, 470, 1096, 720), loading_car(544, 1024, 1088, BOXCAR_RED, "box1")),
-    "frontier_box_car_2": Piece((1074, 470, 1656, 720), loading_car(1088, 1568, 1648, BOXCAR_BROWN, "box2", spare_wheels=True)),
+    "frontier_box_car_2": Piece((1074, 470, 1656, 720), loading_car(1088, 1568, 1648, BOXCAR_BROWN, "box2", load="wheels")),
     "frontier_flat_car_1": Piece((1636, 470, 2400, 720), flat_car(1648, 2400, [(1760, 1888, 544), (1888, 1968, 480)], "flat1", open_east=True)),
     # frontier_freight_cars
     "frontier_freight_track_cars": Piece((0, 700, 2800, 752), lambda c, k: track(c, 2800), px=1.0),
     "frontier_flat_car_1_end": Piece((0, 590, 380, 720), flat_car(0, 360, [], "flat1e", open_west=True)),
     "frontier_tank_car": Piece((410, 500, 920, 720), tank_car),
-    "frontier_ore_car": Piece((954, 540, 1462, 720), ore_car),
-    "frontier_box_car_3": Piece((1498, 486, 2006, 720), box_car(1512, 1992, 496, OCHRE_CAR, "box3")),
-    "frontier_flat_car_2": Piece((2076, 530, 2800, 720), flat_car(2088, 2800, [(2560, 2688, 544)], "flat2", open_east=True)),
+    "frontier_ore_car": Piece((954, 540, 1512, 720), ore_car),
+    "frontier_box_car_3": Piece((1490, 486, 2088, 720), loading_car(1504, 2000, 2080, OCHRE_CAR, "box3", roof=496, load="ore")),
+    "frontier_flat_car_2": Piece((2068, 530, 2800, 720), flat_car(2080, 2800, [(2560, 2688, 544)], "flat2", open_west=True, open_east=True)),
     # frontier_rustler_head
     "frontier_freight_track_head": Piece((0, 700, 2400, 752), lambda c, k: track(c, 2400), px=1.0),
     "frontier_flat_car_2_end": Piece((0, 530, 320, 720), flat_car(0, 300, [(180, 260, 544)], "flat2e", open_west=True)),
