@@ -671,6 +671,116 @@ def air_down(body: RigBody) -> List[Key]:
     ])
 
 
+# -- the combat stances (`docs/planning/game/combat-stances.md`) -------------------
+# Stance II (Lunge) and Stance III (Crescent) rebind the hit kit to moves of
+# their own; these are the rows those moves draw. Phases are copied from the
+# moves in `player_robot.ron` (`lunge_*`, `crescent_*`).
+
+
+def lunge_thrust(body: RigBody) -> List[Key]:
+    """Stance II's thrust: the body thrown flat behind a straight blade, the
+    back boot trailing. 0.44 s, A 0.06-0.16 (its carry starts at 0.06)."""
+    a0, a1 = 0.06 / 0.44, 0.16 / 0.44
+    flat = {"near": (-12.0, 4.0, 30.0), "far": (11.0, 0.0, -6.0)}
+    return [
+        rest(body, 0.0),
+        # Drawn back at the hip, the blade already level on its line.
+        Key(at=a0 * 0.8, near=(150.0, 172.0, -2.0), far=(35.0, 15.0), torso=14.0, head=-4.0,
+            lunge=-2.0, drop=5.0, squash=0.95, shoulder=-3.0, feet={"far": (2.0, 0.0, 0.0)},
+            turn="open", squint=0.35, ease="in", face="fierce"),
+        # The thrust: arm and blade one straight line, the body flat behind it.
+        Key(at=a0 + 0.3 * (a1 - a0), near=(2.0, 0.0, 0.0), far=(172.0, 165.0), torso=36.0,
+            head=-12.0, lunge=15.0, drop=8.0, squash=1.05, shoulder=10.0, feet=flat,
+            turn="profile", squint=0.5, ease="out", face="fierce"),
+        Key(at=a1, near=(4.0, 2.0, 1.0), far=(170.0, 160.0), torso=34.0, head=-10.0, lunge=16.0,
+            drop=8.0, squash=1.0, shoulder=10.0, feet=flat, turn="profile", squint=0.4, face="fierce"),
+        Key(at=a1 + 0.2, near=(55.0, 55.0, 30.0), far=(120.0, 110.0), torso=14.0, head=-2.0,
+            lunge=8.0, drop=4.0, shoulder=4.0, feet={"far": (6.0, 0.0, 0.0)}, blade=0.3),
+        rest(body, 1.0),
+    ]
+
+
+def lunge_plunge(body: RigBody) -> List[Key]:
+    """Stance II's pogo: a dive down and forward along the blade, the boots
+    trailing up behind. 0.44 s, A 0.08-0.30."""
+    a0, a1 = 0.08 / 0.44, 0.30 / 0.44
+    trail = {"near": (-15.0, -1.0, 65.0), "far": (-10.0, 3.0, 55.0)}
+    dive = 48.0
+    return _air([
+        replace(rest(body, 0.0), feet={}),
+        # The blade raised and back: the dive has a direction to come from.
+        Key(at=a0 * 0.85, near=(-110.0, -120.0, -70.0), far=(60.0, 40.0), torso=-6.0, head=-6.0,
+            squash=1.03, feet={"near": (-2.0, 3.0, 20.0), "far": (2.0, 4.0, 15.0)}, squint=0.3,
+            ease="in", face="fierce"),
+        # The plunge: arm and blade one line down the dive, the body behind it.
+        Key(at=a0 + 0.15 * (a1 - a0), near=(dive, dive - 2.0, dive), far=(170.0, 160.0), torso=42.0,
+            head=12.0, lunge=6.0, drop=2.0, squash=1.04, shoulder=6.0, feet=trail, turn="profile",
+            squint=0.5, ease="out", face="fierce"),
+        Key(at=a1, near=(dive + 2.0, dive, dive + 1.0), far=(168.0, 158.0), torso=40.0, head=12.0,
+            lunge=6.0, drop=2.0, squash=1.0, shoulder=6.0, feet=trail, turn="profile", squint=0.4,
+            face="fierce"),
+        Key(at=a1 + 0.14, near=(80.0, 80.0, 60.0), far=(110.0, 100.0), torso=12.0, head=4.0,
+            blade=0.0),
+        replace(rest(body, 1.0), feet={}),
+    ])
+
+
+def crescent_arc(body: RigBody) -> List[Key]:
+    """Stance III's arc: a wide level crescent on a straight arm, so the tip
+    is as far out as the blade goes. 0.46 s, A 0.07-0.15."""
+    a0, a1 = 0.07 / 0.46, 0.15 / 0.46
+    step = {"far": (9.0, 0.0, 0.0)}
+    return [
+        rest(body, 0.0),
+        # High behind the head, the arm already straight.
+        Key(at=a0 * 0.85, near=(-128.0, -134.0, -140.0), far=(40.0, 10.0), torso=-8.0, head=-4.0,
+            lunge=-3.0, drop=3.0, squash=0.97, shoulder=-4.0, turn="open", squint=0.3, ease="in"),
+        # Through the front at full reach.
+        Key(at=a0 + 0.4 * (a1 - a0), near=(-8.0, -8.0, -6.0), far=(160.0, 140.0), torso=14.0,
+            head=4.0, lunge=8.0, drop=4.0, squash=1.04, shoulder=8.0, feet=step, turn="profile",
+            squint=0.35, ease="out"),
+        Key(at=a1, near=(40.0, 42.0, 48.0), far=(165.0, 150.0), torso=18.0, head=6.0, lunge=9.0,
+            drop=5.0, squash=0.98, shoulder=8.0, feet=step, turn="profile", squint=0.25),
+        Key(at=a1 + 0.16, near=(70.0, 75.0, 60.0), far=(115.0, 110.0), torso=8.0, head=3.0,
+            lunge=5.0, drop=3.0, shoulder=3.0, feet={"far": (5.0, 0.0, 0.0)}, blade=0.0),
+        rest(body, 1.0),
+    ]
+
+
+def crescent_sweep(body: RigBody) -> List[Key]:
+    """Stance III's finisher: the blade from over the back, over the top and
+    down through the front on a straight arm, a long step under it. 0.58 s,
+    A 0.10-0.20."""
+    a0, a1 = 0.10 / 0.58, 0.20 / 0.58
+    long_step = {"near": (-4.0, 0.0, 0.0), "far": (12.0, 0.0, 0.0)}
+    return [
+        rest(body, 0.0),
+        Key(at=a0 * 0.85, near=(-150.0, -165.0, -172.0), far=(35.0, 0.0), torso=-12.0, head=-6.0,
+            lunge=-4.0, drop=5.0, squash=0.94, shoulder=-5.0, feet={"far": (1.0, 1.0, 10.0)},
+            turn="open", squint=0.45, ease="in", face="strain"),
+        Key(at=a0 + 0.3 * (a1 - a0), near=(-60.0, -62.0, -58.0), far=(120.0, 100.0), torso=4.0,
+            head=0.0, lunge=4.0, drop=4.0, squash=1.02, shoulder=4.0, feet=long_step, turn="profile",
+            squint=0.45, ease="linear", face="fierce"),
+        Key(at=a0 + 0.65 * (a1 - a0), near=(6.0, 6.0, 10.0), far=(165.0, 150.0), torso=20.0,
+            head=6.0, lunge=11.0, drop=6.0, squash=1.05, shoulder=9.0, feet=long_step, turn="profile",
+            squint=0.5, ease="out", face="fierce"),
+        Key(at=a1, near=(52.0, 55.0, 62.0), far=(168.0, 152.0), torso=24.0, head=8.0, lunge=12.0,
+            drop=7.0, squash=0.96, shoulder=9.0, feet=long_step, turn="profile", squint=0.35,
+            face="fierce"),
+        Key(at=a1 + 0.22, near=(80.0, 75.0, 60.0), far=(120.0, 110.0), torso=14.0, head=4.0,
+            lunge=8.0, drop=5.0, shoulder=4.0, feet={"far": (8.0, 0.0, 0.0)}, blade=0.2),
+        rest(body, 1.0),
+    ]
+
+
+#: How strongly the sheet smears each frame of a stance row as the dash is
+#: smeared (`player_robot_v3._smear_layers`): the lunges, while they carry.
+STRIKE_SMEAR: Dict[str, Tuple[float, ...]] = {
+    "lunge_thrust": (0.0, 0.35, 0.95, 0.8, 0.35, 0.1, 0.0),
+    "lunge_plunge": (0.0, 0.3, 0.9, 0.95, 0.8, 0.4, 0.0),
+}
+
+
 def grab(body: RigBody) -> List[Key]:
     """Grab: both hands shot forward, then drawn back empty. 0.32 s, A 0.07-0.12.
 
@@ -1042,6 +1152,10 @@ STRIKES: Dict[str, Callable[[RigBody], List[Key]]] = {
     "taunt": taunt,
     "pet": pet,
     "item_swing": item_swing,
+    "lunge_thrust": lunge_thrust,
+    "lunge_plunge": lunge_plunge,
+    "crescent_arc": crescent_arc,
+    "crescent_sweep": crescent_sweep,
     "shoot": shoot,
     "aim": aim,
     "eye_laser": eye_laser,
@@ -1086,6 +1200,11 @@ def author_strikes(doc: RigDocument) -> Dict[str, dict]:
         phases = frame_phases(int(clip["frames"]), loop)
         item = name in ITEM_STRIKES
         frames = [_pose(body, sample(keys, ph), item=item) for ph in phases]
+        smear = STRIKE_SMEAR.get(name)
+        if smear is not None:
+            assert len(smear) == len(frames), (name, len(smear), len(frames))
+            for frame, strength in zip(frames, smear):
+                frame["dash_fx"] = strength
         channels = clip["channels"]
         for key in frames[0]:
             if key.startswith("_"):
@@ -1115,4 +1234,4 @@ def author_strikes(doc: RigDocument) -> Dict[str, dict]:
     return reports
 
 
-__all__ = ["Key", "STRIKES", "author_strikes", "frame_phases", "sample"]
+__all__ = ["Key", "STRIKES", "STRIKE_SMEAR", "author_strikes", "frame_phases", "sample"]

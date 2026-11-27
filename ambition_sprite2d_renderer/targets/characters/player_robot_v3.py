@@ -43,7 +43,7 @@ from .player_robot_v3_crawl import PURE_SIDE_ROWS
 from .player_robot_v3_gameplay import hurtbox_parts_for_rows
 from .player_robot_v3_double_jump import JETS as DOUBLE_JUMP_JETS
 from .player_robot_v3_motion import EFFECT_ALIASES, MIRRORED, ROBOT_ROWS
-from .player_robot_v3_strikes import STRIKES
+from .player_robot_v3_strikes import STRIKE_SMEAR, STRIKES
 
 TARGET_NAME = "player_robot_v3"
 FRAME_SIZE = (224, 224)
@@ -718,7 +718,7 @@ def _compose(
         body = rigdoc.faded_canvas(body, max(0.45, 1.0 - t * 0.48))
 
     # The dash's smear is made from the body it trails (`player_robot_v3_dash`).
-    smear = float(params.get("dash_fx", 0.0)) if effect in {"dash", "dash_startup"} else 0.0
+    smear = float(params.get("dash_fx", 0.0)) if effect in {"dash", "dash_startup", *STRIKE_SMEAR} else 0.0
     behind, wash = _smear_layers(body, smear, frame_idx) if smear > 0.01 else (None, None)
 
     # Through rigdoc's seams, so the part flipbook knows what the frame is made
