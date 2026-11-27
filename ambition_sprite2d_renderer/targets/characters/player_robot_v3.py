@@ -227,8 +227,12 @@ def _point_along(origin, angle_deg: float, distance: float):
 class _FxLayer:
     """One supersampled effect canvas (behind or in front of the body)."""
 
-    def __init__(self, size: Tuple[int, int]) -> None:
+    def __init__(self, size: Tuple[int, int], scale: int = 1) -> None:
         self.size = size
+        # Reduced to the body's own density, so its pieces keep their names
+        # (`visor_fill` and the rest are tracks): one enlarged later would be a
+        # single anonymous overlay.
+        self.out = (int(size[0] * scale), int(size[1] * scale))
         self._rig: Optional[RigCanvas] = None
 
     @property
@@ -243,7 +247,7 @@ class _FxLayer:
         self.rig.put(part, (at[0] * K, at[1] * K), degrees, name, opacity, scale_y)
 
     def reduced(self) -> Optional[Image.Image]:
-        return None if self._rig is None else rigdoc.downsampled_canvas(self._rig.canvas, self.size)
+        return None if self._rig is None else rigdoc.downsampled_canvas(self._rig.canvas, self.out)
 
 
 def _raster(key: tuple, make) -> Tuple[Image.Image, Tuple[float, float]]:
@@ -648,7 +652,7 @@ def _compose(
     # `charge` orb and every attack the line-blade.
     effect = animation if animation in STRIKES else EFFECT_ALIASES.get(animation, animation)
     size = (int(doc.frame["width"]), int(doc.frame["height"]))
-    back, front = _FxLayer(size), _FxLayer(size)
+    back, front = _FxLayer(size, scale), _FxLayer(size, scale)
 
     if effect == "slide":
         back.put(_dash_lines(), (8, 49), 0.0, "dash_lines", 0.7)
