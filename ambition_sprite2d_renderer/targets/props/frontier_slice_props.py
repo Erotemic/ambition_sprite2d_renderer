@@ -148,14 +148,21 @@ def lamp_glow(c, x, y, r=40, strength=0.3):
 
 
 def station_house(c, k):
-    """The rail halt: its platform (y 608, x 640..1520), the station house
-    (x 720..1200, flat roof y 448) with the agent's window, the luggage
-    stacked at its east end (y 560, 496), a bench, a clock, the rails behind."""
+    """A rail halt with ramps and two approaches to the roof."""
     g, plat, roof = RIM, WALK, 448
     k.ground = plat
     # The track behind the platform, its ties along it.
-    c.put(c.mask(box(640, plat - 24, 1520, plat - 20)), (90, 86, 84))
-    c.put(c.mask(lambda p: [p.rect(x, plat - 20, x + 14, plat - 14) for x in np.arange(640, 1520, 24)]), (86, 62, 44))
+    c.put(c.mask(box(640, plat - 24, 1488, plat - 20)), (90, 86, 84))
+    c.put(c.mask(lambda p: [p.rect(x, plat - 20, x + 14, plat - 14) for x in np.arange(640, 1488 - 14, 24)]), (86, 62, 44))
+    # The baggage table and awning.
+    for x, bottom in ((588, 625), (628, 612)):
+        post(c, x, 565, bottom, 5, TIMBER)
+    c.put(c.mask(box(576, 562, 640, 571)), PLANK_DARK)
+    deck_edge(c, 576, 640, 560, PLANK_LIGHT)
+    for x in (654, 707):
+        post(c, x, 503, plat, 6, TIMBER)
+    tin_roof(c, 640, 496, 736, 506, "baggage_awning")
+    deck_edge(c, 640, 736, 496, PLANK_LIGHT)
     # The house: boards, a deep cornice, the agent's window and a door.
     siding(c, 728, roof + 8, 1192, plat, SIDING_OCHRE, "station")
     c.put(c.mask(box(716, roof, 1204, roof + 10)), scale(SIDING_OCHRE, 0.6))
@@ -179,16 +186,28 @@ def station_house(c, k):
         c.put(c.mask(box(x, plat - 22, x + 4, plat)), TIMBER)
     c.put(c.mask(lambda p: (p.rect(670, plat - 30, 690, plat), p.ellipse(680, plat - 30, 10, 4))), STEEL_LIGHT)
     # The luggage: a steamer trunk, then a stack, their lids the steps.
-    for x0, x1, top, colour in ((1240, 1320, 560, (110, 60, 40)), (1290, 1370, 496, (60, 80, 110)), (1296, 1366, 560, (140, 110, 70))):
-        m = c.mask(box(x0, top, x1, top + 48 if top == 496 else plat))
+    for x0, x1, top, bottom, colour in (
+        (1288, 1368, 544, plat, (140, 110, 70)),
+        (1280, 1376, 496, 544, (60, 80, 110)),
+        (1232, 1328, 560, plat, (110, 60, 40)),
+    ):
+        m = c.mask(box(x0, top, x1, bottom))
         c.put(m, colour)
         c.put(c.mask(lambda p: (p.rect(x0, top + 6, x1, top + 9), p.rect(x0 + 10, top, x0 + 14, top + 48), p.rect(x1 - 14, top, x1 - 10, top + 48))) * m, BRASS, 0.8)
-        deck_edge(c, x0, x1, top, mix(colour, (255, 236, 200), 0.4))
+        if top != 544:
+            deck_edge(c, x0, x1, top, mix(colour, (255, 236, 200), 0.4))
     # The platform's edge: boards over the room's block.
-    boardwalk(c, 640, 1520, plat, g)
+    boardwalk(c, 640, 1488, plat, g)
+    for x0, y0, x1, y1 in ((544, g, 640, plat), (1488, plat, 1584, g)):
+        c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, g), (x0, g)])), PLANK)
+        c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 1.5)), PLANK_LIGHT)
+    for x in (848, 1072):
+        post(c, x, 407, roof, 5, TIMBER)
+    c.put(c.mask(box(824, 379, 1096, 416)), (44, 50, 58))
+    c.put(c.mask(box(824, 379, 1096, 382)), PLANK_DARK)
     # A board for the timetable (the room's label is the writing).
-    for x in (1170, 1550):
-        post(c, x, 430, plat, 5)
+    post(c, 1170, 430, plat, 5)
+    post(c, 1550, 430, 629, 5)
     board = c.mask(box(1150, 398, 1570, 436))
     c.put(board, (44, 50, 58))
     c.put(c.mask(lambda p: (p.rect(1150, 398, 1570, 401), p.rect(1150, 433, 1570, 436))), PLANK_DARK)
@@ -888,7 +907,7 @@ def railhead_grade(c, k):
 #: Every piece: its frame in its room, and how it is drawn.
 PIECES: Dict[str, Piece] = {
     # frontier_siding_station
-    "frontier_siding_station_house": Piece((620, 370, 1590, 640), station_house),
+    "frontier_siding_station_house": Piece((536, 370, 1590, 640), station_house),
     # frontier_siding_street
     "frontier_lie_down_inn_front": Piece((150, 160, 690, 640), inn_front),
     "frontier_mercantile_front": Piece((670, 220, 1090, 640), mercantile_front),
