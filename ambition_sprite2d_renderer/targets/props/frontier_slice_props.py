@@ -956,8 +956,8 @@ def works_crane(c, k):
     c.tone(cab * 0, 0)
 
 
-def row_shacks(x_spans, tag):
-    """Shacks of the Row: tin walls, lean-to roofs whose tops are the walks."""
+def row_shacks(x_spans, stand, notice, tag):
+    """Draw the roofs, notice board, and wash stand at the street entrance."""
     def draw(c, k):
         g = RIM
         k.ground = g
@@ -970,26 +970,53 @@ def row_shacks(x_spans, tag):
             c.put(c.mask(box(cx - 20, g - 70, cx + 20, g)), (50, 42, 38))
             k.window(cx + 60 if x1 - x0 > 260 else cx - 70, roof + 40, 34, 30, "rect", lit=0.5, tag=(tag, i, "w"))
             c.put(c.mask(box(x0 + 30, roof - 40, x0 + 38, roof)), STEEL_DARK)
+        x0, x1 = stand
+        for x in (x0 + 8, x1 - 8):
+            post(c, x, 580, g, 7)
+        planks(c, k, x0, 576, x1, 587, PLANK, tag=(tag, "wash_stand"))
+        deck_edge(c, x0, x1, 576, PLANK_LIGHT)
+        first_left, first_right, roof = x_spans[0]
+        notice_width, notice_top = notice
+        center = (first_left + first_right) / 2
+        left, right = center - notice_width / 2, center + notice_width / 2
+        for x in (left + 8, right - 8):
+            post(c, x, 485, roof, 6)
+        planks(c, k, left, notice_top, right, 517, PLANK_DARK, tag=(tag, "notice"))
+        deck_edge(c, left, right, notice_top, PLANK)
     return draw
 
 
 def row_pump(c, k):
-    """The pump on the cinder hump (top y 576, x 1104..1296) and the
-    washing lines across the Row on poles."""
+    """Draw the pump below the drying deck. The shirts hang at the rear."""
     g = RIM
     k.ground = g
-    c.put(c.mask(box(1194, 520, 1206, 576)), STEEL_DARK)
-    c.put(c.mask(lambda p: p.line([(1200, 524), (1236, 512)], 4)), STEEL_DARK)
-    c.put(c.mask(lambda p: p.line([(1196, 540), (1180, 548)], 4)), STEEL_DARK)
-    c.put(c.mask(lambda p: p.poly([(1170, 576), (1230, 576), (1226, 560), (1174, 560)])), (90, 90, 96))
-    for x in (900, 1500):
-        post(c, x, 440, g, 4)
-    pts = [(900, 450), (1200, 476), (1500, 450)]
-    rope_line(c, pts, 1.2)
-    colours = [(200, 200, 196), (120, 140, 170), (190, 100, 80), (220, 210, 170), (110, 120, 90)]
-    for i, x in enumerate(np.arange(940, 1480, 60)):
-        y = 450 + 26 * (1 - abs((x - 1200) / 300.0))
-        c.put(c.mask(lambda p: p.poly([(x - 18, y), (x + 18, y), (x + 14, y + 40), (x - 14, y + 40)])), colours[i % len(colours)])
+    for x0, x1, top, left_ground, right_ground in (
+        (864, 1008, 544, 640, 611),
+        (1040, 1360, 512, 592, 592),
+        (1392, 1576, 544, 603, 640),
+    ):
+        post(c, x0 + 8, top + 6, left_ground, 7)
+        post(c, x1 - 8, top + 6, right_ground, 7)
+        planks(c, k, x0, top, x1, top + 12, PLANK, tag=("row_drying", x0))
+        deck_edge(c, x0, x1, top, PLANK_LIGHT)
+    for x in (1052, 1348):
+        post(c, x, 427, 509, 4)
+    rope_line(c, [(1052, 437), (1200, 450), (1348, 437)])
+    colours = [(183, 181, 168), (123, 143, 161), (164, 105, 84), (199, 181, 144), (108, 123, 102)]
+    for x, colour in zip(range(1078, 1339, 57), colours, strict=True):
+        y = 450 - 13 * abs(x - 1200) / 148
+        c.put(c.mask(lambda p: p.poly([
+            (x - 20, y + 9), (x - 10, y), (x + 10, y), (x + 20, y + 9),
+            (x + 16, y + 17), (x + 10, y + 14), (x + 11, y + 35),
+            (x - 11, y + 35), (x - 10, y + 14), (x - 16, y + 17),
+        ])), colour)
+        for clip_x in (x - 9, x + 9):
+            c.put(c.mask(box(clip_x, y - 3, clip_x + 2, y + 5)), PLANK_LIGHT)
+    c.put(c.mask(box(1246, 534, 1257, 576)), STEEL_DARK)
+    c.put(c.mask(lambda p: p.line([(1252, 537), (1280, 531)], 4)), STEEL_DARK)
+    c.put(c.mask(lambda p: p.line([(1249, 545), (1231, 552)], 4)), STEEL_DARK)
+    c.put(c.mask(box(1236, 570, 1267, 576)), (90, 90, 96))
+    c.put(c.mask(lambda p: p.poly([(1217, 562), (1235, 562), (1232, 576), (1220, 576)])), STEEL_LIGHT)
 
 
 def railhead_grade(c, k):
@@ -1074,9 +1101,9 @@ PIECES: Dict[str, Piece] = {
     "frontier_slag_pots": Piece((670, 530, 1544, 640), slag_pots),
     "frontier_works_crane": Piece((598, 280, 1730, 640), works_crane),
     # frontier_clinker_row
-    "frontier_row_shacks_west": Piece((220, 470, 860, 640), row_shacks([(240, 560, 528), (600, 840, 544)], "row_w")),
-    "frontier_row_pump": Piece((880, 430, 1520, 640), row_pump),
-    "frontier_row_shacks_east": Piece((1580, 470, 2260, 640), row_shacks([(1600, 1880, 528), (1960, 2240, 544)], "row_e")),
+    "frontier_row_shacks_west": Piece((132, 470, 860, 640), row_shacks([(240, 560, 528), (600, 840, 544)], (144, 224), (122, 475), "row_w")),
+    "frontier_row_pump": Piece((850, 408, 1580, 640), row_pump),
+    "frontier_row_shacks_east": Piece((1580, 450, 2356, 640), row_shacks([(1600, 1880, 528), (1960, 2240, 544)], (2264, 2344), (244, 455), "row_e")),
     # frontier_clinker_railhead
     "frontier_railhead_grade": Piece((0, 600, 2400, 1420), railhead_grade, px=1.0),
 }
