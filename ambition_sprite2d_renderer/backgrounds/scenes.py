@@ -38,7 +38,7 @@ from PIL import Image
 
 from . import arenas, art_dimension, authority, automaton, boss_stage, business, neural, unfinished, art_quarters, eureka, evil, foregrounds, frontier, frontier_slice, hobford, history_americas_pacific, history_atlantic, history_bengal, history_brazil, history_central_africa, history_east_asia_coast, history_eras, history_japan, history_oceania, history_origins, history_south_america, history_southeast_asia, interiors, math_town, military_tower, ninja_village, noodly, orbital, outdoors, pirate_port, room_look_sky
 from . import history_budj_bim
-from . import history_micronesia, mountain_pass
+from . import barrow_vault, history_micronesia, mountain_pass
 from .artkit import Art
 from .parts import LAYER_BLUR, LAYER_SIZE
 
@@ -113,6 +113,7 @@ SCENES: dict[str, Scene] = {
     "hobford": hobford.hobford,
     "hobford_gateside": hobford.hobford_gateside,
     "mountain_pass": mountain_pass.mountain_pass,
+    "barrow_vault": barrow_vault.barrow_vault,
     "hobford_woods": hobford.hobford_woods,
     "creator_workshop": hobford.creator_workshop,
     "orbital": orbital.orbital,

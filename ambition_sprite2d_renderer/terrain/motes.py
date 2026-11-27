@@ -936,6 +936,7 @@ MOTES = {
     "hobford": (_dot, (255, 250, 226)),
     # Leaves that come down in the woods.
     "hobford_woods": (_petal, (196, 166, 72)),
+    "barrow_vault": (_dot, (183, 157, 119)),
     # Dust in the light from the barn's windows.
     "creator_workshop": (_dot, (255, 232, 190)),
     "castle_godwin": (_glow, (255, 140, 70)),
