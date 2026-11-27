@@ -33,6 +33,7 @@ from PIL import Image, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
 from . import castle_godwin as CG
+from ._district_props import Piece, targets
 from ._town_kit import Canvas, box, mix, scale
 
 #: Pixels of the frame to one world unit.
@@ -336,6 +337,33 @@ def _searchlight(c: Canvas) -> None:
     for k in range(3):
         c.put(c.mask(lambda p: p.line([t(17, -8 + 8 * k), t(26, -12 + 12 * k)], 1.2), blur=0.4), LAMP, 0.7)
     del w
+
+
+def _gatehouse_gallery(c: Canvas, _kit) -> None:
+    """Draw the guard catwalks, ladder brackets, and kitchens sign board."""
+    for left, right, top in (
+        (560, 752, 640),
+        (752, 864, 592),
+        (880, 1104, 544),
+        (1104, 1184, 496),
+        (1200, 1392, 448),
+    ):
+        for x in (left + 12, right - 12):
+            solid(c, box(x - 4, top + 10, x + 4, 704), IRON_DARK)
+            solid(c, box(x - 8, 692, x + 8, 704), STONE_DARK)
+            solid(c, lambda p: p.line([(x, top + 34), (x + 15, top + 13)], 3), IRON_DARK)
+        tread = solid(c, box(left, top, right, top + 16), IRON, IRON_DARK, top, top + 16)
+        edge(c, tread, "top", IRON_LIGHT, 2.0, 0.9)
+        rivets(c, [(x, top + 9) for x in range(left + 8, right - 4, 24)])
+    for x in (1212, 1260, 1308, 1356, 1380):
+        solid(c, box(x - 1.5, 410, x + 1.5, 447), IRON_DARK)
+    solid(c, box(1210, 410, 1382, 414), IRON)
+    for y in (471, 545, 629):
+        solid(c, box(1366, y, 1432, y + 6), IRON_DARK)
+        rivets(c, [(1373, y + 3), (1426, y + 3)], 1.2)
+    board = solid(c, box(989, 635, 1235, 669), WOOD_DARK)
+    edge(c, board, "top", WOOD_LIGHT, 1.6)
+    rivets(c, [(998, 643), (1226, 643), (998, 661), (1226, 661)])
 
 
 # ---------------------------------------------------------------------------
@@ -1072,5 +1100,6 @@ def _actor(name: str) -> dict:
 
 
 TARGETS = {name: {"render": _renderer(name), "actor_metadata": _actor(name)} for name in PROPS}
+TARGETS.update(targets({"castle_gatehouse_gallery": Piece((512, 400, 1446, 704), _gatehouse_gallery)}, {}))
 
 __all__ = ["PROPS", "PX", "BENCH_TOP", "BUNK_LOWER_TOP", "BUNK_UPPER_TOP", "TARGETS", "draw"]
