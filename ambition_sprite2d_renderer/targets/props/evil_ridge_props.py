@@ -4,12 +4,7 @@ for, reached up the moor's watchtower; at its west end a gap in the ridge
 drops onto the allotments' greenhouse roof, and a plank bridge over it
 goes on west to Gallows Hill.
 
-Drawn in room coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/evil_moor/make_specs.py` (`ridge`): the
-ridge's ground (y 480 down to the room's foot at 544), the gap over the
-greenhouse (x 70..450), bridged at the ridge's ground (dropped through), the
-way west to the hill at the ridge's ground (x 0..70); the hole the watchtower's top comes up through
-(x 3100..3220).
+Use the room dimensions in `evil_moor/make_specs.py`.
 
 - `ridge_west`: the broken end of the ridge over the gap, its edge fallen
   away; the plank bridge over it, planks missing, on ropes to posts; the
@@ -31,7 +26,7 @@ from typing import Dict
 import numpy as np
 
 from ._district_props import Piece, targets
-from ._town_kit import box, mix, scale
+from ._town_kit import box
 from .evil_forest_props import NEAR_BLACK, PAL, rim
 
 W, G, FOOT = 3600, 480, 544
@@ -45,28 +40,30 @@ BEAM = (255, 240, 200)
 WIRE = (110, 100, 104)
 TIMBER = (34, 26, 24)
 WINDOW = (255, 170, 80)
+WALK_EDGE = (170, 110, 77)
+WALK_BEAM = (73, 47, 44)
 
 
 def ground(c, x0, x1):
     """The ridge's rock from `x0` to `x1`, its crest at G."""
-    m = c.mask(lambda p: p.poly([(x0, FOOT), (x0, G + 4), *[(x, G + 3 * math.sin(x / 37.0)) for x in np.linspace(x0, x1, 40)], (x1, G + 4), (x1, FOOT)]))
+    crest = [(x, G + 3 * math.sin(x / 37.0)) for x in np.linspace(x0, x1, 100)]
+    m = c.mask(lambda p: p.poly([(x0, FOOT), *crest, (x1, FOOT)]))
     c.put(m, ROCK)
-    c.tone(m * (c.noise(("ridge", x0), (x1 - x0) / 60, 3, 2) - 0.5), 0.25)
-    c.put(c.mask(lambda p: p.line([(x, G + 3 * math.sin(x / 37.0)) for x in np.linspace(x0, x1, 40)], 3)), ROCK_LIGHT)
+    c.tone(m * np.sin(c.x / 83 + c.y / 9) * np.sin(c.x / 119 - c.y / 13), 0.12)
+    c.put(c.mask(lambda p: p.line(crest, 3)), ROCK_LIGHT)
     rim(c, m, 0.35)
 
 
-def searchlight(c, x, sweep):
-    """A searchlight on its post at `x`, its beam up into the sky at `sweep`
-    radians from the vertical."""
-    c.put(c.mask(lambda p: (p.rect(x - 4, G - 70, x + 4, G), p.poly([(x - 18, G), (x + 18, G), (x + 8, G - 12), (x - 8, G - 12)]))), IRON)
-    c.put(c.mask(lambda p: p.ellipse(x, G - 82, 16, 14)), IRON)
-    c.put(c.mask(lambda p: p.ellipse(x + 8 * math.sin(sweep), G - 84 - 8 * math.cos(sweep), 8, 7)), LAMP)
-    tip = (x + 700 * math.sin(sweep), G - 84 - 700 * math.cos(sweep))
+def searchlight(c, x, sweep, floor=G):
+    c.put(c.mask(lambda p: (p.rect(x - 4, floor - 70, x + 4, floor),
+                             p.poly([(x - 18, floor), (x + 18, floor), (x + 8, floor - 12), (x - 8, floor - 12)]))), IRON)
+    c.put(c.mask(lambda p: p.ellipse(x, floor - 82, 16, 14)), IRON)
+    c.put(c.mask(lambda p: p.ellipse(x + 8 * math.sin(sweep), floor - 84 - 8 * math.cos(sweep), 8, 7)), LAMP)
+    tip = (x + 700 * math.sin(sweep), floor - 84 - 700 * math.cos(sweep))
     side = (math.cos(sweep) * 60, math.sin(sweep) * 60)
-    # The beam: a translucent fill over the sky (a light brightens only what
-    # is drawn, and the sky is the parallax behind).
-    c.put(c.mask(lambda p: p.poly([(x - 6, G - 84), (x + 6, G - 84), (tip[0] + side[0], tip[1] + side[1]), (tip[0] - side[0], tip[1] - side[1])]), blur=8), BEAM, 0.16)
+    beam = c.mask(lambda p: p.poly([(x - 6, floor - 84), (x + 6, floor - 84),
+                                    (tip[0] + side[0], tip[1] + side[1]), (tip[0] - side[0], tip[1] - side[1])]), blur=8)
+    c.put(beam * np.clip((c.y - 4) / 164, 0, 1), BEAM, 0.16)
 
 
 def wire(c, x0, x1, y):
@@ -88,16 +85,29 @@ def west(c, k):
                             p.line([(g0, G + 2), (g1, G + 2)], 1.4)]), WIRE)
     missing = {3, 4, 9, 13, 14, 15}
     c.put(c.mask(lambda p: [p.rect(x, G, x + 16, G + 6) for i, x in enumerate(range(g0, g1 - 8, 20)) if i not in missing]), (120, 92, 70))
-    ground(c, g1, 1800)
+    ground(c, g1, TOWER[0])
     c.put(c.mask(lambda p: p.poly([(g1, G), (g1 - 30, G + 30), (g1 - 10, FOOT), (g1 + 10, FOOT)])), ROCK)
     wire(c, g1 + 40, g1 + 400, G)
+    c.put(c.mask(lambda p: [p.rect(x, 374, x + 4, G) for x in (471, 590)]), TIMBER)
+    c.put(c.mask(box(420, 342, 644, 379)), WALK_BEAM)
+    c.put(c.mask(box(425, 347, 639, 374)), TIMBER)
     searchlight(c, 900, -0.5)
     wire(c, 1200, 1700, G)
 
 
+def gantry(c, x0, x1, y, posts):
+    for x in posts:
+        c.put(c.mask(box(x - 4, y + 12, x + 4, G)), IRON)
+        c.put(c.mask(lambda p: p.line([(x, y + 42), (x + 23, y + 12)], 5)), IRON)
+        c.put(c.mask(box(x - 3, y + 17, x - 1, G - 4)), WALK_BEAM)
+    c.put(c.mask(box(x0, y, x1, y + 16)), WALK_BEAM)
+    c.put(c.mask(box(x0, y, x1, y + 4)), WALK_EDGE)
+    c.put(c.mask(lambda p: [p.ellipse(x, y + 10, 1.6) for x in range(x0 + 11, x1 - 5, 27)]), WIRE)
+
+
 def east(c, k):
     t0, t1 = TOWER
-    ground(c, 1800, t0)
+    ground(c, GAP[1], t0)
     ground(c, t1, W - 16)
     # The top of the watchtower, coming up through the ridge: its posts and
     # its ladder (the engine draws the ladder; the posts are here).
@@ -105,24 +115,30 @@ def east(c, k):
     c.put(c.mask(lambda p: p.rect(t0 - 6, G - 44, t1 + 6, G - 38)), TIMBER)
     # The sentry hut: planks, a lit window, a tin roof.
     h0, h1 = 2300, 2460
-    hut = c.mask(box(h0, G - 110, h1, G))
+    hut = c.mask(box(h0, 342, h1, G))
     c.put(hut, TIMBER)
-    c.put(hut * c.mask(lambda p: [p.rect(x, G - 110, x + 1.4, G) for x in range(h0, h1, 12)]), NEAR_BLACK, 0.6)
-    c.put(c.mask(lambda p: p.poly([(h0 - 14, G - 106), (h1 + 14, G - 120), (h1 + 14, G - 112), (h0 - 14, G - 98)])), IRON)
+    c.put(hut * c.mask(lambda p: [p.rect(x, 342, x + 1.4, G) for x in range(h0, h1, 12)]), NEAR_BLACK, 0.6)
     c.put(c.mask(box(h0 + 30, G - 80, h0 + 70, G - 50)), WINDOW)
     c.light(c.mask(lambda p: p.ellipse(h0 + 50, G - 65, 50, 30), blur=10), WINDOW, 0.25)
     rim(c, hut, 0.4)
-    # Two more searchlights, and the cable on poles between them.
-    searchlight(c, 2000, 0.35)
-    searchlight(c, 2800, -0.25)
-    c.put(c.mask(lambda p: [p.rect(x, G - 120, x + 4, G) for x in (2150, 2600)]), TIMBER)
-    c.put(c.mask(lambda p: p.line([(2000, G - 90), (2152, G - 116), (2380, G - 100), (2602, G - 116), (2800, G - 90)], 1.4)), NEAR_BLACK)
+    c.put(c.mask(lambda p: p.line([(2000, 347), (2130, 384), (2310, 379), (2602, 408), (2800, 394)], 2)), NEAR_BLACK)
+    gantry(c, 1824, 1920, 416, (1848, 1882))
+    gantry(c, 1920, 2240, 352, (1944, 2020, 2112, 2200))
+    gantry(c, 2288, 2480, 336, ())
+    gantry(c, 2512, 2656, 368, (2540, 2614))
+    gantry(c, 2688, 2832, 400, (2712, 2800))
+    gantry(c, 2880, 2960, 432, (2910, 2932))
+    searchlight(c, 2000, 0.35, floor=352)
+    searchlight(c, 2800, -0.25, floor=400)
+    c.put(c.mask(lambda p: [p.rect(x, 277, x + 5, 336) for x in (2304, 2456)]), IRON)
+    c.put(c.mask(box(2264, 223, 2504, 287)), WALK_BEAM)
+    c.put(c.mask(box(2270, 229, 2498, 281)), (45, 34, 35))
     wire(c, 3260, 3560, G)
 
 
 PIECES: Dict[str, Piece] = {
-    "ridge_west": Piece((16, 0, 1800, FOOT), west),
-    "ridge_east": Piece((1800, 0, W - 16, FOOT), east),
+    "ridge_west": Piece((16, 0, 1816, FOOT), west),
+    "ridge_east": Piece((1784, 0, W - 16, FOOT), east),
 }
 
 TARGETS = targets(PIECES, PAL)
