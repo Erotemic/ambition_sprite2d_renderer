@@ -896,8 +896,8 @@ def furnace_house(c, k):
     tin_roof(c, 100, 320, 680, 344, "furnace_roof", (90, 86, 80))
     c.put(c.mask(box(520, 120, 580, 330)), (110, 58, 44))
     c.put(c.mask(lambda p: [p.rect(516, y, 584, y + 6) for y in (120, 200, 280)]), (70, 40, 32))
-    smoke = c.mask(lambda p: [p.ellipse(560 + i * 30, 100 - i * 14, 26 + i * 8, 16 + i * 4) for i in range(6)], blur=6)
-    c.put(smoke, (80, 76, 76), 0.6)
+    smoke = c.mask(lambda p: [p.ellipse(560 + i * 34, 108 - i * 9, 24 + i * 7, 16 + i * 4) for i in range(7)], blur=6)
+    c.put(smoke * np.clip((835 - c.x) / 225, 0, 1) * np.clip(c.y / 35, 0, 1), (80, 76, 76), 0.6)
     door = c.mask(box(300, 520, 420, g))
     c.put(door, (60, 30, 20))
     c.light(c.mask(box(300, 520, 420, g), blur=30), SLAG_GLOW, 0.6)
@@ -907,44 +907,52 @@ def furnace_house(c, k):
 
 
 def slag_pots(c, k):
-    """The slag pots on their carriages (tops y 576, x 700..812 and
-    1400..1512), crusted and glowing at the lip."""
-    g = HIGH
+    """Slag carriages on the rear track behind the walking lane."""
+    g = HIGH - 28
+    top = g - 64
     k.ground = g
+    c.put(c.mask(lambda p: [p.rect(x, g - 11, x + 11, g + 4) for x in np.arange(674, 1536, 24)]), (78, 64, 55))
+    for y in (g - 9, g - 2):
+        c.put(c.mask(box(674, y, 1536, y + 2)), (97, 83, 75))
+    c.put(c.mask(lambda p: [p.rect(x, HIGH - 7, x + 18, HIGH - 5) for x in np.arange(680, 1530, 32)]),
+          HAZARD, 0.75)
     for x0 in (700, 1400):
         x1 = x0 + 112
-        m = c.mask(lambda p: p.poly([(x0, 576), (x1, 576), (x1 - 14, g - 14), (x0 + 14, g - 14)]))
+        m = c.mask(lambda p: p.poly([(x0, top), (x1, top), (x1 - 14, g - 14), (x0 + 14, g - 14)]))
         c.put(m, CINDER)
         c.tone(m * (c.noise(("pot", x0), 4, 3, 2) - 0.5), 0.35)
-        c.put(c.mask(box(x0 - 4, 576, x1 + 4, 584)), (50, 46, 48))
-        c.light(c.mask(box(x0 + 6, 570, x1 - 6, 580), blur=8), SLAG_GLOW, 0.6)
-        deck_edge(c, x0, x1, 576, (255, 180, 100))
+        c.put(c.mask(box(x0 - 4, top, x1 + 4, top + 8)), (50, 46, 48))
+        c.light(c.mask(box(x0 + 6, top - 6, x1 - 6, top + 4), blur=8), SLAG_GLOW, 0.45)
+        deck_edge(c, x0, x1, top, (220, 142, 80))
         for dx in (24, 88):
             c.put(c.mask(lambda p: p.ellipse(x0 + dx, g - 7, 7)), (40, 38, 40))
 
 
 def works_crane(c, k):
-    """The slag crane's gantry: the lower walk (y 512, x 820..1180) and the
-    upper (y 448, x 1200..1560) on girder legs, the cab, the ladle on its
-    chains."""
+    """The crane gantries, loading step, and ladder support."""
     g = HIGH
     k.ground = g
-    for x in (830, 1170):
+    for x in (616, 696):
+        girder(c, x, 582, g, 5)
+    grating(c, 608, 704, 576, rail=False)
+    for x in (730, 1174):
         girder(c, x, 512, g, 10)
     for x in (1210, 1550):
         girder(c, x, 448, g, 10)
     x_brace(c, 1210, 1550, 460, g - 10)
-    grating(c, 820, 1180, 512)
-    grating(c, 1200, 1560, 448)
+    grating(c, 720, 1184, 512)
+    grating(c, 1200, 1568, 448)
+    for y in (477, 578):
+        c.put(c.mask(box(1548, y, 1597, y + 5)), STEEL_DARK)
     cab = c.mask(box(1600, 360, 1700, 448))
     c.put(cab, (180, 140, 50))
     k.window(1650, 380, 60, 36, "rect", lit=0.4, tag="crane_cab")
     girder(c, 1650, 448, g, 12)
     c.put(c.mask(box(1300, 300, 1720, 316)), STEEL_DARK)
-    c.put(c.mask(lambda p: [p.ellipse(1420, 320 + i * 7, 2.4, 3.4) for i in range(10)]), STEEL_DARK)
-    ladle = c.mask(lambda p: p.poly([(1390, 392), (1450, 392), (1440, 432), (1400, 432)]))
+    c.put(c.mask(lambda p: [p.ellipse(1496, 320 + i * 7, 2.4, 3.4) for i in range(10)]), STEEL_DARK)
+    ladle = c.mask(lambda p: p.poly([(1466, 392), (1526, 392), (1516, 432), (1476, 432)]))
     c.put(ladle, CINDER)
-    c.light(c.mask(box(1394, 388, 1446, 396), blur=6), SLAG_GLOW, 0.6)
+    c.light(c.mask(box(1470, 388, 1522, 396), blur=6), SLAG_GLOW, 0.6)
     c.tone(cab * 0, 0)
 
 
@@ -1062,9 +1070,9 @@ PIECES: Dict[str, Piece] = {
     "frontier_yard_tracks": Piece((0, 1240, 2400, 1420), yard_tracks, px=1.0),
     "frontier_tipple_road": Piece((480, 330, 2400, 1420), tipple_road, px=1.0),
     # frontier_clinker_works
-    "frontier_furnace_house": Piece((90, 60, 720, 640), furnace_house),
-    "frontier_slag_pots": Piece((690, 560, 1530, 640), slag_pots),
-    "frontier_works_crane": Piece((800, 280, 1730, 640), works_crane),
+    "frontier_furnace_house": Piece((90, 0, 856, 640), furnace_house),
+    "frontier_slag_pots": Piece((670, 530, 1544, 640), slag_pots),
+    "frontier_works_crane": Piece((598, 280, 1730, 640), works_crane),
     # frontier_clinker_row
     "frontier_row_shacks_west": Piece((220, 470, 860, 640), row_shacks([(240, 560, 528), (600, 840, 544)], "row_w")),
     "frontier_row_pump": Piece((880, 430, 1520, 640), row_pump),
