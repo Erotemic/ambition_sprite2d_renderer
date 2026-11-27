@@ -2,11 +2,7 @@
 Searchlight Moor, the one warm light on it, where the people who live under
 the castle drink.
 
-Drawn in room coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/evil_moor/make_specs.py`: on the moor, the
-ground (y 656) and the inn's door (x 120..168); inside, the floor (y 448),
-the ceiling (to y 32), the door out (x 40), the bar (x 560..840), the
-innkeeper behind it, the trapper by the fire.
+Use the room dimensions in `evil_moor/make_specs.py`.
 
 - `moor_inn_front`: a crooked timber inn leaning on its chimney, shutters
   lit from inside, its lantern hung askew on a bracket, the sign of a bent
@@ -24,20 +20,19 @@ Near-black and red outside like the moor; warm inside. Animations:
 
 from __future__ import annotations
 
-import math
 from typing import Dict
 
 import numpy as np
 
 from ._district_props import Piece, targets
-from ._town_kit import box, mix, scale
-from .eureka_props import Batch, edge_line, panels
+from ._town_kit import box, mix
+from .eureka_props import Batch, ashlar, panels
 from .evil_forest_props import NEAR_BLACK, PAL, rim
 
 MOOR_FLOOR = 656
 INN_DOOR = (120, 168)
 W, FLOOR, CEILING = 1024, 448, 32
-BAR = (560, 840)
+BAR = (560, 848)
 TIMBER = (52, 36, 30)
 TIMBER_LIGHT = (110, 76, 52)
 PLASTER = (120, 104, 90)
@@ -89,6 +84,47 @@ def inn_front(c, k):
     rim(c, house, 0.4)
 
 
+def moor_chart(c):
+    c.put(c.mask(lambda p: p.poly([(68, 185), (260, 182), (257, 262), (247, 268), (71, 269)])), (72, 48, 31))
+    c.put(c.mask(lambda p: p.poly([(72, 188), (256, 186), (253, 260), (246, 264), (75, 265)])), (204, 179, 130))
+    c.put(c.mask(box(190, 189, 249, 261)), (88, 65, 52))
+    ridge, road, under = (122, 50, 42), (72, 55, 47), (48, 88, 88)
+    c.put(c.mask(lambda p: p.line([(88, 225), (91, 202), (154, 202), (154, 225)], 2)), ridge)
+    c.put(c.mask(lambda p: p.line([(83, 226), (182, 226)], 2)), road)
+    c.put(c.mask(lambda p: [p.line([(114, y), (114, y + 3)], 1.7) for y in range(206, 217, 5)]), ridge)
+    c.put(c.mask(lambda p: p.poly([(111, 219), (117, 219), (114, 224)])), ridge)
+    c.put(c.mask(lambda p: p.line([(114, 226), (114, 250), (176, 250), (176, 226)], 2)), under)
+    nodes = ((91, 202), (154, 202), (91, 226), (114, 226), (154, 226), (176, 226), (114, 250), (176, 250))
+    c.put(c.mask(lambda p: [p.ellipse(x, y, 2.8) for x, y in nodes]), road)
+    c.put(c.mask(lambda p: p.poly([(88, 116), (182, 124), (176, 187), (82, 179)])), WOOD_DARK)
+    c.put(c.mask(lambda p: p.poly([(93, 122), (177, 129), (172, 181), (88, 174)])), (117, 53, 47))
+    c.put(c.mask(lambda p: p.poly([(101, 174), (112, 159), (121, 160), (121, 139), (128, 139), (128, 144),
+                                  (134, 144), (134, 138), (141, 138), (141, 144), (148, 144), (148, 139),
+                                  (155, 139), (155, 164), (166, 180)])), (36, 25, 29))
+    c.put(c.mask(lambda p: p.line([(136, 107), (135, 120)], 1.4)), TIMBER)
+
+
+def wanted_posters(c):
+    for i, x in enumerate((616, 679, 742, 805)):
+        y = 112 + (i % 2) * 8
+        ink = (83, 69, 57)
+        c.put(c.mask(box(x, y, x + 46, y + 60)), mix((225, 207, 164), (190, 164, 127), i * 0.11))
+        c.put(c.mask(box(x + 6, y + 4, x + 40, y + 12)), (120, 40, 36))
+        if i == 3:
+            robot = (231, 234, 232)
+            c.put(c.mask(lambda p: (p.ellipse(x + 23, y + 32, 12, 10), p.rect(x + 14, y + 40, x + 32, y + 54))), robot)
+            c.put(c.mask(lambda p: p.line([(x + 16, y + 27), (x + 10, y + 18)], 1.6)), ink)
+            c.put(c.mask(lambda p: [p.ellipse(x + 23 + d, y + 31, 2.4) for d in (-5, 5)]), (40, 200, 230))
+        else:
+            c.put(c.mask(lambda p: (p.ellipse(x + 23, y + 32, 9 + i, 11), p.rect(x + 13, y + 42, x + 33, y + 54))), ink)
+            if i == 0:
+                c.put(c.mask(lambda p: p.poly([(x + 9, y + 27), (x + 23, y + 18), (x + 37, y + 27)])), ink)
+            elif i == 1:
+                c.put(c.mask(box(x + 10, y + 27, x + 36, y + 31)), (55, 44, 38))
+            else:
+                c.put(c.mask(lambda p: p.poly([(x + 13, y + 35), (x + 33, y + 35), (x + 23, y + 48)])), (55, 44, 38))
+
+
 def inn_room(c, k):
     g = FLOOR
     # Plaster and beams, a low ceiling.
@@ -104,14 +140,28 @@ def inn_room(c, k):
     panels(c, 16, g - 102, W - 16, g, WOOD_DARK, 12, "inn_wainscot")
     # The fire, west of the bar.
     fx = 330
-    c.put(c.mask(lambda p: p.poly([(fx - 70, g), (fx - 70, g - 120), (fx - 50, g - 140), (fx + 50, g - 140), (fx + 70, g - 120), (fx + 70, g)])), (90, 80, 76))
+    c.put(c.mask(box(272, 326, 400, g)), (90, 80, 76))
     c.put(c.mask(lambda p: (p.rect(fx - 44, g - 90, fx + 44, g), p.ellipse(fx, g - 90, 44, 16))), (30, 20, 18))
     c.put(c.mask(lambda p: [p.poly([(fx + dx - 10, g - 4), (fx + dx, g - 34 - abs(dx) * 0.2), (fx + dx + 10, g - 4)]) for dx in (-24, -6, 12, 28)]), (255, 150, 50))
     c.light(c.mask(lambda p: p.ellipse(fx, g - 30, 180, 90), blur=24), LAMP, 0.35)
+    c.put(c.mask(box(272, 320, 400, 336)), (87, 73, 67))
+    c.put(c.mask(box(272, 320, 400, 324)), (166, 144, 128))
+    for x in (148, 244):
+        c.put(c.mask(lambda p: p.poly([(x - 6, 334), (x + 14, 334), (x - 6, 361)])), TIMBER)
+    c.put(c.mask(box(128, 320, 272, 336)), WOOD_DARK)
+    c.put(c.mask(box(128, 320, 272, 324)), (184, 133, 84))
+    panels(c, 150, 389, 218, g, WOOD, 4, "inn_firewood_box")
+    c.put(c.mask(lambda p: [p.ellipse(x, 407, 5 + x % 3, 4) for x in range(156, 216, 11)]), (185, 138, 86))
+    c.put(c.mask(box(144, 384, 224, 396)), WOOD_DARK)
+    c.put(c.mask(box(144, 384, 224, 388)), (184, 133, 84))
+    c.put(c.mask(lambda p: [p.rect(x, 398, x + 6, g) for x in (458, 508)]), WOOD_DARK)
+    c.put(c.mask(box(448, 384, 528, 400)), WOOD_DARK)
+    c.put(c.mask(box(448, 384, 528, 388)), (184, 133, 84))
     # The bar and its barrels, mugs on hooks.
     b0, b1 = BAR
     panels(c, b0, g - 44, b1, g, WOOD, 6, "inn_bar")
-    edge_line(c, b0 - 6, b1 + 6, g - 46, (170, 120, 80), 4)
+    c.put(c.mask(box(b0, 400, b1, 413)), WOOD_DARK)
+    c.put(c.mask(box(b0, 400, b1, 404)), (184, 133, 84))
     for x in (b0 + 30, b0 + 80, b1 - 80):
         m = c.mask(lambda p: p.ellipse(x, g - 140, 20, 16))
         c.put(m, WOOD)
@@ -120,23 +170,10 @@ def inn_room(c, k):
     c.put(c.mask(lambda p: (p.rect(b0 + 4, g - 124, b1 - 60, g - 120), [p.rect(x, g - 120, x + 4, g - 102) for x in (b0 + 8, b1 - 66)])), TIMBER)
     c.put(c.mask(box(b0, g - 160, b1, g - 156)), TIMBER)
     c.put(c.mask(lambda p: [p.rect(x - 4, g - 154, x + 4, g - 142) for x in range(b0 + 140, b1 - 100, 18)]), (200, 196, 186))
-    # WANTED posters (the robot's among them), and the picture of the castle
-    # with a map tucked behind it.
-    for i, (x, wanted_robot) in enumerate(((640, True), (700, False), (760, False))):
-        y = 120
-        c.put(c.mask(box(x, y, x + 46, y + 60)), (226, 210, 170))
-        c.put(c.mask(box(x + 6, y + 4, x + 40, y + 12)), (120, 40, 36))
-        if wanted_robot:
-            c.put(c.mask(lambda p: (p.ellipse(x + 23, y + 32, 12, 10), p.rect(x + 14, y + 40, x + 32, y + 54))), (230, 232, 236))
-            c.put(c.mask(lambda p: [p.ellipse(x + 23 + d, y + 31, 2.4) for d in (-5, 5)]), (40, 200, 230))
-        else:
-            c.put(c.mask(lambda p: (p.ellipse(x + 23, y + 32, 10, 11), p.rect(x + 13, y + 42, x + 33, y + 54))), (90, 80, 70))
-    px0, py0 = 140, 110
-    c.put(c.mask(lambda p: p.poly([(px0 + 70, py0 + 6), (px0 + 112, py0 - 4), (px0 + 116, py0 + 54), (px0 + 74, py0 + 60)])), (220, 210, 180))
-    c.put(c.mask(lambda p: [p.ellipse(px0 + 82 + i * 8, py0 + 30 + 6 * math.sin(i), 1.4) for i in range(4)]), (160, 40, 40))
-    c.put(c.mask(box(px0, py0, px0 + 90, py0 + 64)), (90, 60, 40))
-    c.put(c.mask(box(px0 + 5, py0 + 5, px0 + 85, py0 + 59)), (90, 30, 30))
-    c.put(c.mask(lambda p: p.poly([(px0 + 20, py0 + 59), (px0 + 30, py0 + 30), (px0 + 40, py0 + 36), (px0 + 50, py0 + 22), (px0 + 62, py0 + 40), (px0 + 70, py0 + 59)])), (30, 20, 24))
+    c.put(c.mask(box(326, 133, 614, 172)), WOOD_DARK)
+    c.put(c.mask(box(331, 138, 609, 167)), TIMBER)
+    wanted_posters(c)
+    moor_chart(c)
     # Candles on the tables; a table and stools in the east of the room.
     for tx in (910,):
         c.put(c.mask(lambda p: (p.rect(tx - 50, g - 30, tx + 50, g - 26), p.rect(tx - 40, g - 26, tx - 36, g), p.rect(tx + 36, g - 26, tx + 40, g))), WOOD)
@@ -144,12 +181,10 @@ def inn_room(c, k):
         c.light(c.mask(lambda p: p.ellipse(tx, g - 42, 30), blur=8), LAMP, 0.35)
 
 
-#: The crypt's gate on the moor (x 2290..2338, east of the founder's
-#: plinth) and the crypt inside: its floor, ceiling, the sarcophagus (x
-#: 1100..1300, its lid walked on at y 400).
+#: Use the shaft and platform positions in the room spec.
 CRYPT_GATE = (2290, 2338)
 CRYPT_W, CRYPT_FLOOR, CRYPT_CEILING = 1600, 512, 32
-SARCOPHAGUS = (1100, 1300, 440)
+SARCOPHAGUS = (1088, 1312, 432)
 STONE = (78, 72, 76)
 STONE_LIGHT = (130, 122, 124)
 CANDLE = (255, 214, 140)
@@ -169,30 +204,58 @@ def crypt_gate(c, k):
     rim(c, porch, 0.4)
 
 
+def crypt_ledge(c, x0, x1, y, brackets):
+    for x in brackets:
+        c.put(c.mask(lambda p: p.poly([(x - 12, y + 13), (x + 21, y + 13), (x - 6, y + 43), (x - 12, y + 43)])), (62, 53, 56))
+        c.put(c.mask(box(x - 11, y + 19, x - 8, y + 41)), (104, 86, 79))
+    c.put(c.mask(box(x0, y, x1, y + 16)), (96, 83, 81))
+    c.put(c.mask(box(x0, y, x1, y + 4)), (151, 131, 118))
+    c.put(c.mask(lambda p: [p.rect(x, y + 5, x + 1.4, y + 14) for x in range(x0 + 24, x1 - 6, 32)]), (69, 57, 61))
+
+
 def crypt_room(c, k):
     g, top = CRYPT_FLOOR, CRYPT_CEILING
-    # Vaulted stone, niches of bones, candles.
     wall = c.mask(box(16, top, CRYPT_W - 16, g))
-    c.put(wall, STONE)
-    c.put(wall * c.mask(lambda p: [p.rect(16, y, CRYPT_W - 16, y + 1.4) for y in range(top + 20, g, 24)]), scale(STONE, 0.7))
-    c.tone(wall * (c.noise("crypt_wall", 10, 4, 2) - 0.5), 0.25)
+    ashlar(c, 16, top, CRYPT_W - 16, g, STONE, course=24, block=48, tag="crypt_wall", vary=0.07)
     c.tone(wall * np.clip((200 - c.y) / 170, 0, 1), -0.35)
-    for x in range(140, CRYPT_W - 100, 220):
-        c.put(c.mask(lambda p: p.arch(x, 180, x + 90, 300)), (24, 20, 22))
-        c.put(c.mask(lambda p: [p.ellipse(x + 20 + i * 14, 292 - (i % 2) * 6, 7, 6) for i in range(5)]), (220, 210, 186))
-        c.put(c.mask(lambda p: [p.ellipse(x + 28 + i * 20, 296 - 14, 3, 2) for i in range(3)]), (40, 34, 30))
-    # Busts of the founder along the wall, each pointing.
-    for x in (320, 760, 1460):
-        c.put(c.mask(box(x - 26, g - 70, x + 26, g)), STONE_LIGHT)
-        bust = c.mask(lambda p: (p.ellipse(x, g - 104, 16, 20), p.poly([(x - 26, g - 70), (x + 26, g - 70), (x + 16, g - 88), (x - 16, g - 88)])))
-        c.put(bust, (70, 60, 44))
-        c.put(c.mask(lambda p: p.line([(x + 16, g - 80), (x + 44, g - 96)], 5)), (70, 60, 44))
-    # The sarcophagus: its lid is walked on.
+    niches = (
+        (126, 194, 88), (304, 164, 100), (500, 198, 84), (700, 164, 96),
+        (904, 193, 90), (1136, 164, 128), (1348, 187, 92),
+    )
+    for x, y, width in niches:
+        frame = c.mask(lambda p: p.arch(x - 5, y - 5, x + width + 5, y + 98))
+        c.put(frame * c.mask(box(x - 5, y - 5, x + width + 5, y + 98)), (98, 86, 87))
+        hollow = c.mask(lambda p: p.arch(x, y, x + width, y + 93))
+        c.put(hollow * c.mask(box(x, y, x + width, y + 93)), (29, 24, 27))
+        c.put(c.mask(box(x - 7, y + 92, x + width + 7, y + 99)), (110, 96, 94))
+        c.put(c.mask(lambda p: [p.ellipse(x + dx, y + 86 - (dx % 3), 6, 4)
+                                 for dx in range(13, width - 10, 17)]), (185, 173, 151), 0.8)
+    c.put(c.mask(box(1488, top, 1536, g)), (51, 44, 47))
+    c.put(c.mask(box(1488, top, 1492, g)), (106, 90, 87))
+    c.put(c.mask(box(1532, top, 1536, g)), (70, 57, 62))
+    for x0, x1, y in ((432, 762, 291), (1030, 1370, 285)):
+        c.put(c.mask(box(x0, y, x1, y + 36)), (106, 90, 87))
+        c.put(c.mask(box(x0 + 5, y + 4, x1 - 5, y + 32)), (53, 42, 47))
+    crypt_ledge(c, 256, 336, 448, (282,))
+    crypt_ledge(c, 352, 816, 384, (380, 532, 688, 786))
+    crypt_ledge(c, 848, 1056, 416, (876, 1024))
+    crypt_ledge(c, 1392, 1456, 464, (1416,))
+    for x, base in ((302, 448), (780, 384), (1460, 512)):
+        c.put(c.mask(box(x - 21, base - 47, x + 21, base)), (116, 102, 95))
+        c.put(c.mask(box(x - 24, base - 50, x + 24, base - 44)), (137, 119, 107))
+        bust = c.mask(lambda p: (
+            p.ellipse(x, base - 76, 13, 17),
+            p.poly([(x - 18, base - 50), (x + 20, base - 50), (x + 11, base - 65), (x - 11, base - 65)]),
+            p.poly([(x - 14, base - 59), (x - 45, base - 74), (x - 47, base - 68), (x - 17, base - 52)]),
+        ))
+        c.put(bust, (124, 94, 67))
+        c.put(bust * c.mask(lambda p: p.line([(x - 10, base - 83), (x - 11, base - 69), (x - 43, base - 72)], 1.5)), (190, 145, 99), 0.8)
     s0, s1, lid = SARCOPHAGUS
     c.put(c.mask(box(s0, lid, s1, g)), (90, 84, 90))
     c.put(c.mask(lambda p: [p.rect(x, lid + 20, x + 28, g - 10) for x in range(s0 + 14, s1 - 20, 44)]), (70, 64, 70))
-    c.put(c.mask(lambda p: p.poly([(s0 - 6, lid), (s1 + 6, lid), (s1, lid + 10), (s0, lid + 10)])), (110, 104, 108))
-    c.put(c.mask(lambda p: p.line([(s0 + 30, lid + 2), ((s0 + s1) / 2, lid - 10), (s1 - 30, lid + 2)], 3)), (110, 104, 108))
+    c.put(c.mask(box(s0, lid, s1, lid + 16)), (104, 89, 87))
+    c.put(c.mask(box(s0, lid, s1, lid + 4)), (156, 136, 121))
+    c.put(c.mask(box(1161, lid - 5, 1239, lid)), (91, 70, 59))
     # Candles, their light.
     for x in (240, 560, 980, 1400):
         c.put(c.mask(lambda p: (p.rect(x - 3, g - 22, x + 3, g), p.ellipse(x, g - 26, 2, 4))), (236, 228, 210))

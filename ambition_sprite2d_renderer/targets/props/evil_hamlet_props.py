@@ -2,9 +2,7 @@
 the castle, west of the Castle Allotments: the people the castle rules,
 getting on with it.
 
-Drawn in room coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/evil_moor/make_specs.py` (`hamlet`): the
-ground (y 656); the crier's platform (x 1270..1410, y 592), walked on.
+Use the room dimensions in `evil_moor/make_specs.py`.
 
 - `hamlet_west`: two cottages, crooked, thatched, their windows lit; the
   bakery with its sign (a loaf) and its window of loaves; a washing line.
@@ -25,11 +23,10 @@ import numpy as np
 
 from ._district_props import Piece, targets
 from ._town_kit import box, mix, scale
-from .eureka_props import edge_line
 from .evil_forest_props import NEAR_BLACK, PAL, rim
 
 G = 656
-PLATFORM = (1270, 1410, 592)
+PLATFORM = (1264, 1424, 592)
 WALL = (70, 60, 58)
 WALL_DARK = (48, 40, 40)
 THATCH = (90, 70, 46)
@@ -37,6 +34,8 @@ TIMBER = (34, 26, 24)
 WINDOW = (255, 170, 80)
 PAPER = (200, 186, 150)
 LOAF = (196, 140, 80)
+BEAM = (81, 54, 42)
+EDGE = (167, 119, 77)
 
 
 def cottage(c, x0, x1, eave, ridge, tag, lit=True, crooked=0.0):
@@ -58,6 +57,21 @@ def cottage(c, x0, x1, eave, ridge, tag, lit=True, crooked=0.0):
         c.light(c.mask(lambda p: p.ellipse(wx + 14, eave + 32, 30, 22), blur=10), WINDOW, 0.3)
 
 
+def notice(c, x0, x1, y0, y1):
+    c.put(c.mask(box(x0, y0, x1, y1)), BEAM)
+    c.put(c.mask(box(x0 + 5, y0 + 5, x1 - 5, y1 - 5)), (45, 33, 31))
+    c.put(c.mask(lambda p: [p.ellipse(x, y0 + 10, 2) for x in (x0 + 10, x1 - 10)]), EDGE)
+
+
+def timber_walk(c, x0, x1, y, legs):
+    for x in legs:
+        c.put(c.mask(box(x, y + 12, x + 6, G)), TIMBER)
+        c.put(c.mask(lambda p: p.line([(x + 3, y + 42), (x + 20, y + 13)], 4)), TIMBER)
+    c.put(c.mask(box(x0, y, x1, y + 16)), BEAM)
+    c.put(c.mask(box(x0, y, x1, y + 4)), EDGE)
+    c.put(c.mask(lambda p: [p.ellipse(x, y + 10, 1.4) for x in range(x0 + 9, x1, 27)]), TIMBER)
+
+
 def west(c, k):
     cottage(c, 120, 300, G - 96, G - 170, "c1", crooked=6)
     cottage(c, 380, 540, G - 90, G - 156, "c2", crooked=-4)
@@ -73,6 +87,16 @@ def west(c, k):
     c.put(c.mask(lambda p: p.line([(300, G - 110), (340, G - 104), (380, G - 112)], 1)), TIMBER)
     for x, col in ((316, (180, 170, 150)), (350, (90, 40, 40)), (366, (160, 150, 130))):
         c.put(c.mask(lambda p: p.poly([(x - 7, G - 106), (x + 7, G - 106), (x + 6, G - 88), (x - 6, G - 88)])), col)
+    c.put(c.mask(lambda p: [p.rect(x, 448, x + 6, 550) for x in (281, 521)]), TIMBER)
+    notice(c, 240, 560, 391, 458)
+    c.put(c.mask(box(553, 620, 615, G)), BEAM)
+    c.put(c.mask(lambda p: [p.rect(x, 620, x + 2, G) for x in (567, 583, 600)]), TIMBER)
+    timber_walk(c, 544, 624, 608, ())
+    timber_walk(c, 608, 704, 544, (624, 685))
+    timber_walk(c, 688, 928, 496, (711, 907))
+    timber_walk(c, 928, 1056, 496, (951, 1036))
+    c.put(c.mask(lambda p: [p.rect(x, 430, x + 6, 496) for x in (701, 917)]), TIMBER)
+    notice(c, 657, 963, 370, 438)
 
 
 def east(c, k):
@@ -88,11 +112,14 @@ def east(c, k):
     c.put(c.mask(lambda p: [p.rect(x, G - 50, x + 6, G) for x in (sx - 40, sx + 34)]), TIMBER)
     c.put(c.mask(box(sx - 46, G - 50, sx + 46, G - 34)), mix(TIMBER, (120, 90, 60), 0.5))
     c.put(c.mask(lambda p: [p.ellipse(sx + dx, G - 42, 5, 4) for dx in (-24, 0, 24)]), NEAR_BLACK)
+    c.put(c.mask(lambda p: [p.rect(x, 579, x + 5, G) for x in (1576, 1699)]), TIMBER)
+    notice(c, 1544, 1736, 548, 588)
     # The crier's platform (walked on), its post and bell.
     p0, p1, py = PLATFORM
-    c.put(c.mask(box(p0, py, p1, py + 10)), TIMBER)
-    edge_line(c, p0, p1, py, (110, 80, 60), 3)
-    c.put(c.mask(lambda p: [p.rect(x, py + 10, x + 6, G) for x in (p0 + 6, p1 - 12)]), TIMBER)
+    timber_walk(c, p0, p1, py, (p0 + 12, p1 - 24))
+    timber_walk(c, 1152, p0, 528, (1165, 1234))
+    c.put(c.mask(lambda p: [p.rect(x, 466, x + 6, y) for x, y in ((1167, 528), (1360, py))]), TIMBER)
+    notice(c, 1124, 1400, 405, 478)
     c.put(c.mask(lambda p: (p.rect(p1 - 14, py - 70, p1 - 10, py), p.rect(p1 - 30, py - 70, p1 - 10, py - 66))), TIMBER)
     c.put(c.mask(lambda p: (p.poly([(p1 - 30, py - 64), (p1 - 18, py - 64), (p1 - 16, py - 48), (p1 - 32, py - 48)]), p.ellipse(p1 - 24, py - 46, 3))), (170, 130, 60))
     # The decree board, pasted over and over.
@@ -106,6 +133,7 @@ def east(c, k):
         c.put(c.mask(lambda p: [p.rect(x + 4, y + 6 + j * 6, x + 30, y + 7 + j * 6) for j in range(5)]), (60, 50, 50), 0.6)
     c.put(c.mask(box(dx0 + 30, G - 134, dx1 - 30, G - 96)), (230, 220, 190))
     c.put(c.mask(lambda p: p.rect(dx0 + 36, G - 128, dx1 - 36, G - 120)), (160, 30, 30))
+    notice(c, 1660, 1940, 466, 533)
     # A third cottage, its shutters shut and its door barred; a turnip cart.
     cottage(c, 1960, 2140, G - 96, G - 168, "c3", lit=False)
     c.put(c.mask(lambda p: p.line([(2060, G - 50), (2094, G - 10)], 4)), (110, 80, 60))
@@ -117,8 +145,8 @@ def east(c, k):
 
 
 PIECES: Dict[str, Piece] = {
-    "hamlet_west": Piece((90, G - 210, 1000, G), west),
-    "hamlet_east": Piece((1250, G - 180, 2360, G), east),
+    "hamlet_west": Piece((90, 352, 1056, G), west),
+    "hamlet_east": Piece((1120, 400, 2360, G), east),
 }
 
 TARGETS = targets(PIECES, PAL)

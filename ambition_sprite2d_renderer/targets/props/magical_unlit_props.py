@@ -97,6 +97,21 @@ def dead_things(c, k):
     c.put(c.mask(lambda p: [p.ellipse(2380, f - 60, 2.4), p.ellipse(2396, f - 60, 2.4)]), EDGE)
 
 
+def fallen_branch(c, k):
+    # The top edge follows the walking surface in the Void Wastes.
+    top = [(944, 512), (996, 512), (1032, 496), (1080, 468), (1140, 432),
+           (1204, 400), (1264, 376), (1280, 368), (1328, 368)]
+    bottom = [(1323, 381), (1288, 384), (1252, 405), (1207, 426), (1162, 451),
+              (1146, 473), (1120, 493), (1127, 470), (1087, 495), (1028, 526),
+              (989, 533), (964, 531), (934, 541), (949, 526)]
+    c.put(c.mask(lambda p: p.poly(top + bottom)), VOID)
+    c.put(c.mask(lambda p: p.line(top + bottom + top[:1], 1.7)), GREY)
+    c.put(c.mask(lambda p: p.line(top, 2.3)), EDGE)
+    c.put(c.mask(lambda p: p.line([(962, 520), (996, 523), (1034, 508), (1110, 464)], 2)), DIM)
+    c.put(c.mask(lambda p: p.line([(1144, 451), (1186, 427), (1222, 410), (1298, 374)], 1.6)), DIM)
+    c.put(c.mask(lambda p: p.line([(971, 514), (977, 521), (971, 530)], 1.4)), GREY)
+
+
 GAP = (520, 680)
 LEDGE_Y, ROOF_Y = WASTES_FLOOR - 110, 64
 
@@ -120,6 +135,15 @@ def gap(c, k):
         c.put(c.mask(lambda p: p.line([(x0 + dx + s * 0.3, f + dy - 4), (x0 + dx + s * 0.3, f + dy - 4 - s * 0.8)], 1.0)), GREY, 0.6)
 
 
+def transfer_step(c, k):
+    outline = [(0, 0), (96, 0), (86, 9), (70, 11), (58, 15), (39, 12), (28, 14), (10, 8)]
+    c.put(c.mask(lambda p: p.poly(outline)), VOID)
+    c.put(c.mask(lambda p: p.poly([(9, 3), (44, 3), (39, 12), (28, 14), (10, 8)])), DIM, 0.48)
+    c.put(c.mask(lambda p: p.poly([(53, 3), (92, 3), (86, 9), (70, 11), (58, 15)])), DIM, 0.7)
+    c.put(c.mask(lambda p: p.line(outline[1:] + outline[:1], 1.2)), GREY)
+    c.put(c.mask(lambda p: p.line(outline[:2], 2)), EDGE)
+
+
 SEAT_X, SEAT_WALK = 960, RING_FLOOR - 290
 
 
@@ -141,7 +165,9 @@ PIECES: Dict[str, Piece] = {
     "coliseum_stand_east": Piece((1880 - STAND_W - 10, STAND_TOP - 40, 1890, RING_FLOOR), stand_east),
     "ring_seat": Piece((SEAT_X - 70, SEAT_WALK - 212, SEAT_X + 70, SEAT_WALK), seat),
     "ledges_gap": Piece((GAP[0] - 44, ROOF_Y, GAP[1] + 44, WASTES_FLOOR + 64), gap),
+    "ledges_transfer_step": Piece((0, 0, 96, 16), transfer_step),
     "wastes_dead_things": Piece((300, WASTES_FLOOR - 340, 2420, WASTES_FLOOR), dead_things, px=1.5),
+    "wastes_fallen_branch": Piece((928, 364, 1334, 548), fallen_branch),
 }
 
 TARGETS = targets(PIECES, PAL)

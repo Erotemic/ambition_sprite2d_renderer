@@ -871,6 +871,7 @@ def build_sheet(
     column_tile: Optional[Tuple[float, float]] = None,
     fx: Optional[Dict[str, str]] = None,
     parts: bool = False,
+    part_texel_scale: int = 1,
     render_clip: Optional[Callable[[str, int], Sequence[Image.Image]]] = None,
     sits_on_ground: bool = False,
 ):
@@ -882,6 +883,9 @@ def build_sheet(
     written, and the returned ``flipbook`` is the part flipbook that draws it
     (``publish_rig_flipbook`` writes it). A target whose parts cost more than
     a sheet (``part_flipbook.realization_by_cost``) is painted as before.
+    ``part_texel_scale`` sets the raster density of the parts. The frame
+    renderer accepts ``scale`` when this value is greater than one. Sheet
+    metadata still uses the logical frame.
     ``render_clip`` is ``publish_rig_flipbook``'s, for a target that renders
     a clip at once; only a part-first sheet records through it.
     ``sits_on_ground``: the sheet's sit rows rest the body on the ground (a dog
@@ -947,6 +951,7 @@ def build_sheet(
         fx=fx,
     )
     source.parts = bool(parts)
+    source.part_texel_scale = part_texel_scale
     source.render_clip = render_clip
     source.sits_on_ground = bool(sits_on_ground)
     return render_sheet(source, out_dir, frame_transform_out=frame_transform_out)
@@ -1606,11 +1611,15 @@ def _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame
 
     pad_left, pad_top, pad_right, pad_bottom = frame_padding
     fw, fh = source.frame_size
-    size = (fw + pad_left + pad_right, fh + pad_top + pad_bottom)
+    logical_size = (fw + pad_left + pad_right, fh + pad_top + pad_bottom)
+    density = getattr(source, "part_texel_scale", 1)
+    size = tuple(side * density for side in logical_size)
+    offset = (pad_left * density, pad_top * density)
+    render_options = {} if density == 1 else {"scale": density}
 
     def padded(row, index, count):
         canvas = Image.new("RGBA", size, (0, 0, 0, 0))
-        rigdoc.composite_canvas(canvas, source.render_fn(row, index, count), (pad_left, pad_top))
+        rigdoc.composite_canvas(canvas, source.render_fn(row, index, count, **render_options), offset)
         return canvas
 
     clip = getattr(source, "render_clip", None)
@@ -1618,9 +1627,9 @@ def _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame
     if clip is not None:
         def padded_clip(row, count):
             frames = []
-            for frame in clip(row, count):
+            for frame in clip(row, count, **render_options):
                 canvas = Image.new("RGBA", size, (0, 0, 0, 0))
-                rigdoc.composite_canvas(canvas, frame, (pad_left, pad_top))
+                rigdoc.composite_canvas(canvas, frame, offset)
                 frames.append(canvas)
             return frames
 
@@ -1635,6 +1644,7 @@ def _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame
         print(f"[sheet:{source.target}] recorded only, refused ({type(refused).__name__}: {str(refused)[:160]}): painting its frames", flush=True)
         flipbook = build_rig_flipbook(source.target, source.rows, padded, None, (0.0, 0.0), size, (),
                                       render_clip=padded_clip, paint=True)
+    flipbook.texel_scale = density
     if os.environ.get("AMBITION_PART_FIRST_AUDIT"):
         _audit_part_first(source.target, source.rows, flipbook, padded, padded_clip)
     first_row, first_count = source.rows[0][0], int(source.rows[0][1])
@@ -1646,6 +1656,8 @@ def _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame
             frame = painted.get(frame_idx) if anim == first_row else None
             if frame is None:
                 frame = flipbook.recompose(anim, frame_idx)
+                if density != 1:
+                    frame = frame.resize(logical_size, Image.Resampling.LANCZOS)
             clipped = clipped_frame_edges(frame.crop((pad_left, pad_top, pad_left + fw, pad_top + fh)))
             if clipped:
                 clipped_frames.append((anim, frame_idx, ",".join(clipped)))
@@ -1724,13 +1736,14 @@ def _rebased_flipbook(flipbook, frame_size, crop, feet):
     ``feet``, as ``publish_rig_flipbook`` places a painted sheet's draws."""
     from dataclasses import replace
 
-    dx, dy = crop[0] + feet[0], crop[1] + feet[1]
+    density = flipbook.texel_scale
+    dx, dy = ((offset + foot) * density for offset, foot in zip(crop, feet))
     flipbook.clips = {
         row: (duration, [[replace(d, at=(d.at[0] - dx, d.at[1] - dy)) for d in draws] for draws in frames])
         for row, (duration, frames) in flipbook.clips.items()
     }
-    flipbook.frame_size = tuple(frame_size)
-    flipbook.feet = tuple(feet)
+    flipbook.frame_size = tuple(size * density for size in frame_size)
+    flipbook.feet = tuple(foot * density for foot in feet)
     return flipbook
 
 

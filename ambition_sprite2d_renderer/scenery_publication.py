@@ -36,7 +36,7 @@ def _command(prefix, name, output):
         return ['terrain', 'draw', '--out-dir', str(output), name]
     if prefix == 'sky':
         return ['backgrounds', 'parts', '--out-dir', str(output)]
-    return ['backgrounds', 'draw', '--out-dir', str(output), name]
+    return ['backgrounds', 'draw', '--jobs', '1', '--out-dir', str(output), name]
 
 
 def every_unit(definitions):

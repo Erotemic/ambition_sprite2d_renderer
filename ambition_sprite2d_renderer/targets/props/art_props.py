@@ -34,6 +34,7 @@ from typing import Callable, Dict, List, Tuple
 
 from ...authoring.sheet_build import build_sheet
 from ..characters import _art_cast_kit as K
+from ._district_props import Piece, targets
 from . import _held_prop_common as hp
 
 #: Each primary: its colour, its light, its dark, and the shape of its stencil.
@@ -262,6 +263,109 @@ def _draw_pots():
     return f.finish(width=1.6)
 
 
+def _plaza_gallery(c, _kit):
+    wood, dark, light = (158, 94, 68), (89, 53, 83), (229, 164, 108)
+    for x, y, right, posts in (
+        (1792, 912, 1888, (1806, 1874)),
+        (1952, 864, 2208, (1972, 2158)),
+    ):
+        for post in posts:
+            c.put(c.mask(lambda p: p.rect(post, y + 8, post + 9, 960)), wood)
+            c.put(c.mask(lambda p: p.rect(post + 6, y + 8, post + 9, 960)), dark)
+        c.put(c.mask(lambda p: p.rect(x, y, right, y + 14)), wood)
+        c.put(c.mask(lambda p: p.rect(x, y, right, y + 3)), light)
+        c.put(c.mask(lambda p: p.rect(x, y + 10, right, y + 14)), dark)
+        for seam in range(x + 25, right - 8, 27):
+            c.put(c.mask(lambda p: p.line([(seam, y + 5), (seam - 7, y + 9)], 1.5)), light)
+
+    for x, sky, hills in (
+        (2025, (249, 218, 172), (169, 98, 175)),
+        (2094, (191, 230, 233), (89, 166, 162)),
+    ):
+        c.put(c.mask(lambda p: p.rect(x - 4, 818, x + 49, 858)), dark)
+        c.put(c.mask(lambda p: p.rect(x - 2, 820, x + 47, 856)), light)
+        c.put(c.mask(lambda p: p.rect(x + 2, 824, x + 43, 852)), sky)
+        c.put(c.mask(lambda p: p.poly([(x + 2, 852), (x + 14, 835), (x + 28, 847),
+                                     (x + 39, 831), (x + 43, 837), (x + 43, 852)])), hills)
+        c.put(c.mask(lambda p: p.ellipse(x + 25, 831, 4)), (253, 241, 190))
+        c.put(c.mask(lambda p: p.rect(x + 19, 858, x + 23, 864)), dark)
+
+
+def _cliffs_fold(c, _kit):
+    ink = (82, 81, 108)
+    edge = [(2368, 896), (2592, 896), (2580, 910), (2564, 908), (2546, 919),
+            (2506, 915), (2474, 922), (2434, 914), (2400, 919), (2380, 907)]
+    c.put(c.mask(lambda p: p.poly(edge)), (234, 222, 191))
+    c.put(c.mask(lambda p: p.poly([(2368, 896), (2486, 896), (2474, 922), (2434, 914),
+                                 (2400, 919), (2380, 907)])), (252, 245, 219))
+    c.put(c.mask(lambda p: p.poly([(2525, 896), (2592, 896), (2580, 910), (2564, 908),
+                                 (2546, 919)])), (192, 220, 226))
+    c.put(c.mask(lambda p: p.line(edge + edge[:1], 1.5)), ink)
+    c.put(c.mask(lambda p: p.line([(2486, 896), (2474, 922)], 1.6)), (166, 144, 127))
+    c.put(c.mask(lambda p: [p.line([(x, 902), (x + 10, 911)], 1) for x in range(2392, 2465, 12)]), (138, 163, 187))
+    c.put(c.mask(lambda p: p.line([(2498, 903), (2514, 908), (2532, 908)], 1.2)), (138, 163, 187))
+
+
+def _garden_scaffold(c, _kit):
+    timber, shadow, rim = (158, 103, 97), (102, 75, 101), (222, 168, 129)
+    for x, y in ((1268, 768), (1364, 704), (1492, 704)):
+        c.put(c.mask(lambda p: p.rect(x, y + 8, x + 9, 960)), timber)
+        c.put(c.mask(lambda p: p.rect(x + 6, y + 8, x + 9, 960)), shadow)
+    c.put(c.mask(lambda p: p.line([(1276, 916), (1369, 855)], 6)), timber)
+    c.put(c.mask(lambda p: p.line([(1371, 864), (1496, 937)], 6)), timber)
+    c.put(c.mask(lambda p: p.line([(1371, 803), (1496, 733)], 6)), timber)
+    for x, y, width in ((1248, 896, 128), (1376, 832, 128), (1248, 768, 128), (1360, 704, 160)):
+        c.put(c.mask(lambda p: p.rect(x, y, x + width, y + 12)), timber)
+        c.put(c.mask(lambda p: p.rect(x, y, x + width, y + 3)), rim)
+        c.put(c.mask(lambda p: p.rect(x, y + 9, x + width, y + 12)), shadow)
+        c.put(c.mask(lambda p: [p.ellipse(x + dx, y + 7, 1.7) for dx in (11, width - 11)]), shadow)
+
+    stone = [(1473, 696), (1477, 682), (1471, 671), (1474, 661), (1484, 651),
+             (1502, 655), (1510, 666), (1506, 678), (1498, 684), (1503, 696)]
+    c.put(c.mask(lambda p: p.poly(stone)), (216, 211, 221))
+    c.put(c.mask(lambda p: p.line(stone + stone[:1], 1.4)), (116, 104, 132))
+    c.put(c.mask(lambda p: p.poly([(1492, 653), (1502, 655), (1510, 666),
+                                 (1506, 678), (1498, 684), (1503, 696), (1493, 696)])), (185, 172, 198))
+    c.put(c.mask(lambda p: p.rect(1468, 696, 1508, 704)), (165, 152, 181))
+
+
+def _caverns_cork(c, _kit):
+    x, y = 2928, 928
+    c.put(c.mask(lambda p: p.rect(x, y + 6, x + 48, y + 32)), (37, 23, 75))
+    c.put(c.mask(lambda p: p.rect(x + 4, y + 9, x + 44, y + 31)), (86, 48, 114))
+    c.put(c.mask(lambda p: p.rect(x + 10, y + 15, x + 31, y + 29)), (224, 201, 177))
+    c.put(c.mask(lambda p: p.poly([(x + 21, y + 17), (x + 17, y + 23), (x + 18, y + 26),
+                                 (x + 23, y + 26), (x + 24, y + 23)])), (107, 43, 107))
+    c.put(c.mask(lambda p: p.line([(x + 39, y + 11), (x + 39, y + 26)], 2)), (102, 159, 197))
+    c.put(c.mask(lambda p: p.rect(x, y, x + 48, y + 9)), (196, 139, 100))
+    c.put(c.mask(lambda p: p.rect(x, y, x + 48, y + 2)), (246, 200, 140))
+    c.put(c.mask(lambda p: p.rect(x, y + 7, x + 48, y + 9)), (137, 86, 83))
+    for dx, dy in ((7, 4), (18, 3), (27, 5), (37, 4), (42, 5)):
+        c.put(c.mask(lambda p: p.ellipse(x + dx, y + dy, 1.3, 0.8)), (137, 86, 83))
+
+
+def _gallery_staging(c, _kit):
+    wood, shade, light = (167, 112, 91), (99, 65, 99), (228, 178, 127)
+    decks = (
+        (416, 528, 528), (512, 480, 688), (688, 448, 816),
+        (832, 416, 1008), (1072, 480, 1216), (1184, 528, 1296),
+    )
+    for left, top, right in decks:
+        for x, direction in ((left + 13, 1), (right - 17, -1)):
+            c.put(c.mask(lambda p: p.rect(x, top + 10, x + 5, 576)), wood)
+            c.put(c.mask(lambda p: p.line([(x, top + 31), (x + direction * 21, top + 11)], 4)), shade)
+        c.put(c.mask(lambda p: p.rect(left, top, right, top + 14)), wood)
+        c.put(c.mask(lambda p: p.rect(left, top, right, top + 3)), light)
+        c.put(c.mask(lambda p: p.rect(left, top + 10, right, top + 14)), shade)
+
+    for x, y, colour in ((553, 454, (203, 131, 170)), (869, 390, (104, 177, 186)),
+                         (1108, 454, (232, 179, 95))):
+        c.put(c.mask(lambda p: p.rect(x, y, x + 57, y + 24)), shade)
+        c.put(c.mask(lambda p: p.rect(x + 3, y + 3, x + 54, y + 21)), (245, 228, 203))
+        path = [(x + 10, y + 16), (x + 20, y + 9), (x + 29, y + 12), (x + 39, y + 7), (x + 49, y + 11)]
+        c.put(c.mask(lambda p: p.line(path, 3.0)), colour)
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -306,3 +410,10 @@ TARGETS["art_palette_lift"] = _publisher("art_palette_lift", "Palette Lift", STI
 TARGETS["art_easel"] = _publisher("art_easel", "Easel", STILL, EASEL_FRAME, lambda anim, i, n: _draw_easel(), {"foot": (64.0, 176.0)}, "Scenery", ["prop", "scenery", "art"])
 TARGETS["art_giant_crayon"] = _publisher("art_giant_crayon", "Giant Crayon", STILL, CRAYON_FRAME, lambda anim, i, n: _draw_crayon(), {"foot": (32.0, 256.0)}, "Scenery", ["prop", "scenery", "art"])
 TARGETS["art_paint_pots"] = _publisher("art_paint_pots", "Paint Pots", STILL, POTS_FRAME, lambda anim, i, n: _draw_pots(), {"foot": (72.0, 96.0)}, "Scenery", ["prop", "scenery", "art"])
+TARGETS.update(targets({
+    "art_plaza_open_gallery": Piece((1784, 814, 2216, 962), _plaza_gallery),
+    "art_cliffs_fold": Piece((2364, 892, 2596, 928), _cliffs_fold),
+    "art_garden_scaffold": Piece((1240, 646, 1528, 964), _garden_scaffold),
+    "art_caverns_cork": Piece((2928, 928, 2976, 960), _caverns_cork),
+    "art_gallery_staging": Piece((408, 384, 1304, 580), _gallery_staging),
+}, {}))

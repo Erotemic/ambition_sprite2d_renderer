@@ -33,6 +33,7 @@ from PIL import Image, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
 from . import castle_godwin as CG
+from ._district_props import Piece, targets
 from ._town_kit import Canvas, box, mix, scale
 
 #: Pixels of the frame to one world unit.
@@ -338,11 +339,39 @@ def _searchlight(c: Canvas) -> None:
     del w
 
 
+def _gatehouse_gallery(c: Canvas, _kit) -> None:
+    """Draw the guard catwalks, ladder brackets, and kitchens sign board."""
+    for left, right, top in (
+        (560, 752, 640),
+        (752, 864, 592),
+        (880, 1104, 544),
+        (1104, 1184, 496),
+        (1200, 1392, 448),
+    ):
+        for x in (left + 12, right - 12):
+            solid(c, box(x - 4, top + 10, x + 4, 704), IRON_DARK)
+            solid(c, box(x - 8, 692, x + 8, 704), STONE_DARK)
+            solid(c, lambda p: p.line([(x, top + 34), (x + 15, top + 13)], 3), IRON_DARK)
+        tread = solid(c, box(left, top, right, top + 16), IRON, IRON_DARK, top, top + 16)
+        edge(c, tread, "top", IRON_LIGHT, 2.0, 0.9)
+        rivets(c, [(x, top + 9) for x in range(left + 8, right - 4, 24)])
+    for x in (1212, 1260, 1308, 1356, 1380):
+        solid(c, box(x - 1.5, 410, x + 1.5, 447), IRON_DARK)
+    solid(c, box(1210, 410, 1382, 414), IRON)
+    for y in (471, 545, 629):
+        solid(c, box(1366, y, 1432, y + 6), IRON_DARK)
+        rivets(c, [(1373, y + 3), (1426, y + 3)], 1.2)
+    board = solid(c, box(989, 635, 1235, 669), WOOD_DARK)
+    edge(c, board, "top", WOOD_LIGHT, 1.6)
+    rivets(c, [(998, 643), (1226, 643), (998, 661), (1226, 661)])
+
+
 # ---------------------------------------------------------------------------
 # 5. The bunk bed
 # ---------------------------------------------------------------------------
 
 BUNK_W, BUNK_H = 224, 240
+BUNK_FRAME_W = 280
 #: The tops of the two mattresses, over the floor: where the room's one-way
 #: platforms are.
 BUNK_LOWER_TOP, BUNK_UPPER_TOP = 112, 224
@@ -387,13 +416,12 @@ def _bunk_bed(c: Canvas) -> None:
         edge(c, post, "left", IRON_LIGHT, 1.6, 0.6)
         rivets(c, [(x + 4, upper + 18), (x + 4, lower + 18)], 1.2)
         solid(c, lambda p: p.ellipse(x + 4, upper - 11, 5.5, 3.2), IRON_LIGHT, IRON_DARK, upper - 14, upper - 8)
-    # The head rails and the ladder at the right.
+    # The ladder brackets meet the climbable cells beside the bed.
     for y in (upper - 4, lower - 4):
         solid(c, box(6, y, 14, y + 2), IRON, w=0.6)
-    for x in (w - 40, w - 22):
-        solid(c, box(x, upper + 20, x + 3, lower - 1), IRON_DARK, w=0.6)
-    for y in np.arange(upper + 32, lower - 4, 20):
-        solid(c, box(w - 40, y, w - 19, y + 3), IRON, w=0.6)
+    for y in (upper + 23, lower + 21, g - 27):
+        solid(c, box(w - 11, y, w + 51, y + 5), IRON_DARK, w=0.7)
+        rivets(c, [(w - 7, y + 2.5), (w + 34, y + 2.5)])
     # A footlocker under the lower bunk.
     lock = solid(c, box(70, g - 30, 150, g), (70, 82, 64), (46, 54, 42), g - 30, g, w=0.9)
     edge(c, lock, "top", (120, 134, 108), 1.4, 0.6)
@@ -404,6 +432,24 @@ def _bunk_bed(c: Canvas) -> None:
     c.put(c.mask(box(84, g - 14, 136, g - 6)), PAPER, 0.85)
     words(c, "1207", 110, g - 13.2, 6.0, ink=INK)
     del w
+
+
+def _barracks_bunk_walks(c: Canvas, _kit) -> None:
+    """Draw the service walks between the beds and the west footlocker."""
+    footlocker = solid(c, box(288, 640, 352, 704), UNIFORM, UNIFORM_DARK, 640, 704)
+    edge(c, footlocker, "top", IRON_LIGHT, 2.2)
+    solid(c, box(288, 651, 352, 654), IRON_DARK)
+    for x in (293, 343):
+        solid(c, box(x, 642, x + 4, 704), IRON_DARK)
+    solid(c, box(315, 648, 325, 658), BRASS_DARK)
+    for left, right in ((656, 992), (1296, 1632)):
+        for x in (left + 10, left + 152, right - 12):
+            solid(c, box(x - 4, 603, x + 4, 704), WOOD_DARK)
+            solid(c, lambda p: p.line([(x, 638), (x + 26, 603)], 3.5), WOOD_DARK)
+        deck = solid(c, box(left, 592, right + 12, 607), WOOD_LIGHT, WOOD_DARK, 592, 607)
+        edge(c, deck, "top", (180, 143, 103), 1.8)
+        joints = c.mask(lambda p: [p.line([(x, 593), (x + 1, 605)], 1.0) for x in range(left + 39, right, 42)])
+        c.put(joints * deck, WOOD_DARK)
 
 
 # ---------------------------------------------------------------------------
@@ -990,7 +1036,7 @@ PROPS: Dict[str, Tuple[float, float, Callable, int, int, List[str]]] = {
     "castle_propaganda_poster_b": (48, 72, lambda c, f: _poster_b(c), 1, 400, ["prop", "scenery", "castle", "poster"]),
     "castle_propaganda_poster_c": (48, 72, lambda c, f: _poster_c(c), 1, 400, ["prop", "scenery", "castle", "poster"]),
     "castle_searchlight": (64, 80, lambda c, f: _searchlight(c), 1, 400, ["prop", "scenery", "castle", "light"]),
-    "castle_bunk_bed": (BUNK_W, BUNK_H, lambda c, f: _bunk_bed(c), 1, 400, ["prop", "scenery", "castle", "furniture", "barracks"]),
+    "castle_bunk_bed": (BUNK_FRAME_W, BUNK_H, lambda c, f: _bunk_bed(c), 1, 400, ["prop", "scenery", "castle", "furniture", "barracks"]),
     "castle_locker_row": (128, 96, lambda c, f: _locker_row(c), 1, 400, ["prop", "scenery", "castle", "furniture", "barracks"]),
     "castle_mess_table": (160, 48, lambda c, f: _mess_table(c), 1, 400, ["prop", "scenery", "castle", "furniture", "barracks"]),
     "castle_rally_podium": (128, 96, lambda c, f: _rally_podium(c), 1, 400, ["prop", "scenery", "castle", "furniture"]),
@@ -1072,5 +1118,9 @@ def _actor(name: str) -> dict:
 
 
 TARGETS = {name: {"render": _renderer(name), "actor_metadata": _actor(name)} for name in PROPS}
+TARGETS.update(targets({
+    "castle_gatehouse_gallery": Piece((512, 400, 1446, 704), _gatehouse_gallery),
+    "castle_barracks_bunk_walks": Piece((272, 582, 1652, 704), _barracks_bunk_walks),
+}, {}))
 
 __all__ = ["PROPS", "PX", "BENCH_TOP", "BUNK_LOWER_TOP", "BUNK_UPPER_TOP", "TARGETS", "draw"]

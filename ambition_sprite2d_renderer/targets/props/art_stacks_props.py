@@ -370,6 +370,69 @@ def _library_stair(c, _kit):
         c.put(c.mask(box(x, 313, x + 3, 336)), timber)
 
 
+def _stacks_ladder_case(c, _kit):
+    timber = (92, 56, 41)
+    edge = (171, 116, 73)
+    brass = (211, 156, 80)
+    for x in (1722, 1878):
+        c.put(c.mask(box(x, 832, x + 8, 960)), timber)
+        c.put(c.mask(box(x + 1, 838, x + 3, 955)), edge)
+        c.put(c.mask(box(x - 3, 950, x + 11, 960)), edge)
+
+    c.put(c.mask(box(1712, 832, 1888, 842)), timber)
+    c.put(c.mask(box(1712, 832, 1888, 834)), brass)
+    c.put(c.mask(box(1730, 874, 1808, 880)), timber)
+    for x, width, height, colour in (
+        (1736, 10, 25, OXBLOOD),
+        (1747, 14, 28, NAVY),
+        (1763, 8, 20, BOTTLE),
+        (1772, 15, 24, LEATHER),
+        (1789, 11, 18, NAVY),
+    ):
+        c.put(c.mask(box(x, 874 - height, x + width, 874)), colour[:3])
+        c.put(c.mask(box(x + 2, 878 - height, x + width - 2, 880 - height)), brass)
+
+
+def _library_endings(c, _kit):
+    for top, bottom, wood, sky, trim in (
+        (154, 326, (41, 45, 73), (70, 91, 130), (145, 163, 194)),
+        (412, 566, (98, 61, 42), (209, 151, 76), (241, 200, 125)),
+    ):
+        corners = [(1208, top), (1552, top), (1560, top + 8),
+                   (1560, bottom - 8), (1552, bottom), (1208, bottom),
+                   (1200, bottom - 8), (1200, top + 8)]
+        c.put(c.mask(lambda p: p.poly(corners)), wood)
+        c.put(c.mask(box(1210, top + 8, 1550, bottom - 8)), trim)
+        c.put(c.mask(box(1213, top + 11, 1547, top + 54)), wood)
+        c.put(c.mask(box(1213, top + 57, 1547, bottom - 11)), sky)
+
+    c.put(c.mask(lambda p: p.ellipse(1267, 243, 19)), (220, 222, 231))
+    c.put(c.mask(lambda p: p.ellipse(1274, 237, 16)), (70, 91, 130))
+    c.put(c.mask(lambda p: p.poly([
+        (1213, 285), (1265, 262), (1320, 287), (1390, 273),
+        (1440, 291), (1510, 264), (1547, 280), (1547, 315), (1213, 315),
+    ])), (50, 66, 100))
+    for x, y in ((1240, 269), (1287, 258), (1323, 227), (1358, 270),
+                 (1414, 251), (1461, 230), (1473, 270), (1520, 246)):
+        c.put(c.mask(lambda p: p.line([(x, y), (x - 5, y + 10)], 1.5)), (137, 160, 193))
+    c.put(c.mask(box(1499, 270, 1512, 306)), (44, 48, 71))
+    c.put(c.mask(lambda p: p.poly([(1495, 270), (1505, 259), (1516, 270)])), (44, 48, 71))
+    c.put(c.mask(box(1503, 273, 1508, 280)), (241, 196, 120))
+
+    c.put(c.mask(lambda p: p.ellipse(1495, 492, 19)), (254, 220, 143))
+    c.put(c.mask(lambda p: p.poly([
+        (1213, 529), (1266, 504), (1300, 499), (1370, 526),
+        (1433, 508), (1490, 514), (1547, 506), (1547, 555), (1213, 555),
+    ])), (111, 122, 86))
+    c.put(c.mask(lambda p: p.poly([
+        (1213, 544), (1310, 527), (1390, 543), (1491, 531),
+        (1547, 534), (1547, 555), (1213, 555),
+    ])), (76, 105, 80))
+    c.put(c.mask(box(1268, 517, 1304, 541)), (247, 216, 152))
+    c.put(c.mask(lambda p: p.poly([(1264, 518), (1285, 501), (1308, 518)])), (127, 60, 49))
+    c.put(c.mask(box(1280, 526, 1289, 541)), (124, 76, 49))
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -389,5 +452,10 @@ for _ending in ENDINGS:
         forward=(0.0, -1.0))
 
 TARGETS.update(targets(
-    {"art_library_stair": Piece((552, 300, 1124, 576), _library_stair)}, {},
+    {
+        "art_library_stair": Piece((552, 300, 1124, 576), _library_stair),
+        "art_library_endings": Piece((1192, 146, 1568, 574), _library_endings),
+        "art_stacks_ladder_case": Piece((1704, 824, 1896, 964), _stacks_ladder_case),
+    },
+    {},
 ))

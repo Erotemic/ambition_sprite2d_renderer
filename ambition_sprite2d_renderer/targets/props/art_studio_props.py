@@ -21,6 +21,8 @@ import math
 import random
 
 from ..characters import _art_cast_kit as K
+from ._district_props import Piece, targets
+from ._town_kit import box
 from .art_props import STILL, _publisher
 
 SEESAW_FRAME = (384, 64)
@@ -121,6 +123,45 @@ def _draw_eraser():
     return f.finish(width=1.6)
 
 
+def _curators_route_map(c, _kit):
+    wood, edge, board = (120, 71, 92), (221, 160, 117), (52, 50, 80)
+    for x in (704, 888):
+        c.put(c.mask(box(x, 414, x + 7, 576)), wood)
+        c.put(c.mask(box(x + 2, 435, x + 4, 568)), edge)
+    for left, top, right in ((688, 464, 912), (608, 512, 688), (848, 512, 912)):
+        c.put(c.mask(box(left, top + 2, right, top + 13)), wood)
+        c.put(c.mask(box(left, top + 4, right, top + 6)), edge)
+    for x in (616, 672, 856, 896):
+        c.put(c.mask(box(x, 522, x + 6, 576)), wood)
+
+    c.put(c.mask(box(448, 190, 1090, 424)), wood)
+    c.put(c.mask(box(452, 194, 1086, 420)), edge)
+    c.put(c.mask(box(457, 199, 1081, 415)), board)
+
+    route, drop = (210, 190, 190), (229, 174, 108)
+    for x1, x2, y in ((628, 714, 238), (870, 926, 238), (628, 714, 316),
+                     (870, 926, 316), (870, 926, 392)):
+        c.put(c.mask(lambda p: p.line([(x1, y), (x2, y)], 2)), route)
+    c.put(c.mask(lambda p: p.line([(792, 253), (792, 301)], 2)), route)
+    c.put(c.mask(lambda p: p.line([(952, 331), (844, 377)], 2)), route)
+    for y in range(335, 374, 8):
+        c.put(c.mask(box(791, y, 793, y + 4)), (137, 151, 187))
+    for points, tip in (
+        ([(552, 253), (552, 300)], [(546, 293), (558, 293), (552, 301)]),
+        ([(847, 253), (956, 300)], [(944, 299), (950, 289), (957, 302)]),
+    ):
+        c.put(c.mask(lambda p: p.line(points, 2)), drop)
+        c.put(c.mask(lambda p: p.poly(tip)), drop)
+
+    for x, y, colour in (
+        (552, 238, (104, 62, 96)), (792, 238, (69, 91, 125)), (1004, 238, (52, 93, 116)),
+        (552, 316, (113, 80, 75)), (792, 316, (128, 75, 104)), (1004, 316, (55, 96, 87)),
+        (792, 392, (82, 68, 125)), (1004, 392, (119, 70, 76)),
+    ):
+        c.put(c.mask(box(x - 76, y - 15, x + 76, y + 15)), edge)
+        c.put(c.mask(box(x - 74, y - 13, x + 74, y + 13)), colour)
+
+
 TARGETS = {
     "art_brush_seesaw": _publisher("art_brush_seesaw", "Brush Seesaw", STILL, SEESAW_FRAME, lambda anim, i, n: _draw_seesaw(),
                                    {"top": ((SEESAW_SPAN[0] + SEESAW_SPAN[1]) / 2.0, SEESAW_TOP)}, "Scenery", ["prop", "platform", "art"]),
@@ -131,3 +172,7 @@ TARGETS = {
     "art_eraser": _publisher("art_eraser", "Eraser", STILL, ERASER_FRAME, lambda anim, i, n: _draw_eraser(),
                              {"foot": (64.0, 128.0)}, "Scenery", ["prop", "scenery", "art"]),
 }
+
+TARGETS.update(targets(
+    {"art_curators_route_map": Piece((440, 182, 1098, 580), _curators_route_map)}, {},
+))

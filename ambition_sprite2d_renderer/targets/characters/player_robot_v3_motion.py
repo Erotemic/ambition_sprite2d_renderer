@@ -194,6 +194,12 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("throw", 7, 72),
     ("item_drop", 5, 56),
     ("item_swing", 7, 60),
+    # Scout's combat stances (`player_robot_v3_strikes`): the Lunge's thrust and
+    # pogo, drawn smeared, and the Crescent's wide arcs.
+    ("lunge_thrust", 7, 63),
+    ("lunge_plunge", 7, 63),
+    ("crescent_arc", 7, 66),
+    ("crescent_sweep", 8, 72),
     # Presentation / interaction and retained Ambition rows.
     ("taunt", 10, 90),
     ("entrance", 8, 72),

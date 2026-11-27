@@ -1,17 +1,14 @@
 """Scenery of the Automaton dimension (gate address CELLS,
 `docs/planning/game/automaton-dimension.md`).
 
-The rooms are written by
-`game/ambition_map_assets/ambition_content/generators/automaton/make_specs.py`.
-Each piece is drawn in its room's coordinates (`_district_props`): where the
-room places a walk line, the piece draws the light top edge of the thing
-walked on at that y. The numbers here are the generator's; change them
-together.
+Each piece uses the room's coordinates (`_district_props`). Put the light
+top edge of the art at the height of its walk surface.
 
 - The Works (floor y 640): the Escapement Cafe, its gear sign, its tables;
   the water wheel under its spout; the stair of blocks Busy Beaver is
   building (tops at y 576, 512, 448, 384); the clock tower, its gears in a
-  skeleton face, its door the Tape Room's.
+  skeleton face, its door the Tape Room's. The inspection balcony joins
+  the tower to the stairs.
 - The Life field (floor y 896, the east terrace y 448): the block, a still
   life, on its plinth; the Sierpinski panel on the terrace.
 - The Tape Room (floor y 512): the tape between its two spools, with its
@@ -324,9 +321,65 @@ def clock_tower(c, k):
     k.door(TOWER_DOOR_X, 64, 110, VIOLET, arch=True, glass_lit=0.6)
 
 
+def tower_balcony(c, _kit):
+    deck = [
+        (1880, 384), (1896, 384), (1912, 388), (1968, 412),
+        (1984, 416), (2256, 416),
+    ]
+    base = [(x, y + 13) for x, y in reversed(deck)]
+    c.put(c.mask(lambda p: p.poly(deck + base)), IRON)
+    c.put(c.mask(lambda p: p.line([(x, y + 2) for x, y in deck], 3)), BRASS_LIGHT)
+    c.put(c.mask(lambda p: p.line([(x, y + 9) for x, y in deck], 2)), BRASS_DARK)
+
+    rail = [(x, y - 27) for x, y in deck[:-1]] + [(2251, 389)]
+    c.put(c.mask(lambda p: p.line(rail, 4)), IRON)
+    c.put(c.mask(lambda p: p.line([(x, y - 1) for x, y in rail], 1)), BRASS)
+    for x, top in ((1886, 384), (1920, 391), (1960, 409), (1994, 416), (2047, 416),
+                   (2100, 416), (2153, 416), (2206, 416), (2245, 416)):
+        c.put(c.mask(box(x, top - 26, x + 3, top + 3)), IRON)
+        c.put(c.mask(lambda p: p.ellipse(x + 1.5, top + 8, 2)), BRASS)
+
+    for x in (1980, 2048, 2152, 2208):
+        c.put(c.mask(lambda p: p.line([(x, 430), (x + 18, 465), (x + 18, 430)], 5)), STONE_DARK)
+        c.put(c.mask(lambda p: p.ellipse(x + 18, 465, 4)), BRASS_DARK)
+    c.put(c.mask(box(1954, 419, 1963, 640)), STONE_DARK)
+    c.put(c.mask(box(1955, 431, 1957, 630)), STONE_LIGHT)
+    c.put(c.mask(box(1948, 630, 1969, 640)), STONE_DARK)
+    for y in (448, 528, 608):
+        c.put(c.mask(lambda p: p.line([(2236, y + 7), (2253, y), (2282, y)], 4)), IRON)
+        c.put(c.mask(lambda p: p.ellipse(2236, y + 7, 3)), BRASS)
+
+
 # ---------------------------------------------------------------------------
 # The Life field
 # ---------------------------------------------------------------------------
+
+
+def life_relay_ramp(c, _kit):
+    deck = [
+        (1408, 896), (1456, 896), (1488, 884), (1512, 866),
+        (1972, 484), (1992, 462), (2008, 448), (2064, 448),
+    ]
+    for x, top in ((1552, 833), (1704, 707), (1856, 581)):
+        c.put(c.mask(box(x, top + 9, x + 8, 896)), CUBE_LIGHT)
+        c.put(c.mask(box(x + 2, top + 15, x + 4, 888)), CELL, 0.55)
+        c.put(c.mask(box(x - 5, 888, x + 13, 896)), CUBE)
+    base = [(x, min(y + 14, 896)) for x, y in reversed(deck)]
+    c.put(c.mask(lambda p: p.poly(deck + base)), CUBE)
+    c.put(c.mask(lambda p: p.line([(x, y + 2) for x, y in deck], 3)), CELL)
+    c.put(c.mask(lambda p: p.line([(x, y + 5) for x, y in deck], 1)), CUBE_LIGHT)
+
+    x0, y0 = deck[3]
+    x1, y1 = deck[4]
+    for x in range(x0 + 20, x1, 44):
+        y = y0 + (x - x0) * (y1 - y0) / (x1 - x0)
+        c.put(c.mask(box(x, y + 8, x + 4, y + 12)), CELL)
+    c.put(c.mask(box(1278, 786, 1442, 803)), CUBE_LIGHT)
+    c.put(c.mask(box(1278, 800, 1442, 804)), CELL)
+    for x in (1278, 1438):
+        c.put(c.mask(box(x, 799, x + 4, 896)), CUBE_LIGHT)
+        for y in (819, 849, 879):
+            c.put(c.mask(box(x, y, x + 4, y + 4)), CELL)
 
 
 def still_life(c, k):
@@ -498,6 +551,24 @@ def arena_ring(c, k):
         c.light(c.soften(m, 14), CELL, 0.6)
 
 
+def arena_viewing_gallery(c, _kit):
+    for x, foot in ((550, 576), (669, 704), (738, 768)):
+        c.put(c.mask(box(x, 490, x + 8, foot)), CUBE_LIGHT)
+        c.put(c.mask(box(x + 2, 500, x + 4, foot - 7)), CELL, 0.5)
+        c.put(c.mask(box(x - 5, foot - 9, x + 13, foot)), CUBE)
+    c.put(c.mask(box(528, 480, 752, 497)), CUBE)
+    walk_top(c, 528, 752, 480, AMBER)
+    c.put(c.mask(box(541, 456, 742, 479)), CELL, 0.15)
+    c.put(c.mask(box(541, 454, 742, 457)), CUBE_LIGHT)
+    for x in (541, 589, 637, 685, 739):
+        c.put(c.mask(box(x, 456, x + 3, 480)), CUBE_LIGHT)
+    for x in range(551, 741, 18):
+        c.put(c.mask(box(x, 487, x + 5, 492)), CELL)
+    for y in (510, 624, 735):
+        c.put(c.mask(lambda p: p.line([(742, y + 10), (754, y), (780, y)], 4)), CUBE_LIGHT)
+        c.put(c.mask(lambda p: p.ellipse(746, y + 5, 3)), AMBER)
+
+
 def failure_log(c, k):
     """The failure log: a dark board on two posts, a row of dim cells for
     each challenger (a name in the rule's own writing), each ending in a red
@@ -537,15 +608,18 @@ PIECES: Dict[str, Piece] = {
     "automaton_waterwheel": Piece((1040, 250, 1420, 640), waterwheel),
     "automaton_block_stairs": Piece((1396, 376, 1888, 640), block_stairs),
     "automaton_clock_tower": Piece((1940, 30, 2260, 640), clock_tower),
+    "automaton_tower_balcony": Piece((1872, 348, 2290, 644), tower_balcony),
     # The Life field.
     "automaton_still_life": Piece((1170, 760, 1300, 896), still_life),
     "automaton_sierpinski_panel": Piece((2060, 120, 2380, 448), sierpinski_panel),
+    "automaton_life_relay_ramp": Piece((1270, 438, 2072, 900), life_relay_ramp),
     # The Tape Room.
     "automaton_tape": Piece((60, 250, 1540, 512), tape),
     "automaton_tape_landings": Piece((208, 257, 1568, 512), tape_landings),
     "automaton_state_table": Piece((1050, 100, 1430, 280), state_table),
     # The Cell-ular Arena.
     "automaton_arena_ring": Piece((816, 560, 1872, 768), arena_ring),
+    "automaton_arena_viewing_gallery": Piece((520, 446, 788, 772), arena_viewing_gallery),
     "automaton_failure_log": Piece((150, 220, 370, 448), failure_log),
 }
 

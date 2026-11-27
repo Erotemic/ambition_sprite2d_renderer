@@ -74,7 +74,9 @@ SCAFFOLD_STEPS = ((1648, 1760, 576), (2032, 2144, 448), (2128, 2240, 512), (2208
 #: The Draft.
 SLABS = ((700, 860, 640), (960, 1120, 576), (1220, 1380, 640), (1740, 1900, 640), (2000, 2160, 576))
 PAINTER = (1460, 1640, 560)
-UNBUILT = ((870, 950, 720), (1390, 1450, 760), (1910, 1990, 700))
+UNBUILT = ((870, 950, 720), (1500, 1580, 738), (1910, 1990, 700))
+INSPECTION_DECKS = ((608, 640, 640), (640, 1008, 800), (1056, 1456, 768))
+INSPECTION_LADDERS = ((656, 592, 800), (1408, 496, 768))
 VOID_TOP = 1120
 #: The Site Office.
 OFFICE_FLOOR = 512
@@ -265,6 +267,32 @@ def cranes(c, k):
         wire_box(c, x0, y, x1, y + 24)
 
 
+def inspection_scaffold(c, k):
+    """Draw the inspection decks and the ladders beside the suspended slabs."""
+    for x, slab_bottom, deck_top in ((728, 672, 800), (820, 672, 800),
+                                     (1080, 608, 768), (1256, 672, 768), (1344, 672, 768)):
+        c.put(c.mask(box(x - 2, slab_bottom, x + 2, deck_top)), STEEL_LIGHT)
+        c.put(c.mask(box(x - 5, slab_bottom, x + 5, slab_bottom + 7)), STEEL)
+    for x0, x1, top in INSPECTION_DECKS:
+        c.put(c.mask(box(x0, top, x1, top + 16)), STEEL)
+        c.put(c.mask(box(x0 + 2, top + 3, x1 - 2, top + 9)), WOOD)
+        c.put(c.mask(lambda p: [p.rect(x, top + 3, x + 2, top + 9)
+                                for x in range(x0 + 16, x1, 16)]), WOOD_DARK)
+        walk_top(c, x0, x1, top, HAT)
+        stripes(c, x0, top + 9, x0 + 16, top + 16)
+        stripes(c, x1 - 16, top + 9, x1, top + 16)
+        bevel = min(32, (x1 - x0) // 3)
+        c.put(c.mask(lambda p: p.line(
+            [(x0 + 8, top + 16), (x0 + bevel, top + 32),
+             (x1 - bevel, top + 32), (x1 - 8, top + 16)], 4
+        )), STEEL)
+    for x, top, bottom in INSPECTION_LADDERS:
+        c.put(c.mask(lambda p: [p.rect(rail, top, rail + 4, bottom)
+                                for rail in (x + 2, x + 26)]), WOOD_DARK)
+        c.put(c.mask(lambda p: [p.rect(x + 6, y, x + 26, y + 4)
+                                for y in range(top + 8, bottom, 16)]), HAT)
+
+
 # ---------------------------------------------------------------------------
 # The Site Office
 # ---------------------------------------------------------------------------
@@ -366,6 +394,7 @@ PIECES: Dict[str, Piece] = {
     # The Draft.
     "unfinished_spill": Piece((540, 590, 700, 1136), spill),
     "unfinished_cranes": Piece((680, 24, 2180, 800), cranes),
+    "unfinished_inspection_scaffold": Piece((588, 488, 1472, 840), inspection_scaffold),
     # The Site Office.
     "unfinished_office_wall": Piece((0, 0, 1280, 512), office_wall),
     "unfinished_gauges": Piece((180, 32, 900, 512), gauges),

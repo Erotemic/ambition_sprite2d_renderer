@@ -78,12 +78,16 @@ CONVEYOR = (300, 1120, 984)
 #: Authority Plaza.
 BALCONY = (16, 520, 448)
 PLAZA_STEPS = ((520, 600, 512), (600, 680, 576))
+CLOCK_WALK = (512, 1056, 448)
 PLANTER = (1040, 1360, 576)
 BENCHES = ((940, 1040, 604), (1360, 1460, 604))
 BOUGH = (1120, 1280, 448)
+GARDEN_PERCH = (1280, 1392, 512)
 #: The Manifest Office.
 CHAIRS = (420, 820, 604)
+SORTING_COUNTER = (896, 1232, 560)
 CABINETS = ((1240, 1400, 512), (1400, 1584, 384))
+FILE_TRAY = (1312, 1392, 448)
 
 
 # ---------------------------------------------------------------------------
@@ -384,12 +388,14 @@ def clock_arcade(c, k):
     c.put(c.mask(lambda p: p.poly([(364, top - 50), (436, top - 50), (436, top - 60), (364, top - 56)])), mix(WOOD, (255, 240, 210), 0.3))
     c.put(c.mask(box(380, top - 66, 420, top - 58)), SCREEN_LIGHT, 0.8)
     sign_mark(c, 400, top - 26, 9)
-    # The steps up to it.
+    # Open treads leave space for the street below.
     for x0, x1, y in PLAZA_STEPS:
-        c.put(c.mask(box(x0, y, x1, FLOOR)), STONE)
-        c.tone(c.mask(box(x0, y + 4, x1, FLOOR)), -0.08)
+        c.put(c.mask(box(x0, y, x1, y + 16)), STONE)
+        c.put(c.mask(box(x0, y + 12, x1, y + 16)), STONE_DARK)
         walk_top(c, x0, x1, y, STONE)
-    c.put(c.mask(lambda p: p.line([(680, 576 - 34), (600, 576 - 34), (520, 512 - 34), (b1 - 8, top - 30)], 3)), GOLD)
+        c.put(c.mask(lambda p: p.line([(x0 + 10, y + 36), (x0 + 38, y + 16)], 5)), STEEL_DARK)
+    c.put(c.mask(lambda p: p.line([(680, 576 - 32), (608, 576 - 32),
+                                  (528, 512 - 32), (b1 - 8, top - 30)], 3)), GOLD)
     # The bookstall under the balcony.
     k.awning(80, 300, top + 70, 30, (MAROON, (240, 230, 220)))
     c.put(c.mask(box(84, top + 100, 296, FLOOR)), (100, 70, 50), 0.9)
@@ -399,6 +405,30 @@ def clock_arcade(c, k):
         h = rng.uniform(20, 34)
         c.put(c.mask(box(x, FLOOR - 50 - h, x + 6, FLOOR - 50)), rng.choice([MAROON, NAVY, (70, 110, 80), (200, 160, 80), (150, 140, 130)]))
     banner(c, 160, top + 110, top + 168, 30, MAROON)
+
+
+def clock_walk(c, k):
+    """Draw the raised walk, its open arches, and the garden rail."""
+    x0, x1, top = CLOCK_WALK
+    for left, right in ((x0 + 12, 764), (764, x1 - 14)):
+        cap = top + 17
+        span = c.mask(box(left, cap, right, FLOOR))
+        opening = c.mask(lambda p: p.arch(left + 18, cap + 20, right - 18, FLOOR + 2))
+        wall = np.clip(span - opening, 0, 1)
+        c.put(wall, STONE_DARK)
+        crown = c.mask(lambda p: p.arch(left + 12, cap + 14, right - 12, FLOOR + 2))
+        c.put(np.clip(crown - opening, 0, 1) * span, STONE)
+        c.put(c.mask(lambda p: [p.rect(pier - 5, FLOOR - 20, pier + 18, FLOOR)
+                                for pier in (left + 5, right - 16)]), STONE)
+    c.put(c.mask(box(x0, top, x1, top + 21)), STONE)
+    c.put(c.mask(box(x0, top + 15, x1, top + 21)), STONE_DARK)
+    walk_top(c, x0, x1, top, STONE)
+    c.put(c.mask(box(x0 + 4, top - 32, x1 - 12, top - 28)), GOLD)
+    c.put(c.mask(lambda p: [p.rect(x, top - 30, x + 4, top)
+                            for x in range(x0 + 12, x1 - 10, 24)]), GOLD)
+    for x in (x0 + 110, x1 - 12):
+        c.put(c.mask(box(x - 4, top - 40, x + 4, top)), STEEL_DARK)
+        c.put(c.mask(lambda p: p.ellipse(x, top - 42, 6)), GOLD_LIGHT)
 
 
 def blossom_tree(c, k):
@@ -435,6 +465,12 @@ def blossom_tree(c, k):
     b0, b1, btop = BOUGH
     c.put(c.mask(lambda p: p.line([(b0 - 20, btop + 30), (b0, btop + 6), (b1, btop + 6), (b1 + 24, btop - 10)], 14)), BARK)
     walk_top(c, b0, b1, btop, BARK)
+    # The perch joins the planter to the bough.
+    x0, x1, y = GARDEN_PERCH
+    c.put(c.mask(lambda p: p.line([(x0, ptop), (x0 + 58, y + 12), (x1 - 18, ptop)], 8)), BARK)
+    c.put(c.mask(box(x0, y, x1, y + 14)), WOOD_DARK)
+    c.put(c.mask(box(x0 + 2, y + 4, x1 - 2, y + 10)), WOOD)
+    walk_top(c, x0, x1, y, WOOD)
     # Under it, low hedges in the planter, white flowers.
     hedge = c.mask(lambda p: [p.ellipse(x, ptop - 6, 26, 18) for x in np.arange(p0 + 20, p1, 34)])
     c.put(hedge, LEAF)
@@ -516,17 +552,19 @@ def office_counter(c, k):
     walk_top(c, x0, x1, y, NAVY)
     # The counter: wood, a pane of glass on it, a slot in the glass.
     k0, k1 = 900, 1220
-    c.put(c.mask(box(k0, g - 80, k1, g)), WOOD)
+    sx0, sx1, counter_top = SORTING_COUNTER
+    c.put(c.mask(box(k0, counter_top, k1, g)), WOOD)
     c.put(c.mask(lambda p: [p.rect(xx, g - 70, xx + 70, g - 10) for xx in (k0 + 20, k0 + 125, k0 + 230)]), WOOD_DARK, 0.45)
-    c.put(c.mask(box(k0 - 6, g - 86, k1 + 6, g - 78)), mix(WOOD, (255, 240, 210), 0.3))
-    glass = c.mask(box(k0, g - 200, k1, g - 86)) - c.mask(box(1040, g - 110, 1100, g - 86))
+    c.put(c.mask(box(sx0, counter_top, sx1, counter_top + 8)), mix(WOOD, (255, 240, 210), 0.3))
+    walk_top(c, sx0, sx1, counter_top, WOOD)
+    glass = c.mask(box(k0, g - 200, k1, counter_top)) - c.mask(box(1040, g - 110, 1100, counter_top))
     c.put(np.clip(glass, 0, 1), GLASS, 0.3)
-    c.put(c.mask(lambda p: [p.rect(xx, g - 200, xx + 4, g - 86) for xx in (k0, 1060, k1 - 4)]), STEEL_DARK)
+    c.put(c.mask(lambda p: [p.rect(xx, g - 200, xx + 4, counter_top) for xx in (k0, 1060, k1 - 4)]), STEEL_DARK)
     # The great stamp, on the counter, and what it has stamped.
     sx = 1160
-    c.put(c.mask(lambda p: (p.rect(sx - 26, g - 104, sx + 26, g - 86), p.rect(sx - 8, g - 140, sx + 8, g - 104), p.ellipse(sx, g - 146, 18, 12))), (120, 30, 40))
-    c.put(c.mask(box(sx - 30, g - 90, sx + 30, g - 86)), RED)
-    c.put(c.mask(lambda p: [p.rect(xx, g - 92, xx + 40, g - 87) for xx in (k0 + 40, k0 + 90)]), PAPER)
+    c.put(c.mask(lambda p: (p.rect(sx - 26, counter_top - 18, sx + 26, counter_top), p.rect(sx - 8, counter_top - 54, sx + 8, counter_top - 18), p.ellipse(sx, counter_top - 60, 18, 12))), (120, 30, 40))
+    c.put(c.mask(box(sx - 30, counter_top - 4, sx + 30, counter_top)), RED)
+    c.put(c.mask(lambda p: [p.rect(xx, counter_top - 6, xx + 40, counter_top - 1) for xx in (k0 + 40, k0 + 90)]), PAPER)
     # Pigeonholes on the wall behind.
     for row in range(4):
         for col in range(8):
@@ -558,6 +596,13 @@ def filing_cabinets(c, k):
         # One drawer pulled out, papers spilling.
         c.put(c.mask(box(x0 - 18, top + 42, x0 + 30, top + 70)), (150, 156, 170))
         c.put(c.mask(lambda p: [p.rect(x0 - 14 + i * 6, top + 34 - i * 2, x0 + 4 + i * 6, top + 44) for i in range(4)]), PAPER)
+    # The open tray projects from the cabinet above the first step.
+    x0, x1, top = FILE_TRAY
+    c.put(c.mask(box(x0, top, x1, top + 15)), STEEL_DARK)
+    c.put(c.mask(box(x0 + 2, top + 5, x1 - 2, top + 11)), STEEL_LIGHT)
+    c.put(c.mask(box(x0 + 24, top + 8, x1 - 24, top + 12)), GOLD)
+    c.put(c.mask(lambda p: p.line([(x0 + 12, top + 15), (x1, top + 41)], 5)), STEEL)
+    walk_top(c, x0, x1, top, STEEL_LIGHT)
 
 
 #: Every piece: its frame in its room, and how it is drawn.
@@ -572,6 +617,7 @@ PIECES: Dict[str, Piece] = {
     "authority_baggage_lift_shaft": Piece((1100, 598, 1300, 1016), baggage_lift_shaft),
     "authority_baggage_lift": Piece((0, 0, 176, 52), baggage_lift),
     # Authority Plaza.
+    "authority_clock_walk": Piece((508, 394, 1064, 640), clock_walk),
     "authority_clock_arcade": Piece((0, 140, 700, 640), clock_arcade),
     "authority_blossom_tree": Piece((780, 160, 1640, 640), blossom_tree),
     "authority_notice_board": Piece((1610, 420, 2030, 640), notice_board),

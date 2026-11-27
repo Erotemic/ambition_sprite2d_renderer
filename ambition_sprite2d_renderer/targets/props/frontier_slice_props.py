@@ -82,6 +82,12 @@ def boardwalk(c, x0, x1, top, ground):
     c.put(c.mask(lambda p: [p.rect(x, top + 4, x + 3, ground) for x in np.arange(x0 + 10, x1, 64)]), PLANK_DARK)
 
 
+def boardwalk_ramp(c, x0, y0, x1, y1, ground):
+    """Boards under a ramp and a light edge at the walking surface."""
+    c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, ground), (x0, ground)])), PLANK)
+    c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 1.5)), PLANK_LIGHT)
+
+
 def wheels(c, x0, x1, under=672, rail=720, tag="truck"):
     """The two trucks of a car: frames and wheels from its underframe down to
     the rails, the couplers at its ends."""
@@ -148,14 +154,21 @@ def lamp_glow(c, x, y, r=40, strength=0.3):
 
 
 def station_house(c, k):
-    """The rail halt: its platform (y 608, x 640..1520), the station house
-    (x 720..1200, flat roof y 448) with the agent's window, the luggage
-    stacked at its east end (y 560, 496), a bench, a clock, the rails behind."""
+    """A rail halt with ramps and two approaches to the roof."""
     g, plat, roof = RIM, WALK, 448
     k.ground = plat
     # The track behind the platform, its ties along it.
-    c.put(c.mask(box(640, plat - 24, 1520, plat - 20)), (90, 86, 84))
-    c.put(c.mask(lambda p: [p.rect(x, plat - 20, x + 14, plat - 14) for x in np.arange(640, 1520, 24)]), (86, 62, 44))
+    c.put(c.mask(box(640, plat - 24, 1488, plat - 20)), (90, 86, 84))
+    c.put(c.mask(lambda p: [p.rect(x, plat - 20, x + 14, plat - 14) for x in np.arange(640, 1488 - 14, 24)]), (86, 62, 44))
+    # The baggage table and awning.
+    for x, bottom in ((588, 625), (628, 612)):
+        post(c, x, 565, bottom, 5, TIMBER)
+    c.put(c.mask(box(576, 562, 640, 571)), PLANK_DARK)
+    deck_edge(c, 576, 640, 560, PLANK_LIGHT)
+    for x in (654, 707):
+        post(c, x, 503, plat, 6, TIMBER)
+    tin_roof(c, 640, 496, 736, 506, "baggage_awning")
+    deck_edge(c, 640, 736, 496, PLANK_LIGHT)
     # The house: boards, a deep cornice, the agent's window and a door.
     siding(c, 728, roof + 8, 1192, plat, SIDING_OCHRE, "station")
     c.put(c.mask(box(716, roof, 1204, roof + 10)), scale(SIDING_OCHRE, 0.6))
@@ -179,16 +192,27 @@ def station_house(c, k):
         c.put(c.mask(box(x, plat - 22, x + 4, plat)), TIMBER)
     c.put(c.mask(lambda p: (p.rect(670, plat - 30, 690, plat), p.ellipse(680, plat - 30, 10, 4))), STEEL_LIGHT)
     # The luggage: a steamer trunk, then a stack, their lids the steps.
-    for x0, x1, top, colour in ((1240, 1320, 560, (110, 60, 40)), (1290, 1370, 496, (60, 80, 110)), (1296, 1366, 560, (140, 110, 70))):
-        m = c.mask(box(x0, top, x1, top + 48 if top == 496 else plat))
+    for x0, x1, top, bottom, colour in (
+        (1288, 1368, 544, plat, (140, 110, 70)),
+        (1280, 1376, 496, 544, (60, 80, 110)),
+        (1232, 1328, 560, plat, (110, 60, 40)),
+    ):
+        m = c.mask(box(x0, top, x1, bottom))
         c.put(m, colour)
         c.put(c.mask(lambda p: (p.rect(x0, top + 6, x1, top + 9), p.rect(x0 + 10, top, x0 + 14, top + 48), p.rect(x1 - 14, top, x1 - 10, top + 48))) * m, BRASS, 0.8)
-        deck_edge(c, x0, x1, top, mix(colour, (255, 236, 200), 0.4))
+        if top != 544:
+            deck_edge(c, x0, x1, top, mix(colour, (255, 236, 200), 0.4))
     # The platform's edge: boards over the room's block.
-    boardwalk(c, 640, 1520, plat, g)
+    boardwalk(c, 640, 1488, plat, g)
+    boardwalk_ramp(c, 544, g, 640, plat, g)
+    boardwalk_ramp(c, 1488, plat, 1584, g, g)
+    for x in (848, 1072):
+        post(c, x, 407, roof, 5, TIMBER)
+    c.put(c.mask(box(824, 379, 1096, 416)), (44, 50, 58))
+    c.put(c.mask(box(824, 379, 1096, 382)), PLANK_DARK)
     # A board for the timetable (the room's label is the writing).
-    for x in (1170, 1550):
-        post(c, x, 430, plat, 5)
+    post(c, 1170, 430, plat, 5)
+    post(c, 1550, 430, 629, 5)
     board = c.mask(box(1150, 398, 1570, 436))
     c.put(board, (44, 50, 58))
     c.put(c.mask(lambda p: (p.rect(1150, 398, 1570, 401), p.rect(1150, 433, 1570, 436))), PLANK_DARK)
@@ -219,6 +243,7 @@ def inn_front(c, k):
     c.put(c.mask(lambda p: p.ring(468, g - 20, 7, 1.0)) * c.mask(box(458, g - 30, 478, g - 18)), (90, 90, 90))
     porch(c, k, 200, 640, PORCH, g, [206, 330, 510, 634], "inn")
     boardwalk(c, 160, 680, g, RIM)
+    boardwalk_ramp(c, 80, RIM, 160, g, RIM)
 
 
 def mercantile_front(c, k):
@@ -235,14 +260,14 @@ def mercantile_front(c, k):
     door_surround(c, 940, 980, g, 92)
     c.put(c.mask(box(944, g - 86, 976, g)), (90, 70, 56))
     porch(c, k, 700, 1060, PORCH, g, [706, 880, 1054], "merc")
-    boardwalk(c, 680, 1080, g, RIM)
-    barrel(c, 1040, g, 16, 22)
+    boardwalk(c, 680, 1088, g, RIM)
+    boardwalk_ramp(c, 1088, g, 1168, RIM, RIM)
+    crate(c, 992, 560, 1072, g)
+    barrel(c, 980, g, 16, 22)
 
 
 def siding_windmill(c, k):
-    """The windmill over the trough: its lattice tower, the platform (y 432,
-    x 1150..1340) round its top, the wheel and tail over it; the trough and
-    pump rod on the street (y 640)."""
+    """A windmill with a trough, a pump rod, and a ladder at the east edge."""
     g, deck = RIM, 432
     k.ground = g
     for xa, xb in ((1170, 1200), (1320, 1290)):
@@ -254,14 +279,15 @@ def siding_windmill(c, k):
     x_brace(c, 1190, 1300, deck + 20, g - 10, scale(TIMBER, 0.85), 2.4)
     # The pump rod down the middle and the trough.
     c.put(c.mask(box(1243, deck, 1247, g - 30)), STEEL_DARK)
-    trough = c.mask(box(1120, g - 34, 1380, g))
-    planks(c, None, 1120, g - 34, 1380, g, PLANK_DARK, step=8.0, tag="trough")
-    c.put(c.mask(box(1124, g - 32, 1376, g - 26)), (90, 130, 140), 0.9)
-    c.tone(trough * 0, 0)
+    planks(c, None, 1174, g - 34, 1278, g, PLANK_DARK, step=8.0, tag="trough")
+    c.put(c.mask(box(1178, g - 32, 1274, g - 26)), (90, 130, 140), 0.9)
     # The platform and its rail.
-    deck_edge(c, 1150, 1340, deck, PLANK_LIGHT)
-    c.put(c.mask(box(1150, deck + 3, 1340, deck + 10)), PLANK)
-    c.put(c.mask(lambda p: ([p.rect(x, deck - 20, x + 2, deck) for x in np.arange(1152, 1340, 20)], p.rect(1150, deck - 22, 1340, deck - 20))), TIMBER)
+    deck_edge(c, 1136, 1344, deck, PLANK_LIGHT)
+    c.put(c.mask(box(1136, deck + 3, 1344, deck + 10)), PLANK)
+    c.put(c.mask(lambda p: [p.rect(x, deck - 20, x + 2, deck) for x in np.arange(1136, 1321, 20)]), TIMBER)
+    c.put(c.mask(box(1136, deck - 22, 1320, deck - 20)), TIMBER)
+    for x, y in ((1294, 456), (1311, 576)):
+        c.put(c.mask(box(x, y, 1374, y + 5)), PLANK_DARK)
     # The wheel: twelve vanes in a ring on its hub, and the tail vane.
     cx, cy, r = 1245, 300, 78
     c.put(c.mask(lambda p: p.rect(1241, cy, 1249, deck)), STEEL_DARK)
@@ -293,7 +319,17 @@ def telegraph_front(c, k):
     for x in (1810, 1826, 1842, 1858):
         c.put(c.mask(lambda p: p.ellipse(x, 192, 2.4, 3)), (120, 170, 160))
     c.put(c.mask(lambda p: [p.line([(x, 192), (1796, 310 + i * 6)], 0.8) for i, x in enumerate((1810, 1826))]), (40, 36, 34))
+    post(c, 1402, 502, 623, 6, TIMBER)
+    post(c, 1450, 502, g, 6, TIMBER)
+    grating(c, 1392, 1456, PORCH)
+    for x in (1424, 1456):
+        c.put(c.mask(lambda p: p.ellipse(x, 589, 15, 25)), PLANK_DARK)
+        c.put(c.mask(lambda p: p.ring(x, 589, 9, 2)), STEEL)
+        c.put(c.mask(lambda p: p.ellipse(x, 589, 3, 4)), STEEL_DARK)
+    deck_edge(c, 1408, 1472, 560, PLANK_LIGHT)
     boardwalk(c, 1440, 2160, g, RIM)
+    boardwalk_ramp(c, 1360, RIM, 1440, g, RIM)
+    boardwalk_ramp(c, 2160, g, 2240, RIM, RIM)
     # The signpost: arrows east.
     post(c, 2020, 400, RIM, 6, TIMBER)
     for y in (420, 450):
@@ -306,9 +342,7 @@ def telegraph_front(c, k):
 
 
 def inn_room(c, k):
-    """The recovery room: striped paper, a row of iron cots with a bucket by
-    each (Alice's at x 700, Bob's at x 820), the desk (x 240..360), the stair
-    (y 448, x 980..1092) to the landing (y 384) and its numbered doors."""
+    """The recovery ward and its gallery with guest rooms."""
     g = 512
     k.ground = g
     wall = c.mask(box(16, 32, 1264, g))
@@ -328,20 +362,31 @@ def inn_room(c, k):
     c.put(c.mask(lambda p: p.ellipse(340, g - 70, 6, 5)), BRASS)
     c.put(c.mask(box(250, 220, 350, 300)), (70, 48, 34))
     c.put(c.mask(lambda p: [p.ellipse(266 + (i % 4) * 22, 240 + (i // 4) * 26, 3) for i in range(12)]), BRASS)
+    c.put(c.mask(box(300, 114, 820, 146)), TIMBER)
+    c.put(c.mask(box(576, 304, 896, 335)), (76, 58, 50))
+    crate(c, 368, 448, 448, g)
+    for x in (476, 970, 1120):
+        post(c, x, 394, g, 6, TIMBER)
+    for x in (616, 856):
+        c.put(c.mask(lambda p: p.poly([(x - 13, 397), (x + 9, 397), (x + 20, 472), (x - 8, 472)])), (102, 112, 124))
+        c.put(c.mask(lambda p: p.line([(x - 6, 397), (x + 3, 471)], 1.4)), (154, 163, 172))
     # The cots: iron frames, grey blankets, a bucket by each.
     for x in (560, 680, 800, 920):
         c.put(c.mask(box(x - 50, g - 34, x + 50, g - 24)), (190, 196, 204))
         c.put(c.mask(lambda p: (p.rect(x - 50, g - 50, x - 46, g), p.rect(x + 46, g - 40, x + 50, g), p.rect(x - 50, g - 24, x + 50, g - 21))), (60, 60, 64))
         c.put(c.mask(lambda p: p.ellipse(x - 34, g - 38, 12, 6)), (236, 232, 222))
         c.put(c.mask(lambda p: p.poly([(x + 54, g - 16), (x + 68, g - 16), (x + 66, g), (x + 56, g)])), (150, 150, 146))
-    # The stair and the landing, its rail and the numbered doors upstairs.
-    c.put(c.mask(box(980, 448, 1092, g)), (110, 76, 52))
-    deck_edge(c, 980, 1092, 448, (176, 130, 90))
-    c.put(c.mask(box(1092, 384, 1248, 394)), (110, 76, 52))
-    deck_edge(c, 1092, 1248, 384, (176, 130, 90))
-    for x in np.arange(1094, 1248, 14):
-        c.put(c.mask(box(x, 360, x + 2, 384)), (80, 54, 38))
-    c.put(c.mask(box(1092, 358, 1248, 362)), (80, 54, 38))
+    # The stair, the gallery rail, and the numbered doors upstairs.
+    boardwalk(c, 976, 1088, 448, g)
+    boardwalk(c, 464, 1264, 384, 397)
+    for x0, x1 in ((484, 946), (1090, 1250)):
+        c.put(c.mask(lambda p: [p.rect(x, 360, x + 2, 384) for x in np.arange(x0, x1 - 1, 14)]), TIMBER)
+        c.put(c.mask(box(x0, 358, x1, 362)), TIMBER)
+    c.put(c.mask(box(686, 352, 790, 357)), PLANK_LIGHT)
+    for x in (694, 782):
+        post(c, x, 356, 384, 5, TIMBER)
+    for x, colour in ((694, (100, 124, 144)), (727, (168, 142, 112)), (760, (128, 88, 72))):
+        planks(c, None, x, 340, x + 24, 352, colour, step=4.0, tag=("linen", x))
     for x in (1130, 1200):
         c.put(c.mask(box(x, 290, x + 40, 384)), (90, 62, 44))
         c.put(c.mask(lambda p: p.ellipse(x + 20, 304, 6, 5)), BRASS)
@@ -355,13 +400,13 @@ def inn_room(c, k):
 
 DECK = 640
 PLANKS_X0, PLANKS_X1 = 1120, 1280
+WEST_HATCH, EAST_HATCH = 544, 1792
+HATCH_WIDTH = 64
+INSPECTION_WALK = 848
 
 
 def trestle(c, k):
-    """The trestle: its road deck (y 640) across the room, the loose planks
-    over the hole (x 1120..1280) sagging and a board gone, the railing with a
-    gap over the hole; the timber bents down to the gulch floor, the rails
-    along the floor; a signal mast by the east end."""
+    """The road deck and inspection walks over the railroad."""
     k.ground = 1536
     floor = 1500
     # The bents: pairs of raking legs with cross ties, every 200.
@@ -372,12 +417,29 @@ def trestle(c, k):
             f = (y - DECK) / (floor - DECK)
             c.put(c.mask(lambda p: p.rect(x - 24 - 40 * f, y, x + 24 + 40 * f, y + 7)), scale(TIMBER, 0.85))
         x_brace(c, x - 50, x + 50, DECK + 40, floor - 20, scale(TIMBER, 0.75), 3.0)
-    # Stringers between the bents, under the deck.
-    c.put(c.mask(box(0, DECK + 32, 2400, DECK + 48)), scale(TIMBER, 0.8))
     # The deck: planks across it, darker where the wagons wore it.
-    for x0, x1 in ((0, PLANKS_X0), (PLANKS_X1, 2400)):
+    for x0, x1 in (
+        (0, WEST_HATCH),
+        (WEST_HATCH + HATCH_WIDTH, PLANKS_X0),
+        (PLANKS_X1, EAST_HATCH),
+        (EAST_HATCH + HATCH_WIDTH, 2400),
+    ):
+        c.put(c.mask(box(x0, DECK + 32, x1, DECK + 48)), scale(TIMBER, 0.8))
         planks(c, None, x0, DECK, x1, DECK + 32, PLANK, step=7.0, vertical=True, tag=("deck", x0))
         deck_edge(c, x0, x1, DECK, PLANK_LIGHT)
+    for hatch in (WEST_HATCH, EAST_HATCH):
+        grating(c, hatch, hatch + HATCH_WIDTH, DECK, rail=False)
+        post(c, hatch - 5, DECK - 30, DECK, 6, TIMBER)
+        lamp_glow(c, hatch - 5, DECK - 32, 16, 0.3)
+    # The service walks hang from the road deck.
+    for x0, x1, hangers in (
+        (WEST_HATCH - 16, PLANKS_X0 + 16, (535, 704, 896, 1088)),
+        (PLANKS_X1 - 16, EAST_HATCH + HATCH_WIDTH + 16, (1306, 1472, 1664, 1862)),
+    ):
+        for x in hangers:
+            girder(c, x, DECK + 44, INSPECTION_WALK, 5)
+        c.put(c.mask(box(x0, INSPECTION_WALK + 6, x1, INSPECTION_WALK + 16)), STEEL_DARK)
+        grating(c, x0, x1, INSPECTION_WALK)
     # The loose planks: a few boards, sagging, one gone.
     for i, x in enumerate(np.arange(PLANKS_X0, PLANKS_X1, 20)):
         if i == 4:
@@ -385,7 +447,12 @@ def trestle(c, k):
         sag = 2 + (i % 3) * 2
         c.put(c.mask(lambda p: p.poly([(x + 1, DECK + sag), (x + 18, DECK + sag + 2), (x + 18, DECK + sag + 12), (x + 1, DECK + sag + 10)])), PLANK_LIGHT if i % 2 else PLANK)
     # The railing, with its gap over the planks.
-    for x0, x1 in ((0, PLANKS_X0 - 20), (PLANKS_X1 + 40, 2400)):
+    for x0, x1 in (
+        (0, WEST_HATCH),
+        (WEST_HATCH + HATCH_WIDTH, PLANKS_X0 - 20),
+        (PLANKS_X1 + 40, EAST_HATCH),
+        (EAST_HATCH + HATCH_WIDTH, 2400),
+    ):
         c.put(c.mask(lambda p: ([p.rect(x, DECK - 36, x + 4, DECK) for x in np.arange(x0 + 8, x1, 40)], p.rect(x0, DECK - 38, x1, DECK - 34),
                                 p.rect(x0, DECK - 20, x1, DECK - 17))), TIMBER)
     # A broken rail end hanging down.
@@ -431,53 +498,62 @@ def sprocket_arch(c, k):
 
 
 def hettie_garage(c, k):
-    """Hettie Gimbal's garage: an open bay under a tin roof, the hoist beam
-    (y 512, x 680..960) with its chain and an engine on it, the crate by the
-    door (top y 576, x 940..1020), a bench of tools, a wagon wheel."""
+    """An open bay with a hoist beam and a transfer walk to the parts yard."""
     g = RIM
     k.ground = g
     # The back wall of the bay, dark inside, and the frame.
-    back = c.mask(box(500, 270, 1100, g))
-    c.put(back, (70, 54, 44))
-    c.tone(back * np.clip((c.y - 270) / (g - 270), 0, 1), 0.12)
+    back = planks(c, None, 500, 236, 1100, g, (70, 54, 44), step=18.0, tag="garage_back")
+    c.tone(back * np.clip((c.y - 236) / (g - 236), 0, 1), 0.12)
     siding(c, 490, 230, 540, g, SIDING_GREY, "gar_l")
     siding(c, 1060, 230, 1110, g, SIDING_GREY, "gar_r")
     tin_roof(c, 480, 220, 1120, 240, "garage_roof")
+    for x in (640, 976):
+        k.window(x, 276, 92, 57, "rect", lit=0.35, frame=PLANK_LIGHT, tag=("garage_high", x))
+    c.put(c.mask(box(580, 371, 980, 407)), (50, 45, 42))
     # The hoist: its beam on two legs, the trolley, the chain and the engine.
     for x in (690, 950):
         girder(c, x, 512, g, 8, STEEL_DARK)
-    c.put(c.mask(box(680, 512, 960, 522)), STEEL)
-    deck_edge(c, 680, 960, 512, STEEL_LIGHT)
+    c.put(c.mask(box(672, 512, 960, 522)), STEEL)
+    deck_edge(c, 672, 960, 512, STEEL_LIGHT)
     c.put(c.mask(lambda p: [p.ellipse(800, 528 + i * 6, 2.4, 3.2) for i in range(8)]), STEEL_DARK)
     eng = c.mask(box(770, 576, 830, 616))
     c.put(eng, (80, 84, 88))
     c.put(c.mask(lambda p: [p.rect(x, 572, x + 6, 580) for x in (776, 790, 804, 818)]), (60, 62, 66))
     pipe(c, [(830, 590), (846, 590), (846, 616)], 3, (140, 100, 60))
-    # The crate by the door.
-    cargo_crate(c, 940, 576, 1020, g, PLANK)
+    # The engine trolley and the walk above it.
+    for x in (954, 1014):
+        girder(c, x, 582, g - 8, 4)
+        c.put(c.mask(lambda p: p.ring(x, g - 6, 6, 2)), STEEL_DARK)
+    deck_edge(c, 944, 1024, 576, STEEL_LIGHT)
+    for x in (1008, 1176):
+        girder(c, x, 502, g, 6)
+    grating(c, 992, 1200, 496)
     # The bench, its vice and tools on the wall.
-    c.put(c.mask(box(540, 590, 660, 596)), PLANK_LIGHT)
-    for x in (546, 652):
-        c.put(c.mask(box(x, 596, x + 4, g)), TIMBER)
-    c.put(c.mask(box(560, 576, 580, 590)), STEEL_DARK)
+    deck_edge(c, 544, 656, 576, PLANK_LIGHT)
+    for x in (550, 650):
+        post(c, x, 582, g, 4, TIMBER)
+    c.put(c.mask(box(560, 562, 580, 576)), STEEL_DARK)
     c.put(c.mask(lambda p: [p.line([(x, 470), (x + 4, 520)], 3) for x in (560, 580, 600, 620)]), STEEL_LIGHT, 0.9)
     gear(c, 1040, 600, 30, 14, (110, 80, 50))
     lamp_glow(c, 820, 290, 60, 0.3)
 
 
 def parts_yard(c, k):
-    """The parts yard: the boiler on blocks (top y 528, x 1320..1480), the
-    crate before it (y 576, x 1220..1300), piles of gears and a cart wheel."""
+    """A boiler on stands and a bench at each end."""
     g = RIM
     k.ground = g
-    cargo_crate(c, 1220, 576, 1300, g, PLANK_DARK)
-    m = c.mask(lambda p: (p.rect(1320, 534, 1480, g - 16), p.ellipse(1320, 573, 6, 39), p.ellipse(1480, 573, 6, 39)))
+    for x0, x1 in ((1216, 1312), (1488, 1584)):
+        for x in (x0 + 8, x1 - 8):
+            girder(c, x, 582, g, 4)
+        grating(c, x0, x1, 576, rail=False)
+    m = c.mask(box(1312, 528, 1488, 576))
     c.put(m, (90, 96, 100))
-    c.tone(m * np.clip((c.y - 573) / 40, -1, 1), -0.3)
-    c.put(c.mask(lambda p: [p.rect(x, 534, x + 2, g - 16) for x in np.arange(1340, 1480, 24)]), (60, 64, 68))
-    deck_edge(c, 1320, 1480, 528, STEEL_LIGHT)
-    for x in (1340, 1450):
-        c.put(c.mask(box(x - 10, g - 16, x + 10, g)), (120, 116, 110))
+    c.tone(m * np.clip((c.y - 548) / 28, -1, 1), -0.3)
+    c.put(c.mask(lambda p: [p.rect(x, 534, x + 2, 576) for x in np.arange(1336, 1486, 24)]), (60, 64, 68))
+    deck_edge(c, 1312, 1488, 528, STEEL_LIGHT)
+    for x in (1328, 1472):
+        girder(c, x, 576, g, 8)
+        c.put(c.mask(box(x - 10, g - 6, x + 10, g)), STEEL_DARK)
     pipe(c, [(1400, 528), (1400, 500), (1420, 490)], 6, STEEL)
     for x, y, r in ((1180, 620, 18), (1530, 616, 22), (1555, 628, 12)):
         gear(c, x, y, r, 10, RUST)
@@ -517,6 +593,12 @@ def track(c, w):
     c.put(c.mask(lambda p: [p.ellipse(rng.uniform(0, w), RAIL + 20, rng.uniform(6, 20), 3) for _ in range(int(w / 30))], blur=3.0), (150, 120, 96), 0.6)
 
 
+def freight_gangway(c, x0, x1):
+    """A steel plate between two car decks."""
+    c.put(c.mask(box(x0, 614, x1, 624)), STEEL_DARK)
+    grating(c, x0, x1, 608, rail=False)
+
+
 def caboose(c, k):
     """The caboose: red boards, its roof (y 512, x 32..480), the cupola (top
     y 448, x 160..300) with its lit windows, the end platform and its rail."""
@@ -536,6 +618,7 @@ def caboose(c, k):
     lamp_glow(c, 36, 530, 14, 0.5)
     wheels(c, 32, 480, tag="caboose")
     car_lettering(c, 330, 630, 8)
+    freight_gangway(c, 480, 544)
 
 
 def box_car(x0, x1, top, colour, tag):
@@ -549,6 +632,43 @@ def box_car(x0, x1, top, colour, tag):
         car_lettering(c, x0 + 40, top + 30, 5)
         c.put(c.mask(lambda p: [p.rect(x, top - 4, x + 20, top) for x in np.arange(x0 + 20, x1 - 20, 40)]), scale(colour, 0.5), 0.7)
         wheels(c, x0, x1, tag=tag)
+    return draw
+
+
+def loading_car(x0, x1, gangway_end, colour, tag, roof=480, load="crates"):
+    """A box car with an open passage between its roof and deck."""
+    def draw(c, k):
+        k.ground = RAIL
+        ceiling = roof + 16
+        car_body(c, x0, x1, roof, colour, tag)
+        back = planks(c, None, x0, ceiling, x1, 608, scale(colour, 0.48), step=12.0, vertical=True, tag=(tag, "back"))
+        c.tone(back * np.clip((c.y - ceiling) / (608 - ceiling), 0, 1), 0.2)
+        for x in (x0 + 4, x0 + 128, x1 - 128, x1 - 4):
+            post(c, x, ceiling, 608, 5, scale(colour, 0.65))
+        c.put(c.mask(box(x0, ceiling, x1, ceiling + 7)), scale(colour, 0.32))
+        if load == "wheels":
+            for offset, radius in ((90, 24), (146, 16), (340, 31), (390, 20)):
+                gear(c, x0 + offset, 602 - radius, radius, 12, scale(STEEL, 0.65))
+        elif load == "ore":
+            for offset, width, height in ((52, 46, 36), (100, 42, 31), (312, 64, 42), (372, 45, 32)):
+                x = x0 + offset
+                top = 608 - height
+                mid = x + width * 0.46
+                sack = c.mask(lambda p: p.poly([(x + 5, 608), (x, 602), (x + 3, 590), (mid - 8, top + 7),
+                                                (mid - 9, top), (mid + 9, top), (mid + 7, top + 7),
+                                                (x + width - 3, 589), (x + width, 602), (x + width - 5, 608)]))
+                c.put(sack, (137, 116, 83))
+                c.tone(sack * np.clip((c.x - mid) / width, -1, 1), -0.3)
+                c.put(c.mask(lambda p: p.line([(mid - 8, top + 7), (mid + 7, top + 7)], 2)), PLANK_DARK)
+        else:
+            for left, right, top in ((40, 110, 563), (112, 168, 578), (340, 420, 556)):
+                crate(c, x0 + left, top, x0 + right, 608, scale(PLANK, 0.78))
+        for x in (x0 + 205, x1 - 205):
+            lamp_glow(c, x, ceiling + 13, 26, 0.2)
+        deck_edge(c, x0, x1, 608, PLANK_LIGHT)
+        car_lettering(c, x0 + 36, 626, 5)
+        wheels(c, x0, x1, tag=tag)
+        freight_gangway(c, x1, gangway_end)
     return draw
 
 
@@ -604,44 +724,38 @@ def tank_car(c, k):
 
 
 def ore_car(c, k):
-    """The open ore car: its end walls (y 560, x 968..992 and 1424..1448),
-    the ore heaped inside to y 624, the hopper doors under it."""
+    """An open ore car with a gangway to the sorting car."""
     k.ground = RAIL
-    x0, x1 = 968, 1448
+    x0, x1 = 960, 1456
     m = c.mask(lambda p: p.poly([(x0, 560), (x1, 560), (x1, UNDER), (x0 + 0, UNDER)]))
     plates_like = c.mask(box(x0, 560, x1, UNDER))
     c.put(plates_like, ORE_GREY)
     c.put(c.mask(lambda p: [p.rect(x, 560, x + 3, UNDER) for x in np.arange(x0 + 30, x1, 50)]), scale(ORE_GREY, 0.7))
     c.tone(m * (c.noise("ore car", 8, 2, 3) - 0.5), 0.3)
-    # The near side is cut down to show the ore: its top at 600.
-    c.alpha[:] = np.where((c.y < 600) & (c.x > x0 + 24) & (c.x < x1 - 24) & (c.y >= 560), 0, c.alpha)
+    # The near side ends at the height of the ore bed.
+    c.alpha[:] = np.where((c.y < 624) & (c.x > x0 + 32) & (c.x < x1 - 32) & (c.y >= 560), 0, c.alpha)
     rng = c.rand("ore")
     c.put(c.mask(lambda p: [p.ellipse(rng.uniform(x0 + 30, x1 - 30), 624 - rng.uniform(0, 30), rng.uniform(10, 22), rng.uniform(6, 12)) for _ in range(40)]), (78, 74, 80))
     c.put(c.mask(lambda p: [p.ellipse(rng.uniform(x0 + 30, x1 - 30), 610 - rng.uniform(0, 16), 3) for _ in range(20)]), (190, 170, 120))
-    deck_edge(c, x0, x0 + 24, 560, STEEL_LIGHT)
-    deck_edge(c, x1 - 24, x1, 560, STEEL_LIGHT)
-    deck_edge(c, x0 + 24, x1 - 24, 600, scale(STEEL_LIGHT, 0.85))
+    deck_edge(c, x0, x0 + 32, 560, STEEL_LIGHT)
+    deck_edge(c, x1 - 32, x1, 560, STEEL_LIGHT)
+    deck_edge(c, x0 + 32, x1 - 32, 624, scale(STEEL_LIGHT, 0.85))
     wheels(c, x0, x1, tag="ore")
+    freight_gangway(c, 1456, 1504)
 
 
 def rustler(c, k):
-    """The Rustler, the outlaw engine at the head of the Number 9: its tender
-    (y 528, x 908..1308) with grapple arms folded over it and the water
-    hatch (y 480, x 1180..1290); the cab (roof y 432, x 1308..1548); the
-    boiler (y 512, x 1548..2160) with its steam dome (y 464) and sand dome
-    (y 472), the smokestack (y 384, x 2040..2100) blowing back; the
-    smokebox's headlamp eye, a red bandana of paint over it; the pilot beam
-    (y 608, x 2160..2400) and a cowcatcher like a grin of teeth."""
+    """The Rustler, with an open footplate below the cab roof."""
     k.ground = RAIL
     # The tender.
-    t = c.mask(box(908, 528, 1308, UNDER))
+    t = c.mask(box(896, 528, 1312, UNDER))
     c.put(t, RUSTLER_BLACK)
-    c.put(c.mask(lambda p: [p.rect(x, 528, x + 3, UNDER) for x in np.arange(930, 1308, 60)]), (60, 58, 62))
-    c.put(c.mask(box(908, 600, 1308, 612)), RUSTLER_RED)
-    deck_edge(c, 908, 1308, 528, (110, 106, 110))
+    c.put(c.mask(lambda p: [p.rect(x, 528, x + 3, UNDER) for x in np.arange(930, 1312, 60)]), (60, 58, 62))
+    c.put(c.mask(box(896, 600, 1312, 612)), RUSTLER_RED)
+    deck_edge(c, 896, 1312, 528, (110, 106, 110))
     c.put(c.mask(lambda p: [p.ellipse(x, 524, 16, 6) for x in np.arange(930, 1170, 26)]), (40, 38, 40))
-    c.put(c.mask(box(1180, 480, 1290, 528)), (70, 68, 74))
-    deck_edge(c, 1180, 1290, 480, (140, 136, 140))
+    c.put(c.mask(box(1184, 480, 1296, 528)), (70, 68, 74))
+    deck_edge(c, 1184, 1296, 480, (140, 136, 140))
     # The grapple arms: two jointed booms reaching back over the train.
     for base_x, reach in ((960, 180), (1060, 240)):
         pts = [(base_x, 528), (base_x - 40, 420), (base_x - reach, 450), (base_x - reach - 20, 500)]
@@ -649,29 +763,41 @@ def rustler(c, k):
         c.put(c.mask(lambda p: p.line(pts, 4)), (130, 124, 120))
         hx, hy = pts[-1]
         c.put(c.mask(lambda p: p.line([(hx, hy), (hx, hy + 22), (hx - 6, hy + 30), (hx - 14, hy + 26), (hx - 14, hy + 18)], 4)), STEEL_LIGHT)
-    # The cab.
-    cab = c.mask(box(1308, 432, 1548, UNDER))
-    c.put(cab, RUSTLER_BLACK)
-    c.put(c.mask(box(1300, 424, 1556, 440)), (60, 56, 60))
-    deck_edge(c, 1300, 1556, 432, (140, 136, 140))
-    for cx in (1380, 1480):
-        k.window(cx, 470, 50, 46, "rect", lit=0.7, frame=(200, 160, 80), tag=("cab_w", cx))
-    c.light(c.mask(box(1330, 520, 1530, 600), blur=20), SLAG_GLOW, 0.35)
-    c.put(c.mask(box(1308, 600, 1548, 612)), RUSTLER_RED)
+    # The firebox and controls behind the footplate.
+    c.put(c.mask(box(1312, 432, 1552, UNDER)), RUSTLER_BLACK)
+    c.put(c.mask(lambda p: p.poly([(1312, 448), (1552, 448), (1552, 512), (1504, 528), (1312, 528)])), (64, 56, 58))
+    c.put(c.mask(box(1312, 432, 1552, 448)), (60, 56, 60))
+    deck_edge(c, 1312, 1552, 432, (140, 136, 140))
+    for x in (1320, 1538):
+        girder(c, x, 448, 520, 6)
+    c.put(c.mask(box(1352, 482, 1410, 527)), (46, 34, 34))
+    c.put(c.mask(lambda p: p.ellipse(1381, 507, 17, 13)), (168, 69, 34))
+    c.put(c.mask(lambda p: p.ellipse(1381, 509, 10, 8)), (255, 149, 58))
+    c.light(c.mask(lambda p: p.ellipse(1381, 499, 48, 28), blur=14), SLAG_GLOW, 0.35)
+    for x in (1450, 1474, 1498):
+        c.put(c.mask(lambda p: p.ellipse(x, 466, 6)), BRASS)
+        c.put(c.mask(lambda p: p.ellipse(x, 466, 3)), (204, 185, 145))
+    pipe(c, [(1450, 474), (1450, 502), (1498, 502), (1498, 474)], 2, BRASS)
+    deck_edge(c, 1312, 1504, 528, STEEL_LIGHT)
+    c.put(c.mask(lambda p: p.line([(1504, 528), (1552, 512)], 2)), STEEL_LIGHT)
+    c.put(c.mask(box(1312, 600, 1552, 612)), RUSTLER_RED)
+    for x in (1560, 1608):
+        girder(c, x, 470, 512, 5)
+    grating(c, 1552, 1616, 464, rail=False)
     # The boiler, its bands, the domes and the stack.
-    b = c.mask(box(1548, 512, 2160, UNDER - 20))
+    b = c.mask(box(1552, 512, 2160, UNDER - 20))
     c.put(b, (44, 42, 46))
     c.tone(b * np.clip((c.y - 560) / 50, -1, 1), -0.3)
     c.light(b * np.clip(1 - np.abs(c.y - 526) / 8, 0, 1), (200, 200, 210), 0.3)
     c.put(c.mask(lambda p: [p.rect(x, 512, x + 6, UNDER - 20) for x in np.arange(1600, 2160, 110)]), BRASS)
-    deck_edge(c, 1548, 2160, 512, (130, 128, 134))
+    deck_edge(c, 1552, 2160, 512, (130, 128, 134))
     for x0, x1, top in ((1700, 1780, 464), (1880, 1940, 472)):
         c.put(c.mask(lambda p: (p.rect(x0, top + 6, x1, 512), p.ellipse((x0 + x1) / 2, top + 6, (x1 - x0) / 2, 8))), BRASS)
         deck_edge(c, x0, x1, top, (240, 210, 140))
     c.put(c.mask(lambda p: (p.rect(2040, 392, 2100, 512), p.rect(2030, 384, 2110, 400))), (40, 38, 42))
     deck_edge(c, 2030, 2110, 384, (110, 108, 112))
     smoke = c.mask(lambda p: [p.ellipse(2070 - i * 70, 360 - i * 10 - (i % 2) * 8, 30 + i * 10, 18 + i * 5) for i in range(10)], blur=6)
-    c.put(smoke, (90, 86, 86), 0.7)
+    c.put(smoke * np.clip((c.x - 1320) / 480.0, 0, 1), (90, 86, 86), 0.7)
     # The smokebox front: a headlamp like an eye, a bandana of red paint.
     c.put(c.mask(box(2100, 512, 2160, UNDER - 20)), (30, 30, 34))
     c.put(c.mask(lambda p: p.poly([(2060, 530), (2160, 530), (2160, 556), (2110, 548), (2060, 552)])), RUSTLER_RED)
@@ -724,21 +850,30 @@ def yard_tracks(c, k):
 
 
 def tipple_road(c, k):
-    """The tipple road: its deck along the line from (496, 1408) up to
-    (2340, 640), on timber bents down to the yard; the tipple at the top (its
-    floor y 640, x 2340..2400), a loading chute over the far track."""
+    """The tipple road, its inspection landing, and the upper loading chute."""
     k.ground = LOW
-    x0, y0, x1, y1 = 496, LOW, 2340, HIGH
-    slope = (y1 - y0) / (x1 - x0)
-    for x in np.arange(x0 + 120, x1, 160):
-        y = y0 + (x - x0) * slope
-        post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
-        if LOW - y > 160:
-            x_brace(c, x - 70, x + 10, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
-    c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
-    c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
-    c.put(c.mask(lambda p: [p.rect(x, y0 + (x - x0) * slope - 26, x + 3, y0 + (x - x0) * slope) for x in np.arange(x0 + 40, x1, 60)]), TIMBER)
-    c.put(c.mask(lambda p: p.line([(x0, y0 - 24), (x1, y1 - 24)], 2.0)), TIMBER)
+    for x0, y0, x1, y1 in ((496, LOW, 1424, 1024), (1456, 1024, 2384, HIGH)):
+        slope = (y1 - y0) / (x1 - x0)
+        for x in np.arange(x0 + 120, x1, 160):
+            y = y0 + (x - x0) * slope
+            post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
+            if LOW - y > 160:
+                x_brace(c, x - 70, x + 10, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
+        c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
+        c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
+        c.put(c.mask(lambda p: [p.rect(x, y0 + (x - x0) * slope - 26, x + 3, y0 + (x - x0) * slope)
+                                for x in np.arange(x0 + 20, x1, 60)]), TIMBER)
+        c.put(c.mask(lambda p: p.line([(x0, y0 - 24), (x1, y1 - 24)], 2.0)), TIMBER)
+    # The ladder stands in the gap between the parked ore cars.
+    for x in (1416, 1464):
+        girder(c, x, 1024, LOW, 7)
+    for y in (1060, 1220):
+        x_brace(c, 1416, 1464, y, y + 135, STEEL_DARK, 2.8)
+    c.put(c.mask(lambda p: p.line([(1576, 978), (1586, 1098)], 5)), STEEL_DARK)
+    grating(c, 1424, 1456, 1024, rail=False)
+    grating(c, 1456, 1600, 1088)
+    for x, y in ((1416, 1374), (1464, 988)):
+        lamp_glow(c, x, y, 22, 0.32)
     # The tipple: a tall shed on legs, its chute down to the track.
     m = c.mask(box(2200, 360, 2400, HIGH))
     siding(c, 2200, 360, 2400, HIGH, (110, 90, 74), "tipple")
@@ -748,7 +883,7 @@ def tipple_road(c, k):
         post(c, x, HIGH, LOW, 10, TIMBER)
     x_brace(c, 2210, 2390, HIGH + 20, LOW - 20, scale(TIMBER, 0.8), 3.0)
     c.put(c.mask(lambda p: p.poly([(2220, HIGH + 10), (2260, HIGH + 10), (2160, LOW - 200), (2130, LOW - 200)])), (90, 80, 72))
-    deck_edge(c, 2340, 2400, HIGH, PLANK_LIGHT)
+    deck_edge(c, 2384, 2400, HIGH, PLANK_LIGHT)
     c.tone(m * 0, 0)
 
 
@@ -761,8 +896,8 @@ def furnace_house(c, k):
     tin_roof(c, 100, 320, 680, 344, "furnace_roof", (90, 86, 80))
     c.put(c.mask(box(520, 120, 580, 330)), (110, 58, 44))
     c.put(c.mask(lambda p: [p.rect(516, y, 584, y + 6) for y in (120, 200, 280)]), (70, 40, 32))
-    smoke = c.mask(lambda p: [p.ellipse(560 + i * 30, 100 - i * 14, 26 + i * 8, 16 + i * 4) for i in range(6)], blur=6)
-    c.put(smoke, (80, 76, 76), 0.6)
+    smoke = c.mask(lambda p: [p.ellipse(560 + i * 34, 108 - i * 9, 24 + i * 7, 16 + i * 4) for i in range(7)], blur=6)
+    c.put(smoke * np.clip((835 - c.x) / 225, 0, 1) * np.clip(c.y / 35, 0, 1), (80, 76, 76), 0.6)
     door = c.mask(box(300, 520, 420, g))
     c.put(door, (60, 30, 20))
     c.light(c.mask(box(300, 520, 420, g), blur=30), SLAG_GLOW, 0.6)
@@ -772,49 +907,57 @@ def furnace_house(c, k):
 
 
 def slag_pots(c, k):
-    """The slag pots on their carriages (tops y 576, x 700..812 and
-    1400..1512), crusted and glowing at the lip."""
-    g = HIGH
+    """Slag carriages on the rear track behind the walking lane."""
+    g = HIGH - 28
+    top = g - 64
     k.ground = g
+    c.put(c.mask(lambda p: [p.rect(x, g - 11, x + 11, g + 4) for x in np.arange(674, 1536, 24)]), (78, 64, 55))
+    for y in (g - 9, g - 2):
+        c.put(c.mask(box(674, y, 1536, y + 2)), (97, 83, 75))
+    c.put(c.mask(lambda p: [p.rect(x, HIGH - 7, x + 18, HIGH - 5) for x in np.arange(680, 1530, 32)]),
+          HAZARD, 0.75)
     for x0 in (700, 1400):
         x1 = x0 + 112
-        m = c.mask(lambda p: p.poly([(x0, 576), (x1, 576), (x1 - 14, g - 14), (x0 + 14, g - 14)]))
+        m = c.mask(lambda p: p.poly([(x0, top), (x1, top), (x1 - 14, g - 14), (x0 + 14, g - 14)]))
         c.put(m, CINDER)
         c.tone(m * (c.noise(("pot", x0), 4, 3, 2) - 0.5), 0.35)
-        c.put(c.mask(box(x0 - 4, 576, x1 + 4, 584)), (50, 46, 48))
-        c.light(c.mask(box(x0 + 6, 570, x1 - 6, 580), blur=8), SLAG_GLOW, 0.6)
-        deck_edge(c, x0, x1, 576, (255, 180, 100))
+        c.put(c.mask(box(x0 - 4, top, x1 + 4, top + 8)), (50, 46, 48))
+        c.light(c.mask(box(x0 + 6, top - 6, x1 - 6, top + 4), blur=8), SLAG_GLOW, 0.45)
+        deck_edge(c, x0, x1, top, (220, 142, 80))
         for dx in (24, 88):
             c.put(c.mask(lambda p: p.ellipse(x0 + dx, g - 7, 7)), (40, 38, 40))
 
 
 def works_crane(c, k):
-    """The slag crane's gantry: the lower walk (y 512, x 820..1180) and the
-    upper (y 448, x 1200..1560) on girder legs, the cab, the ladle on its
-    chains."""
+    """The crane gantries, loading step, and ladder support."""
     g = HIGH
     k.ground = g
-    for x in (830, 1170):
+    for x in (616, 696):
+        girder(c, x, 582, g, 5)
+    grating(c, 608, 704, 576, rail=False)
+    for x in (730, 1174):
         girder(c, x, 512, g, 10)
     for x in (1210, 1550):
         girder(c, x, 448, g, 10)
     x_brace(c, 1210, 1550, 460, g - 10)
-    grating(c, 820, 1180, 512)
-    grating(c, 1200, 1560, 448)
+    grating(c, 720, 1184, 512)
+    grating(c, 1200, 1568, 448)
+    for y in (477, 578):
+        c.put(c.mask(box(1548, y, 1597, y + 5)), STEEL_DARK)
     cab = c.mask(box(1600, 360, 1700, 448))
     c.put(cab, (180, 140, 50))
     k.window(1650, 380, 60, 36, "rect", lit=0.4, tag="crane_cab")
     girder(c, 1650, 448, g, 12)
     c.put(c.mask(box(1300, 300, 1720, 316)), STEEL_DARK)
-    c.put(c.mask(lambda p: [p.ellipse(1420, 320 + i * 7, 2.4, 3.4) for i in range(10)]), STEEL_DARK)
-    ladle = c.mask(lambda p: p.poly([(1390, 392), (1450, 392), (1440, 432), (1400, 432)]))
+    c.put(c.mask(lambda p: [p.ellipse(1496, 320 + i * 7, 2.4, 3.4) for i in range(10)]), STEEL_DARK)
+    ladle = c.mask(lambda p: p.poly([(1466, 392), (1526, 392), (1516, 432), (1476, 432)]))
     c.put(ladle, CINDER)
-    c.light(c.mask(box(1394, 388, 1446, 396), blur=6), SLAG_GLOW, 0.6)
+    c.light(c.mask(box(1470, 388, 1522, 396), blur=6), SLAG_GLOW, 0.6)
     c.tone(cab * 0, 0)
 
 
-def row_shacks(x_spans, tag):
-    """Shacks of the Row: tin walls, lean-to roofs whose tops are the walks."""
+def row_shacks(x_spans, stand, notice, tag):
+    """Draw the roofs, notice board, and wash stand at the street entrance."""
     def draw(c, k):
         g = RIM
         k.ground = g
@@ -827,48 +970,90 @@ def row_shacks(x_spans, tag):
             c.put(c.mask(box(cx - 20, g - 70, cx + 20, g)), (50, 42, 38))
             k.window(cx + 60 if x1 - x0 > 260 else cx - 70, roof + 40, 34, 30, "rect", lit=0.5, tag=(tag, i, "w"))
             c.put(c.mask(box(x0 + 30, roof - 40, x0 + 38, roof)), STEEL_DARK)
+        x0, x1 = stand
+        for x in (x0 + 8, x1 - 8):
+            post(c, x, 580, g, 7)
+        planks(c, k, x0, 576, x1, 587, PLANK, tag=(tag, "wash_stand"))
+        deck_edge(c, x0, x1, 576, PLANK_LIGHT)
+        first_left, first_right, roof = x_spans[0]
+        notice_width, notice_top = notice
+        center = (first_left + first_right) / 2
+        left, right = center - notice_width / 2, center + notice_width / 2
+        for x in (left + 8, right - 8):
+            post(c, x, 485, roof, 6)
+        planks(c, k, left, notice_top, right, 517, PLANK_DARK, tag=(tag, "notice"))
+        deck_edge(c, left, right, notice_top, PLANK)
     return draw
 
 
 def row_pump(c, k):
-    """The pump on the cinder hump (top y 576, x 1104..1296) and the
-    washing lines across the Row on poles."""
+    """Draw the pump below the drying deck. The shirts hang at the rear."""
     g = RIM
     k.ground = g
-    c.put(c.mask(box(1194, 520, 1206, 576)), STEEL_DARK)
-    c.put(c.mask(lambda p: p.line([(1200, 524), (1236, 512)], 4)), STEEL_DARK)
-    c.put(c.mask(lambda p: p.line([(1196, 540), (1180, 548)], 4)), STEEL_DARK)
-    c.put(c.mask(lambda p: p.poly([(1170, 576), (1230, 576), (1226, 560), (1174, 560)])), (90, 90, 96))
-    for x in (900, 1500):
-        post(c, x, 440, g, 4)
-    pts = [(900, 450), (1200, 476), (1500, 450)]
-    rope_line(c, pts, 1.2)
-    colours = [(200, 200, 196), (120, 140, 170), (190, 100, 80), (220, 210, 170), (110, 120, 90)]
-    for i, x in enumerate(np.arange(940, 1480, 60)):
-        y = 450 + 26 * (1 - abs((x - 1200) / 300.0))
-        c.put(c.mask(lambda p: p.poly([(x - 18, y), (x + 18, y), (x + 14, y + 40), (x - 14, y + 40)])), colours[i % len(colours)])
+    for x0, x1, top, left_ground, right_ground in (
+        (864, 1008, 544, 640, 611),
+        (1040, 1360, 512, 592, 592),
+        (1392, 1576, 544, 603, 640),
+    ):
+        post(c, x0 + 8, top + 6, left_ground, 7)
+        post(c, x1 - 8, top + 6, right_ground, 7)
+        planks(c, k, x0, top, x1, top + 12, PLANK, tag=("row_drying", x0))
+        deck_edge(c, x0, x1, top, PLANK_LIGHT)
+    for x in (1052, 1348):
+        post(c, x, 427, 509, 4)
+    rope_line(c, [(1052, 437), (1200, 450), (1348, 437)])
+    colours = [(183, 181, 168), (123, 143, 161), (164, 105, 84), (199, 181, 144), (108, 123, 102)]
+    for x, colour in zip(range(1078, 1339, 57), colours, strict=True):
+        y = 450 - 13 * abs(x - 1200) / 148
+        c.put(c.mask(lambda p: p.poly([
+            (x - 20, y + 9), (x - 10, y), (x + 10, y), (x + 20, y + 9),
+            (x + 16, y + 17), (x + 10, y + 14), (x + 11, y + 35),
+            (x - 11, y + 35), (x - 10, y + 14), (x - 16, y + 17),
+        ])), colour)
+        for clip_x in (x - 9, x + 9):
+            c.put(c.mask(box(clip_x, y - 3, clip_x + 2, y + 5)), PLANK_LIGHT)
+    c.put(c.mask(box(1246, 534, 1257, 576)), STEEL_DARK)
+    c.put(c.mask(lambda p: p.line([(1252, 537), (1280, 531)], 4)), STEEL_DARK)
+    c.put(c.mask(lambda p: p.line([(1249, 545), (1231, 552)], 4)), STEEL_DARK)
+    c.put(c.mask(box(1236, 570, 1267, 576)), (90, 90, 96))
+    c.put(c.mask(lambda p: p.poly([(1217, 562), (1235, 562), (1232, 576), (1220, 576)])), STEEL_LIGHT)
 
 
 def railhead_grade(c, k):
-    """The old tramway grade: its head (y 640, x 0..288), the deck down on
-    timber bents to the street at (2128, 1408); the water tower for the line
-    and its spout; the line's signal and rails east."""
+    """Draw the tramway, the signal landing and steps, and the water tower."""
     k.ground = LOW
-    x0, y0, x1, y1 = 288, HIGH, 2128, LOW
-    slope = (y1 - y0) / (x1 - x0)
-    planks(c, None, 0, HIGH, x0, HIGH + 16, PLANK, step=7.0, vertical=True, tag="grade_head")
-    deck_edge(c, 0, x0, HIGH, PLANK_LIGHT)
-    for x in (40, 160, 260):
+    grade_start, grade_end = 160, 2208
+    signal_x0, signal_x1, signal_y = 1360, 1472, 1120
+    planks(c, None, 0, HIGH, grade_start, HIGH + 16, PLANK, step=7.0, vertical=True, tag="grade_head")
+    deck_edge(c, 0, grade_start, HIGH, PLANK_LIGHT)
+    for x in (40, 126):
         post(c, x, HIGH + 16, LOW, 8, scale(TIMBER, 0.9))
-    for x in np.arange(x0 + 80, x1 - 100, 160):
-        y = y0 + (x - x0) * slope
-        post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
-        if LOW - y > 160:
-            x_brace(c, x - 10, x + 70, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
-    c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
-    c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
-    # Old tram rails along the grade.
-    c.put(c.mask(lambda p: p.line([(x0, y0 - 3), (x1, y1 - 3)], 1.6)), (120, 110, 100))
+    for x0, y0, x1, y1 in ((grade_start, HIGH, signal_x0, signal_y), (signal_x1, signal_y, grade_end, LOW)):
+        slope = (y1 - y0) / (x1 - x0)
+        for x in range(x0 + 72, x1 - 90, 160):
+            y = y0 + (x - x0) * slope
+            post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
+            if LOW - y > 160:
+                x_brace(c, x - 10, x + 66, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
+        c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
+        c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
+        c.put(c.mask(lambda p: p.line([(x0, y0 - 3), (x1, y1 - 3)], 1.6)), (120, 110, 100))
+    for x0, y in ((1376, 1152), (1440, 1216), (1504, 1280), (1568, 1344)):
+        x1 = x0 + 128
+        for x in (x0 + 12, x1 - 12):
+            post(c, x, y + 9, LOW, 7)
+        x_brace(c, x0 + 12, x1 - 12, y + 12, min(y + 57, LOW - 6), scale(TIMBER, 0.82), 2.4)
+        planks(c, k, x0, y, x1, y + 12, PLANK, tag=("railhead_step", y))
+        deck_edge(c, x0, x1, y, PLANK_LIGHT)
+    for x in (1368, 1464):
+        post(c, x, signal_y + 8, LOW, 9)
+    grating(c, signal_x0, signal_x1, signal_y, rail=False)
+    post(c, 1414, 1000, signal_y, 7, STEEL_DARK)
+    c.put(c.mask(lambda p: p.poly([(1415, 1016), (1451, 1000), (1460, 1011), (1420, 1030)])), RUST)
+    c.put(c.mask(lambda p: p.ellipse(1414, 1029, 6, 6)), (165, 111, 56))
+    for x in (298, 502):
+        post(c, x, 637, HIGH + (x - grade_start) * 0.4, 7)
+    planks(c, k, 285, 618, 515, 652, PLANK_DARK, tag="railhead_grade_notice")
     # The water tower by the line.
     tx0, tx1, ttop = 2180, 2340, 1060
     planks(c, None, tx0, ttop, tx1, ttop + 120, (110, 80, 56), step=8.0, vertical=True, tag="rh_tank")
@@ -878,6 +1063,8 @@ def railhead_grade(c, k):
         post(c, x, ttop + 120, LOW, 8, TIMBER)
     x_brace(c, 2190, 2330, ttop + 130, LOW - 10, scale(TIMBER, 0.8), 3.0)
     c.put(c.mask(lambda p: p.line([(tx0, ttop + 100), (2140, ttop + 140), (2140, ttop + 180)], 4)), STEEL_DARK)
+    post(c, 2070, 1211, LOW, 7)
+    planks(c, k, 2056, 1195, 2344, 1226, PLANK_DARK, tag="railhead_dry_dock_notice")
     # The rails of the line east, on the street.
     c.put(c.mask(lambda p: [p.rect(x, LOW - 6, x + 16, LOW) for x in np.arange(1200, 2400, 24)]), (70, 56, 46))
     c.put(c.mask(box(1200, LOW - 8, 2400, LOW - 5)), (130, 126, 122))
@@ -888,52 +1075,52 @@ def railhead_grade(c, k):
 #: Every piece: its frame in its room, and how it is drawn.
 PIECES: Dict[str, Piece] = {
     # frontier_siding_station
-    "frontier_siding_station_house": Piece((620, 370, 1590, 640), station_house),
+    "frontier_siding_station_house": Piece((536, 370, 1590, 640), station_house),
     # frontier_siding_street
-    "frontier_lie_down_inn_front": Piece((150, 160, 690, 640), inn_front),
-    "frontier_mercantile_front": Piece((670, 220, 1090, 640), mercantile_front),
+    "frontier_lie_down_inn_front": Piece((72, 160, 690, 640), inn_front),
+    "frontier_mercantile_front": Piece((670, 220, 1176, 640), mercantile_front),
     "frontier_siding_windmill": Piece((1100, 200, 1420, 640), siding_windmill),
-    "frontier_telegraph_front": Piece((1430, 170, 2170, 640), telegraph_front),
+    "frontier_telegraph_front": Piece((1352, 170, 2248, 640), telegraph_front),
     # frontier_lie_down_inn
     "frontier_lie_down_inn_room": Piece((16, 32, 1264, 512), inn_room),
     # frontier_siding_trestle
     "frontier_siding_trestle": Piece((0, 380, 2400, 1536), trestle, px=1.0),
     # frontier_sprocket_row
     "frontier_sprocket_arch": Piece((40, 360, 440, 640), sprocket_arch),
-    "frontier_hettie_garage": Piece((470, 200, 1130, 640), hettie_garage),
+    "frontier_hettie_garage": Piece((470, 200, 1210, 640), hettie_garage),
     "frontier_parts_yard": Piece((1150, 470, 1590, 640), parts_yard),
     "frontier_rolling_gate": Piece((1630, 300, 1990, 640), rolling_gate),
     # frontier_freight_tail
     "frontier_freight_track_tail": Piece((0, 700, 2400, 752), lambda c, k: track(c, 2400), px=1.0),
-    "frontier_caboose": Piece((10, 400, 500, 720), caboose),
-    "frontier_box_car_1": Piece((530, 470, 1040, 720), box_car(544, 1024, 480, BOXCAR_RED, "box1")),
-    "frontier_box_car_2": Piece((1074, 470, 1584, 720), box_car(1088, 1568, 480, BOXCAR_BROWN, "box2")),
+    "frontier_caboose": Piece((10, 400, 552, 720), caboose),
+    "frontier_box_car_1": Piece((530, 470, 1096, 720), loading_car(544, 1024, 1088, BOXCAR_RED, "box1")),
+    "frontier_box_car_2": Piece((1074, 470, 1656, 720), loading_car(1088, 1568, 1648, BOXCAR_BROWN, "box2", load="wheels")),
     "frontier_flat_car_1": Piece((1636, 470, 2400, 720), flat_car(1648, 2400, [(1760, 1888, 544), (1888, 1968, 480)], "flat1", open_east=True)),
     # frontier_freight_cars
     "frontier_freight_track_cars": Piece((0, 700, 2800, 752), lambda c, k: track(c, 2800), px=1.0),
     "frontier_flat_car_1_end": Piece((0, 590, 380, 720), flat_car(0, 360, [], "flat1e", open_west=True)),
     "frontier_tank_car": Piece((410, 500, 920, 720), tank_car),
-    "frontier_ore_car": Piece((954, 540, 1462, 720), ore_car),
-    "frontier_box_car_3": Piece((1498, 486, 2006, 720), box_car(1512, 1992, 496, OCHRE_CAR, "box3")),
-    "frontier_flat_car_2": Piece((2076, 530, 2800, 720), flat_car(2088, 2800, [(2560, 2688, 544)], "flat2", open_east=True)),
+    "frontier_ore_car": Piece((954, 540, 1512, 720), ore_car),
+    "frontier_box_car_3": Piece((1490, 486, 2088, 720), loading_car(1504, 2000, 2080, OCHRE_CAR, "box3", roof=496, load="ore")),
+    "frontier_flat_car_2": Piece((2068, 530, 2800, 720), flat_car(2080, 2800, [(2560, 2688, 544)], "flat2", open_west=True, open_east=True)),
     # frontier_rustler_head
     "frontier_freight_track_head": Piece((0, 700, 2400, 752), lambda c, k: track(c, 2400), px=1.0),
     "frontier_flat_car_2_end": Piece((0, 530, 320, 720), flat_car(0, 300, [(180, 260, 544)], "flat2e", open_west=True)),
     "frontier_box_car_4": Piece((350, 470, 858, 720), box_car(364, 844, 480, BOXCAR_RED, "box4")),
-    "frontier_rustler": Piece((720, 300, 2400, 720), rustler, px=1.0),
+    "frontier_rustler": Piece((720, 168, 2400, 720), rustler, px=1.0),
     # The loose crates (moving platforms' pictures).
     "frontier_loose_crate": Piece((0, 0, 64, 64), loose_crate),
     # frontier_clinker_yard
     "frontier_yard_tracks": Piece((0, 1240, 2400, 1420), yard_tracks, px=1.0),
     "frontier_tipple_road": Piece((480, 330, 2400, 1420), tipple_road, px=1.0),
     # frontier_clinker_works
-    "frontier_furnace_house": Piece((90, 60, 720, 640), furnace_house),
-    "frontier_slag_pots": Piece((690, 560, 1530, 640), slag_pots),
-    "frontier_works_crane": Piece((800, 280, 1730, 640), works_crane),
+    "frontier_furnace_house": Piece((90, 0, 856, 640), furnace_house),
+    "frontier_slag_pots": Piece((670, 530, 1544, 640), slag_pots),
+    "frontier_works_crane": Piece((598, 280, 1730, 640), works_crane),
     # frontier_clinker_row
-    "frontier_row_shacks_west": Piece((220, 470, 860, 640), row_shacks([(240, 560, 528), (600, 840, 544)], "row_w")),
-    "frontier_row_pump": Piece((880, 430, 1520, 640), row_pump),
-    "frontier_row_shacks_east": Piece((1580, 470, 2260, 640), row_shacks([(1600, 1880, 528), (1960, 2240, 544)], "row_e")),
+    "frontier_row_shacks_west": Piece((132, 470, 860, 640), row_shacks([(240, 560, 528), (600, 840, 544)], (144, 224), (122, 475), "row_w")),
+    "frontier_row_pump": Piece((850, 408, 1580, 640), row_pump),
+    "frontier_row_shacks_east": Piece((1580, 450, 2356, 640), row_shacks([(1600, 1880, 528), (1960, 2240, 544)], (2264, 2344), (244, 455), "row_e")),
     # frontier_clinker_railhead
     "frontier_railhead_grade": Piece((0, 600, 2400, 1420), railhead_grade, px=1.0),
 }

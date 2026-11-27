@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
 
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -43,11 +43,12 @@ from .player_robot_v3_crawl import PURE_SIDE_ROWS
 from .player_robot_v3_gameplay import hurtbox_parts_for_rows
 from .player_robot_v3_double_jump import JETS as DOUBLE_JUMP_JETS
 from .player_robot_v3_motion import EFFECT_ALIASES, MIRRORED, ROBOT_ROWS
-from .player_robot_v3_strikes import STRIKES
+from .player_robot_v3_strikes import STRIKE_SMEAR, STRIKES
 
 TARGET_NAME = "player_robot_v3"
 FRAME_SIZE = (224, 224)
 PUBLISH_PADDING = (16, 16, 16, 16)
+PART_TEXEL_SCALE = 2
 RIG_PATH = (
     Path(__file__).resolve().parent
     / "rigged/player_robot_v3/player_robot_v3.rig.json"
@@ -226,8 +227,12 @@ def _point_along(origin, angle_deg: float, distance: float):
 class _FxLayer:
     """One supersampled effect canvas (behind or in front of the body)."""
 
-    def __init__(self, size: Tuple[int, int]) -> None:
+    def __init__(self, size: Tuple[int, int], scale: int = 1) -> None:
         self.size = size
+        # Reduced to the body's own density, so its pieces keep their names
+        # (`visor_fill` and the rest are tracks): one enlarged later would be a
+        # single anonymous overlay.
+        self.out = (int(size[0] * scale), int(size[1] * scale))
         self._rig: Optional[RigCanvas] = None
 
     @property
@@ -242,7 +247,7 @@ class _FxLayer:
         self.rig.put(part, (at[0] * K, at[1] * K), degrees, name, opacity, scale_y)
 
     def reduced(self) -> Optional[Image.Image]:
-        return None if self._rig is None else rigdoc.downsampled_canvas(self._rig.canvas, self.size)
+        return None if self._rig is None else rigdoc.downsampled_canvas(self._rig.canvas, self.out)
 
 
 def _raster(key: tuple, make) -> Tuple[Image.Image, Tuple[float, float]]:
@@ -420,6 +425,101 @@ def _dash_lines():
     return fx_piece(("v3_dash_lines",), (-2 * K, -5 * K, 46 * K, 35 * K), paint)
 
 
+# -- the dash's smear --------------------------------------------------------------
+
+#: The smear's purples: the ghosts, the streaks and their hot cores, and the
+#: wash over the white shell.
+SMEAR_GHOST = (168, 96, 255)
+SMEAR_STREAK = (186, 122, 255)
+SMEAR_CORE = (238, 214, 255)
+SMEAR_WASH = (200, 166, 255)
+#: Each ghost of the body behind it: how far back (frame pixels at scale 1),
+#: how opaque, and how far it is blurred along the dash.
+SMEAR_GHOSTS = ((7.0, 0.62, 5), (15.0, 0.42, 7), (25.0, 0.25, 9), (37.0, 0.12, 11))
+
+
+def _rgba(color, alpha: "np.ndarray") -> Image.Image:
+    h, w = alpha.shape
+    out = np.zeros((h, w, 4), dtype=np.float32)
+    out[..., 0], out[..., 1], out[..., 2] = color
+    out[..., 3] = np.clip(alpha, 0.0, 1.0) * 255.0
+    return Image.fromarray(out.astype(np.uint8), "RGBA")
+
+
+def _shifted_back(alpha: "np.ndarray", dx: int) -> "np.ndarray":
+    """``alpha`` moved ``dx`` pixels toward the back (screen-left: every side
+    row is drawn facing right, and the other facing mirrors the frame)."""
+    if dx <= 0:
+        return alpha
+    out = np.zeros_like(alpha)
+    out[:, :-dx] = alpha[:, dx:]
+    return out
+
+
+def _blurred_along(alpha: "np.ndarray", width: int) -> "np.ndarray":
+    """``alpha`` blurred along the dash only (a box ``width`` wide)."""
+    if width <= 1:
+        return alpha
+    padded = np.pad(alpha, ((0, 0), (width, width)))
+    total = np.cumsum(padded, axis=1)
+    half = width // 2
+    w = alpha.shape[1]
+    lo = total[:, width - half - 1:width - half - 1 + w]
+    hi = total[:, width + (width - half - 1):width + (width - half - 1) + w]
+    return (hi - lo) / float(width)
+
+
+def _smear_layers(body: Image.Image, strength: float, frame_idx: int):
+    """The dash's smear of ``body`` at ``strength`` (0..1): a layer behind it
+    (ghosts of the body trailing it, blurred along the dash, and streaks off
+    its back edge at the heights it has parts) and a wash of purple over its
+    white shell. The concept sheet's dash frame: the robot gone purple and
+    pulled out behind itself, the visor still lit."""
+    scale = max(1.0, body.width / FRAME_SIZE[0])
+    alpha = np.asarray(body.getchannel("A"), dtype=np.float32) / 255.0
+    behind = np.zeros_like(alpha)
+    for back, opacity, blur in SMEAR_GHOSTS:
+        ghost = _blurred_along(_shifted_back(alpha, int(round(back * scale * (0.6 + 0.4 * strength)))), int(blur * scale))
+        behind = np.maximum(behind, ghost * opacity * strength)
+    layer = _rgba(SMEAR_GHOST, behind)
+
+    rows = np.nonzero(alpha.max(axis=1) > 0.5)[0]
+    if rows.size:
+        # A plain draw on a layer of their own, laid over the ghosts: the
+        # recorder sees one overlay, not every stroke.
+        streaks = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(streaks)
+        top, bottom = int(rows.min()), int(rows.max())
+        # The streaks: from the back edge of the body at evenly spread heights,
+        # longer at the middle of the body; which heights shift a little from
+        # frame to frame so the streaks shimmer.
+        count = 8
+        for i in range(count):
+            u = (i + 0.5 + 0.18 * math.sin(frame_idx * 1.7 + i * 2.3)) / count
+            y = int(round(top + u * (bottom - top)))
+            band = alpha[max(0, y - 1):y + 2]
+            cols = np.nonzero(band.max(axis=0) > 0.5)[0]
+            if not cols.size:
+                continue
+            x0 = float(cols.min()) - 1.0 * scale
+            length = (34.0 + 36.0 * math.sin(math.pi * u) + 10.0 * math.sin(frame_idx * 2.1 + i)) * scale * strength
+            width = max(1.0, (3.2 if i % 2 else 2.2) * scale)
+            steps = 6
+            for k in range(steps):
+                a = x0 - length * k / steps
+                b = x0 - length * (k + 1) / steps
+                fade = 1.0 - k / steps
+                draw.line([(a, y), (b, y)], fill=SMEAR_STREAK + (int(235 * fade * strength),), width=int(round(width)))
+                if k < 3:
+                    draw.line([(a, y), (b, y)], fill=SMEAR_CORE + (int(170 * fade * strength),), width=max(1, int(round(width * 0.45))))
+        layer.alpha_composite(streaks)
+
+    rgb = np.asarray(body.convert("RGB"), dtype=np.float32) / 255.0
+    white = np.clip((rgb.min(axis=2) - 0.62) / 0.3, 0.0, 1.0)
+    wash = _rgba(SMEAR_WASH, alpha * white * 0.7 * strength)
+    return layer, wash
+
+
 def _hit_sparks():
     def paint(d, ox, oy) -> None:
         for angle in (-65, -20, 25, 70):
@@ -552,10 +652,10 @@ def _compose(
     # `charge` orb and every attack the line-blade.
     effect = animation if animation in STRIKES else EFFECT_ALIASES.get(animation, animation)
     size = (int(doc.frame["width"]), int(doc.frame["height"]))
-    back, front = _FxLayer(size), _FxLayer(size)
+    back, front = _FxLayer(size, scale), _FxLayer(size, scale)
 
-    if effect in {"dash", "dash_startup", "slide"}:
-        back.put(_dash_lines(), (8, 49), 0.0, "dash_lines", 1.0 if effect == "dash" else 0.7)
+    if effect == "slide":
+        back.put(_dash_lines(), (8, 49), 0.0, "dash_lines", 0.7)
 
     if effect in {"hover", "float_glide"}:
         _place_thrusters(front, world, frame_idx, slow_fall=effect == "float_glide")
@@ -621,15 +721,22 @@ def _compose(
         # each other.
         body = rigdoc.faded_canvas(body, max(0.45, 1.0 - t * 0.48))
 
+    # The dash's smear is made from the body it trails (`player_robot_v3_dash`).
+    smear = float(params.get("dash_fx", 0.0)) if effect in {"dash", "dash_startup", *STRIKE_SMEAR} else 0.0
+    behind, wash = _smear_layers(body, smear, frame_idx) if smear > 0.01 else (None, None)
+
     # Through rigdoc's seams, so the part flipbook knows what the frame is made
     # of (`part_flipbook.build_rig_flipbook`).
     result = Image.new("RGBA", body.size, (0, 0, 0, 0))
-    for layer in (back.reduced(), body, front.reduced()):
-        if layer is not None:
-            if layer.size == body.size:
-                rigdoc.composite_canvas(result, layer)
-            else:
-                rigdoc.composite_scaled_layer(result, layer, scale)
+    for layer in (back.reduced(), behind, body, wash, front.reduced()):
+        if layer is None:
+            continue
+        if layer is behind or layer is wash:
+            rigdoc.composite_layer(result, layer, name="dash_smear" if layer is behind else "dash_wash")
+        elif layer.size == body.size:
+            rigdoc.composite_canvas(result, layer)
+        else:
+            rigdoc.composite_scaled_layer(result, layer, scale)
     return result
 
 
@@ -1010,13 +1117,14 @@ def build_part_flipbook():
 
 def eye_landmarks(flipbook) -> Dict[str, list]:
     """Each row's eye per frame, from its feet in the published (padded) frame."""
+    density = flipbook.texel_scale
     landmarks = {}
     for row, count, _duration in ROWS:
         frames = []
         for index in range(count):
             eye = frame_meta(row, index, count)["anchors"].get("eye")
-            frames.append({"eye": (eye[0] + PUBLISH_PADDING[0] - flipbook.feet[0],
-                                   eye[1] + PUBLISH_PADDING[1] - flipbook.feet[1])} if eye else {})
+            frames.append({"eye": ((eye[0] + PUBLISH_PADDING[0]) * density - flipbook.feet[0],
+                                   (eye[1] + PUBLISH_PADDING[1]) * density - flipbook.feet[1])} if eye else {})
         if any(frames):
             landmarks[row] = frames
     return landmarks
@@ -1031,6 +1139,7 @@ def _render_with_products(out_dir: str | Path, **opts):
     hitboxes: Dict[str, dict] = _translated_legacy_hitboxes()
     outputs = build_sheet(
         parts=True,
+        part_texel_scale=PART_TEXEL_SCALE,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,

@@ -26,6 +26,8 @@ from typing import Dict, List, Tuple
 
 from ..characters import _art_cast_kit as K
 from ..characters import _stage_kit as S
+from ._district_props import Piece, targets
+from ._town_kit import box
 from .art_props import _publisher
 
 STILL: List[Tuple[str, int, int]] = [("idle", 1, 1000)]
@@ -300,6 +302,67 @@ def _draw_trunk():
     return f.finish(width=1.6)
 
 
+def _pit_walkway(c, _kit):
+    rail, trim, deck = (76, 54, 68), (209, 158, 87), (106, 62, 65)
+    c.put(c.mask(box(1296, 898, 1696, 909)), deck)
+    c.put(c.mask(box(1316, 872, 1676, 876)), rail)
+    c.put(c.mask(box(1316, 872, 1676, 873)), trim)
+    for x in range(1316, 1677, 40):
+        c.put(c.mask(box(x, 873, x + 3, 899)), rail)
+    for x, direction in ((1376, 1), (1584, -1)):
+        c.put(c.mask(box(x, 904, x + 7, 960)), rail)
+        c.put(c.mask(lambda p: p.line([(x + 3, 939), (x + direction * 30, 907)], 4)), rail)
+        c.put(c.mask(box(x - 2, 952, x + 9, 960)), trim)
+
+
+def _east_aisle(c, _kit):
+    frame, velvet, trim = (81, 56, 68), (143, 58, 71), (206, 150, 87)
+    for x, top in ((2322, 768), (2430, 768), (2538, 832), (2590, 896)):
+        c.put(c.mask(box(x, top + 4, x + 7, 960)), frame)
+        c.put(c.mask(box(x + 1, top + 8, x + 2, 953)), trim)
+    for left, top, right in ((2304, 768, 2448), (2416, 832, 2560), (2496, 896, 2608)):
+        c.put(c.mask(box(left, top + 2, right, top + 14)), frame)
+        c.put(c.mask(box(left + 3, top + 4, right - 3, top + 10)), velvet)
+        for x in range(left + 16, right - 10, 20):
+            c.put(c.mask(lambda p: p.ellipse(x, top + 7, 1.5)), trim)
+    for x in (2191, 2230):
+        c.put(c.mask(box(x + 4, 635, x + 7, 641)), frame)
+        c.put(c.mask(box(x + 24, 635, x + 27, 641)), frame)
+        c.put(c.mask(lambda p: p.ellipse(x + 15, 626, 15, 8)), velvet)
+        c.put(c.mask(box(x, 630, x + 30, 636)), velvet)
+        c.put(c.mask(box(x + 2, 631, x + 28, 633)), trim)
+
+
+def _backstage_costume_rig(c, _kit):
+    frame, brass = (76, 56, 66), (210, 151, 82)
+    for x in (966, 1186):
+        c.put(c.mask(box(x, 445, x + 7, 576)), frame)
+        c.put(c.mask(box(x + 2, 452, x + 4, 572)), brass)
+        c.put(c.mask(box(x - 4, 569, x + 11, 576)), frame)
+    for left, top, right in ((960, 448, 1200), (912, 512, 992), (1136, 512, 1200)):
+        c.put(c.mask(box(left, top + 2, right, top + 12)), frame)
+        c.put(c.mask(box(left, top + 3, right, top + 5)), brass)
+    c.put(c.mask(lambda p: p.line([(966, 549), (928, 522)], 4)), frame)
+    c.put(c.mask(lambda p: p.line([(1191, 550), (1151, 522)], 4)), frame)
+
+    for x, hem, cloth, shade in (
+        (1023, 520, (137, 54, 79), (105, 47, 71)),
+        (1068, 507, (88, 86, 133), (62, 64, 105)),
+        (1111, 524, (63, 117, 112), (51, 85, 89)),
+    ):
+        c.put(c.mask(lambda p: p.line([(x + 4, 461), (x + 4, 465), (x, 469), (x, 474)], 2)), brass)
+        c.put(c.mask(lambda p: p.poly([
+            (x, 473), (x + 11, 478), (x + 19, hem - 2), (x + 7, hem),
+            (x - 17, hem - 3), (x - 11, 478),
+        ])), cloth)
+        c.put(c.mask(lambda p: p.poly([(x + 1, 479), (x + 8, hem - 2), (x + 17, hem - 3)])), shade)
+        c.put(c.mask(lambda p: p.line([(x - 7, 479), (x, 486), (x + 8, 479)], 2)), (234, 209, 175))
+
+    for x, colour in ((1017, (162, 105, 103)), (1042, (115, 125, 165)), (1067, (174, 139, 82))):
+        c.put(c.mask(box(x, 437, x + 20, 448)), colour)
+        c.put(c.mask(box(x, 438, x + 20, 440)), brass)
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -314,3 +377,12 @@ TARGETS: Dict[str, dict] = {
     "art_costume_trunk": _publisher("art_costume_trunk", "Costume Trunk", STILL, TRUNK_FRAME, lambda anim, i, n: _draw_trunk(), {"foot": (80.0, 96.0)},
                                     "Scenery", SCENERY),
 }
+
+TARGETS.update(targets(
+    {
+        "art_amphi_pit_walkway": Piece((1288, 864, 1704, 964), _pit_walkway),
+        "art_amphi_east_aisle": Piece((2184, 612, 2616, 964), _east_aisle),
+        "art_backstage_costume_rig": Piece((904, 428, 1208, 580), _backstage_costume_rig),
+    },
+    {},
+))

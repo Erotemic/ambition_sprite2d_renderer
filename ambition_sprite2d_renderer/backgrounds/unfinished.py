@@ -54,8 +54,8 @@ VOID = {
     "grid": (70, 80, 120),
     "star": (200, 204, 220),
     "spiral": (150, 140, 180),
-    "slab": (110, 110, 116),
-    "slab_light": (150, 150, 156),
+    "slab": (44, 47, 65),
+    "slab_light": (72, 78, 102),
     "wire": (110, 130, 180),
     "haze": (40, 42, 64),
 }
@@ -272,16 +272,23 @@ def unfinished_void(layer_key: str, art: Art) -> np.ndarray:
         _wire(art, layer, domes, p["wire"], 0.55)
         return layer
     if layer_key == "near_background":
-        # Slabs of concrete in the air, waiting to be placed.
+        # Tilt the distant blocks so their edges differ from the walkable decks.
         rng = art.rand("void slabs")
         image, pen = art.drawing()
+        faces, face_pen = art.drawing()
         for _ in range(9):
             u, v = rng.random(), rng.uniform(0.25, 0.8)
             w, h = rng.uniform(0.03, 0.06), rng.uniform(0.010, 0.018)
-            pen.rect(u - w, v - h, u + w, v + h)
+            tilt = rng.choice((-1, 1)) * h
+            left = (u - w, v - h - tilt)
+            ridge = (u + w * 0.36, v - h)
+            right = (u + w, v + tilt * 0.65)
+            pen.poly([left, ridge, right, (u + w * 0.77, v + h + tilt),
+                      (u - w * 0.65, v + h - tilt * 0.45)])
+            face_pen.poly([left, ridge, right, (u - w * 0.25, v)])
         body = art.mask_of(image)
         layer = solid(art, body, p["slab_light"], p["slab"], 0.2, 0.9, "slabs", 0.08)
-        art.shade(layer, art.rim(body, 0.0, 0.004, 0.4) * body, 0.4)
+        art.shade(layer, body * (1.0 - art.mask_of(faces)), 0.23)
         haze(art, layer, p["haze"], 0.35, None)
         return layer
     layer = art.blank()

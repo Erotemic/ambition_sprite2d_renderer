@@ -2,10 +2,8 @@
 (`castle_godwin_workshop`, the Evil dimension): where the castle's failed
 prototypes come from.
 
-Drawn in room coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/castle_kitchens/make_specs.py`
-(`workshop`): the floor (y 512), the ceiling (to y 48), the way west into
-the tower's foot at the floor.
+The room uses the dimensions in the map generator
+`castle_kitchens/make_specs.py`.
 
 - `workshop_room`: a stone vault; the open arch west into the tower, its
   iron door folded back; the tool wall, one outline empty (the big
@@ -26,7 +24,7 @@ from typing import Dict
 import numpy as np
 
 from ._district_props import Piece, targets
-from ._town_kit import box, mix, scale
+from ._town_kit import box, scale
 from . import castle_godwin as CG
 from .eureka_props import ashlar
 
@@ -42,6 +40,8 @@ COPPER = (190, 104, 60)
 COPPER_LIGHT = (232, 150, 96)
 BLUEPRINT = (40, 70, 130)
 CHALK = (220, 230, 245)
+DECK = (84, 82, 85)
+DECK_EDGE = (184, 147, 91)
 
 
 def bench(c, x0, x1, g):
@@ -50,9 +50,19 @@ def bench(c, x0, x1, g):
     c.put(c.mask(box(x0 + 6, g - 12, x1 - 6, g - 9)), WOOD_DARK)
 
 
+def service_deck(c, x0, x1, y, brackets):
+    for x in brackets:
+        c.put(c.mask(lambda p: p.poly([(x - 12, y + 12), (x + 18, y + 12), (x - 6, y + 39), (x - 12, y + 39)])), IRON)
+        c.put(c.mask(box(x - 12, y + 17, x - 8, y + 39)), DECK)
+        c.put(c.mask(lambda p: p.ellipse(x - 10, y + 35, 1.4)), STEEL)
+    c.put(c.mask(box(x0, y, x1, y + 16)), IRON)
+    c.put(c.mask(box(x0 + 2, y + 6, x1 - 2, y + 12)), DECK)
+    c.put(c.mask(box(x0, y, x1, y + 4)), DECK_EDGE)
+    c.put(c.mask(lambda p: [p.ellipse(x, y + 9, 1.25) for x in range(x0 + 9, x1 - 3, 22)]), STEEL)
+
+
 def room(c, k):
     g = FLOOR
-    rng = c.rand("workshop")
     ashlar(c, 16, CEILING, W - 16, g, STONE, course=20, block=40, tag="workshop", vary=0.06)
     c.tone(c.mask(box(16, CEILING, W - 16, g)) * np.clip((200 - c.y) / 150, 0, 1), -0.35)
     for x in range(16, W, 400):
@@ -127,6 +137,17 @@ def room(c, k):
     c.put(c.mask(lambda p: (p.rect(px - 8, g - 40, px + 8, g), p.rect(px - 12, g - 44, px + 12, g - 40))), IRON)
     c.put(c.mask(lambda p: p.ellipse(px, g - 46, 7, 4)), RED)
     c.put(c.mask(lambda p: p.poly([(px - 14, g - 44), (px + 14, g - 44), (px + 10, g - 62), (px - 10, g - 62)])), (200, 220, 240), 0.3)
+
+    c.put(c.mask(box(918, CEILING, 940, 196)), IRON)
+    c.put(c.mask(box(922, CEILING, 929, 196)), DECK)
+    c.put(c.mask(lambda p: (p.ellipse(929, 202, 14), p.line([(929, 214), (929, 276)], 2))), IRON)
+    c.put(c.mask(lambda p: (p.ring(929, 278, 5, 2), p.line([(929, 282), (925, 291), (929, 296), (936, 290)], 3))), DECK_EDGE)
+    service_deck(c, 416, 896, 336, (440, 642, 866))
+    service_deck(c, 976, 1104, 336, (994, 1078))
+    c.put(c.mask(box(998, 330, 1078, 336)), WOOD_DARK)
+    c.put(c.mask(box(998, 330, 1078, 332)), WOOD)
+    service_deck(c, 1056, 1136, 400, (1110,))
+    service_deck(c, 1136, 1200, 464, (1160,))
 
 
 PIECES: Dict[str, Piece] = {

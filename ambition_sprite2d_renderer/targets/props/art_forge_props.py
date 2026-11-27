@@ -31,6 +31,8 @@ import random
 from typing import Dict, List, Tuple
 
 from ..characters import _art_cast_kit as K
+from ._district_props import Piece, targets
+from ._town_kit import box
 from .art_props import _publisher
 
 STILL: List[Tuple[str, int, int]] = [("idle", 1, 1000)]
@@ -467,6 +469,69 @@ def _draw_crane(anim: str, i: int, n: int):
     return f.finish(outline=OUTLINE, width=1.6)
 
 
+def _firing_racks(c, _kit):
+    beam, light, shadow = (91, 68, 70), (152, 101, 73), (58, 44, 51)
+    for x in (1166, 1965):
+        c.put(c.mask(box(x, 696, x + 8, 960)), beam)
+        c.put(c.mask(box(x + 1, 704, x + 3, 949)), light)
+        c.put(c.mask(box(x - 6, 948, x + 14, 960)), shadow)
+    c.put(c.mask(box(1152, 688, 1984, 704)), beam)
+    c.put(c.mask(box(1152, 689, 1984, 692)), light)
+    c.put(c.mask(box(1152, 700, 1984, 704)), shadow)
+
+    for left, top, right in (
+        (1152, 896, 1280), (1312, 832, 1456), (1488, 800, 1664),
+        (1664, 848, 1824), (1856, 896, 1984),
+    ):
+        for x in (left + 14, right - 14):
+            c.put(c.mask(box(x - 1, 702, x + 2, top + 3)), light)
+            c.put(c.mask(lambda p: p.ring(x, 700, 5, 2)), BRASS_DARK[:3])
+            c.put(c.mask(lambda p: p.ring(x, top - 5, 5, 2)), BRASS_DARK[:3])
+        c.put(c.mask(box(left, top + 1, right, top + 16)), shadow)
+        c.put(c.mask(box(left + 2, top + 3, right - 2, top + 10)), COPPER_DARK[:3])
+        for x in range(left + 10, right - 5, 20):
+            c.put(c.mask(lambda p: p.ellipse(x, top + 7, 1.5)), BRASS[:3])
+
+    for x, y in ((1380, 849), (1562, 817), (1748, 865)):
+        c.put(c.mask(lambda p: p.poly([
+            (x - 10, y), (x + 10, y), (x + 14, y + 9),
+            (x + 9, y + 22), (x - 9, y + 22), (x - 14, y + 9),
+        ])), CLAY_SHADE[:3])
+        c.put(c.mask(box(x - 10, y + 4, x + 10, y + 7)), CLAY_LIGHT[:3])
+
+
+def _loom_drying_rack(c, _kit):
+    wood, shade, edge = (129, 82, 59), (82, 54, 51), (204, 136, 81)
+    for x, top in ((708, 356), (1104, 452), (1240, 480), (1392, 480), (1500, 528)):
+        c.put(c.mask(box(x, top + 5, x + 7, 576)), shade)
+        c.put(c.mask(box(x + 1, top + 8, x + 3, 570)), wood)
+        c.put(c.mask(box(x - 3, 568, x + 10, 576)), wood)
+
+    deck = [
+        (676, 352), (688, 352), (714, 356), (1184, 471),
+        (1214, 478), (1232, 480), (1248, 480),
+    ]
+    bottom = [(x, y + 10) for x, y in reversed(deck)]
+    c.put(c.mask(lambda p: p.poly(deck + bottom)), wood)
+    c.put(c.mask(lambda p: p.line([(x, y + 2) for x, y in deck], 2)), edge)
+    c.put(c.mask(box(1232, 483, 1440, 490)), wood)
+    c.put(c.mask(box(1440, 530, 1536, 540)), shade)
+    c.put(c.mask(box(1440, 532, 1536, 535)), edge)
+
+    for x, y, cloth, trim in (
+        (766, 374, (119, 59, 98), (223, 139, 123)),
+        (1048, 443, (49, 110, 100), (118, 189, 157)),
+    ):
+        c.put(c.mask(lambda p: p.poly([
+            (x, y), (x + 59, y + 15), (x + 59, y + 60),
+            (x + 34, y + 67), (x, y + 55),
+        ])), cloth)
+        for dy in (23, 31, 46):
+            c.put(c.mask(lambda p: p.line([(x + 3, y + dy), (x + 56, y + dy + 15)], 2)), trim)
+        for dx, dy in ((10, 54), (22, 58), (34, 63), (46, 59)):
+            c.put(c.mask(box(x + dx, y + dy, x + dx + 2, y + dy + 7)), trim)
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -481,3 +546,11 @@ TARGETS: Dict[str, dict] = {
                                  ["prop", "scenery", "art"]),
     "art_crane": _publisher("art_crane", "Crane", LOOP, CRANE_FRAME, _draw_crane, {"foot": (96.0, 320.0)}, "Scenery", ["prop", "scenery", "art"]),
 }
+
+TARGETS.update(targets(
+    {
+        "art_forge_firing_racks": Piece((1144, 680, 1992, 964), _firing_racks),
+        "art_loom_drying_rack": Piece((668, 344, 1544, 580), _loom_drying_rack),
+    },
+    {},
+))

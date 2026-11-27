@@ -457,28 +457,30 @@ def _lamp_level(lamp_index: int, frame_index: int, nframes: int, idle: bool) -> 
     return 1.0 if locked else 0.22
 
 
-def _draw_clamp_lamp(layer: Image.Image, center: Point, outward_deg: float, level: float) -> None:
+def _draw_clamp_lamp(
+    layer: Image.Image, center: Point, outward_deg: float, level: float, *, supersample: int = SUPER,
+) -> None:
     """A clamp's lamp: a small solid triangle pointing away from the centre.
     The three clamps stand at the corners of a triangle, so the gate wears the
     Δ of its keystone three times."""
     glow = Image.new("RGBA", layer.size, (0, 0, 0, 0))
     gd = blending_draw(glow)
-    gr = (4.5 + 5.5 * level) * SUPER
+    gr = (4.5 + 5.5 * level) * supersample
     gd.ellipse(
         (center[0] - gr, center[1] - gr, center[0] + gr, center[1] + gr),
         fill=_rgba("#45d6ff", int(150 * level)),
     )
-    glow = glow.filter(ImageFilter.GaussianBlur(radius=3.0 * SUPER))
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=3.0 * supersample))
     layer.alpha_composite(glow)
     draw = blending_draw(layer)
-    r = 3.6 * SUPER
+    r = 3.6 * supersample
     dim = ImageColor.getrgb("#1f5a6a")
     lit = ImageColor.getrgb("#e6fdff")
     mix = max(0.0, min(1.0, level))
     core = tuple(int(_lerp(a, b, mix)) for a, b in zip(dim, lit)) + (255,)
     corners = [_polar(center, r, outward_deg + k * 120.0) for k in range(3)]
     draw.polygon(corners, fill=core, outline=_rgba(OUTLINE))
-    draw.line(corners + [corners[0]], fill=_rgba(OUTLINE), width=3, joint="curve")
+    draw.line(corners + [corners[0]], fill=_rgba(OUTLINE), width=round(3 * supersample / SUPER), joint="curve")
 
 
 def render_ring_frame(animation: str, frame_index: int, nframes: int) -> Image.Image:

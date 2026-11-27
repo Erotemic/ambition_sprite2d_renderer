@@ -18,8 +18,8 @@ Drawn in room coordinates (`_district_props`) on the numbers of
   pool at the bottom.
 - `magical_void_heart` (floor y 576): `heart_black_star`, the first star
   that went out, as big as the room, asleep.
-- The rift's pool and the heart's wall: `rift_pool`, the void standing in a
-  cut in the rift's floor (x 1880..2160), black, its rings white;
+- The rift's pool and the heart's wall: `rift_pool`, the void below the
+  stepping shards (x 1872..2160, below y 592);
   `rift_shard`, the look of the shards across it (each 60 by 16: they crumble
   under a body and come back); `void_crack_wall`, the look of the heart's
   west wall (32 by 96), black, cracked with white.
@@ -154,13 +154,16 @@ def exhibits(c, k):
     c.put(c.mask(lambda q: q.ring(x, top - 52, 40, 2.4)), EDGE)
     c.put(c.mask(lambda q: [q.line([(x, top - 52), (x + 38 * math.cos(a), top - 52 + 38 * math.sin(a))], 1.8) for a in (0.3, 1.35, 2.4, 3.45, 4.5, 5.55)]), EDGE)
     c.put(c.mask(lambda q: q.ring(x, top - 52, 6, 1.8)), EDGE)
-    # 3. A crescent, from the Star Bakery.
+    # Draw the crescent with two arcs that meet at the tips.
     x = 1440
     plinth(c, x)
-    c.put(c.mask(lambda q: q.ellipse(x, top - 50, 36)), EDGE)
-    c.put(c.mask(lambda q: q.ellipse(x, top - 50, 33)), VOID)
-    c.put(c.mask(lambda q: q.ellipse(x + 18, top - 58, 32)), VOID)
-    c.put(c.mask(lambda q: q.ring(x + 18, top - 58, 32, 0.01)), VOID)
+    cy = top - 50
+    outer_angles = [math.pi * (1 + i / 6) / 3 for i in range(25)]
+    inner_angles = [math.pi * (1 / 2 + i / 16) for i in range(17)]
+    outer_arc = [(x + 36 * math.cos(a), cy + 36 * math.sin(a)) for a in outer_angles]
+    tip_height = 36 * math.sin(math.pi / 3)
+    inner_arc = [(x + 18 + 18 * math.cos(a), cy - tip_height * math.sin(a)) for a in inner_angles]
+    c.put(c.mask(lambda q: q.line(outer_arc + inner_arc, 2.4)), EDGE)
     # 4. A wand, bent (Wanda never got it back).
     x = 1640
     plinth(c, x)
@@ -175,6 +178,11 @@ def exhibits(c, k):
     for a, b in ((520, 760), (760, 1040), (1340, 1540), (1540, 1720)):
         pts = [(a + (b - a) * t / 12, FLOOR - 48 + 16 * math.sin(math.pi * t / 12)) for t in range(13)]
         c.put(c.mask(lambda q: q.line(pts, 1.8)), EDGE, 0.8)
+    # Put a low stone border on each side of the descent.
+    left, right = GALLERY_HOLE
+    for a, b in ((left - 26, left), (right, right + 26)):
+        c.put(c.mask(box(a, FLOOR - 9, b, FLOOR)), VOID)
+        c.put(c.mask(lambda p: p.line([(a, FLOOR - 9), (b, FLOOR - 9), (b, FLOOR)], 2)), EDGE)
 
 
 def cascade(c, k):
@@ -222,6 +230,29 @@ def black_star(c, k):
 
 def cradles(c, k):
     for i, x in enumerate((140, 320, 500)):
+        # A cloth canopy keeps light off the cradle.
+        rim_y = FLOOR - 102
+        height = (60, 72, 54)[i]
+        hood = [
+            (x + 59 * math.cos(math.pi * t / 24), rim_y - height * math.sin(math.pi * t / 24))
+            for t in range(25)
+        ]
+        back = hood + [(x - 59, FLOOR - 40), (x + 59, FLOOR - 40)]
+        c.put(c.mask(lambda p: p.poly(back)), VOID, 0.9)
+        crown = len(hood) // 2
+        for side, edge in ((-1, hood[-2:crown - 1:-1]), (1, hood[1:crown + 1])):
+            drape = [
+                (x, rim_y - height),
+                (x + side * 36, rim_y - height * 0.7),
+                (x + side * 50, rim_y - 14),
+                (x + side * 43, rim_y + 22),
+                (x + side * 59, FLOOR - 40),
+                (x + side * 59, rim_y),
+                *edge,
+            ]
+            c.put(c.mask(lambda p: p.poly(drape)), (29, 27, 36))
+            c.put(c.mask(lambda p: p.line(drape[:5], 1.5)), GREY, 0.68)
+        c.put(c.mask(lambda p: p.line(hood, 2.4)), GREY, 0.75)
         # A crescent rocking on the floor, in white line: the cradle.
         arc = [(x + 60 * math.cos(math.pi * t / 16), FLOOR - 40 + 34 * math.sin(math.pi * t / 16)) for t in range(17)]
         c.put(c.mask(lambda p: p.line(arc, 2.6)), EDGE)
@@ -240,13 +271,19 @@ def cradles(c, k):
         c.put(c.mask(lambda p: p.line(pts + [pts[0]], 1.6)), EDGE)
 
 
-POOL = (1880, 2160)
+POOL = (1872, 2160)
 
 
 def pool(c, k):
     x0, x1 = POOL
-    c.put(c.mask(box(x0, FLOOR, x1, FLOOR + 64)), VOID)
-    c.put(c.mask(lambda p: (p.line([(x0, FLOOR), (x0, FLOOR + 64)], 2), p.line([(x1, FLOOR), (x1, FLOOR + 64)], 2))), EDGE)
+    surface = FLOOR + 16
+    bed = FLOOR + 64
+    c.put(c.mask(box(x0, surface - 2, x1, bed)), VOID)
+    west_bank = [(x0 + 16, FLOOR), (x0 + 16, surface), (x0, surface), (x0, bed)]
+    c.put(c.mask(lambda p: (
+        p.line(west_bank, 2),
+        p.line([(x1, FLOOR), (x1, bed)], 2),
+    )), EDGE)
     for i, y in enumerate((FLOOR + 26, FLOOR + 40, FLOOR + 54)):
         pts = [(x0 + 10 + t * (x1 - x0 - 20) / 24, y + 3 * math.sin(t * 0.9 + i)) for t in range(25)]
         dashed(c, pts, 1.4, 18 + i * 6, 10, EDGE, 0.8 - i * 0.2)
@@ -254,6 +291,7 @@ def pool(c, k):
 
 def shard(c, k):
     void_poly(c, [(0, 0), (60, 0), (56, 16), (6, 14)], 1.6)
+    c.put(c.mask(box(1, 0, 59, 1.8)), EDGE)
     c.put(c.mask(lambda p: p.line([(18, 2), (24, 8), (20, 13)], 1.0)), EDGE, 0.8)
     c.put(c.mask(lambda p: p.line([(42, 1), (38, 9)], 1.0)), EDGE, 0.6)
 

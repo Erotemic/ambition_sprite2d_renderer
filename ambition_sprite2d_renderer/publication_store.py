@@ -127,21 +127,19 @@ class Store:
                 manifest["roots"] = sorted({relative(root) for root in roots})
             key = identity(manifest)
             destination = bundles / key
-            # The key names the members' digests, so an accepted bundle with
-            # this key holds these bytes; its members only have to be there.
-            # Reading them again is `audit`'s work.
-            if destination.exists():
-                if self.integrity(key, deep=False):
-                    raise ValueError(f"Incomplete immutable bundle: {key}")
-                return key
             write_json(staging / "manifest.json", manifest)
             try:
                 staging.rename(destination)
             except OSError as error:
                 if error.errno not in (errno.EEXIST, errno.ENOTEMPTY):
                     raise
-                if self.integrity(key, deep=False):
-                    raise ValueError(f"Incomplete immutable bundle: {key}")
+                # The staged bytes match this bundle's recorded digests.
+                # Replace each damaged member atomically at its existing path.
+                for defect in self.integrity(key):
+                    member = rows[defect["path"]]["path"]
+                    target = destination / member
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    (staging / member).replace(target)
         return key
 
     def integrity(self, key: str, *, deep: bool = True, hashes=None) -> list[dict]:

@@ -16,12 +16,12 @@ them together.
   porch roofs are at y 496 over a boardwalk at y 608.
 - The Wet Whistle: its back bar, the balcony (y 352) and the stair landing
   (y 432), the piano on the stage.
-- The livery: the stalls, the hayloft (y 384) and its ladder rung (y 448).
+- The livery: the stalls, the hayloft (y 384), and the crate and bale steps (y 448).
 - The refinery: the tank farm and its pipe rack (y 576), the cracking tower
   and its platforms (y 448, 320).
 - The Ore Corral: the catwalks over the docks (y 384), the ore chutes and
   the fence along the back of the yard.
-- The mesa top: the lookout's shelter and its bench.
+- The mesa top: the survey decks and the lookout shelter.
 
 Animations: ``idle``, 1 frame each.
 """
@@ -387,9 +387,9 @@ def water_tower(c, k):
     post(c, 1080, 432, g, 6)
     post(c, 1560, 432, g, 6)
     board = c.mask(box(1056, 432, 1584, 548))
-    c.put(board, (200, 178, 136))
+    c.put(board, (91, 68, 50))
     c.tone(board * (c.noise("ordinance", 20, 4, 3) - 0.5), 0.2)
-    c.put(c.mask(lambda p: (p.rect(1056, 432, 1584, 435), p.rect(1056, 545, 1584, 548), p.rect(1056, 432, 1059, 548), p.rect(1581, 432, 1584, 548))), PLANK_DARK)
+    c.put(c.mask(lambda p: (p.rect(1056, 432, 1584, 435), p.rect(1056, 545, 1584, 548), p.rect(1056, 432, 1059, 548), p.rect(1581, 432, 1584, 548))), PLANK)
     # A wanted bill nailed on the board's corner, curling.
     c.put(c.mask(lambda p: p.poly([(1592, 470), (1626, 468), (1628, 512), (1594, 514)])), (232, 220, 186))
     c.put(c.mask(lambda p: p.ellipse(1610, 488, 9, 11)), (90, 70, 56), 0.8)
@@ -528,8 +528,7 @@ def saloon_room(c, k):
 
 
 def livery_room(c, k):
-    """The livery inside: the stalls, the hayloft (y 384, x 560..1104) on its
-    posts, the ladder rung (y 448, x 464..560)."""
+    """Draw the stalls, hayloft, and hay steps in Bell's Livery."""
     x0, x1, top, g = 16, 1104, 32, 512
     k.ground = g
     planks(c, None, x0, top, x1, g, (112, 60, 44), step=7.0, vertical=True, tag="barnwall")
@@ -538,6 +537,8 @@ def livery_room(c, k):
     c.put(c.mask(lambda p: [p.rect(x, top, x + 10, top + 14) for x in np.arange(x0, x1, 160)]), TIMBER)
     c.put(c.mask(lambda p: p.rect(x0, top + 14, x1, top + 20)), TIMBER)
     c.light(c.mask(lambda p: p.ellipse(360, 120, 140, 90), blur=24), GLOW, 0.2)
+    k.window(958, 204, 136, 92, "rect", lit=0.45, tag="loft_window")
+    c.light(c.mask(lambda p: p.ellipse(948, 348, 140, 60), blur=20), GLOW, 0.16)
     # The stalls: half walls with name boards.
     for i, x in enumerate((180, 300, 420)):
         planks(c, None, x, 420, x + 100, g, PLANK, step=6.0, tag=("stall", i))
@@ -549,21 +550,26 @@ def livery_room(c, k):
     rng = c.rand("hay")
     c.put(c.mask(lambda p: [p.ellipse(rng.uniform(40, 1090), g - rng.uniform(0, 4), rng.uniform(6, 16), 3) for _ in range(60)]), HAY, 0.8)
     # The hayloft: its floor on posts, bales on it.
-    for x in (566, 760, 960, 1098):
+    for x in (566, 760, 960, 1034):
         post(c, x, 384, g, 7)
-    planks(c, None, 560, 384, 1104, 398, PLANK, step=4.0, tag="loft")
-    deck_edge(c, 560, 1104, 384, PLANK_LIGHT)
-    for bx in (640, 700, 900, 960, 1020):
+    planks(c, None, 560, 384, 1040, 398, PLANK, step=4.0, tag="loft")
+    deck_edge(c, 560, 1040, 384, PLANK_LIGHT)
+    for bx in (640, 700, 900, 960):
         bale = c.mask(box(bx, 352, bx + 56, 384))
         c.put(bale, HAY)
         c.put(c.mask(lambda p: [p.rect(bx + 14, 352, bx + 16, 384), p.rect(bx + 40, 352, bx + 42, 384)]), (150, 110, 60))
         c.tone(bale * (c.noise(("bale", bx), 10, 4, 2) - 0.5), 0.25)
-    for bx in (960, 1016):
+    for bx in (900, 960):
         c.put(c.mask(box(bx, 320, bx + 56, 352)), mix(HAY, (255, 255, 255), 0.1))
-    # The ladder and its rung.
-    c.put(c.mask(lambda p: (p.line([(470, g), (520, 384)], 3), p.line([(500, g), (550, 384)], 3),
-                            [p.line([(470 + t * 50, g - t * 128), (500 + t * 50, g - t * 128)], 2) for t in np.linspace(0.1, 0.9, 6)])), TIMBER)
-    deck_edge(c, 464, 560, 448, PLANK_LIGHT)
+    # The west crate and east bales give access to the loft.
+    crate(c, 464, 448, 512, g, PLANK)
+    deck_edge(c, 464, 512, 448, PLANK_LIGHT)
+    for y in (448, 480):
+        bale = c.mask(box(1008, y, 1104, y + 31))
+        c.put(bale, HAY)
+        c.tone(bale * (c.noise(("east bale", y), 10, 4, 2) - 0.5), 0.25)
+        c.put(c.mask(lambda p: [p.rect(x, y, x + 3, y + 31) for x in (1029, 1081)]), (150, 110, 60))
+    deck_edge(c, 1008, 1104, 448, HAY)
 
 
 # ---------------------------------------------------------------------------
@@ -692,14 +698,26 @@ def corral_fence(c, k):
 
 
 def lookout_post(c, k):
-    """The mesa top (y 384): a lean-to shelter with a bench, a spyglass on a
-    tripod, a flag on a pole."""
+    """Survey decks on the slope and a shelter with a bench on the summit."""
+    for x0, x1, deck in ((272, 400, 448), (448, 592, 384), (640, 816, 320)):
+        for x in (x0 + 12, x1 - 12):
+            ground = 512 - 0.4 * min(max(x - 480, 0), 320)
+            post(c, x, deck + 5, ground, 7, TIMBER)
+        left_ground = 512 - 0.4 * min(max(x0 + 12 - 480, 0), 320)
+        c.put(c.mask(lambda p: p.line([(x0 + 12, left_ground - 8), (x1 - 12, deck + 9)], 4)), PLANK_DARK)
+        c.put(c.mask(box(x0, deck + 4, x1, deck + 11)), PLANK_DARK)
+        deck_edge(c, x0, x1, deck, PLANK_LIGHT)
+    for x in (668, 720, 772):
+        post(c, x, 290, 320, 5, TIMBER)
+    rope_line(c, [(668, 294), (720, 294), (772, 294)], 3, PLANK_DARK)
+
     g = 384
     k.ground = g
-    for x in (950, 1100):
-        post(c, x, 280, g, 7)
-    c.put(c.mask(lambda p: p.line([(930, 286), (1120, 270)], 8)), TIMBER)
-    tin_roof(c, 924, 262, 1126, 280, "lookout_roof")
+    for x in (908, 1096):
+        post(c, x, 279, g, 7)
+    c.put(c.mask(box(896, 285, 1104, 291)), TIMBER)
+    tin_roof(c, 880, 272, 1120, 286, "lookout_roof")
+    c.put(c.mask(box(880, 272, 1120, 273.2)), STEEL_LIGHT)
     # The bench.
     c.put(c.mask(box(960, g - 30, 1090, g - 24)), PLANK_LIGHT)
     for x in (968, 1080):
@@ -742,7 +760,7 @@ PIECES: Dict[str, Piece] = {
     "frontier_corral_east": Piece((1200, 300, 1584, 576), corral_east),
     "frontier_corral_fence": Piece((280, 280, 1320, 576), corral_fence),
     # frontier_saddle_lookout
-    "frontier_lookout_post": Piece((900, 180, 1560, 384), lookout_post),
+    "frontier_lookout_post": Piece((256, 180, 1560, 512), lookout_post),
 }
 
 TARGETS = targets(PIECES, PAL)

@@ -25,6 +25,8 @@ import math
 from typing import Dict, List, Tuple
 
 from ..characters import _art_cast_kit as K
+from ._district_props import Piece, targets
+from ._town_kit import box
 from .art_props import _publisher
 
 Point = Tuple[float, float]
@@ -354,6 +356,61 @@ def _draw_metronome(i: int, n: int):
     return f.finish(width=1.6, glow_blur=2.0)
 
 
+TUNING_LIFT_FRAME = (256, 80)
+TUNING_LIFT_TOP = 20.0
+
+
+def _draw_tuning_lift():
+    f = K.Frame(TUNING_LIFT_FRAME)
+    top = TUNING_LIFT_TOP
+    f.poly([(16, top), (240, top), (240, 44), (224, 54), (32, 54), (16, 44)], EBONY)
+    f.poly([(16, top), (240, top), (240, 28), (16, 28)], BRASS_LIGHT, body=False)
+    f.poly([(25, 46), (231, 46), (224, 50), (32, 50)], BRASS_DARK, body=False)
+    for x in range(32, 224, 16):
+        f.poly([(x, 31), (x + 12, 31), (x + 12, 44), (x, 44)], IVORY, body=False)
+    for x in (25, 231):
+        f.ellipse(x, 36, 4, 4, SOUND, body=False)
+    return f.finish(width=1.6)
+
+
+def _tuning_lift_rails(c, _kit):
+    for x in (2058, 2141):
+        c.put(c.mask(box(x, 416, x + 9, 960)), EBONY_LIGHT[:3])
+        c.put(c.mask(box(x + 2, 428, x + 4, 952)), BRASS_DARK[:3])
+        c.put(c.mask(box(x - 6, 946, x + 15, 960)), EBONY[:3])
+        c.put(c.mask(box(x - 6, 946, x + 15, 949)), BRASS[:3])
+        c.put(c.mask(box(x - 3, 412, x + 12, 441)), BRASS[:3])
+        c.put(c.mask(box(x - 1, 413, x + 3, 438)), BRASS_LIGHT[:3])
+    for y in (480, 608, 736, 928):
+        c.put(c.mask(box(2052, y - 5, 2156, y + 4)), EBONY_LIGHT[:3])
+        for x in (2062, 2145):
+            c.put(c.mask(lambda p: p.ellipse(x, y - 1, 3)), SOUND[:3])
+
+
+def _concert_organ_case(c, _kit):
+    case, inset, trim = (48, 41, 67), (27, 31, 55), (153, 109, 64)
+    c.put(c.mask(box(1040, 32, 1248, 384)), case)
+    c.put(c.mask(box(1050, 49, 1238, 370)), inset)
+    for x in (1044, 1243):
+        c.put(c.mask(box(x, 42, x + 2, 376)), trim)
+    for y in (45, 262, 307, 373):
+        c.put(c.mask(box(1042, y, 1246, y + 2)), trim)
+
+    for x, top in ((1080, 71), (1144, 106), (1208, 141)):
+        c.put(c.mask(box(x - 25, 56, x + 25, 257)), case)
+        c.put(c.mask(box(x - 20, 59, x + 20, 252)), inset)
+        c.put(c.mask(lambda p: p.arch(x - 13, top, x + 13, 245)), BRASS_DARK[:3])
+        c.put(c.mask(box(x - 9, top + 14, x + 9, 242)), BRASS[:3])
+        c.put(c.mask(box(x - 6, top + 16, x - 3, 241)), BRASS_LIGHT[:3])
+        c.put(c.mask(box(x - 8, 220, x + 8, 229)), inset)
+        c.put(c.mask(box(x - 12, 245, x + 12, 250)), trim)
+
+        for offset in (-9, 0, 9):
+            c.put(c.mask(box(x + offset - 2, 317, x + offset + 2, 384)), trim)
+        c.put(c.mask(box(x - 18, 363, x + 18, 373)), case)
+        c.put(c.mask(box(x - 18, 363, x + 18, 365)), BRASS[:3])
+
+
 # ---------------------------------------------------------------------------
 # Publication.
 # ---------------------------------------------------------------------------
@@ -368,3 +425,15 @@ for _syllable in CHORD_NOTES:
         (lambda s: lambda anim, i, n: _draw_bar(s))(_syllable), {"foot": (48.0, 384.0)}, "Door", ["prop", "door", "lock", "art", "music"], forward=(0.0, -1.0))
 TARGETS["art_grand_piano"] = _publisher("art_grand_piano", "Grand Piano", STILL, PIANO_FRAME, lambda anim, i, n: _draw_piano(), {"foot": (192.0, 224.0)}, "Scenery", SCENERY)
 TARGETS["art_metronome"] = _publisher("art_metronome", "Metronome", METRONOME_ROWS, METRONOME_FRAME, lambda anim, i, n: _draw_metronome(i, n), {"foot": (64.0, 256.0)}, "Scenery", SCENERY)
+TARGETS["art_tuning_lift"] = _publisher(
+    "art_tuning_lift", "Tuning Lift", STILL, TUNING_LIFT_FRAME,
+    lambda anim, i, n: _draw_tuning_lift(), {"top": (128.0, TUNING_LIFT_TOP)},
+    "Scenery", ["prop", "platform", "art", "music"],
+)
+TARGETS.update(targets(
+    {
+        "art_tuning_lift_rails": Piece((2044, 404, 2164, 964), _tuning_lift_rails),
+        "art_concert_organ_case": Piece((1032, 24, 1256, 388), _concert_organ_case),
+    },
+    {},
+))

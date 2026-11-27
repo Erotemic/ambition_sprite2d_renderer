@@ -1,4 +1,4 @@
-"""The clouds that lead to the star rack in Starlight Heights."""
+"""Cloud walks and descent markers in Starlight Heights."""
 
 import math
 
@@ -15,6 +15,11 @@ CLOUDS = (
     (1984, 576, 192), (2160, 512, 160), (2336, 448, 160), (2512, 384, 192),
     (2704, 336, 224),
     (2900, 384, 156), (2976, 448, 160), (3056, 512, 144), (3184, 576, 200),
+)
+
+WEST_CLOUDS = (
+    (624, 576, 192), (592, 512, 272), (816, 464, 192), (960, 416, 192),
+    (1136, 464, 200), (1312, 528, 208), (1504, 576, 240),
 )
 
 
@@ -67,4 +72,33 @@ def star_clouds(c, _kit):
     drying_rack(c)
 
 
-TARGETS = targets({"heights_star_clouds": Piece((1968, 232, 3400, 634), star_clouds)}, {})
+def west_clouds(c, _kit):
+    for index, (x, y, width) in enumerate(WEST_CLOUDS, start=len(CLOUDS)):
+        cloud(c, x, y, width, index)
+
+
+def descent_markers(c, _kit):
+    for x in (3488, 3680):
+        board = [(x - 72, 542), (x - 64, 534), (x + 64, 534), (x + 72, 542),
+                 (x + 72, 574), (x + 64, 582), (x - 64, 582), (x - 72, 574)]
+        c.put(c.mask(lambda p: p.poly(board)), (88, 60, 126))
+        c.put(c.mask(lambda p: p.line(board + board[:1], 2.6)), LAVENDER)
+        c.put(c.mask(lambda p: [p.ellipse(x + dx, 558, 2.8) for dx in (-62, 62)]), GOLD)
+        c.put(c.mask(lambda p: p.line([(x - 8, 620), (x, 628), (x + 8, 620)], 3)), SHADE)
+
+    x = 3488
+    star(c, x, 595, 7)
+    coil = [(x - 17, 616), (x + 16, 616), (x - 15, 611), (x + 15, 607), (x - 16, 604)]
+    c.put(c.mask(lambda p: p.line(coil, 3.2)), BRASS)
+
+    x = 3680
+    c.put(c.mask(lambda p: [p.ellipse(x + dx, 602, rx, ry) for dx, rx, ry in
+                            ((-13, 10, 6), (0, 12, 10), (13, 10, 6))]), SHADE)
+    c.put(c.mask(lambda p: p.line([(x - 14, 602), (x + 13, 602)], 2.5)), TOP)
+
+
+TARGETS = targets({
+    "heights_star_clouds": Piece((1968, 232, 3400, 634), star_clouds),
+    "heights_west_clouds": Piece((576, 412, 1760, 632), west_clouds),
+    "heights_descent_markers": Piece((3410, 530, 3760, 634), descent_markers),
+}, {})

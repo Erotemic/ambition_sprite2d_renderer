@@ -30,6 +30,7 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_back import (
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_front import author_front_rows
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crouch import reauthor_crouch, reauthor_landing
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_double_jump import author_double_jump
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_dash import author_dash
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_turn import author_turnaround
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_gait import author_gaits
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_ground import keep_over_ground, plant_on_ground
@@ -650,6 +651,7 @@ def build_doc() -> dict:
     reauthor_crouch(solved)
     reauthor_landing(solved)
     author_double_jump(solved)
+    author_dash(solved)
     author_turnaround(solved)
     author_gaits(solved)
     author_strikes(solved)
