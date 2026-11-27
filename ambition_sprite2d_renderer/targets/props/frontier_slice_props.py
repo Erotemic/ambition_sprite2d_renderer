@@ -1020,25 +1020,40 @@ def row_pump(c, k):
 
 
 def railhead_grade(c, k):
-    """The old tramway grade: its head (y 640, x 0..288), the deck down on
-    timber bents to the street at (2128, 1408); the water tower for the line
-    and its spout; the line's signal and rails east."""
+    """Draw the tramway, the signal landing and steps, and the water tower."""
     k.ground = LOW
-    x0, y0, x1, y1 = 288, HIGH, 2128, LOW
-    slope = (y1 - y0) / (x1 - x0)
-    planks(c, None, 0, HIGH, x0, HIGH + 16, PLANK, step=7.0, vertical=True, tag="grade_head")
-    deck_edge(c, 0, x0, HIGH, PLANK_LIGHT)
-    for x in (40, 160, 260):
+    grade_start, grade_end = 160, 2208
+    signal_x0, signal_x1, signal_y = 1360, 1472, 1120
+    planks(c, None, 0, HIGH, grade_start, HIGH + 16, PLANK, step=7.0, vertical=True, tag="grade_head")
+    deck_edge(c, 0, grade_start, HIGH, PLANK_LIGHT)
+    for x in (40, 126):
         post(c, x, HIGH + 16, LOW, 8, scale(TIMBER, 0.9))
-    for x in np.arange(x0 + 80, x1 - 100, 160):
-        y = y0 + (x - x0) * slope
-        post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
-        if LOW - y > 160:
-            x_brace(c, x - 10, x + 70, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
-    c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
-    c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
-    # Old tram rails along the grade.
-    c.put(c.mask(lambda p: p.line([(x0, y0 - 3), (x1, y1 - 3)], 1.6)), (120, 110, 100))
+    for x0, y0, x1, y1 in ((grade_start, HIGH, signal_x0, signal_y), (signal_x1, signal_y, grade_end, LOW)):
+        slope = (y1 - y0) / (x1 - x0)
+        for x in range(x0 + 72, x1 - 90, 160):
+            y = y0 + (x - x0) * slope
+            post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
+            if LOW - y > 160:
+                x_brace(c, x - 10, x + 66, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
+        c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
+        c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
+        c.put(c.mask(lambda p: p.line([(x0, y0 - 3), (x1, y1 - 3)], 1.6)), (120, 110, 100))
+    for x0, y in ((1376, 1152), (1440, 1216), (1504, 1280), (1568, 1344)):
+        x1 = x0 + 128
+        for x in (x0 + 12, x1 - 12):
+            post(c, x, y + 9, LOW, 7)
+        x_brace(c, x0 + 12, x1 - 12, y + 12, min(y + 57, LOW - 6), scale(TIMBER, 0.82), 2.4)
+        planks(c, k, x0, y, x1, y + 12, PLANK, tag=("railhead_step", y))
+        deck_edge(c, x0, x1, y, PLANK_LIGHT)
+    for x in (1368, 1464):
+        post(c, x, signal_y + 8, LOW, 9)
+    grating(c, signal_x0, signal_x1, signal_y, rail=False)
+    post(c, 1414, 1000, signal_y, 7, STEEL_DARK)
+    c.put(c.mask(lambda p: p.poly([(1415, 1016), (1451, 1000), (1460, 1011), (1420, 1030)])), RUST)
+    c.put(c.mask(lambda p: p.ellipse(1414, 1029, 6, 6)), (165, 111, 56))
+    for x in (298, 502):
+        post(c, x, 637, HIGH + (x - grade_start) * 0.4, 7)
+    planks(c, k, 285, 618, 515, 652, PLANK_DARK, tag="railhead_grade_notice")
     # The water tower by the line.
     tx0, tx1, ttop = 2180, 2340, 1060
     planks(c, None, tx0, ttop, tx1, ttop + 120, (110, 80, 56), step=8.0, vertical=True, tag="rh_tank")
@@ -1048,6 +1063,8 @@ def railhead_grade(c, k):
         post(c, x, ttop + 120, LOW, 8, TIMBER)
     x_brace(c, 2190, 2330, ttop + 130, LOW - 10, scale(TIMBER, 0.8), 3.0)
     c.put(c.mask(lambda p: p.line([(tx0, ttop + 100), (2140, ttop + 140), (2140, ttop + 180)], 4)), STEEL_DARK)
+    post(c, 2070, 1211, LOW, 7)
+    planks(c, k, 2056, 1195, 2344, 1226, PLANK_DARK, tag="railhead_dry_dock_notice")
     # The rails of the line east, on the street.
     c.put(c.mask(lambda p: [p.rect(x, LOW - 6, x + 16, LOW) for x in np.arange(1200, 2400, 24)]), (70, 56, 46))
     c.put(c.mask(box(1200, LOW - 8, 2400, LOW - 5)), (130, 126, 122))
