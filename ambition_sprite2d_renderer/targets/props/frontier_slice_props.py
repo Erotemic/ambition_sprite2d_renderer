@@ -342,9 +342,7 @@ def telegraph_front(c, k):
 
 
 def inn_room(c, k):
-    """The recovery room: striped paper, a row of iron cots with a bucket by
-    each (Alice's at x 700, Bob's at x 820), the desk (x 240..360), the stair
-    (y 448, x 980..1092) to the landing (y 384) and its numbered doors."""
+    """The recovery ward and its gallery with guest rooms."""
     g = 512
     k.ground = g
     wall = c.mask(box(16, 32, 1264, g))
@@ -364,20 +362,31 @@ def inn_room(c, k):
     c.put(c.mask(lambda p: p.ellipse(340, g - 70, 6, 5)), BRASS)
     c.put(c.mask(box(250, 220, 350, 300)), (70, 48, 34))
     c.put(c.mask(lambda p: [p.ellipse(266 + (i % 4) * 22, 240 + (i // 4) * 26, 3) for i in range(12)]), BRASS)
+    c.put(c.mask(box(300, 114, 820, 146)), TIMBER)
+    c.put(c.mask(box(576, 304, 896, 335)), (76, 58, 50))
+    crate(c, 368, 448, 448, g)
+    for x in (476, 970, 1120):
+        post(c, x, 394, g, 6, TIMBER)
+    for x in (616, 856):
+        c.put(c.mask(lambda p: p.poly([(x - 13, 397), (x + 9, 397), (x + 20, 472), (x - 8, 472)])), (102, 112, 124))
+        c.put(c.mask(lambda p: p.line([(x - 6, 397), (x + 3, 471)], 1.4)), (154, 163, 172))
     # The cots: iron frames, grey blankets, a bucket by each.
     for x in (560, 680, 800, 920):
         c.put(c.mask(box(x - 50, g - 34, x + 50, g - 24)), (190, 196, 204))
         c.put(c.mask(lambda p: (p.rect(x - 50, g - 50, x - 46, g), p.rect(x + 46, g - 40, x + 50, g), p.rect(x - 50, g - 24, x + 50, g - 21))), (60, 60, 64))
         c.put(c.mask(lambda p: p.ellipse(x - 34, g - 38, 12, 6)), (236, 232, 222))
         c.put(c.mask(lambda p: p.poly([(x + 54, g - 16), (x + 68, g - 16), (x + 66, g), (x + 56, g)])), (150, 150, 146))
-    # The stair and the landing, its rail and the numbered doors upstairs.
-    c.put(c.mask(box(980, 448, 1092, g)), (110, 76, 52))
-    deck_edge(c, 980, 1092, 448, (176, 130, 90))
-    c.put(c.mask(box(1092, 384, 1248, 394)), (110, 76, 52))
-    deck_edge(c, 1092, 1248, 384, (176, 130, 90))
-    for x in np.arange(1094, 1248, 14):
-        c.put(c.mask(box(x, 360, x + 2, 384)), (80, 54, 38))
-    c.put(c.mask(box(1092, 358, 1248, 362)), (80, 54, 38))
+    # The stair, the gallery rail, and the numbered doors upstairs.
+    boardwalk(c, 976, 1088, 448, g)
+    boardwalk(c, 464, 1264, 384, 397)
+    for x0, x1 in ((484, 946), (1090, 1250)):
+        c.put(c.mask(lambda p: [p.rect(x, 360, x + 2, 384) for x in np.arange(x0, x1 - 1, 14)]), TIMBER)
+        c.put(c.mask(box(x0, 358, x1, 362)), TIMBER)
+    c.put(c.mask(box(686, 352, 790, 357)), PLANK_LIGHT)
+    for x in (694, 782):
+        post(c, x, 356, 384, 5, TIMBER)
+    for x, colour in ((694, (100, 124, 144)), (727, (168, 142, 112)), (760, (128, 88, 72))):
+        planks(c, None, x, 340, x + 24, 352, colour, step=4.0, tag=("linen", x))
     for x in (1130, 1200):
         c.put(c.mask(box(x, 290, x + 40, 384)), (90, 62, 44))
         c.put(c.mask(lambda p: p.ellipse(x + 20, 304, 6, 5)), BRASS)
