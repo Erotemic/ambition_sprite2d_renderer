@@ -194,15 +194,9 @@ def _draw_works(anim: str, i: int, n: int):
             ww = 12.0 if j % 2 else 8.0
             xa = xc if xc == x0 else x1 - ww
             f.poly(_rect(xa, yq, xa + ww, yq + 12.0), STONE_LIGHT, body=False)
-    # The arched openings: the door of the boiling house, and the arches
-    # where the coppers' fires were fed; a little fire glows in one.
-    for k, cx in enumerate((206.0, 262.0, 318.0, 374.0)):
-        if k == 1:
-            _arch(f, cx, foot, 36.0, 74.0, DARK)
-            f.poly(_rect(cx - 16.0, foot - 54.0, cx - 2.0, foot), WOOD, body=False)
-            f.ink([(cx - 9.0, foot - 54.0), (cx - 9.0, foot)], 0.8, WOOD_DARK)
-        else:
-            _arch(f, cx, foot - 30.0, 20.0, 34.0, DARK)
+    # Put the vents above the floor.
+    for cx in (206.0, 262.0, 318.0, 374.0):
+        _arch(f, cx, foot - 30.0, 20.0, 34.0, DARK)
     # The low mouth of a furnace under the coppers, with its embers.
     _arch(f, 298.0, foot, 22.0, 18.0, DARK, glow=1.0)
     for k in range(3):

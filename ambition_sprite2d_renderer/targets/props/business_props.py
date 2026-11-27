@@ -188,11 +188,9 @@ def cafe_front(c, k):
     x0, x1 = 620, 1184
     k.wall(x0, 300, x1, g, STONE, "limestone", "cafe")
     cornice(c, x0, x1, 300)
-    # The upper floor's windows, and its balcony with a door onto it.
     for x in (650, 740, 830):
         window(c, x, 330, x + 46, 420, lit=True, arch=True)
-    c.put(c.mask(box(1010, 300 + 26, 1062, BALCONY)), mix(LAMP, WOOD, 0.4))
-    c.put(c.mask(box(1014, 330, 1058, BALCONY)), WOOD)
+    window(c, 1010, 326, 1062, 362, lit=True)
     c.put(c.mask(box(960, BALCONY, x1, BALCONY + 10)), STONE_LIGHT)
     c.put(c.mask(box(960, BALCONY + 10, x1, BALCONY + 14)), STONE_DARK)
     railing(c, 962, x1 - 2, BALCONY)
