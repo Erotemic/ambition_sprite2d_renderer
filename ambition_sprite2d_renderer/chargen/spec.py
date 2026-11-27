@@ -68,6 +68,9 @@ SHOES = ("shoes", "boots", "geta")
 SHOE_STYLES = ("regular", "chunky")
 #: How trousers fit: ``baggy`` is wide work trousers gathered at the boot.
 FITS = ("regular", "baggy")
+#: How a top fits (``garment.top_profile``): ``auto`` takes the top's own
+#: (a sweater relaxed, a shirt regular).
+TOP_FITS = ("auto", "fitted", "regular", "relaxed", "baggy")
 #: Gloves: ``fingerless`` leaves the last joints of the fingers bare.
 GLOVES = ("none", "full", "fingerless")
 #: ``helmet``, ``beret``, ``garrison_cap``, ``peaked_cap`` and ``campaign`` (a
@@ -315,6 +318,10 @@ class Outfit:
     #: How much a long coat's skirt flares out at its hem (0 as cut, 1 a
     #: full swing).
     outer_flare: float = 0.0
+    #: The top's fit (``TOP_FITS``) and how much looser than that it hangs
+    #: (0 as fitted, 1 the loosest): body and sleeves more than the collar.
+    top_fit: str = "auto"
+    top_bagginess: float = 0.0
 
 
 @dataclass
@@ -443,6 +450,8 @@ OPTIONAL_DEFAULTS: Dict[Tuple[str, str], Any] = {
     ("outfit", "gloves"): "none",
     ("outfit", "glove_color"): "",
     ("outfit", "outer_flare"): 0.0,
+    ("outfit", "top_fit"): "auto",
+    ("outfit", "top_bagginess"): 0.0,
 }
 
 
@@ -513,6 +522,7 @@ BOUNDS: Dict[str, Tuple[float, float]] = {
     "head.disc": (0.0, 1.5),
     "outfit.geta_height": (3.0, 16.0),
     "outfit.outer_flare": (0.0, 1.0),
+    "outfit.top_bagginess": (0.0, 1.0),
 }
 
 CHOICES: Dict[str, Sequence[str]] = {
@@ -543,6 +553,7 @@ CHOICES: Dict[str, Sequence[str]] = {
     "outfit.obi_knot": OBI_KNOTS,
     "outfit.shoe_style": SHOE_STYLES,
     "outfit.fit": FITS,
+    "outfit.top_fit": TOP_FITS,
     "outfit.gloves": GLOVES,
 }
 #: Colours that may be "" (derived from another colour).
