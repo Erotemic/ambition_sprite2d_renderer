@@ -13,7 +13,7 @@ summit, under an aqueduct whose deck runs across the whole town:
   end. A body walks it on two lines the room places along the treads
   (``stair_treads`` says where they are), and the room puts a solid in the
   parapet.
-- ``math_tunnel_bay``, ``math_tunnel_mouth``, ``math_tunnel_gate``: the street
+- ``math_tunnel_bay``, ``math_tunnel_mouth``, ``math_tunnel_end_wall``: the street
   goes on under the first terrace in a vaulted passage with lamps in its
   vault, to a shut gate (the long way round, for later).
 - ``math_cliff_home_wide`` / ``_narrow``: homes cut in the face of the rock.
@@ -84,7 +84,7 @@ TUNNEL_H = 96
 BAY_W = 160
 MOUTH_W = 32
 MOUTH_H = TUNNEL_H + 16
-GATE_W = 48
+END_WALL_W = 48
 
 
 # ---------------------------------------------------------------------------
@@ -260,10 +260,9 @@ def _tunnel_bay() -> Image.Image:
         web = c.mask(lambda p: p.ellipse(x0 + BAY_W / 4, 0, BAY_W / 4, 22))
         c.tone(web, -0.35)
         c.put(c.mask(lambda p: p.ring(x0 + BAY_W / 4, 0, BAY_W / 4, 1.6)) * (c.y < 24), (168, 170, 180))
-    # A doorway and a window in the back wall: the passage is lived in.
+    # Two windows in the back wall.
     k = Kit(c, PAL, sun=-1)
-    k.ground = TUNNEL_H
-    k.door(46, 22, 44, (90, 70, 56), arch=True, step=False, tag="bay_door")
+    k.window(46, TUNNEL_H - 58, 22, 26, "arch", lit=0.2, tag="bay_left")
     k.window(114, TUNNEL_H - 52, 14, 20, "arch", lit=0.7, tag="bay_win")
     # The lamp in the vault and its light on the wall.
     lx = BAY_W / 2
@@ -284,16 +283,12 @@ def _tunnel_mouth() -> Image.Image:
     return c.image()
 
 
-def _tunnel_gate() -> Image.Image:
-    c = Canvas("tunnel_gate", GATE_W, TUNNEL_H, origin=(0.0, 0.0), ppu=PX)
-    c.put(c.mask(box(0, 0, GATE_W, TUNNEL_H)), (40, 44, 58))
-    iron = PAL["iron"]
-    bars = c.mask(lambda p: ([p.rect(x, 0, x + 2.2, TUNNEL_H) for x in np.arange(3, GATE_W, 7)], [p.rect(0, y, GATE_W, y + 2.2) for y in (14, 50, 84)]))
-    c.put(bars, mix(iron, (90, 100, 120), 0.4))
-    # Spikes along the bottom, and the plaque: the long way round.
-    c.put(c.mask(lambda p: [p.poly([(x, TUNNEL_H - 6), (x + 2.2, TUNNEL_H - 6), (x + 1.1, TUNNEL_H)]) for x in np.arange(3, GATE_W, 7)]), iron)
-    c.put(c.mask(box(GATE_W / 2 - 10, 26, GATE_W / 2 + 10, 40)), PAL["brass"])
-    c.put(c.mask(lambda p: p.line([(GATE_W / 2 + 6 * math.cos(t) / (1 + math.sin(t) ** 2), 33 + 6 * math.sin(t) * math.cos(t) / (1 + math.sin(t) ** 2)) for t in np.linspace(0, math.tau, 60)], 0.9)), PAL["iron"])
+def _tunnel_end_wall() -> Image.Image:
+    c = Canvas("tunnel_end_wall", END_WALL_W, TUNNEL_H, origin=(0.0, 0.0), ppu=PX)
+    ashlar(c, c.mask(box(0, 0, END_WALL_W, TUNNEL_H)), (128, 130, 141), course=10, length=20, salt=41)
+    c.tone(c.mask(box(0, 0, 6, TUNNEL_H)), -0.26)
+    c.put(c.mask(box(8, 25, 40, 41)), PAL["brass"])
+    c.put(c.mask(lambda p: p.line([(24 + 8 * math.cos(t) / (1 + math.sin(t) ** 2), 33 + 8 * math.sin(t) * math.cos(t) / (1 + math.sin(t) ** 2)) for t in np.linspace(0, math.tau, 60)], 0.9)), PAL["iron"])
     return c.image()
 
 
@@ -388,7 +383,7 @@ PIECES: Dict[str, Tuple[Tuple[int, int], Callable[[], Image.Image]]] = {
     "math_switchback_stair": ((STAIR_W, STAIR_H), _stair),
     "math_tunnel_bay": ((BAY_W, TUNNEL_H), _tunnel_bay),
     "math_tunnel_mouth": ((MOUTH_W, MOUTH_H), _tunnel_mouth),
-    "math_tunnel_gate": ((GATE_W, TUNNEL_H), _tunnel_gate),
+    "math_tunnel_end_wall": ((END_WALL_W, TUNNEL_H), _tunnel_end_wall),
     **{f"math_cliff_home_{kind}": (size, _cliff_home(kind)) for kind, size in CLIFF_HOMES.items()},
     "math_cypress": (CYPRESS, _cypress),
     "math_olive": (OLIVE, _olive),

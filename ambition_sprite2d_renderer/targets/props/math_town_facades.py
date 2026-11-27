@@ -121,7 +121,7 @@ def _rose_house(c, k, x0, x1, g):
     for cx in (x0 + 50, x1 - 40):
         k.window(cx, eave + 140, 16, 30, "arch", shutters=BLUE, tag=("rose2", cx))
     k.window(x0 + 40, eave + 220, 22, 40, "arch", tag="rose3")
-    k.door(x1 - 44, 30, 66, (50, 90, 120), arch=True, number=True, tag="rosedoor")
+    k.window(x1 - 44, g - 66, 30, 36, "arch", shutters=BLUE, tag="rose_low")
     chalk_proof(c, x0 + 76, g - 22, 0.9)
     flat_roof(c, x0, x1, eave, LIMESTONE)
 
@@ -134,7 +134,7 @@ def _dome_house(c, k, x0, x1, g):
     k.window(x0 + 36, eave + 24, 16, 28, "arch", shutters=BLUE, tag="d1")
     k.window(x1 - 36, eave + 24, 16, 28, "arch", shutters=BLUE, tag="d2")
     k.window(x0 + 52, eave + 122, 44, 34, "rect", lit=0.2, tag="d3")
-    k.door(x1 - 40, 30, 66, BLUE, arch=True, tag="ddoor")
+    k.window(x1 - 40, g - 66, 30, 36, "arch", shutters=BLUE, tag="d4")
     k.balcony(x0 + 66, x0 + 120, eave + 82, (232, 226, 214))
     k.awning(x0 + 16, x0 + 90, eave + 110, 12, ((246, 242, 232), BLUE))
 
@@ -149,7 +149,7 @@ def _tower_house(c, k, x0, x1, g):
     k.window(x0 + w / 2, eave + 110, 16, 30, "arch", tag="t3")
     k.window(x0 + w / 2, eave + 200, 16, 30, "arch", flowers=(230, 80, 90), tag="t4")
     k.window(x0 + w * 0.33, eave + 290, 14, 26, "rect", tag="t5")
-    k.door(x1 - w * 0.3, 28, 62, (120, 72, 50), arch=False, tag="tdoor")
+    k.window(x1 - w * 0.3, g - 62, 28, 32, "rect", shutters=TERRACOTTA, tag="t6")
     k.balcony(x0 + 16, x1 - 16, eave + 160, (232, 226, 214))
     k.hipped(x0, x1, eave, 34, (70, 120, 170), "hex", tag="troof")
 
@@ -162,7 +162,7 @@ def _shop_house(c, k, x0, x1, g):
     for cx in (x0 + w * 0.22, x0 + w * 0.5, x0 + w * 0.78):
         k.window(cx, eave + 24, 16, 28, "rect", shutters=(230, 214, 180), tag=("s", cx))
     k.window(x0 + 56, eave + 150, 60, 44, "rect", lit=0.3, tag="sw")
-    k.door(x1 - 44, 30, 66, (60, 90, 80), arch=True, tag="sdoor")
+    k.window(x1 - 44, g - 66, 32, 36, "rect", lit=0.4, tag="s_low")
     k.awning(x0 + 18, x0 + 100, eave + 136, 14, ((240, 232, 210), (70, 120, 150)))
     k.ground = g
     k.sign(x1 + 2, eave + 120, 20, 15, (60, 80, 70), "cup")
@@ -180,10 +180,13 @@ def _arcade_house(c, k, x0, x1, g):
         cx = x0 + (i + 0.5) * w / n
         k.window(cx, eave + 24, 14, 26, "rect", shutters=TERRACOTTA, tag=("a", i))
     span = w / n
-    arc = c.mask(lambda p: [p.arch(x0 + i * span + 10, g - 80, x0 + (i + 1) * span - 10, g) for i in range(n)])
-    c.put(arc, (70, 70, 86))
-    c.tone(arc * np.clip(1 - (c.y - (g - 80)) / 60, 0, 1), -0.3)
-    c.put(c.mask(lambda p: [p.ring(x0 + (i + 0.5) * span, g - 80 + (span - 20) / 2, (span - 20) / 2 + 1, 1.6) for i in range(n)]) * (c.y < g - 80 + (span - 20) / 2), (244, 236, 220))
+    for i in range(n):
+        cx = x0 + (i + 0.5) * span
+        if i == 2:
+            k.ground = g
+            k.door(cx, span - 16, 72, (70, 70, 86), arch=True, tag="a_door")
+        else:
+            k.window(cx, g - 76, span - 20, 44, "arch", lit=0.15, tag=("a_low", i))
     k.ground = g
     k.sign(x0 - 22, eave + 86, 22, 16, (40, 60, 90), "circle")
     k.gable(x0, x1, eave, w * 0.24, TERRACOTTA, "clay", tag="aroof")
@@ -217,7 +220,7 @@ def _flat_house(c, k, x0, x1, g):
     k.window(x0 + w * 0.3, eave + 30, 12, 24, "rect", tag="f1")
     k.window(x1 - w * 0.3, eave + 30, 12, 24, "rect", tag="f2")
     k.window(x0 + w / 2, eave + 100, 14, 28, "arch", tag="f3")
-    k.door(x0 + w / 2, 28, 62, (120, 72, 50), arch=True, tag="fdoor")
+    k.window(x0 + w / 2, g - 62, 28, 32, "arch", shutters=TERRACOTTA, tag="f4")
     flat_roof(c, x0, x1, eave, LIMESTONE)
     spiral_rail(c, x0, x1, eave - 8)
 
