@@ -2,17 +2,12 @@
 dimension): the station end of Eureka's space elevator, where the car comes
 up through the floor.
 
-Drawn in room coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/eureka/make_specs.py` (`terminus`): the
-floor (y 956), the vault (to y 48), the shaft (x 576..704), the down car's
-door (x 200) and the docking bay's door (x 1160).
+Use the room dimensions in `eureka/make_specs.py`. Use the collision
+height of 944 units for the floor.
 
-- `terminus_hall`: hull plate; the ribbon of the tether up the room's middle
-  through collars in the floor and the vault; a window on the planet's limb;
-  the down car's lift doors and the bay's bulkhead (scenery draws over a
-  door, so the hall draws its own); the arrivals board; a handrail; the
-  souvenir kiosk: shirts on a line, snow globes with the planet in them,
-  bottles of genuine orbit air.
+- `terminus_hall`: hull plate, the tether collars, the viewing gallery,
+  the window, the west exit to the docking bay, the arrivals board, and
+  the souvenir kiosk.
 
 Animations: ``idle``, 1 frame each. No drop shadows.
 """
@@ -24,18 +19,39 @@ from typing import Dict
 import numpy as np
 
 from ._district_props import Piece, targets
-from ._town_kit import box, mix, scale
+from ._town_kit import box
 from .orbital_station import AMBER, CYAN, GREEN, HULL, HULL_DARK, HULL_LIGHT, INK, LEAF, LEAF_DARK, RED, STEEL, STEEL_DARK, STEEL_LIGHT, hazard, lamp, plate, screen
 
-W, FLOOR, VAULT = 1280, 956, 48
+W, FLOOR, VAULT = 1280, 944, 48
 SHAFT = (576, 704)
-DOWN_DOOR, BAY_DOOR = 200, 1160
+GALLERIES = ((192, 576, 720), (704, 1136, 720))
+STEPS = ((128, 240, 880), (192, 304, 816), (256, 368, 752),
+         (1104, 1216, 880), (1040, 1152, 816), (976, 1088, 752))
 WIN = (800, 250, 1120, 700)
 PAL = {"stone": HULL, "stone_light": HULL_LIGHT, "dark": STEEL_DARK, "lamp": AMBER}
 SPACE = (8, 10, 22)
 OCEAN = (40, 96, 176)
 LAND = (96, 140, 84)
 CLOUD = (236, 242, 248)
+PANEL = (29, 45, 57)
+
+
+def notice(c, x0, y0, x1, y1):
+    c.put(c.mask(box(x0, y0, x1, y1)), STEEL)
+    c.put(c.mask(box(x0 + 4, y0 + 4, x1 - 4, y1 - 4)), PANEL)
+    c.put(c.mask(lambda p: [p.ellipse(x, y0 + 8, 1.8)
+                            for x in (x0 + 8, x1 - 8)]), AMBER)
+
+
+def deck(c, left, right, top):
+    c.put(c.mask(lambda p: [
+        p.line([(x, top + 16), (x + 17, top + 38)], 5)
+        for x in (left + 13, right - 38)
+    ]), STEEL_DARK)
+    c.put(c.mask(box(left, top, right, top + 16)), STEEL)
+    c.put(c.mask(box(left, top, right, top + 3)), STEEL_LIGHT)
+    c.put(c.mask(lambda p: [p.ellipse(x, top + 10, 1.5)
+                            for x in range(left + 9, right - 7, 20)]), INK)
 
 
 def hall(c, k):
@@ -49,7 +65,7 @@ def hall(c, k):
                               [p.ellipse(x, y, 30) for x in (x0 + 30, x1 - 30) for y in (y0 + 30, y1 - 30)]))
     c.put(glass, SPACE)
     c.put(glass * c.mask(lambda p: [p.ellipse(rng.uniform(x0, x1), rng.uniform(y0, y1 - 160), rng.uniform(0.6, 1.4)) for _ in range(60)]), (230, 236, 255))
-    cx, cy, r = (x0 + x1) / 2 - 60, 1900, 1290
+    cx, cy, r = (x0 + x1) / 2 - 60, 1850, 1290
     world = glass * c.mask(lambda p: p.ellipse(cx, cy, r))
     c.put(world, OCEAN)
     c.put(world * np.clip((c.noise("land", 5, 3, 3) - 0.56) * 6, 0, 1), LAND)
@@ -70,26 +86,33 @@ def hall(c, k):
         hazard(c, SHAFT[0] - 12, y + h - 8 if y == VAULT else y, SHAFT[1] + 12, y + h if y == VAULT else y + 8, tag=("collar_h", y))
     for x in (SHAFT[0] - 4, SHAFT[1] + 4):
         lamp(c, x, FLOOR - 40, GREEN, r=3, glow=10)
-    # The down car's lift doors, its arrow lamp; the bay's bulkhead.
-    lx = DOWN_DOOR
-    plate(c, lx - 14, FLOOR - 110, lx + 62, FLOOR, STEEL, "lift_frame", seams=0)
-    c.put(c.mask(lambda p: (p.rect(lx, FLOOR - 96, lx + 23, FLOOR), p.rect(lx + 25, FLOOR - 96, lx + 48, FLOOR))), STEEL_LIGHT)
-    c.put(c.mask(lambda p: p.poly([(lx + 16, FLOOR - 126), (lx + 32, FLOOR - 126), (lx + 24, FLOOR - 116)])), AMBER)
-    bx = BAY_DOOR
-    plate(c, bx - 16, FLOOR - 116, bx + 64, FLOOR, STEEL_DARK, "bulkhead", seams=0)
-    c.put(c.mask(lambda p: (p.rect(bx, FLOOR - 92, bx + 48, FLOOR), p.ellipse(bx + 24, FLOOR - 92, 24, 10))), STEEL)
-    c.put(c.mask(lambda p: p.ring(bx + 24, FLOOR - 56, 8, 3)), STEEL_LIGHT)
-    hazard(c, bx - 16, FLOOR - 116, bx + 64, FLOOR - 108, tag="bulkhead_h")
-    # The arrivals board.
-    plate(c, 330, 150, 750, 290, STEEL_DARK, "board", seams=0)
-    screen(c, 340, 160, 740, 280, tint=AMBER, rows=5, tag="arrivals")
+    plate(c, 16, 816, 96, 832, STEEL_DARK, "bay_frame", seams=0)
+    c.put(c.mask(box(86, 828, 96, FLOOR)), STEEL)
+    lamp(c, 43, 827, GREEN, r=3, glow=10)
+    notice(c, 21, 780, 233, 823)
+    notice(c, 231, 473, 569, 520)
+    notice(c, 252, 539, 548, 672)
+    screen(c, 269, 605, 532, 658, tint=AMBER, rows=3, tag="arrivals")
+    for x in (212, 493, 738, 1115):
+        c.put(c.mask(box(x, 731, x + 10, FLOOR)), STEEL_DARK)
+    for left, right, top in GALLERIES:
+        deck(c, left, right, top)
+        c.put(c.mask(lambda p: (
+            p.rect(left + 6, top - 33, right - 6, top - 29),
+            [p.rect(x, top - 32, x + 3, top) for x in range(left + 8, right - 4, 41)],
+        )), STEEL_LIGHT)
+    for span in STEPS:
+        deck(c, *span)
+    hazard(c, 552, 720, 576, 726, tag="gallery_lip_w")
+    hazard(c, 704, 720, 728, 726, tag="gallery_lip_e")
     # A handrail along the wall at waist height, clear of the doors, the
     # window's plant and the kiosk.
-    for a, b in ((60, lx - 30), (480, SHAFT[0] - 30), (SHAFT[1] + 30, 720), (800, bx - 30)):
+    for a, b in ((103, 275), (480, SHAFT[0] - 30), (800, 1240)):
         c.put(c.mask(lambda p: (p.rect(a, FLOOR - 40, b, FLOOR - 37), [p.rect(x, FLOOR - 37, x + 3, FLOOR) for x in np.arange(a + 6, b - 4, 60)])), STEEL_LIGHT)
     # The souvenir kiosk, at a person's scale (a body is 64 tall): awning,
     # counter, shirts on a line, globes, bottles.
     k0, k1 = 300, 450
+    notice(c, 284, 766, 466, 820)
     c.put(c.mask(lambda p: [p.rect(x, FLOOR - 112, x + 3, FLOOR - 36) for x in (k0 + 4, k1 - 7)]), STEEL)
     awning = c.mask(lambda p: p.poly([(k0 - 6, FLOOR - 118), (k1 + 6, FLOOR - 118), (k1 + 12, FLOOR - 104), (k0 - 12, FLOOR - 104)]))
     c.put(awning, HULL_LIGHT)
