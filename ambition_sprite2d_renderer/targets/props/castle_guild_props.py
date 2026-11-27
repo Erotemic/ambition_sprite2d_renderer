@@ -2,10 +2,8 @@
 a false wall at the kitchens' west end, under the gatehouse, where the
 Henchpersons' Guild, Local 666, meets in secret.
 
-Drawn in room coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/castle_kitchens/make_specs.py` (`guild`):
-the floor (y 512), the ceiling (to y 48), the way back east through the
-false wall at the floor.
+The room uses the dimensions in the map generator
+`castle_kitchens/make_specs.py`.
 
 - `castle_guild_room`: a low cellar lit by candles; rows of mismatched
   chairs facing a lectern; the Guild's banner (a ladle and a spanner
@@ -41,6 +39,15 @@ BRASS = (190, 150, 70)
 GLASS = (190, 220, 230)
 
 
+def platform(c, x0, x1, y):
+    for x in (x0 + 14, x1 - 26):
+        c.put(c.mask(box(x, y + 14, x + 12, FLOOR)), WOOD_DARK)
+        c.put(c.mask(lambda p: p.line([(x + 6, y + 46), (x + 26, y + 14)], 7)), WOOD_DARK)
+    c.put(c.mask(box(x0, y, x1, y + 16)), WOOD_DARK)
+    c.put(c.mask(box(x0, y, x1, y + 4)), mix(WOOD, GOLD, 0.32))
+    c.put(c.mask(lambda p: [p.ellipse(x, y + 10, 1.5) for x in range(x0 + 10, x1, 26)]), BRASS)
+
+
 def room(c, k):
     g = FLOOR
     wall = c.mask(box(16, CEILING, W - 16, g))
@@ -60,24 +67,31 @@ def room(c, k):
     c.put(c.mask(lambda p: (p.line([(bx - 40, 120), (bx + 40, 220)], 6), p.ellipse(bx + 40, 222, 12, 8))), GOLD)
     c.put(c.mask(lambda p: (p.line([(bx + 40, 120), (bx - 40, 220)], 6), p.ring(bx + 40, 118, 10, 4), p.ring(bx - 42, 224, 9, 4))), mix(GOLD, (255, 255, 255), 0.2))
     c.put(c.mask(lambda p: [p.rect(bx - 60 + i * 20, 236, bx - 52 + i * 20, 246) for i in range(7)]), GOLD)
-    # The lectern, and the slate of demands beside it.
-    c.put(c.mask(lambda p: (p.poly([(470, g), (490, g - 90), (550, g - 90), (570, g)]), p.poly([(478, g - 90), (562, g - 90), (570, g - 108), (470, g - 108)]))), WOOD)
-    c.put(c.mask(box(640, 280, 820, 400)), WOOD_DARK)
-    c.put(c.mask(box(648, 288, 812, 392)), SLATE)
-    for i, ln in enumerate((120, 96, 140)):
-        y = 306 + i * 30
-        c.put(c.mask(lambda p: (p.rect(660, y, 668, y + 8), p.rect(676, y + 2, 676 + ln, y + 5))), CHALK)
-    c.put(c.mask(lambda p: [p.rect(676, y, 816, y + 1.6) for y in (374, 378)]), CHALK)
+    c.put(c.mask(box(390, 287, 650, 347)), WOOD_DARK)
+    c.put(c.mask(box(396, 292, 644, 342)), scale(WOOD_DARK, 0.72))
+    c.put(c.mask(lambda p: [p.ellipse(x, 317, 2) for x in (398, 642)]), BRASS)
+    c.put(c.mask(box(676, 241, 884, 357)), WOOD_DARK)
+    c.put(c.mask(box(684, 247, 876, 351)), SLATE)
+    c.put(c.mask(lambda p: [p.rect(740, y, 820, y + 1.5) for y in (342, 346)]), CHALK, 0.55)
     # Rows of mismatched chairs facing the lectern.
     rng = c.rand("guild_chairs")
-    for i, x in enumerate(range(110, 440, 56)):
+    for x in range(110, 430, 56):
         h = rng.uniform(46, 60)
         col = mix(WOOD, (40, 30, 30), rng.uniform(0, 0.5))
         c.put(c.mask(lambda p: (p.rect(x, g - 30, x + 34, g - 24), p.rect(x + 28, g - h, x + 34, g - 24), p.rect(x + 2, g - 24, x + 6, g), p.rect(x + 28, g - 24, x + 32, g))), col)
-    # The ballot box, its slot; the strike fund's jar, three coins in it.
-    c.put(c.mask(box(860, g - 60, 920, g - 10)), WOOD)
-    c.put(c.mask(box(872, g - 62, 908, g - 56)), WOOD_DARK)
-    c.put(c.mask(lambda p: (p.rect(866, g - 10, 872, g), p.rect(908, g - 10, 914, g))), WOOD_DARK)
+    platform(c, 432, 608, 448)
+    platform(c, 704, 864, 448)
+    c.put(c.mask(lambda p: p.poly([(522, 448), (532, 386), (564, 386), (576, 448)])), WOOD_DARK)
+    c.put(c.mask(box(541, 386, 558, 447)), WOOD)
+    c.put(c.mask(lambda p: p.poly([(518, 386), (580, 386), (586, 371), (524, 371)])), WOOD)
+    c.put(c.mask(box(523, 371, 586, 374)), BRASS)
+    c.put(c.mask(lambda p: p.poly([(540, 380), (561, 380), (566, 373), (545, 373)])), CHALK)
+    c.put(c.mask(box(762, 401, 850, 410)), WOOD)
+    c.put(c.mask(lambda p: [p.rect(x, 410, x + 6, 448) for x in (766, 839)]), WOOD_DARK)
+    c.put(c.mask(lambda p: (p.rect(768, 396, 792, 401), p.rect(772, 393, 799, 396))), CHALK)
+    c.put(c.mask(box(808, 376, 842, 401)), WOOD)
+    c.put(c.mask(box(816, 376, 834, 379)), WOOD_DARK)
+    c.put(c.mask(box(808, 398, 842, 401)), BRASS)
     c.put(c.mask(lambda p: p.rect(250, 300, 290, 344)), GLASS, 0.45)
     c.put(c.mask(lambda p: [p.ellipse(262 + i * 8, 338 - (i % 2) * 3, 5, 2.4) for i in range(3)]), GOLD)
     c.put(c.mask(lambda p: p.rect(240, 344, 300, 350)), WOOD_DARK)
