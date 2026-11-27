@@ -13,6 +13,7 @@ from PIL import Image
 from ._clockwork_enemy_art import Canvas, add, mix, mul, phase, rot, sub, track, unit, perp
 from . import _humanoid_bone_art as bones
 from ...authoring.skeleton import two_bone_ik_points
+from ...authoring.surface_gait import Gait
 from ...authoring.sheet_build import build_sheet
 from ...core.measure import body_metrics_for_box
 
@@ -102,13 +103,16 @@ def _keys(t,keys):
     return keys[-1][1]
 
 
-def _step(t,stride,lift):
-    """Move the planted foot back, then return it forward above the floor."""
-    t=t%1.
-    if t<.57:
-        return stride*(1-2*t/.57),0.,0.
-    u=(t-.57)/.43
-    return stride*(-1+2*u),lift*math.sin(math.pi*u),-15*math.sin(math.pi*u)
+# Stride is the full front-to-back distance in the shared gait API.
+WALK_GAIT = Gait(stride=34., stance=.57, lift=10.)
+RUN_GAIT = Gait(stride=42., stance=.57, lift=14.)
+
+
+def _step(t, gait):
+    """Use the common planted/swing trajectory; toe pitch is skeletal art."""
+    x, lift = gait.foot_offset(t, 0.)
+    toe = -15. * math.sqrt(lift / gait.lift) if gait.lift else 0.
+    return x, lift, toe
 
 
 def pose(anim,i,n):
@@ -116,8 +120,8 @@ def pose(anim,i,n):
     if anim=='idle':
         return replace(IDLE,hip=(CX,GROUND-52+.6*s),head=-5+2*s,jaw=1+.5*s,rag=s)
     if anim in ('walk','run'):
-        stride,lift=(17,10) if anim=='walk' else (21,14)
-        nx,ny,nt=_step(t,stride,lift); fx,fy,ft=_step(t+.5,stride,lift)
+        gait = WALK_GAIT if anim=='walk' else RUN_GAIT
+        nx,ny,nt=_step(t,gait); fx,fy,ft=_step(t+.5,gait)
         return replace(IDLE,hip=(CX,GROUND-51+1.2*math.cos(2*math.tau*t)),
                        lean=8 if anim=='walk' else 15,head=2*s,
                        near_foot=(CX+nx,GROUND-4-ny),far_foot=(CX+fx,GROUND-4-fy),
@@ -138,17 +142,28 @@ def pose(anim,i,n):
     raise ValueError(anim)
 
 
-def _solve(p):
+ARM_LENGTHS = (21., 22.)
+LEG_LENGTHS = (27., 27.)
+
+
+def _solve(p, *, far_hand_goal=None, far_bend=-1.):
+    """Solve the family rig using the renderer's existing two-bone IK.
+
+    Equipment can supply a far-hand target as a function of the *solved*
+    near wrist (e.g. a bow string). Solve that arm once, after the near arm.
+    All limbs retain the same proportions, margins and bend convention.
+    """
     def T(x,y): return add(p.hip,rot((x,y),p.lean))
     neck=T(0,-43); head=add(neck,rot((4,-18),p.head))
-    def limb(root,target,l1,l2,bend):
-        return (root,*two_bone_ik_points(root,target,l1,l2,bend,extension_margin=.1))
-    # Knees bend toward the direction of travel; elbows bend backward.
+    def limb(root,target,lengths,bend):
+        return (root,*two_bone_ik_points(root,target,*lengths,bend,extension_margin=.1))
+    near_arm=limb(T(8,-37),p.near_hand,ARM_LENGTHS,-1.)
+    far_target=p.far_hand if far_hand_goal is None else far_hand_goal(near_arm[-1])
     return dict(pelvis=p.hip,neck=neck,head=head,
-                far_leg=limb(T(-5,0),p.far_foot,27,27,1),
-                near_leg=limb(T(5,0),p.near_foot,27,27,1),
-                far_arm=limb(T(-8,-37),p.far_hand,21,22,-1),
-                near_arm=limb(T(8,-37),p.near_hand,21,22,-1))
+                far_leg=limb(T(-5,0),p.far_foot,LEG_LENGTHS,1.),
+                near_leg=limb(T(5,0),p.near_foot,LEG_LENGTHS,1.),
+                far_arm=limb(T(-8,-37),far_target,ARM_LENGTHS,far_bend),
+                near_arm=near_arm)
 
 
 def _sword(c,wrist,angle):
