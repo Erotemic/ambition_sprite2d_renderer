@@ -400,13 +400,13 @@ def inn_room(c, k):
 
 DECK = 640
 PLANKS_X0, PLANKS_X1 = 1120, 1280
+WEST_HATCH, EAST_HATCH = 544, 1792
+HATCH_WIDTH = 64
+INSPECTION_WALK = 848
 
 
 def trestle(c, k):
-    """The trestle: its road deck (y 640) across the room, the loose planks
-    over the hole (x 1120..1280) sagging and a board gone, the railing with a
-    gap over the hole; the timber bents down to the gulch floor, the rails
-    along the floor; a signal mast by the east end."""
+    """The road deck and inspection walks over the railroad."""
     k.ground = 1536
     floor = 1500
     # The bents: pairs of raking legs with cross ties, every 200.
@@ -417,12 +417,29 @@ def trestle(c, k):
             f = (y - DECK) / (floor - DECK)
             c.put(c.mask(lambda p: p.rect(x - 24 - 40 * f, y, x + 24 + 40 * f, y + 7)), scale(TIMBER, 0.85))
         x_brace(c, x - 50, x + 50, DECK + 40, floor - 20, scale(TIMBER, 0.75), 3.0)
-    # Stringers between the bents, under the deck.
-    c.put(c.mask(box(0, DECK + 32, 2400, DECK + 48)), scale(TIMBER, 0.8))
     # The deck: planks across it, darker where the wagons wore it.
-    for x0, x1 in ((0, PLANKS_X0), (PLANKS_X1, 2400)):
+    for x0, x1 in (
+        (0, WEST_HATCH),
+        (WEST_HATCH + HATCH_WIDTH, PLANKS_X0),
+        (PLANKS_X1, EAST_HATCH),
+        (EAST_HATCH + HATCH_WIDTH, 2400),
+    ):
+        c.put(c.mask(box(x0, DECK + 32, x1, DECK + 48)), scale(TIMBER, 0.8))
         planks(c, None, x0, DECK, x1, DECK + 32, PLANK, step=7.0, vertical=True, tag=("deck", x0))
         deck_edge(c, x0, x1, DECK, PLANK_LIGHT)
+    for hatch in (WEST_HATCH, EAST_HATCH):
+        grating(c, hatch, hatch + HATCH_WIDTH, DECK, rail=False)
+        post(c, hatch - 5, DECK - 30, DECK, 6, TIMBER)
+        lamp_glow(c, hatch - 5, DECK - 32, 16, 0.3)
+    # The service walks hang from the road deck.
+    for x0, x1, hangers in (
+        (WEST_HATCH - 16, PLANKS_X0 + 16, (535, 704, 896, 1088)),
+        (PLANKS_X1 - 16, EAST_HATCH + HATCH_WIDTH + 16, (1306, 1472, 1664, 1862)),
+    ):
+        for x in hangers:
+            girder(c, x, DECK + 44, INSPECTION_WALK, 5)
+        c.put(c.mask(box(x0, INSPECTION_WALK + 6, x1, INSPECTION_WALK + 16)), STEEL_DARK)
+        grating(c, x0, x1, INSPECTION_WALK)
     # The loose planks: a few boards, sagging, one gone.
     for i, x in enumerate(np.arange(PLANKS_X0, PLANKS_X1, 20)):
         if i == 4:
@@ -430,7 +447,12 @@ def trestle(c, k):
         sag = 2 + (i % 3) * 2
         c.put(c.mask(lambda p: p.poly([(x + 1, DECK + sag), (x + 18, DECK + sag + 2), (x + 18, DECK + sag + 12), (x + 1, DECK + sag + 10)])), PLANK_LIGHT if i % 2 else PLANK)
     # The railing, with its gap over the planks.
-    for x0, x1 in ((0, PLANKS_X0 - 20), (PLANKS_X1 + 40, 2400)):
+    for x0, x1 in (
+        (0, WEST_HATCH),
+        (WEST_HATCH + HATCH_WIDTH, PLANKS_X0 - 20),
+        (PLANKS_X1 + 40, EAST_HATCH),
+        (EAST_HATCH + HATCH_WIDTH, 2400),
+    ):
         c.put(c.mask(lambda p: ([p.rect(x, DECK - 36, x + 4, DECK) for x in np.arange(x0 + 8, x1, 40)], p.rect(x0, DECK - 38, x1, DECK - 34),
                                 p.rect(x0, DECK - 20, x1, DECK - 17))), TIMBER)
     # A broken rail end hanging down.
