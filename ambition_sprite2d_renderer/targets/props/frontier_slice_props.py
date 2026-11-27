@@ -850,21 +850,30 @@ def yard_tracks(c, k):
 
 
 def tipple_road(c, k):
-    """The tipple road: its deck along the line from (496, 1408) up to
-    (2340, 640), on timber bents down to the yard; the tipple at the top (its
-    floor y 640, x 2340..2400), a loading chute over the far track."""
+    """The tipple road, its inspection landing, and the upper loading chute."""
     k.ground = LOW
-    x0, y0, x1, y1 = 496, LOW, 2340, HIGH
-    slope = (y1 - y0) / (x1 - x0)
-    for x in np.arange(x0 + 120, x1, 160):
-        y = y0 + (x - x0) * slope
-        post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
-        if LOW - y > 160:
-            x_brace(c, x - 70, x + 10, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
-    c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
-    c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
-    c.put(c.mask(lambda p: [p.rect(x, y0 + (x - x0) * slope - 26, x + 3, y0 + (x - x0) * slope) for x in np.arange(x0 + 40, x1, 60)]), TIMBER)
-    c.put(c.mask(lambda p: p.line([(x0, y0 - 24), (x1, y1 - 24)], 2.0)), TIMBER)
+    for x0, y0, x1, y1 in ((496, LOW, 1424, 1024), (1456, 1024, 2384, HIGH)):
+        slope = (y1 - y0) / (x1 - x0)
+        for x in np.arange(x0 + 120, x1, 160):
+            y = y0 + (x - x0) * slope
+            post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
+            if LOW - y > 160:
+                x_brace(c, x - 70, x + 10, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
+        c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
+        c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
+        c.put(c.mask(lambda p: [p.rect(x, y0 + (x - x0) * slope - 26, x + 3, y0 + (x - x0) * slope)
+                                for x in np.arange(x0 + 20, x1, 60)]), TIMBER)
+        c.put(c.mask(lambda p: p.line([(x0, y0 - 24), (x1, y1 - 24)], 2.0)), TIMBER)
+    # The ladder stands in the gap between the parked ore cars.
+    for x in (1416, 1464):
+        girder(c, x, 1024, LOW, 7)
+    for y in (1060, 1220):
+        x_brace(c, 1416, 1464, y, y + 135, STEEL_DARK, 2.8)
+    c.put(c.mask(lambda p: p.line([(1576, 978), (1586, 1098)], 5)), STEEL_DARK)
+    grating(c, 1424, 1456, 1024, rail=False)
+    grating(c, 1456, 1600, 1088)
+    for x, y in ((1416, 1374), (1464, 988)):
+        lamp_glow(c, x, y, 22, 0.32)
     # The tipple: a tall shed on legs, its chute down to the track.
     m = c.mask(box(2200, 360, 2400, HIGH))
     siding(c, 2200, 360, 2400, HIGH, (110, 90, 74), "tipple")
@@ -874,7 +883,7 @@ def tipple_road(c, k):
         post(c, x, HIGH, LOW, 10, TIMBER)
     x_brace(c, 2210, 2390, HIGH + 20, LOW - 20, scale(TIMBER, 0.8), 3.0)
     c.put(c.mask(lambda p: p.poly([(2220, HIGH + 10), (2260, HIGH + 10), (2160, LOW - 200), (2130, LOW - 200)])), (90, 80, 72))
-    deck_edge(c, 2340, 2400, HIGH, PLANK_LIGHT)
+    deck_edge(c, 2384, 2400, HIGH, PLANK_LIGHT)
     c.tone(m * 0, 0)
 
 
@@ -887,8 +896,8 @@ def furnace_house(c, k):
     tin_roof(c, 100, 320, 680, 344, "furnace_roof", (90, 86, 80))
     c.put(c.mask(box(520, 120, 580, 330)), (110, 58, 44))
     c.put(c.mask(lambda p: [p.rect(516, y, 584, y + 6) for y in (120, 200, 280)]), (70, 40, 32))
-    smoke = c.mask(lambda p: [p.ellipse(560 + i * 30, 100 - i * 14, 26 + i * 8, 16 + i * 4) for i in range(6)], blur=6)
-    c.put(smoke, (80, 76, 76), 0.6)
+    smoke = c.mask(lambda p: [p.ellipse(560 + i * 34, 108 - i * 9, 24 + i * 7, 16 + i * 4) for i in range(7)], blur=6)
+    c.put(smoke * np.clip((835 - c.x) / 225, 0, 1) * np.clip(c.y / 35, 0, 1), (80, 76, 76), 0.6)
     door = c.mask(box(300, 520, 420, g))
     c.put(door, (60, 30, 20))
     c.light(c.mask(box(300, 520, 420, g), blur=30), SLAG_GLOW, 0.6)
@@ -898,49 +907,57 @@ def furnace_house(c, k):
 
 
 def slag_pots(c, k):
-    """The slag pots on their carriages (tops y 576, x 700..812 and
-    1400..1512), crusted and glowing at the lip."""
-    g = HIGH
+    """Slag carriages on the rear track behind the walking lane."""
+    g = HIGH - 28
+    top = g - 64
     k.ground = g
+    c.put(c.mask(lambda p: [p.rect(x, g - 11, x + 11, g + 4) for x in np.arange(674, 1536, 24)]), (78, 64, 55))
+    for y in (g - 9, g - 2):
+        c.put(c.mask(box(674, y, 1536, y + 2)), (97, 83, 75))
+    c.put(c.mask(lambda p: [p.rect(x, HIGH - 7, x + 18, HIGH - 5) for x in np.arange(680, 1530, 32)]),
+          HAZARD, 0.75)
     for x0 in (700, 1400):
         x1 = x0 + 112
-        m = c.mask(lambda p: p.poly([(x0, 576), (x1, 576), (x1 - 14, g - 14), (x0 + 14, g - 14)]))
+        m = c.mask(lambda p: p.poly([(x0, top), (x1, top), (x1 - 14, g - 14), (x0 + 14, g - 14)]))
         c.put(m, CINDER)
         c.tone(m * (c.noise(("pot", x0), 4, 3, 2) - 0.5), 0.35)
-        c.put(c.mask(box(x0 - 4, 576, x1 + 4, 584)), (50, 46, 48))
-        c.light(c.mask(box(x0 + 6, 570, x1 - 6, 580), blur=8), SLAG_GLOW, 0.6)
-        deck_edge(c, x0, x1, 576, (255, 180, 100))
+        c.put(c.mask(box(x0 - 4, top, x1 + 4, top + 8)), (50, 46, 48))
+        c.light(c.mask(box(x0 + 6, top - 6, x1 - 6, top + 4), blur=8), SLAG_GLOW, 0.45)
+        deck_edge(c, x0, x1, top, (220, 142, 80))
         for dx in (24, 88):
             c.put(c.mask(lambda p: p.ellipse(x0 + dx, g - 7, 7)), (40, 38, 40))
 
 
 def works_crane(c, k):
-    """The slag crane's gantry: the lower walk (y 512, x 820..1180) and the
-    upper (y 448, x 1200..1560) on girder legs, the cab, the ladle on its
-    chains."""
+    """The crane gantries, loading step, and ladder support."""
     g = HIGH
     k.ground = g
-    for x in (830, 1170):
+    for x in (616, 696):
+        girder(c, x, 582, g, 5)
+    grating(c, 608, 704, 576, rail=False)
+    for x in (730, 1174):
         girder(c, x, 512, g, 10)
     for x in (1210, 1550):
         girder(c, x, 448, g, 10)
     x_brace(c, 1210, 1550, 460, g - 10)
-    grating(c, 820, 1180, 512)
-    grating(c, 1200, 1560, 448)
+    grating(c, 720, 1184, 512)
+    grating(c, 1200, 1568, 448)
+    for y in (477, 578):
+        c.put(c.mask(box(1548, y, 1597, y + 5)), STEEL_DARK)
     cab = c.mask(box(1600, 360, 1700, 448))
     c.put(cab, (180, 140, 50))
     k.window(1650, 380, 60, 36, "rect", lit=0.4, tag="crane_cab")
     girder(c, 1650, 448, g, 12)
     c.put(c.mask(box(1300, 300, 1720, 316)), STEEL_DARK)
-    c.put(c.mask(lambda p: [p.ellipse(1420, 320 + i * 7, 2.4, 3.4) for i in range(10)]), STEEL_DARK)
-    ladle = c.mask(lambda p: p.poly([(1390, 392), (1450, 392), (1440, 432), (1400, 432)]))
+    c.put(c.mask(lambda p: [p.ellipse(1496, 320 + i * 7, 2.4, 3.4) for i in range(10)]), STEEL_DARK)
+    ladle = c.mask(lambda p: p.poly([(1466, 392), (1526, 392), (1516, 432), (1476, 432)]))
     c.put(ladle, CINDER)
-    c.light(c.mask(box(1394, 388, 1446, 396), blur=6), SLAG_GLOW, 0.6)
+    c.light(c.mask(box(1470, 388, 1522, 396), blur=6), SLAG_GLOW, 0.6)
     c.tone(cab * 0, 0)
 
 
-def row_shacks(x_spans, tag):
-    """Shacks of the Row: tin walls, lean-to roofs whose tops are the walks."""
+def row_shacks(x_spans, stand, notice, tag):
+    """Draw the roofs, notice board, and wash stand at the street entrance."""
     def draw(c, k):
         g = RIM
         k.ground = g
@@ -953,48 +970,90 @@ def row_shacks(x_spans, tag):
             c.put(c.mask(box(cx - 20, g - 70, cx + 20, g)), (50, 42, 38))
             k.window(cx + 60 if x1 - x0 > 260 else cx - 70, roof + 40, 34, 30, "rect", lit=0.5, tag=(tag, i, "w"))
             c.put(c.mask(box(x0 + 30, roof - 40, x0 + 38, roof)), STEEL_DARK)
+        x0, x1 = stand
+        for x in (x0 + 8, x1 - 8):
+            post(c, x, 580, g, 7)
+        planks(c, k, x0, 576, x1, 587, PLANK, tag=(tag, "wash_stand"))
+        deck_edge(c, x0, x1, 576, PLANK_LIGHT)
+        first_left, first_right, roof = x_spans[0]
+        notice_width, notice_top = notice
+        center = (first_left + first_right) / 2
+        left, right = center - notice_width / 2, center + notice_width / 2
+        for x in (left + 8, right - 8):
+            post(c, x, 485, roof, 6)
+        planks(c, k, left, notice_top, right, 517, PLANK_DARK, tag=(tag, "notice"))
+        deck_edge(c, left, right, notice_top, PLANK)
     return draw
 
 
 def row_pump(c, k):
-    """The pump on the cinder hump (top y 576, x 1104..1296) and the
-    washing lines across the Row on poles."""
+    """Draw the pump below the drying deck. The shirts hang at the rear."""
     g = RIM
     k.ground = g
-    c.put(c.mask(box(1194, 520, 1206, 576)), STEEL_DARK)
-    c.put(c.mask(lambda p: p.line([(1200, 524), (1236, 512)], 4)), STEEL_DARK)
-    c.put(c.mask(lambda p: p.line([(1196, 540), (1180, 548)], 4)), STEEL_DARK)
-    c.put(c.mask(lambda p: p.poly([(1170, 576), (1230, 576), (1226, 560), (1174, 560)])), (90, 90, 96))
-    for x in (900, 1500):
-        post(c, x, 440, g, 4)
-    pts = [(900, 450), (1200, 476), (1500, 450)]
-    rope_line(c, pts, 1.2)
-    colours = [(200, 200, 196), (120, 140, 170), (190, 100, 80), (220, 210, 170), (110, 120, 90)]
-    for i, x in enumerate(np.arange(940, 1480, 60)):
-        y = 450 + 26 * (1 - abs((x - 1200) / 300.0))
-        c.put(c.mask(lambda p: p.poly([(x - 18, y), (x + 18, y), (x + 14, y + 40), (x - 14, y + 40)])), colours[i % len(colours)])
+    for x0, x1, top, left_ground, right_ground in (
+        (864, 1008, 544, 640, 611),
+        (1040, 1360, 512, 592, 592),
+        (1392, 1576, 544, 603, 640),
+    ):
+        post(c, x0 + 8, top + 6, left_ground, 7)
+        post(c, x1 - 8, top + 6, right_ground, 7)
+        planks(c, k, x0, top, x1, top + 12, PLANK, tag=("row_drying", x0))
+        deck_edge(c, x0, x1, top, PLANK_LIGHT)
+    for x in (1052, 1348):
+        post(c, x, 427, 509, 4)
+    rope_line(c, [(1052, 437), (1200, 450), (1348, 437)])
+    colours = [(183, 181, 168), (123, 143, 161), (164, 105, 84), (199, 181, 144), (108, 123, 102)]
+    for x, colour in zip(range(1078, 1339, 57), colours, strict=True):
+        y = 450 - 13 * abs(x - 1200) / 148
+        c.put(c.mask(lambda p: p.poly([
+            (x - 20, y + 9), (x - 10, y), (x + 10, y), (x + 20, y + 9),
+            (x + 16, y + 17), (x + 10, y + 14), (x + 11, y + 35),
+            (x - 11, y + 35), (x - 10, y + 14), (x - 16, y + 17),
+        ])), colour)
+        for clip_x in (x - 9, x + 9):
+            c.put(c.mask(box(clip_x, y - 3, clip_x + 2, y + 5)), PLANK_LIGHT)
+    c.put(c.mask(box(1246, 534, 1257, 576)), STEEL_DARK)
+    c.put(c.mask(lambda p: p.line([(1252, 537), (1280, 531)], 4)), STEEL_DARK)
+    c.put(c.mask(lambda p: p.line([(1249, 545), (1231, 552)], 4)), STEEL_DARK)
+    c.put(c.mask(box(1236, 570, 1267, 576)), (90, 90, 96))
+    c.put(c.mask(lambda p: p.poly([(1217, 562), (1235, 562), (1232, 576), (1220, 576)])), STEEL_LIGHT)
 
 
 def railhead_grade(c, k):
-    """The old tramway grade: its head (y 640, x 0..288), the deck down on
-    timber bents to the street at (2128, 1408); the water tower for the line
-    and its spout; the line's signal and rails east."""
+    """Draw the tramway, the signal landing and steps, and the water tower."""
     k.ground = LOW
-    x0, y0, x1, y1 = 288, HIGH, 2128, LOW
-    slope = (y1 - y0) / (x1 - x0)
-    planks(c, None, 0, HIGH, x0, HIGH + 16, PLANK, step=7.0, vertical=True, tag="grade_head")
-    deck_edge(c, 0, x0, HIGH, PLANK_LIGHT)
-    for x in (40, 160, 260):
+    grade_start, grade_end = 160, 2208
+    signal_x0, signal_x1, signal_y = 1360, 1472, 1120
+    planks(c, None, 0, HIGH, grade_start, HIGH + 16, PLANK, step=7.0, vertical=True, tag="grade_head")
+    deck_edge(c, 0, grade_start, HIGH, PLANK_LIGHT)
+    for x in (40, 126):
         post(c, x, HIGH + 16, LOW, 8, scale(TIMBER, 0.9))
-    for x in np.arange(x0 + 80, x1 - 100, 160):
-        y = y0 + (x - x0) * slope
-        post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
-        if LOW - y > 160:
-            x_brace(c, x - 10, x + 70, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
-    c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
-    c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
-    # Old tram rails along the grade.
-    c.put(c.mask(lambda p: p.line([(x0, y0 - 3), (x1, y1 - 3)], 1.6)), (120, 110, 100))
+    for x0, y0, x1, y1 in ((grade_start, HIGH, signal_x0, signal_y), (signal_x1, signal_y, grade_end, LOW)):
+        slope = (y1 - y0) / (x1 - x0)
+        for x in range(x0 + 72, x1 - 90, 160):
+            y = y0 + (x - x0) * slope
+            post(c, x, y + 10, LOW, 8, scale(TIMBER, 0.9))
+            if LOW - y > 160:
+                x_brace(c, x - 10, x + 66, y + 30, LOW - 10, scale(TIMBER, 0.75), 2.4)
+        c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, y1 + 16), (x0, y0 + 16)])), PLANK)
+        c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 2.4)), PLANK_LIGHT)
+        c.put(c.mask(lambda p: p.line([(x0, y0 - 3), (x1, y1 - 3)], 1.6)), (120, 110, 100))
+    for x0, y in ((1376, 1152), (1440, 1216), (1504, 1280), (1568, 1344)):
+        x1 = x0 + 128
+        for x in (x0 + 12, x1 - 12):
+            post(c, x, y + 9, LOW, 7)
+        x_brace(c, x0 + 12, x1 - 12, y + 12, min(y + 57, LOW - 6), scale(TIMBER, 0.82), 2.4)
+        planks(c, k, x0, y, x1, y + 12, PLANK, tag=("railhead_step", y))
+        deck_edge(c, x0, x1, y, PLANK_LIGHT)
+    for x in (1368, 1464):
+        post(c, x, signal_y + 8, LOW, 9)
+    grating(c, signal_x0, signal_x1, signal_y, rail=False)
+    post(c, 1414, 1000, signal_y, 7, STEEL_DARK)
+    c.put(c.mask(lambda p: p.poly([(1415, 1016), (1451, 1000), (1460, 1011), (1420, 1030)])), RUST)
+    c.put(c.mask(lambda p: p.ellipse(1414, 1029, 6, 6)), (165, 111, 56))
+    for x in (298, 502):
+        post(c, x, 637, HIGH + (x - grade_start) * 0.4, 7)
+    planks(c, k, 285, 618, 515, 652, PLANK_DARK, tag="railhead_grade_notice")
     # The water tower by the line.
     tx0, tx1, ttop = 2180, 2340, 1060
     planks(c, None, tx0, ttop, tx1, ttop + 120, (110, 80, 56), step=8.0, vertical=True, tag="rh_tank")
@@ -1004,6 +1063,8 @@ def railhead_grade(c, k):
         post(c, x, ttop + 120, LOW, 8, TIMBER)
     x_brace(c, 2190, 2330, ttop + 130, LOW - 10, scale(TIMBER, 0.8), 3.0)
     c.put(c.mask(lambda p: p.line([(tx0, ttop + 100), (2140, ttop + 140), (2140, ttop + 180)], 4)), STEEL_DARK)
+    post(c, 2070, 1211, LOW, 7)
+    planks(c, k, 2056, 1195, 2344, 1226, PLANK_DARK, tag="railhead_dry_dock_notice")
     # The rails of the line east, on the street.
     c.put(c.mask(lambda p: [p.rect(x, LOW - 6, x + 16, LOW) for x in np.arange(1200, 2400, 24)]), (70, 56, 46))
     c.put(c.mask(box(1200, LOW - 8, 2400, LOW - 5)), (130, 126, 122))
@@ -1053,13 +1114,13 @@ PIECES: Dict[str, Piece] = {
     "frontier_yard_tracks": Piece((0, 1240, 2400, 1420), yard_tracks, px=1.0),
     "frontier_tipple_road": Piece((480, 330, 2400, 1420), tipple_road, px=1.0),
     # frontier_clinker_works
-    "frontier_furnace_house": Piece((90, 60, 720, 640), furnace_house),
-    "frontier_slag_pots": Piece((690, 560, 1530, 640), slag_pots),
-    "frontier_works_crane": Piece((800, 280, 1730, 640), works_crane),
+    "frontier_furnace_house": Piece((90, 0, 856, 640), furnace_house),
+    "frontier_slag_pots": Piece((670, 530, 1544, 640), slag_pots),
+    "frontier_works_crane": Piece((598, 280, 1730, 640), works_crane),
     # frontier_clinker_row
-    "frontier_row_shacks_west": Piece((220, 470, 860, 640), row_shacks([(240, 560, 528), (600, 840, 544)], "row_w")),
-    "frontier_row_pump": Piece((880, 430, 1520, 640), row_pump),
-    "frontier_row_shacks_east": Piece((1580, 470, 2260, 640), row_shacks([(1600, 1880, 528), (1960, 2240, 544)], "row_e")),
+    "frontier_row_shacks_west": Piece((132, 470, 860, 640), row_shacks([(240, 560, 528), (600, 840, 544)], (144, 224), (122, 475), "row_w")),
+    "frontier_row_pump": Piece((850, 408, 1580, 640), row_pump),
+    "frontier_row_shacks_east": Piece((1580, 450, 2356, 640), row_shacks([(1600, 1880, 528), (1960, 2240, 544)], (2264, 2344), (244, 455), "row_e")),
     # frontier_clinker_railhead
     "frontier_railhead_grade": Piece((0, 600, 2400, 1420), railhead_grade, px=1.0),
 }
