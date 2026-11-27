@@ -1,0 +1,30 @@
+schema: ambition-chargen-v1
+name: Tamsin
+base: average_female
+seed: 404
+body:
+  height_cm: 164
+  age: 0.51
+hair:
+  style: bun
+palette:
+  skin: '#d3a184'
+  hair: '#756542'
+outfit:
+  top: shirt
+  sleeves: long
+  neckline: collar
+  top_color: '#b3b388'
+  outer: apron
+  outer_length: knee
+  outer_color: '#485d5b'
+  bottom: trousers
+  bottom_color: '#56454e'
+  shoes: boots
+  hat: none
+  hat_color: '#485d5b'
+  accessories:
+  - belt
+game:
+  character_id: npc_mine_sampler
+  description: "Tamsin runs the assay counter and mends the crew's work gloves."

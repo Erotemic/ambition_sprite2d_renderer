@@ -1,0 +1,30 @@
+schema: ambition-chargen-v1
+name: Ellis
+base: slim_male
+seed: 402
+body:
+  height_cm: 178
+  age: 0.32
+hair:
+  style: buzz
+palette:
+  skin: '#cf9b7e'
+  hair: '#573528'
+outfit:
+  top: shirt
+  sleeves: long
+  neckline: collar
+  top_color: '#758c82'
+  outer: vest
+  outer_length: hip
+  outer_color: '#96662d'
+  bottom: trousers
+  bottom_color: '#38454d'
+  shoes: boots
+  hat: cap
+  hat_color: '#b38532'
+  accessories:
+  - belt
+game:
+  character_id: npc_mine_hand
+  description: "Ellis looks after the mine carts. He remembers who forgot to pick up a lunch tin."
