@@ -74,11 +74,13 @@ SHEET_FILES = [
     f"{GLYPHS_TARGET}_spritesheet.yaml",
 ]
 
-# --- geometry (design units, y down; published at 2 px a unit) ---------------
+# --- geometry in design units, with Y down -------------------------------------
 
 FRAME_SIZE = (224, 224)
-SUPER = gate.SUPER
+SUPER = 8
+DRAW_SCALE = SUPER // gate.SUPER
 OUT_SIZE = (FRAME_SIZE[0] * 2, FRAME_SIZE[1] * 2)
+RING_SIZE = (1280, 1280)
 
 #: The band, across (the round ring's is 24).
 BAND = 22.0
@@ -175,7 +177,7 @@ def _draw_band_outline(draw, in_r: float, *, fill=None, outline=None, width: int
     if fill is not None:
         draw.polygon(pts, fill=fill)
     if outline is not None:
-        draw.line(pts + [pts[0]], fill=outline, width=width, joint="curve")
+        draw.line(pts + [pts[0]], fill=outline, width=width * DRAW_SCALE, joint="curve")
 
 
 # --- the chevrons ---------------------------------------------------------------
@@ -240,7 +242,8 @@ def _chevron_slide() -> float:
     def outline(at: Point, out: float, scale: float) -> List[Point]:
         turn = math.radians(out + 90.0)
         c, s = math.cos(turn), math.sin(turn)
-        return [(at[0] + x * scale * c - y * scale * s, at[1] + x * scale * s + y * scale * c) for x, y in gate.PLAQUE_OUTER]
+        return [(at[0] + x * c - y * s, at[1] + x * s + y * c)
+                for x, y in _scaled(gate.PLAQUE_OUTER, scale)]
 
     apex = outline(*_chevron_pose(APEX_INDEX), APEX_CHEVRON_SCALE)
     gap = _convex_gap(
@@ -259,7 +262,8 @@ def _chevron_slide() -> float:
 
 
 def _scaled(points: Sequence[Point], scale: float) -> List[Point]:
-    return [(x * scale, y * scale) for x, y in points]
+    k = scale * DRAW_SCALE
+    return [(x * k, y * k) for x, y in points]
 
 
 def _draw_chevron_plaque(draw, index: int) -> None:
@@ -267,8 +271,8 @@ def _draw_chevron_plaque(draw, index: int) -> None:
     the opening, its dark face where the glyph is cut."""
     at, out = _chevron_pose(index)
     k = _chevron_scale(index)
-    gate._draw_rotated_polygon(draw, at, _scaled(gate.PLAQUE_OUTER, k), out + 90.0, fill=gate._rgba(gate.PLAQUE), outline=gate._rgba(gate.OUTLINE), width=4)
-    gate._draw_rotated_polygon(draw, at, _scaled(gate.PLAQUE_FACE, k), out + 90.0, fill=gate._rgba(gate.PLAQUE_INK), outline=gate._rgba(gate.BRONZE_LIGHT), width=2)
+    gate._draw_rotated_polygon(draw, at, _scaled(gate.PLAQUE_OUTER, k), out + 90.0, fill=gate._rgba(gate.PLAQUE), outline=gate._rgba(gate.OUTLINE), width=4 * DRAW_SCALE)
+    gate._draw_rotated_polygon(draw, at, _scaled(gate.PLAQUE_FACE, k), out + 90.0, fill=gate._rgba(gate.PLAQUE_INK), outline=gate._rgba(gate.BRONZE_LIGHT), width=2 * DRAW_SCALE)
 
 
 def _chevron_grid_cell(index: int, row: int, col: int) -> Point:
@@ -278,15 +282,15 @@ def _chevron_grid_cell(index: int, row: int, col: int) -> Point:
     at, out = _chevron_pose(index)
     turn = math.radians(out + 90.0)
     k = _chevron_scale(index)
-    pitch = gate.GRID_PITCH * k
+    pitch = gate.GRID_PITCH * DRAW_SCALE * k
     lx = (col - (gate.GRID_COLS - 1) / 2.0) * pitch
-    ly = gate.GRID_Y * k + (row - (gate.GRID_ROWS - 1) / 2.0) * pitch
+    ly = gate.GRID_Y * DRAW_SCALE * k + (row - (gate.GRID_ROWS - 1) / 2.0) * pitch
     return (at[0] + lx * math.cos(turn) - ly * math.sin(turn), at[1] + lx * math.sin(turn) + ly * math.cos(turn))
 
 
 def _draw_chevron_grid_sockets(draw, index: int) -> None:
     """Chevron ``index``'s sixteen empty sockets."""
-    r = gate.GRID_DOT * _chevron_scale(index)
+    r = gate.GRID_DOT * DRAW_SCALE * _chevron_scale(index)
     for row in range(gate.GRID_ROWS):
         for col in range(gate.GRID_COLS):
             x, y = _chevron_grid_cell(index, row, col)
@@ -299,8 +303,8 @@ def _chevron_glyph_placement(index: int) -> Placement:
     at, out = _chevron_pose(index)
     n = _unit(out)
     k = _chevron_scale(index)
-    inset = gate.GLYPH_INSET * k
-    return Placement(GLYPHS[index], (at[0] - n[0] * inset, at[1] - n[1] * inset), gate.GLYPH_CAP * k, out + 90.0)
+    inset = gate.GLYPH_INSET * DRAW_SCALE * k
+    return Placement(GLYPHS[index], (at[0] - n[0] * inset, at[1] - n[1] * inset), gate.GLYPH_CAP * DRAW_SCALE * k, out + 90.0)
 
 
 def _chevron_glyph_light(levels: List[float]) -> Image.Image:
@@ -357,7 +361,7 @@ def _draw_band_ticks(draw) -> None:
             p1 = _from_centroid(normal, inner, u * math.sqrt(3.0) * inner)
             p2 = _from_centroid(normal, outer, u * math.sqrt(3.0) * inner)
             light = k % 3 == 1
-            draw.line([p1, p2], fill=gate._rgba("#d2ab78", 80) if light else gate._rgba(gate.BRONZE_DARK, 115), width=2)
+            draw.line([p1, p2], fill=gate._rgba("#d2ab78", 80) if light else gate._rgba(gate.BRONZE_DARK, 115), width=2 * DRAW_SCALE)
 
 
 def _corner_cap(corner_deg: float, height: float, proud: float) -> List[Point]:
@@ -383,11 +387,11 @@ def _draw_corner_clamp(layer: Image.Image, draw, lamp_index: int, level: float) 
     ang = CORNER_DEGS[lamp_index]
     cap = _corner_cap(ang, CORNER_CAP_HEIGHT, CORNER_CAP_PROUD)
     draw.polygon(cap, fill=gate._rgba("#6b5034"))
-    draw.line(cap + [cap[0]], fill=gate._rgba(gate.OUTLINE), width=4, joint="curve")
+    draw.line(cap + [cap[0]], fill=gate._rgba(gate.OUTLINE), width=4 * DRAW_SCALE, joint="curve")
     face = _corner_cap(ang, CORNER_CAP_HEIGHT - 3.2, CORNER_CAP_PROUD - 1.6)
-    draw.line(face + [face[0]], fill=gate._rgba(gate.BRONZE_LIGHT, 150), width=2, joint="curve")
+    draw.line(face + [face[0]], fill=gate._rgba(gate.BRONZE_LIGHT, 150), width=2 * DRAW_SCALE, joint="curve")
     middle = 2.0 * (OUTER_IN_R + CORNER_CAP_PROUD) - CORNER_CAP_HEIGHT * 2.0 / 3.0
-    gate._draw_clamp_lamp(layer, _from_centroid(ang, middle), ang, level)
+    gate._draw_clamp_lamp(layer, _from_centroid(ang, middle), ang, level, supersample=SUPER)
 
 
 def _draw_step(draw, half: float, top: float, bottom: float) -> None:
@@ -396,9 +400,9 @@ def _draw_step(draw, half: float, top: float, bottom: float) -> None:
     its tread and the shadow line under the lip."""
     cx = _s(CENTROID[0])
     x0, x1, y0 = cx - _s(half), cx + _s(half), _s(top)
-    draw.rectangle((x0, y0, x1, _s(bottom)), fill=gate._rgba("#5a4330"), outline=gate._rgba(gate.OUTLINE), width=4)
-    draw.rectangle((x0 + 4, y0 + 4, x1 - 4, y0 + _s(2.2)), fill=gate._rgba("#a58258"))
-    draw.rectangle((x0 + 4, y0 + _s(2.2), x1 - 4, y0 + _s(3.0)), fill=gate._rgba(gate.BRONZE_DARK))
+    draw.rectangle((x0, y0, x1, _s(bottom)), fill=gate._rgba("#5a4330"), outline=gate._rgba(gate.OUTLINE), width=4 * DRAW_SCALE)
+    draw.rectangle((x0 + _s(1.0), y0 + _s(1.0), x1 - _s(1.0), y0 + _s(2.2)), fill=gate._rgba("#a58258"))
+    draw.rectangle((x0 + _s(1.0), y0 + _s(2.2), x1 - _s(1.0), y0 + _s(3.0)), fill=gate._rgba(gate.BRONZE_DARK))
 
 
 def _draw_pedestal(img: Image.Image, lit: float) -> None:
@@ -419,11 +423,11 @@ def _draw_pedestal(img: Image.Image, lit: float) -> None:
     glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
     gd = blending_draw(glow)
     y = _s(PEDESTAL_TOP) + _s(1.0)
-    gd.rectangle((cx - _s(half), y - 2, cx + _s(half), y + 2), fill=gate._rgba("#7ff3ff", int(255 * lit)))
+    gd.rectangle((cx - _s(half), y - _s(0.5), cx + _s(half), y + _s(0.5)), fill=gate._rgba("#7ff3ff", int(255 * lit)))
     glow = glow.filter(ImageFilter.GaussianBlur(1.2 * SUPER))
     img.alpha_composite(glow)
     draw = blending_draw(img)
-    draw.rectangle((cx - _s(half), y - 1, cx + _s(half), y + 1), fill=gate._rgba("#e6fdff", int(230 * lit)))
+    draw.rectangle((cx - _s(half), y - _s(0.25), cx + _s(half), y + _s(0.25)), fill=gate._rgba("#e6fdff", int(230 * lit)))
 
 
 def _draw_triangle_frame(*, frame_index: int, nframes: int, idle_mode: bool) -> Image.Image:
@@ -460,7 +464,7 @@ def _draw_triangle_frame(*, frame_index: int, nframes: int, idle_mode: bool) -> 
     for lamp_index in range(len(CORNER_DEGS)):
         _draw_corner_clamp(band, bd, lamp_index, gate._lamp_level(lamp_index, frame_index, nframes, idle_mode))
 
-    band = band.filter(ImageFilter.GaussianBlur(radius=0.25))
+    band = band.filter(ImageFilter.GaussianBlur(radius=0.25 * DRAW_SCALE))
     img.alpha_composite(band)
 
     # The opening's cyan rim (the ring's inner glow).
@@ -469,7 +473,7 @@ def _draw_triangle_frame(*, frame_index: int, nframes: int, idle_mode: bool) -> 
     alpha = 78 if idle_mode else 106
     _draw_band_outline(rd, OPEN_IN_R + 2.5, outline=gate._rgba("#5fe2ff", alpha), width=4)
     _draw_band_outline(rd, OPEN_IN_R + 3.9, outline=gate._rgba("#a8f2ff", alpha // 2), width=2)
-    rim = rim.filter(ImageFilter.GaussianBlur(radius=2.5))
+    rim = rim.filter(ImageFilter.GaussianBlur(radius=2.5 * DRAW_SCALE))
     img.alpha_composite(rim)
     # The pedestal over the middle of the band's foot.
     _draw_pedestal(img, lit=0.55 if idle_mode else 0.55 + 0.45 * (frame_index + 1) / max(1, nframes))
@@ -483,7 +487,8 @@ def _downsample(img: Image.Image) -> Image.Image:
 def render_ring_frame(animation: str, frame_index: int, nframes: int) -> Image.Image:
     if animation not in ("idle", "charge"):
         raise ValueError(f"{RING_TARGET}: no row {animation!r}")
-    return _downsample(_draw_triangle_frame(frame_index=frame_index, nframes=nframes, idle_mode=animation == "idle"))
+    frame = _draw_triangle_frame(frame_index=frame_index, nframes=nframes, idle_mode=animation == "idle")
+    return frame.resize(RING_SIZE, Image.Resampling.LANCZOS)
 
 
 def render_glyph_frame(animation: str, frame_index: int, nframes: int) -> Image.Image:
@@ -500,7 +505,7 @@ def render_glyph_frame(animation: str, frame_index: int, nframes: int) -> Image.
         index, cell = divmod(frame_index, gate.GRID_CELLS)
         x, y = _chevron_grid_cell(index, *divmod(cell, gate.GRID_COLS))
         dot = Image.new("L", size, 0)
-        r = gate.GRID_DOT * _chevron_scale(index) * (1.0 if animation == "bit" else 0.7)
+        r = gate.GRID_DOT * DRAW_SCALE * _chevron_scale(index) * (1.0 if animation == "bit" else 0.7)
         ImageDraw.Draw(dot).rectangle((x - r, y - r, x + r, y + r), fill=255)  # raw-draw-ok: an L mask has no alpha to composite
         core = np.asarray(dot, np.float32) / 255.0
         if animation == "bit":
@@ -538,12 +543,13 @@ def render_portal_frame(animation: str, frame_index: int, nframes: int) -> Image
     return wormhole_frame(animation, frame_index, nframes, out_size=OUT_SIZE[0], aperture=WORMHOLE_APERTURE)
 
 
-@functools.lru_cache(maxsize=1)
-def _assembly_body_metrics() -> dict:
+@functools.lru_cache(maxsize=2)
+def _assembly_body_metrics(width: int, height: int) -> dict:
     """The gate's one body: the ring's idle frame. Every sheet publishes it
     on one uncropped canvas, so the membrane and the lit glyphs land where
     drawn (as the round gate's do)."""
-    return alpha_bbox_metrics(render_ring_frame("idle", 0, RING_ROWS[0][1]))
+    ring = render_ring_frame("idle", 0, RING_ROWS[0][1])
+    return alpha_bbox_metrics(ring.resize((width, height), Image.Resampling.LANCZOS))
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
@@ -551,17 +557,16 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     shared = dict(
         out_dir=out_dir,
-        frame_size=OUT_SIZE,
         label_width=128,
         auto_crop=False,
-        body_metrics_fn=lambda _fw, _fh: _assembly_body_metrics(),
+        body_metrics_fn=_assembly_body_metrics,
     )
     outputs = []
-    for target, rows, fn in (
-        (RING_TARGET, RING_ROWS, render_ring_frame),
-        (PORTAL_TARGET, PORTAL_ROWS, render_portal_frame),
-        (GLYPHS_TARGET, GLYPH_ROWS, render_glyph_frame),
+    for target, rows, fn, size in (
+        (RING_TARGET, RING_ROWS, render_ring_frame, RING_SIZE),
+        (PORTAL_TARGET, PORTAL_ROWS, render_portal_frame, OUT_SIZE),
+        (GLYPHS_TARGET, GLYPH_ROWS, render_glyph_frame, OUT_SIZE),
     ):
-        sheet = build_sheet(target=target, rows=rows, render_fn=fn, **shared)
+        sheet = build_sheet(target=target, rows=rows, render_fn=fn, frame_size=size, max_sheet_dimension=4096, **shared)
         outputs += [sheet["canonical"], sheet["canonical_transparent"], sheet["spritesheet"], sheet["yaml"], sheet["preview"]]
     return outputs

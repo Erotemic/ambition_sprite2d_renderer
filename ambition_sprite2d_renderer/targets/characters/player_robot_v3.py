@@ -48,6 +48,7 @@ from .player_robot_v3_strikes import STRIKES
 TARGET_NAME = "player_robot_v3"
 FRAME_SIZE = (224, 224)
 PUBLISH_PADDING = (16, 16, 16, 16)
+PART_TEXEL_SCALE = 2
 RIG_PATH = (
     Path(__file__).resolve().parent
     / "rigged/player_robot_v3/player_robot_v3.rig.json"
@@ -1112,13 +1113,14 @@ def build_part_flipbook():
 
 def eye_landmarks(flipbook) -> Dict[str, list]:
     """Each row's eye per frame, from its feet in the published (padded) frame."""
+    density = flipbook.texel_scale
     landmarks = {}
     for row, count, _duration in ROWS:
         frames = []
         for index in range(count):
             eye = frame_meta(row, index, count)["anchors"].get("eye")
-            frames.append({"eye": (eye[0] + PUBLISH_PADDING[0] - flipbook.feet[0],
-                                   eye[1] + PUBLISH_PADDING[1] - flipbook.feet[1])} if eye else {})
+            frames.append({"eye": ((eye[0] + PUBLISH_PADDING[0]) * density - flipbook.feet[0],
+                                   (eye[1] + PUBLISH_PADDING[1]) * density - flipbook.feet[1])} if eye else {})
         if any(frames):
             landmarks[row] = frames
     return landmarks
@@ -1133,6 +1135,7 @@ def _render_with_products(out_dir: str | Path, **opts):
     hitboxes: Dict[str, dict] = _translated_legacy_hitboxes()
     outputs = build_sheet(
         parts=True,
+        part_texel_scale=PART_TEXEL_SCALE,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
