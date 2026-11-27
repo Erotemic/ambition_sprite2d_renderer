@@ -82,6 +82,12 @@ def boardwalk(c, x0, x1, top, ground):
     c.put(c.mask(lambda p: [p.rect(x, top + 4, x + 3, ground) for x in np.arange(x0 + 10, x1, 64)]), PLANK_DARK)
 
 
+def boardwalk_ramp(c, x0, y0, x1, y1, ground):
+    """Boards under a ramp and a light edge at the walking surface."""
+    c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, ground), (x0, ground)])), PLANK)
+    c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 1.5)), PLANK_LIGHT)
+
+
 def wheels(c, x0, x1, under=672, rail=720, tag="truck"):
     """The two trucks of a car: frames and wheels from its underframe down to
     the rails, the couplers at its ends."""
@@ -198,9 +204,8 @@ def station_house(c, k):
             deck_edge(c, x0, x1, top, mix(colour, (255, 236, 200), 0.4))
     # The platform's edge: boards over the room's block.
     boardwalk(c, 640, 1488, plat, g)
-    for x0, y0, x1, y1 in ((544, g, 640, plat), (1488, plat, 1584, g)):
-        c.put(c.mask(lambda p: p.poly([(x0, y0), (x1, y1), (x1, g), (x0, g)])), PLANK)
-        c.put(c.mask(lambda p: p.line([(x0, y0), (x1, y1)], 1.5)), PLANK_LIGHT)
+    boardwalk_ramp(c, 544, g, 640, plat, g)
+    boardwalk_ramp(c, 1488, plat, 1584, g, g)
     for x in (848, 1072):
         post(c, x, 407, roof, 5, TIMBER)
     c.put(c.mask(box(824, 379, 1096, 416)), (44, 50, 58))
@@ -238,6 +243,7 @@ def inn_front(c, k):
     c.put(c.mask(lambda p: p.ring(468, g - 20, 7, 1.0)) * c.mask(box(458, g - 30, 478, g - 18)), (90, 90, 90))
     porch(c, k, 200, 640, PORCH, g, [206, 330, 510, 634], "inn")
     boardwalk(c, 160, 680, g, RIM)
+    boardwalk_ramp(c, 80, RIM, 160, g, RIM)
 
 
 def mercantile_front(c, k):
@@ -254,14 +260,14 @@ def mercantile_front(c, k):
     door_surround(c, 940, 980, g, 92)
     c.put(c.mask(box(944, g - 86, 976, g)), (90, 70, 56))
     porch(c, k, 700, 1060, PORCH, g, [706, 880, 1054], "merc")
-    boardwalk(c, 680, 1080, g, RIM)
-    barrel(c, 1040, g, 16, 22)
+    boardwalk(c, 680, 1088, g, RIM)
+    boardwalk_ramp(c, 1088, g, 1168, RIM, RIM)
+    crate(c, 992, 560, 1072, g)
+    barrel(c, 980, g, 16, 22)
 
 
 def siding_windmill(c, k):
-    """The windmill over the trough: its lattice tower, the platform (y 432,
-    x 1150..1340) round its top, the wheel and tail over it; the trough and
-    pump rod on the street (y 640)."""
+    """A windmill with a trough, a pump rod, and a ladder at the east edge."""
     g, deck = RIM, 432
     k.ground = g
     for xa, xb in ((1170, 1200), (1320, 1290)):
@@ -273,14 +279,15 @@ def siding_windmill(c, k):
     x_brace(c, 1190, 1300, deck + 20, g - 10, scale(TIMBER, 0.85), 2.4)
     # The pump rod down the middle and the trough.
     c.put(c.mask(box(1243, deck, 1247, g - 30)), STEEL_DARK)
-    trough = c.mask(box(1120, g - 34, 1380, g))
-    planks(c, None, 1120, g - 34, 1380, g, PLANK_DARK, step=8.0, tag="trough")
-    c.put(c.mask(box(1124, g - 32, 1376, g - 26)), (90, 130, 140), 0.9)
-    c.tone(trough * 0, 0)
+    planks(c, None, 1174, g - 34, 1278, g, PLANK_DARK, step=8.0, tag="trough")
+    c.put(c.mask(box(1178, g - 32, 1274, g - 26)), (90, 130, 140), 0.9)
     # The platform and its rail.
-    deck_edge(c, 1150, 1340, deck, PLANK_LIGHT)
-    c.put(c.mask(box(1150, deck + 3, 1340, deck + 10)), PLANK)
-    c.put(c.mask(lambda p: ([p.rect(x, deck - 20, x + 2, deck) for x in np.arange(1152, 1340, 20)], p.rect(1150, deck - 22, 1340, deck - 20))), TIMBER)
+    deck_edge(c, 1136, 1344, deck, PLANK_LIGHT)
+    c.put(c.mask(box(1136, deck + 3, 1344, deck + 10)), PLANK)
+    c.put(c.mask(lambda p: [p.rect(x, deck - 20, x + 2, deck) for x in np.arange(1136, 1321, 20)]), TIMBER)
+    c.put(c.mask(box(1136, deck - 22, 1320, deck - 20)), TIMBER)
+    for x, y in ((1294, 456), (1311, 576)):
+        c.put(c.mask(box(x, y, 1374, y + 5)), PLANK_DARK)
     # The wheel: twelve vanes in a ring on its hub, and the tail vane.
     cx, cy, r = 1245, 300, 78
     c.put(c.mask(lambda p: p.rect(1241, cy, 1249, deck)), STEEL_DARK)
@@ -312,7 +319,17 @@ def telegraph_front(c, k):
     for x in (1810, 1826, 1842, 1858):
         c.put(c.mask(lambda p: p.ellipse(x, 192, 2.4, 3)), (120, 170, 160))
     c.put(c.mask(lambda p: [p.line([(x, 192), (1796, 310 + i * 6)], 0.8) for i, x in enumerate((1810, 1826))]), (40, 36, 34))
+    post(c, 1402, 502, 623, 6, TIMBER)
+    post(c, 1450, 502, g, 6, TIMBER)
+    grating(c, 1392, 1456, PORCH)
+    for x in (1424, 1456):
+        c.put(c.mask(lambda p: p.ellipse(x, 589, 15, 25)), PLANK_DARK)
+        c.put(c.mask(lambda p: p.ring(x, 589, 9, 2)), STEEL)
+        c.put(c.mask(lambda p: p.ellipse(x, 589, 3, 4)), STEEL_DARK)
+    deck_edge(c, 1408, 1472, 560, PLANK_LIGHT)
     boardwalk(c, 1440, 2160, g, RIM)
+    boardwalk_ramp(c, 1360, RIM, 1440, g, RIM)
+    boardwalk_ramp(c, 2160, g, 2240, RIM, RIM)
     # The signpost: arrows east.
     post(c, 2020, 400, RIM, 6, TIMBER)
     for y in (420, 450):
@@ -909,10 +926,10 @@ PIECES: Dict[str, Piece] = {
     # frontier_siding_station
     "frontier_siding_station_house": Piece((536, 370, 1590, 640), station_house),
     # frontier_siding_street
-    "frontier_lie_down_inn_front": Piece((150, 160, 690, 640), inn_front),
-    "frontier_mercantile_front": Piece((670, 220, 1090, 640), mercantile_front),
+    "frontier_lie_down_inn_front": Piece((72, 160, 690, 640), inn_front),
+    "frontier_mercantile_front": Piece((670, 220, 1176, 640), mercantile_front),
     "frontier_siding_windmill": Piece((1100, 200, 1420, 640), siding_windmill),
-    "frontier_telegraph_front": Piece((1430, 170, 2170, 640), telegraph_front),
+    "frontier_telegraph_front": Piece((1352, 170, 2248, 640), telegraph_front),
     # frontier_lie_down_inn
     "frontier_lie_down_inn_room": Piece((16, 32, 1264, 512), inn_room),
     # frontier_siding_trestle
