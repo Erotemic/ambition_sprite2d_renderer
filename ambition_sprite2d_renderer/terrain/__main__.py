@@ -97,9 +97,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     known = {skin.key: skin for skin in skins.SKINS}
-    unknown = [name for name in args.skins if name not in known]
+    valid = known.keys() | doors.DOORS.keys() if args.command == "draw" else known.keys()
+    unknown = [name for name in args.skins if name not in valid]
     if unknown:
-        raise SystemExit(f"no skin named {unknown}; the skins are {sorted(known)}")
+        raise SystemExit(f"no product named {unknown}; available products are {sorted(valid)}")
     if args.command == "draw":
         args.out_dir.mkdir(parents=True, exist_ok=True)
         for unit, part, _fn, draw_one in jobs(args.skins):

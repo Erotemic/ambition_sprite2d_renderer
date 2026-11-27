@@ -2553,7 +2553,98 @@ def nan_madol_door(tile: Tile, c: dict) -> np.ndarray:
     return leaf
 
 
+def gallery_portraits(p, dx, dy):
+    """Cut three figures into the badge."""
+    for x, y in ((21.5, 63), (41.5, 63), (31.5, 59)):
+        _dot(p, dx, dy, x, y, 4.2, ry=4.8)
+        _poly(p, dx, dy, [(x - 6.2, y + 15), (x - 5.4, y + 9), (x, y + 5),
+                          (x + 5.4, y + 9), (x + 6.2, y + 15)])
+
+
+def gallery_landscape(p, dx, dy):
+    """Cut mountains and the sun into the badge."""
+    _dot(p, dx, dy, 40, 58, 3.6)
+    _poly(p, dx, dy, [(15, 78), (26, 58), (34, 70), (39, 64), (48, 78)])
+    _line(p, dx, dy, [(17, 82), (45, 82)], 1.0)
+
+
+def gallery_shield(p, dx, dy):
+    """Cut a shield into the badge."""
+    _poly(p, dx, dy, [(19, 57), (31.5, 54), (44, 57), (42, 71), (37, 79), (31.5, 84),
+                      (26, 79), (21, 71)])
+    _poly(p, dx, dy, [(22.5, 60), (31.5, 58), (40.5, 60), (38.5, 71), (31.5, 80),
+                      (24.5, 71)], value=0)
+    _line(p, dx, dy, [(31.5, 61), (31.5, 76)], 1.2)
+
+
+def gallery_crescent(p, dx, dy):
+    """Cut a crescent into the upper badge."""
+    _dot(p, dx, dy, 30, 61, 10)
+    _dot(p, dx, dy, 35, 57, 8.2, value=0)
+
+
+def gallery_scythe(p, dx, dy):
+    """Cut a scythe below the crescent."""
+    _line(p, dx, dy, [(28.5, 104), (35, 77)], 1.7)
+    _poly(p, dx, dy, [(35, 77), (29, 77.5), (24, 81), (21, 87), (27, 83), (34, 82), (38, 79)])
+
+
+def gallery_arch(tile: Tile, c: dict) -> np.ndarray:
+    """Set a painted leaf and relief badge in a stone arch."""
+    centre = W * 0.5
+    arch = 27.0
+    leaf = _frame(tile, c, arch=arch)
+    stone = tile.alpha * (1.0 - leaf) * (tile.y < H - STEP)
+    tile.tone((tile.noise(11, 26, 3) - 0.5) * 0.28 * stone)
+    tile.put(stone * ((tile.x - centre) / W + 0.5), c["dark"], 0.23)
+    joints = [(0, y, F, y) for y in (42, 61, 80, 99)]
+    joints += [(W - x0, y0, W - x1, y1) for x0, y0, x1, y1 in tuple(joints)]
+    for angle in np.linspace(math.pi, 2 * math.pi, 9)[1:-1]:
+        cosine, sine = math.cos(angle), math.sin(angle)
+        joints.append((centre + 34 * cosine, arch + 29 * sine,
+                       centre + 22 * cosine, arch + 17 * sine))
+    cuts = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x0, y0), (x1, y1)], 0.65)
+                                       for x0, y0, x1, y1 in joints])
+    tile.put(cuts * stone, c["dark"], 0.72)
+    tile.put(np.roll(cuts, K // 2, axis=0) * stone, c["frame_light"], 0.58)
+
+    grain = tile.noise(38, 5, 3)
+    tile.tone((grain - 0.5) * 0.19 * leaf)
+    tile.put(leaf * np.clip((tile.y - 26) / 100, 0.0, 1.0), c["dark"], 0.38)
+    bevel = tile.mask(lambda p, dx, dy: _line(
+        p, dx, dy, [(9, 103), (9, 35), (11, 27), (18, 20), (26, 16), (37, 16),
+                    (45, 20), (52, 27), (54, 35), (54, 103), (9, 103)], 0.85))
+    tile.put(np.roll(bevel, K, axis=0) * leaf, c["dark"], 0.9)
+    tile.put(bevel * leaf, c["accent"], 0.82)
+    for y in (36, 96):
+        band = tile.mask(lambda p, dx, dy: _box(p, dx, dy, F, y, W - F, y + 4))
+        tile.put(band * leaf, c["dark"], 0.9)
+        tile.put(leaf * ((tile.y >= y) & (tile.y < y + 0.8)), c["accent"], 0.82)
+        studs = tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y + 2.2, 0.9)
+                                            for x in (11, 17, 46, 52)])
+        tile.put(studs * leaf, c["accent"])
+    badge = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, centre, 69, 21, ry=25))
+    tile.put(badge * leaf, c["dark"], 0.8)
+    inner_badge = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, centre, 69, 19.8, ry=23.8))
+    tile.put((badge - inner_badge) * leaf, c["accent"], 0.75)
+    emblem = tile.mask(c["emblem"])
+    tile.put(np.roll(emblem, K, axis=0) * leaf, c["dark"])
+    tile.put(emblem * leaf, c["emblem_light"])
+    if c.get("inlay"):
+        tile.put(tile.mask(c["inlay"]) * leaf, c["accent"])
+
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, 51, 89, 2.5)), c["dark"])
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, 51, 88, 1.7)), c["accent"])
+    ring = tile.mask(lambda p, dx, dy: (
+        _dot(p, dx, dy, 51, 92, 2.5, ry=3.2),
+        _dot(p, dx, dy, 51, 92, 1.2, ry=1.9, value=0),
+    ))
+    tile.put(ring * leaf, c["accent"])
+    return leaf
+
+
 MOTIONS: dict[Draw, tuple[str, bool]] = {
+    gallery_arch: (SWING, False),
     bulkhead: (SLIDE, True),
     iron: (SWING, False),
     plank: (SWING, False),
@@ -2621,6 +2712,14 @@ def _colours(frame: RGB, leaf: RGB, dark: RGB, accent: RGB, glow: RGB) -> dict:
 
 #: The door of each theme: how it is drawn, and its colours.
 DOORS: dict[str, tuple[Draw, dict]] = {
+    "gallery_characters": (gallery_arch, {**_colours((208, 190, 155), (38, 54, 90), (14, 19, 38), (202, 157, 86), (116, 155, 229)),
+                                         "emblem": gallery_portraits, "emblem_light": (238, 221, 180)}),
+    "gallery_biomes": (gallery_arch, {**_colours((208, 190, 155), (43, 93, 75), (16, 31, 34), (200, 157, 84), (132, 219, 166)),
+                                     "emblem": gallery_landscape, "emblem_light": (204, 230, 177)}),
+    "gallery_bosses": (gallery_arch, {**_colours((208, 190, 155), (112, 49, 58), (37, 16, 31), (208, 156, 84), (236, 131, 112)),
+                                     "emblem": gallery_shield, "emblem_light": (247, 196, 113)}),
+    "gallery_gram_reaper": (gallery_arch, {**_colours((139, 108, 152), (66, 42, 87), (21, 12, 42), (185, 155, 196), (123, 226, 176)),
+                                          "emblem": gallery_crescent, "emblem_light": (159, 224, 182), "inlay": gallery_scythe}),
     "lab": (bulkhead, _colours((40, 58, 78), (74, 104, 126), (12, 20, 32), (236, 178, 70), (130, 236, 224))),
     # The station: a sliding bulkhead, amber hazard trim, a cyan lamp.
     "orbital": (bulkhead, _colours((70, 84, 104), (110, 128, 150), (18, 24, 36), (246, 176, 76), (110, 220, 240))),
