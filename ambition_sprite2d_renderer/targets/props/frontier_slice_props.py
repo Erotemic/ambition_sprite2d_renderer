@@ -593,6 +593,12 @@ def track(c, w):
     c.put(c.mask(lambda p: [p.ellipse(rng.uniform(0, w), RAIL + 20, rng.uniform(6, 20), 3) for _ in range(int(w / 30))], blur=3.0), (150, 120, 96), 0.6)
 
 
+def freight_gangway(c, x0, x1):
+    """A steel plate between two car decks."""
+    c.put(c.mask(box(x0, 614, x1, 624)), STEEL_DARK)
+    grating(c, x0, x1, 608, rail=False)
+
+
 def caboose(c, k):
     """The caboose: red boards, its roof (y 512, x 32..480), the cupola (top
     y 448, x 160..300) with its lit windows, the end platform and its rail."""
@@ -612,6 +618,7 @@ def caboose(c, k):
     lamp_glow(c, 36, 530, 14, 0.5)
     wheels(c, 32, 480, tag="caboose")
     car_lettering(c, 330, 630, 8)
+    freight_gangway(c, 480, 544)
 
 
 def box_car(x0, x1, top, colour, tag):
@@ -625,6 +632,31 @@ def box_car(x0, x1, top, colour, tag):
         car_lettering(c, x0 + 40, top + 30, 5)
         c.put(c.mask(lambda p: [p.rect(x, top - 4, x + 20, top) for x in np.arange(x0 + 20, x1 - 20, 40)]), scale(colour, 0.5), 0.7)
         wheels(c, x0, x1, tag=tag)
+    return draw
+
+
+def loading_car(x0, x1, gangway_end, colour, tag, spare_wheels=False):
+    """A box car with an open passage between its roof and deck."""
+    def draw(c, k):
+        k.ground = RAIL
+        car_body(c, x0, x1, 480, colour, tag)
+        back = planks(c, None, x0, 496, x1, 608, scale(colour, 0.48), step=12.0, vertical=True, tag=(tag, "back"))
+        c.tone(back * np.clip((c.y - 496) / 112.0, 0, 1), 0.2)
+        for x in (x0 + 4, x0 + 128, x1 - 128, x1 - 4):
+            post(c, x, 496, 608, 5, scale(colour, 0.65))
+        c.put(c.mask(box(x0, 496, x1, 503)), scale(colour, 0.32))
+        if spare_wheels:
+            for offset, radius in ((90, 24), (146, 16), (340, 31), (390, 20)):
+                gear(c, x0 + offset, 602 - radius, radius, 12, scale(STEEL, 0.65))
+        else:
+            for left, right, top in ((40, 110, 563), (112, 168, 578), (340, 420, 556)):
+                crate(c, x0 + left, top, x0 + right, 608, scale(PLANK, 0.78))
+        for x in (x0 + 205, x1 - 205):
+            lamp_glow(c, x, 509, 26, 0.2)
+        deck_edge(c, x0, x1, 608, PLANK_LIGHT)
+        car_lettering(c, x0 + 36, 626, 5)
+        wheels(c, x0, x1, tag=tag)
+        freight_gangway(c, x1, gangway_end)
     return draw
 
 
@@ -981,9 +1013,9 @@ PIECES: Dict[str, Piece] = {
     "frontier_rolling_gate": Piece((1630, 300, 1990, 640), rolling_gate),
     # frontier_freight_tail
     "frontier_freight_track_tail": Piece((0, 700, 2400, 752), lambda c, k: track(c, 2400), px=1.0),
-    "frontier_caboose": Piece((10, 400, 500, 720), caboose),
-    "frontier_box_car_1": Piece((530, 470, 1040, 720), box_car(544, 1024, 480, BOXCAR_RED, "box1")),
-    "frontier_box_car_2": Piece((1074, 470, 1584, 720), box_car(1088, 1568, 480, BOXCAR_BROWN, "box2")),
+    "frontier_caboose": Piece((10, 400, 552, 720), caboose),
+    "frontier_box_car_1": Piece((530, 470, 1096, 720), loading_car(544, 1024, 1088, BOXCAR_RED, "box1")),
+    "frontier_box_car_2": Piece((1074, 470, 1656, 720), loading_car(1088, 1568, 1648, BOXCAR_BROWN, "box2", spare_wheels=True)),
     "frontier_flat_car_1": Piece((1636, 470, 2400, 720), flat_car(1648, 2400, [(1760, 1888, 544), (1888, 1968, 480)], "flat1", open_east=True)),
     # frontier_freight_cars
     "frontier_freight_track_cars": Piece((0, 700, 2800, 752), lambda c, k: track(c, 2800), px=1.0),
