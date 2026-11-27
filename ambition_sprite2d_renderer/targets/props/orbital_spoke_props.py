@@ -1,22 +1,4 @@
-"""The spoke (`orbital_station_spoke`, the Science dimension): the long tube
-from the station's service deck out to the gravity works.
-
-Drawn in room coordinates (`_district_props`) on the level's own numbers
-(edited in place: `tools/ambition_ldtk_tools/specs/scenery_overlay.py`):
-the deck (y 576), the tram's trench (x 1200..1840, its floor y 624), the
-lift's landing (x 2848..3184, y 416), the doors (x 48, 2560, 3040).
-
-- `spoke_west`, `spoke_east`: one drawing in two frames (a frame is at
-  most a sheet's page wide), overlapping by 16. The tube: hull ribs, a
-  porthole on the stars between each two, conduits and cable trays and
-  lamps overhead, a handrail; the tram trench's rails and hazard edges and
-  the lift's shaft and cage at the far end; the doors' hatches; a bench,
-  a plant, a mural of the planet.
-
-No noise on any of it: a canvas's noise is scaled to its own frame, and the
-two frames' would not meet. Animations: ``idle``, 1 frame each. No drop
-shadows.
-"""
+"""Draw the tram tube between the observation deck and the orchard."""
 
 from __future__ import annotations
 
@@ -30,8 +12,8 @@ from .orbital_station import AMBER, CYAN, GREEN, HULL, HULL_DARK, HULL_LIGHT, IN
 
 W, DECK, TOP = 3200, 576, 120
 TRENCH = (1200, 1840, 624)
-LIFT = (2848, 3184, 416)
-DOORS = (48, 2560, 3040)
+LIFT_ROOF = (2768, 3200, 416)
+LIFT_DOOR = 3040
 PAL = {"stone": HULL, "stone_light": HULL_LIGHT, "dark": STEEL_DARK, "lamp": AMBER}
 SPACE = (8, 10, 22)
 
@@ -52,7 +34,7 @@ def spoke(c, k):
         c.put(c.mask(box(x - 10, TOP, x + 10, DECK)), STEEL)
         c.put(c.mask(box(x - 10, TOP, x - 7, DECK)), STEEL_LIGHT)
         px, py = x + 100, 300
-        if px < LIFT[0] - 40:
+        if px < LIFT_ROOF[0] - 40:
             c.put(c.mask(lambda p: p.ellipse(px, py, 30)), STEEL_DARK)
             glass = c.mask(lambda p: p.ellipse(px, py, 24))
             c.put(glass, SPACE)
@@ -65,8 +47,7 @@ def spoke(c, k):
     for x in range(200, W - 16, 200):
         c.put(c.mask(box(x - 20, TOP + 42, x + 20, TOP + 48)), mix(AMBER, (255, 255, 255), 0.4))
         c.light(c.mask(lambda p: p.ellipse(x, TOP + 60, 50, 30), blur=12), AMBER, 0.25)
-    # A handrail at waist height along the deck's wall, clear of the doors.
-    for a, b in ((110, 1180), (1860, 2540), (2620, 2840)):
+    for a, b in ((16, 1180), (1860, 2768)):
         c.put(c.mask(lambda p: (p.rect(a, DECK - 40, b, DECK - 37), [p.rect(x, DECK - 37, x + 3, DECK) for x in np.arange(a + 10, b - 4, 80)])), STEEL_LIGHT)
     # The tram's trench: its walls, rails, hazard edges, the painted TRAM.
     t0, t1, tf = TRENCH
@@ -75,20 +56,21 @@ def spoke(c, k):
     hazard_band(c, t0 - 30, t0, DECK - 6, DECK)
     hazard_band(c, t1, t1 + 30, DECK - 6, DECK)
     c.put(c.mask(lambda p: [p.poly([(x, 470), (x + 30, 480), (x, 490)]) for x in range(t0 + 100, t1 - 100, 120)]), CYAN, 0.6)
-    # The lift at the far end: its shaft up from the landing, the cage.
-    l0, l1, lf = LIFT
-    c.put(c.mask(box(l0 + 20, TOP, l0 + 160, lf)), STEEL_DARK)
-    c.put(c.mask(lambda p: ([p.rect(x, TOP, x + 3, lf) for x in range(l0 + 20, l0 + 160, 16)], [p.rect(l0 + 20, y, l0 + 160, y + 3) for y in range(TOP, lf, 40)])), STEEL)
-    c.put(c.mask(lambda p: p.rect(l0, lf, l1 - 16, lf + 8)), STEEL_LIGHT)
-    hazard_band(c, l0, l0 + 180, lf - 6, lf)
-    c.put(c.mask(lambda p: [p.ellipse(l0 + 170, y, 5) for y in (lf - 140, lf - 120)]), GREEN)
-    # The doors' hatches (scenery draws over a door, so the tube draws its
-    # own): each 48 wide and 96 tall on its floor.
-    for dx, floor in ((DOORS[0], DECK), (DOORS[1], DECK), (DOORS[2], lf)):
-        c.put(c.mask(box(dx - 8, floor - 106, dx + 56, floor)), STEEL_DARK)
-        c.put(c.mask(lambda p: (p.rect(dx, floor - 90, dx + 48, floor), p.ellipse(dx + 24, floor - 90, 24, 8))), STEEL)
-        c.put(c.mask(lambda p: p.ellipse(dx + 24, floor - 66, 8)), SPACE)
-        c.put(c.mask(lambda p: p.rect(dx + 38, floor - 50, dx + 42, floor - 36)), AMBER)
+    # The orchard walk crosses above the gated lift landing.
+    l0, l1, lf = LIFT_ROOF
+    c.put(c.mask(box(l0, lf, l1, lf + 16)), STEEL_DARK)
+    c.put(c.mask(box(l0, lf, l1, lf + 3)), STEEL_LIGHT)
+    c.put(c.mask(lambda p: (
+        p.rect(l0 + 60, lf - 26, l1, lf - 23),
+        [p.rect(x, lf - 26, x + 3, lf) for x in range(l0 + 60, l1, 44)],
+    )), STEEL_LIGHT)
+    hazard_band(c, l0, l0 + 60, lf + 4, lf + 10)
+    c.put(c.mask(lambda p: [p.ellipse(3120, y, 5) for y in (DECK - 94, DECK - 74)]), GREEN)
+    dx = LIFT_DOOR
+    c.put(c.mask(box(dx - 8, DECK - 106, dx + 56, DECK)), STEEL_DARK)
+    c.put(c.mask(lambda p: (p.rect(dx, DECK - 90, dx + 48, DECK), p.ellipse(dx + 24, DECK - 90, 24, 8))), STEEL)
+    c.put(c.mask(lambda p: p.ellipse(dx + 24, DECK - 66, 8)), SPACE)
+    c.put(c.mask(lambda p: p.rect(dx + 38, DECK - 50, dx + 42, DECK - 36)), AMBER)
     # A bench, a plant, and a mural of the planet between the ribs.
     bx = 640
     c.put(c.mask(lambda p: (p.rect(bx - 40, DECK - 24, bx + 40, DECK - 20), p.rect(bx - 36, DECK - 20, bx - 32, DECK), p.rect(bx + 32, DECK - 20, bx + 36, DECK))), STEEL_LIGHT)

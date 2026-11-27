@@ -141,16 +141,18 @@ def hauler(c: Canvas, w, h):
         outline(c, bell, 1.0)
     plate(c, 50, spine_top - 18, 150, spine_bot + 18, HULL_DARK, "drive", seams=20)
     c.put(c.mask(box(60, spine_top - 6, 140, spine_top)), AMBER, 0.8)
-    # The spine and its bays: four doors with their numbers.
+    # The radiators sit along the spine, above the gangway.
     plate(c, 150, spine_top, w * 0.80, spine_bot, HULL, "spine", seams=0)
     bay_w = (w * 0.80 - 160) / 4
     for i in range(4):
         x0 = 160 + i * bay_w
-        door = c.mask(box(x0 + 6, spine_top + 10, x0 + bay_w - 6, spine_bot - 10))
-        c.put(door, mix(HULL, HULL_DARK, 0.45))
-        c.put(c.mask(lambda p: [p.rect(x0 + 6, y, x0 + bay_w - 6, y + 0.8) for y in np.arange(spine_top + 18, spine_bot - 10, 9)]), HULL_DARK, 0.8)
-        outline(c, [(x0 + 6, spine_top + 10), (x0 + bay_w - 6, spine_top + 10), (x0 + bay_w - 6, spine_bot - 10), (x0 + 6, spine_bot - 10)], 1.0)
-        letters(c, f"0{i + 1}", x0 + bay_w / 2, spine_top + 16, 10, INK, centre=True)
+        top = spine_top + 18
+        left, right = x0 + 7, x0 + bay_w - 7
+        c.put(c.mask(box(left, top, right, top + 29)), HULL_DARK)
+        c.put(c.mask(lambda p: [
+            p.rect(left + 3, y, right - 3, y + 1.8)
+            for y in range(int(top) + 4, int(top) + 26, 4)
+        ]), HULL_LIGHT)
     # A stripe and the ship's name.
     c.put(c.mask(box(150, spine_bot - 8, w * 0.80, spine_bot - 3)), NAVY)
     c.put(c.mask(box(150, spine_bot + 2, w * 0.80, spine_bot + 26)), HULL)
