@@ -62,8 +62,32 @@ def headstone(c, x, lean, h, kind, tag):
     rim(c, m, 0.45)
 
 
+def cemetery_ledge(c, x0, x1, top):
+    """Draw the capstones at the height of the walking surface."""
+    cap = c.mask(box(x0, top, x1, top + 19))
+    c.put(cap, STONE)
+    c.tone(cap * (c.noise(("cemetery_cap", x0), 7, 4, 2) - 0.5), 0.42)
+    joints = c.mask(lambda p: [p.line([(x, top + 3), (x - 2, top + 18)], 1.4) for x in range(x0 + 26, x1, 28)])
+    c.put(joints * cap, NEAR_BLACK, 0.72)
+    c.put(c.mask(box(x0, top, x1, top + 2)), (127, 100, 103))
+    c.put(c.mask(box(x0, top + 16, x1, top + 19)), (33, 25, 30))
+
+
 def roadside(c, k):
     g = FLOOR
+    for x0, x1, top, support in (
+        (480, 544, 608, (492, 532)),
+        (560, 640, 576, (573, 621)),
+        (656, 912, 528, (673, 896)),
+        (928, 1040, 592, (948, 1020)),
+    ):
+        for x in support:
+            pier = c.mask(lambda p: p.poly([(x - 8, top + 12), (x + 8, top + 12), (x + 12, g), (x - 12, g)]))
+            c.put(pier, scale(STONE, 0.78))
+            joints = c.mask(lambda p: [p.line([(x - 13, y), (x + 13, y)], 1.6) for y in range(top + 25, g, 15)])
+            c.put(joints * pier, NEAR_BLACK, 0.75)
+            rim(c, pier, 0.32)
+        cemetery_ledge(c, x0, x1, top)
     # The graveyard fence: iron pales, some fallen.
     rng = c.rand("fence")
     pales = []
@@ -79,7 +103,7 @@ def roadside(c, k):
                                               (836, 0.22, 30, "flat"), (876, -0.15, 56, "cross"))):
         headstone(c, x, lean, h, kind, i)
     mx = 720
-    maus = c.mask(lambda p: (p.rect(mx - 38, g - 92, mx + 38, g), p.poly([(mx - 46, g - 92), (mx + 46, g - 92), (mx, g - 128)])))
+    maus = c.mask(box(mx - 38, g - 110, mx + 38, g))
     c.put(maus, STONE)
     c.tone(maus * (c.noise("maus", 8, 8, 2) - 0.5), 0.3)
     rim(c, maus, 0.5)
