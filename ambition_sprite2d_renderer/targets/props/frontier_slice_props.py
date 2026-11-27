@@ -498,53 +498,62 @@ def sprocket_arch(c, k):
 
 
 def hettie_garage(c, k):
-    """Hettie Gimbal's garage: an open bay under a tin roof, the hoist beam
-    (y 512, x 680..960) with its chain and an engine on it, the crate by the
-    door (top y 576, x 940..1020), a bench of tools, a wagon wheel."""
+    """An open bay with a hoist beam and a transfer walk to the parts yard."""
     g = RIM
     k.ground = g
     # The back wall of the bay, dark inside, and the frame.
-    back = c.mask(box(500, 270, 1100, g))
-    c.put(back, (70, 54, 44))
-    c.tone(back * np.clip((c.y - 270) / (g - 270), 0, 1), 0.12)
+    back = planks(c, None, 500, 236, 1100, g, (70, 54, 44), step=18.0, tag="garage_back")
+    c.tone(back * np.clip((c.y - 236) / (g - 236), 0, 1), 0.12)
     siding(c, 490, 230, 540, g, SIDING_GREY, "gar_l")
     siding(c, 1060, 230, 1110, g, SIDING_GREY, "gar_r")
     tin_roof(c, 480, 220, 1120, 240, "garage_roof")
+    for x in (640, 976):
+        k.window(x, 276, 92, 57, "rect", lit=0.35, frame=PLANK_LIGHT, tag=("garage_high", x))
+    c.put(c.mask(box(580, 371, 980, 407)), (50, 45, 42))
     # The hoist: its beam on two legs, the trolley, the chain and the engine.
     for x in (690, 950):
         girder(c, x, 512, g, 8, STEEL_DARK)
-    c.put(c.mask(box(680, 512, 960, 522)), STEEL)
-    deck_edge(c, 680, 960, 512, STEEL_LIGHT)
+    c.put(c.mask(box(672, 512, 960, 522)), STEEL)
+    deck_edge(c, 672, 960, 512, STEEL_LIGHT)
     c.put(c.mask(lambda p: [p.ellipse(800, 528 + i * 6, 2.4, 3.2) for i in range(8)]), STEEL_DARK)
     eng = c.mask(box(770, 576, 830, 616))
     c.put(eng, (80, 84, 88))
     c.put(c.mask(lambda p: [p.rect(x, 572, x + 6, 580) for x in (776, 790, 804, 818)]), (60, 62, 66))
     pipe(c, [(830, 590), (846, 590), (846, 616)], 3, (140, 100, 60))
-    # The crate by the door.
-    cargo_crate(c, 940, 576, 1020, g, PLANK)
+    # The engine trolley and the walk above it.
+    for x in (954, 1014):
+        girder(c, x, 582, g - 8, 4)
+        c.put(c.mask(lambda p: p.ring(x, g - 6, 6, 2)), STEEL_DARK)
+    deck_edge(c, 944, 1024, 576, STEEL_LIGHT)
+    for x in (1008, 1176):
+        girder(c, x, 502, g, 6)
+    grating(c, 992, 1200, 496)
     # The bench, its vice and tools on the wall.
-    c.put(c.mask(box(540, 590, 660, 596)), PLANK_LIGHT)
-    for x in (546, 652):
-        c.put(c.mask(box(x, 596, x + 4, g)), TIMBER)
-    c.put(c.mask(box(560, 576, 580, 590)), STEEL_DARK)
+    deck_edge(c, 544, 656, 576, PLANK_LIGHT)
+    for x in (550, 650):
+        post(c, x, 582, g, 4, TIMBER)
+    c.put(c.mask(box(560, 562, 580, 576)), STEEL_DARK)
     c.put(c.mask(lambda p: [p.line([(x, 470), (x + 4, 520)], 3) for x in (560, 580, 600, 620)]), STEEL_LIGHT, 0.9)
     gear(c, 1040, 600, 30, 14, (110, 80, 50))
     lamp_glow(c, 820, 290, 60, 0.3)
 
 
 def parts_yard(c, k):
-    """The parts yard: the boiler on blocks (top y 528, x 1320..1480), the
-    crate before it (y 576, x 1220..1300), piles of gears and a cart wheel."""
+    """A boiler on stands and a bench at each end."""
     g = RIM
     k.ground = g
-    cargo_crate(c, 1220, 576, 1300, g, PLANK_DARK)
-    m = c.mask(lambda p: (p.rect(1320, 534, 1480, g - 16), p.ellipse(1320, 573, 6, 39), p.ellipse(1480, 573, 6, 39)))
+    for x0, x1 in ((1216, 1312), (1488, 1584)):
+        for x in (x0 + 8, x1 - 8):
+            girder(c, x, 582, g, 4)
+        grating(c, x0, x1, 576, rail=False)
+    m = c.mask(box(1312, 528, 1488, 576))
     c.put(m, (90, 96, 100))
-    c.tone(m * np.clip((c.y - 573) / 40, -1, 1), -0.3)
-    c.put(c.mask(lambda p: [p.rect(x, 534, x + 2, g - 16) for x in np.arange(1340, 1480, 24)]), (60, 64, 68))
-    deck_edge(c, 1320, 1480, 528, STEEL_LIGHT)
-    for x in (1340, 1450):
-        c.put(c.mask(box(x - 10, g - 16, x + 10, g)), (120, 116, 110))
+    c.tone(m * np.clip((c.y - 548) / 28, -1, 1), -0.3)
+    c.put(c.mask(lambda p: [p.rect(x, 534, x + 2, 576) for x in np.arange(1336, 1486, 24)]), (60, 64, 68))
+    deck_edge(c, 1312, 1488, 528, STEEL_LIGHT)
+    for x in (1328, 1472):
+        girder(c, x, 576, g, 8)
+        c.put(c.mask(box(x - 10, g - 6, x + 10, g)), STEEL_DARK)
     pipe(c, [(1400, 528), (1400, 500), (1420, 490)], 6, STEEL)
     for x, y, r in ((1180, 620, 18), (1530, 616, 22), (1555, 628, 12)):
         gear(c, x, y, r, 10, RUST)
@@ -967,7 +976,7 @@ PIECES: Dict[str, Piece] = {
     "frontier_siding_trestle": Piece((0, 380, 2400, 1536), trestle, px=1.0),
     # frontier_sprocket_row
     "frontier_sprocket_arch": Piece((40, 360, 440, 640), sprocket_arch),
-    "frontier_hettie_garage": Piece((470, 200, 1130, 640), hettie_garage),
+    "frontier_hettie_garage": Piece((470, 200, 1210, 640), hettie_garage),
     "frontier_parts_yard": Piece((1150, 470, 1590, 640), parts_yard),
     "frontier_rolling_gate": Piece((1630, 300, 1990, 640), rolling_gate),
     # frontier_freight_tail
