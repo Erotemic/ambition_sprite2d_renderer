@@ -42,6 +42,7 @@ WALK_X1 = 576
 STAIR = ((560, 656, 704), (600, 664, 640))
 AWNING = (1000, 1200, 656)
 HALL_STEPS = ((1440, 1536, 704), (1520, 1616, 640))
+HALL_EAST_STEPS = ((2304, 2400, 720), (2240, 2336, 672), (2176, 2272, 624))
 TERRACE = (1600, 2320, 576)
 #: The lecture hall's arch that is the stair down to the collider.
 COLLIDER_ARCH = 1800
@@ -60,8 +61,13 @@ def balustrade(c, x0, x1, y):
 
 def raised_walk(c, k):
     ashlar(c, 16, WALK, WALK_X1, STREET, SANDSTONE, tag="arcade")
-    c.put(c.mask(lambda p: [p.arch(x, WALK + 50, x + 80, STREET) for x in range(40, WALK_X1 - 80, 120)]), (70, 80, 90))
-    c.put(c.mask(lambda p: [p.arch(x + 4, WALK + 54, x + 76, STREET) for x in range(40, WALK_X1 - 80, 120)]), (110, 150, 120), 0.6)
+    for x in range(40, WALK_X1 - 80, 120):
+        sill = STREET - 28
+        c.put(c.mask(lambda p: p.arch(x, WALK + 50, x + 80, sill)), IRON)
+        c.put(c.mask(lambda p: p.arch(x + 4, WALK + 54, x + 76, sill)), GLASS, 0.7)
+        c.put(c.mask(box(x + 38, WALK + 55, x + 42, sill)), TRIM)
+        c.put(c.mask(box(x + 4, WALK + 104, x + 76, WALK + 108)), TRIM)
+        c.put(c.mask(box(x - 4, sill, x + 84, sill + 6)), TRIM)
     edge_line(c, 16, WALK_X1, WALK, TRIM, 8)
     balustrade(c, 16, WALK_X1, WALK)
     for x0, x1, y in STAIR:
@@ -77,7 +83,10 @@ def cafe(c, k):
     c.put(win, GLASS)
     c.light(win * np.clip((c.y - (aw + 14)) / 80, 0, 1), LAMP, 0.4)
     c.put(c.mask(lambda p: [p.rect(x, aw + 60, x + 8, aw + 70) for x in range(x0 + 40, x0 + 116, 16)]), (240, 240, 236))
-    c.put(c.mask(box(x0 + 136, aw + 14, x0 + 176, STREET)), OAK_DARK)
+    c.put(c.mask(box(x0 + 132, aw + 32, x0 + 180, STREET - 38)), OAK_DARK)
+    c.put(c.mask(box(x0 + 136, aw + 36, x0 + 176, STREET - 42)), GLASS)
+    c.put(c.mask(box(x0 + 154, aw + 36, x0 + 158, STREET - 42)), TRIM)
+    c.put(c.mask(box(x0 + 128, STREET - 42, x0 + 184, STREET - 36)), TRIM)
     # The awning: stripes, scalloped, its top the walk line.
     stripes = c.mask(lambda p: [p.poly([(x, aw), (x + 20, aw), (x + 24, aw + 26), (x + 4, aw + 26)]) for x in range(x0, x1, 40)])
     c.put(c.mask(lambda p: p.poly([(x0, aw), (x1, aw), (x1 + 4, aw + 26), (x0 + 4, aw + 26)])), (240, 236, 224))
@@ -124,6 +133,16 @@ def lecture_hall(c, k):
     for x0, x1, y in HALL_STEPS:
         c.put(c.mask(box(x0, y, x1, STREET)), SANDSTONE_DARK)
         edge_line(c, x0, x1, y, TRIM, 5)
+    east_hall_steps(c)
+
+
+def east_hall_steps(c):
+    for x0, x1, y in HALL_EAST_STEPS:
+        balustrade(c, x0 + 5, x1 - 5, y)
+        for x in (x0 + 14, x1 - 22):
+            c.put(c.mask(lambda p: p.poly([(x, y + 11), (x + 12, y + 11), (x, y + 30)])), SANDSTONE_DARK)
+        c.put(c.mask(box(x0, y, x1, y + 14)), SANDSTONE_DARK)
+        edge_line(c, x0, x1, y, TRIM, 6)
 
 
 def fountain(c, k):
@@ -167,6 +186,7 @@ def lab_front(c, k):
     rng = c.rand("roof_arc")
     for _ in range(3):
         arc(c, bolt_points(rng, (x0 + 330, top - 176), (x0 + 330 + rng.uniform(-90, 90), top - 260), n=8, jag=10), width=1.6)
+    east_hall_steps(c)
 
 
 #: The gate court's numbers (`make_specs.py` `court`): its floor, the
