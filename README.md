@@ -813,6 +813,10 @@ length, ear kind). `BOUNDS` and the choice lists are the hard limits;
 from its `base` and `seed`, and a field it gives changes only that field.
 The same spec always gives byte-identical SVG.
 
+Set `head.species` to `kangaroo` to use this head on a humanoid body. For a
+wallaroo, set `head.muzzle` to `0.76`, `head.skull` to `1.20`, and
+`head.ear_length` to `0.76`. Use a dark gray coat with `palette.skin: "#5f5450"`.
+
 **Bases** are a build (slim, average, broad, heavy) in each sex, named
 symmetrically (`slim_female`, `slim_male`). A base gives the range each body
 number is drawn from and the odds of each hair and facial-hair style. To add a

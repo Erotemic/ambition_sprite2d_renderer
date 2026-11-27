@@ -24,12 +24,12 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
 from .family import family_of
-from .geometry import Loft, RingKey, gauss, smoothstep, wrap180
+from .geometry import Loft, RingKey, gauss, lerp, smoothstep, wrap180
+from .spec import SPECIES
 
-SPECIES = ("human", "horse", "dog", "cat", "bird", "pigeon", "sea_lion", "alligator", "finch", "rabbit", "bear", "ram", "owl")
 #: A species' head height against a human's of the same build.
 HEAD_SCALE = {"human": 1.0, "horse": 1.16, "dog": 1.05, "cat": 0.98, "bird": 1.0, "pigeon": 0.94, "sea_lion": 1.02, "alligator": 0.64, "finch": 0.94,
-              "rabbit": 1.0, "bear": 1.12, "ram": 1.08, "owl": 1.05}
+              "rabbit": 1.0, "bear": 1.12, "ram": 1.08, "owl": 1.05, "kangaroo": 1.03}
 #: Coats: fur and feathers, by species.
 COATS: Dict[str, Tuple[str, ...]] = {
     "horse": ("#7a4a2c", "#5c3a24", "#a8672f", "#2e2622", "#8d8a86", "#c9a26a", "#e6dfd2", "#4a3528"),
@@ -52,6 +52,7 @@ COATS: Dict[str, Tuple[str, ...]] = {
     "ram": ("#ece4d2", "#ddd0b6", "#3a3230", "#8a6e52", "#b49a78", "#9a928a", "#c9bda8", "#6e6258"),
     # Tawny, a barn owl's buff, grey, snowy white, dark brown.
     "owl": ("#8a6a4a", "#c9a06a", "#9a9690", "#ece6da", "#6e5440", "#b88a56", "#7a7068", "#a88460"),
+    "kangaroo": ("#af6546", "#bd8761", "#a3917d", "#7f7770", "#5f5450", "#c5ab8a"),
 }
 #: The alligator's albino coat: white to pale cream (its eyes are pink-red).
 ALBINO = "#efece3"
@@ -710,8 +711,34 @@ def _owl(fig) -> HeadModel:
     return HeadModel("owl", _rows(fig.fy, hh, rows), [], layout, ears=ears, hair="none", neck_f=0.74)
 
 
+def _kangaroo(fig) -> HeadModel:
+    h = fig.spec.head
+    snout = 0.31 * h.muzzle
+    rows = [
+        (0.00, 0.0, 0.0, 0.0, -0.10, 2.0),
+        (0.11, 0.26, 0.29, 0.31, -0.10, 2.0),
+        (0.25, 0.34, 0.36 + 0.12 * snout, 0.34, -0.09, 2.0),
+        (0.39, 0.36, 0.40 + 0.35 * snout, 0.34, -0.06, 2.1),
+        (0.52, 0.34, 0.44 + 0.62 * snout, 0.32, -0.035, 2.0),
+        (0.65, 0.30, 0.47 + 0.88 * snout, 0.29, -0.015, 1.9),
+        (0.74, 0.25, 0.47 + snout, 0.25, 0.00, 2.0),
+        (0.81, 0.23, 0.44 + snout, 0.23, 0.01, 2.1),
+        (0.90, 0.20, 0.35 + 0.76 * snout, 0.21, 0.01, 2.0),
+        (1.00, 0.10, 0.18 + 0.30 * snout, 0.17, 0.01, 2.0),
+    ]
+    rows = [
+        (f, rx * lerp(h.skull, 1.0, smoothstep(0.40, 0.81, f)), rzf, rzb, cz, sq)
+        for f, rx, rzf, rzb, cz, sq in rows
+    ]
+    layout = {
+        "eye_f": 0.40, "brow_f": 0.32, "eye_alpha": 41.0, "eye_w": 0.15, "iris": 0.9,
+        "nose_tip_f": 0.75, "mouth_f": 0.85, "mouth_alpha": 43.0, "nose": "kangaroo", "pupil": "round",
+    }
+    return HeadModel("kangaroo", _rows(fig.fy, fig.hh, rows), [], layout, ears="kangaroo", hair="tuft", neck_f=0.74)
+
+
 _BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird": _bird, "pigeon": _pigeon, "sea_lion": _sea_lion, "alligator": _alligator,
-             "finch": _finch, "rabbit": _rabbit, "bear": _bear, "ram": _ram, "owl": _owl}
+             "finch": _finch, "rabbit": _rabbit, "bear": _bear, "ram": _ram, "owl": _owl, "kangaroo": _kangaroo}
 
 
 def head_model(fig) -> HeadModel:
