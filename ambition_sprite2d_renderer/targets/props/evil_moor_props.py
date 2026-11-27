@@ -1,10 +1,7 @@
 """The Searchlight Moor (`evil_searchlight_moor`, Evil dimension): out of
 town, west of the gate forest, under Castle Godwin's searchlights.
 
-Drawn in the room's coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/evil_moor/make_specs.py`: the ground (y 656),
-the bog (x 600..1100, its water from y 640), the watchtower's landings, the
-fallen statue's back (y 600).
+Use the room dimensions in `evil_moor/make_specs.py`.
 
 - `moor_watchtower`: a ruined watchtower of black timber, its landings the
   room's ledges, a searchlight on top throwing a beam.
@@ -25,28 +22,67 @@ from typing import Dict
 import numpy as np
 
 from ._district_props import Piece, targets
-from ._town_kit import box, mix, scale
+from ._town_kit import box
 from .eureka_props import edge_line
-from .evil_forest_props import NEAR_BLACK, PAL, RIM, rim
+from .evil_forest_props import NEAR_BLACK, PAL, rim
 
 FLOOR = 656
-TOWER_LANDINGS = ((1500, 1620, 560), (1540, 1660, 464), (1500, 1620, 368), (1520, 1680, 272))
+TOWER_LANDINGS = ((1488, 1632, 560), (1536, 1664, 464), (1488, 1632, 368),
+                  (1520, 1680, 272))
+BOG_WALKS = ((496, 592, 608), (592, 720, 560), (752, 896, 560),
+             (928, 1088, 560), (1104, 1264, 608))
+TOWER_STEPS = ((1248, 1408, 544), (1408, 1504, 512), (1456, 1552, 416),
+               (1600, 1728, 320), (1600, 1712, 416), (1648, 1760, 464),
+               (1728, 1824, 512), (1776, 1872, 560))
 STATUE_BACK = (1880, 2200, 600)
-BOG = (600, 1100, 640)
+BOG = (592, 1104, 640)
 BRONZE = (70, 60, 44)
 TIMBER = (34, 26, 24)
 BEAM = (200, 220, 255)
+PLANK = (89, 55, 40)
+CAP = (166, 115, 71)
+
+
+def deck(c, x0, x1, y):
+    c.put(c.mask(box(x0, y, x1, y + 12)), PLANK)
+    c.put(c.mask(box(x0, y, x1, y + 3)), CAP)
+    c.put(c.mask(lambda p: [p.ellipse(x, y + 8, 1.4) for x in range(x0 + 8, x1 - 4, 19)]), TIMBER)
+
+
+def board(c, x0, x1, y0, y1, base):
+    for x in (x0 + 10, x1 - 15):
+        c.put(c.mask(box(x, y1 - 6, x + 5, base)), TIMBER)
+    c.put(c.mask(box(x0, y0, x1, y1)), PLANK)
+    c.put(c.mask(box(x0 + 4, y0 + 4, x1 - 4, y1 - 4)), (43, 31, 30))
+    c.put(c.mask(lambda p: [p.ellipse(x, y0 + 8, 1.5) for x in (x0 + 8, x1 - 8)]), CAP)
 
 
 def watchtower(c, k):
     g = FLOOR
     legs = [(1508, g), (1512, 250), (1668, 250), (1672, g)]
+    c.put(c.mask(lambda p: (
+        p.line([(1518, 272), (1526, 0)], 8),
+        p.line([(1604, 272), (1594, 0)], 8),
+        p.line([(1521, 176), (1599, 111), (1523, 59), (1594, 7)], 4),
+        p.rect(1508, 1, 1612, 11),
+    )), TIMBER)
+    c.put(c.mask(lambda p: [p.rect(1518, y, 1603, y + 6) for y in (49, 124, 189, 246)]), PLANK)
+    c.put(c.mask(lambda p: [p.rect(x, 3, x + 9, 7) for x in (1518, 1532, 1579, 1593)]), CAP)
     c.put(c.mask(lambda p: (p.line([legs[0], legs[1]], 8), p.line([legs[3], legs[2]], 8),
                             [p.line([(1510, y), (1670, y + 90)], 3) for y in range(300, g - 90, 90)],
                             [p.line([(1670, y), (1510, y + 90)], 3) for y in range(300, g - 90, 90)])), TIMBER)
     for x0, x1, y in TOWER_LANDINGS:
-        c.put(c.mask(box(x0, y, x1, y + 10)), TIMBER)
-        edge_line(c, x0, x1, y, (90, 60, 50), 4)
+        deck(c, x0, x1, y)
+    for x0, x1, y in TOWER_STEPS:
+        extent = 1488 if x0 < 1500 else 1680
+        for x in (x0 + 16, x1 - 18):
+            offset = 24 if x < extent else -24
+            c.put(c.mask(lambda p: p.line([(x, y + 10), (x + offset, y + 48)], 4)), TIMBER)
+        deck(c, x0, x1, y)
+    c.put(c.mask(lambda p: [p.rect(x, top, x + 6, g) for x, top in (
+        (1280, 552), (1376, 552), (1448, 520), (1752, 519), (1812, 570), (1849, 570)
+    )]), TIMBER)
+    board(c, 1244, 1456, 459, 520, 544)
     # The hut on top: planks with gaps (the sky through them), a window lit
     # red, its roof half gone.
     hx0, hx1 = 1520, 1680
@@ -79,6 +115,8 @@ def statue(c, k):
     c.tone(plinth * (c.noise("plinth", 8, 2, 2) - 0.5), 0.3)
     c.put(c.mask(lambda p: p.line([(x1 + 40, g - 90), (x1 + 50, g - 60), (x1 + 44, g - 40)], 1.6)), (34, 30, 34))
     c.put(c.mask(box(x1 + 30, g - 52, x1 + 66, g - 34)), (150, 120, 60))
+    c.put(c.mask(box(2208, 560, 2272, 575)), (95, 81, 76))
+    c.put(c.mask(box(2208, 560, 2272, 564)), (154, 121, 86))
     # Face down along the ground, head west: the back of his head, shoulders,
     # the coat over his back (walked on), its tails, legs, his boot heels up.
     figure = c.mask(lambda p: (
@@ -107,6 +145,8 @@ def statue(c, k):
     c.put(c.mask(lambda p: p.ellipse(x0 - 60, g - 13, 30, 2)), (130, 110, 80), 0.6)
     edge_line(c, x0 + 10, x1 - 10, back, (130, 110, 80), 3)
     rim(c, figure, 0.5)
+    board(c, 1938, 2158, 485, 544, 600)
+    board(c, 2129, 2367, 396, 433, 560)
 
 
 def wire(c, k):
@@ -118,6 +158,7 @@ def wire(c, k):
             pts = [(x + 4 * h / 44, g - h + 3 * math.sin(i)) for i, x in enumerate(np.linspace(xa, xb, 40))]
             c.put(c.mask(lambda p: p.line(pts, 1.0)), (90, 86, 90))
             c.put(c.mask(lambda p: [p.line([(x - 3, y - 3), (x + 3, y + 3)], 0.8) for x, y in pts[::3]] + [p.line([(x + 3, y - 3), (x - 3, y + 3)], 0.8) for x, y in pts[::3]]), (110, 106, 110))
+    board(c, 267, 515, 475, 535, g)
 
 
 def bog(c, k):
@@ -140,13 +181,22 @@ def bog(c, k):
     for _ in range(10):
         fx, fw = rng.uniform(x0, x1), rng.uniform(40, 120)
         c.put(c.mask(lambda p: p.ellipse(fx, top - 4, fw, 10), blur=8), (150, 140, 150), 0.14)
+    for left, right, y in BOG_WALKS:
+        footing = 720 if x0 <= (left + right) // 2 < x1 else FLOOR
+        for x in (left + 13, right - 18):
+            c.put(c.mask(box(x, y + 8, x + 6, footing)), TIMBER)
+            c.put(c.mask(lambda p: p.line([(x + 3, y + 44), (x + 24, y + 8)], 4)), PLANK)
+        deck(c, left, right, y)
+        c.put(c.mask(lambda p: [p.rect(x, y - 7, x + 3, y + 11)
+                                for x in (left + 3, right - 6)]), (131, 108, 79))
+    board(c, 714, 934, 475, 535, 560)
 
 
 PIECES: Dict[str, Piece] = {
-    "moor_watchtower": Piece((1180, 0, 1700, FLOOR), watchtower),
-    "moor_statue": Piece((1740, 500, 2300, FLOOR), statue),
-    "moor_wire": Piece((200, 600, 1480, FLOOR), wire),
-    "moor_bog": Piece((560, 580, 1140, 720), bog),
+    "moor_watchtower": Piece((1180, 0, 1888, FLOOR), watchtower),
+    "moor_statue": Piece((1740, 390, 2380, FLOOR), statue),
+    "moor_wire": Piece((200, 460, 1480, FLOOR), wire),
+    "moor_bog": Piece((480, 460, 1272, 720), bog),
 }
 
 TARGETS = targets(PIECES, PAL)
