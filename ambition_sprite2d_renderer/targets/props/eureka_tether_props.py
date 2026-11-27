@@ -1,20 +1,14 @@
 """The Eureka tether (gate address SCIENCE): the space elevator's ground
 station and its cars.
 
-Drawn in room coordinates (`_district_props`) on the numbers of
-`tools/ambition_ldtk_tools/specs/eureka/make_specs.py` (`elevator_station`):
-the floor (y 1344), the roof (to y 48) open over the shaft (x 960..1088),
-the galleries (y 1024: x 16..496 and 1200..1584), the way west to the quad
-(y 1248..1344), the operator by her console (x 720), the down car's platform
-(x 360).
+Use the room dimensions in `eureka/make_specs.py`.
 
 - `eureka_tether_hall`: a hall of steel and glass round the foot of the
   tether (the sky and the town through the glazing); the roof truss and the
   bearing ring the ribbon goes up through; the shaft's guide rails; the
-  ribbon, anchored in the floor; railed galleries on girders; the operator's
-  console (an altitude curve, a lever); a departure board; a great
-  altimeter; the down car's capsule tube and its hatch; the institute's
-  banners.
+  ribbon, anchored in the floor; stairs and galleries on girders; the
+  operator's console; the departures board; the altimeter; the banners
+  of the institute.
 - `eureka_tether_car`: the car, a platform look (`platform_looks.ron`): its
   floor is the platform (span x 0..128 at y 0, in the car's own units), a
   glazed capsule round the rider, the clamp that rides the ribbon over and
@@ -36,10 +30,11 @@ from .eureka_props import BRASS, GOLD, IRON, IRON_LIGHT, NAVY, PAL, RIBBON, SAND
 
 W, FLOOR, ROOF = 1600, 1344, 48
 SHAFT = (960, 1088)
-GALLERIES = ((16, 496, 1024), (1200, 1584, 1024))
+GALLERIES = ((16, 904, 1024), (1144, 1584, 1024))
+STEPS = ((464, 576, 1280), (416, 528, 1216), (352, 464, 1152), (288, 400, 1088),
+         (1120, 1232, 1280), (1184, 1296, 1216), (1248, 1360, 1152), (1312, 1424, 1088))
 WEST_DOOR_TOP = 1248
 CONSOLE_X = 720
-DOWN_PAD_X = 360
 TETHER = (1016, 1032)
 STEEL = (88, 96, 110)
 GLASS = (176, 210, 236)
@@ -67,6 +62,13 @@ def ribbon(c, x0, x1, y0, y1):
     c.put(c.mask(box(x0, y0, x1, y1)), (58, 62, 74))
     c.put(c.mask(box(x0, y0, x0 + 2, y1)), (160, 170, 190))
     c.put(c.mask(lambda p: [p.rect(x0 + 3, y, x1 - 3, y + 2) for y in np.arange(y0 + 20, y1, 64)]), (120, 128, 146))
+
+
+def notice(c, left, right, top, bottom):
+    c.put(c.mask(box(left, top, right, bottom)), STEEL)
+    c.put(c.mask(box(left + 4, top + 4, right - 4, bottom - 4)), SCREEN)
+    c.put(c.mask(lambda p: [p.ellipse(x, top + 8, 1.6)
+                            for x in (left + 8, right - 8)]), BRASS)
 
 
 def hall(c, k):
@@ -113,8 +115,21 @@ def hall(c, k):
         c.put(c.mask(box(x0, y + 10, x1, y + 26)), IRON)
         c.put(c.mask(lambda p: [p.line([(x, y + 10), (x + 16, y + 26)], 2) for x in range(x0, x1 - 16, 32)] + [p.line([(x + 16, y + 10), (x, y + 26)], 2) for x in range(x0, x1 - 16, 32)]), STEEL)
         c.put(c.mask(lambda p: (p.rect(x0, y - 36, x1, y - 32), [p.rect(x, y - 36, x + 3, y) for x in range(x0 + 4, x1, 40)], p.rect(x0, y - 18, x1, y - 16))), IRON_LIGHT)
-        for px_ in (x0 + 24, x1 - 34):
+        for px_ in (x0 + 24, (x0 + x1) // 2, x1 - 34):
             c.put(c.mask(box(px_, y + 26, px_ + 10, g)), IRON)
+    for left, right, top in STEPS:
+        c.put(c.mask(lambda p: (
+            p.rect(left + 13, top + 12, left + 19, g),
+            p.rect(right - 20, top + 12, right - 14, g),
+            p.line([(left + 16, top + 42), (left + 36, top + 12)], 4),
+            p.line([(right - 17, top + 42), (right - 37, top + 12)], 4),
+        )), IRON)
+        c.put(c.mask(box(left, top, right, top + 15)), STEEL)
+        c.put(c.mask(box(left, top, right, top + 3)), IRON_LIGHT)
+        c.put(c.mask(lambda p: [p.ellipse(x, top + 8, 1.5)
+                                for x in range(left + 9, right - 4, 18)]), IRON)
+    hazard(c, 880, 1024, 904, 1028, step=8)
+    hazard(c, 1144, 1024, 1168, 1028, step=8)
     # Banners of the institute: an atom on navy, a red hem.
     for bx in (180, 1480):
         m = c.mask(lambda p: p.poly([(bx - 40, 130), (bx + 40, 130), (bx + 40, 420), (bx, 450), (bx - 40, 420)]))
@@ -127,16 +142,16 @@ def hall(c, k):
                    for u in np.linspace(0, 2 * math.pi, 40)]
             c.put(c.mask(lambda p: p.line(pts, 1.6)), GOLD)
     # The departure board: amber dot rows, the up arrow lit.
-    c.put(c.mask(box(440, 250, 900, 390)), (24, 24, 28))
-    c.put(c.mask(box(440, 250, 900, 256)), STEEL)
+    notice(c, 86, 532, 802, 950)
+    c.put(c.mask(box(102, 842, 516, 846)), STEEL)
     rng = c.rand("board")
-    dots = [(x, y) for y in (284, 320, 356) for x in np.arange(470, 820, 7) if rng.random() < 0.55]
+    dots = [(x, y) for y in (866, 897, 928) for x in np.arange(108, 420, 7) if rng.random() < 0.55]
     c.put(c.mask(lambda p: [p.ellipse(x, y, 2) for x, y in dots]), AMBER)
-    arrow = c.mask(lambda p: p.poly([(860, 272), (884, 304), (870, 304), (870, 360), (850, 360), (850, 304), (836, 304)]))
+    arrow = c.mask(lambda p: p.poly([(472, 861), (494, 885), (481, 885), (481, 930), (463, 930), (463, 885), (450, 885)]))
     c.put(arrow, GREEN)
-    c.light(c.mask(lambda p: p.ellipse(860, 316, 34), blur=10), GREEN, 0.25)
+    c.light(c.mask(lambda p: p.ellipse(472, 895, 30), blur=10), GREEN, 0.25)
     # The altimeter: brass ring, a needle at the station's height.
-    ax, ay, ar = 1300, 520, 92
+    ax, ay, ar = 1368, 812, 88
     c.put(c.mask(lambda p: p.ellipse(ax, ay, ar)), BRASS)
     c.put(c.mask(lambda p: p.ellipse(ax, ay, ar - 10)), (236, 230, 210))
     c.put(c.mask(lambda p: [p.line([(ax + (ar - 14) * math.cos(t), ay + (ar - 14) * math.sin(t)), (ax + (ar - 26 if i % 5 else ar - 34) * math.cos(t), ay + (ar - 26 if i % 5 else ar - 34) * math.sin(t))], 1.6)
@@ -144,20 +159,8 @@ def hall(c, k):
     t = math.radians(380)
     c.put(c.mask(lambda p: p.line([(ax, ay), (ax + (ar - 22) * math.cos(t), ay + (ar - 22) * math.sin(t))], 3)), RIBBON)
     c.put(c.mask(lambda p: p.ellipse(ax, ay, 6)), IRON)
-    # The down car's tube from the roof to its hatch by the platform.
-    tx = DOWN_PAD_X
-    tube = c.mask(box(tx - 22, 130, tx + 22, 1210))
-    c.put(tube, GLASS, 0.35)
-    c.put(c.mask(lambda p: (p.rect(tx - 22, 130, tx - 19, 1210), p.rect(tx + 19, 130, tx + 22, 1210), [p.rect(tx - 26, y, tx + 26, y + 8) for y in range(200, 1210, 200)])), STEEL)
-    cap = c.mask(lambda p: (p.rect(tx - 16, 640, tx + 16, 700), p.ellipse(tx, 640, 16, 10), p.ellipse(tx, 700, 16, 10)))
-    c.put(cap, (210, 214, 222))
-    c.put(c.mask(box(tx - 16, 664, tx + 16, 674)), RIBBON)
-    hatch = c.mask(lambda p: p.ellipse(tx, 1270, 52))
-    c.put(hatch, STEEL)
-    c.put(c.mask(lambda p: p.ellipse(tx, 1270, 40)), (40, 46, 58))
-    c.put(c.mask(lambda p: [p.ellipse(tx + 46 * math.cos(a), 1270 + 46 * math.sin(a), 2.4) for a in np.linspace(0, 2 * math.pi, 12, endpoint=False)]), IRON_LIGHT)
-    c.put(c.mask(lambda p: p.ellipse(tx, 1206, 6)), GREEN)
-    c.light(c.mask(lambda p: p.ellipse(tx, 1206, 20), blur=6), GREEN, 0.3)
+    notice(c, 1186, 1550, 919, 983)
+    notice(c, 703, 951, 1170, 1213)
     # The operator's console, west of where she stands.
     cx = CONSOLE_X - 130
     desk = c.mask(lambda p: p.poly([(cx, g), (cx, g - 70), (cx + 20, g - 96), (cx + 110, g - 96), (cx + 110, g)]))
