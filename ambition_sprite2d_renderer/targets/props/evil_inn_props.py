@@ -25,8 +25,8 @@ from typing import Dict
 import numpy as np
 
 from ._district_props import Piece, targets
-from ._town_kit import box, mix, scale
-from .eureka_props import Batch, panels
+from ._town_kit import box, mix
+from .eureka_props import Batch, ashlar, panels
 from .evil_forest_props import NEAR_BLACK, PAL, rim
 
 MOOR_FLOOR = 656
@@ -181,12 +181,10 @@ def inn_room(c, k):
         c.light(c.mask(lambda p: p.ellipse(tx, g - 42, 30), blur=8), LAMP, 0.35)
 
 
-#: The crypt's gate on the moor (x 2290..2338, east of the founder's
-#: plinth) and the crypt inside: its floor, ceiling, the sarcophagus (x
-#: 1100..1300, its lid walked on at y 400).
+#: Use the shaft and platform positions in the room spec.
 CRYPT_GATE = (2290, 2338)
 CRYPT_W, CRYPT_FLOOR, CRYPT_CEILING = 1600, 512, 32
-SARCOPHAGUS = (1100, 1300, 440)
+SARCOPHAGUS = (1088, 1312, 432)
 STONE = (78, 72, 76)
 STONE_LIGHT = (130, 122, 124)
 CANDLE = (255, 214, 140)
@@ -206,30 +204,58 @@ def crypt_gate(c, k):
     rim(c, porch, 0.4)
 
 
+def crypt_ledge(c, x0, x1, y, brackets):
+    for x in brackets:
+        c.put(c.mask(lambda p: p.poly([(x - 12, y + 13), (x + 21, y + 13), (x - 6, y + 43), (x - 12, y + 43)])), (62, 53, 56))
+        c.put(c.mask(box(x - 11, y + 19, x - 8, y + 41)), (104, 86, 79))
+    c.put(c.mask(box(x0, y, x1, y + 16)), (96, 83, 81))
+    c.put(c.mask(box(x0, y, x1, y + 4)), (151, 131, 118))
+    c.put(c.mask(lambda p: [p.rect(x, y + 5, x + 1.4, y + 14) for x in range(x0 + 24, x1 - 6, 32)]), (69, 57, 61))
+
+
 def crypt_room(c, k):
     g, top = CRYPT_FLOOR, CRYPT_CEILING
-    # Vaulted stone, niches of bones, candles.
     wall = c.mask(box(16, top, CRYPT_W - 16, g))
-    c.put(wall, STONE)
-    c.put(wall * c.mask(lambda p: [p.rect(16, y, CRYPT_W - 16, y + 1.4) for y in range(top + 20, g, 24)]), scale(STONE, 0.7))
-    c.tone(wall * (c.noise("crypt_wall", 10, 4, 2) - 0.5), 0.25)
+    ashlar(c, 16, top, CRYPT_W - 16, g, STONE, course=24, block=48, tag="crypt_wall", vary=0.07)
     c.tone(wall * np.clip((200 - c.y) / 170, 0, 1), -0.35)
-    for x in range(140, CRYPT_W - 100, 220):
-        c.put(c.mask(lambda p: p.arch(x, 180, x + 90, 300)), (24, 20, 22))
-        c.put(c.mask(lambda p: [p.ellipse(x + 20 + i * 14, 292 - (i % 2) * 6, 7, 6) for i in range(5)]), (220, 210, 186))
-        c.put(c.mask(lambda p: [p.ellipse(x + 28 + i * 20, 296 - 14, 3, 2) for i in range(3)]), (40, 34, 30))
-    # Busts of the founder along the wall, each pointing.
-    for x in (320, 760, 1460):
-        c.put(c.mask(box(x - 26, g - 70, x + 26, g)), STONE_LIGHT)
-        bust = c.mask(lambda p: (p.ellipse(x, g - 104, 16, 20), p.poly([(x - 26, g - 70), (x + 26, g - 70), (x + 16, g - 88), (x - 16, g - 88)])))
-        c.put(bust, (70, 60, 44))
-        c.put(c.mask(lambda p: p.line([(x + 16, g - 80), (x + 44, g - 96)], 5)), (70, 60, 44))
-    # The sarcophagus: its lid is walked on.
+    niches = (
+        (126, 194, 88), (304, 164, 100), (500, 198, 84), (700, 164, 96),
+        (904, 193, 90), (1136, 164, 128), (1348, 187, 92),
+    )
+    for x, y, width in niches:
+        frame = c.mask(lambda p: p.arch(x - 5, y - 5, x + width + 5, y + 98))
+        c.put(frame * c.mask(box(x - 5, y - 5, x + width + 5, y + 98)), (98, 86, 87))
+        hollow = c.mask(lambda p: p.arch(x, y, x + width, y + 93))
+        c.put(hollow * c.mask(box(x, y, x + width, y + 93)), (29, 24, 27))
+        c.put(c.mask(box(x - 7, y + 92, x + width + 7, y + 99)), (110, 96, 94))
+        c.put(c.mask(lambda p: [p.ellipse(x + dx, y + 86 - (dx % 3), 6, 4)
+                                 for dx in range(13, width - 10, 17)]), (185, 173, 151), 0.8)
+    c.put(c.mask(box(1488, top, 1536, g)), (51, 44, 47))
+    c.put(c.mask(box(1488, top, 1492, g)), (106, 90, 87))
+    c.put(c.mask(box(1532, top, 1536, g)), (70, 57, 62))
+    for x0, x1, y in ((432, 762, 291), (1030, 1370, 285)):
+        c.put(c.mask(box(x0, y, x1, y + 36)), (106, 90, 87))
+        c.put(c.mask(box(x0 + 5, y + 4, x1 - 5, y + 32)), (53, 42, 47))
+    crypt_ledge(c, 256, 336, 448, (282,))
+    crypt_ledge(c, 352, 816, 384, (380, 532, 688, 786))
+    crypt_ledge(c, 848, 1056, 416, (876, 1024))
+    crypt_ledge(c, 1392, 1456, 464, (1416,))
+    for x, base in ((302, 448), (780, 384), (1460, 512)):
+        c.put(c.mask(box(x - 21, base - 47, x + 21, base)), (116, 102, 95))
+        c.put(c.mask(box(x - 24, base - 50, x + 24, base - 44)), (137, 119, 107))
+        bust = c.mask(lambda p: (
+            p.ellipse(x, base - 76, 13, 17),
+            p.poly([(x - 18, base - 50), (x + 20, base - 50), (x + 11, base - 65), (x - 11, base - 65)]),
+            p.poly([(x - 14, base - 59), (x - 45, base - 74), (x - 47, base - 68), (x - 17, base - 52)]),
+        ))
+        c.put(bust, (124, 94, 67))
+        c.put(bust * c.mask(lambda p: p.line([(x - 10, base - 83), (x - 11, base - 69), (x - 43, base - 72)], 1.5)), (190, 145, 99), 0.8)
     s0, s1, lid = SARCOPHAGUS
     c.put(c.mask(box(s0, lid, s1, g)), (90, 84, 90))
     c.put(c.mask(lambda p: [p.rect(x, lid + 20, x + 28, g - 10) for x in range(s0 + 14, s1 - 20, 44)]), (70, 64, 70))
-    c.put(c.mask(lambda p: p.poly([(s0 - 6, lid), (s1 + 6, lid), (s1, lid + 10), (s0, lid + 10)])), (110, 104, 108))
-    c.put(c.mask(lambda p: p.line([(s0 + 30, lid + 2), ((s0 + s1) / 2, lid - 10), (s1 - 30, lid + 2)], 3)), (110, 104, 108))
+    c.put(c.mask(box(s0, lid, s1, lid + 16)), (104, 89, 87))
+    c.put(c.mask(box(s0, lid, s1, lid + 4)), (156, 136, 121))
+    c.put(c.mask(box(1161, lid - 5, 1239, lid)), (91, 70, 59))
     # Candles, their light.
     for x in (240, 560, 980, 1400):
         c.put(c.mask(lambda p: (p.rect(x - 3, g - 22, x + 3, g), p.ellipse(x, g - 26, 2, 4))), (236, 228, 210))
