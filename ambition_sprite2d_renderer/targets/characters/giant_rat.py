@@ -4,16 +4,20 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
+from PIL import Image
+
 from ._magic_character_art import Canvas, add, sub, mul, mix, unit, perp, rot, bezier, phase, track, anchored_death
 from ...authoring.sheet_build import build_sheet
 from ...core.measure import body_metrics_for_box
 
 TARGET_NAME = 'giant_rat'
-FRAME_SIZE = (272, 184)
+# Pad the right edge to contain the old-facing tail reflected around the
+# authored body anchor. The original drawings retain their coordinates.
+FRAME_SIZE = (320, 184)
 GROUND = 153.0
 BODY_BOX = (88, 67, 230, 154)
 ROWS = [('idle', 16, 75), ('walk', 16, 65), ('run', 16, 40),
-        ('notice', 8, 50), ('windup', 8, 40), ('attack_side', 12, 40),
+        ('turnaround', 3, 73), ('notice', 8, 50), ('windup', 8, 40), ('attack_side', 12, 40),
         ('hit', 8, 50), ('death', 18, 55), ('death_idle', 6, 150)]
 LOOPS = {'idle', 'walk', 'run', 'windup', 'death_idle'}
 TRAITS = ['enemy', 'fantasy', 'monster', 'rat', 'rodent', 'quadruped']
@@ -28,6 +32,7 @@ ACTOR_METADATA = {
         'default': {'animation': 'idle', 'events': []},
         'locomotion.walk': {'animation': 'walk', 'events': []},
         'locomotion.run': {'animation': 'run', 'events': []},
+        'locomotion.turnaround': {'animation': 'turnaround', 'events': []},
         'action.melee.primary': {'animation': 'attack_side', 'events': [
             {'t': 0.0, 'event': 'hitbox_active_start', 'source': 'giant_rat.bite'},
             {'t': .12/.48, 'event': 'hitbox_active_end', 'source': 'giant_rat.bite'}]},
@@ -76,7 +81,175 @@ def _gait(t, stride, lift, stance):
     return stride*(-.5 + .5*(1-math.cos(math.pi*s))), -lift*math.sin(math.pi*s)
 
 
+
+def _front_frame():
+    """A head-on, slightly elevated view of the same rat, planted on all fours.
+
+    The hindquarters, paws, pinnae, and tapered muzzle have their own
+    projected landmarks. No part of the side silhouette is rescaled.
+    """
+    c = Canvas(FRAME_SIZE)
+    cx = (BODY_BOX[0] + BODY_BOX[2] - 1) / 2
+
+    def pts(seq, side=1):
+        return [(cx + side*x, y) for x, y in seq]
+
+    def shape(seq, fill, edge=INK, width=1.8, side=1):
+        _shape(c, pts(seq, side), fill, edge, width)
+
+    def poly(seq, fill, edge=INK, width=1.4, side=1):
+        c.poly(pts(seq, side), fill, edge, width)
+
+    def line(seq, color=INK, width=1.2, side=1):
+        c.line(pts(seq, side), color, width)
+
+    def oval(x, y, rx, ry, color, edge=INK, width=1.5, angle=0):
+        c.oval((cx+x,y),rx,ry,color,edge,width,angle)
+
+    # The tail recedes from the rump, then curves into view at floor level.
+    tail = _curve([(cx-7,120),(cx-20,136),(cx-56,147),(cx-73,135),
+                   (cx-85,126),(cx-81,113),(cx-79,112)])
+    a,b = [],[]
+    for j,p in enumerate(tail):
+        f=j/(len(tail)-1)
+        n=perp(unit(sub(tail[min(j+1,len(tail)-1)],tail[max(0,j-1)])))
+        r=4.4*(1-f)**.85+.7
+        a.append(add(p,mul(n,r))); b.append(add(p,mul(n,-r)))
+    c.poly(a+b[::-1],TAIL,INK,1.6)
+    c.line([mix(u,v,.28) for u,v in zip(a,b)],SKIN_LIGHT,1.2)
+    for j in range(2,len(tail)-1,2):
+        c.line([mix(a[j],b[j],.09),mix(a[j],b[j],.92)],SKIN_DARK,.85)
+
+    # Hind legs recede behind the barrel. Their paws are visible outside
+    # the forelimbs and at the higher, farther ground row.
+    for s in (-1,1):
+        shape([(20,104),(29,99),(39,112),(37,125),
+               (37,130),(33,134),(31,136),
+               (27,139),(21,135),(21,129),
+               (19,119),(15,112),(20,104)],FAR,FAR_INK,1.5,s)
+        shape([(29,132),(36,132),(41,135),(41,139),
+               (40,142),(30,143),(25,141),
+               (24,138),(25,135),(29,132)],SKIN_DARK,FAR_INK,1.3,s)
+        for k in (29,33,37):
+            line([(k,138),(k+1,140)],SKIN,0.8,s)
+            poly([(k,140),(k+2,140),(k+1,143)],TOOTH,FAR_INK,.65,s)
+
+    # Arched rump and shoulders; the rounded haunches sit behind the head.
+    shape([(0,62),(20,61),(34,75),(35,98),
+           (38,116),(29,132),(13,135),
+           (5,137),(-5,137),(-13,135),
+           (-29,132),(-38,116),(-35,98),
+           (-34,75),(-20,61),(0,62)],FUR,INK,2.4)
+    shape([(-30,88),(-24,68),(-10,65),(0,66),
+           (15,64),(26,74),(30,88),
+           (14,81),(-12,81),(-30,88)],FUR_LIGHT,None)
+    for s in (-1,1):
+        for x,y in [(18,66),(25,73),(30,82),(33,94),(30,106)]:
+            poly([(x-5,y+5),(x+1,y-2),(x+2,y+4),(x+6,y+8)],FUR_DARK,None,side=s)
+        for x,y in [(23,83),(27,96),(28,109),(23,119)]:
+            line([(x-3,y-4),(x+2,y+1)],FUR_DARK,1.1,s)
+    shape([(-19,111),(-16,104),(16,104),(19,111),
+           (21,123),(12,133),(0,134),
+           (-12,133),(-21,123),(-19,111)],BELLY,None)
+
+    # Forelegs: slender wrists and separate splayed toes, with their upper
+    # roots lost in the chest. They are in front of the rear feet.
+    for s in (-1,1):
+        shape([(17,105),(24,109),(25,119),(22,127),
+               (20,133),(20,138),(21,143),
+               (18,145),(14,145),(13,141),
+               (11,134),(12,120),(12,115),
+               (13,110),(14,107),(17,105)],FUR,INK,1.5,s)
+        line([(18,118),(16,128),(17,136)],FUR_LIGHT,1.2,s)
+        shape([(15,140),(18,139),(22,140),(23,145),
+               (28,147),(28,151),(23,152),
+               (16,154),(9,152),(10,148),
+               (11,144),(13,142),(15,140)],SKIN,INK,1.3,s)
+        for x in (13,17,21,25):
+            line([(x,147),(x,150)],SKIN_DARK,.9,s)
+            poly([(x-1,150),(x+1.7,150),(x+.4,153)],TOOTH,INK,.65,s)
+
+    # Pinnae, one on each side of the skull. Both preserve the rat's small
+    # ragged rim notch and interior folds. The roots hide behind its cheeks.
+    for s in (-1,1):
+        shape([(18,83),(11,77),(13,61),(19,54),
+               (27,47),(38,53),(38,62),
+               (34,61),(33,66),(38,67),
+               (38,80),(29,90),(18,83)],FUR,INK,1.8,s)
+        shape([(20,80),(15,74),(18,59),(25,56),
+               (31,53),(34,59),(33,66),
+               (31,77),(25,82),(20,80)],SKIN,None,side=s)
+        shape([(22,80),(19,74),(19,67),(23,63),
+               (21,70),(25,76),(29,77),
+               (27,81),(25,83),(22,80)],FUR_DARK,None,side=s)
+        line([(19,61),(24,57),(29,58)],SKIN_LIGHT,1.1,s)
+
+    # Head-on skull: broad crown and a long tapering rostrum. The nose is
+    # projected low between the whisker pads, rather than a flat side nose.
+    shape([(0,71),(13,70),(24,77),(25,88),
+           (29,97),(24,106),(16,112),
+           (11,116),(9,121),(0,122),
+           (-9,121),(-11,116),(-16,112),
+           (-24,106),(-29,97),(-25,88),
+           (-24,77),(-13,70),(0,71)],FUR,INK,2.3)
+    shape([(-20,83),(-14,75),(-7,74),(0,74),
+           (7,74),(14,75),(20,83),
+           (10,80),(5,83),(0,88),
+           (-5,83),(-10,80),(-20,83)],FUR_LIGHT,None)
+    for s in (-1,1):
+        for x,y in [(23,95),(20,103),(15,110)]:
+            poly([(x-4,y-2),(x+3,y+1),(x-1,y+3),(x-3,y+5),(x-5,y+1)],FUR_DARK,None,side=s)
+        # Slanted amber eyes tucked under the angular dark brow.
+        poly([(9,89),(22,83),(24,89),(20,95),(13,95)],'#36292b',INK,1.2,s)
+        oval(s*17,89.5,3.9,3.7,EYE,None,angle=s*-12)
+        oval(s*16.5,89.5,1.1,2.8,'#211d21',None)
+        oval(s*16,88.2,1,1,'#f8e8c7',None)
+        line([(8,87),(16,84),(23,82)],FUR_DARK,2.2,s)
+    # Lower jaw and paired incisors beneath the tapered upper snout.
+    shape([(-11,115),(-11,109),(11,109),(11,115),
+           (13,121),(9,126),(0,126),
+           (-9,126),(-13,121),(-11,115)],FUR_PALE,INK,1.6)
+    for s in (-1,1):
+        poly([(0.7,115),(5.4,114.5),(5,124),(1,124.6)],TOOTH,INK,.9,s)
+    # Long central nose bridge, distinct bilateral pale whisker pads.
+    shape([(0,84),(5,90),(8,99),(11,106),
+           (12,111),(6,115),(0,116),
+           (-6,115),(-12,111),(-11,106),
+           (-8,99),(-5,90),(0,84)],FUR_LIGHT,None)
+    for s in (-1,1):
+        shape([(2,107),(7,101),(15,102),(18,108),
+               (19,112),(10,117),(4,116),
+               (1,115),(0,111),(2,107)],FUR_PALE,None,side=s)
+        for x,y in [(7,108),(11,107),(10,112)]:
+            oval(x*s,y,.8,.8,FUR_DARK,None)
+        for path in [[(10,107),(25,102),(43,98)],[(12,110),(29,109),(47,111)],
+                     [(10,113),(25,119),(42,127)],[(7,114),(18,125),(28,131)]]:
+            line(path,'#62534b',1.0,s)
+            line(path[:2],'#d0b9a1',.65,s)
+    # The rounded, split nose projects over the muzzle and tooth roots.
+    shape([(-8,109),(-6,104),(6,104),(8,109),
+           (7,113),(2,115),(0,115),
+           (-2,115),(-7,113),(-8,109)],SKIN_DARK,INK,1.4)
+    oval(0,107,3.4,1.3,SKIN_LIGHT,None)
+    line([(0,114),(0,117)],INK,1.0)
+    return c.finish()
+
+
 def _render_frame(anim, i, n):
+    if anim == 'turnaround':
+        assert n == 3
+        if i == 1:
+            return _front_frame()
+        im = _render_frame('idle', 0, 16)
+        if i == 2:
+            return im
+        # Runtime has already flipped facing; reflect the first frame about
+        # the collision/feet anchor, not about the padded canvas centre.
+        out = Image.new('RGBA', FRAME_SIZE)
+        out.paste(im.transpose(Image.Transpose.FLIP_LEFT_RIGHT),
+                  (BODY_BOX[0]+BODY_BOX[2]-im.width, 0))
+        return out
+
     t = phase(i, n, anim in LOOPS)
     cyc = math.tau*t
     gait = stride = lift = pitch = bob = stretch = crouch = rear = strike = hurt = dead = 0.0
