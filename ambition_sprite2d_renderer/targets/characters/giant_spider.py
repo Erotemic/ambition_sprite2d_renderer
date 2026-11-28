@@ -8,17 +8,22 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
+from PIL import Image
+
 from ._magic_character_art import Canvas, add, sub, mul, mix, unit, perp, rot, bezier, phase, track, anchored_death
 from ...authoring.sheet_build import build_sheet
 from ...core.measure import body_metrics_for_box
 
 TARGET_NAME = 'giant_spider'
-FRAME_SIZE = (272, 200)
+SIDE_FRAME_SIZE = (272, 200)
+# Transparent padding keeps reflected poses inside the canvas.
+FRAME_SIZE = (336, 200)
+SIDE_PAD = 32
 GROUND = 168.0
 # The core and its ground clearance define the body, not the leg span.
-BODY_BOX = (45, 86, 191, 170)
+BODY_BOX = (77, 86, 223, 170)
 ROWS = [('idle', 12, 100), ('walk', 16, 65), ('run', 16, 45),
-        ('notice', 8, 70), ('windup', 8, 60), ('attack_side', 12, 50),
+        ('turnaround', 3, 73), ('notice', 8, 70), ('windup', 8, 60), ('attack_side', 12, 50),
         ('hit', 8, 55), ('death', 18, 65), ('death_idle', 6, 150)]
 LOOPS = {'idle', 'walk', 'run', 'windup', 'death_idle'}
 TRAITS = ['enemy', 'fantasy', 'monster', 'spider', 'arachnid']
@@ -33,6 +38,7 @@ ACTOR_METADATA = {
         'default': {'animation': 'idle', 'events': []},
         'locomotion.walk': {'animation': 'walk', 'events': []},
         'locomotion.run': {'animation': 'run', 'events': []},
+        'locomotion.turnaround': {'animation': 'turnaround', 'events': []},
         'action.melee.primary': {'animation': 'attack_side', 'events': [
             {'t': 0.0, 'event': 'hitbox_active_start', 'source': 'giant_spider.bite'},
             {'t': .14 / .60, 'event': 'hitbox_active_end', 'source': 'giant_spider.bite'}]},
@@ -88,7 +94,7 @@ def _segment(c, a, b, ra, rb, color, light, edge):
         c.line([q, add(add(q, mul(n, -2.6)), mul(d, -2.0))], light, .85)
 
 
-def _render_frame(anim, i, n):
+def _render_side_frame(anim, i, n):
     t = phase(i, n, anim in LOOPS)
     cyc = math.tau*t
     gait = 0.0
@@ -123,7 +129,7 @@ def _render_frame(anim, i, n):
         recoil = .65*math.sin(math.pi*min(1,t*2.6)) if anim=='death' else 0
         gape = track(t, [(0,.7),(.28,1),(.65,.4),(1,.05)]) if anim=='death' else .05
         bob = 0
-    c = Canvas(FRAME_SIZE)
+    c = Canvas(SIDE_FRAME_SIZE)
     origin = (134 - 8*rear + 14*strike - 7*recoil, 123 + bob + 19*curl - 5*rear)
     pitch = -18*rear + 10*strike - 9*recoil + 10*curl
 
@@ -266,6 +272,105 @@ def _render_frame(anim, i, n):
     if anim in ('death', 'death_idle'):
         im = anchored_death(im, GROUND + 1)
     return im
+
+
+def _front_frame():
+    """Head-on elevated view. Eight separately projected articulated legs."""
+    c=Canvas(FRAME_SIZE)
+    cx=(BODY_BOX[0]+BODY_BOX[2]-1)/2
+    def P(x,y): return (cx+x,y)
+    def pts(seq,s=1): return [P(s*x,y) for x,y in seq]
+    def shape(seq,col,edge=INK,w=1.9,s=1): _shape(c,pts(seq,s),col,edge,w)
+    def oval(x,y,rx,ry,col,edge=INK,w=1.7,angle=0): c.oval(P(x,y),rx,ry,col,edge,w,angle)
+    def line(seq,col=INK,w=1.4,s=1): c.line(pts(seq,s),col,w)
+    # Each successive pair is nearer the viewer. The knees fan out along
+    # different rays; the four tarsi on each side land on separate rows.
+    # The front pair stays outside the eye plate and the two fangs.
+    legs=[((17,106),(29,103),(47,68),(60,137)),
+          ((23,114),(37,110),(79,69),(94,145)),
+          ((26,122),(42,122),(104,87),(119,158)),
+          ((27,133),(43,138),(66,120),(82,168))]
+    def leg(k,s):
+        a,b,d,e=pts(legs[k],s)
+        f=add(mix(d,e,.80),mul(perp(unit(sub(e,d))),s*2.5))
+        near=k>=2
+        col,light,edge=(LEG,LEG_LIGHT,INK) if near else (FAR_LEG,FAR_LIGHT,FAR_INK)
+        r=1 if near else .83
+        _segment(c,f,e,2.1*r,.7,col,light,edge)
+        _segment(c,d,f,3.9*r,2.2*r,col,light,edge)
+        _segment(c,b,d,5.2*r,3.9*r,col,light,edge)
+        c.disk(d,3.7*r,LEG_DARK if near else FAR_LEG,edge,1.1)
+        c.line([mix(b,d,.92),mix(d,f,.10)],light,1.05*r)
+        _segment(c,a,b,5.2*r,5*r,col,light,edge)
+        c.disk(b,4.2*r,col,None)
+        c.line([mix(a,b,.48),mix(b,d,.12)],light,1.1*r)
+    for k in (0,1):
+        for s in (-1,1): leg(k,s)
+    # Abdomen is seen behind and above the cephalothorax. The pedicel
+    # disappears behind the front body, not between the eyes.
+    oval(0,109,13,10,SHELL_DARK)
+    shape([(0,75),(22,73),(36,84),(38,100),(41,116),(27,133),(0,136),
+           (-27,133),(-41,116),(-38,100),(-36,84),(-22,73),(0,75)],SHELL,INK,2.5)
+    shape([(-33,98),(-30,82),(-13,78),(0,79),(13,77),(30,83),(33,98),
+           (13,91),(-12,91),(-33,98)],SHELL_LIGHT,None)
+    shape([(-35,111),(-26,121),(-12,124),(0,124),(12,124),(26,121),(35,111),
+           (31,132),(12,135),(0,135),(-12,135),(-31,132),(-35,111)],SHELL_DARK,None)
+    for x,y,ang in [(-22,87,24),(-7,84,-7),(13,87,-20),(27,95,38),(-26,103,16),(8,100,-16)]:
+        oval(x,y,6.5,3,'#6b493d',None,angle=ang)
+    for j in range(19):
+        a=math.radians(188+9*j)
+        x,y=37*math.cos(a),103+27*math.sin(a)
+        line([(x,y),(x+4*math.cos(a),y+4*math.sin(a))],HAIR,1)
+    for x,y in [(-29,88),(-17,82),(-5,81),(10,84),(25,90),(-30,101),(30,104)]:
+        line([(x,y),(x+2,y-3)],'#ad8263',.85)
+    # Cephalothorax, viewed head-on, with a raised carapace and broad
+    # low eye plate. The eye pattern preserves the two dominant eyes.
+    shape([(0,100),(20,100),(34,111),(35,125),(37,141),(22,152),(0,152),
+           (-22,152),(-37,141),(-35,125),(-34,111),(-20,100),(0,100)],SHELL,INK,2.4)
+    shape([(-29,118),(-26,107),(-11,104),(0,105),(11,104),(26,107),(29,118),
+           (16,113),(-16,113),(-29,118)],SHELL_LIGHT,None)
+    shape([(-23,121),(-20,112),(-8,114),(0,114),(8,114),(20,112),(23,121),
+           (26,134),(13,142),(0,141),(-13,142),(-26,134),(-23,121)],'#36282a',None)
+    for s in (-1,1):
+        for x,y,rx,ry in [(9,126,5.1,4.8),(19,128,3.2,3.1),(7,117,2.7,2.4),(18,117,2.5,2.2)]:
+            oval(s*x,y,rx,ry,'#211a21',INK,1)
+            oval(s*x,y,rx*.74,ry*.74,EYE,None)
+            if rx>3:
+                oval(s*x,y+.25,rx*.29,ry*.62,'#35222a',None)
+            oval(s*x-.9,y-1.05,rx*.20,ry*.21,'#f7d19c',None)
+    # Each chelicera and its fang hangs below the eyes. Small palps are
+    # separate from (and visibly shorter than) the eight walking legs.
+    for s in (-1,1):
+        oval(s*22,143,5.2,6.2,LEG_DARK,INK,1.1,angle=s*25)
+        shape([(6,140),(8,136),(14,137),(16,142),(17,147),(13,152),(9,151),
+               (6,149),(4,144),(6,140)],SHELL_DARK,INK,1.5,s)
+        shape([(9,148),(13,147),(16,151),(15,155),(14,161),(10,164),(5,164),
+               (9,160),(11,154),(9,148)],FANG,INK,1.3,s)
+        line([(12,150),(13,154),(10,160)],'#e0bfa4',.9,s)
+    # Foreground leg chains overlap the lower side of the carapace only.
+    for k in (2,3):
+        for s in (-1,1): leg(k,s)
+    return c.finish()
+
+
+def _render_frame(anim, i, n):
+    if anim == 'turnaround':
+        assert n == 3
+        if i == 1:
+            return _front_frame()
+        im = _render_frame('idle', 0, 12)
+        if i == 2:
+            return im
+        # The runtime uses the new facing. Mirror the old-facing endpoint
+        # about the authored body anchor, never about the canvas center.
+        out = Image.new('RGBA', FRAME_SIZE)
+        out.paste(im.transpose(Image.Transpose.FLIP_LEFT_RIGHT),
+                  (BODY_BOX[0]+BODY_BOX[2]-im.width, 0))
+        return out
+    im = _render_side_frame(anim, i, n)
+    out = Image.new('RGBA', FRAME_SIZE)
+    out.paste(im, (SIDE_PAD, 0))
+    return out
 
 
 def render(out_dir: str | Path, **opts):
