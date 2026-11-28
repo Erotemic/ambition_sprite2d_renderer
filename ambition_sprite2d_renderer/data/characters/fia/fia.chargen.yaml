@@ -51,21 +51,21 @@ outfit:
   top: shirt
   sleeves: rolled
   neckline: collar
-  top_color: '#e6d8bd'
+  top_color: '#d7d1b8'
   tucked: true
   outer: coat
   outer_length: knee
-  outer_color: '#a8875a'
+  outer_color: '#ac8e62'
   outer_open: true
-  outer_flare: 0.6
+  outer_flare: 0.22
   bottom: trousers
-  bottom_color: '#3a3330'
+  bottom_color: '#3d4140'
   shoes: boots
   shoe_style: chunky
   fit: baggy
   gloves: fingerless
   glove_color: '#3a2a22'
-  shoe_color: '#4a3123'
+  shoe_color: '#4a382d'
   hat: none
   accessories: [belt]
   accent_color: '#a8322d'

@@ -6,7 +6,7 @@ the target is ``targets/characters/fia.py``).
 
 The SVG files are generated: edit the shapes here and run it again::
 
-    python scripts/draw_fia_overlays.py            # both looks
+    python scripts/draw_fia_overlays.py            # all three looks
     python scripts/draw_fia_overlays.py fia_void   # one
 
 Every shape is in a group's own units: its anchor joint (the neck for the head,
@@ -590,6 +590,182 @@ def diamonds(c, view, which=(0, 1, 2, 3), size=1.0):
     return out
 
 
+# ---- mechanic look: revised local artwork, shared by normal and touched ------
+# The accepted Void silhouette is deliberately left on the original contours.
+# These are local part drawings; the chargen rig still owns all posing.
+MECHANIC_TAILS = {
+    'side': [(-19,-77),(-28,-99),(-46,-111),(-67,-109),(-86,-99),(-98,-83,'c'),(-78,-89),(-83,-75),(-104,-61,'c'),(-82,-63),(-85,-49),(-96,-36,'c'),(-73,-40),(-62,-51),(-67,-31,'c'),(-48,-44),(-37,-60),(-23,-65)],
+    'front_3q': [(-18,-75),(-25,-97),(-41,-109),(-59,-107),(-75,-97),(-83,-82,'c'),(-67,-87),(-72,-72),(-88,-60,'c'),(-68,-64),(-70,-46),(-76,-37,'c'),(-57,-41),(-46,-57),(-48,-40,'c'),(-32,-53),(-21,-65)],
+    'front': [(-14,-77),(-17,-96),(-6,-110),(11,-112),(30,-105),(43,-89,'c'),(27,-92),(34,-75),(48,-62,'c'),(31,-65),(31,-49),(19,-37,'c'),(21,-58),(8,-68),(-5,-67)],
+    'back_3q': [(-6,-67),(-23,-88),(-25,-103),(-12,-111),(7,-109),(22,-99),(33,-80,'c'),(16,-88),(25,-65),(26,-47,'c'),(12,-59),(14,-38),(6,-24,'c'),(-1,-46),(-15,-36,'c'),(-18,-55),(-34,-46,'c'),(-25,-72)],
+    'back': [(-10,-67),(-24,-87),(-23,-103),(-9,-111),(10,-110),(25,-99),(34,-82,'c'),(18,-88),(23,-65),(29,-48,'c'),(13,-58),(13,-39),(3,-24,'c'),(-4,-48),(-17,-36,'c'),(-17,-55),(-30,-45,'c'),(-22,-74)],
+}
+
+MECHANIC_LOCKS = {
+    'side': [((-27,-88),(-47,-100),(-75,-97),(-89,-89)),((-30,-79),(-56,-85),(-84,-69)),((-34,-66),(-52,-62),(-75,-49))],
+    'front_3q': [((-25,-87),(-45,-99),(-69,-94)),((-29,-76),(-48,-81),(-72,-68)),((-31,-66),(-47,-58),(-61,-45))],
+    'front': [((-7,-95),(13,-103),(31,-93)),((0,-86),(17,-83),(31,-70)),((7,-75),(18,-63),(21,-48))],
+    'back_3q': [((-9,-82),(-11,-101),(9,-101),(22,-90)),((2,-76),(12,-63),(15,-47)),((-9,-70),(-20,-58),(-22,-53))],
+    'back': [((-9,-82),(-10,-102),(9,-101),(21,-91)),((3,-78),(9,-60),(5,-36)),((-9,-72),(-15,-60),(-20,-54))],
+}
+
+
+def mechanic_ponytail(c, view):
+    """A tied, layered mass of hair, not evenly spaced radial spikes."""
+    pts = MECHANIC_TAILS[view]
+    locks = MECHANIC_LOCKS[view]
+    out = inked(path(pts), c['hair'], c['ink'], W)
+    for i, lock in enumerate(locks):
+        out.append(el(path(band(lock, [1.0] + [5.0] * (len(lock)-2) + [0.6])),
+                      c['hair_light'], opacity=0.68 if i == 0 else 0.43))
+        out.append(el(path(lock, closed=False), 'none', c['hair_dark'], 1.5))
+    return out
+
+
+def mechanic_crown(c, view):
+    """Keep the crown fitted to the existing head; draw swept, uneven locks."""
+    if view == 'side':
+        pts = [(47,-52,'c'),(39,-56),(43,-46,'c'),(31,-51),(24,-35,'c'),(20,-44),(12,-43),(4,-39),(-8,-37),(-12,-19,'c'),(-19,-28),(-26,-17,'c'),(-33,-36),(-37,-55),(-31,-70),(-15,-82),(5,-85),(24,-80),(39,-68)]
+        locks = [((-20,-76),(-9,-64),(-11,-42)),((0,-80),(15,-70),(27,-53)),((19,-77),(32,-68),(41,-57))]
+    elif view == 'front_3q':
+        pts = [(-31,-26,'c'),(-30,-42),(-36,-56),(-30,-72),(-14,-82),(6,-86),(26,-81),(39,-71),(45,-58),(43,-48,'c'),(35,-56),(28,-46,'c'),(19,-55),(9,-48,'c'),(0,-54),(-6,-32,'c'),(-11,-43),(-21,-43),(-27,-32)]
+        locks = [((-20,-75),(-9,-66),(-8,-46)),((-1,-81),(12,-70),(18,-54)),((22,-78),(34,-65),(40,-54))]
+    elif view == 'front':
+        pts = [(-33,-26,'c'),(-31,-41),(-37,-57),(-30,-72),(-14,-82),(2,-85),(18,-82),(31,-73),(37,-58),(32,-42),(33,-27,'c'),(25,-37),(20,-52),(8,-47,'c'),(12,-59),(0,-53),(-9,-44,'c'),(-6,-58),(-18,-52),(-26,-37),(-28,-29,'c')]
+        locks = [((-21,-76),(-21,-64),(-26,-44)),((-5,-82),(1,-70),(-7,-52)),((12,-79),(23,-67),(28,-45))]
+    else:
+        # Rear cap, with the ponytail placed in front of it below.
+        pts = [(-34,-46),(-37,-60),(-30,-74),(-14,-83),(3,-86),(23,-82),(35,-72),(38,-58),(35,-43),(32,-28,'c'),(25,-34),(19,-17,'c'),(9,-22),(2,-11,'c'),(-5,-21),(-15,-14,'c'),(-20,-27),(-30,-24,'c')]
+        locks = [((-24,-71),(-27,-49),(-20,-32)),((18,-76),(27,-55),(24,-34))]
+    out = inked(path(pts), c['hair'], c['ink'], W)
+    for i, lock in enumerate(locks):
+        out.append(el(path(band(lock, [0.6] + [5.0] * (len(lock)-2) + [1.0])), c['hair_light'], opacity=.55))
+        out.append(el(path(lock, closed=False), 'none', c['hair_dark'], 1.2))
+    return out
+
+
+def mechanic_hair(c, view):
+    out = mechanic_crown(c, view)
+    if view.startswith('back'):
+        # Behind, the knot and tail overlay the crown rather than hiding under it.
+        out += mechanic_ponytail(c, view)
+        for d in (path([(-3,-69),(-19,-75),(-27,-68,'c'),(-15,-63),(-3,-63)]),
+                  path([(3,-68),(14,-59),(21,-47,'c'),(10,-55),(1,-62)])):
+            out += inked(d,c['band'],c['ink'],W*.7)
+        out += inked(ellipse(0,-66,5,4.5),c['band_dark'],c['ink'],W*.7)
+    else:
+        # A wide cloth band across the crown, rather than a narrow hair hoop.
+        spine = {'side': [(31,-73),(16,-79),(-4,-79),(-22,-72),(-35,-53)],
+                 'front_3q': [(-32,-56),(-24,-69),(-8,-76),(12,-79),(29,-73),(40,-64)],
+                 'front': [(-35,-57),(-26,-69),(-10,-76),(8,-76),(24,-70),(34,-57)]}[view]
+        out += inked(path(band(spine, 9.0)),c['band'],c['ink'],W*.65)
+        out.append(el(path(spine,closed=False),'none',c['band_light'],1.6))
+        if view != 'front':
+            x,y = spine[-1] if view == 'side' else spine[0]
+            out += inked(path([(x,y-2),(x-9,y-2),(x-19,y+6,'c'),(x-8,y+6),(x-2,y+4)]),c['band_dark'],c['ink'],1.5)
+            out += inked(ellipse(x,y,4.5,4),c['band'],c['ink'],1.5)
+        if c.get('streaked'):
+            out += HEAD[view]['streak'](c)
+    return out
+
+
+def mechanic_coat(c, view):
+    """Lapel, reinforced seams and pockets on the torso part, in waist units."""
+    seam, light, dark = '#67523d', '#c6aa7d', '#786044'
+    out = []
+    if view in ('front','front_3q'):
+        # A folded facing and a small breast tool pocket. Coordinates are
+        # independently selected in each view, never scaled from a full sprite.
+        if view == 'front':
+            panels = [(-1,0),(1,0)]
+        else:
+            panels = [(-1,3)]
+        for s,dx in panels:
+            q = [(dx+s*x,y) for x,y in [(13,-83),(25,-72),(21,-57),(13,-60),(19,-49),(9,-30),(10,-56)]]
+            out += inked(path(q),dark,seam,1.6)
+            out.append(el(path([(dx+s*14,-81),(dx+s*22,-72),(dx+s*18,-59)],closed=False),'none',light,1.3))
+        x = -25 if view == 'front' else -18
+        out += inked(path([(x-7,-37),(x+7,-37),(x+6,-21),(x,-18),(x-6,-21)]),dark,seam,1.3)
+        out += inked(path([(x-8,-38),(x+8,-38),(x+6,-32),(x,-31),(x-6,-32)]),light,seam,1.2)
+        out.append(el(ellipse(x,-33,1.2,1.2),c['brass']))
+        out.append(el(path([(x+3,-38),(x+5,-49)],closed=False),'none',c['steel'],2.3))
+    elif view.startswith('back'):
+        left,right = (-31,31) if view=='back' else (-27,31)
+        out.append(el(path([(left,-64),(left*.6,-53),(0,-50),(right*.6,-53),(right,-64)],closed=False),'none',seam,2.1))
+        out.append(el(path([(left,-60),(left*.6,-49),(0,-46),(right*.6,-49),(right,-60)],closed=False),'none',light,1.0))
+        out.append(el(path([(0,-49),(-1,-19),(1,15)],closed=False),'none',seam,1.5))
+        # A sewn-on rectangular repair patch, kept in subdued canvas tones.
+        out += inked(path([(-16,-30),(-3,-32),(-2,-17),(-14,-15)]),dark,seam,1.1)
+        for y in (-28,-24,-20):
+            out.append(el(path([(-15,y),(-13,y+1)],closed=False),'none',light,1.0))
+    return out
+
+
+# Open panels below the cinched belt. The original skirt geometry draws the
+# whole near half of the loft; from the front that closes the opening. These
+# contours show her work trousers through it, in the same hip-local parts.
+MECHANIC_PANELS = {
+    ('front', 'near'): [(-18,-24),(15,-24),(13,-8),(11,20),(8,48),(2,86,'c'),(-31,87,'c'),(-25,52),(-23,18)],
+    ('front', 'far'): [(18,-24),(-15,-24),(-13,-8),(-11,20),(-8,48),(-2,86,'c'),(31,87,'c'),(25,52),(23,18)],
+    ('front_3q', 'near'): [(-21,-25),(31,-24),(28,-4),(25,21),(19,52),(9,86,'c'),(-32,88,'c'),(-26,51),(-24,17)],
+    ('front_3q', 'far'): [(-16,-23),(21,-25),(25,-10),(24,18),(28,49),(30,84,'c'),(13,86,'c'),(5,49),(4,18),(-6,-5)],
+}
+
+
+def mechanic_panel(c, view, side):
+    pts = MECHANIC_PANELS[(view, side)]
+    d = path(pts)
+    col = '#ac8e62' if side == 'near' else '#967951'
+    out = inked(d, col, c['ink'], W)
+    if view == 'front':
+        s = -1 if side == 'near' else 1
+        out.append(el(path([(s*18,-20),(s*23,17),(s*25,52),(s*29,85),(s*23,85),(s*19,49),(s*18,14)]), '#8b704e'))
+        out.append(el(path([(-s*13,-18),(-s*11,20),(-s*8,48),(-s*2,83)],closed=False),'none','#d4b88b',2.0))
+    elif side == 'near':
+        out.append(el(path([(-20,-20),(-24,18),(-26,51),(-30,85),(-22,85),(-20,47),(-19,15)]),'#8b704e'))
+        out.append(el(path([(28,-17),(25,21),(19,52),(10,82)],closed=False),'none','#d4b88b',2.0))
+    return out
+
+
+def mechanic_gear(c, view, at):
+    # Reuse the same belt and pouch construction. A larger open-ended wrench
+    # is visible above the pouch even at gameplay scale.
+    out = belt(c, view) + pouch(c, view, at)
+    if not view.startswith('back'):
+        x = POUCH_X[view] + at[0] + 11
+        y = -24 + at[1] - 16
+        jaw = path([(x-5,y+4),(x-7,y-6,'c'),(x-2,y-4),(x-1.8,y+0.5),
+                    (x+1.8,y+0.5),(x+2,y-4),(x+7,y-6,'c'),(x+5,y+4),(x+2.6,y+7),(x-2.6,y+7)])
+        out += inked(jaw,c['steel'],c['ink'],1.6)
+        out.append(el(path([(x-5.4,y-4),(x-3.5,y+2)],closed=False),'none',c['steel_light'],1.4))
+    return out
+
+
+def mechanic_skirt(c, view, side):
+    """A pocket and seam on the actual skirt part (hip-local coordinates)."""
+    # The visible front half differs by camera view. In profile the near half
+    # covers the far one; both use their own existing local hip attachment.
+    if view.startswith('back'):
+        x = 9 if side == 'near' else -9
+    elif view == 'side':
+        x = 5
+    elif view == 'front_3q':
+        x = -8 if side == 'near' else 10
+    else:
+        x = -8 if side == 'near' else 8
+    seam, light, dark = '#67523d','#c6aa7d','#826b4e'
+    out = mechanic_panel(c, view, side) if (view,side) in MECHANIC_PANELS else []
+    if not (view == 'front_3q' and side == 'far'):
+        out.append(el(path([(x,3),(x-1,42),(x+2,76)],closed=False),'none',seam,1.3))
+    if not view.startswith('back') and not (view == 'front_3q' and side == 'far'):
+        d = path([(x-10,12),(x+10,12),(x+9,32),(x+5,37),(x-5,37),(x-9,32)])
+        out += inked(d,dark,seam,1.6)
+        out += inked(path([(x-11,11),(x+11,11),(x+9,18),(x,20),(x-9,18)]),light,seam,1.4)
+        out.append(el(ellipse(x,16,1.5,1.5),c['brass']))
+        out.append(el(path([(x-7,22),(x-7,31),(x-4,34)],closed=False),'none',light,1.1))
+    return out
+
+
 # ---- the document -------------------------------------------------------------------------------------
 
 def group(part, mode, anchor, scale, at, els, gear=False):
@@ -619,16 +795,31 @@ def write(look: str) -> Path:
             mark = {"side": ((31, -21), 0), "front_3q": ((14, -23), 0), "front": ((-18, -22), 0)}.get(key)
             h.update(ponytail={"side": flame_side, "front_3q": flame_f3q, "front": flame_front}.get(key, nothing),
                      face=(lambda c, m=mark: face_void(c, *m)) if mark else nothing)
+            crown = h["hair"](c) + h["bandana"](c) + (h["streak"](c) if c.get("streaked") else [])
+            tail = h["ponytail"](c)
+        else:
+            crown = mechanic_hair(c, key)
+            tail = [] if key.startswith("back") else mechanic_ponytail(c, key)
         gs = [
-            group("hair", "replace", "neck", "head head", J["neck"], h["hair"](c) + h["bandana"](c) + (h["streak"](c) if c.get("streaked") else [])),
-            group("hair_back", "replace", "neck", "head head", J["neck"], h["ponytail"](c)),
+            group("hair", "replace", "neck", "head head", J["neck"], crown),
+            group("hair_back", "replace", "neck", "head head", J["neck"], tail),
             group("head", "over", "neck", "head head", J["neck"], h["face"](c)),
         ]
-        gs += [
-            # The pouch hangs from the belt, so it is drawn with it, over the coat.
-            group("torso__outer", "over", "waist", "trunk trunk", J["waist"],
-                  belt(c, key) + pouch(c, key, (J["near_hip"][0] - J["waist"][0], J["near_hip"][1] - J["waist"][1]))),
-        ]
+        # The pouch hangs from the belt, so it is drawn with it, over the coat.
+        hip_at = tuple(J["near_hip"][k] - J["waist"][k] for k in range(2))
+        if c.get("void"):
+            coat_detail = belt(c, key) + pouch(c, key, hip_at)
+        else:
+            coat_detail = mechanic_coat(c, key) + mechanic_gear(c, key, hip_at)
+        gs.append(group("torso__outer", "over", "waist", "trunk trunk", J["waist"], coat_detail))
+        if not c.get("void"):
+            gs += [group(f"{side}_skirt__outer", "replace" if (key,side) in MECHANIC_PANELS else "over", f"{side}_hip", "trunk trunk", J[f"{side}_hip"],
+                         mechanic_skirt(c, key, side)) for side in ("near", "far")]
+            # The generic thigh drape is an opaque backing, visible through
+            # the new opening and as tan round caps at the knees. The coat's
+            # actual panels supply its silhouette; leave the trousers intact.
+            gs += [group(f"{side}_leg_u__outer_drape", "replace", f"{side}_hip", "trunk trunk", J[f"{side}_hip"], [])
+                   for side in ("near", "far")]
         if c.get("void"):
             gs += [group(f"{side}_skirt__outer", "over", f"{side}_hip", "trunk trunk", J[f"{side}_hip"], tatters(c, key, side)) for side in ("near", "far")]
             gs.append(group("torso__top", "over", "waist", "trunk trunk", J["waist"], diamonds(c, key)))

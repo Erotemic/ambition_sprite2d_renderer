@@ -1353,6 +1353,16 @@ lineages:
         label: "v2: the SVG-rigged macaw"
         note: "The v2 target redrawn, same rows: the bare white face patch, the hooked pale beak, wings that spread from folded to open. Claude Opus 5.5 declared."
 
+  fia:
+    character_id: npc_fia
+    ids: [fia]
+    paths: ['characters/fia/', 'characters/fia\.py', 'overlays/fia(_touched|_void)?\.overlay\.svg', 'scripts/draw_fia_overlays\.py']
+    summary: "mechanic under Oiler; normal, Void-touched, and Void-embraced looks on one chargen body"
+    forms:
+      touched: [fia_touched]
+      void: [fia_void]
+    eras: []
+
   # ---- every character with art has a lineage (2026-10-25) ----
   # `eras: []` until a survey shows the looks.
   mary_o:
