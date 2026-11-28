@@ -965,6 +965,9 @@ def paint_character(
     is_roo = kind == "pirate_admiral"
     if is_roo:
         roo.draw_tail(draw, hip, pose, roo._view(anim, frame_idx, nframes))
+        cloth = roo.coat_parts(pose, chest, b)
+        # Far panel falls behind both legs; near panel crosses in front.
+        roo.draw_coat_panel(draw, cloth, -1)
 
     # The back leg, then the front leg over it.
     _begin(draw, "legs")
@@ -991,13 +994,14 @@ def paint_character(
 
     _begin(draw, "body")
     if is_roo:
+        roo.draw_coat_panel(draw, cloth, 1)
+        roo.draw_sash_tail(draw, cloth)
         roo.draw_torso(draw, chest, global_tilt, pal, look)
     else:
         _draw_torso(draw, chest, global_tilt, pal, look)
     # The tails of a coat stop over the knees. A jacket has a short skirt.
     coat_sway = pose["coat_sway"]
     if is_roo:
-        roo.draw_coat_tails(draw, hip, global_tilt, coat_sway, b)
         roo.draw_gear(draw, hip, global_tilt, pose)
         _end(draw)
     elif look.coat == "robe":
@@ -1480,7 +1484,9 @@ def render_target_with_products(
         frame_fits[(anim, frame_idx)] = fit
         return frame
 
-    outputs = build_sheet(parts=True, 
+    track_parents = roo.TRACK_PARENTS if target == "pirate_admiral" else None
+    outputs = build_sheet(parts=True,
+        track_parents=track_parents,
         target=target,
         rows=rows_of(target),
         render_fn=render_fn,
@@ -1513,7 +1519,7 @@ def render_target_with_products(
     # placed the frame.
     from ...authoring.part_flipbook import PartFlipbook, publish_rig_flipbook
 
-    for name, path in publish_rig_flipbook(target, rows_of(target), render_fn, outputs, frame_transform, out_dir).items():
+    for name, path in publish_rig_flipbook(target, rows_of(target), render_fn, outputs, frame_transform, out_dir, track_parents=track_parents).items():
         outputs["parts" if name == "ron" else name] = path
     if "parts" not in outputs:
         # A quality tier's render: its flipbook is derived, not recorded.
