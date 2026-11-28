@@ -912,8 +912,8 @@ def _wrap(deg: float) -> float:
 # The outlines of the parts a body can rest on, in each part's own frame, and
 # the half width of the ink on them (``_pirate_common`` draws these shapes).
 _B = 1.05
-_TORSO = [(-42 * _B, -14), (-30 * _B, -29), (28 * _B, -29), (40 * _B, -14), (37 * _B, 34), (42 * _B, 68),
-          (0, 76), (-44 * _B, 68), (-39 * _B, 34), (48 * _B, -11), (-48 * _B, -11)]
+_TORSO = [(-42 * _B, -14), (-30 * _B, -29), (28 * _B, -29), (40 * _B, -14), (37 * _B, 34), (40 * _B, 53),
+          (0, 57), (-42 * _B, 53), (-39 * _B, 34), (48 * _B, -11), (-48 * _B, -11)]
 _SEAT = [(-29 * _B, -20), (29 * _B, -20), (29 * _B, 8), (0, 16), (-29 * _B, 8)]
 _BOOT = [(-14, -29), (12, -29), (13, -19), (-14, -19), (-12, -8), (11, -10), (24, -4), (27, 6), (-12, 6)]
 _SOLE = [(-13, 3.5), (28, 3.5), (28, 7.5), (-13, 7.5)]
@@ -937,8 +937,8 @@ def _lowest(pose: Channels) -> float:
             low = max(low, transform(p, origin, deg)[1] + ink)
 
     shape(_TORSO, j["chest"].point, tilt, 2.5)
-    for side in (-1, 1):
-        shape(roo.coat_tail_outline(side, _B), j["hip"].point, tilt - side*pose["coat_sway"], 2.0)
+    for _, origin, angle, outline in roo.coat_parts(pose, j["chest"].point, _B):
+        shape(outline, origin, angle, 2.0)
     for _, origin, angle, outline in roo.tail_parts(pose,j["hip"].point):
         shape(outline, origin, angle, 1.5)
     shape(_SEAT, j["hip"].point, tilt, 2.0)
