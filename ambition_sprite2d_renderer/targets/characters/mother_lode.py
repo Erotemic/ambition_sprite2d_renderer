@@ -16,6 +16,7 @@ ROWS = [
     ("idle", 8, 125), ("hammer_lift", 10, 90), ("side_sweep", 8, 49),
     ("fault_coil", 9, 95), ("fault", 8, 51), ("shed_tell", 10, 105),
     ("shed", 10, 54), ("hit", 5, 66), ("death", 18, 70), ("death_idle", 1, 250),
+    ("split_tell", 12, 100), ("split", 8, 51), ("core_open", 12, 80),
 ]
 
 INK = (26, 19, 34)
@@ -28,6 +29,7 @@ AMBER = (255, 203, 117)
 IVORY = (255, 239, 191)
 JADE = (125, 238, 207)
 VIOLET = (204, 135, 246)
+ROSE = (255, 142, 182)
 OXIDES = ((244, 173, 110), (231, 123, 170), (164, 113, 219), (105, 170, 214), (102, 213, 182))
 
 
@@ -247,22 +249,28 @@ def render_frame(anim, index, count):
     coil = track(t, [(0, 0), (0.58, 0.88), (1, 1)]) if anim == "fault_coil" else 0
     fault = track(t, [(0, 1), (0.32, 0.86), (1, 0)]) if anim == "fault" else 0
     shed = t if anim == "shed_tell" else (1 - t if anim == "shed" else 0)
+    brace = track(t, [(0, 0), (0.35, 0.2), (0.80, 0.88), (1, 1)]) if anim == "split_tell" else 0
+    fracture = track(t, [(0, 1), (0.17, 1), (0.60, 0.72), (1, 0.18)]) if anim == "split" else 0
+    opening = track(t, [(0, 0.42), (0.18, 1), (0.67, 0.91), (1, 0)]) if anim == "core_open" else 0
     hurt = sin(pi * t) if anim == "hit" else split * 1.79
     breathe = 2.4 * sin(tau * t) if anim == "idle" else 0.0
     shift = -6 * lift + 12 * hammer - 10 * coil + 5 * fault - 12 * hurt
-    y = breathe - 10 * lift + 17 * hammer + 26 * coil + 15 * fault - 17 * shed + 50 * hurt
+    y = (breathe - 10 * lift + 17 * hammer + 26 * coil + 15 * fault - 17 * shed +
+         50 * hurt + 24 * brace - 17 * fracture + 22 * opening)
 
     def body(x, yy):
         return x + shift, yy + y
 
-    hue = JADE if coil or fault else VIOLET if shed else AMBER
-    pulse = max(lift * 0.88, hammer, coil * 0.95, fault, shed, hurt * 0.66)
+    hue = ROSE if brace or fracture else JADE if coil or fault else VIOLET if shed else AMBER
+    pulse = max(lift * 0.88, hammer, coil * 0.95, fault, shed, hurt * 0.66, brace, fracture)
     left = mix(mix((118, 230), (83, 106), lift), (59, 242), hammer)
     right = mix(mix((258, 236), (314, 99), lift), (326, 243), hammer)
     left = mix(mix(left, (109, 235), coil), (91, 248), fault)
     right = mix(mix(right, (252, 244), coil), (258, 249), fault)
     left = add(left, (-14 * shed - 10 * hurt, -18 * shed + 10 * hurt))
     right = add(right, (20 * shed - 13 * hurt, -18 * shed + 9 * hurt))
+    left = mix(mix(mix(left, (144, 245), brace), (60, 246), fracture), (98, 253), opening)
+    right = mix(mix(mix(right, (240, 248), brace), (324, 245), fracture), (293, 252), opening)
 
     foot(c, body(182, 201), (190, 267), far=True)
     foreleg(c, body(135, 155), left, (-11, 4), -12 + 23 * lift - 28 * hammer, pulse, hue, far=True)
@@ -281,9 +289,22 @@ def render_frame(anim, index, count):
     bevel(c, [body(*p) for p in ((99,172),(112,146),(142,125),(159,116),(188,127),(170,154),
                                   (148,181),(128,197),(109,191))],
           SLATE, light=0.58, seed=64)
-    bevel(c, [body(*p) for p in ((151,150),(187,116),(209,114),(232,125),(245,153),
-                                  (225,180),(208,195),(183,200),(158,187),(148,171))],
-          IRON, light=0.62, width=0.18, seed=44)
+    if opening:
+        bevel(c, [body(*p) for p in ((144,158),(173,128),(210,127),(232,146),(229,180),
+                                     (207,202),(172,203),(148,184))],
+              INK, light=0.30, width=0.12, seed=44)
+        for side in (-1, 1):
+            def plate(x, yy):
+                return body(185 + side * (x + 23 * opening), yy - 10 * opening)
+
+            bevel(c, [plate(*p) for p in ((0,127),(13,114),(38,122),(53,148),(39,176),
+                                          (21,193),(7,192),(13,161))],
+                  IRON, light=0.62, width=0.16, seed=44)
+            vein(c, [plate(*p) for p in ((14,175),(25,159),(27,145),(37,135))], AMBER, opening)
+    else:
+        bevel(c, [body(*p) for p in ((151,150),(187,116),(209,114),(232,125),(245,153),
+                                     (225,180),(208,195),(183,200),(158,187),(148,171))],
+              IRON, light=0.62, width=0.18, seed=44)
     bevel(c, [body(*p) for p in ((136,195),(156,189),(182,200),(202,202),(219,211),(202,222),
                                   (166,224),(143,215))],
           BEDROCK, light=0.43, seed=73)
@@ -294,12 +315,15 @@ def render_frame(anim, index, count):
         c.line([body(*p) for p in fragments], (157, 112, 117), 1.38)
     vein(c, [body(*p) for p in ((113,184),(127,180),(144,167),(163,169),(186,155),(193,150))], hue, pulse)
     vein(c, [body(*p) for p in ((183,182),(191,171),(212,166),(220,146),(224,137))], hue, pulse * 0.87)
-    core(c, body(182, 166), 0.92 + 0.12 * shed, 0.22 + 0.78 * pulse)
+    core(c, body(182, 166), 0.92 + 0.12 * shed + 0.58 * opening,
+         0.22 + 0.78 * max(pulse, opening))
 
     bevel(c, [body(*p) for p in ((217,144),(229,116),(250,119),(268,139),(261,158),
                                  (247,169),(226,164))], SLATE, light=0.54, seed=53)
-    face(c, body(249 + 3 * lift + 6 * hammer - 5 * coil, 132 - 12 * lift + 14 * coil),
-         pulse, 0.27 if anim == "idle" and index == count - 1 else 1, shed - coil)
+    head = body(249 + 3 * lift + 6 * hammer - 5 * coil + 12 * opening,
+                132 - 12 * lift + 14 * coil + 14 * opening + 6 * brace)
+    blink = 0.27 if anim == "idle" and index == count - 1 else 1 - 0.66 * opening
+    face(c, head, pulse, blink, shed - coil - opening)
     foreleg(c, body(226, 172), right, (15, 2), 12 - 35 * lift + 18 * hammer, pulse, hue)
 
     if anim in ("shed_tell", "shed"):
@@ -310,6 +334,14 @@ def render_frame(anim, index, count):
             yy += -23 * shed + (55 + 15 * i) * release ** 2
             crystal(c, (x, yy), add((x, yy), rot((12 + 4 * shed, 0), angle + 150 * release)),
                     3.3, OXIDES[i], light=shed)
+
+    if fracture:
+        for side in (-1, 1):
+            for i in range(4):
+                x = 196 + side * (34 + 15 * i + (35 + i * 11) * t)
+                yy = 114 + (i % 2) * 22 - (16 + i * 12) * sin(pi * t)
+                tail = add((x, yy), (-side * (10 + 5 * i) * fracture, 6))
+                crystal(c, tail, (x, yy), 2.4 + 0.7 * i, ROSE, light=fracture)
 
     return c.finish()
 
