@@ -39,7 +39,7 @@ from PIL import Image
 #: Version of the published ``<target>_parts.ron`` schema. 2 added the track
 #: table (each draw's identity across frames) and the per-clip tween policy. 3
 #: added the placement rule, a draw's opacity and a frame's opacity.
-PART_FLIPBOOK_SCHEMA_VERSION = 4
+PART_FLIPBOOK_SCHEMA_VERSION = 5
 
 #: How a flipbook's draws land (``PartFlipbook.placement``).
 PLACEMENT_SNAPPED = "snapped"
@@ -120,6 +120,11 @@ class PartFlipbook:
     landmarks: Dict[str, List[Dict[str, Tuple[float, float]]]] = field(default_factory=dict)
     #: Convert frame positions to logical pixels on export. Keep atlas rectangles in texels.
     texel_scale: int = 1
+    #: Child track to parent track. Empty for independent draws.
+    track_parents: Dict[str, str] = field(default_factory=dict)
+
+    def hierarchy_tracks(self):
+        return set(self.track_parents) | set(self.track_parents.values())
 
     # -- measurement -----------------------------------------------------------
     def tight_texels(self) -> int:
@@ -179,9 +184,11 @@ class PartFlipbook:
                     if d.track is not None and d.track not in tracks:
                         tracks.append(d.track)
         track_index = {name: index for index, name in enumerate(tracks)}
+        from .part_hierarchy import validate_hierarchy
+        validate_hierarchy(self.track_parents, self.clips)
         lines = [
             "(",
-            f"    schema_version: {PART_FLIPBOOK_SCHEMA_VERSION},",
+            f"    schema_version: {PART_FLIPBOOK_SCHEMA_VERSION if self.track_parents else 4},",
             f'    target: "{self.target}",',
             "    pages: [" + ", ".join(f'"{name}"' for name in self.page_names()) + "],",
             *([f"    texel_scale: {num(texel_scale)},"] if texel_scale != 1 else []),
@@ -200,6 +207,9 @@ class PartFlipbook:
         lines.append("    ],")
         if tracks:
             lines.append("    tracks: [" + ", ".join(f'"{name}"' for name in tracks) + "],")
+        if self.track_parents:
+            entries = ", ".join(f'"{child}": "{parent}"' for child, parent in sorted(self.track_parents.items()))
+            lines.append("    track_parents: {" + entries + "},")
         if self.landmarks:
             rows = []
             for row, frames in self.landmarks.items():
@@ -338,6 +348,10 @@ class PartFlipbook:
         import ast
         landmark_line = next((line.strip() for line in text.splitlines() if line.strip().startswith("landmarks:")), None)
         landmarks = ast.literal_eval(landmark_line[len("landmarks:"):].strip().removesuffix(",")) if landmark_line else {}
+        parents = re.search(r"track_parents:\s*(\{[^}]*\})", text)
+        track_parents = ast.literal_eval(parents.group(1)) if parents else {}
+        from .part_hierarchy import validate_hierarchy
+        validate_hierarchy(track_parents, clips)
         baked = re.search(r"baked_clips: \[([^\]]*)\]", text)
         return cls(
             target,
@@ -356,6 +370,7 @@ class PartFlipbook:
             {row: [{name: tuple(value * texel_scale for value in at) for name, at in frame.items()}
                    for frame in frames] for row, frames in landmarks.items()},
             texel_scale,
+            track_parents,
         )
 
     def draw_frame(
@@ -1462,12 +1477,15 @@ def tween_draws(flipbook: "PartFlipbook", row: str, index: int, t: float) -> Lis
     still, and so does a draw whose next draw is mirrored where it is not
     (a part shared with its own mirror: lerped, its scale passed through zero
     and the limb folded flat half way). A clip that steps, or ``t == 0``, is
-    the frame itself. The frame's opacity is the current frame's.
+    the frame itself. For an authored parent graph, interpolate pivot and
+    angle in parent coordinates even on raster changes; raster selection and
+    opacity remain independent. The frame's opacity is the current frame's.
     """
     _duration, frames = flipbook.clips[row]
     current = frames[index]
     if flipbook.tweens.get(row) != TWEEN_LINEAR or t <= 0.0:
         return list(current)
+    t = min(t, 1.0)
     following = {d.track: d for d in frames[(index + 1) % len(frames)] if d.track is not None}
     out: List[PartDraw] = []
     for d in current:
@@ -1488,6 +1506,9 @@ def tween_draws(flipbook: "PartFlipbook", row: str, index: int, t: float) -> Lis
                 tuple(a + (b - a) * t for a, b in zip(d.tint, target.tint)),
             )
         )
+    if flipbook.track_parents:
+        from .part_hierarchy import articulate
+        articulate(flipbook.track_parents, current, frames[(index + 1) % len(frames)], t, out)
     return out
 
 
@@ -1523,6 +1544,7 @@ def publish_rig_flipbook(
     out_dir: Path,
     tween_rows: Optional[Sequence[str]] = None,
     render_clip: Optional[Callable[[str, int], Sequence[Image.Image]]] = None,
+    track_parents: Optional[Mapping[str, str]] = None,
 ) -> Dict[str, Path]:
     """Build and write the part flipbook of a rig-document target that
     ``build_sheet`` just published, and return its files.
@@ -1577,7 +1599,7 @@ def publish_rig_flipbook(
         return place(render(row, index, count))
 
     published_clip = None if render_clip is None else (lambda row, count: [place(f) for f in render_clip(row, count)])
-    flipbook = build_rig_flipbook(target, rows, published, None, feet, size, tweened, render_clip=published_clip)
+    flipbook = build_rig_flipbook(target, rows, published, None, feet, size, tweened, render_clip=published_clip, track_parents=track_parents)
     return write_with_realization(flipbook, Path(outputs["yaml"]), Path(out_dir))
 
 
@@ -1674,6 +1696,7 @@ def build_rig_flipbook(
     tween_rows: Sequence[str] = (),
     render_clip: Optional[Callable[[str, int], Sequence[Image.Image]]] = None,
     paint: bool = True,
+    track_parents: Optional[Mapping[str, str]] = None,
 ) -> PartFlipbook:
     """The flipbook of a rig-document character: ``part_rows`` from parts (every
     row when ``None``), and any other row of ``rows`` left to the baked sheet.
@@ -1863,6 +1886,12 @@ def build_rig_flipbook(
         bilinear=filters.pop() if filters else False,
         frame_opacity=frame_opacity,
     )
+    # Do not remove optional tracks from the author's graph when they draw in
+    # these clips. A partial build can omit a child that it never draws.
+    present = {d.track for _, frames in clips.values() for frame in frames for d in frame}
+    flipbook.track_parents = {child: parent for child, parent in (track_parents or {}).items() if child in present}
+    from .part_hierarchy import validate_hierarchy
+    validate_hierarchy(flipbook.track_parents, flipbook.clips)
     if not paint:
         rendered = {
             (row, index): painted_sample.get((row, index)) or flipbook.recompose(row, index)
@@ -1884,7 +1913,7 @@ def build_rig_flipbook(
                 flipbook = changed
     # Near twins (a texel over, a shade darker), each kept only where every
     # frame still replays (`_share_near_parts`).
-    distinct = frozenset(DISTINCT_TRACKS.get(target, ()))
+    distinct = frozenset(DISTINCT_TRACKS.get(target, ())) | flipbook.hierarchy_tracks()
     # These two are lossy by design, so recorded only they are judged against
     # the PAINT of each frame a candidate is drawn in (painted when asked):
     # judged against the unshared redraw, a near twin spent the replay's
@@ -2037,6 +2066,8 @@ def _merge_rigid_neighbours(flipbook: "PartFlipbook") -> "PartFlipbook":
         composites[key] = found
         return found
 
+    protected = flipbook.hierarchy_tracks()
+
     def candidates(clips) -> Dict[str, Tuple[str, tuple]]:
         follows: Dict[Optional[str], set] = {}
         for _duration, frames in clips.values():
@@ -2051,9 +2082,11 @@ def _merge_rigid_neighbours(flipbook: "PartFlipbook") -> "PartFlipbook":
             a: next(iter(after))
             for a, after in follows.items()
             if a is not None
+            and a not in protected
             and len(after) == 1
             and None not in after
             and next(iter(after))[0] not in (None, a)
+            and next(iter(after))[0] not in protected
             and next(iter(after))[1][0] == 0.0
             # ⛔ Unscaled, both: `composite` pastes rasters as stored, so a
             # mirrored draw (lossless sharing) would be pasted unmirrored.
@@ -2167,6 +2200,8 @@ def _share_transformed_parts(flipbook: "PartFlipbook") -> "PartFlipbook":
         return flipbook
     parts = list(flipbook.parts)
     tracked = {d.part for _duration, frames in flipbook.clips.values() for draws in frames for d in draws if d.track is not None}
+    protected = flipbook.hierarchy_tracks()
+    pinned = {d.part for _, frames in flipbook.clips.values() for frame in frames for d in frame if d.track in protected}
     seen: Dict[Tuple[Tuple[int, int], bytes], List[int]] = {}
     source_of: Dict[int, tuple] = {}
 
@@ -2174,6 +2209,13 @@ def _share_transformed_parts(flipbook: "PartFlipbook") -> "PartFlipbook":
         """The first part seen with pixels ``key`` that part i can be drawn
         from under ``op`` (keeping a tracked part's pivot: `_pivot_kept`)."""
         for match in seen.get(key, ()):
+            # The parent frame is a joint. A rotated atlas source or shifted
+            # pivot would change that frame, even if its pixels are identical.
+            if i in pinned:
+                if op is not None or parts[i].pivot != parts[match].pivot or parts[i].image.size != parts[match].image.size:
+                    continue
+                if parts[i].image.tobytes() != parts[match].image.tobytes():
+                    continue
             if i not in tracked or _pivot_kept(parts[i], parts[match], op, (0, 0)):
                 return match
         return None

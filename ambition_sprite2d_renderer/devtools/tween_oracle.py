@@ -47,10 +47,10 @@ def oracle(name: str, scratch: Path) -> dict:
     captured: dict = {}
     original = pf.publish_rig_flipbook
 
-    def capture(target, rows, render, outputs, ft, out_dir, tween_rows=None, render_clip=None):
+    def capture(target, rows, render, outputs, ft, out_dir, tween_rows=None, render_clip=None, track_parents=None):
         if outputs.get("flipbook") is not None and target == name:
             captured.update(render=render, flipbook=outputs["flipbook"], ft=dict(ft))
-        return original(target, rows, render, outputs, ft, out_dir, tween_rows, render_clip)
+        return original(target, rows, render, outputs, ft, out_dir, tween_rows, render_clip, track_parents)
 
     targets = discover_all_targets().targets
     # Each target module imported the function by name: the capture replaces
