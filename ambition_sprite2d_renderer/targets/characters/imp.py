@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ._magic_character_art import Canvas, add, bezier, phase, rot, track
+from ._imp_front import paint_front, turn_frame
 from ...authoring.sheet_build import build_sheet
 from ...core.measure import body_metrics_for_box
 
@@ -14,7 +15,7 @@ FRAME_SIZE = (220, 192)
 BODY_BOX = (83, 52, 142, 150)
 ROWS = [
     ('idle', 16, 60), ('walk', 16, 50), ('run', 16, 38), ('fly', 16, 50),
-    ('notice', 10, 35), ('aim', 16, 35), ('windup', 16, 35),
+    ('turnaround', 3, 73), ('notice', 10, 35), ('aim', 16, 35), ('windup', 16, 35),
     ('shoot', 6, 30), ('hit', 9, 55), ('death', 20, 55),
 ]
 
@@ -95,6 +96,11 @@ def _pose(anim: str, i: int, n: int) -> Pose:
 
 
 def _render_frame(anim: str, i: int, n: int):
+    if anim == 'turnaround':
+        return turn_frame(i, n, lambda: _render_frame('idle', 0, 16),
+                          lambda: paint_front(FRAME_SIZE,
+                              ((BODY_BOX[0]+BODY_BOX[2]-1)/2, 101), adult=False),
+                          BODY_BOX)
     q = _pose(anim, i, n)
     c = Canvas(FRAME_SIZE)
     p = q.cycle
