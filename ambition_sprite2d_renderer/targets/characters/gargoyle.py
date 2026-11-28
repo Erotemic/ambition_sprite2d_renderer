@@ -110,10 +110,18 @@ class Pen:
         self.poly([add(p,mul(v,r*.25)) for p,v,r in zip(joints,normals,widths)]
                   + [add(p,mul(v,r*.78)) for p,v,r in zip(joints,normals,widths)][::-1],
                   '#878a7d' if far else MID,None)
-        for k in (range(1,len(joints)-1) if fissures else ()):
+        # A continuous bevel on the lit side of the stone limb. Avoid a
+        # transverse seam at every articulation: this is carved stone, not
+        # a set of mechanical shells.
+        if fissures and len(joints)>=4:
+            k=1 if len(joints)==4 else 2
             p=joints[k]; v=normals[k]; r=widths[k]
-            self.crack([add(p,mul(v,-r*.83)),add(p,mul(v,-r*.22)),
-                        add(add(p,mul(v,r*.05)),(2,-2)),add(p,mul(v,r*.45))],1.2)
+            tangent=unit(sub(joints[min(k+1,len(joints)-1)],joints[k-1]))
+            self.crack([add(p,mul(v,-r*.75)),add(add(p,mul(v,-r*.32)),mul(tangent,-4)),
+                        add(add(p,mul(v,-r*.12)),mul(tangent,2)),
+                        add(add(p,mul(v,r*.10)),mul(tangent,5))],1.1)
+            if not far:
+                self.line([add(a,mul(b,r*.62)) for a,b,r in zip(joints[1:-1],normals[1:-1],widths[1:-1])],LIGHT,1.25)
 
 @dataclass(frozen=True)
 class Pose:
@@ -163,21 +171,21 @@ def stone_wing(pen, shoulder, spread, side=1, far=False, frontal=False, collapse
         depth = .80 if far else 1.
         # Wings point back and up like the wings of a cathedral grotesque.
         # The farther wing is raised above the nearer wing rather than mirrored.
-        axis = (-37*depth, -49-17*spread+31*collapse)
-        tip = (-79*depth-13*spread, -82-17*spread+50*collapse)
-        tips = [(-100*depth-16*spread,-89-21*spread+49*collapse),
-                (-119*depth-18*spread,-53-14*spread+38*collapse),
-                (-112*depth-12*spread,-16+23*collapse),
-                (-81*depth-5*spread,9+14*collapse),(-27*depth,24)]
+        axis = (-38*depth, -52-18*spread+35*collapse)
+        tip = (-77*depth-12*spread, -88-17*spread+55*collapse)
+        tips = [(-103*depth-15*spread,-96-21*spread+55*collapse),
+                (-123*depth-18*spread,-58-15*spread+40*collapse),
+                (-111*depth-16*spread,-14+25*collapse),
+                (-76*depth-10*spread,13+15*collapse),(-22*depth,22)]
     if far and not frontal:
         # The farther folded wing stands more upright behind its mate. Its
         # spar and vanes remain a separate chain, with their own silhouette.
-        def raised(v):return (.56*v[0]+15, v[1]*1.22-10)
+        def raised(v):return (.62*v[0]+17, v[1]*1.17-8)
         axis=raised(axis); tip=raised(tip); tips=[raised(v) for v in tips]
     wrist=add(sh,axis); crown=add(sh,tip); points=[add(sh,v) for v in tips]
-    base = '#67695e' if far else '#929286'
-    shadow = '#52574e' if far else '#6b7067'
-    panel = '#848679' if far else '#a6a69a'
+    base = '#64695f' if far else '#85897c'
+    shadow = '#4c554e' if far else '#586157'
+    panel = '#7b8174' if far else '#a2a597'
     # Broad folded slab with an ogee outline, not a thin bat membrane.
     outline=[sh,wrist,crown,points[0]]
     for x,y in zip(points,points[1:]):
@@ -185,13 +193,18 @@ def stone_wing(pen, shoulder, spread, side=1, far=False, frontal=False, collapse
     outline.append(sh)
     pen.poly(outline,base,INK,2.8)
     for j,(x,y) in enumerate(zip(points,points[1:])):
-        inner=mix(wrist,y,.42); rib=mix(wrist,x,.68)
-        pen.shape(wrist,(mix(wrist,x,.4),mix(wrist,x,.85),x),
-                  (mix(x,y,.23),mix(y,wrist,.25),inner),
-                  (mix(inner,wrist,.33),mix(inner,wrist,.7),wrist),
-                  fill=panel if j%2==0 else base,edge=shadow,w=1.3)
-        pen.line([mix(wrist,x,.12),rib,x],shadow,3.1)
-        pen.line([mix(wrist,x,.15),mix(wrist,x,.56)],LIGHT if not far else base,1.3)
+        # Each carved vane follows exactly the same scallop as its outer
+        # silhouette. The face and ribs therefore cannot spill past the edge.
+        scallop=bezier(x,mix(x,wrist,.27),mix(y,wrist,.19),y,12)
+        face=[wrist]+scallop+[wrist]
+        pen.poly(face,panel if j%2==0 else base,None)
+        # Inner beveled face uses the same concavity, shrunk toward the wrist.
+        inset=[mix(wrist,v,.77) for v in scallop]
+        pen.poly([wrist]+inset+[wrist],base if j%2==0 else shadow,None)
+        pen.line([mix(wrist,x,.10),mix(wrist,x,.65),x],shadow,3.0)
+        pen.line([mix(wrist,x,.20),mix(wrist,x,.72)],LIGHT if not far else panel,1.3)
+        pen.line([mix(wrist,v,.90) for v in scallop[2:-2]],panel if j%2 else LIGHT,1.0)
+    pen.line(outline,INK,2.6)
     pen.limb([sh,mix(sh,wrist,.56),wrist,crown],[11,9,6,3],far,False)
     pen.line([mix(sh,wrist,.2),mix(sh,wrist,.73),wrist],LIGHT if not far else base,2.0)
     if not far:
@@ -220,6 +233,7 @@ def paw(pen, x, y, far=False, front=False, rake=0.):
         pen.poly([(x-12,y-10),(x+8,y-10),(x+19,y-3),(x-6,y-4)],hi,None)
         for k in range(3):
             xx=x+10+k*6; yy=y+4-k*3
+            pen.line([(xx-6,yy-4),(xx-3,yy-1)],DARK,1.0)
             pen.shape((xx-3,yy-2),((xx+2,yy-3),(xx+8+5*rake,yy),(xx+7+5*rake,yy+4)),
                       ((xx+2,yy+5),(xx-1,yy+2),(xx-3,yy-2)),fill=CLAW,w=1.0)
 
@@ -244,7 +258,6 @@ def side_frame(anim,i,n):
         pen.crack([add(a,mul(v,-r*.8)),a,add(a,mul(v,r*.7))],1.)
     spread=.9*q.ready+.45*q.notice+.25*q.strike
     stone_wing(pen,U(15,-110),spread,far=True,collapse=d)
-    stone_wing(pen,U(3,-103),spread,collapse=d)
     def leg(fore,far):
         angle=p+(math.pi if far else 0)+(math.pi if fore else 0)
         step=23*q.gait*math.sin(angle); lift=max(0.,-math.cos(angle))*11*q.gait
@@ -280,8 +293,19 @@ def side_frame(anim,i,n):
     pen.poly(us([(-44,-59),(-17,-51),(9,-48),(32,-52),(42,-61),(16,-65),(-16,-64)]),DARK,None)
     pen.crack(us([(-69,-105),(-64,-93),(-55,-89),(-59,-79)]),1.4)
     pen.crack(us([(-13,-113),(-18,-104),(-9,-97),(-14,-91)]),1.3)
+    pen.line(us([(-85,-88),(-77,-101),(-62,-108)]),LIGHT,1.8)
+    pen.poly(us([(-87,-66),(-79,-60),(-70,-64),(-77,-69)]),MID,None)
+    pen.crack(us([(-83,-71),(-79,-65),(-81,-61)]),1.0)
     # Near haunch and near shoulder are muscular, full continuous limbs.
     leg(False,False);leg(True,False)
+    # The near wing is on the visible flank, in front of the torso and
+    # upper limb roots. Its base is recessed into the scapular stone.
+    # The ruff/head are painted afterward and conceal only the forward edge.
+    stone_wing(pen,U(4,-91),spread,collapse=d)
+    ush((-10,-91),((-10,-98),(1,-100),(9,-96)),
+        ((18,-92),(16,-82),(8,-77)),((-1,-76),(-9,-83),(-10,-91)),fill=STONE,w=1.9)
+    pen.line(us([(-7,-90),(-1,-95),(7,-94)]),LIGHT,1.8)
+    pen.line(us([(8,-78),(13,-83),(14,-89)]),DARK,1.5)
     # Massive head held horizontally like a cathedral lion/bulldog grotesque.
     # The scalloped stone ruff joins the shoulders, hiding their limb roots.
     hx=bx+44+9*q.strike-7*q.ready
@@ -310,7 +334,9 @@ def side_frame(anim,i,n):
             ((29,-130),(38,-121),(39,-111)),((52,-111),(56,-105),(56,-97)),
             ((56,-78),(49,-69),(34,-69)),((12,-61),(-7,-68),(-21,-81)),
             ((-35,-88),(-42,-103),(-32,-122)),fill=STONE,w=3.)
-    h.poly([(-29,-119),(-16,-131),(4,-131),(19,-123),(10,-119),(-6,-117),(-20,-108)],LIGHT,None)
+    h.poly([(-29,-119),(-16,-131),(4,-131),(19,-123),(8,-122),(-7,-119),(-21,-111)],LIGHT,None)
+    h.poly([(-28,-106),(-13,-100),(-20,-88),(-31,-93)],DARK,None)
+    h.line([(-31,-112),(-29,-103),(-21,-98)],LIGHT,1.5)
     h.poly([(-32,-109),(-19,-103),(-2,-102),(3,-91),(-10,-79),(-25,-87)],MID,None)
     h.poly([(20,-123),(35,-119),(40,-112),(27,-110),(16,-113)],MID,None)
     # Deep-set hooded eyes. The carved brow has a central downward wedge,
@@ -320,8 +346,9 @@ def side_frame(anim,i,n):
     if d<.65:
         h.poly([(-11,-113),(7,-109),(5,-104),(-8,-107)],EYE,None)
         h.poly([(28,-110),(35,-114),(35,-108),(30,-106)],EYE,None)
-    h.poly([(-25,-123),(-7,-124),(16,-113),(9,-108),(-8,-114),(-20,-115)],MID,INK,1.7)
-    h.poly([(21,-114),(33,-126),(40,-120),(35,-114),(26,-108)],MID,INK,1.5)
+    h.poly([(-26,-125),(-9,-126),(16,-113),(12,-106),(1,-111),(-11,-116),(-22,-117)],MID,INK,1.9)
+    h.poly([(20,-114),(31,-124),(37,-120),(35,-115),(25,-110)],MID,INK,1.6)
+    h.line([(-23,-123),(-9,-124),(7,-115)],LIGHT,1.6)
     # Short broad snub nose with two deep nostrils and carved muzzle folds.
     h.shape((31,-111),((38,-117),(50,-114),(55,-108)),
             ((60,-101),(54,-95),(46,-95)),((35,-96),(30,-101),(31,-111)),fill=DARK)
@@ -332,14 +359,16 @@ def side_frame(anim,i,n):
     h.shape((-2,-87),((10,-99),(30,-96),(53,-96)),
             ((57,-85+gape*.42),(45,-81+gape*.55),(30,-83+gape*.45)),
             ((14,-85+gape*.3),(5,-80),(-2,-87)),fill='#32352f',w=2.)
-    for x,y in [(10,-93),(24,-94),(39,-95),(49,-96)]:
-        h.poly([(x-3.7,y),(x+3.7,y),(x+1,y+8+gape*.13)],CLAW,INK,1.)
-    for x,y in [(8,-85),(42,-83)]:
-        h.poly([(x-5,y+3+gape*.38),(x,y-10+gape*.2),(x+5,y+3+gape*.38)],CLAW,INK,1.)
+    for x,y,w,len_ in [(10,-93,5.3,11),(24,-94,3.0,6),(37,-95,3.2,7),(48,-96,4.1,9)]:
+        h.poly([(x-w,y),(x+w,y),(x+1,y+len_+gape*.13)],CLAW,INK,1.)
+    for x,y,w,len_ in [(10,-85,4.8,10),(40,-83,4.4,12)]:
+        h.poly([(x-w,y+3+gape*.38),(x-1,y-len_+gape*.2),(x+w,y+3+gape*.38)],CLAW,INK,1.)
     h.line([(-5,-94),(-8,-86),(-1,-78),(13,-73),(31,-72+gape*.22)],DARK,2.)
     h.line([(2,-79),(14,-73),(31,-72+gape*.2),(47,-77+gape*.3)],LIGHT,1.5)
     h.crack([(-14,-131),(-8,-123),(-11,-118)],1.3)
     h.crack([(-14,-100),(-21,-94),(-17,-87)],1.1)
+    h.poly([(-29,-87),(-25,-82),(-20,-81),(-24,-86)],LIGHT,None)
+    h.line([(32,-74),(43,-75),(49,-81)],MID,1.6)
     im=c.finish()
     if d>0:im=anchored_death(im,GROUND)
     return im
@@ -352,14 +381,14 @@ def front_frame():
     tail=path((-18,-61),((-45,-42),(-93,-44),(-103,-59)),((-110,-72),(-99,-85),(-89,-81)))
     pen.limb(tail,[9*(1-j/(len(tail)-1))+.5+3 for j in range(len(tail))],False,False)
     for s in (-1,1):
-        stone_wing(pen,(s*29,-105),.08,s,frontal=True)
-    for s in (-1,1):
         hip=(s*40,-67);knee=(s*59,-42);ankle=(s*61,-21)
         pen.limb([hip,mix(hip,knee,.5),knee,ankle],[22,23,15,10],True)
         paw(pen,*ankle,True,True)
     pen.shape((-45,-111),((-23,-127),(23,-127),(45,-111)),
               ((68,-90),(59,-62),(38,-45)),((18,-36),(-18,-36),(-38,-45)),
               ((-59,-62),(-68,-90),(-45,-111)),fill=STONE,w=3.)
+    for s in (-1,1):
+        stone_wing(pen,(s*38,-97),.08,s,frontal=True)
     for s in (-1,1):
         pen.poly([(s*x,y) for x,y in [(14,-111),(37,-114),(51,-98),(44,-79),(19,-67),(9,-84)]],MID,None)
         sh=(s*42,-90);el=(s*51,-49);wr=(s*43,-14)
@@ -387,7 +416,8 @@ def front_frame():
         def S(x,y):return s*x,y
         pen.poly([S(x,y) for x,y in [(7,-111),(33,-122),(32,-107),(18,-103)]],'#45473f',INK,1.6)
         pen.poly([S(x,y) for x,y in [(13,-109),(28,-117),(27,-110),(18,-107)]],EYE,None)
-        pen.poly([S(x,y) for x,y in [(4,-115),(21,-128),(36,-125),(33,-119),(15,-110)]],MID,INK,1.4)
+        pen.poly([S(x,y) for x,y in [(4,-113),(21,-129),(36,-126),(33,-119),(14,-108)]],MID,INK,1.8)
+        pen.line([S(x,y) for x,y in [(10,-116),(21,-126),(33,-124)]],LIGHT,1.45)
         pen.poly([S(x,y) for x,y in [(24,-103),(40,-105),(39,-91),(26,-84),(16,-94)]],MID,None)
     pen.shape((-23,-106),((-18,-113),(-7,-114),(0,-111)),
               ((7,-114),(18,-113),(23,-106)),((29,-96),(17,-91),(0,-92)),
@@ -396,7 +426,9 @@ def front_frame():
     pen.poly([(-16,-108),(0,-110),(16,-108),(9,-104),(-9,-104)],LIGHT,None)
     pen.shape((-34,-85),((-20,-96),(-10,-91),(0,-92)),((10,-91),(20,-96),(34,-85)),
               ((28,-77),(16,-76),(0,-77)),((-16,-76),(-28,-77),(-34,-85)),fill='#32352f',w=2.)
-    for x in (-23,-9,9,23):pen.poly([(x-4,-90),(x+4,-90),(x,-82)],CLAW,INK,.9)
+    for x in (-23,-9,9,23):
+        w=4.8 if abs(x)>10 else 3.0
+        pen.poly([(x-w,-90),(x+w,-90),(x,-79 if abs(x)>10 else -84)],CLAW,INK,.9)
     for x in (-23,23):pen.poly([(x-5,-78),(x,-87),(x+5,-78)],CLAW,INK,.9)
     pen.line([(-32,-90),(-37,-81),(-27,-74),(-12,-70),(12,-70),(27,-74),(37,-81),(32,-90)],DARK,1.6)
     pen.crack([(-19,-131),(-14,-125),(-17,-119)],1.3)
