@@ -815,7 +815,8 @@ The same spec always gives byte-identical SVG.
 
 Set `head.species` to `kangaroo` to use this head on a humanoid body. For a
 wallaroo, set `head.muzzle` to `0.76`, `head.skull` to `1.20`, and
-`head.ear_length` to `0.76`. Use a dark gray coat with `palette.skin: "#5f5450"`.
+`head.ear_length` to `0.76`. Set `head.cheek_stripe` to `0` and use a dark
+gray coat with `palette.skin: "#5f5450"`.
 
 **Bases** are a build (slim, average, broad, heavy) in each sex, named
 symmetrically (`slim_female`, `slim_male`). A base gives the range each body

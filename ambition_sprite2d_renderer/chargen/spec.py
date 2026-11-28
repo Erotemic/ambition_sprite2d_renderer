@@ -256,6 +256,8 @@ class Head:
     #: Finch: a red patch round the beak and over the face (a goldfinch's, a
     #: house finch's), its strength; 0 for none.
     face_patch: float = 0.0
+    #: Kangaroo: strength of the light cheek stripe and dark muzzle patches.
+    cheek_stripe: float = 1.0
     #: Rabbit: the ears lopped, 0 upright .. 1 hanging down beside the face.
     ear_lop: float = 0.0
     #: Ram: the horns' size, 1 as drawn; 0 for none (a polled head).
@@ -432,7 +434,7 @@ SPECIES_KNOBS: Dict[str, Tuple[str, ...]] = {
     "bear": ("ear_size",),
     "ram": ("horns", "horn_style", "beard"),
     "owl": ("ear_tufts", "disc"),
-    "kangaroo": ("skull", "ear_length"),
+    "kangaroo": ("skull", "ear_length", "cheek_stripe"),
 }
 HEAD_KNOB_DEFAULTS: Dict[str, Any] = {f.name: f.default for f in fields(Head) if f.name not in ("species", "muzzle", "ears")}
 #: Fields added after the first records: a record writes one only when it is
@@ -516,6 +518,7 @@ BOUNDS: Dict[str, Tuple[float, float]] = {
     "head.beak_depth": (0.6, 1.6),
     "head.cap": (0.0, 1.0),
     "head.face_patch": (0.0, 1.0),
+    "head.cheek_stripe": (0.0, 1.0),
     "head.ear_lop": (0.0, 1.0),
     "head.horns": (0.0, 1.5),
     "head.beard": (0.0, 1.5),

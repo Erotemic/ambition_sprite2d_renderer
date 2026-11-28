@@ -47,14 +47,18 @@ def _human_ear(fig: Figure, sgn: float) -> Tuple[List[Vec3], List[Vec3]]:
     return outer + root, inner
 
 
-def _leaf(base: Vec3, axis: Vec3, across: Vec3, length: float, width: float, n: int = 9, droop: Vec3 = (0.0, 0.0, 0.0)) -> List[Vec3]:
+def _leaf(base: Vec3, axis: Vec3, across: Vec3, length: float, width: float, n: int = 9, droop: Vec3 = (0.0, 0.0, 0.0),
+          profile: Optional[Sequence[Tuple[float, float]]] = None) -> List[Vec3]:
     """A leaf (an animal's ear) from ``base`` along ``axis``, ``width`` across
     in the direction ``across``; ``droop`` bends the tip."""
     pts = []
     for side in (1.0, -1.0):
         for i in range(n + 1):
             s = i / n if side > 0 else 1.0 - i / n
-            w = width * 0.5 * math.sin(math.pi * min(1.0, s * 1.08)) ** 0.75 * (1.0 - 0.35 * s)
+            if profile is None:
+                w = width * 0.5 * math.sin(math.pi * min(1.0, s * 1.08)) ** 0.75 * (1.0 - 0.35 * s)
+            else:
+                w = width * 0.5 * interp_knots(s, profile)
             c = add3(add3(base, scale3(axis, length * s)), scale3(droop, s * s))
             pts.append(add3(c, scale3(across, side * w)))
     return pts
@@ -140,16 +144,17 @@ def _animal_ears(fig: Figure, kind: str, sgn: float) -> Tuple[List[Vec3], List[V
         inner = _leaf(add3(base, scale3(axis, 0.04 * hh)), axis, across, 0.46 * hh * ln, 0.5 * w, droop=scale3(droop, 0.6))
         return outer, inner, sgn * (40.0 + 50.0 * lop)
     if kind == "kangaroo":
-        length = 0.50 * hh * fig.spec.head.ear_length
-        base = sk.point(sgn * 72.0, fig.fy(0.13), -0.02 * hh)
-        axis = norm3((sgn * 0.38, -1.0, -0.46))
-        across = norm3((1.0, 0.12 * sgn, -0.78 * sgn))
-        cup = (sgn * 0.62, 0.0, 0.79)
-        sweep = (-sgn * 0.025 * hh, 0.0, -0.04 * hh)
-        outer = _cupped(_leaf(base, axis, across, length, 0.20 * hh, droop=sweep), cup, 0.06 * hh)
-        inner_start = add3(add3(base, scale3(axis, 0.07 * hh)), scale3(cup, 0.012 * hh))
-        inner = _leaf(inner_start, axis, across, 0.70 * length, 0.11 * hh, droop=scale3(sweep, 0.6))
-        return outer, inner, sgn * 49.0
+        length = 0.60 * hh * fig.spec.head.ear_length
+        base = sk.point(sgn * 78.0, fig.fy(0.10), -0.015 * hh)
+        axis = norm3((sgn * 0.53, -1.0, -0.25))
+        across = norm3((1.0, 0.33 * sgn, -0.53 * sgn))
+        cup = (sgn * 0.49, 0.02, 0.87)
+        sweep = (-sgn * 0.015 * hh, 0.0, -0.035 * hh)
+        profile = ((0.0, 0.13), (0.20, 0.46), (0.52, 0.90), (0.69, 1.0), (0.86, 0.73), (1.0, 0.0))
+        outer = _cupped(_leaf(base, axis, across, length, 0.29 * hh, droop=sweep, profile=profile), cup, 0.075 * hh)
+        inner_start = add3(add3(base, scale3(axis, 0.07 * length)), scale3(cup, 0.012 * hh))
+        inner = _leaf(inner_start, axis, across, 0.84 * length, 0.21 * hh, droop=scale3(sweep, 0.8), profile=profile)
+        return outer, inner, sgn * 31.0
     if kind == "round":
         # A bear's: small and round, high at the corners of the skull.
         size = fig.spec.head.ear_size
@@ -201,6 +206,8 @@ def coat_colors(ctx: Ctx) -> Tuple[str, str]:
         return skin, mix(skin, "#ece2bf", 0.82)
     if sp == "rabbit":
         return skin, mix(skin, "#f6f0e6", 0.5)
+    if sp == "kangaroo":
+        return skin, mix(skin, "#e7d3b9", 0.31 + 0.26 * ctx.fig.spec.head.cheek_stripe)
     if sp == "bear":
         return skin, mix(skin, "#d6b48a", 0.45)
     if sp == "ram":
@@ -456,6 +463,9 @@ def head_parts(ctx: Ctx) -> List[Part]:
     dark = fig.species == "dog" and fig.spec.head.marking in ("mask", "saddle") and luminance(mark) < luminance(skin)
     ear_col = mark if dark else mix(skin, ctx.hair, 0.7) if model.ears == "dog_floppy" else skin
     up_col = mark if dark else shade(skin, 0.25) if model.ears == "tufts" else skin
+    if model.ears == "kangaroo":
+        up_col = mix(skin, "#edd9bf", 0.16)
+        inner_col = mix(shade(skin, 0.48), "#57423c", 0.35)
     horns = _horns(ctx) if fig.species == "ram" else []
     for near, polys in horns:
         if not near:
@@ -580,27 +590,44 @@ def _species_features(ctx: Ctx, pt: Paint, behind: Paint) -> None:
 def _kangaroo_markings(ctx: Ctx, pt: Paint) -> None:
     fig = ctx.fig
     surface = fig.head.shell(0.03)
-    cheek = mix(ctx.skin, "#f0e2cd", 0.48)
+    tip = fig.face["nose_tip_f"]
+    stripe = fig.spec.head.cheek_stripe
+    nose_size = fig.spec.face.nose_size
+
+    def patch(a0: float, f0: float, width: float, height: float, color: str) -> None:
+        def margin(alpha: float, y: float) -> float:
+            f = (y - fig.crown) / fig.hh
+            a = abs(wrap180(alpha))
+            return 1.0 - ((a - a0) / width) ** 2 - ((f - f0) / height) ** 2
+
+        pt.flat(loft_region(ctx.view, surface, fig.fy(f0 - height), fig.fy(f0 + height), margin), color)
 
     def cheek_margin(alpha: float, y: float) -> float:
         a = abs(wrap180(alpha))
         f = (y - fig.crown) / fig.hh
-        center = 0.72 - 0.0022 * (a - 23.0)
-        return 1.0 - ((a - 61.0) / 52.0) ** 2 - ((f - center) / 0.073) ** 2
+        center = 0.84 - 0.38 * smoothstep(18.0, 117.0, a)
+        return 1.0 - ((a - 64.0) / 45.0) ** 2 - ((f - center) / 0.065) ** 2
 
-    pt.flat(loft_region(ctx.view, surface, fig.fy(0.44), fig.fy(0.82), cheek_margin), cheek)
-    tip = fig.face["nose_tip_f"]
-    width = 27.0 * fig.spec.face.nose_size
+    patch(0.0, 0.84, 55.0, 0.155, coat_colors(ctx)[1])
+    if stripe > 0:
+        cheek = mix(ctx.skin, "#f2e6d2", 0.78 * stripe)
+        pt.flat(loft_region(ctx.view, surface, fig.fy(0.43), fig.fy(0.92), cheek_margin), cheek)
+        patch(43.0, 0.77, 15.0, 0.083, mix(ctx.skin, "#3a2b27", 0.74 * stripe))
 
     def nose_margin(alpha: float, y: float) -> float:
         f = (y - fig.crown) / fig.hh
-        return 1.0 - (wrap180(alpha) / width) ** 2 - ((f - tip) / 0.075) ** 2
+        width = nose_size * lerp(36.0, 21.0, smoothstep(tip - 0.025, tip + 0.086, f))
+        return 1.0 - (wrap180(alpha) / width) ** 2 - ((f - tip) / 0.086) ** 2
 
-    pt.flat(loft_region(ctx.view, surface, fig.fy(tip - 0.075), fig.fy(tip + 0.075), nose_margin), "#302627")
+    pt.flat(loft_region(ctx.view, surface, fig.fy(tip - 0.086), fig.fy(tip + 0.086), nose_margin), "#382c29")
+    patch(15.0 * nose_size, tip + 0.004, 10.0 * nose_size, 0.028, "#1f1a1b")
     for sgn in (-1.0, 1.0):
-        ridge = [(sgn * width * a, fig.fy(tip - f)) for a, f in ((0.18, 0.048), (0.44, 0.045), (0.66, 0.027))]
+        ridge = [(sgn * nose_size * a, fig.fy(tip - f)) for a, f in ((4.0, 0.043), (13.0, 0.046), (21.0, 0.028))]
         for run in surface_line(ctx, surface, ridge, out=0.04, thresh=0.05):
-            pt.line(run, "#695855", FINE)
+            pt.line(run, "#80665c", FINE * 0.8)
+    cleft = [(0.0, fig.fy(tip + 0.05)), (0.0, fig.fy(fig.face["mouth_f"]))]
+    for run in surface_line(ctx, surface, cleft, out=0.04, thresh=0.08):
+        pt.line(run, "#483533", FINE)
 
 
 def _rabbit_nose(ctx: Ctx, pt: Paint) -> None:
@@ -1630,7 +1657,7 @@ def _eye_geometry(fig: Figure, sgn: float, e: Expression) -> Dict[str, object]:
     lay = fig.face
     shape = s.eye_shape if fig.species == "human" else {"horse": "almond", "dog": "round", "cat": "almond", "bird": "round", "pigeon": "round",
                                                                 "sea_lion": "round", "alligator": "almond", "finch": "round", "rabbit": "round",
-                                                                "bear": "round", "ram": "almond", "owl": "round", "kangaroo": "almond"}[fig.species]
+                                                                "bear": "round", "ram": "almond", "owl": "round", "kangaroo": "round"}[fig.species]
     ratio = {"almond": 0.42, "round": 0.56, "narrow": 0.3, "hooded": 0.36, "downturned": 0.42, "upturned": 0.42}[shape]
     if fig.species == "human":
         ratio *= family_of(fig.spec).face.eye_open
@@ -1694,13 +1721,13 @@ def _draw_eye(ctx: Ctx, pt: Paint, g: Dict[str, object], e: Expression) -> None:
     eye = sh["shape"]
     shut = g["lid"] > 0.85
     if not shut:
-        pt.flat([eye], "#f4efe6")
+        pt.flat([eye], fig.face.get("sclera", "#f4efe6"))
         eh = g["eh"]
         c3 = add3(_eye_point(fig, g, *g["center"], 0.06), scale3(_eye_normal(fig, g), 0.3 * eh + 0.15))
         cx, cy = ctx.p(c3)
         iris_frac = fig.face["iris"]
         ry = eh * (iris_frac if g["shape"] != "narrow" else min(0.62, iris_frac + 0.12))
-        turn = ctx.view.c if fig.species != "alligator" else ctx.view.facing(g["alpha"])
+        turn = ctx.view.facing(g["alpha"]) if fig.species in ("alligator", "kangaroo") else ctx.view.c
         rx = ry * max(0.38, abs(turn) ** 0.8)
         iris = [(cx + rx * math.cos(a), cy + ry * math.sin(a)) for a in (2 * math.pi * i / 16 for i in range(16))]
         clip = hull(eye)
@@ -1709,7 +1736,7 @@ def _draw_eye(ctx: Ctx, pt: Paint, g: Dict[str, object], e: Expression) -> None:
             eye_col = fig.spec.palette.eyes if fig.species == "human" else {"horse": "#3a261c", "dog": "#4a2e1e", "cat": "#9aa83a",
                                                                              "bird": "#2a2020", "pigeon": "#d8681f", "sea_lion": "#1e1612",
                                                                              "finch": "#1a1312", "rabbit": "#2a1a14", "bear": "#2e1e14",
-                                                                             "ram": "#c8962c", "owl": "#f0a81e", "kangaroo": "#412923",
+                                                                             "ram": "#c8962c", "owl": "#f0a81e", "kangaroo": "#2b211f",
                                                                              "alligator": "#c4405a" if luminance(ctx.skin) > 0.75 else
                                                                              "#b39a3c"}[fig.species]
             if fig.species == "human" and family_of(fig.spec).face.pupil == "dot":
@@ -1777,6 +1804,8 @@ def _brow(ctx: Ctx, pt: Paint, g: Dict[str, object], sgn: float, e: Expression) 
         pts.append((a, yb + dy))
     w = 0.033 * hh * s.brow_weight * {"heavy": 1.4, "soft": 0.75}.get(kind, 1.0) * (1.12 if not fig.female else 0.9) * family_of(fig.spec).face.brow
     col = dark_of(fig.spec.palette.hair) if fig.species == "human" else _brow_of_coat(ctx.skin)
+    if "brow_contrast" in fig.face:
+        col = mix(ctx.skin, col, fig.face["brow_contrast"])
     if painted(ctx):
         # Painted brows: a soft charcoal on the white.
         col = "#3a2a2a"
