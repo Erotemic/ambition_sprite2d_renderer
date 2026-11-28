@@ -145,7 +145,9 @@ def _head_crop(spec: CharacterSpec, view: View, px_per_cm: float, *, state=None,
     cx = (CELL_W / 2.0 + neck[0] * UNIT) * k
     top = (GROUND + (fig.crown - 0.55 * fig.hh) * UNIT) * k
     size = 2.1 * fig.hh * UNIT * k
-    crop = _on_bg(im.crop((int(cx - size / 2), int(top), int(cx + size / 2), int(top + size))))
+    bbox = im.getbbox()
+    crop_top = min(top, bbox[1] - 0.06 * size) if bbox else top
+    crop = _on_bg(im.crop((int(cx - size / 2), int(crop_top), int(cx + size / 2), int(top + size))))
     return crop.transpose(Image.FLIP_LEFT_RIGHT) if mirror else crop
 
 

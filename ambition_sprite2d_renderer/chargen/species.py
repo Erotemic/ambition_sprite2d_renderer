@@ -713,28 +713,40 @@ def _owl(fig) -> HeadModel:
 
 def _kangaroo(fig) -> HeadModel:
     h = fig.spec.head
-    snout = 0.31 * h.muzzle
+    reach = 0.23 * h.muzzle
     rows = [
-        (0.00, 0.0, 0.0, 0.0, -0.10, 2.0),
-        (0.11, 0.26, 0.29, 0.31, -0.10, 2.0),
-        (0.25, 0.34, 0.36 + 0.12 * snout, 0.34, -0.09, 2.0),
-        (0.39, 0.36, 0.40 + 0.35 * snout, 0.34, -0.06, 2.1),
-        (0.52, 0.34, 0.44 + 0.62 * snout, 0.32, -0.035, 2.0),
-        (0.65, 0.30, 0.47 + 0.88 * snout, 0.29, -0.015, 1.9),
-        (0.74, 0.25, 0.47 + snout, 0.25, 0.00, 2.0),
-        (0.81, 0.23, 0.44 + snout, 0.23, 0.01, 2.1),
-        (0.90, 0.20, 0.35 + 0.76 * snout, 0.21, 0.01, 2.0),
-        (1.00, 0.10, 0.18 + 0.30 * snout, 0.17, 0.01, 2.0),
+        (0.00, 0.00, 0.00, 0.00, -0.12, 2.0),
+        (0.09, 0.25, 0.28, 0.31, -0.10, 2.0),
+        (0.23, 0.34, 0.37 + 0.15 * reach, 0.34, -0.08, 2.0),
+        (0.36, 0.38, 0.39 + 0.36 * reach, 0.34, -0.06, 2.0),
+        (0.49, 0.35, 0.41 + 0.50 * reach, 0.33, -0.04, 2.0),
+        (0.61, 0.30, 0.45 + 0.80 * reach, 0.31, -0.01, 2.0),
+        (0.71, 0.28, 0.47 + reach, 0.27, 0.00, 2.1),
+        (0.80, 0.28, 0.48 + reach, 0.23, 0.02, 2.3),
+        (0.88, 0.24, 0.44 + reach, 0.21, 0.03, 2.3),
+        (0.95, 0.18, 0.34 + 0.80 * reach, 0.17, 0.04, 2.1),
+        (1.00, 0.09, 0.22 + 0.40 * reach, 0.15, 0.04, 2.0),
     ]
     rows = [
         (f, rx * lerp(h.skull, 1.0, smoothstep(0.40, 0.81, f)), rzf, rzb, cz, sq)
         for f, rx, rzf, rzb, cz, sq in rows
     ]
     layout = {
-        "eye_f": 0.40, "brow_f": 0.32, "eye_alpha": 41.0, "eye_w": 0.15, "iris": 0.9,
-        "nose_tip_f": 0.75, "mouth_f": 0.85, "mouth_alpha": 43.0, "nose": "kangaroo", "pupil": "round",
+        "eye_f": 0.36, "brow_f": 0.30, "eye_alpha": 48.0, "eye_w": 0.18, "iris": 1.05,
+        "sclera": "#2c2120", "brow_contrast": 0.46,
+        "nose_tip_f": 0.77, "mouth_f": 0.865, "mouth_alpha": 47.0, "nose": "kangaroo", "pupil": "round",
     }
-    return HeadModel("kangaroo", _rows(fig.fy, fig.hh, rows), [], layout, ears="kangaroo", hair="tuft", neck_f=0.74)
+
+    def relief(alpha: float, y: float) -> float:
+        f = (y - fig.crown) / fig.hh
+        a = abs(wrap180(alpha))
+        brow = 0.034 * gauss(f, 0.29, 0.062) * gauss(a, 44.0, 19.0)
+        eyelid = -0.016 * gauss(f, 0.39, 0.05) * gauss(a, 49.0, 12.0)
+        cheek = 0.038 * gauss(f, 0.57, 0.10) * gauss(a, 72.0, 23.0)
+        jowl = 0.038 * gauss(f, 0.81, 0.07) * gauss(a, 21.0, 13.0)
+        return fig.hh * (brow + eyelid + cheek + jowl)
+
+    return HeadModel("kangaroo", _rows(fig.fy, fig.hh, rows), [relief], layout, ears="kangaroo", hair="tuft", throat=True, neck_f=0.74)
 
 
 _BUILDERS = {"human": _human, "horse": _horse, "dog": _dog, "cat": _cat, "bird": _bird, "pigeon": _pigeon, "sea_lion": _sea_lion, "alligator": _alligator,
