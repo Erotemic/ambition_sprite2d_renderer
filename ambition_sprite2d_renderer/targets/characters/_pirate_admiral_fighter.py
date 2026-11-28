@@ -42,6 +42,7 @@ from typing import Callable, Dict, Final, List, Mapping, Tuple, Union
 
 from ...authoring.sheet_build import BASE_FRAME, SCALE, transform
 from . import _pirate_rig as rig
+from . import _roo_badely_art as roo
 
 KIND: Final = "pirate_admiral"
 
@@ -423,7 +424,7 @@ _row("dash", 6, 62, _dash, loop=True)
 _row("skid", 6, 55, _skid, loop=True)
 # Drawn in the NEW facing: it starts still looking back the way he came, the
 # cutlass trailing behind, and ends square in the guard.
-_row("turnaround", 5, 44, [
+_row("turnaround", 11, 20, [
     K(0.0, legs(-16.0, 2.0, 18.0, 44.0), sword(64.0, 84.0, 172.0), off(-56.0, -86.0),
       {"body_tilt": -8.0, "root_x": -2.0, "head_tilt": 10.0, "hat_tilt": -8.0, "coat_sway": -18.0}),
     K(0.45, legs(4.0, 10.0, -4.0, 6.0), sword(-24.0, -150.0, -104.0), off(10.0, -10.0),
@@ -913,12 +914,7 @@ def _wrap(deg: float) -> float:
 _B = 1.05
 _TORSO = [(-42 * _B, -14), (-30 * _B, -29), (28 * _B, -29), (40 * _B, -14), (37 * _B, 34), (42 * _B, 68),
           (0, 76), (-44 * _B, 68), (-39 * _B, 34), (48 * _B, -11), (-48 * _B, -11)]
-_TAIL_L = [(-44 * _B, -14), (-9, -14), (-11, 26), (-38 * _B, 34)]
-_TAIL_R = [(9, -14), (42 * _B, -14), (38 * _B, 34), (10, 26)]
 _SEAT = [(-29 * _B, -20), (29 * _B, -20), (29 * _B, 8), (0, 16), (-29 * _B, 8)]
-_HEAD = [(-25, -8), (-23, -23), (-11, -32), (7, -33), (21, -25), (27, -9), (26, 8), (20, 23), (8, 32),
-         (-7, 30), (-20, 18), (-29, -6), (-29, 8)]
-_BRIM = [(-52, -18), (-36, -40), (-12, -56), (14, -56), (38, -42), (54, -20), (30, -25), (0, -29), (-28, -24)]
 _BOOT = [(-14, -29), (12, -29), (13, -19), (-14, -19), (-12, -8), (11, -10), (24, -4), (27, 6), (-12, 6)]
 _SOLE = [(-13, 3.5), (28, 3.5), (28, 7.5), (-13, 7.5)]
 _BLADE = [(8.0, -3.5), (8.0, 6.5), (46.0, -4.8), (46.0, 9.4), (78.0, -5.0), (78.0, 11.0), (92.0, 5.0),
@@ -941,12 +937,17 @@ def _lowest(pose: Channels) -> float:
             low = max(low, transform(p, origin, deg)[1] + ink)
 
     shape(_TORSO, j["chest"].point, tilt, 2.5)
-    shape(_TAIL_L, j["hip"].point, tilt + pose["coat_sway"], 2.0)
-    shape(_TAIL_R, j["hip"].point, tilt - pose["coat_sway"], 2.0)
+    for side in (-1, 1):
+        shape(roo.coat_tail_outline(side, _B), j["hip"].point, tilt - side*pose["coat_sway"], 2.0)
+    for _, origin, angle, outline in roo.tail_parts(pose,j["hip"].point):
+        shape(outline, origin, angle, 1.5)
     shape(_SEAT, j["hip"].point, tilt, 2.0)
     face = j["head"].angle
-    shape(_HEAD, j["head"].point, face, 1.5)
-    shape(_BRIM, j["head"].point, face + pose["hat_tilt"], 2.0)
+    head_parts, hat_parts = roo.head_bounds(pose)
+    for points, ink in head_parts:
+        shape(points, j["head"].point, face, ink)
+    for points, ink in hat_parts:
+        shape(points, j["head"].point, face + pose["hat_tilt"], ink)
     for name, r in (("left_hip", 16.7), ("right_hip", 16.7), ("left_knee", 14.6), ("right_knee", 14.6),
                     ("back_shoulder", 13.5), ("front_shoulder", 14.6), ("back_elbow", 12.0),
                     ("front_elbow", 12.5), ("back_hand", 9.0), ("front_hand", 10.0)):

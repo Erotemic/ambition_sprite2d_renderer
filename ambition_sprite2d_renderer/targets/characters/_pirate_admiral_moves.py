@@ -366,7 +366,12 @@ def fighter_pose(anim: str, frame_idx: int, nframes: int) -> dict:
 
     if anim in fighter.ROWS_SPEC:
         return fighter.pose(anim, frame_idx, nframes)
-    return pose(anim, frame_idx, nframes)
+    out = pose(anim, frame_idx, nframes)
+    if anim == "death":
+        # The wallaroo head and tail extend past the old human silhouette.
+        # Use the fighter floor solver during the collapse as well.
+        out = fighter._floored(out, 0.0)
+    return out
 
 
 def register(rows_table: dict, poses_table: dict, base: list) -> None:
