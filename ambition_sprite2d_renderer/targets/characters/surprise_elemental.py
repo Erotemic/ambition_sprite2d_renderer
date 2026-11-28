@@ -3,12 +3,16 @@
 An asymmetric origami trickster unfolds into an expressive pop-up monster. Its
 accordion folds and ribbon limbs change shape; they are not rigid bones.
 The burst is art, not a new hitbox or an actual area-of-effect attack.
+Muted ink at rest snaps into saturated print colors on the active strike.
+The expanded silhouette lingers after the hit, then folds closed.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 import math
 from pathlib import Path
+
+from PIL import ImageEnhance
 
 from . import _art_cast_kit as K
 from ._clockwork_enemy_art import Canvas, mix, polar, rot, track, phase, bezier, add, sub, mul, unit, perp
@@ -21,6 +25,9 @@ CX, CY = 141., 132.
 WINDUP, ACTIVE, RECOVER = .38, .19, .76
 TOTAL = WINDUP + ACTIVE + RECOVER
 A, B = WINDUP / TOTAL, (WINDUP + ACTIVE) / TOTAL
+# The visual reveal outlasts the damage window, without extending recovery.
+REVEAL_HOLD_S = .30
+HOLD_END = B + REVEAL_HOLD_S / TOTAL
 ROWS = [('idle', 20, 65), ('walk', 20, 50), ('run', 20, 40),
         ('notice', 9, 50), ('windup', 13, 30), ('attack_side', 41, 33),
         ('hit', 9, 55), ('death', 21, 55)]
@@ -28,7 +35,7 @@ LOOPS = {'idle', 'walk', 'run'}
 TRAITS = ['enemy', 'art', 'elemental', 'paper', 'surprise', 'floating']
 ACTOR_METADATA = K.enemy_metadata(TARGET_NAME, 'Surprise Elemental', 'Floating',
     'Floating', 'Light', 'Fly', TRAITS,
-    'A folded paper trickster which opens into a theatrical pop-up creature. A tiny tell precedes a sudden theatrical reveal.')
+    'A folded paper trickster which opens into a theatrical pop-up creature. A muted paper body snaps into loud printed colors during its theatrical reveal.')
 ACTOR_METADATA['tags'] = TRAITS
 ACTOR_METADATA['actions'] = {'default_preset': 'surprise_elemental_pop'}
 ACTOR_METADATA['gameplay_description'] = 'Floats in a folded shape, draws its folds tight, then unfolds with a diving swipe. Confetti and graphic shock lines are visual only.'
@@ -70,10 +77,12 @@ def pose(anim, i, n):
     if anim == 'attack_side':
         k = lambda keys: track(t, keys)
         return Pose(cycle=0.,
-            open=k([(0,0),(A-.012,0),(A+.013,1),(B,1),(B+.11,.83),(.87,.10),(1,0)]),
+            open=k([(0,0),(A-.012,0),(A+.013,1),(HOLD_END,1),(1,0)]),
             coil=k([(0,0),(.8*A,1),(A-.012,1),(A+.013,0),(1,0)]),
-            strike=k([(0,0),(A-.012,0),(A+.013,1),(B,1),(B+.14,.1),(1,0)]),
-            alarm=k([(0,0),(A-.012,.12),(A+.013,1),(B,1),(.86,.3),(1,0)]),
+            # Recoil from the hit while the paper fans and expression remain
+            # open. The gameplay event boundaries A and B stay unchanged.
+            strike=k([(0,0),(A-.012,0),(A+.013,1),(B,1),(B+.14,0),(1,0)]),
+            alarm=k([(0,0),(A-.012,.12),(A+.013,1),(HOLD_END,1),(1,0)]),
             scatter=k([(0,0),(A,0),(A+.025,.12),(B,.4),(.92,1),(1,1)]))
     if anim == 'hit': return Pose(p, open=.32*math.sin(math.pi*t), hurt=math.sin(math.pi*t))
     if anim == 'death':
@@ -244,6 +253,24 @@ def _face(f,P,q):
             _fill(f,H,_path((x-rx*.51,y+ry*.70),[((x-rx*.30,y+ry*.27),(x+rx*.35,y+ry*.22),(x+rx*.53,y+ry*.69)),((x+rx*.15,y+ry*.91),(x-rx*.24,y+ry*.91),(x-rx*.51,y+ry*.70))]),CORAL,None)
 
 
+# Keep the color envelope separate from the geometry and hit timing. Printed
+# paper becomes slightly duller as the creature compresses, then the same
+# authored colors snap into full chroma with the unfolding. Hold the color
+# through the strike and the held reveal, then let it drain as the folds close.
+REST_SATURATION = .13
+FULL_SATURATION = 1.10
+
+
+def _ink_saturation(anim, q):
+    muted = REST_SATURATION - .065*q.coil
+    if anim == 'attack_side':
+        reveal = max(q.open, q.strike)
+        return muted + (FULL_SATURATION - muted)*reveal
+    if anim == 'death':
+        return REST_SATURATION*(1-q.death)
+    return muted
+
+
 def _render_frame(anim,i,n):
     q=pose(anim,i,n); f=Canvas(FRAME_SIZE)
     o,c,h,d=q.open,q.coil,q.strike,q.death
@@ -305,7 +332,13 @@ def _render_frame(anim,i,n):
     # Near arm opens outward as the face opens, from the bottom of the mask
     # so it never covers the eyes. A full-width paper strip visibly unfolds.
     near_closed=[(24,22),(39,25),(43,33),(38,40),(31,45)]
-    near_open=[(25,23),(51,34),(65,15),(83,28),(105+12*h,13+6*h)]
+    # The hand retracts into a lower open-arm pose during the held reveal;
+    # full extension is reserved for the strike, not the lingering display.
+    if anim == 'attack_side':
+        near_open=[(25,23),(46+5*h,39-5*h),(53+12*h,33-18*h),
+                   (71+12*h,39-11*h),(88+29*h,32-13*h)]
+    else:
+        near_open=[(25,23),(51,34),(65,15),(83,28),(105+12*h,13+6*h)]
     near=[mix(a,b,o) for a,b in zip(near_closed,near_open)]
     _ribbon(f,P,near,[11,10,11,10,8],ROSE,BERRY)
     _hand(f,P,near[-1],.28+.72*o,-20-9*h)
@@ -328,6 +361,12 @@ def _render_frame(anim,i,n):
                 extent=(12+5*(j%2))*h
                 _fill(f,P,[(x-extent,y+2),(x+3,y-1),(x-extent*.36,y-3)],IVORY if j==0 else SUN,None)
     im=f.finish()
+    # Pillow's luminance-based color adjustment keeps the paper's printed
+    # value structure and preserves alpha; no alternate geometry or palette
+    # maintenance is needed for the two states.
+    alpha=im.getchannel('A')
+    im=ImageEnhance.Color(im).enhance(_ink_saturation(anim,q))
+    im.putalpha(alpha)
     if d>0:
         im.putalpha(im.getchannel('A').point(lambda a: round(a*(1-d))))
     return im
