@@ -33,6 +33,26 @@ IVORY = (238, 220, 184, 255)
 LEATHER = (83, 54, 43, 255)
 PANTS = (70, 54, 49, 255)
 
+# These tracks have fixed local pivots. The graph specifies animation
+# attachment, not paint order or gameplay hit geometry.
+TRACK_PARENTS = {
+    'torso': 'pelvis',
+    'left_leg_upper': 'pelvis', 'left_leg_lower': 'left_leg_upper', 'left_boot': 'left_leg_lower',
+    'right_leg_upper': 'pelvis', 'right_leg_lower': 'right_leg_upper', 'right_boot': 'right_leg_lower',
+    'back_arm_upper': 'torso', 'back_arm_lower': 'back_arm_upper', 'back_hand': 'back_arm_lower',
+    'front_arm_upper': 'torso', 'front_arm_lower': 'front_arm_upper', 'front_hand': 'front_arm_lower',
+    'sword': 'front_hand', 'glint': 'sword', 'pistol': 'back_hand',
+    'roo_neck': 'torso', 'collar': 'torso', 'face': 'roo_neck', 'hat': 'face',
+    'roo_eye_near': 'face', 'roo_eye_far': 'face', 'roo_mouth': 'face',
+    'roo_head_bandana_long': 'face', 'roo_head_bandana_short': 'face',
+    'roo_ear_left': 'face', 'roo_ear_right': 'face',
+    'roo_tail_root': 'pelvis', 'roo_tail_tip': 'roo_tail_root',
+    'coat_tail_left': 'torso', 'coat_tail_right': 'torso',
+    'coat_hem_left': 'coat_tail_left', 'coat_hem_right': 'coat_tail_right',
+    'roo_sash_tail': 'torso',
+    'roo_watch': 'pelvis', 'roo_string': 'pelvis',
+}
+
 
 def curve(start, *segments, steps=10):
     """Sample cubic contours. The same points serve paint and floor placement."""
@@ -351,29 +371,103 @@ def draw_tail(draw, hip, pose, view=1.):
             line(draw,[(side*x,y) for x,y in pts],FUR_LIGHT,width=4)
 
 
-def coat_tail_outline(side, b):
-    return [(side * 44 * b, -14), (side * 9, -14), (side * 12, 38), (side * 25, 49), (side * 38 * b, 43)]
+# The coat is sewn to the waist. Each skirt panel has a restrained upper
+# section and a freer lower section. These are overlapping, reusable drawings;
+# the overlap deliberately has no crosswise outline (it is cloth, not armor).
+# All local shapes are defined once and never regenerated from leg angles.
+_COAT_UPPER = curve((-14, -8), ((-17, 1), (-16, 15), (-16, 27)),
+                    ((-15, 34), (10, 36), (16, 29)),
+                    ((17, 17), (16, 2), (14, -8)),
+                    ((6, -10), (-6, -10), (-14, -8)))
+_COAT_HEM = curve((-15, -10), ((-17, 3), (-18, 19), (-20, 29)),
+                  ((-13, 34), (-5, 36), (2, 35)),
+                  ((10, 34), (18, 30), (20, 27)),
+                  ((16, 14), (15, 0), (14, -10)),
+                  ((5, -14), (-6, -14), (-15, -10)))
+_COAT_HEM_TRIM = curve((-19, 23), ((-12, 28), (-4, 30), (2, 29)),
+                       ((9, 28), (15, 25), (18, 22)),
+                       ((19, 24), (20, 26), (20, 27)),
+                       ((16, 32), (8, 35), (2, 35)),
+                       ((-7, 36), (-15, 33), (-20, 29)),
+                       ((-20, 27), (-19, 25), (-19, 23)))
+_SASH = curve((-6, -5), ((-9, 9), (-7, 22), (-10, 35)),
+              ((-5, 33), (-3, 36), (0, 40)),
+              ((4, 34), (7, 36), (10, 34)),
+              ((7, 20), (10, 7), (6, -5)),
+              ((2, -6), (-2, -6), (-6, -5)))
 
 
-def draw_coat_tails(draw, hip, tilt, sway, b):
-    for side in (-1, 1):
-        name = 'coat_tail_left' if side < 0 else 'coat_tail_right'
-        with draw.part(name, hip, tilt - side * sway):
-            pts = coat_tail_outline(side, b)
-            poly(draw, pts, NAVY if side < 0 else NAVY_LIGHT, INK, width=4)
-            poly(draw, [(side * 12, 33), (side * 25, 43), (side * 38 * b, 37), (side * 38 * b, 43), (side * 25, 49), (side * 12, 38)], GOLD)
-            line(draw, [(side * 37 * b, -5), (side * 34 * b, 34)], NAVY_DARK, width=2)
-    with draw.part('roo_sash_tail', hip, tilt - sway * .8):
-        poly(draw, [(10, -18), (22, -18), (25, 27), (19, 41), (14, 35), (8, 39), (12, 15)], RED, INK, width=2)
-        line(draw, [(19, -13), (17, 18), (19, 30)], RED_DARK, width=2)
+def coat_parts(pose, chest, b):
+    """Waist-sewn panels and sash, independent of the leg skeleton.
+
+    The existing authored coat_sway channel describes secondary motion, not
+    a leg angle. Attenuate it at the waist, let the hem follow through, and
+    partially compensate torso lean to suggest gravity. Both panels receive
+    the same signed impulse; small differences represent separate folds.
+    The model is stateless and works with arbitrary animation sampling.
+    """
+    tilt = pose['body_tilt']
+    sway = max(-40., min(40., pose['coat_sway']))
+    lean = math.sin(math.radians(tilt))
+    hang = max(-22., min(22., .28 * sway - 12. * lean))
+    bend = max(-23., min(23., .52 * sway - 7. * lean))
+    parts = []
+    for side, suffix in ((-1, 'left'), (1, 'right')):
+        # The seam is at the belt, not the center of the pelvis. Small fixed
+        # outward bias; both sides trail together instead of scissoring.
+        root = transform((side * 24. * b, 47.), chest, tilt)
+        angle = tilt + hang + (-side * 4.)
+        joint = transform((side * 1.5, 26.), root, angle)
+        hem_angle = angle + bend * (.90 if side < 0 else 1.0)
+        parts.append(('coat_tail_' + suffix, root, angle, _COAT_UPPER))
+        parts.append(('coat_hem_' + suffix, joint, hem_angle, _COAT_HEM))
+    anchor = transform((13., 46.), chest, tilt)
+    parts.append(('roo_sash_tail', anchor, tilt + hang + .7 * bend, _SASH))
+    return parts
+
+
+def draw_coat_panel(draw, parts, side):
+    """Paint the distal section first, with the seam hidden under its root."""
+    suffix = 'left' if side < 0 else 'right'
+    base = NAVY_DARK if side < 0 else NAVY
+    highlight = NAVY if side < 0 else NAVY_LIGHT
+    for name, origin, angle, outline in reversed(parts):
+        if name not in ('coat_tail_' + suffix, 'coat_hem_' + suffix):
+            continue
+        with draw.part(name, origin, angle):
+            poly(draw, outline, base)
+            if name.startswith('coat_hem'):
+                poly(draw, _COAT_HEM_TRIM, GOLD_DARK if side < 0 else GOLD)
+                # The edges continue down the folds and around the hem.
+                line(draw, curve((-15,-8),((-17,6),(-18,20),(-20,29)),
+                                 ((-12,34),(-5,36),(2,35)),
+                                 ((9,34),(17,30),(20,27)),
+                                 ((17,14),(15,2),(14,-8))), INK, width=3)
+                line(draw, curve((-9,-5),((-8,8),(-10,17),(-11,25))), highlight, width=5)
+                line(draw, curve((10,-6),((10,7),(11,17),(13,23))), NAVY_DARK, width=2)
+            else:
+                # No line across the lower join: the two sections must read
+                # as one panel even while they interpolate independently.
+                line(draw, curve((-14,-8),((-17,1),(-16,15),(-16,27)),
+                                 ((-16,29),(-15,31),(-14,32))), INK, width=3)
+                line(draw, curve((14,-8),((16,2),(17,17),(16,29)),
+                                 ((16,30),(15,31),(14,32))), INK, width=3)
+                line(draw, curve((-8,-5),((-8,5),(-9,19),(-9,29))), highlight, width=5)
+
+
+def draw_sash_tail(draw, parts):
+    name, origin, angle, outline = parts[-1]
+    with draw.part(name, origin, angle):
+        poly(draw, outline, RED, INK, width=2)
+        line(draw, curve((1,-1),((-2,10),(3,23),(1,31))), RED_DARK, width=2)
 
 
 def draw_torso(draw, chest, tilt, pal, look):
     b = look.build
     with draw.part('torso', chest, tilt):
         poly(draw, [(-42 * b, -14), (-30 * b, -29), (28 * b, -29), (40 * b, -14), (37 * b, 34),
-                   (42 * b, 68), (0, 76), (-44 * b, 68), (-39 * b, 34)], NAVY, INK, width=5)
-        poly(draw, [(24 * b, -25), (37 * b, -12), (35 * b, 32), (39 * b, 64), (26 * b, 70)], NAVY_DARK)
+                   (40 * b, 53), (0, 57), (-42 * b, 53), (-39 * b, 34)], NAVY, INK, width=5)
+        poly(draw, [(24 * b, -25), (37 * b, -12), (35 * b, 32), (38 * b, 50), (26 * b, 54)], NAVY_DARK)
         poly(draw, [(-15, -25), (16, -25), (21, 43), (-14, 45)], IVORY, INK, width=3)
         # Open high collar and gold piping. The panels meet at the sash.
         poly(draw, [(-31, -28), (-13, -27), (-4, 8), (-18, 34), (-29, 10)], NAVY_LIGHT, INK, width=3)
