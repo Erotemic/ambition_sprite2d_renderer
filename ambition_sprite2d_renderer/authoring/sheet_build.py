@@ -874,6 +874,7 @@ def build_sheet(
     part_texel_scale: int = 1,
     render_clip: Optional[Callable[[str, int], Sequence[Image.Image]]] = None,
     sits_on_ground: bool = False,
+    track_parents: Optional[Dict[str, str]] = None,
 ):
     """Build one module target's sheet from a frame callable + rows.
 
@@ -952,6 +953,7 @@ def build_sheet(
     )
     source.parts = bool(parts)
     source.part_texel_scale = part_texel_scale
+    source.track_parents = dict(track_parents or {})
     source.render_clip = render_clip
     source.sits_on_ground = bool(sits_on_ground)
     return render_sheet(source, out_dir, frame_transform_out=frame_transform_out)
@@ -1635,7 +1637,7 @@ def _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame
 
     try:
         flipbook = build_rig_flipbook(source.target, source.rows, padded, None, (0.0, 0.0), size, (),
-                                      render_clip=padded_clip, paint=False)
+                                      render_clip=padded_clip, paint=False, track_parents=getattr(source, "track_parents", None))
     except Exception as refused:  # noqa: BLE001 - the painted build re-raises a real defect
         # Its paint reads pixels it painted (a swing trail drawn from the
         # frames before it, a piece raster cropped to what it drew): recorded
@@ -1643,7 +1645,7 @@ def _part_first_rows(source, rendered_rows, clipped_frames, frame_padding, frame
         # flipbook, once; still no page.
         print(f"[sheet:{source.target}] recorded only, refused ({type(refused).__name__}: {str(refused)[:160]}): painting its frames", flush=True)
         flipbook = build_rig_flipbook(source.target, source.rows, padded, None, (0.0, 0.0), size, (),
-                                      render_clip=padded_clip, paint=True)
+                                      render_clip=padded_clip, paint=True, track_parents=getattr(source, "track_parents", None))
     flipbook.texel_scale = density
     if os.environ.get("AMBITION_PART_FIRST_AUDIT"):
         _audit_part_first(source.target, source.rows, flipbook, padded, padded_clip)

@@ -1297,7 +1297,7 @@ def build_parts_variant(ron_src: Path, ron_dst: Path, variant: Variant) -> int:
     # baked into the build and parsed again for every realization at that tier
     # (120 ms, 2026-10-03).
     root.fields = [
-        (k, Map_([]) if k == "clips" else v) for k, v in root.fields if k not in ("tracks", "baked_clips", "landmarks")
+        (k, Map_([]) if k == "clips" else v) for k, v in root.fields if k not in ("tracks", "track_parents", "baked_clips", "landmarks")
     ]
     ron_dst.parent.mkdir(parents=True, exist_ok=True)
     for image, name in zip(packed.pages, names):
