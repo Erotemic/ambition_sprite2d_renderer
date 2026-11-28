@@ -2,8 +2,8 @@
 
 Each frame uses the same articulated parts. The king carries the lamp in his
 far hand and attacks with the near claw. The cape, crown, lamp, and spectral
-light are not part of the physical body. The six rows match the melee actor
-contract; the attack row has a windup, a low forward sweep, and a recovery.
+light are not part of the physical body. The boss rows give each attack its
+own warning and strike pose.
 """
 from __future__ import annotations
 
@@ -11,15 +11,15 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 import math
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
 from ...core.draw import blending_draw, resize_transparent_sprite
 from ...core.measure import body_metrics_for_box
 
 TARGET_NAME = "barrow_king"
-FRAME_SIZE = (416, 336)
-GROUND = 300
+FRAME_SIZE = (448, 432)
+GROUND = 360
 CX = 158
 SUPER = 3
 # The body excludes the crown points, cloak train, staff and effects.
@@ -27,6 +27,11 @@ BODY_BOX = (111, GROUND - 198, 205, GROUND + 1)
 ROWS = [
     ("idle", 6, 140), ("walk", 8, 110), ("dash", 6, 70),
     ("attack_side", 16, 60), ("hurt", 3, 90), ("death", 12, 100),
+    ("reap_tell", 8, 100), ("reap", 6, 60),
+    ("sceptre_tell", 9, 105), ("sceptre_slam", 7, 60),
+    ("brand_tell", 10, 110), ("brand", 7, 60),
+    ("sentence_tell", 11, 110), ("sentence", 10, 60),
+    ("spent", 10, 100), ("coronation", 9, 100), ("death_idle", 1, 250),
 ]
 ACTOR_METADATA = {
     "actor": {"character_id": TARGET_NAME, "display_name": "The Barrow King"},
@@ -40,9 +45,8 @@ ACTOR_METADATA = {
     "authoring_description": (
         "An ancient barrow-wight in royal armor, a crown, and a torn burgundy "
         "mantle. He collects modern electrical appliances as grave goods and "
-        "holds a floor lamp as a royal sceptre. Original character based on "
-        "the maintainer's concept sheet; the spectral claw is the existing "
-        "melee attack, not a new combat ability."
+        "holds a floor lamp as a royal sceptre. He sweeps the floor with his "
+        "claw and seals parts of his tomb with the lamp."
     ),
 }
 
@@ -181,7 +185,6 @@ class Pose:
     jaw: float = 0
     light: float = .8
     sweep: float = -1
-    fade: float = 1
 
 
 def _blend(a, b, t):
@@ -205,6 +208,30 @@ STRIKE_END = replace(IDLE, dx=8, dy=12, lean=.28, near_elbow=(8,-43),
                      near_wrist=(43,-12), claw_angle=.85,
                      far_elbow=(54,-71), far_wrist=(79,-59), staff_tilt=.15,
                      near_foot=(31,0), cape=15, jaw=.65, light=1)
+SCEPTRE_UP = replace(IDLE, dx=-4, lean=-.15, head_tilt=-.14,
+                     far_elbow=(43,-99), far_wrist=(50,-129), staff_tilt=-.47,
+                     near_elbow=(-62,-38), near_wrist=(-61,-13),
+                     cape=-12, jaw=.50, light=1)
+SCEPTRE_DOWN = replace(IDLE, dx=11, dy=21, lean=.38, head_tilt=.08,
+                       far_elbow=(46,-56), far_wrist=(69,-59), staff_tilt=.36,
+                       near_elbow=(-45,-47), near_wrist=(-20,-32),
+                       cape=18, jaw=.85, light=1)
+BRAND_UP = replace(IDLE, dx=-1, dy=-4, lean=-.13, head_tilt=-.11,
+                   far_elbow=(47,-83), far_wrist=(70,-108), staff_tilt=-.70,
+                   near_elbow=(-60,-57), near_wrist=(-53,-79), claw_angle=-1.70,
+                   cape=-7, jaw=.18, light=1)
+BRAND_OUT = replace(IDLE, dx=3, dy=3, lean=.11,
+                    far_elbow=(53,-74), far_wrist=(91,-81), staff_tilt=-1.22,
+                    near_elbow=(-25,-79), near_wrist=(2,-85), claw_angle=.04,
+                    cape=10, jaw=.65, light=1)
+SENTENCE_UP = replace(BRAND_UP, dy=-8, near_elbow=(-44,-108), near_wrist=(-12,-134),
+                      claw_angle=-1.38, head_tilt=-.24, jaw=.76, cape=-17)
+SPENT = replace(IDLE, dx=2, dy=23, lean=.26, head_tilt=.23,
+                far_elbow=(58,-43), far_wrist=(72,-44), staff_tilt=.34,
+                near_elbow=(-47,-27), near_wrist=(-41,19), claw_angle=1.65,
+                cape=9, light=.28)
+FALLEN = replace(SPENT, dx=-12, dy=45, lean=.86, head_tilt=.32,
+                 far_wrist=(72,-42), staff_tilt=.94, light=0)
 
 
 def pose_for(animation, i, n):
@@ -217,10 +244,10 @@ def pose_for(animation, i, n):
                        staff_tilt=-.07+.025*wave, light=.78+.09*wave)
     if animation == "walk":
         # Alternating planted feet. The upper body carries the heavy mantle.
-        near = (22 + 15*wave, -8*max(0, math.cos(phase)))
-        far = (-25 - 15*wave, -8*max(0, -math.cos(phase)))
-        return replace(IDLE, dy=-2*abs(wave), dx=2*wave, lean=.07+.03*wave,
-                       near_foot=near, far_foot=far, cape=6*wave,
+        near = (22 + 24*wave, -13*max(0, math.cos(phase)))
+        far = (-25 - 24*wave, -13*max(0, -math.cos(phase)))
+        return replace(IDLE, dy=-4*abs(wave), dx=4*wave, lean=.07+.04*wave,
+                       near_foot=near, far_foot=far, cape=10*wave,
                        near_elbow=(-53,-38+5*wave), near_wrist=(-50+7*wave,5),
                        staff_tilt=-.06-.06*wave, light=.82)
     if animation == "dash":
@@ -237,19 +264,39 @@ def pose_for(animation, i, n):
         if i < 11:
             return replace(_blend(STRIKE_START, STRIKE_END, (i-7)/3), sweep=(i-7)/3)
         return _blend(STRIKE_END, IDLE, (i-10)/5)
+    if animation == "reap_tell":
+        return _blend(IDLE, WINDUP, min(1, u/.68))
+    if animation == "reap":
+        if u < .78:
+            return replace(_blend(STRIKE_START, STRIKE_END, u/.78), sweep=u/.78)
+        return _blend(STRIKE_END, SPENT, (u-.78)/.22)
+    if animation == "sceptre_tell":
+        return _blend(IDLE, SCEPTRE_UP, min(1, u/.76))
+    if animation == "sceptre_slam":
+        return _blend(SCEPTRE_DOWN, SPENT, u)
+    if animation == "brand_tell":
+        return replace(_blend(IDLE, BRAND_UP, min(1, u/.78)), light=.58+.42*u*u)
+    if animation == "brand":
+        return _blend(BRAND_OUT, SPENT, max(0, (u-.40)/.60))
+    if animation == "sentence_tell":
+        return replace(_blend(IDLE, SENTENCE_UP, min(1, u/.78)), light=.54+.46*u)
+    if animation == "sentence":
+        cast = _blend(BRAND_OUT, SCEPTRE_DOWN, max(0, (u-.42)/.27))
+        return _blend(cast, SPENT, max(0, (u-.74)/.26))
+    if animation == "spent":
+        return _blend(SPENT, IDLE, max(0, (u-.34)/.66))
+    if animation == "coronation":
+        k = math.sin(math.pi*u)
+        return replace(_blend(IDLE, SENTENCE_UP, k), cape=-12*k, light=.7+.3*k)
     if animation == "hurt":
         k = 1-u
         return replace(IDLE, dx=-5*k, dy=5*k, lean=-.16*k, head_tilt=-.12*k,
                        near_elbow=(-55,-45), near_wrist=(-38,-8), jaw=k,
                        staff_tilt=.12*k-.07, cape=-7*k, light=.95)
+    if animation == "death_idle":
+        return FALLEN
     if animation == "death":
-        k = _smooth(min(1, u/.63))
-        return replace(IDLE, dx=-8*k, dy=22*k, lean=.40*k, head_tilt=.35*k,
-                       near_elbow=(-39,-36), near_wrist=(-10,-5),
-                       far_elbow=(59,-53), far_wrist=(87,-28),
-                       staff_tilt=.78*k, near_foot=(33,0), far_foot=(-28,0),
-                       cape=14*k, jaw=k, light=1-u*.75,
-                       fade=1-max(0,(u-.63)/.37))
+        return _blend(IDLE, FALLEN, min(1, u/.90))
     raise ValueError(animation)
 
 
@@ -401,12 +448,15 @@ def draw_staff(p, wrist, angle, light):
     q.line([(37,44),(39,49)],GOLD_HI,1.5)
     # Warm light, with a broad pleated lampshade that reads at game scale.
     center=q.transform((0,-103))
-    _glow(p.image,[center],31,(250,182,78,255),.22*light)
+    _glow(p.image,[center],34,(250,182,78,255),.35*light**2)
+    def shade(unlit, lit):
+        return tuple(round(_lerp(a, b, light)) for a, b in zip(ImageColor.getrgb(unlit), ImageColor.getrgb(lit)))
+
     q.ellipse((0,-84),(10,4),GOLD,INK,1.2)
-    q.poly([(-16,-127),(12,-128),(19,-115),(33,-88),(25,-83),(-26,-83),(-32,-88)],"#d09a53",width=1.8)
-    q.poly([(-15,-124),(-7,-125),(-12,-88),(-26,-89)],"#edc67e",None)
-    q.poly([(-7,-125),(5,-126),(13,-88),(-12,-88)],"#ffe5a4",None)
-    q.poly([(5,-126),(12,-125),(28,-88),(13,-88)],"#e7b76f",None)
+    q.poly([(-16,-127),(12,-128),(19,-115),(33,-88),(25,-83),(-26,-83),(-32,-88)],shade("#5f4535", "#d09a53"),width=1.8)
+    q.poly([(-15,-124),(-7,-125),(-12,-88),(-26,-89)],shade("#8c674d", "#edc67e"),None)
+    q.poly([(-7,-125),(5,-126),(13,-88),(-12,-88)],shade("#a98262", "#fff4c7"),None)
+    q.poly([(5,-126),(12,-125),(28,-88),(13,-88)],shade("#7b5b46", "#e7b76f"),None)
     for a,b in [((-16,-126),(-30,-88)),((-7,-125),(-12,-88)),((5,-126),(13,-88)),((12,-126),(30,-88))]:
         q.line([a,b],"#a77a42",1.3)
     q.line([(-30,-88),(-21,-84),(0,-83),(24,-84),(31,-88)],GOLD_DARK,3)
@@ -547,19 +597,19 @@ def draw_head(p, pose, phase):
         q.ellipse((x,y),(2,2),GOLD_HI,GOLD_DARK,.7)
 
 
-def draw_sweep(image, pose):
+def draw_sweep(image, pose, *, low=False):
     if pose.sweep < 0:
         return
     # A low, forward slash. The brightest part follows the claw's swing.
     t=pose.sweep
-    center=(CX+4,GROUND-103)
+    center=(CX+4,GROUND-(73 if low else 103))
     start=-1.10+1.05*t
     end=start+.9
     pts=[]
     for i in range(25):
         u=i/24
         a=_lerp(start,end,u)
-        r=88+12*math.sin(math.pi*u)
+        r=(120 if low else 88)+12*math.sin(math.pi*u)
         pts.append((center[0]+r*math.cos(a),center[1]+r*math.sin(a)))
     layer=Image.new("RGBA", image.size)
     g=Pen(layer, scratch=True)
@@ -576,6 +626,24 @@ def draw_sweep(image, pose):
         x,y=pts[5+i*5]
         p.line([(x-6,y-4),(x+2,y+1)],_rgba(TEAL_HI,.7),1.6)
     image.alpha_composite(crisp)
+
+
+def draw_spell(p, lamp, animation, t):
+    if animation not in {"brand_tell", "brand", "sentence_tell", "sentence", "coronation"}:
+        return
+    paired = animation in {"sentence_tell", "sentence", "coronation"}
+    light = _smooth(min(1, t * 1.8)) if animation.endswith("_tell") else 1 - .78*t
+    x, y = lamp
+    for i in range(2 if paired else 1):
+        rx = 35 + i * 11 + 5*math.sin(t*math.tau)
+        ry = (13 + i * 8) * (-1)**i
+        angle = t * math.tau + i * math.pi
+        points = [(x + rx*math.cos(angle + j*.15),
+                   y + ry*math.sin(angle + j*.15)) for j in range(29)]
+        colour = TEAL_HI if i == 0 else (250, 209, 124, 255)
+        p.line(points, _rgba(colour, light * .85), 1.9)
+        point = points[-1]
+        p.ellipse(point, (3.2, 3.2), _rgba(colour, light), None)
 
 
 def render_frame(animation, index, nframes):
@@ -601,6 +669,8 @@ def render_frame(animation, index, nframes):
     draw_arm(torso,far_shoulder,far_elbow,far_wrist,False)
     # Draw the lamp after the far arm; it must stay in front of the wrist.
     draw_staff(torso,far_wrist,pose.staff_tilt,pose.light)
+    lamp = torso.local(far_wrist, pose.staff_tilt).transform((0, -103))
+    draw_spell(p, lamp, animation, index/max(1, nframes-1))
     draw_robe(Pen(image,cape_transform))
     draw_torso(torso)
     near_shoulder = (-26,-77)
@@ -609,7 +679,7 @@ def render_frame(animation, index, nframes):
     draw_fur(torso)
     draw_head(torso,pose,phase)
     draw_claw(torso,near_wrist,pose.claw_angle,3.2)
-    draw_sweep(image,pose)
+    draw_sweep(image,pose,low=animation=="reap")
     if animation=="death" and index>4:
         u=index/max(1,nframes-1)
         for i in range(7):
@@ -617,9 +687,6 @@ def render_frame(animation, index, nframes):
             x=hip[0]+math.cos(a)*(12+u*42)
             y=hip[1]-25-u*(28+(i%3)*16)
             p.ellipse((x,y),(2.4,4.5),_rgba(TEAL,(1-u)*.8),None)
-    if pose.fade<1:
-        # Multiply existing alpha. Never turn the transparent canvas opaque.
-        image.putalpha(image.getchannel("A").point(lambda a: round(a*pose.fade)))
     return resize_transparent_sprite(image, FRAME_SIZE)
 
 
