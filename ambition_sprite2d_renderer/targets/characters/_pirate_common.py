@@ -51,6 +51,7 @@ from ...authoring.sheet_build import (
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw
 from . import _pirate_rig as pirate_rig
+from . import _roo_badely_art as roo
 
 
 @dataclass
@@ -89,24 +90,11 @@ SKULL_MOTIF_KINDS = ("pirate_raider", "pirate_quartermaster")
 
 PALETTES = {
     "pirate_admiral": Palette(
-        outline=(26, 28, 35, 255),
-        # Warm mid-brown skin. Reads as Caribbean-coast / mestizo
-        # rather than European-pale; sits between the lighter raider
-        # tone (#EBC4A0) and the deep brown quartermaster (#704C32) so
-        # the cove lineup hits three distinct values at a glance.
-        skin=(168, 124, 88, 255),
-        skin_shadow=(112, 76, 48, 255),
-        hat=(28, 31, 41, 255),
-        coat=(88, 108, 138, 255),
-        coat2=(146, 165, 191, 255),
-        sash=(113, 40, 40, 255),
-        shirt=(214, 205, 182, 255),
-        pants=(212, 196, 160, 255),
-        boots=(69, 50, 35, 255),
-        metal=(210, 216, 228, 255),
-        gold=(206, 171, 74, 255),
-        beard=None,
-        accent=(222, 72, 55, 255),
+        outline=roo.INK, skin=roo.FUR, skin_shadow=roo.FUR_SHADE,
+        hat=roo.NAVY, coat=roo.NAVY, coat2=roo.GOLD,
+        sash=roo.RED, shirt=roo.IVORY, pants=roo.PANTS,
+        boots=(49, 37, 36, 255), metal=(210, 216, 228, 255),
+        gold=roo.GOLD, accent=roo.RED,
     ),
     "pirate_raider": Palette(
         outline=(28, 24, 26, 255),
@@ -479,7 +467,7 @@ class Look:
 LOOKS: Dict[str, Look] = {
     "pirate_admiral": Look(
         build=1.05, headwear="bicorne", band="gold", hair=(40, 32, 34, 255),
-        beard="mustache", eyepatch=True, epaulettes=True, skull=True, coat="long",
+        epaulettes=True, skull=True, coat="long",
     ),
     "pirate_raider": Look(
         build=1.0, headwear="bandana", band="coat", hair=(77, 42, 23, 255),
@@ -502,11 +490,11 @@ LOOKS: Dict[str, Look] = {
 }
 
 
-def draw_boot(draw, center, angle, pal):
+def draw_boot(draw, center, angle, pal, name="boot"):
     """A sea boot: a shaft over the end of the shin, a foot with its toe to
     the front, a turned cuff and a sole. Local geometry in the boot's own
     frame; placement via the part scope."""
-    with draw.part("boot", center, angle):
+    with draw.part(name, center, angle):
         poly(draw, [(-12, -24), (10, -24), (11, -3), (-12, -3)], pal.boots, pal.outline, width=3)
         poly(draw, [(-12, -8), (11, -10), (24, -4), (27, 6), (-12, 6)], pal.boots, pal.outline, width=3)
         poly(draw, [(4, -20), (9, -20), (10, -7), (5, -6)], _shade(pal.boots, 0.72))
@@ -564,7 +552,7 @@ def draw_tablet(draw, hand, angle, pal, glow: float = 0.0):
             poly(draw, [(x, top), (x + 3, top), (x + 3, 7), (x, 7)], _shade(pal.metal, 0.5))
 
 
-def draw_neck(draw, chest, head_center, global_tilt, pal, look: Look):
+def draw_neck(draw, chest, head_center, global_tilt, pal, look: Look, *, rigid=False):
     """The neck, from the collar of the coat to under the jaw, and the
     collar of the shirt over it."""
     base = transform((0, -28), chest, deg=global_tilt)
@@ -580,7 +568,14 @@ def draw_neck(draw, chest, head_center, global_tilt, pal, look: Look):
         (top[0] - nx * (half - 2), top[1] - ny * (half - 2)),
         (top[0] + nx * (half - 2), top[1] + ny * (half - 2)),
     ]
-    poly(draw, pts, pal.skin_shadow, pal.outline, width=3)
+    if rigid:
+        # The upper end overlaps the jaw even as the head nods.
+        angle = math.degrees(math.atan2(top[1]-base[1],top[0]-base[0]))
+        with draw.part("roo_neck", base, angle):
+            poly(draw, [(-5,-half),(39,-half+2),(39,half-2),(-5,half)],
+                 pal.skin_shadow, pal.outline, width=3)
+    else:
+        poly(draw, pts, pal.skin_shadow, pal.outline, width=3)
 
     with draw.part("collar", chest, global_tilt):
         poly(draw, [(-21, -31), (-3, -23), (-11, -6), (-24, -14)], pal.shirt, pal.outline, width=3)
@@ -967,6 +962,10 @@ def paint_character(
     back_shoulder = joints["back_shoulder"].point
     front_shoulder = joints["front_shoulder"].point
 
+    is_roo = kind == "pirate_admiral"
+    if is_roo:
+        roo.draw_tail(draw, hip, pose, roo._view(anim, frame_idx, nframes))
+
     # The back leg, then the front leg over it.
     _begin(draw, "legs")
     ground = pirate_rig.ground_y(h)
@@ -975,25 +974,33 @@ def paint_character(
         hip_pt = joints[f"{side}_hip"].point
         knee_pt = joints[f"{side}_knee"].point
         foot_pt = joints[f"{side}_foot"].point
-        draw_limb(draw, "leg", hip_pt, knee_pt, foot_pt, fill,
+        draw_limb(draw, f"{side}_leg" if is_roo else "leg", hip_pt, knee_pt, foot_pt, fill,
                   (28 * b, 24 * b, 19 * b), pal.outline, 4, end_cap=False)
         # A foot on the ground is flat on it. A foot in the air goes with its
         # shin, and so do the feet of a body that is down.
         # A foot within 4 px of the ground is on it: a boot turned by a part
         # of a degree is a sole one row off in the part flipbook.
         lifted = max(0.0, min(1.0, (ground - foot_pt[1] - 4.0) / 12.0))
-        draw_boot(draw, foot_pt, pose[f"{side}_shin"] * max(lifted, death_t), pal)
+        draw_boot(draw, foot_pt, pose[f"{side}_shin"] * max(lifted, death_t), pal,
+                  name=f"{side}_boot" if is_roo else "boot")
     # The seat of the trousers, between the two legs and under the coat.
-    with draw.part("seat", hip, global_tilt):
+    with draw.part("pelvis" if is_roo else "seat", hip, global_tilt):
         poly(draw, [(-29 * b, -20), (29 * b, -20), (29 * b, 8), (0, 16), (-29 * b, 8)],
              pal.pants, pal.outline, width=4)
     _end(draw)
 
     _begin(draw, "body")
-    _draw_torso(draw, chest, global_tilt, pal, look)
+    if is_roo:
+        roo.draw_torso(draw, chest, global_tilt, pal, look)
+    else:
+        _draw_torso(draw, chest, global_tilt, pal, look)
     # The tails of a coat stop over the knees. A jacket has a short skirt.
     coat_sway = pose["coat_sway"]
-    if look.coat == "robe":
+    if is_roo:
+        roo.draw_coat_tails(draw, hip, global_tilt, coat_sway, b)
+        roo.draw_gear(draw, hip, global_tilt, pose)
+        _end(draw)
+    elif look.coat == "robe":
         # The skirt of a robe: two halves that meet in the middle and go down
         # to the ankles, each with a hem of trim. The boots show under them.
         drop = 66.0
@@ -1026,7 +1033,7 @@ def paint_character(
     back_elbow = joints["back_elbow"].point
     back_hand = joints["back_hand"].point
     draw_limb(draw, "back_arm", back_shoulder, back_elbow, back_hand, pal.coat,
-              (22 * b, 19 * b, 16 * b), pal.outline, 4, cuff=pal.coat2)
+              (22 * b, 19 * b, 16 * b), pal.outline, 4, cuff=pal.shirt if is_roo else pal.coat2)
     back_aim = math.degrees(math.atan2(back_hand[1] - back_elbow[1], back_hand[0] - back_elbow[0]))
     if pose.get("pistol"):
         # A flintlock in the free hand, its barrel down the line of the arm.
@@ -1034,19 +1041,28 @@ def paint_character(
             _pistol(draw, pal)
     if pose.get("point"):
         # The finger pointed at the foe, down the line of the arm.
-        with draw.part("back_hand_point", back_hand, back_aim):
+        with draw.part("back_hand" if is_roo else "back_hand_point", back_hand, back_aim):
             _pointing_hand(draw, 9.0, pal)
     else:
         with draw.part("back_hand", back_hand, 0.0):
             _hand(draw, 9.0, pal)
     _end(draw)
 
+    if is_roo:
+        # The near arm and sword must be in front of the larger wallaroo head.
+        _begin(draw, "head")
+        face_tilt = joints["head"].angle
+        draw_neck(draw, chest, head_center, global_tilt, pal, look, rigid=True)
+        roo.draw_head(draw, head_center, face_tilt, face_tilt + pose["hat_tilt"],
+                      pose, anim, frame_idx, nframes)
+        _end(draw)
+
     # The arm with the sword, in front of the body.
     _begin(draw, "sword_arm")
     front_elbow = joints["front_elbow"].point
     front_hand = joints["front_hand"].point
     draw_limb(draw, "front_arm", front_shoulder, front_elbow, front_hand, pal.coat,
-              (24 * b, 20 * b, 17 * b), pal.outline, 4, cuff=pal.coat2)
+              (24 * b, 20 * b, 17 * b), pal.outline, 4, cuff=pal.shirt if is_roo else pal.coat2)
     blade = 92 if kind == "pirate_admiral" else 86
     curve = 16 if kind in SCARFED_KINDS else 5
     if look.sword:
@@ -1071,29 +1087,30 @@ def paint_character(
             line(draw, [(0, 0), (10, -8)], (255, 255, 255, 100), width=2)
     _end(draw)
 
-    # The head is on the neck: it turns with the bone that carries it.
-    _begin(draw, "head")
-    face_tilt = joints["head"].angle
-    draw_hair(draw, head_center, face_tilt, pal, look)
-    draw_neck(draw, chest, head_center, global_tilt, pal, look)
-    draw_face(
-        draw,
-        head_center,
-        face_tilt,
-        pal,
-        look,
-        x_eyes=pose["x_eyes"],
-        blink=pose["blink"],
-        mouth_open=pose["mouth_open"],
-        wide=bool(pose.get("wide")),
-    )
-    draw_hat(draw, head_center, face_tilt + pose["hat_tilt"], pal, look)
-    _end(draw)
+    if not is_roo:
+        # The head is on the neck: it turns with the bone that carries it.
+        _begin(draw, "head")
+        face_tilt = joints["head"].angle
+        draw_hair(draw, head_center, face_tilt, pal, look)
+        draw_neck(draw, chest, head_center, global_tilt, pal, look)
+        draw_face(
+            draw,
+            head_center,
+            face_tilt,
+            pal,
+            look,
+            x_eyes=pose["x_eyes"],
+            blink=pose["blink"],
+            mouth_open=pose["mouth_open"],
+            wide=bool(pose.get("wide")),
+        )
+        draw_hat(draw, head_center, face_tilt + pose["hat_tilt"], pal, look)
+        _end(draw)
 
     # NOT dead code: an alpha-0 stroke is an ERASER through blending_draw (its
     # zero-alpha ops carve rather than no-op), so this clears a 1px seam just
     # below the feet on the death settle.
-    if anim == "death":
+    if anim == "death" and not is_roo:
         ground = h * 0.83
         draw.line((0, ground + 24, w, ground + 24), fill=(0, 0, 0, 0), width=1)
 
@@ -1142,6 +1159,15 @@ def _rig_fit(kind: str, frame_size=BASE_FRAME) -> Tuple[float, Tuple[float, floa
     width or 88% of its height), its box centre and feet at
     ``RIG_IDLE_ANCHOR``."""
     key = (kind, tuple(frame_size))
+    if key not in _RIG_FITS and kind == "pirate_admiral":
+        # Keep the original guard calibration. The ears and tail must not
+        # reduce the body scale or move the hand and weapon sockets.
+        fw, fh = frame_size
+        ratio = min(fw / BASE_FRAME[0], fh / BASE_FRAME[1])
+        scale = 1.2288 * ratio
+        ox = (1.2288 * BASE_FRAME[0] * SCALE / 2 - 5.856) * fw / BASE_FRAME[0] - scale * fw * SCALE / 2
+        oy = (1.2288 * BASE_FRAME[1] * SCALE * .83 - 86.5704) * fh / BASE_FRAME[1] - scale * fh * SCALE * .83
+        _RIG_FITS[key] = (scale, (ox, oy))
     if key not in _RIG_FITS:
         from ...authoring.draw_recorder import PillowPartDraw
 
@@ -1463,6 +1489,7 @@ def render_target_with_products(
         # The frame is the rig's (``RIG_FRAME``), not fitted to the art: the
         # SVG authority publishes the same frame whatever its rasterizer.
         auto_crop=False,
+        body_metrics_fn=roo.body_metrics if target == "pirate_admiral" else None,
         frame_transform_out=frame_transform,
     )
     # The semantic body rig, from the skeleton the frames above were painted
@@ -1565,6 +1592,7 @@ def render_target_svg(
         out_dir=out_dir,
         frame_size=rig_frame_size(frame_size),
         auto_crop=False,
+        body_metrics_fn=roo.body_metrics if target == "pirate_admiral" else None,
     )
 
 
@@ -1609,6 +1637,20 @@ def pirate_face_guide(kind: str, anim: str = "idle", frame_idx: int = 0,
 
     from ...authoring.portrait import FaceGuide
 
+    if kind == "pirate_admiral":
+        fit: dict = {}
+        draw_character(kind, anim, frame_idx, nframes, frame_size=frame_size, fit_out=fit)
+        pose = pose_of(kind, anim, frame_idx, nframes)
+        w, h = frame_size[0]*SCALE, frame_size[1]*SCALE
+        head = pirate_rig.evaluate(pose, kind, w, h, pose["body_tilt"])["head"]
+        face, hat = roo.head_bounds(pose)
+        points = [transform(pt, head.point, head.angle + extra)
+                  for parts, extra in ((face, 0.0), (hat, pose["hat_tilt"]))
+                  for outline, _ink in parts for pt in outline]
+        xs = [(x-fit["x0"])*fit["sx"]+fit["ox"] for x,y in points]
+        ys = [(y-fit["y0"])*fit["sy"]+fit["oy"] for x,y in points]
+        return FaceGuide((min(xs)+max(xs))/2, (min(ys)+max(ys))/2,
+                         max(xs)-min(xs), max(ys)-min(ys), *frame_size)
     image = draw_character(kind, anim, frame_idx, nframes, frame_size=frame_size)
     alpha = np.array(image.getchannel("A")) > 8
     ys, xs = alpha.nonzero()
@@ -1656,6 +1698,9 @@ def render_pirate_portraits(target: str, out_dir, *, kind: str | None = None,
     # view is only a little wider than it and drops far enough for a collar.
     view_width = guide.width * 1.95
     center_y = guide.center_y + guide.height * 0.88
+    if kind == "pirate_admiral":
+        view_width = guide.width * 1.6
+        center_y = guide.center_y + guide.height * .43
 
     def frame(anim: str, index: int, count: int):
         source = draw_character(kind, anim, index, count, frame_size=big)

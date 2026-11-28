@@ -83,6 +83,10 @@ def test_scene_contains_and_places_every_expected_part(kind: str) -> None:
     names = {name for _pid, (name, _body) in scene.parts.items()}
     # A pirate whose weapon the game draws has no sword painted in his hand.
     core = CORE_PARTS if P.LOOKS[kind].sword else CORE_PARTS - {"sword"}
+    if kind == "pirate_admiral":
+        core = (core - {"boot"}) | {"left_boot", "right_boot", "roo_tail_root",
+                                    "roo_tail_tip", "roo_ear_left", "roo_ear_right",
+                                    "roo_watch", "roo_string"}
     assert not (core - names), f"{kind} scene dropped parts: {core - names}"
     # A part must be REGISTERED and PLACED — a regression that stops emitting a
     # part's <use> leaves it registered but unrendered, which occupancy catches
@@ -97,7 +101,10 @@ def test_scene_contains_and_places_every_expected_part(kind: str) -> None:
     # (admiral), 15 of them the face's expressions. The telegraph rows
     # (``notice``, ``windup``) add the startled faces, a pointing hand and the
     # lookout's pistol: 41 (raider), measured 2026-10-30.
-    assert len(scene.parts) < 48, len(scene.parts)
+    # Roo now has separate expression tracks and five projected head and
+    # tail views. Bound the library, not the number of sampled poses.
+    limit = 96 if kind == "pirate_admiral" else 48
+    assert len(scene.parts) < limit, len(scene.parts)
 
 
 @pytest.mark.parametrize("kind", ROLES)
