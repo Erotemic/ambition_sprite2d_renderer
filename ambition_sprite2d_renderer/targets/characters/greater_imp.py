@@ -15,10 +15,10 @@ from ...authoring.sheet_build import build_sheet
 from ...core.measure import body_metrics_for_box
 
 TARGET_NAME = 'greater_imp'
-FRAME_SIZE = (344, 306)
-ORIGIN = (172, 153)
+FRAME_SIZE = (364, 354)
+ORIGIN = (182, 170)
 # Body, not the extremities of wings, tail or horns.
-BODY_BOX = (140, 86, 216, 234)
+BODY_BOX = (150, 95, 226, 276)
 ROWS = [
     ('idle', 16, 64), ('walk', 16, 56), ('run', 16, 45), ('fly', 16, 48),
     ('notice', 10, 42), ('aim', 18, 42), ('windup', 18, 42),
@@ -34,7 +34,7 @@ ACTOR_METADATA = {
     'visual': {'default_pose': 'idle', 'portrait': {'animation': 'idle', 'frame': 0}},
     'tags': TRAITS,
     'authoring_description': (
-        'A mature charcoal-slate imp with a muscular chest, long hooked claws, '
+        'A tall, mature charcoal-slate imp with a muscular chest, long hooked claws, '
         'backward-swept ridged horns, a narrow predatory face and broad ribbed wings.'),
     'gameplay_description': (
         'A larger airborne skirmisher. It braces, ignites its throat and spits '
@@ -165,7 +165,7 @@ def _render_frame(anim: str, i: int, n: int):
     # follows the tangent, not a fixed world-oriented arrowhead.
     wag = 8*math.sin(p-.7)
     tail_tip = (-105-3*death, 16+wag+21*death)
-    tail = path((-17, 26), ((-43,52),(-89,61),(-108,42+wag)),
+    tail = path((-17, 35), ((-43,61),(-89,69),(-108,49+wag)),
                 ((-124,28+wag),(-114,15+wag+18*death),tail_tip))
     widths = [8.8*(1-k/(len(tail)-1))**.75+2.2 for k in range(len(tail))]
     limb(tail,widths,SKIN,RIDGE)
@@ -216,9 +216,9 @@ def _render_frame(anim: str, i: int, n: int):
 
     def leg(far):
         sway=math.sin(p+(math.pi if far else 0))
-        hip=(8,29) if far else (-14,29)
-        knee=(28+3*sway+6*death,45-5*q.charge+7*death) if far else (9+3*sway-7*death,47-5*q.charge+5*death)
-        ankle=(17+2*sway+4*death,66-5*q.charge+13*death) if far else (-15+2*sway-6*death,69-5*q.charge+10*death)
+        hip=(8,37) if far else (-14,37)
+        knee=(25+4*sway+9*death,60-7*q.charge+7*death) if far else (3+4*sway-8*death,63-7*q.charge+5*death)
+        ankle=(16+3*sway+4*death,89-7*q.charge+13*death) if far else (-11+3*sway-6*death,94-7*q.charge+10*death)
         col=FAR if far else SKIN
         limb([hip,((hip[0]+knee[0])*.5-2,(hip[1]+knee[1])*.5),knee,ankle], [10,12,7.8,5.5],col,None if far else LIGHT)
         x,y=ankle
@@ -235,12 +235,12 @@ def _render_frame(anim: str, i: int, n: int):
         s=math.sin(p+(1.0 if far else 0))
         if far:
             shoulder=(22,-28)
-            elbow=(43+5*q.charge+7*death,0+3*s+4*death)
-            wrist=(56+5*q.charge+7*q.shoot+11*death,13-10*q.charge-5*q.shoot+18*death)
+            elbow=(43+5*q.charge+7*death,4+3*s+4*death)
+            wrist=(56+5*q.charge+7*q.shoot+11*death,22-13*q.charge-5*q.shoot+18*death)
         else:
             shoulder=(-24,-24)
-            elbow=(-47-8*q.charge-6*recoil,-3+3*s+8*death)
-            wrist=(-41-9*q.charge-18*death,25-7*q.charge+6*death)
+            elbow=(-47-8*q.charge-6*recoil,1+3*s+8*death)
+            wrist=(-41-9*q.charge-18*death,34-10*q.charge+6*death)
         col=FAR if far else SKIN
         # A muscular bicep tapering into a long forearm.
         mid=((shoulder[0]+elbow[0])*.5-2,(shoulder[1]+elbow[1])*.5)
@@ -267,31 +267,31 @@ def _render_frame(anim: str, i: int, n: int):
     # Broad chest, narrow waist and heavy pelvic musculature. The highlight
     # shapes are facets of the same hide, not separate armor or clothes.
     shape((-22,-39),((-2,-46),(24,-42),(31,-27)),
-          ((36,-13),(22,3),(17,13)),((13,24),(21,30),(14,37)),
-          ((1,43),(-16,41),(-25,31)),((-30,18),(-22,9),(-28,-3)),
+          ((36,-13),(22,5),(17,16)),((13,32),(21,38),(14,46)),
+          ((1,52),(-16,50),(-25,40)),((-30,24),(-22,13),(-28,-3)),
           ((-39,-13),(-37,-29),(-22,-39)),fill=SKIN,width=2.8)
     shape((-24,-29),((-14,-36),(1,-34),(9,-24)),
           ((12,-15),(3,-8),(-8,-7)),((-19,-7),(-27,-16),(-24,-29)),fill=LIGHT,edge=None)
     shape((12,-30),((24,-33),(30,-26),(30,-18)),
           ((26,-8),(16,-9),(10,-12)),((8,-19),(10,-26),(12,-30)),fill='#655d6e',edge=None)
     line([(-21,-7),(-9,-2),(5,-7),(16,-10)],SHADE,2.7)
-    shape((-10,2),((0,-1),(13,-1),(14,9)),((10,17),(10,28),(0,30)),
-          ((-14,30),(-19,14),(-10,2)),fill='#655e69',edge=None)
-    for y in (7,15,23):
+    shape((-10,2),((0,-1),(13,-1),(14,11)),((10,23),(10,36),(0,39)),
+          ((-14,39),(-19,18),(-10,2)),fill='#655e69',edge=None)
+    for y in (8,19,30):
         line([(-12,y),(-3,y+3),(7,y)],SHADE,1.9)
     # Bony shoulder ridges echo the horn geometry, without adding armor.
     poly([(-32,-21),(-37,-33),(-27,-30),(-20,-23)],SHADE,INK,1.3)
     poly([(23,-30),(28,-42),(31,-32),(31,-23)],FAR,INK,1.3)
     leg(False)
     # A small overlapping hip plane hides the cap of the near thigh.
-    shape((-23,26),((-19,20),(-5,22),(-1,30)),
-          ((1,37),(-9,41),(-19,38)),((-24,35),(-25,30),(-23,26)),
+    shape((-23,35),((-19,29),(-5,31),(-1,39)),
+          ((1,46),(-9,50),(-19,47)),((-24,44),(-25,39),(-23,35)),
           fill=SKIN,edge=None)
     arm(False)
 
     # Adult head: swept ram-like horns, flatter cranial silhouette, heavy
     # brow, narrow angular jaw and multiple fangs. No arm crosses the eyes.
-    head_y=-2*q.charge-4*death
+    head_y=-8-2*q.charge-4*death
     def F(x,y):return (x,y+head_y)
     def fpoly(pts,fill,edge=INK,width=2):poly([F(*v) for v in pts],fill,edge,width)
     def fline(pts,fill=INK,width=1.8):line([F(*v) for v in pts],fill,width)
